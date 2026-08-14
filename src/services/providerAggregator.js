@@ -1,16 +1,15 @@
 /* ==========================================================================
    CinePulse Studio - Master Stream Aggregator
-   Aggregates live Turkish sources with strict title & year matching:
-   - Smashy Stream (1080p Video Embed)
-   - DiziBal (VIP 1080p)
-   - Sinewix (Android VIP 1080p)
-   - Dizipal (1080p)
-   - SezonlukDizi (VidMoly, Sibnet, Filemoon)
+   Aggregates live Turkish & Global VIP sources:
+   - SezonlukDizi (VidMoly, Sibnet, Netu, VideoSoft, FileMoon)
+   - DiziBal (VIP 1080p Dublaj & Altyazılı)
+   - Sinewix (Android VIP 1080p HLS)
+   - Dizipal (1080p HLS FastStream)
    - Now Stream / Filmizle (1080p Dublaj & Altyazılı)
-   - AnimeTR (VidMoly, OK.ru, Vidoza, VOE, Drive 1080p)
-   - TRAnimeİzle (1080p)
-   - TürkAnime TV (1080p)
+   - FilmizleCh (1080p)
+   - AnimeTR / TRAnimeİzle / TürkAnime TV (1080p)
    - BelgeselX / Belgeselce (1080p)
+   - AutoEmbed VIP / EmbedSU / VidSrc ICU / SmashyStream / VidLink / SuperEmbed
    ========================================================================== */
 
 import { fetchDiziBalSources } from './diziBalScraper.js';
@@ -26,7 +25,7 @@ import { fetchBelgeselSources } from './belgeselScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
-// In-Memory Stream Cache for instant 0ms repeated lookups
+// In-Memory Stream Cache for instant 0ms lookups
 const streamServersCache = new Map();
 
 function cleanTitle(raw) {
@@ -39,7 +38,7 @@ function cleanTitle(raw) {
     .trim();
 }
 
-function withTimeout(promise, ms = 2200) {
+function withTimeout(promise, ms = 7500) {
   return Promise.race([
     promise.catch(() => []),
     new Promise(resolve => setTimeout(() => resolve([]), ms))
@@ -131,16 +130,7 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
   const mapDubbedSources = (rawList) => (rawList || [])
     .filter(s => {
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
-      const nameStr = (s.name || '').toLowerCase();
-      const isBlocked = 
-        nameStr.includes('filemoon') || 
-        nameStr.includes('setplay') || 
-        nameStr.includes('fastplay') ||
-        urlStr.includes('filemoon') || 
-        urlStr.includes('bysejikuar') || 
-        urlStr.includes('setplay.shop') ||
-        urlStr.includes('fastplay.mom');
-      return urlStr && !urlStr.includes('recaptcha') && !isBlocked && urlStr.length > 8;
+      return urlStr && !urlStr.includes('recaptcha') && urlStr.length > 8;
     })
     .map(s => ({
       id: s.id,
@@ -166,16 +156,7 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
   const mapSubtitledSources = (rawList) => (rawList || [])
     .filter(s => {
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
-      const nameStr = (s.name || '').toLowerCase();
-      const isBlocked = 
-        nameStr.includes('filemoon') || 
-        nameStr.includes('setplay') || 
-        nameStr.includes('fastplay') ||
-        urlStr.includes('filemoon') || 
-        urlStr.includes('bysejikuar') || 
-        urlStr.includes('setplay.shop') ||
-        urlStr.includes('fastplay.mom');
-      return urlStr && !urlStr.includes('recaptcha') && !isBlocked && urlStr.length > 8;
+      return urlStr && !urlStr.includes('recaptcha') && urlStr.length > 8;
     })
     .map(s => ({
       id: s.id,
@@ -206,13 +187,31 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     ...mapSubtitledSources(flzSub),
     ...mapSubtitledSources(finSub),
     {
-      id: 'sub_superembed',
-      name: 'SuperEmbed Stream (1080p Altyazılı)',
-      badge: '💬 SuperEmbed',
+      id: 'sub_autoembed',
+      name: 'AutoEmbed VIP (1080p Altyazılı)',
+      badge: '⚡ AutoEmbed',
       category: 'subtitled',
       getUrl: () => isMovie
-        ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
-        : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
+        ? `https://player.autoembed.cc/embed/movie/${tmdbId}`
+        : `https://player.autoembed.cc/embed/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'sub_embedsu',
+      name: 'EmbedSU 4K VIP (Altyazılı)',
+      badge: '⚡ EmbedSU 4K',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://embed.su/embed/movie/${tmdbId}`
+        : `https://embed.su/embed/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'sub_vidsrc_icu',
+      name: 'VidSrc ICU (1080p Altyazılı)',
+      badge: '⚡ VidSrc 1080p',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://vidsrc.icu/embed/movie/${tmdbId}`
+        : `https://vidsrc.icu/embed/tv/${tmdbId}/${season}/${episode}`
     },
     {
       id: 'sub_vidlink',
@@ -222,6 +221,15 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
       getUrl: () => isMovie
         ? `https://vidlink.pro/movie/${tmdbId}`
         : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'sub_superembed',
+      name: 'SuperEmbed Stream (1080p Altyazılı)',
+      badge: '💬 SuperEmbed',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
+        : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
     }
   ];
 
