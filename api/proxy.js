@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // Parse path: e.g. /api/hdfc/search/Breaking%20Bad/
+  // Parse path: e.g. /api/szd/ajax/dataAlternatif22.asp
   let fullPath = '';
   if (req.query.match) {
     if (Array.isArray(req.query.match)) {
@@ -33,14 +33,9 @@ export default async function handler(req, res) {
 
   let targetUrl = '';
   let customHeaders = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-User': '?1',
-    'Upgrade-Insecure-Requests': '1'
+    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
   };
 
   if (fullPath.startsWith('hdfc')) {
@@ -95,10 +90,20 @@ export default async function handler(req, res) {
   try {
     let body = undefined;
     if (req.method === 'POST') {
-      if (typeof req.body === 'object') {
-        body = new URLSearchParams(req.body).toString();
+      if (req.body) {
+        if (typeof req.body === 'object') {
+          body = new URLSearchParams(req.body).toString();
+        } else {
+          body = req.body;
+        }
       } else {
-        body = req.body;
+        const chunks = [];
+        for await (const chunk of req) {
+          chunks.push(chunk);
+        }
+        if (chunks.length > 0) {
+          body = Buffer.concat(chunks).toString('utf-8');
+        }
       }
     }
 
