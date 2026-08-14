@@ -1,7 +1,7 @@
 /* ==========================================================================
    CinePulse Studio - Filmizle.now Scraper
    Fetches 1080p Vidmixi stream sources from https://filmizle.now
-   Strict title matching to prevent wrong movie playback.
+   Strict bidirectional whole-title matching to prevent wrong movie playback.
    ========================================================================== */
 
 function normalizeTitle(title) {
@@ -36,16 +36,18 @@ function toTurkishSlug(title) {
 }
 
 function isTitleSimilar(target, candidate) {
-  const normT = normalizeTitle(target);
-  const normC = normalizeTitle(candidate);
+  const normT = normalizeTitle(target).replace(/^the\s+/, '');
+  const normC = normalizeTitle(candidate).replace(/^the\s+/, '');
   if (normT === normC) return true;
 
-  const tWords = normT.split(' ').filter(w => w.length > 1);
-  const cWords = normC.split(' ').filter(w => w.length > 1);
+  const tWords = normT.split(' ').filter(w => w.length > 0);
+  const cWords = normC.split(' ').filter(w => w.length > 0);
 
   const matched = tWords.filter(w => cWords.includes(w)).length;
-  const ratio = matched / Math.max(tWords.length, 1);
-  return ratio >= 0.75;
+  const maxLen = Math.max(tWords.length, cWords.length, 1);
+  const ratio = matched / maxLen;
+
+  return ratio >= 0.85;
 }
 
 export async function fetchFilmizleNowSources({
@@ -81,7 +83,7 @@ export async function fetchFilmizleNowSources({
       if (directRes && directRes.ok) {
         targetPath = directPath;
       } else {
-        // Search dynamically with strict title validation
+        // Search dynamically with strict bidirectional validation
         const searchRes = await fetch(`${baseRoute}/arama?q=${encodeURIComponent(query)}`).catch(() => null);
         if (searchRes && searchRes.ok) {
           const sHtml = await searchRes.text();
