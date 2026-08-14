@@ -1,7 +1,11 @@
 /* ==========================================================================
-   CinePulse Studio - Strict Belgesel (DMAX / TLC / BelgeselX) Video Scraper
-   Only outputs real, direct 1080p HLS video streams when content ACTUALLY exists
-   on the official provider platform.
+   CinePulse Studio - Comprehensive Türkçe Dublaj Belgesel Scraper
+   Aggregates live 1080p Turkish dubbed documentary streams from:
+   - DMAX (Direct 1080p HLS)
+   - TLC (Direct 1080p HLS)
+   - BelgeselX (1080p Embed)
+   - Belgeselce (1080p Embed)
+   - TürkçeBelgesel (1080p Embed)
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
@@ -58,7 +62,7 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
     if (!slug) continue;
     const normQ = normalizeText(q);
 
-    // 1. DMAX TV
+    // 1. DMAX TV (Direct HLS Stream)
     try {
       const dmaxEpUrl = `https://www.dmax.com.tr/${slug}/${season}-sezon-${episode}-bolum`;
       const proxyDmaxUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(dmaxEpUrl)}`;
@@ -68,7 +72,6 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
         const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
         const normPageTitle = normalizeText(pageTitle);
 
-        // Strict verification: Page title MUST match query title
         if (!normPageTitle.includes('canlitv') && !normPageTitle.includes('404') && normPageTitle.includes(normQ.substring(0, 5))) {
           const refId = html.match(/referenceId\s*:\s*['"]([^'"]+)['"]/i)?.[1];
           if (refId) {
@@ -100,7 +103,7 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
       }
     } catch (_) {}
 
-    // 2. TLC TV
+    // 2. TLC TV (Direct HLS Stream)
     try {
       const tlcEpUrl = `https://www.tlctv.com.tr/${slug}/${season}-sezon-${episode}-bolum`;
       const proxyTlcUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(tlcEpUrl)}`;
@@ -110,7 +113,6 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
         const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
         const normPageTitle = normalizeText(pageTitle);
 
-        // Strict verification: Page title MUST match query title
         if (!normPageTitle.includes('canlitv') && !normPageTitle.includes('404') && normPageTitle.includes(normQ.substring(0, 5))) {
           const refId = html.match(/referenceId\s*:\s*['"]([^'"]+)['"]/i)?.[1];
           if (refId) {
@@ -142,7 +144,7 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
       }
     } catch (_) {}
 
-    // 3. BelgeselX (Strict title match verification)
+    // 3. BelgeselX (1080p Embed)
     try {
       const bxUrl = `https://belgeselx.com/belgeseldizi/${slug}`;
       const proxyBxUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(bxUrl)}`;
@@ -163,6 +165,33 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
               streamUrl: bxUrl,
               url: bxUrl,
               getUrl: () => bxUrl
+            });
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 4. Belgeselce (1080p Dublaj)
+    try {
+      const bcUrl = `https://www.belgeselce.com/${slug}`;
+      const proxyBcUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(bcUrl)}`;
+      const res = await fetch(proxyBcUrl).catch(() => null);
+      if (res && res.ok) {
+        const html = await res.text();
+        const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
+        const normPageTitle = normalizeText(pageTitle);
+
+        if (!normPageTitle.includes('404') && !normPageTitle.includes('bulunamadi') && normPageTitle.includes(normQ.substring(0, 5))) {
+          if (!seenUrls.has(bcUrl)) {
+            seenUrls.add(bcUrl);
+            results.push({
+              id: `bc_${slug}`,
+              name: `Belgeselce (Türkçe Dublaj 1080p)`,
+              badge: '🌿 Belgeselce',
+              category: 'dubbed',
+              streamUrl: bcUrl,
+              url: bcUrl,
+              getUrl: () => bcUrl
             });
           }
         }

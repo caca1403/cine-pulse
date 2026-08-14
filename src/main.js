@@ -8,6 +8,7 @@ import { renderDetailView } from './views/DetailView.js';
 import { renderLibraryView } from './views/LibraryView.js';
 import { renderDiscoverView } from './views/DiscoverView.js';
 import { renderPopularListView } from './views/PopularListView.js';
+import { renderLiveTvView } from './views/LiveTvView.js';
 
 const app = document.getElementById('app');
 
@@ -30,6 +31,8 @@ async function route() {
     viewName = 'anime';
   } else if (hash === '#documentary') {
     viewName = 'documentary';
+  } else if (hash === '#livetv') {
+    viewName = 'livetv';
   } else if (hash === '#discover') {
     viewName = 'discover';
   } else if (hash === '#library') {
@@ -52,6 +55,8 @@ async function route() {
     viewResult = await renderPopularListView('anime');
   } else if (viewName === 'documentary') {
     viewResult = await renderPopularListView('documentary');
+  } else if (viewName === 'livetv') {
+    viewResult = renderLiveTvView();
   } else if (viewName === 'discover') {
     viewResult = await renderDiscoverView('tv');
   } else if (viewName === 'library') {
