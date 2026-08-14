@@ -48,14 +48,11 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
         : `${baseRoute}/dizi/${slug}/sezon-${season}/bolum-${episode}`;
 
       try {
-        const res = await fetch(targetUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-          }
-        });
+        const isBrowser = typeof window !== 'undefined';
+        const headers = isBrowser ? { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } : { 'User-Agent': 'Mozilla/5.0' };
+        const res = await fetch(targetUrl, { headers }).catch(() => null);
 
-        if (!res.ok) continue;
+        if (!res || !res.ok) continue;
         const html = await res.text();
 
         const pid = html.match(/data-pid="([^"]+)"/)?.[1];
@@ -65,14 +62,11 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
         if (pid && ts && sig) {
           const tokenUrl = `${baseRoute}/api/player-token.php?pid=${pid}&_t=${ts}&_s=${encodeURIComponent(sig)}`;
           const tRes = await fetch(tokenUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0',
-              'Referer': targetUrl
-            }
-          });
+            headers: isBrowser ? { 'Accept': 'application/json' } : { 'User-Agent': 'Mozilla/5.0', 'Referer': targetUrl }
+          }).catch(() => null);
 
-          if (tRes.ok) {
-            const data = await tRes.json();
+          if (tRes && tRes.ok) {
+            const data = await tRes.json().catch(() => null);
             if (data && data.url) {
               return [{
                 id: `flz_${isDub ? 'dub' : 'sub'}`,
@@ -93,11 +87,12 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
     // 2. Try search if direct slug didn't resolve
     for (const searchKeyword of candidateTitles) {
       try {
+        const isBrowser = typeof window !== 'undefined';
         const sUrl = `${baseRoute}/search/${encodeURIComponent(searchKeyword)}`;
         const sRes = await fetch(sUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0' }
-        });
-        if (!sRes.ok) continue;
+          headers: isBrowser ? { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } : { 'User-Agent': 'Mozilla/5.0' }
+        }).catch(() => null);
+        if (!sRes || !sRes.ok) continue;
         const sHtml = await sRes.text();
 
         const itemRegex = isMovie ? /href="([^"]*\/film\/[^"]*)"/gi : /href="([^"]*\/dizi\/[^"]*)"/gi;
@@ -111,9 +106,9 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
           }
 
           const pageRes = await fetch(movieOrSeriesUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0' }
-          });
-          if (!pageRes.ok) continue;
+            headers: isBrowser ? { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } : { 'User-Agent': 'Mozilla/5.0' }
+          }).catch(() => null);
+          if (!pageRes || !pageRes.ok) continue;
           const pageHtml = await pageRes.text();
 
           const pid = pageHtml.match(/data-pid="([^"]+)"/)?.[1];
@@ -123,8 +118,8 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
           if (pid && ts && sig) {
             const tokenUrl = `${baseRoute}/api/player-token.php?pid=${pid}&_t=${ts}&_s=${encodeURIComponent(sig)}`;
             const tRes = await fetch(tokenUrl, {
-              headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': movieOrSeriesUrl }
-            });
+              headers: isBrowser ? { 'Accept': 'application/json' } : { 'User-Agent': 'Mozilla/5.0', 'Referer': movieOrSeriesUrl }
+            }).catch(() => null);
 
             if (tRes.ok) {
               const data = await tRes.json();
