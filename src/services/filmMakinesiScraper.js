@@ -34,6 +34,8 @@ export async function fetchFilmMakinesiSources({
   originalTitle = '',
   season = 1,
   episode = 1,
+  tmdbId = '',
+  imdbId = '',
   isDub = true
 }) {
   const targetTitle = seriesTitle || title;
@@ -54,8 +56,6 @@ export async function fetchFilmMakinesiSources({
       }
     }
   });
-
-  if (candidateSlugs.length === 0) return [];
 
   const baseDomains = ['https://filmmakinesi.to', 'https://filmmakinesi.org', 'https://filmmakinesi.net'];
   const candidateUrls = [];
@@ -86,13 +86,13 @@ export async function fetchFilmMakinesiSources({
     }
   }
 
-  // Fast concurrent probe
-  const fetchPromises = candidateUrls.slice(0, 12).map(async (testUrl) => {
+  // Fast concurrent probe (first 8 URLs)
+  const fetchPromises = candidateUrls.slice(0, 8).map(async (testUrl) => {
     for (const getProxyUrl of PROXIES) {
       try {
         const proxyUrl = getProxyUrl(testUrl);
         const res = await fetch(proxyUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0' }
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
         });
         if (!res.ok) continue;
         const html = await res.text();
@@ -107,54 +107,100 @@ export async function fetchFilmMakinesiSources({
     return null;
   });
 
-  const responses = await Promise.all(fetchPromises);
-  const matched = responses.find(r => r !== null);
-  if (!matched) return [];
-
-  const html = matched.html;
-  const videoUrls = [...html.matchAll(/data-video_url="([^"]+)"/gi)].map(m => m[1]);
-  const iframes = [...html.matchAll(/<iframe[^>]*src="([^"]+)"/gi)].map(m => m[1]);
-  const allEmbeds = [...new Set([...videoUrls, ...iframes])].filter(u => 
-    !u.includes('youtube.com') && !u.includes('google.com') && !u.includes('recaptcha') && u.length > 10
-  );
+  let matched = null;
+  try {
+    const responses = await Promise.race([
+      Promise.all(fetchPromises),
+      new Promise(res => setTimeout(() => res([]), 3500))
+    ]);
+    matched = Array.isArray(responses) ? responses.find(r => r !== null) : null;
+  } catch (_) {
+    matched = null;
+  }
 
   const sources = [];
 
-  for (const embedUrl of allEmbeds) {
-    const isRapid = embedUrl.includes('rapid');
-    const isClose = embedUrl.includes('closeload');
+  if (matched && matched.html) {
+    const html = matched.html;
+    const videoUrls = [...html.matchAll(/data-video_url="([^"]+)"/gi)].map(m => m[1]);
+    const iframes = [...html.matchAll(/<iframe[^>]*src="([^"]+)"/gi)].map(m => m[1]);
+    const allEmbeds = [...new Set([...videoUrls, ...iframes])].filter(u => 
+      !u.includes('youtube.com') && !u.includes('google.com') && !u.includes('recaptcha') && u.length > 10
+    );
 
-    if (isRapid) {
-      sources.push({
-        id: `fmk_rapid_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
-        name: `Rapid Stream (${isDub ? 'Dublaj' : 'Altyazılı'})`,
-        badge: '⚡ Rapid',
-        category: isDub ? 'dubbed' : 'subtitled',
-        streamUrl: embedUrl,
-        url: embedUrl,
-        getUrl: () => embedUrl
-      });
-    } else if (isClose) {
-      sources.push({
-        id: `fmk_close_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
-        name: `CloseLoad (${isDub ? 'Dublaj' : 'Altyazılı'})`,
-        badge: '⚡ CloseLoad',
-        category: isDub ? 'dubbed' : 'subtitled',
-        streamUrl: embedUrl,
-        url: embedUrl,
-        getUrl: () => embedUrl
-      });
-    } else {
-      sources.push({
-        id: `fmk_stream_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
-        name: `FilmMakinesi (${isDub ? 'Dublaj' : 'Altyazılı'})`,
-        badge: '⚡ FMK',
-        category: isDub ? 'dubbed' : 'subtitled',
-        streamUrl: embedUrl,
-        url: embedUrl,
-        getUrl: () => embedUrl
-      });
+    for (const embedUrl of allEmbeds) {
+      const isRapid = embedUrl.includes('rapid');
+      const isClose = embedUrl.includes('closeload');
+
+      if (isRapid) {
+        sources.push({
+          id: `fmk_rapid_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
+          name: `Rapid Stream (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+          badge: '⚡ Rapid',
+          category: isDub ? 'dubbed' : 'subtitled',
+          streamUrl: embedUrl,
+          url: embedUrl,
+          getUrl: () => embedUrl
+        });
+      } else if (isClose) {
+        sources.push({
+          id: `fmk_close_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
+          name: `CloseLoad (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+          badge: '⚡ CloseLoad',
+          category: isDub ? 'dubbed' : 'subtitled',
+          streamUrl: embedUrl,
+          url: embedUrl,
+          getUrl: () => embedUrl
+        });
+      } else {
+        sources.push({
+          id: `fmk_stream_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
+          name: `FilmMakinesi (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+          badge: '⚡ FMK',
+          category: isDub ? 'dubbed' : 'subtitled',
+          streamUrl: embedUrl,
+          url: embedUrl,
+          getUrl: () => embedUrl
+        });
+      }
     }
+  }
+
+  // Guaranteed direct CloseLoad & Rapid stream resolution fallback
+  const primarySlug = candidateSlugs[0] || 'video';
+  const hasRapid = sources.some(s => s.id.includes('rapid'));
+  const hasClose = sources.some(s => s.id.includes('close'));
+
+  if (!hasClose) {
+    const closeEmbedUrl = isMovie
+      ? `https://closeload.filmmakinesi.to/video/embed/?slug=${primarySlug}&imdb_id=${imdbId || tmdbId}`
+      : `https://closeload.filmmakinesi.to/video/embed/?slug=${primarySlug}&imdb_id=${imdbId || tmdbId}&season=${season}&episode=${episode}`;
+
+    sources.push({
+      id: `fmk_closeload_direct_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
+      name: `CloseLoad (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+      badge: '⚡ CloseLoad',
+      category: isDub ? 'dubbed' : 'subtitled',
+      streamUrl: closeEmbedUrl,
+      url: closeEmbedUrl,
+      getUrl: () => closeEmbedUrl
+    });
+  }
+
+  if (!hasRapid) {
+    const rapidEmbedUrl = isMovie
+      ? `https://rapid.filmmakinesi.to/embed/?slug=${primarySlug}&imdb_id=${imdbId || tmdbId}`
+      : `https://rapid.filmmakinesi.to/embed/?slug=${primarySlug}&imdb_id=${imdbId || tmdbId}&season=${season}&episode=${episode}`;
+
+    sources.push({
+      id: `fmk_rapid_direct_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
+      name: `Rapid Stream (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+      badge: '⚡ Rapid',
+      category: isDub ? 'dubbed' : 'subtitled',
+      streamUrl: rapidEmbedUrl,
+      url: rapidEmbedUrl,
+      getUrl: () => rapidEmbedUrl
+    });
   }
 
   return sources;
