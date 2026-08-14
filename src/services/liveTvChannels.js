@@ -1,7 +1,7 @@
 /* ==========================================================================
-   CinePulse Studio - 100% Verified Turkish Live TV Catalog
-   Clean official feeds with Hls.js native hardware playback.
-   Zero Cinerama ads, zero broken framebusters.
+   CinePulse Studio - Complete Turkish Live TV Catalog
+   Includes Ulusal (Kanal D, Show TV, Star, ATV, NOW, TV8...), Haber, Spor,
+   Belgesel (DMAX, TLC, TRT Belgesel...), Çocuk & Müzik.
    ========================================================================== */
 
 export const LIVE_TV_CATEGORIES = [
@@ -38,6 +38,16 @@ export const LIVE_TV_CHANNELS = [
     isHls: true
   },
   {
+    id: 'ch_showtv',
+    name: 'Show TV HD',
+    category: 'national',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/8/87/Show_TV_logo.png/300px-Show_TV_logo.png',
+    badge: '📺 Popüler Diziler',
+    quality: '1080p Full HD',
+    streamUrl: 'https://rmtftbjlne.turknet.ercdn.net/bpeytmnqyp/showtv/showtv.m3u8',
+    isHls: true
+  },
+  {
     id: 'ch_nowtv',
     name: 'NOW TV (FOX) HD',
     category: 'national',
@@ -55,6 +65,16 @@ export const LIVE_TV_CHANNELS = [
     badge: '📺 Ulusal HD',
     quality: '1080p Full HD',
     streamUrl: 'https://dygvideo.dygdigital.com/live/hls/startv4puhu/live.m3u8',
+    isHls: true
+  },
+  {
+    id: 'ch_kanald',
+    name: 'Kanal D HD',
+    category: 'national',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/6/69/Kanal_D_logo.png/300px-Kanal_D_logo.png',
+    badge: '📺 Ulusal HD',
+    quality: '1080p Full HD',
+    streamUrl: 'https://ackaxsqacw.turknet.ercdn.net/ozfkfbbjba/kanald/kanald.m3u8',
     isHls: true
   },
   {
@@ -162,6 +182,16 @@ export const LIVE_TV_CHANNELS = [
     isHls: true
   },
   {
+    id: 'ch_cnnturk',
+    name: 'CNN Türk HD',
+    category: 'news',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/CNN_Turk_logo.svg/300px-CNN_Turk_logo.svg.png',
+    badge: '📰 İlk Bilen Siz Olun',
+    quality: '1080p Full HD',
+    streamUrl: 'https://demiroren-live.daioncdn.net/cnnturk/cnnturk.m3u8',
+    isHls: true
+  },
+  {
     id: 'ch_haberturk',
     name: 'Habertürk TV HD',
     category: 'news',
@@ -265,6 +295,16 @@ export const LIVE_TV_CHANNELS = [
     streamUrl: 'https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/aspor/aspor.m3u8',
     isHls: true
   },
+  {
+    id: 'ch_bein_haber',
+    name: 'beIN Sports Haber HD',
+    category: 'sports',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/BeIN_Sports_1_logo.svg/300px-BeIN_Sports_1_logo.svg.png',
+    badge: '⚡ Canlı Spor Haber',
+    quality: '1080p Full HD',
+    streamUrl: 'https://tv.ensonhaber.com/beinhaber/beinhaber.m3u8',
+    isHls: true
+  },
 
   // ==========================================
   // --- 🌿 BELGESEL (DOCUMENTARY LIVE) ---
@@ -277,6 +317,26 @@ export const LIVE_TV_CHANNELS = [
     badge: '🌿 Doğa, Bilim & Tarih',
     quality: '1080p Full HD',
     streamUrl: 'https://tv-trtbelgesel-dai.medya.trt.com.tr/master.m3u8',
+    isHls: true
+  },
+  {
+    id: 'ch_dmax_live',
+    name: 'DMAX TV Canlı HD',
+    category: 'doc',
+    logo: 'https://img-dmax.mncdn.com/dmaxcomtr_logo.png',
+    badge: '🌿 Macera & Otomobil',
+    quality: '1080p Full HD',
+    streamUrl: 'https://dmax-live.daioncdn.net/dmax/dmax.m3u8',
+    isHls: true
+  },
+  {
+    id: 'ch_tlc_live',
+    name: 'TLC TV Canlı HD',
+    category: 'doc',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/TLC_Logo.svg/300px-TLC_Logo.svg.png',
+    badge: '🌿 Yaşam & Realite',
+    quality: '1080p Full HD',
+    streamUrl: 'https://tlc-live.daioncdn.net/tlc/tlc.m3u8',
     isHls: true
   },
   {
