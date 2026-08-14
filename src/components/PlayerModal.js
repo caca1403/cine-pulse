@@ -108,26 +108,6 @@ export async function openPlayerModal({
       `;
     }
 
-    if (srv.isExternalPopout) {
-      return `
-        <div class="player-popout-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 2.5rem; background: radial-gradient(circle at center, rgba(30, 41, 59, 0.6) 0%, rgba(10, 14, 22, 0.98) 100%); border-radius: 12px;">
-          <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.2)); border: 2px solid rgba(245, 158, 11, 0.5); display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; box-shadow: 0 0 30px rgba(245, 158, 11, 0.2);">
-            <i data-lucide="external-link" style="width: 40px; height: 40px; color: var(--primary);"></i>
-          </div>
-          <h3 style="font-size: 1.6rem; font-weight: 800; color: #fff; margin-bottom: 0.8rem; letter-spacing: -0.5px;">Pichive 1080p Ultra HD Oynatıcı</h3>
-          <p style="font-size: 0.95rem; color: #94a3b8; max-width: 520px; margin-bottom: 1.8rem; line-height: 1.6;">
-            Pichive sunucusu harici koruma kullandığı için videonuz <strong>tam ekran yeni sekmede</strong> açılır. İzleme durumunuz ve kaldığınız yer sitemize otomatik kaydedilmeye devam eder.
-          </p>
-          <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
-            <a href="${srv.getUrl()}" target="_blank" rel="noreferrer" id="btn-open-pichive-tab" class="btn-primary" style="padding: 0.9rem 2.2rem; font-size: 1rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 10px 25px rgba(245, 158, 11, 0.35); cursor: pointer;">
-              <i data-lucide="play" style="width: 18px; height: 18px; fill: #000; color: #000;"></i>
-              <span style="color: #000;">Pichive Oynatıcıyı Yeni Sekmede Başlat</span>
-            </a>
-          </div>
-        </div>
-      `;
-    }
-
     if (srv.isDirectVideo || srv.isHls || (srv.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))) {
       const streamUrl = srv.streamUrl || srv.getUrl();
       const warningBanner = `
