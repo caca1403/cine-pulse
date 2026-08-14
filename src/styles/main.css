@@ -994,6 +994,47 @@ button {
   font-weight: 600;
 }
 
+@media (max-width: 900px) {
+  .weekly-spotlight-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    gap: 1rem;
+  }
+  .spotlight-hero {
+    height: 320px;
+  }
+  .spotlight-hero-content {
+    padding: 1.2rem;
+  }
+  .spotlight-hero-title {
+    font-size: 1.4rem;
+  }
+  .spotlight-mini-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .spotlight-hero {
+    height: 260px;
+  }
+  .spotlight-hero-content {
+    padding: 1rem;
+  }
+  .spotlight-hero-title {
+    font-size: 1.15rem;
+  }
+  .spotlight-hero-overview {
+    display: none;
+  }
+  .spotlight-mini-grid {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+}
+
 /* Rail sentinel + loading spinner */
 .rail-sentinel {
   min-width: 1px;

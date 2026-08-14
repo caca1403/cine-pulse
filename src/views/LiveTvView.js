@@ -1,14 +1,13 @@
 /* ==========================================================================
    CinePulse Studio - Live TV Cinema Hub (Canlı TV)
-   Featuring Sports (beIN Sports, S Sport, TRT Spor, A Spor), National Channels,
-   News, and Documentary Live streams with Hls.js hardware playback.
+   Direct HLS video playback & clean full-screen player embeds.
    ========================================================================== */
 
 import { LIVE_TV_CATEGORIES, LIVE_TV_CHANNELS } from '../services/liveTvChannels.js';
 
 export function renderLiveTvView() {
-  let activeCategory = 'sports';
-  let activeChannel = LIVE_TV_CHANNELS.find(c => c.id === 'ch_bein1') || LIVE_TV_CHANNELS[0];
+  let activeCategory = 'national';
+  let activeChannel = LIVE_TV_CHANNELS.find(c => c.id === 'ch_trt1') || LIVE_TV_CHANNELS[0];
   let activeHls = null;
   let searchQuery = '';
 
@@ -20,10 +19,10 @@ export function renderLiveTvView() {
         <div>
           <h1 class="section-title" style="font-size: 2rem; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.75rem;">
             <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 12px #ef4444; animation: pulse 1.5s infinite;"></span>
-            <span>Canlı TV & Spor Stüdyosu</span>
+            <span>Canlı TV Stüdyosu</span>
           </h1>
           <p style="color: var(--text-muted); font-size: 0.95rem;">
-            beIN Sports, S Sport, TRT Spor, Ulusal ve Belgesel kanallarını 1080p kesintisiz canlı izleyin.
+            Ulusal kanallar, haber, spor, belgesel ve müzik kanallarını 1080p kesintisiz canlı izleyin.
           </p>
         </div>
 
@@ -33,7 +32,7 @@ export function renderLiveTvView() {
           <input 
             type="text" 
             id="livetv-search-input" 
-            placeholder="Kanal veya spor ara..." 
+            placeholder="Kanal ara..." 
             style="width: 100%; padding: 0.65rem 1rem 0.65rem 2.5rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius-full); color: #fff; font-size: 0.9rem; outline: none;">
         </div>
       </div>
@@ -48,7 +47,7 @@ export function renderLiveTvView() {
         `).join('')}
       </div>
 
-      <!-- Main Live TV Cinema Layout (Player on Left/Top, Channels on Right) -->
+      <!-- Main Live TV Cinema Layout (Player on Left, Channels on Right) -->
       <div class="livetv-grid-layout" style="display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; min-height: 580px;">
         
         <!-- Left: Cinema Player Screen -->
@@ -68,7 +67,7 @@ export function renderLiveTvView() {
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                   <span id="livetv-active-badge" class="badge badge-primary" style="font-size: 0.72rem;">${activeChannel.badge}</span>
                   <span class="badge" style="font-size: 0.72rem; background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3);">
-                    <i data-lucide="activity" style="width: 10px; height: 10px; margin-right: 2px;"></i> CANLI HD
+                    <i data-lucide="activity" style="width: 10px; height: 10px; margin-right: 2px;"></i> CANLI 1080p
                   </span>
                 </div>
               </div>
