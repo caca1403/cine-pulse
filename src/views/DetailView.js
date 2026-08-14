@@ -2,11 +2,11 @@
    CinePulse Studio - Media Detail View
    Displays full TMDB metadata, backdrop banner, season/episode list or play movie button
    Supports seamless navigation for Movies, TV Shows, Anime, and Documentaries.
-   Includes interactive Watch/Watched progress toggle.
+   Includes bulk series mark-watched, season selectors, and halfway in-progress states.
    ========================================================================== */
 
 import { fetchMediaDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched } from '../services/storage.js';
+import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway } from '../services/storage.js';
 import { renderSeasonSelector } from '../components/SeasonSelector.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { openPlayerModal } from '../components/PlayerModal.js';
@@ -47,7 +47,11 @@ export async function renderDetailView(type = 'tv', id) {
   // Watch history progress for hero button
   const lastWatchedEp = effectiveType === 'tv' ? getLastWatchedEpisode(id) : null;
   const movieProgress = effectiveType === 'movie' ? getMediaProgress(id, 1, 1) : null;
-  const isWatchedMedia = isMediaWatched(id, lastWatchedEp ? lastWatchedEp.season : 1, lastWatchedEp ? lastWatchedEp.episode : 1);
+  
+  // Status flags
+  const isMovieWatched = effectiveType === 'movie' ? isMediaWatched(id, 1, 1) : false;
+  const isSeriesAllWatched = effectiveType === 'tv' ? isEntireSeriesWatched(id, media.seasons || []) : false;
+  const isCurrentWatched = effectiveType === 'movie' ? isMovieWatched : isSeriesAllWatched;
 
   let playButtonLabel = effectiveType === 'movie' ? 'Filmi İzle (1080p HD)' : '1. Sezon 1. Bölümü İzle';
   if (effectiveType === 'tv' && lastWatchedEp) {
@@ -75,6 +79,10 @@ export async function renderDetailView(type = 'tv', id) {
   }
 
   const recommendations = media.recommendations ? media.recommendations.results.slice(0, 6) : [];
+
+  const watchedBtnLabel = effectiveType === 'movie'
+    ? (isMovieWatched ? 'Film İzlendi' : 'İzlendi Olarak İşaretle')
+    : (isSeriesAllWatched ? 'Tüm Sezonlar İzlendi' : 'Tümünü İzlendi İşaretle');
 
   const html = `
     <div class="detail-view">
@@ -145,9 +153,16 @@ export async function renderDetailView(type = 'tv', id) {
                   <span>${inWatch ? 'Listemde' : 'İzleme Listeme Ekle'}</span>
                 </button>
 
-                <button class="btn-secondary" id="btn-toggle-watched-detail" style="${isWatchedMedia ? 'border-color: #10b981; color: #10b981; background: rgba(16, 185, 129, 0.15);' : ''}">
-                  <i data-lucide="${isWatchedMedia ? 'check-circle-2' : 'check'}"></i>
-                  <span>${isWatchedMedia ? 'İzlendi' : 'İzlendi Olarak İşaretle'}</span>
+                <!-- Mark Watched Button -->
+                <button class="btn-secondary" id="btn-toggle-watched-detail" style="cursor: pointer; ${isCurrentWatched ? 'background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981; font-weight: 700;' : ''}">
+                  <i data-lucide="${isCurrentWatched ? 'check-circle-2' : 'check'}"></i>
+                  <span>${watchedBtnLabel}</span>
+                </button>
+
+                <!-- Halfway in-progress button -->
+                <button class="btn-secondary" id="btn-mark-halfway-detail" title="Kaldığım Yer (Yarıda Bırakıldı)" style="cursor: pointer;">
+                  <i data-lucide="clock"></i>
+                  <span>⏳ Yarıda Bırak</span>
                 </button>
               </div>
             </div>
@@ -251,35 +266,127 @@ export async function renderDetailView(type = 'tv', id) {
         });
       }
 
+      // Mark Watched Detail Action
       const watchedDetailBtn = container.querySelector('#btn-toggle-watched-detail');
       if (watchedDetailBtn) {
         watchedDetailBtn.addEventListener('click', () => {
-          const seasonNum = lastWatchedEp ? lastWatchedEp.season : 1;
-          const epNum = lastWatchedEp ? lastWatchedEp.episode : 1;
-          const updated = toggleEpisodeWatched(id, seasonNum, epNum, {
-            title: title,
-            posterPath: media.poster_path,
-            backdropPath: media.backdrop_path,
-            type: effectiveType,
-            duration: 2700
-          });
-          const nowWatched = updated.completed;
-          showToast(nowWatched ? '✓ İzlendi olarak işaretlendi!' : 'İzlendi işareti kaldırıldı.', nowWatched ? 'success' : 'info');
-          const icon = watchedDetailBtn.querySelector('i');
-          const text = watchedDetailBtn.querySelector('span');
-          if (icon && text) {
-            icon.setAttribute('data-lucide', nowWatched ? 'check-circle-2' : 'check');
-            text.textContent = nowWatched ? 'İzlendi' : 'İzlendi Olarak İşaretle';
-            if (nowWatched) {
-              watchedDetailBtn.style.borderColor = '#10b981';
-              watchedDetailBtn.style.color = '#10b981';
-              watchedDetailBtn.style.background = 'rgba(16, 185, 129, 0.15)';
-            } else {
-              watchedDetailBtn.style.borderColor = '';
-              watchedDetailBtn.style.color = '';
-              watchedDetailBtn.style.background = '';
+          if (effectiveType === 'movie') {
+            const updated = toggleEpisodeWatched(id, 1, 1, {
+              title: title,
+              posterPath: media.poster_path,
+              backdropPath: media.backdrop_path,
+              type: 'movie',
+              duration: 5400
+            });
+            const nowWatched = updated.completed;
+            showToast(nowWatched ? '✓ Film izlendi olarak işaretlendi!' : 'Film izlendi işareti kaldırıldı.', nowWatched ? 'success' : 'info');
+            
+            const icon = watchedDetailBtn.querySelector('i');
+            const text = watchedDetailBtn.querySelector('span');
+            if (icon && text) {
+              icon.setAttribute('data-lucide', nowWatched ? 'check-circle-2' : 'check');
+              text.textContent = nowWatched ? 'Film İzlendi' : 'İzlendi Olarak İşaretle';
+              if (nowWatched) {
+                watchedDetailBtn.style.borderColor = '#10b981';
+                watchedDetailBtn.style.color = '#10b981';
+                watchedDetailBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+                watchedDetailBtn.style.fontWeight = '700';
+              } else {
+                watchedDetailBtn.style.borderColor = '';
+                watchedDetailBtn.style.color = '';
+                watchedDetailBtn.style.background = '';
+                watchedDetailBtn.style.fontWeight = '';
+              }
+              if (window.lucide) window.lucide.createIcons();
             }
+          } else {
+            // TV / Anime / Doc Series Bulk Watched
+            const currentAllWatched = isEntireSeriesWatched(id, media.seasons || []);
+            const targetState = !currentAllWatched;
+
+            markAllEpisodesWatched(id, media.seasons || [], targetState, {
+              title: title,
+              posterPath: media.poster_path,
+              backdropPath: media.backdrop_path,
+              type: 'tv'
+            });
+
+            showToast(targetState ? '✓ Dizinin tüm bölümleri izlendi olarak işaretlendi!' : 'Tüm bölümler izlenmedi yapıldı.', targetState ? 'success' : 'info');
+
+            const icon = watchedDetailBtn.querySelector('i');
+            const text = watchedDetailBtn.querySelector('span');
+            if (icon && text) {
+              icon.setAttribute('data-lucide', targetState ? 'check-circle-2' : 'check');
+              text.textContent = targetState ? 'Tüm Sezonlar İzlendi' : 'Tümünü İzlendi İşaretle';
+              if (targetState) {
+                watchedDetailBtn.style.borderColor = '#10b981';
+                watchedDetailBtn.style.color = '#10b981';
+                watchedDetailBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+                watchedDetailBtn.style.fontWeight = '700';
+              } else {
+                watchedDetailBtn.style.borderColor = '';
+                watchedDetailBtn.style.color = '';
+                watchedDetailBtn.style.background = '';
+                watchedDetailBtn.style.fontWeight = '';
+              }
+              if (window.lucide) window.lucide.createIcons();
+            }
+
+            // Update all episode cards in DOM
+            container.querySelectorAll('.episode-card').forEach(card => {
+              const badgeEl = card.querySelector('.badge-watched-status');
+              const btnEl = card.querySelector('.btn-mark-ep-watched');
+              if (badgeEl) {
+                badgeEl.innerHTML = `<i data-lucide="check" style="width:12px; height:12px"></i> İZLENDİ`;
+                badgeEl.style.background = 'var(--accent-green)';
+                badgeEl.style.color = '#fff';
+                badgeEl.style.display = targetState ? 'inline-flex' : 'none';
+              }
+              if (btnEl) {
+                if (targetState) {
+                  btnEl.classList.add('watched');
+                  btnEl.style.background = '#10b981';
+                  btnEl.style.borderColor = '#10b981';
+                } else {
+                  btnEl.classList.remove('watched');
+                  btnEl.style.background = 'rgba(0,0,0,0.65)';
+                  btnEl.style.borderColor = 'rgba(255,255,255,0.3)';
+                }
+              }
+            });
             if (window.lucide) window.lucide.createIcons();
+          }
+        });
+      }
+
+      // Halfway in-progress button handler
+      const halfwayBtn = container.querySelector('#btn-mark-halfway-detail');
+      if (halfwayBtn) {
+        halfwayBtn.addEventListener('click', () => {
+          if (effectiveType === 'movie') {
+            setMediaHalfway(id, 1, 1, 1800, {
+              title: title,
+              posterPath: media.poster_path,
+              backdropPath: media.backdrop_path,
+              type: 'movie',
+              duration: 5400
+            });
+            showToast('⏳ Film 30. dakikada yarıda bırakıldı olarak işaretlendi! Ana sayfada Devam Et listesinde görünecek.', 'info');
+            const playBtnSpan = container.querySelector('#btn-play-movie span');
+            if (playBtnSpan) playBtnSpan.textContent = 'Kaldığın Yerden Devam Et (30:00)';
+          } else {
+            const seasonNum = lastWatchedEp ? lastWatchedEp.season : 1;
+            const epNum = lastWatchedEp ? lastWatchedEp.episode : 1;
+            setMediaHalfway(id, seasonNum, epNum, 1200, {
+              title: title,
+              posterPath: media.poster_path,
+              backdropPath: media.backdrop_path,
+              type: 'tv',
+              duration: 2700
+            });
+            showToast(`⏳ S${seasonNum} B${epNum} 20. dakikada yarıda bırakıldı olarak işaretlendi!`, 'info');
+            const resumeBtnSpan = container.querySelector('#btn-resume-series span');
+            if (resumeBtnSpan) resumeBtnSpan.textContent = `Kaldığın Yerden Devam Et (S${seasonNum} B${epNum} • 20:00)`;
           }
         });
       }

@@ -223,11 +223,16 @@ export async function openPlayerModal({
       <!-- Footer Controls (Previous / Mark Watched / Next episode / Status) -->
       <div class="player-footer-bar" style="background: rgba(10, 14, 22, 0.96); padding: 0.7rem 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem;">
         
-        <!-- Left: Status & Watched Toggle -->
-        <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
-          <button id="btn-toggle-watched-player" class="btn-secondary" style="padding: 0.4rem 0.9rem; font-size: 0.82rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; ${isWatched ? 'background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981;' : ''}">
+        <!-- Left: Status & Watched & Halfway Toggle -->
+        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+          <button id="btn-toggle-watched-player" class="btn-secondary" style="padding: 0.4rem 0.9rem; font-size: 0.82rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; ${isWatched ? 'background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981; font-weight: 700;' : ''}">
             <i data-lucide="${isWatched ? 'check-circle-2' : 'check'}" style="width: 14px; height: 14px;"></i>
             <span>${isWatched ? 'İzlendi' : 'İzlendi Olarak İşaretle'}</span>
+          </button>
+
+          <button id="btn-halfway-player" class="btn-secondary" title="Kaldığım Yeri Kaydet" style="padding: 0.4rem 0.9rem; font-size: 0.82rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+            <i data-lucide="clock" style="width: 13px; height: 13px; color: #fbbf24;"></i>
+            <span>⏳ Yarıda Bırak</span>
           </button>
 
           <span style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem;">
@@ -681,6 +686,27 @@ export async function openPlayerModal({
         toggleWatchedPlayerBtn.style.color = '';
       }
       if (window.lucide) window.lucide.createIcons();
+    });
+  }
+
+  const halfwayPlayerBtn = document.getElementById('btn-halfway-player');
+  if (halfwayPlayerBtn) {
+    halfwayPlayerBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const currentSec = simulatedCurrentTime > 5 ? simulatedCurrentTime : 1200;
+      saveWatchProgress({
+        id: tmdbId,
+        title: cleanSeriesName,
+        posterPath,
+        backdropPath,
+        type,
+        season: currentSeason,
+        episode: currentEpisode,
+        currentTime: currentSec,
+        duration: estimatedDuration,
+        completed: false
+      });
+      showToast(`⏳ ${formatSecondsToTime(currentSec)} dakikasında yarıda bırakıldı olarak kaydedildi!`, 'info');
     });
   }
 
