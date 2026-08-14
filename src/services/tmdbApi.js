@@ -116,7 +116,7 @@ export async function fetchPopularMovies(page = 1) {
 
 export async function fetchPopularAnime(page = 1) {
   const res = await tmdbFetch('/discover/tv', {
-    sort_by: 'popularity.desc',
+    sort_by: 'vote_count.desc',
     page,
     language: 'tr-TR',
     with_genres: '16',
