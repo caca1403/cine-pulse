@@ -351,7 +351,7 @@ export function getTotalWatchStats() {
   };
 }
 
-export function getUnifiedContinueWatching() {
+export function getContinueWatchingList() {
   const history = getWatchHistory();
   const seriesMap = new Map();
 
@@ -363,7 +363,7 @@ export function getUnifiedContinueWatching() {
     seriesMap.get(id).push(item);
   }
 
-  const unifiedList = [];
+  const inProgressList = [];
 
   for (const [id, records] of seriesMap.entries()) {
     records.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
@@ -371,15 +371,18 @@ export function getUnifiedContinueWatching() {
 
     if (firstRecord.type === 'movie') {
       const isCompleted = firstRecord.completed || firstRecord.progressPercent >= 90;
-      const duration = firstRecord.duration || 6600;
-      const remStr = formatRemainingTime(firstRecord.currentTime, duration);
+      // Exclude completed movies from Continue Watching!
+      if (isCompleted) continue;
 
-      unifiedList.push({
-        ...firstRecord,
-        subtitle: isCompleted 
-          ? '✓ İzlendi' 
-          : (firstRecord.currentTime > 0 ? `Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)} • ${remStr}` : 'İzleniyor')
-      });
+      if (firstRecord.currentTime > 0) {
+        const duration = firstRecord.duration || 6600;
+        const remStr = formatRemainingTime(firstRecord.currentTime, duration);
+
+        inProgressList.push({
+          ...firstRecord,
+          subtitle: `Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)} • ${remStr}`
+        });
+      }
     } else {
       const watchedEpNumbers = new Set();
       let currentActiveSeason = firstRecord.season || 1;
@@ -401,16 +404,24 @@ export function getUnifiedContinueWatching() {
       const epDuration = (currentInProg ? currentInProg.duration : firstRecord.duration) || 3000;
       const remStr = formatRemainingTime(currentEpTime, epDuration);
 
+      // If all recorded episodes are finished and not marked as halfway, exclude from continue watching
+      const allWatched = records.every(r => r.completed || r.progressPercent >= 85);
+      if (allWatched && !isCurrentEpHalfway) {
+        continue;
+      }
+
       let subtitle = '';
       if (isCurrentEpHalfway) {
         subtitle = `S${currentActiveSeason} B${targetEp} • Kaldığın: ${formatSecondsToTime(currentEpTime)} • ${remStr}`;
       } else if (watchedEpNumbers.size > 0) {
         subtitle = `S${currentActiveSeason} B${targetEp} • Sıradaki Bölüm`;
+      } else if (firstRecord.currentTime > 0) {
+        subtitle = `S${currentActiveSeason} B${firstRecord.episode || 1} • Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)}`;
       } else {
-        subtitle = `S${currentActiveSeason} B${firstRecord.episode || 1}${firstRecord.currentTime > 0 ? ' • ' + formatSecondsToTime(firstRecord.currentTime) : ''}`;
+        continue;
       }
 
-      unifiedList.push({
+      inProgressList.push({
         ...firstRecord,
         season: currentActiveSeason,
         episode: isCurrentEpHalfway ? targetEp : (watchedEpNumbers.size > 0 ? targetEp : firstRecord.episode || 1),
@@ -420,8 +431,55 @@ export function getUnifiedContinueWatching() {
     }
   }
 
-  unifiedList.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
-  return unifiedList;
+  inProgressList.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+  return inProgressList;
+}
+
+export function getCompletedWatchList() {
+  const history = getWatchHistory();
+  const seriesMap = new Map();
+
+  for (const item of history) {
+    const id = item.id;
+    if (!seriesMap.has(id)) {
+      seriesMap.set(id, []);
+    }
+    seriesMap.get(id).push(item);
+  }
+
+  const completedList = [];
+
+  for (const [id, records] of seriesMap.entries()) {
+    records.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+    const firstRecord = records[0];
+
+    if (firstRecord.type === 'movie') {
+      const isCompleted = firstRecord.completed || firstRecord.progressPercent >= 90;
+      if (isCompleted) {
+        completedList.push({
+          ...firstRecord,
+          completed: true,
+          subtitle: '✓ Film İzlendi'
+        });
+      }
+    } else {
+      const allCompleted = records.every(r => r.completed || r.progressPercent >= 85);
+      if (allCompleted && records.length > 0) {
+        completedList.push({
+          ...firstRecord,
+          completed: true,
+          subtitle: `✓ ${records.length} Bölüm İzlendi`
+        });
+      }
+    }
+  }
+
+  completedList.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+  return completedList;
+}
+
+export function getUnifiedContinueWatching() {
+  return getContinueWatchingList();
 }
 
 /* ==========================================================================
