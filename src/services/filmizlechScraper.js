@@ -1,7 +1,9 @@
 /* ==========================================================================
-   CinePulse Studio - FilmIzleCh Scraper
-   Fetches live 1080p Turkish Dubbed & Subtitled Streams from filmizlech.com
+   CinePulse Studio - Now Stream (FilmIzleCh / Now) Scraper
+   Fetches live 1080p Turkish Dubbed & Subtitled Streams via CF Worker Gateway
    ========================================================================== */
+
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 function toSlug(title) {
   if (!title) return '';
@@ -23,8 +25,6 @@ function toSlug(title) {
 export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
   const targetTitle = seriesTitle || title;
   const isMovie = type === 'movie';
-  const isBrowser = typeof window !== 'undefined';
-  const baseRoutes = isBrowser ? ['/api/flz', 'https://filmizlech.com'] : ['https://filmizlech.com'];
 
   const candidateTitles = [];
   if (targetTitle) candidateTitles.push(targetTitle);
@@ -40,17 +40,18 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
     }
   });
 
-  for (const baseRoute of baseRoutes) {
+  const baseDomains = ['https://filmizlech.com'];
+
+  for (const baseDomain of baseDomains) {
     // 1. Try direct slugs
     for (const slug of candidateSlugs) {
       const targetUrl = isMovie
-        ? `${baseRoute}/film/${slug}`
-        : `${baseRoute}/dizi/${slug}/sezon-${season}/bolum-${episode}`;
+        ? `${baseDomain}/film/${slug}`
+        : `${baseDomain}/dizi/${slug}/sezon-${season}/bolum-${episode}`;
 
       try {
-        const isBrowser = typeof window !== 'undefined';
-        const headers = isBrowser ? { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } : { 'User-Agent': 'Mozilla/5.0' };
-        const res = await fetch(targetUrl, { headers }).catch(() => null);
+        const proxyTargetUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
+        const res = await fetch(proxyTargetUrl).catch(() => null);
 
         if (!res || !res.ok) continue;
         const html = await res.text();
@@ -60,38 +61,34 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
         const sig = html.match(/data-sig="([^"]+)"/)?.[1];
 
         if (pid && ts && sig) {
-          const tokenUrl = `${baseRoute}/api/player-token.php?pid=${pid}&_t=${ts}&_s=${encodeURIComponent(sig)}`;
-          const tRes = await fetch(tokenUrl, {
-            headers: isBrowser ? { 'Accept': 'application/json' } : { 'User-Agent': 'Mozilla/5.0', 'Referer': targetUrl }
-          }).catch(() => null);
+          const tokenUrl = `${baseDomain}/api/player-token.php?pid=${pid}&_t=${ts}&_s=${encodeURIComponent(sig)}`;
+          const proxyTokenUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(tokenUrl)}`;
+          const tRes = await fetch(proxyTokenUrl).catch(() => null);
 
           if (tRes && tRes.ok) {
             const data = await tRes.json().catch(() => null);
             if (data && data.url) {
               return [{
-                id: `flz_${isDub ? 'dub' : 'sub'}`,
-                name: `Channel Stream (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
-                badge: isDub ? '⚡ Channel 1080p' : '💬 Channel 1080p',
+                id: `now_${isDub ? 'dub' : 'sub'}`,
+                name: `Now Stream (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
+                badge: isDub ? '⚡ Now 1080p' : '💬 Now 1080p',
                 category: isDub ? 'dubbed' : 'subtitled',
                 streamUrl: data.url,
+                url: data.url,
                 getUrl: () => data.url
               }];
             }
           }
         }
-      } catch (e) {
-        // silent fallback
-      }
+      } catch (e) {}
     }
 
     // 2. Try search if direct slug didn't resolve
     for (const searchKeyword of candidateTitles) {
       try {
-        const isBrowser = typeof window !== 'undefined';
-        const sUrl = `${baseRoute}/search/${encodeURIComponent(searchKeyword)}`;
-        const sRes = await fetch(sUrl, {
-          headers: isBrowser ? { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } : { 'User-Agent': 'Mozilla/5.0' }
-        }).catch(() => null);
+        const sUrl = `${baseDomain}/search/${encodeURIComponent(searchKeyword)}`;
+        const proxySearchUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(sUrl)}`;
+        const sRes = await fetch(proxySearchUrl).catch(() => null);
         if (!sRes || !sRes.ok) continue;
         const sHtml = await sRes.text();
 
@@ -100,14 +97,13 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
         const cleanHref = [...new Set(foundHrefs)].find(h => !h.includes('/search/'));
 
         if (cleanHref) {
-          let movieOrSeriesUrl = cleanHref.startsWith('http') ? cleanHref : `${baseRoute}${cleanHref.startsWith('/') ? '' : '/'}${cleanHref}`;
+          let movieOrSeriesUrl = cleanHref.startsWith('http') ? cleanHref : `${baseDomain}${cleanHref.startsWith('/') ? '' : '/'}${cleanHref}`;
           if (!isMovie) {
             movieOrSeriesUrl = `${movieOrSeriesUrl}/sezon-${season}/bolum-${episode}`;
           }
 
-          const pageRes = await fetch(movieOrSeriesUrl, {
-            headers: isBrowser ? { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } : { 'User-Agent': 'Mozilla/5.0' }
-          }).catch(() => null);
+          const proxyPageUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(movieOrSeriesUrl)}`;
+          const pageRes = await fetch(proxyPageUrl).catch(() => null);
           if (!pageRes || !pageRes.ok) continue;
           const pageHtml = await pageRes.text();
 
@@ -116,29 +112,27 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
           const sig = pageHtml.match(/data-sig="([^"]+)"/)?.[1];
 
           if (pid && ts && sig) {
-            const tokenUrl = `${baseRoute}/api/player-token.php?pid=${pid}&_t=${ts}&_s=${encodeURIComponent(sig)}`;
-            const tRes = await fetch(tokenUrl, {
-              headers: isBrowser ? { 'Accept': 'application/json' } : { 'User-Agent': 'Mozilla/5.0', 'Referer': movieOrSeriesUrl }
-            }).catch(() => null);
+            const tokenUrl = `${baseDomain}/api/player-token.php?pid=${pid}&_t=${ts}&_s=${encodeURIComponent(sig)}`;
+            const proxyTokenUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(tokenUrl)}`;
+            const tRes = await fetch(proxyTokenUrl).catch(() => null);
 
-            if (tRes.ok) {
-              const data = await tRes.json();
+            if (tRes && tRes.ok) {
+              const data = await tRes.json().catch(() => null);
               if (data && data.url) {
                 return [{
-                  id: `flz_${isDub ? 'dub' : 'sub'}`,
-                  name: `Channel Stream (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
-                  badge: isDub ? '⚡ Channel 1080p' : '💬 Channel 1080p',
+                  id: `now_${isDub ? 'dub' : 'sub'}`,
+                  name: `Now Stream (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
+                  badge: isDub ? '⚡ Now 1080p' : '💬 Now 1080p',
                   category: isDub ? 'dubbed' : 'subtitled',
                   streamUrl: data.url,
+                  url: data.url,
                   getUrl: () => data.url
                 }];
               }
             }
           }
         }
-      } catch (e) {
-        // silent fallback
-      }
+      } catch (e) {}
     }
   }
 
