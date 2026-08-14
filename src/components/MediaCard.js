@@ -78,17 +78,21 @@ export function renderMediaCard(item, options = {}) {
   let statusBadgeHTML = '';
   if (isCompleted) {
     statusBadgeHTML = `
-      <span class="card-time-badge" style="background: rgba(16, 185, 129, 0.9); color: #fff; border: 1px solid rgba(16, 185, 129, 0.4);">
-        <i data-lucide="check" style="width:10px; height:10px;"></i>
-        <span>İZLENDİ</span>
-      </span>
+      <div class="card-status-overlay">
+        <span class="card-status-badge watched">
+          <i data-lucide="check-circle-2" style="width:12px; height:12px;"></i>
+          <span>İZLENDİ</span>
+        </span>
+      </div>
     `;
   } else if (timeStr) {
     statusBadgeHTML = `
-      <span class="card-time-badge" title="${remTimeStr || timeStr}">
-        <i data-lucide="clock" style="width:10px; height:10px;"></i>
-        <span>${timeStr}</span>
-      </span>
+      <div class="card-status-overlay">
+        <span class="card-status-badge in-progress" title="${remTimeStr || timeStr}">
+          <i data-lucide="clock" style="width:11px; height:11px;"></i>
+          <span>${timeStr}</span>
+        </span>
+      </div>
     `;
   }
 
@@ -106,14 +110,17 @@ export function renderMediaCard(item, options = {}) {
       <div class="card-poster-wrapper">
         <img class="card-poster" src="${posterUrl}" alt="${title}" loading="lazy" onerror="this.onerror=null; this.src='${SINEFLIX_POSTER_FALLBACK}';" />
         
+        <!-- Top Row Badges (Rating on Left, Type on Right) -->
         <div class="card-badges">
           <span class="card-rating-badge">
             <i data-lucide="star" style="width:11px; height:11px; fill:#fbbf24; color:#fbbf24;"></i>
             <span>${rating}</span>
           </span>
-          ${statusBadgeHTML}
           <span class="card-type-badge">${type === 'tv' ? 'DİZİ' : 'FİLM'}</span>
         </div>
+
+        <!-- Bottom Status Badge (Watched or Remaining Time) -->
+        ${statusBadgeHTML}
 
         <div class="card-overlay">
           <div class="card-play-btn">

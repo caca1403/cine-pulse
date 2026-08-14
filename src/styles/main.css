@@ -1937,6 +1937,172 @@ button {
   color: #fff !important;
 }
 
+/* Card Badges System (PC & Mobile Balanced) */
+.card-badges {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.card-rating-badge {
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.22rem 0.55rem;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  line-height: 1;
+}
+
+.card-type-badge {
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #34d399;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.22rem 0.55rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  line-height: 1;
+}
+
+.card-status-overlay {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.card-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-full);
+  line-height: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.card-status-badge.watched {
+  background: rgba(16, 185, 129, 0.95);
+  color: #fff;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.card-status-badge.in-progress {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+/* Minimalist Cinema Player Segmented Control Tab */
+.player-cinema-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.4rem;
+  background: rgba(10, 14, 22, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 0.8rem;
+  z-index: 10;
+}
+
+.player-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.player-header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.player-header-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.player-header-badge {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.player-header-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.2rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.player-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-player-close {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.btn-player-close:hover {
+  background: rgba(239, 68, 68, 0.85) !important;
+  color: #fff !important;
+}
+
 .cinema-tab-btn {
   background: transparent;
   color: var(--text-muted);
@@ -2000,26 +2166,14 @@ button {
   gap: 0.35rem;
 }
 
-/* Card Subtitle & Resolution Badge */
+/* Card Subtitle */
 .card-subtitle-text {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 130px;
-  font-size: 0.76rem;
+  width: 100%;
+  font-size: 0.82rem;
   color: var(--text-muted);
-}
-
-.card-res-badge {
-  color: var(--accent-cyan);
-  font-weight: 700;
-  font-size: 0.65rem;
-  flex-shrink: 0;
-  background: rgba(6, 182, 212, 0.12);
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  border: 1px solid rgba(6, 182, 212, 0.25);
-  line-height: 1;
 }
 
 /* Comprehensive Responsive Styling for Detail, Library & Mobile Grids */
@@ -2052,42 +2206,114 @@ button {
 
 @media (max-width: 768px) {
   .modal-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
   }
   .player-modal-content {
     width: 100vw !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     border-radius: 0 !important;
     border: none !important;
+    background: #000 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    position: absolute !important;
+    inset: 0 !important;
   }
   .player-cinema-bar {
-    padding: 0.5rem 0.8rem !important;
-    gap: 0.5rem !important;
+    flex-shrink: 0 !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0.35rem 0.75rem !important;
+    background: rgba(10, 14, 22, 0.98) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    z-index: 20 !important;
   }
-  .player-header-title {
-    max-width: 160px !important;
-    font-size: 0.88rem !important;
-  }
-  .cinema-tab-btn {
-    padding: 0.28rem 0.65rem !important;
-    font-size: 0.74rem !important;
-  }
-  .server-toolbar {
-    padding: 0.4rem 0.8rem !important;
+  .player-header-left {
+    min-width: 0 !important;
+    flex: 1 !important;
     gap: 0.4rem !important;
   }
+  .player-header-title {
+    max-width: 130px !important;
+    font-size: 0.84rem !important;
+  }
+  .player-header-toggle {
+    padding: 0.15rem !important;
+  }
+  .cinema-tab-btn {
+    padding: 0.22rem 0.55rem !important;
+    font-size: 0.72rem !important;
+  }
+  .server-toolbar {
+    flex-shrink: 0 !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0.25rem 0.65rem !important;
+    gap: 0.35rem !important;
+    background: rgba(6, 8, 14, 0.98) !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    z-index: 15 !important;
+  }
   .server-btn {
-    padding: 0.32rem 0.75rem !important;
-    font-size: 0.75rem !important;
+    padding: 0.25rem 0.65rem !important;
+    font-size: 0.72rem !important;
+    border-radius: var(--radius-full) !important;
+  }
+  .player-iframe-container {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    width: 100% !important;
+    position: relative !important;
+    background: #000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+  .player-iframe-container iframe,
+  .player-iframe-container video {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    object-fit: contain !important;
   }
   .player-footer-bar {
-    padding: 0.5rem 0.8rem !important;
-    gap: 0.5rem !important;
+    flex-shrink: 0 !important;
+    min-height: 50px !important;
+    padding: 0.4rem 0.75rem !important;
+    background: rgba(10, 14, 22, 0.98) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    z-index: 20 !important;
+    padding-bottom: max(0.4rem, env(safe-area-inset-bottom)) !important;
+  }
+  .player-footer-left {
+    gap: 0.4rem !important;
   }
   .btn-footer-action {
-    padding: 0.35rem 0.75rem !important;
-    font-size: 0.76rem !important;
+    padding: 0.32rem 0.65rem !important;
+    font-size: 0.74rem !important;
   }
   .player-status-indicator {
     display: none !important;
@@ -2121,21 +2347,20 @@ button {
     font-size: 0.82rem;
   }
   .player-header-title {
-    max-width: 130px !important;
-    font-size: 0.84rem !important;
+    max-width: 110px !important;
+    font-size: 0.82rem !important;
   }
-  .card-time-badge {
-    font-size: 0.62rem !important;
-    padding: 0.2rem 0.4rem !important;
-    max-width: 75px !important;
+  .card-status-badge {
+    font-size: 0.6rem !important;
+    padding: 0.2rem 0.45rem !important;
   }
   .card-type-badge {
     font-size: 0.58rem !important;
-    padding: 0.2rem 0.4rem !important;
+    padding: 0.2rem 0.45rem !important;
   }
   .card-rating-badge {
     font-size: 0.62rem !important;
-    padding: 0.2rem 0.4rem !important;
+    padding: 0.2rem 0.45rem !important;
   }
 }
 
