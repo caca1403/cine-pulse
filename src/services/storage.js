@@ -1,6 +1,7 @@
 /* ==========================================================================
    SineFlix Pro - Local Storage & Data Management Service (No-Backend)
-   Handles watch history, timestamps, favorites, watchlist, item removal, and JSON Export/Import
+   Handles watch history, timestamps, favorites, watchlist, item removal,
+   watch analytics, remaining time, and JSON Export/Import
    ========================================================================== */
 
 const STORAGE_KEYS = {
@@ -60,7 +61,8 @@ export function saveWatchProgress({
   const resolvedPoster = posterPath || (anyExisting ? (anyExisting.posterPath || anyExisting.poster_path) : '');
   const resolvedBackdrop = backdropPath || (anyExisting ? (anyExisting.backdropPath || anyExisting.backdrop_path) : '');
 
-  const progressPercent = duration > 0 ? Math.min(100, Math.round((currentTime / duration) * 100)) : 0;
+  const effectiveDuration = duration > 0 ? duration : (type === 'movie' ? 6600 : 3000);
+  const progressPercent = effectiveDuration > 0 ? Math.min(100, Math.round((currentTime / effectiveDuration) * 100)) : 0;
   const isCompleted = completed || progressPercent >= 90;
 
   const record = {
@@ -72,7 +74,7 @@ export function saveWatchProgress({
     season: Number(season),
     episode: Number(episode),
     currentTime: Math.round(currentTime),
-    duration: Math.round(duration),
+    duration: Math.round(effectiveDuration),
     progressPercent,
     completed: isCompleted,
     lastWatchedAt: Date.now()
@@ -118,6 +120,9 @@ export function isMediaWatched(id, season = 1, episode = 1) {
 export function markEpisodeWatched(id, season = 1, episode = 1, completed = true, mediaData = {}) {
   const history = getWatchHistory();
   const existingIndex = history.findIndex(item => item.id == id && item.season == season && item.episode == episode);
+  const isMovie = (mediaData.type === 'movie');
+  const duration = mediaData.duration || (isMovie ? 6600 : 3000);
+
   const record = {
     id,
     title: mediaData.title || (existingIndex >= 0 ? history[existingIndex].title : 'İçerik'),
@@ -126,8 +131,8 @@ export function markEpisodeWatched(id, season = 1, episode = 1, completed = true
     type: mediaData.type || (existingIndex >= 0 ? history[existingIndex].type : 'tv'),
     season: Number(season),
     episode: Number(episode),
-    currentTime: completed ? (mediaData.duration || 2700) : 0,
-    duration: mediaData.duration || 2700,
+    currentTime: completed ? duration : 0,
+    duration: duration,
     progressPercent: completed ? 100 : 0,
     completed: !!completed,
     lastWatchedAt: Date.now()
@@ -140,13 +145,12 @@ export function markEpisodeWatched(id, season = 1, episode = 1, completed = true
   }
 
   setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
-  return record;
 }
 
 export function toggleEpisodeWatched(id, season = 1, episode = 1, mediaData = {}) {
-  const progress = getMediaProgress(id, season, episode);
-  const isCompleted = progress ? (progress.completed || progress.progressPercent >= 90) : false;
-  return markEpisodeWatched(id, season, episode, !isCompleted, mediaData);
+  const isCurrentlyWatched = isMediaWatched(id, season, episode);
+  markEpisodeWatched(id, season, episode, !isCurrentlyWatched, mediaData);
+  return { completed: !isCurrentlyWatched };
 }
 
 export function markAllEpisodesWatched(seriesId, seasonsList = [], completed = true, mediaData = {}) {
@@ -155,6 +159,7 @@ export function markAllEpisodesWatched(seriesId, seasonsList = [], completed = t
   const posterPath = mediaData.posterPath || '';
   const backdropPath = mediaData.backdropPath || '';
   const type = mediaData.type || 'tv';
+  const duration = mediaData.duration || (type === 'movie' ? 6600 : 3000);
 
   for (const season of seasonsList) {
     const seasonNum = season.season_number;
@@ -170,8 +175,8 @@ export function markAllEpisodesWatched(seriesId, seasonsList = [], completed = t
         type,
         season: Number(seasonNum),
         episode: ep,
-        currentTime: completed ? 2700 : 0,
-        duration: 2700,
+        currentTime: completed ? duration : 0,
+        duration: duration,
         progressPercent: completed ? 100 : 0,
         completed: !!completed,
         lastWatchedAt: Date.now()
@@ -192,6 +197,7 @@ export function markSeasonEpisodesWatched(seriesId, seasonNum, episodeCount = 10
   const posterPath = mediaData.posterPath || '';
   const backdropPath = mediaData.backdropPath || '';
   const type = mediaData.type || 'tv';
+  const duration = mediaData.duration || 3000;
 
   for (let ep = 1; ep <= episodeCount; ep++) {
     const existingIndex = history.findIndex(item => item.id == seriesId && item.season == seasonNum && item.episode == ep);
@@ -203,8 +209,8 @@ export function markSeasonEpisodesWatched(seriesId, seasonNum, episodeCount = 10
       type,
       season: Number(seasonNum),
       episode: ep,
-      currentTime: completed ? 2700 : 0,
-      duration: 2700,
+      currentTime: completed ? duration : 0,
+      duration: duration,
       progressPercent: completed ? 100 : 0,
       completed: !!completed,
       lastWatchedAt: Date.now()
@@ -249,7 +255,8 @@ export function isSeasonFullyWatched(seriesId, seasonNum, episodeCount = 10) {
 }
 
 export function setMediaHalfway(id, season = 1, episode = 1, currentTime = 1500, mediaData = {}) {
-  const duration = mediaData.duration || 5400;
+  const isMovie = (mediaData.type === 'movie');
+  const duration = mediaData.duration || (isMovie ? 6600 : 3000);
   const time = currentTime || Math.round(duration * 0.5);
 
   return saveWatchProgress({
@@ -257,9 +264,9 @@ export function setMediaHalfway(id, season = 1, episode = 1, currentTime = 1500,
     title: mediaData.title || 'İçerik',
     posterPath: mediaData.posterPath || '',
     backdropPath: mediaData.backdropPath || '',
-    type: mediaData.type || 'movie',
-    season: Number(season),
-    episode: Number(episode),
+    type: mediaData.type || (isMovie ? 'movie' : 'tv'),
+    season,
+    episode,
     currentTime: time,
     duration,
     completed: false
@@ -279,19 +286,35 @@ export function formatSecondsToTime(seconds) {
   if (min >= 60) {
     const hrs = Math.floor(min / 60);
     const remMin = min % 60;
-    return `${hrs}sa ${remMin}dk`;
+    return `${hrs}sa ${remMin > 0 ? remMin + 'dk' : ''}`;
   }
-  return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+  return `${min}:${sec < 10 ? '0' : ''}${sec} dk`;
+}
+
+export function formatRemainingTime(currentTime, duration) {
+  if (!duration || duration <= 0) duration = 3000;
+  const remaining = Math.max(0, duration - (currentTime || 0));
+  const remMin = Math.round(remaining / 60);
+  if (remMin <= 0) return 'Bitti';
+  if (remMin >= 60) {
+    const hrs = Math.floor(remMin / 60);
+    const m = remMin % 60;
+    return `${hrs}sa ${m > 0 ? m + 'dk' : ''} kaldı`;
+  }
+  return `${remMin} dk kaldı`;
 }
 
 export function formatTotalWatchTime(totalSeconds) {
   if (!totalSeconds || totalSeconds <= 0) return '0 dakika';
-  const hours = Math.floor(totalSeconds / 3600);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
-  if (hours > 0) {
-    return `${hours} saat ${minutes} dakika`;
-  }
-  return `${minutes} dakika`;
+
+  const parts = [];
+  if (days > 0) parts.push(`${days} gün`);
+  if (hours > 0) parts.push(`${hours} saat`);
+  if (minutes > 0 || parts.length === 0) parts.push(`${minutes} dk`);
+  return parts.join(' ');
 }
 
 export function getTotalWatchStats() {
@@ -301,13 +324,16 @@ export function getTotalWatchStats() {
   let episodesCount = 0;
 
   for (const item of history) {
+    const isMovie = item.type === 'movie';
+    const itemDuration = item.duration || (isMovie ? 6600 : 3000);
+
     if (item.completed) {
-      totalSeconds += (item.duration || 2700);
+      totalSeconds += itemDuration;
     } else if (item.currentTime > 0) {
       totalSeconds += item.currentTime;
     }
 
-    if (item.type === 'movie') {
+    if (isMovie) {
       if (item.completed || item.progressPercent >= 50) moviesCount++;
     } else {
       if (item.completed || item.progressPercent >= 50) episodesCount++;
@@ -344,88 +370,58 @@ export function getUnifiedContinueWatching() {
     const firstRecord = records[0];
 
     if (firstRecord.type === 'movie') {
+      const isCompleted = firstRecord.completed || firstRecord.progressPercent >= 90;
+      const duration = firstRecord.duration || 6600;
+      const remStr = formatRemainingTime(firstRecord.currentTime, duration);
+
       unifiedList.push({
         ...firstRecord,
-        subtitle: firstRecord.completed ? 'İzlendi' : (firstRecord.currentTime > 0 ? `Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)}` : 'İzleniyor')
+        subtitle: isCompleted 
+          ? '✓ İzlendi' 
+          : (firstRecord.currentTime > 0 ? `Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)} • ${remStr}` : 'İzleniyor')
       });
     } else {
-      const currentSeason = firstRecord.season || 1;
-      const watchedEpNumbers = new Set(
-        records
-          .filter(r => r.season === currentSeason && (r.completed || r.progressPercent >= 90))
-          .map(r => r.episode)
-      );
+      const watchedEpNumbers = new Set();
+      let currentActiveSeason = firstRecord.season || 1;
 
-      // Check if there is an in-progress episode (yarıda bırakılan)
-      const inProgressEp = records.find(r => !r.completed && r.progressPercent > 0 && r.progressPercent < 90);
+      for (const rec of records) {
+        if (rec.season === currentActiveSeason && (rec.completed || rec.progressPercent >= 85)) {
+          watchedEpNumbers.add(rec.episode);
+        }
+      }
 
-      let targetSeason = currentSeason;
-      let targetEpisode = 1;
-      let targetTime = 0;
-      let targetProgressPercent = 0;
-      let isUnwatchedNext = false;
+      let targetEp = 1;
+      while (watchedEpNumbers.has(targetEp)) {
+        targetEp++;
+      }
 
-      if (inProgressEp) {
-        targetSeason = inProgressEp.season;
-        targetEpisode = inProgressEp.episode;
-        targetTime = inProgressEp.currentTime;
-        targetProgressPercent = inProgressEp.progressPercent;
+      const currentInProg = records.find(r => r.season === currentActiveSeason && r.episode === targetEp);
+      const isCurrentEpHalfway = currentInProg && !currentInProg.completed && currentInProg.currentTime > 0;
+      const currentEpTime = isCurrentEpHalfway ? currentInProg.currentTime : (firstRecord.currentTime || 0);
+      const epDuration = (currentInProg ? currentInProg.duration : firstRecord.duration) || 3000;
+      const remStr = formatRemainingTime(currentEpTime, epDuration);
+
+      let subtitle = '';
+      if (isCurrentEpHalfway) {
+        subtitle = `S${currentActiveSeason} B${targetEp} • Kaldığın: ${formatSecondsToTime(currentEpTime)} • ${remStr}`;
+      } else if (watchedEpNumbers.size > 0) {
+        subtitle = `S${currentActiveSeason} B${targetEp} • Sıradaki Bölüm`;
       } else {
-        const maxWatched = Math.max(0, ...Array.from(watchedEpNumbers));
-        let foundMissing = 0;
-        for (let ep = 1; ep <= maxWatched; ep++) {
-          if (!watchedEpNumbers.has(ep)) {
-            foundMissing = ep;
-            break;
-          }
-        }
-
-        if (foundMissing > 0) {
-          targetEpisode = foundMissing;
-        } else {
-          targetEpisode = maxWatched > 0 ? maxWatched + 1 : 1;
-        }
-        isUnwatchedNext = true;
+        subtitle = `S${currentActiveSeason} B${firstRecord.episode || 1}${firstRecord.currentTime > 0 ? ' • ' + formatSecondsToTime(firstRecord.currentTime) : ''}`;
       }
 
       unifiedList.push({
-        id: firstRecord.id,
-        title: firstRecord.title,
-        posterPath: firstRecord.posterPath,
-        backdropPath: firstRecord.backdropPath,
-        type: 'tv',
-        season: targetSeason,
-        episode: targetEpisode,
-        currentTime: targetTime,
-        duration: firstRecord.duration || 2700,
-        progressPercent: targetProgressPercent,
-        completed: false,
-        isNextEpisode: isUnwatchedNext,
-        lastWatchedAt: firstRecord.lastWatchedAt,
-        totalWatchedCount: watchedEpNumbers.size,
-        subtitle: inProgressEp 
-          ? `S${targetSeason} B${targetEpisode} • Kaldığın: ${formatSecondsToTime(targetTime)}`
-          : `S${targetSeason} B${targetEpisode} • Sıradaki Bölüm`
+        ...firstRecord,
+        season: currentActiveSeason,
+        episode: isCurrentEpHalfway ? targetEp : (watchedEpNumbers.size > 0 ? targetEp : firstRecord.episode || 1),
+        currentTime: isCurrentEpHalfway ? currentEpTime : (watchedEpNumbers.size > 0 ? 0 : firstRecord.currentTime),
+        subtitle
       });
     }
   }
 
-  return unifiedList.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
-}
-
-export function markAsInProgress(id, season = 1, episode = 1, minuteTime = 1200, mediaData = {}) {
-  return saveWatchProgress({
-    id,
-    title: mediaData.title,
-    posterPath: mediaData.posterPath,
-    backdropPath: mediaData.backdropPath,
-    type: mediaData.type || 'tv',
-    season,
-    episode,
-    currentTime: minuteTime,
-    duration: mediaData.duration || 2700,
-    completed: false
-  });
+  unifiedList.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+  return unifiedList;
 }
 
 /* ==========================================================================
@@ -437,29 +433,35 @@ export function getFavorites() {
 }
 
 export function isFavorite(id) {
-  const favorites = getFavorites();
-  return favorites.some(item => item.id == id);
+  const favs = getFavorites();
+  return favs.some(item => item.id == id);
 }
 
-export function toggleFavorite(mediaItem) {
-  let favorites = getFavorites();
-  const index = favorites.findIndex(item => item.id == mediaItem.id);
-  
+export function toggleFavorite(media) {
+  if (!media || !media.id) return false;
+  let favs = getFavorites();
+  const index = favs.findIndex(item => item.id == media.id);
+  let added = false;
+
   if (index >= 0) {
-    favorites.splice(index, 1);
+    favs.splice(index, 1);
   } else {
-    favorites.push({
-      id: mediaItem.id,
-      title: mediaItem.title || mediaItem.name,
-      posterPath: mediaItem.poster_path || mediaItem.posterPath,
-      type: mediaItem.first_air_date ? 'tv' : (mediaItem.type || 'movie'),
-      voteAverage: mediaItem.vote_average || mediaItem.voteAverage,
+    favs.unshift({
+      id: media.id,
+      title: media.title || media.name || 'İsimsiz',
+      poster_path: media.poster_path || media.posterPath,
+      backdrop_path: media.backdrop_path || media.backdropPath,
+      vote_average: media.vote_average || media.voteAverage || 8.0,
+      release_date: media.release_date || media.first_air_date || '',
+      first_air_date: media.first_air_date || '',
+      type: media.type || (media.first_air_date || media.media_type === 'tv' ? 'tv' : 'movie'),
       addedAt: Date.now()
     });
+    added = true;
   }
 
-  setLocalItem(STORAGE_KEYS.FAVORITES, favorites);
-  return index < 0;
+  setLocalItem(STORAGE_KEYS.FAVORITES, favs);
+  return added;
 }
 
 export function getWatchlist() {
@@ -467,131 +469,125 @@ export function getWatchlist() {
 }
 
 export function isWatchlist(id) {
-  const watchlist = getWatchlist();
-  return watchlist.some(item => item.id == id);
+  const list = getWatchlist();
+  return list.some(item => item.id == id);
 }
 
-export function toggleWatchlist(mediaItem) {
-  let watchlist = getWatchlist();
-  const index = watchlist.findIndex(item => item.id == mediaItem.id);
+export function toggleWatchlist(media) {
+  if (!media || !media.id) return false;
+  let list = getWatchlist();
+  const index = list.findIndex(item => item.id == media.id);
+  let added = false;
 
   if (index >= 0) {
-    watchlist.splice(index, 1);
+    list.splice(index, 1);
   } else {
-    watchlist.push({
-      id: mediaItem.id,
-      title: mediaItem.title || mediaItem.name,
-      posterPath: mediaItem.poster_path || mediaItem.posterPath,
-      type: mediaItem.first_air_date ? 'tv' : (mediaItem.type || 'movie'),
+    list.unshift({
+      id: media.id,
+      title: media.title || media.name || 'İsimsiz',
+      poster_path: media.poster_path || media.posterPath,
+      backdrop_path: media.backdrop_path || media.backdropPath,
+      vote_average: media.vote_average || media.voteAverage || 8.0,
+      release_date: media.release_date || media.first_air_date || '',
+      first_air_date: media.first_air_date || '',
+      type: media.type || (media.first_air_date || media.media_type === 'tv' ? 'tv' : 'movie'),
       addedAt: Date.now()
     });
+    added = true;
   }
 
-  setLocalItem(STORAGE_KEYS.WATCHLIST, watchlist);
-  return index < 0;
+  setLocalItem(STORAGE_KEYS.WATCHLIST, list);
+  return added;
 }
 
 /* ==========================================================================
-   JSON Export & Import System
+   User Settings Management
+   ========================================================================== */
+
+export function getUserSettings() {
+  return getLocalItem(STORAGE_KEYS.USER_SETTINGS, {
+    autoplayNext: true,
+    preferredResolution: '1080p',
+    theme: 'dark',
+    subtitlesEnabled: true
+  });
+}
+
+export function saveUserSettings(settings) {
+  const current = getUserSettings();
+  setLocalItem(STORAGE_KEYS.USER_SETTINGS, { ...current, ...settings });
+}
+
+/* ==========================================================================
+   JSON Export & Import (Backup & Restore)
    ========================================================================== */
 
 export function exportDataAsJSON() {
-  const backupObject = {
-    app: "SineFlix Pro",
-    version: "1.0",
-    exportedAt: new Date().toISOString(),
-    watchHistory: getWatchHistory(),
-    favorites: getFavorites(),
-    watchlist: getWatchlist(),
-    userSettings: getLocalItem(STORAGE_KEYS.USER_SETTINGS, { preferredServer: 'alfa_tr' })
+  const exportPayload = {
+    version: '1.0.0',
+    exportDate: new Date().toISOString(),
+    appName: 'CinePulse Studio',
+    data: {
+      watchHistory: getLocalItem(STORAGE_KEYS.WATCH_HISTORY, []),
+      favorites: getLocalItem(STORAGE_KEYS.FAVORITES, []),
+      watchlist: getLocalItem(STORAGE_KEYS.WATCHLIST, []),
+      userSettings: getLocalItem(STORAGE_KEYS.USER_SETTINGS, {})
+    }
   };
 
-  const jsonString = JSON.stringify(backupObject, null, 2);
-  const blob = new Blob([jsonString], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  
-  const dateStr = new Date().toISOString().split('T')[0];
-  const downloadLink = document.createElement('a');
-  downloadLink.href = url;
-  downloadLink.download = `sineflix_backup_${dateStr}.json`;
-  
-  document.body.appendChild(downloadLink);
-  downloadLink.click();
-  document.body.removeChild(downloadLink);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cinepulse_yedek_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
-export function importDataFromJSON(jsonData, mode = 'merge') {
+export function importDataFromJSON(jsonString) {
   try {
-    const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-
-    if (!data.app && !data.watchHistory) {
-      throw new Error("Geçersiz JSON formatı. SineFlix yedek dosyası seçiniz.");
+    const parsed = JSON.parse(jsonString);
+    if (!parsed || !parsed.data) {
+      throw new Error('Geçersiz yedek dosyası yapısı.');
     }
 
-    if (mode === 'replace') {
-      if (Array.isArray(data.watchHistory)) setLocalItem(STORAGE_KEYS.WATCH_HISTORY, data.watchHistory);
-      if (Array.isArray(data.favorites)) setLocalItem(STORAGE_KEYS.FAVORITES, data.favorites);
-      if (Array.isArray(data.watchlist)) setLocalItem(STORAGE_KEYS.WATCHLIST, data.watchlist);
-    } else {
-      if (Array.isArray(data.watchHistory)) {
-        const current = getWatchHistory();
-        const merged = [...data.watchHistory];
-        current.forEach(item => {
-          if (!merged.some(m => m.id == item.id && m.season == item.season && m.episode == item.episode)) {
-            merged.push(item);
-          }
-        });
-        setLocalItem(STORAGE_KEYS.WATCH_HISTORY, merged);
-      }
+    const { watchHistory, favorites, watchlist, userSettings } = parsed.data;
 
-      if (Array.isArray(data.favorites)) {
-        const current = getFavorites();
-        const merged = [...data.favorites];
-        current.forEach(item => {
-          if (!merged.some(f => f.id == item.id)) merged.push(item);
-        });
-        setLocalItem(STORAGE_KEYS.FAVORITES, merged);
-      }
+    if (Array.isArray(watchHistory)) setLocalItem(STORAGE_KEYS.WATCH_HISTORY, watchHistory);
+    if (Array.isArray(favorites)) setLocalItem(STORAGE_KEYS.FAVORITES, favorites);
+    if (Array.isArray(watchlist)) setLocalItem(STORAGE_KEYS.WATCHLIST, watchlist);
+    if (userSettings && typeof userSettings === 'object') setLocalItem(STORAGE_KEYS.USER_SETTINGS, userSettings);
 
-      if (Array.isArray(data.watchlist)) {
-        const current = getWatchlist();
-        const merged = [...data.watchlist];
-        current.forEach(item => {
-          if (!merged.some(w => w.id == item.id)) merged.push(item);
-        });
-        setLocalItem(STORAGE_KEYS.WATCHLIST, merged);
-      }
-    }
-
-    return { success: true, countHistory: (data.watchHistory || []).length };
+    return { success: true, message: 'Verileriniz başarıyla içe aktarıldı ve geri yüklendi.' };
   } catch (err) {
-    console.error("Import JSON Error:", err);
-    return { success: false, error: err.message };
+    console.error('Import error:', err);
+    return { success: false, message: 'Yedek dosyası okunamadı: ' + err.message };
   }
 }
 
 export function getStorageStats() {
-  let totalBytes = 0;
-  if (typeof window !== 'undefined' && window.localStorage) {
-    for (let key in localStorage) {
-      if (localStorage.hasOwnProperty(key)) {
-        totalBytes += (localStorage[key].length + key.length) * 2;
-      }
-    }
-  }
-  const kb = (totalBytes / 1024).toFixed(2);
-  const historyCount = getWatchHistory().length;
-  const favoritesCount = getFavorites().length;
+  const history = getWatchHistory();
+  const favorites = getFavorites();
+  const watchlist = getWatchlist();
+  const rawData = JSON.stringify({ history, favorites, watchlist });
+  const bytes = new Blob([rawData]).size;
+  const kb = (bytes / 1024).toFixed(1);
 
-  return { totalBytes, kb, historyCount, favoritesCount };
+  return {
+    historyCount: history.length,
+    favoritesCount: favorites.length,
+    watchlistCount: watchlist.length,
+    bytes,
+    kb
+  };
 }
 
 export function clearAllData() {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    localStorage.removeItem(STORAGE_KEYS.WATCH_HISTORY);
-    localStorage.removeItem(STORAGE_KEYS.FAVORITES);
-    localStorage.removeItem(STORAGE_KEYS.WATCHLIST);
-    window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { action: 'clear' } }));
-  }
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  localStorage.removeItem(STORAGE_KEYS.WATCH_HISTORY);
+  localStorage.removeItem(STORAGE_KEYS.FAVORITES);
+  localStorage.removeItem(STORAGE_KEYS.WATCHLIST);
+  window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { cleared: true } }));
 }
