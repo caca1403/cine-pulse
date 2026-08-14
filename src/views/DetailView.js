@@ -1,6 +1,7 @@
 /* ==========================================================================
-   SineFlix Pro - Media Detail View
+   CinePulse Studio - Media Detail View
    Displays full TMDB metadata, backdrop banner, season/episode list or play movie button
+   Supports seamless navigation for Movies, TV Shows, Anime, and Documentaries.
    ========================================================================== */
 
 import { fetchMediaDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
@@ -11,13 +12,24 @@ import { openPlayerModal } from '../components/PlayerModal.js';
 import { showToast } from '../components/Toast.js';
 
 export async function renderDetailView(type = 'tv', id) {
-  const media = await fetchMediaDetails(type, id);
+  // Normalize type: Anime/Doc series are 'tv', Anime/Doc films are 'movie'
+  let normalizedType = (type === 'movie') ? 'movie' : 'tv';
+  let media = await fetchMediaDetails(normalizedType, id);
+  if (!media) {
+    // If not found with initial type, try the alternative type
+    normalizedType = normalizedType === 'tv' ? 'movie' : 'tv';
+    media = await fetchMediaDetails(normalizedType, id);
+  }
+
   if (!media) {
     return {
       html: `<div class="container" style="padding: 10rem 0; text-align: center;"><h2>İçerik bulunamadı.</h2></div>`,
       init: () => {}
     };
   }
+
+  const isSeries = !!(media.seasons && media.seasons.length > 0) || normalizedType === 'tv';
+  const effectiveType = isSeries ? 'tv' : 'movie';
 
   const title = media.title || media.name || 'Detay';
   const originalTitle = media.original_title || media.original_name || '';
@@ -32,14 +44,14 @@ export async function renderDetailView(type = 'tv', id) {
   const inWatch = isWatchlist(id);
 
   // Watch history progress for hero button
-  const lastWatchedEp = type === 'tv' ? getLastWatchedEpisode(id) : null;
-  const movieProgress = type === 'movie' ? getMediaProgress(id, 1, 1) : null;
+  const lastWatchedEp = effectiveType === 'tv' ? getLastWatchedEpisode(id) : null;
+  const movieProgress = effectiveType === 'movie' ? getMediaProgress(id, 1, 1) : null;
 
-  let playButtonLabel = type === 'movie' ? 'Filmi İzle (1080p HD)' : '1. Sezon 1. Bölümü İzle';
-  if (type === 'tv' && lastWatchedEp) {
+  let playButtonLabel = effectiveType === 'movie' ? 'Filmi İzle (1080p HD)' : '1. Sezon 1. Bölümü İzle';
+  if (effectiveType === 'tv' && lastWatchedEp) {
     const timeStr = formatSecondsToTime(lastWatchedEp.currentTime);
     playButtonLabel = `Kaldığın Yerden Devam Et (S${lastWatchedEp.season} B${lastWatchedEp.episode}${timeStr ? ' • ' + timeStr : ''})`;
-  } else if (type === 'movie' && movieProgress && movieProgress.currentTime > 0) {
+  } else if (effectiveType === 'movie' && movieProgress && movieProgress.currentTime > 0) {
     const timeStr = formatSecondsToTime(movieProgress.currentTime);
     playButtonLabel = `Kaldığın Yerden Devam Et (${timeStr})`;
   }
@@ -48,7 +60,7 @@ export async function renderDetailView(type = 'tv', id) {
   const castList = media.credits && media.credits.cast ? media.credits.cast.slice(0, 7) : [];
 
   let seasonSelectorObj = null;
-  if (type === 'tv' && media.seasons) {
+  if (effectiveType === 'tv' && media.seasons) {
     seasonSelectorObj = await renderSeasonSelector({
       tvId: id,
       seriesTitle: title,
@@ -73,7 +85,7 @@ export async function renderDetailView(type = 'tv', id) {
 
             <div class="detail-info">
               <div class="hero-badge-row">
-                <span class="badge badge-primary">${type === 'tv' ? 'DİZİ' : 'FİLM'}</span>
+                <span class="badge badge-primary">${effectiveType === 'tv' ? 'DİZİ / SERİ' : 'FİLM'}</span>
                 <span class="badge badge-rating">
                   <i data-lucide="star" style="width:14px; height:14px; fill: currentColor"></i> ${rating} IMDb
                 </span>
@@ -109,7 +121,7 @@ export async function renderDetailView(type = 'tv', id) {
               ` : ''}
 
               <div class="hero-actions" style="margin-top: 1.5rem;">
-                ${type === 'movie' ? `
+                ${effectiveType === 'movie' ? `
                   <button class="btn-primary" id="btn-play-movie">
                     <i data-lucide="play" style="fill: currentColor"></i>
                     <span>${playButtonLabel}</span>
@@ -138,7 +150,7 @@ export async function renderDetailView(type = 'tv', id) {
 
       <section class="section" style="padding-top: 2rem;">
         <div class="container">
-          ${type === 'tv' && seasonSelectorObj ? seasonSelectorObj.html : ''}
+          ${effectiveType === 'tv' && seasonSelectorObj ? seasonSelectorObj.html : ''}
 
           ${recommendations.length > 0 ? `
             <div style="margin-top: 4rem;">
