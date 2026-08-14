@@ -18,7 +18,7 @@ export async function renderPopularListView(type = 'tv') {
     titleText = 'Tüm Zamanların En Popüler Filmleri';
     iconName = 'clapperboard';
   } else if (type === 'anime') {
-    titleText = 'En Çok İzlenen Popüler Animeler';
+    titleText = 'Tüm Zamanların En Popüler Animeleri';
     iconName = 'sparkles';
   }
 
@@ -30,7 +30,7 @@ export async function renderPopularListView(type = 'tv') {
           <h1 style="font-size: 2.2rem; display: flex; align-items: center; gap: 0.75rem; color: #fff;">
             <i data-lucide="${iconName}" style="color: var(--primary)"></i> ${titleText}
           </h1>
-          <span style="color: var(--text-muted); font-size: 0.9rem;" id="popular-count-label">Popülerliğe ve izlenme oranına göre listeleniyor</span>
+          <span style="color: var(--text-muted); font-size: 0.9rem;" id="popular-count-label">Tüm zamanların oy sayısına ve genel popülerliğine göre listeleniyor</span>
         </div>
 
         <!-- Media Grid -->
