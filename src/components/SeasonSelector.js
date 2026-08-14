@@ -355,7 +355,9 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
         episode,
         posterPath,
         backdropPath,
-        currentTime: startTime
+        currentTime: startTime,
+        seasonsList: validSeasons,
+        maxEpisodes: seasonData.episodes ? seasonData.episodes.length : 0
       });
     };
 
