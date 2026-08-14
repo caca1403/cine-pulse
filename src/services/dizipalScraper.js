@@ -67,13 +67,11 @@ export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title
       for (const epUrl of candidateUrls) {
         try {
           console.log(`Dizipal Scraper: Fetching ${type} ->`, epUrl);
-          const res = await fetch(epUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-          });
+          const isBrowser = typeof window !== 'undefined';
+          const headers = isBrowser ? { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } : { 'User-Agent': 'Mozilla/5.0' };
+          const res = await fetch(epUrl, { headers }).catch(() => null);
 
-          if (!res.ok) continue;
+          if (!res || !res.ok) continue;
           const html = await res.text();
 
           const iframeMatch = 
@@ -90,58 +88,11 @@ export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title
 
             if (!iframeUrl.includes('jquery') && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
               console.log('Dizipal Scraper: Extracted embed page ->', iframeUrl);
-
-              try {
-                const embedHtmlRes = await fetch(iframeUrl, {
-                  headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Referer': 'https://dizipal.bid/'
-                  }
-                });
-
-                const embedHtml = await embedHtmlRes.text();
-                const fileIdMatch = embedHtml.match(/file_id['"]?\s*,\s*['"]?(\d+)['"]?/i);
-                const fileId = fileIdMatch ? fileIdMatch[1] : '125781';
-
-                const fetchMatch = embedHtml.match(/fetch\(\s*['"]([^'"]+)['"]\s*\)/i);
-                if (fetchMatch && fetchMatch[1]) {
-                  const streamApiUrl = `https://x.ag2m4.cfd${fetchMatch[1]}`;
-                  const streamRes = await fetch(streamApiUrl, {
-                    headers: {
-                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                      'Referer': iframeUrl,
-                      'Cookie': `file_id=${fileId}; aff=1; ref_url=dizipal.im`,
-                      'Sec-Fetch-Dest': 'empty',
-                      'Sec-Fetch-Mode': 'cors',
-                      'Sec-Fetch-Site': 'same-origin'
-                    }
-                  });
-
-                  if (streamRes.ok) {
-                    const jsonText = await streamRes.text();
-                    const streamJson = JSON.parse(jsonText);
-                    if (streamJson.url) {
-                      console.log('Dizipal Scraper: Resolved direct HLS master stream ->', streamJson.url);
-                      return [
-                        {
-                          id: `dzp_${slug}`,
-                          name: `FastStream (VIP HLS 1080p - ${isDub ? 'Dublaj' : 'Altyazılı'})`,
-                          badge: '⚡ FastStream 1080p',
-                          isHls: true,
-                          streamUrl: streamJson.url,
-                          url: iframeUrl
-                        }
-                      ];
-                    }
-                  }
-                }
-              } catch (_) {}
-
               return [
                 {
                   id: `dzp_${slug}`,
-                  name: `FastStream (VIP Player - ${isDub ? 'Dublaj' : 'Altyazılı'})`,
-                  badge: '⚡ FastStream VIP',
+                  name: `FastStream (${isDub ? 'Dublaj 1080p' : 'Altyazılı 1080p'})`,
+                  badge: '⚡ FastStream',
                   url: iframeUrl
                 }
               ];
