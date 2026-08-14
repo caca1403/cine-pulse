@@ -164,15 +164,12 @@ export async function openPlayerModal({
       `;
     }
 
-    const isDizipal = srv.id && (srv.id.startsWith('dzp') || srv.id.startsWith('dbl') || srv.name.toLowerCase().includes('faststream') || srv.name.toLowerCase().includes('vip stream') || (srv.getUrl() && srv.getUrl().includes('ag2m4')));
-    const policyAttr = isDizipal ? 'referrerpolicy="no-referrer-when-downgrade"' : 'referrerpolicy="no-referrer"';
-
     return `
       <iframe 
         id="video-iframe" 
         src="${srv.getUrl()}" 
         allowfullscreen 
-        ${policyAttr}
+        referrerpolicy="no-referrer-when-downgrade"
         allow="autoplay; encrypted-media; fullscreen; picture-in-picture; accelerometer; gyroscope; clipboard-write; payment">
       </iframe>
     `;

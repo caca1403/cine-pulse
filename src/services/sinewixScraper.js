@@ -24,9 +24,11 @@ function cleanTitleString(str) {
 
 async function performSinewixSearch(apiBase, query) {
   const searchUrl = `${apiBase}/search/${encodeURIComponent(query)}/${SINEWIX_TOKEN}`;
-  const searchRes = await fetch(searchUrl, { headers: SINEWIX_HEADERS });
-  if (!searchRes.ok) return [];
-  const json = await searchRes.json();
+  const isBrowser = typeof window !== 'undefined';
+  const headers = isBrowser ? { 'Accept': 'application/json' } : SINEWIX_HEADERS;
+  const searchRes = await fetch(searchUrl, { headers }).catch(() => null);
+  if (!searchRes || !searchRes.ok) return [];
+  const json = await searchRes.json().catch(() => ({}));
   return json.search || json.data || [];
 }
 
@@ -63,20 +65,22 @@ export async function fetchSinewixSources({ type = 'tv', title = '', originalTit
 
     let videoList = [];
 
+    const reqHeaders = isBrowser ? { 'Accept': 'application/json' } : SINEWIX_HEADERS;
+
     if (isMovie) {
-      const detailUrl = `${apiBase}/media/detail/${itemId}/${SINEWIX_TOKEN}`;
+      const detailUrl = `${apiBase}/movies/show/${itemId}/${SINEWIX_TOKEN}`;
       console.log('Sinewix Scraper: Fetching movie detail ->', itemId);
-      const detailRes = await fetch(detailUrl, { headers: SINEWIX_HEADERS });
-      if (detailRes.ok) {
-        const detailData = await detailRes.json();
+      const detailRes = await fetch(detailUrl, { headers: reqHeaders }).catch(() => null);
+      if (detailRes && detailRes.ok) {
+        const detailData = await detailRes.json().catch(() => ({}));
         videoList = detailData.videos || [];
       }
     } else {
       const detailUrl = `${apiBase}/series/show/${itemId}/${SINEWIX_TOKEN}`;
       console.log('Sinewix Scraper: Fetching series detail ->', itemId);
-      const detailRes = await fetch(detailUrl, { headers: SINEWIX_HEADERS });
-      if (detailRes.ok) {
-        const detailData = await detailRes.json();
+      const detailRes = await fetch(detailUrl, { headers: reqHeaders }).catch(() => null);
+      if (detailRes && detailRes.ok) {
+        const detailData = await detailRes.json().catch(() => ({}));
         if (detailData.seasons) {
           const seasonMatch = detailData.seasons.find(s => s.season_number === season) || detailData.seasons[0];
           if (seasonMatch && seasonMatch.episodes) {
