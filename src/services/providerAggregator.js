@@ -1,6 +1,7 @@
 /* ==========================================================================
    CinePulse Studio - Master Stream Aggregator
    Aggregates live Turkish sources with strict title & year matching:
+   - Smashy Stream (1080p Video Embed)
    - DiziBal (VIP 1080p)
    - SezonlukDizi (VidMoly, Sibnet, Filemoon)
    - Dizipal (1080p)
@@ -178,6 +179,15 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     }));
 
   const cleanSubtitled = [
+    {
+      id: 'sub_smashystream',
+      name: 'Smashy Stream (1080p Altyazılı)',
+      badge: '⚡ Smashy 1080p',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}`
+        : `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}&season=${season}&episode=${episode}`
+    },
     ...mapSubtitledSources(antrSub),
     ...mapSubtitledSources(traSub),
     ...mapSubtitledSources(taSub),
