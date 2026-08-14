@@ -5,7 +5,7 @@
    ========================================================================== */
 
 import { getStreamingServers } from '../services/providerAggregator.js';
-import { saveWatchProgress, getMediaProgress, formatSecondsToTime } from '../services/storage.js';
+import { saveWatchProgress, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched } from '../services/storage.js';
 import { showToast } from './Toast.js';
 
 let activeProgressInterval = null;
@@ -77,6 +77,7 @@ export async function openPlayerModal({
 
   const existingRecord = getMediaProgress(tmdbId, season, episode);
   let initialTime = currentTime || (existingRecord ? existingRecord.currentTime : 0);
+  let isWatched = isMediaWatched(tmdbId, season, episode);
 
   function renderServerPills() {
     return activeServers.map((srv, idx) => `
@@ -209,17 +210,36 @@ export async function openPlayerModal({
         ${renderPlayerContent()}
       </div>
 
-      <!-- Footer Controls (Next episode / Status) -->
-      <div class="player-footer-bar" style="background: rgba(10, 14, 22, 0.96); padding: 0.7rem 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem;">
-          <i data-lucide="shield-check" style="width: 14px; height: 14px; color: var(--secondary);"></i> Canlı akış sunucu ağı bağlantısı aktif.
-        </span>
-
-        ${type === 'tv' ? `
-          <button id="btn-next-episode" class="btn-primary" style="padding: 0.45rem 1.3rem; font-size: 0.85rem; border-radius: var(--radius-full);">
-            <span>Sonraki Bölüm</span>
-            <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+      <!-- Footer Controls (Previous / Mark Watched / Next episode / Status) -->
+      <div class="player-footer-bar" style="background: rgba(10, 14, 22, 0.96); padding: 0.7rem 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem;">
+        
+        <!-- Left: Status & Watched Toggle -->
+        <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
+          <button id="btn-toggle-watched-player" class="btn-secondary" style="padding: 0.4rem 0.9rem; font-size: 0.82rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; ${isWatched ? 'background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981;' : ''}">
+            <i data-lucide="${isWatched ? 'check-circle-2' : 'check'}" style="width: 14px; height: 14px;"></i>
+            <span>${isWatched ? 'İzlendi' : 'İzlendi Olarak İşaretle'}</span>
           </button>
+
+          <span style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem;">
+            <i data-lucide="shield-check" style="width: 14px; height: 14px; color: var(--secondary);"></i> Canlı akış sunucu ağı bağlantısı aktif.
+          </span>
+        </div>
+
+        <!-- Right: Prev / Next Navigation for Series & Anime -->
+        ${type === 'tv' ? `
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            ${episode > 1 ? `
+              <button id="btn-prev-episode" class="btn-secondary" style="padding: 0.45rem 1rem; font-size: 0.85rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.25rem;">
+                <i data-lucide="chevron-left" style="width: 14px; height: 14px;"></i>
+                <span>Önceki Bölüm (B${episode - 1})</span>
+              </button>
+            ` : ''}
+
+            <button id="btn-next-episode" class="btn-primary" style="padding: 0.45rem 1.3rem; font-size: 0.85rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.25rem;">
+              <span>Sonraki Bölüm (B${episode + 1})</span>
+              <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+            </button>
+          </div>
         ` : ''}
       </div>
     </div>
@@ -442,22 +462,83 @@ export async function openPlayerModal({
   };
   document.addEventListener('keydown', escHandler);
 
-  const nextEpBtn = document.getElementById('btn-next-episode');
-  if (nextEpBtn) {
-    nextEpBtn.addEventListener('click', (e) => {
+  const prevEpBtn = document.getElementById('btn-prev-episode');
+  if (prevEpBtn) {
+    prevEpBtn.addEventListener('click', (e) => {
       e.preventDefault();
       closeModal();
       openPlayerModal({
         type,
         tmdbId,
-        title: `${seriesTitle || title} - S${season}E${episode + 1}`,
-        seriesTitle,
+        title: `${cleanSeriesName} - S${season}E${episode - 1}`,
+        seriesTitle: cleanSeriesName,
+        originalTitle,
+        season,
+        episode: Math.max(1, episode - 1),
+        posterPath,
+        backdropPath,
+        currentTime: 0
+      });
+    });
+  }
+
+  const nextEpBtn = document.getElementById('btn-next-episode');
+  if (nextEpBtn) {
+    nextEpBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Auto-mark current episode as watched when proceeding to next episode
+      markEpisodeWatched(tmdbId, season, episode, true, {
+        title: cleanSeriesName,
+        posterPath,
+        backdropPath,
+        type,
+        duration: estimatedDuration
+      });
+
+      closeModal();
+      openPlayerModal({
+        type,
+        tmdbId,
+        title: `${cleanSeriesName} - S${season}E${episode + 1}`,
+        seriesTitle: cleanSeriesName,
+        originalTitle,
         season,
         episode: episode + 1,
         posterPath,
         backdropPath,
         currentTime: 0
       });
+    });
+  }
+
+  const toggleWatchedPlayerBtn = document.getElementById('btn-toggle-watched-player');
+  if (toggleWatchedPlayerBtn) {
+    toggleWatchedPlayerBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const updated = toggleEpisodeWatched(tmdbId, season, episode, {
+        title: cleanSeriesName,
+        posterPath,
+        backdropPath,
+        type,
+        duration: estimatedDuration
+      });
+      isWatched = updated.completed;
+      showToast(isWatched ? '✓ İzlendi olarak işaretlendi!' : 'İzlendi işareti kaldırıldı.', isWatched ? 'success' : 'info');
+      
+      const span = toggleWatchedPlayerBtn.querySelector('span');
+      const icon = toggleWatchedPlayerBtn.querySelector('i');
+      if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Olarak İşaretle';
+      if (icon) icon.setAttribute('data-lucide', isWatched ? 'check-circle-2' : 'check');
+      if (isWatched) {
+        toggleWatchedPlayerBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+        toggleWatchedPlayerBtn.style.borderColor = '#10b981';
+        toggleWatchedPlayerBtn.style.color = '#10b981';
+      } else {
+        toggleWatchedPlayerBtn.style.background = '';
+        toggleWatchedPlayerBtn.style.borderColor = '';
+        toggleWatchedPlayerBtn.style.color = '';
+      }
+      if (window.lucide) window.lucide.createIcons();
     });
   }
 
