@@ -28,6 +28,8 @@ async function route() {
     viewName = 'movies';
   } else if (hash === '#anime') {
     viewName = 'anime';
+  } else if (hash === '#documentary') {
+    viewName = 'documentary';
   } else if (hash === '#discover') {
     viewName = 'discover';
   } else if (hash === '#library') {
@@ -48,6 +50,8 @@ async function route() {
     viewResult = await renderPopularListView('movie');
   } else if (viewName === 'anime') {
     viewResult = await renderPopularListView('anime');
+  } else if (viewName === 'documentary') {
+    viewResult = await renderPopularListView('documentary');
   } else if (viewName === 'discover') {
     viewResult = await renderDiscoverView('tv');
   } else if (viewName === 'library') {

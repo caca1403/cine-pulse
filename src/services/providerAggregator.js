@@ -15,6 +15,7 @@ import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchFilmizleNowSources } from './filmizleNowScraper.js';
 import { fetchAnimecixSources } from './animecixScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
+import { fetchBelgeselSources } from './belgeselScraper.js';
 
 function cleanTitle(raw) {
   if (!raw) return '';
@@ -41,7 +42,8 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     hdfcDub, hdfcSub,
     finDub, finSub,
     acxSub,
-    antrSub
+    antrSub,
+    blgDub
   ] = await Promise.all([
     fetchDiziBalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchDiziBalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
@@ -56,7 +58,8 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
     fetchAnimecixSources({ seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
-    fetchAnimeTrSources({ seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => [])
+    fetchAnimeTrSources({ seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
+    fetchBelgeselSources({ seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => [])
   ]);
 
   // Helper mapper for Dubbed sources
@@ -88,6 +91,7 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
 
   const cleanDubbed = [
     ...mapDubbedSources(dblDub),
+    ...mapDubbedSources(blgDub),
     ...mapDubbedSources(szdDub),
     ...mapDubbedSources(flzDub),
     ...mapDubbedSources(snxDub),
