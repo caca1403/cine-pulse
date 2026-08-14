@@ -7,7 +7,7 @@ import { fetchSeasonDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALL
 import { getMediaProgress } from '../services/storage.js';
 import { openPlayerModal } from './PlayerModal.js';
 
-export async function renderSeasonSelector({ tvId, seriesTitle, seriesOverview = '', seasons = [], posterPath = '', backdropPath = '' }) {
+export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = '', seriesOverview = '', seasons = [], posterPath = '', backdropPath = '' }) {
   const validSeasons = seasons.filter(s => s.season_number > 0);
   if (validSeasons.length === 0 && seasons.length > 0) validSeasons.push(seasons[0]);
 
@@ -176,6 +176,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
         tmdbId: tvId,
         title: `${seriesTitle} - S${season}E${episode}: ${epTitle}`,
         seriesTitle,
+        originalTitle,
         season,
         episode,
         posterPath,

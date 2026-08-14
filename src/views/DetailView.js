@@ -52,6 +52,7 @@ export async function renderDetailView(type = 'tv', id) {
     seasonSelectorObj = await renderSeasonSelector({
       tvId: id,
       seriesTitle: title,
+      originalTitle: originalTitle,
       seriesOverview: overview,
       seasons: media.seasons,
       posterPath: media.poster_path,

@@ -2,6 +2,7 @@
    CinePulse Studio - AnimeTR Dedicated Scraper
    Extracts multi-player sources (VidMoly, Sibnet, Drive, OK.ru, Voe, Vidoza)
    from animetr.co via CF Worker Gateway
+   Supports multi-alias slugs (English, Romaji, Turkish, TMDB)
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
@@ -22,14 +23,17 @@ function toSlug(title) {
     .replace(/-+/g, '-');
 }
 
-export async function fetchAnimeTrSources({ seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = false }) {
-  const query = seriesTitle || title || originalTitle;
-  if (!query) return [];
+export async function fetchAnimeTrSources({ titles = [], seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = false }) {
+  const candidateTitles = [...new Set([
+    ...titles,
+    seriesTitle,
+    title,
+    originalTitle
+  ])].filter(t => t && typeof t === 'string' && t.trim().length > 1);
 
-  const candidateSlugs = [toSlug(query)];
-  if (originalTitle && originalTitle !== query) {
-    candidateSlugs.push(toSlug(originalTitle));
-  }
+  if (candidateTitles.length === 0) return [];
+
+  const candidateSlugs = [...new Set(candidateTitles.map(t => toSlug(t)).filter(Boolean))];
 
   for (const slug of candidateSlugs) {
     if (!slug) continue;

@@ -22,26 +22,22 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
-export async function fetchSezonlukDiziEpisodeSources({ seriesTitle = '', season = 1, episode = 1, isDub = true }) {
-  const baseSlug = toTurkishSlug(seriesTitle);
-  if (!baseSlug) return [];
+export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
+  const allTitles = [...new Set([...titles, seriesTitle, originalTitle])].filter(t => t && typeof t === 'string' && t.trim().length > 1);
+  if (allTitles.length === 0) return [];
 
-  // Candidate slugs for 100% accuracy
-  const candidateSlugs = [baseSlug];
-  if (!baseSlug.endsWith('-izle')) candidateSlugs.push(`${baseSlug}-izle`);
-
-  // Handle "House M.D." -> house-izle
-  const cleanedMd = baseSlug.replace(/-m-d$|-md$/, '');
-  if (cleanedMd !== baseSlug) {
-    candidateSlugs.push(cleanedMd);
-    candidateSlugs.push(`${cleanedMd}-izle`);
-  }
-
-  // Handle "The Boys" -> boys / boys-izle
-  if (baseSlug.startsWith('the-')) {
-    const noThe = baseSlug.replace(/^the-/, '');
-    candidateSlugs.push(noThe);
-    candidateSlugs.push(`${noThe}-izle`);
+  const candidateSlugs = [];
+  for (const t of allTitles) {
+    const s = toTurkishSlug(t);
+    if (s && !candidateSlugs.includes(s)) {
+      candidateSlugs.push(s);
+      if (!s.endsWith('-izle')) candidateSlugs.push(`${s}-izle`);
+      
+      if (s.startsWith('the-')) {
+        const noThe = s.replace(/^the-/, '');
+        if (!candidateSlugs.includes(noThe)) candidateSlugs.push(noThe);
+      }
+    }
   }
 
   const baseDomains = ['https://sezonlukdizi.cc', 'https://sezonlukdizi8.com'];
