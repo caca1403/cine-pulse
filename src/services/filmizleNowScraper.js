@@ -1,27 +1,14 @@
 /* ==========================================================================
-   CinePulse Studio - Filmizle.now Scraper
-   Fetches 1080p Vidmixi stream sources from https://filmizle.now
-   Strict bidirectional whole-title & year matching with timeout protection.
+   CinePulse Studio - Filmizle.now Scraper (Now Stream / Vidmixi)
+   Fetches ultra-fast 1080p Vidmixi stream sources directly from filmizle.now
    ========================================================================== */
 
-function normalizeTitle(title) {
-  if (!title) return '';
-  return title
-    .toLowerCase()
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ı/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 function toTurkishSlug(title) {
   if (!title) return '';
-  return title
+  const cleanStr = title.replace(/\s*\(\d{4}\).*/, '').trim();
+  return cleanStr
     .toLowerCase()
     .trim()
     .replace(/ğ/g, 'g')
@@ -35,145 +22,108 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
-const FRANCHISE_SUBTITLES = [
-  'inanilmaz', 'amazing', 'eve donus yok', 'no way home', 'evden uzakta', 'far from home',
-  'eve donus', 'homecoming', 'orumcek evreninde', 'into the spider verse', 'orumcek evrenine gecis',
-  'across the spider verse', 'beyond the spider verse', 'yepyeni bir gun', 'brand new day', 'lotus'
-];
-
-function isTitleStrictMatch(target, candidate, targetYear = null) {
-  const normT = normalizeTitle(target).replace(/^the\s+/, '');
-  const normC = normalizeTitle(candidate).replace(/^the\s+/, '').replace(/\sizle$/, '');
-
-  if (normT === normC) return true;
-
-  for (const mod of FRANCHISE_SUBTITLES) {
-    const tHas = normT.includes(mod);
-    const cHas = normC.includes(mod);
-    if (tHas !== cHas) {
-      return false;
-    }
-  }
-
-  const tWords = normT.split(' ').filter(w => w.length > 0);
-  const cWords = normC.split(' ').filter(w => w.length > 0);
-
-  const matched = tWords.filter(w => cWords.includes(w)).length;
-  const maxLen = Math.max(tWords.length, cWords.length, 1);
-  const ratio = matched / maxLen;
-
-  return ratio >= 0.85;
-}
-
 export async function fetchFilmizleNowSources({
   type = 'movie',
   seriesTitle = '',
   title = '',
   originalTitle = '',
-  year = null,
   season = 1,
   episode = 1,
   isDub = true
 }) {
-  const rawTitle = seriesTitle || title;
-  if (!rawTitle && !originalTitle) return [];
+  const targetTitle = seriesTitle || title;
+  const isMovie = type === 'movie';
+  if (!targetTitle) return [];
 
-  const candidateTitles = [rawTitle];
-  if (originalTitle && originalTitle !== rawTitle) {
+  const candidateTitles = [targetTitle];
+  if (originalTitle && originalTitle !== targetTitle) {
     candidateTitles.push(originalTitle);
   }
 
-  const isBrowser = typeof window !== 'undefined';
-  const baseRoute = isBrowser ? '/api/fin' : 'http://localhost:3000/api/fin';
+  const candidateSlugs = [];
+  candidateTitles.forEach(t => {
+    const slug = toTurkishSlug(t);
+    if (slug) {
+      if (!candidateSlugs.includes(slug)) candidateSlugs.push(slug);
+      if (slug.startsWith('the-')) {
+        const noThe = slug.replace(/^the-/, '');
+        if (!candidateSlugs.includes(noThe)) candidateSlugs.push(noThe);
+      }
+    }
+  });
 
-  for (const query of candidateTitles) {
+  const baseDomain = 'https://filmizle.now';
+  const targetPaths = [];
+
+  for (const slug of candidateSlugs) {
+    if (isMovie) {
+      targetPaths.push(`/film/${slug}`);
+    } else {
+      targetPaths.push(`/dizi/${slug}/${season}-sezon-${episode}-bolum`, `/dizi/${slug}/sezon-${season}-bolum-${episode}`);
+    }
+  }
+
+  for (const path of targetPaths) {
     try {
-      let targetPath = null;
-      const cleanSlug = toTurkishSlug(query);
-      const directPath = type === 'tv'
-        ? `/dizi/${cleanSlug}/${season}-sezon-${episode}-bolum`
-        : `/film/${cleanSlug}`;
+      const fullUrl = `${baseDomain}${path}`;
+      const proxyUrl = typeof window !== 'undefined'
+        ? `/api/fin${path}`
+        : `${CF_WORKER_PROXY}?url=${encodeURIComponent(fullUrl)}`;
 
-      let directRes = await fetch(`${baseRoute}${directPath}`, { signal: AbortSignal.timeout(3500) }).catch(() => null);
-      if (directRes && directRes.ok) {
-        targetPath = directPath;
-      } else {
-        const searchRes = await fetch(`${baseRoute}/arama?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(3500) }).catch(() => null);
-        if (searchRes && searchRes.ok) {
-          const sHtml = await searchRes.text();
-          const allHrefs = [...sHtml.matchAll(/href="([^"]*(?:film|dizi)[^"]*)"/gi)].map(m => m[1]);
+      const res = await fetch(proxyUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://filmizle.now/'
+        },
+        signal: AbortSignal.timeout(2200)
+      }).catch(() => null);
 
-          for (const h of allHrefs) {
-            if (h.includes('/arama') || h.includes('/diziler') || h.includes('/kesfet') || h.includes('/seri-filmler') || h.includes('/yil/')) continue;
-            const slugPart = h.split('/').pop();
-            const candName = slugPart.replace(/-/g, ' ');
+      if (!res || !res.ok) continue;
+      const html = await res.text();
 
-            if (isTitleStrictMatch(query, candName, year)) {
-              const cleanHref = h.replace(/^https?:\/\/(?:www\.)?filmizle\.now/, '');
-              targetPath = type === 'tv'
-                ? `${cleanHref}/${season}-sezon-${episode}-bolum`
-                : cleanHref;
-              break;
-            }
+      // Check for Vidmixi items in Alpine.js bxMatch
+      const bxMatch = html.match(/x-data="bx\(JSON\.parse\('([^']+)'\)\)"/i);
+      if (bxMatch) {
+        const rawJson = bxMatch[1].replace(/\\u0022/g, '"');
+        const items = JSON.parse(rawJson);
+        if (items && items.length > 0) {
+          const item = items[0];
+          if (item && item.s) {
+            const vidmixiUrl = `https://vidmixi.com/e/${item.s}`;
+            return [
+              {
+                id: `fin_vidmixi_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
+                name: `Now Stream (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+                badge: '⚡ Now Stream',
+                category: isDub ? 'dubbed' : 'subtitled',
+                url: vidmixiUrl,
+                streamUrl: vidmixiUrl,
+                getUrl: () => vidmixiUrl
+              }
+            ];
           }
         }
       }
 
-      if (!targetPath) continue;
-
-      const pageRes = await fetch(`${baseRoute}${targetPath}`, { signal: AbortSignal.timeout(3500) }).catch(() => null);
-      if (!pageRes || !pageRes.ok) continue;
-
-      const html = await pageRes.text();
-      const csrfToken = html.match(/<meta name="csrf-token" content="([^"]+)"/i)?.[1];
-      const bxMatch = html.match(/x-data="bx\(JSON\.parse\('([^']+)'\)\)"/i);
-      if (!bxMatch) continue;
-
-      const rawJson = bxMatch[1].replace(/\\u0022/g, '"');
-      const items = JSON.parse(rawJson);
-      if (!items || items.length === 0) continue;
-
-      const results = [];
-      for (const item of items) {
-        const isItemDub = item.type === 'dubbed' || item.title?.toLowerCase().includes('dublaj');
-        if (isDub !== isItemDub) continue;
-
-        const bodyData = new URLSearchParams({
-          action: 'get_video',
-          video_id: item.id
-        });
-
-        const videoRes = await fetch(`${baseRoute}/ajax/player`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRF-TOKEN': csrfToken || '',
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: bodyData.toString(),
-          signal: AbortSignal.timeout(3500)
-        }).catch(() => null);
-
-        if (!videoRes || !videoRes.ok) continue;
-        const videoJson = await videoRes.json().catch(() => null);
-        if (!videoJson || !videoJson.url) continue;
-
-        let finalUrl = videoJson.url;
-        if (finalUrl.startsWith('//')) finalUrl = 'https:' + finalUrl;
-
-        results.push({
-          id: `fin_${item.id}`,
-          name: `${item.title || 'Now Stream'} (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
-          badge: isDub ? '⚡ Now 1080p' : '💬 Now 1080p',
-          category: isDub ? 'dubbed' : 'subtitled',
-          streamUrl: finalUrl,
-          url: finalUrl,
-          getUrl: () => finalUrl
-        });
+      // Check for direct iframe src
+      const iframes = [...html.matchAll(/<iframe[^>]*(?:data-src|src)="([^"]+)"/gi)].map(m => m[1]);
+      const validIframe = iframes.find(u => u.includes('vidmixi') || u.includes('embed') || u.includes('player'));
+      if (validIframe) {
+        return [
+          {
+            id: `fin_iframe_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
+            name: `Now Stream (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+            badge: '⚡ Now Stream',
+            category: isDub ? 'dubbed' : 'subtitled',
+            url: validIframe,
+            streamUrl: validIframe,
+            getUrl: () => validIframe
+          }
+        ];
       }
-
-      if (results.length > 0) return results;
-    } catch (e) {}
+    } catch (_) {
+      continue;
+    }
   }
 
   return [];

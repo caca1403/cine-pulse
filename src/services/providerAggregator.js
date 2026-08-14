@@ -40,7 +40,7 @@ function cleanTitle(raw) {
     .trim();
 }
 
-function withTimeout(promise, ms = 7500) {
+function withTimeout(promise, ms = 2200) {
   return Promise.race([
     promise.catch(() => []),
     new Promise(resolve => setTimeout(() => resolve([]), ms))
@@ -56,7 +56,7 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
 
   if (tmdbId) {
     try {
-      const enRes = await fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&language=en-US`).catch(() => null);
+      const enRes = await fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&language=en-US`, { signal: AbortSignal.timeout(1200) }).catch(() => null);
       if (enRes && enRes.ok) {
         const enData = await enRes.json().catch(() => null);
         if (enData) {
@@ -69,7 +69,7 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
         }
       }
 
-      const altRes = await fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}/alternative_titles?api_key=${TMDB_API_KEY}`).catch(() => null);
+      const altRes = await fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}/alternative_titles?api_key=${TMDB_API_KEY}`, { signal: AbortSignal.timeout(1200) }).catch(() => null);
       if (altRes && altRes.ok) {
         const altData = await altRes.json().catch(() => null);
         const altList = altData?.titles || altData?.results || [];
