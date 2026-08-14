@@ -1,7 +1,7 @@
 /* ==========================================================================
    CinePulse Studio - Now Stream (FilmIzleCh / Now) Scraper
    Fetches live 1080p Turkish Dubbed & Subtitled Streams via CF Worker Gateway
-   Strict title matching to prevent wrong movie playback.
+   Strict bidirectional whole-title slug matching to prevent wrong movie playback.
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
@@ -25,16 +25,19 @@ function toSlug(title) {
 
 function isSlugSimilar(targetSlug, candidateSlug) {
   if (!targetSlug || !candidateSlug) return false;
-  const cleanT = targetSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '');
-  const cleanC = candidateSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '');
+  const cleanT = targetSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '').replace(/^the-/, '');
+  const cleanC = candidateSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '').replace(/^the-/, '');
   if (cleanT === cleanC) return true;
 
-  const tParts = cleanT.split('-').filter(p => p.length > 1);
-  const cParts = cleanC.split('-').filter(p => p.length > 1);
+  const tParts = cleanT.split('-').filter(p => p.length > 0);
+  const cParts = cleanC.split('-').filter(p => p.length > 0);
 
   const matched = tParts.filter(p => cParts.includes(p)).length;
-  const ratio = matched / Math.max(tParts.length, 1);
-  return ratio >= 0.75;
+  // Symmetrical Jaccard / Max token ratio - must match both directions
+  const maxLen = Math.max(tParts.length, cParts.length, 1);
+  const ratio = matched / maxLen;
+
+  return ratio >= 0.85;
 }
 
 export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
@@ -58,7 +61,7 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
   const baseDomains = ['https://filmizlech.com'];
 
   for (const baseDomain of baseDomains) {
-    // 1. Try direct slugs
+    // 1. Try direct slugs first
     for (const slug of candidateSlugs) {
       const targetUrl = isMovie
         ? `${baseDomain}/film/${slug}`
@@ -98,7 +101,7 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
       } catch (e) {}
     }
 
-    // 2. Try search with strict title matching
+    // 2. Try search with strict bidirectional title validation
     for (const searchKeyword of candidateTitles) {
       try {
         const sUrl = `${baseDomain}/search/${encodeURIComponent(searchKeyword)}`;
@@ -111,7 +114,7 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
         const foundHrefs = [...sHtml.matchAll(itemRegex)].map(m => m[1]);
         const cleanHrefs = [...new Set(foundHrefs)].filter(h => !h.includes('/search/'));
 
-        // Strict slug similarity matching - NEVER blindly take cleanHrefs[0]
+        // Strict bidirectional similarity matching
         const matchedHref = cleanHrefs.find(h => {
           const hrefSlug = h.split('/').pop();
           return candidateSlugs.some(cs => isSlugSimilar(cs, hrefSlug));
