@@ -58,8 +58,15 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     .filter(s => {
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
       const nameStr = (s.name || '').toLowerCase();
-      const isFilemoon = nameStr.includes('filemoon') || urlStr.includes('filemoon') || urlStr.includes('bysejikuar');
-      return urlStr && !urlStr.includes('recaptcha') && !isFilemoon && urlStr.length > 8;
+      const isBlocked = 
+        nameStr.includes('filemoon') || 
+        nameStr.includes('setplay') || 
+        nameStr.includes('fastplay') ||
+        urlStr.includes('filemoon') || 
+        urlStr.includes('bysejikuar') || 
+        urlStr.includes('setplay.shop') ||
+        urlStr.includes('fastplay.mom');
+      return urlStr && !urlStr.includes('recaptcha') && !isBlocked && urlStr.length > 8;
     })
     .map(s => ({
       id: s.id,
@@ -76,11 +83,9 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
   const cleanDubbed = [
     ...mapDubbedSources(dblDub),
     ...mapDubbedSources(szdDub),
-    ...mapDubbedSources(dzpDub),
-    ...mapDubbedSources(snxDub),
     ...mapDubbedSources(flzDub),
-    ...mapDubbedSources(hdfcDub),
-    ...mapDubbedSources(finDub)
+    ...mapDubbedSources(snxDub),
+    ...mapDubbedSources(dzpDub)
   ];
 
   if (cleanDubbed.length === 0) {
@@ -100,8 +105,15 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     .filter(s => {
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
       const nameStr = (s.name || '').toLowerCase();
-      const isFilemoon = nameStr.includes('filemoon') || urlStr.includes('filemoon') || urlStr.includes('bysejikuar');
-      return urlStr && !urlStr.includes('recaptcha') && !isFilemoon && urlStr.length > 8;
+      const isBlocked = 
+        nameStr.includes('filemoon') || 
+        nameStr.includes('setplay') || 
+        nameStr.includes('fastplay') ||
+        urlStr.includes('filemoon') || 
+        urlStr.includes('bysejikuar') || 
+        urlStr.includes('setplay.shop') ||
+        urlStr.includes('fastplay.mom');
+      return urlStr && !urlStr.includes('recaptcha') && !isBlocked && urlStr.length > 8;
     })
     .map(s => ({
       id: s.id,
