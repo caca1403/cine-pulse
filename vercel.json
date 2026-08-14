@@ -2,31 +2,39 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/dbl/(.*)",
-      "destination": "https://dizibal.com/api/$1"
+      "source": "/api/szd/:path*",
+      "destination": "/api/szd"
     },
     {
-      "source": "/api/dzp/(.*)",
-      "destination": "https://dizipal.bid/$1"
+      "source": "/api/snx/:path*",
+      "destination": "/api/snx"
     },
     {
-      "source": "/api/flz/(.*)",
-      "destination": "https://filmizlech.com/$1"
+      "source": "/api/dbl/:path*",
+      "destination": "https://dizibal.com/api/:path*"
     },
     {
-      "source": "/api/hdfc/(.*)",
-      "destination": "https://www.hdfilmcehennemi.now/$1"
+      "source": "/api/dzp/:path*",
+      "destination": "https://dizipal.bid/:path*"
     },
     {
-      "source": "/api/fin/(.*)",
-      "destination": "https://filmizle.now/$1"
+      "source": "/api/flz/:path*",
+      "destination": "https://filmizlech.com/:path*"
     },
     {
-      "source": "/api/vidmixi/(.*)",
-      "destination": "https://vidmixi.com/$1"
+      "source": "/api/hdfc/:path*",
+      "destination": "https://www.hdfilmcehennemi.now/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/api/fin/:path*",
+      "destination": "https://filmizle.now/:path*"
+    },
+    {
+      "source": "/api/vidmixi/:path*",
+      "destination": "https://vidmixi.com/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],
