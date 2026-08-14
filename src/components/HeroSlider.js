@@ -1,0 +1,180 @@
+/* ==========================================================================
+   SineFlix Pro - Hero Slider Component
+   Featured interactive carousel slider for top trending items with auto-rotator
+   ========================================================================== */
+
+import { getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
+import { isWatchlist, toggleWatchlist } from '../services/storage.js';
+import { showToast } from './Toast.js';
+
+let currentSlideIndex = 0;
+let slideInterval = null;
+
+export function renderHeroSlider(items = []) {
+  if (!items || items.length === 0) return '';
+
+  const slides = items.slice(0, 15);
+  const featured = slides[currentSlideIndex] || slides[0];
+
+  const id = featured.id;
+  const type = featured.first_air_date || featured.media_type === 'tv' ? 'tv' : 'movie';
+  const title = featured.title || featured.name || 'Öne Çıkan Yapım';
+  const overview = featured.overview || 'Bu yapım için henüz Türkçe özet eklenmedi.';
+  const backdropUrl = getImageUrl(featured.backdrop_path, TMDB_IMAGE_SIZES.BACKDROP_ORIGINAL);
+  const rating = featured.vote_average ? featured.vote_average.toFixed(1) : '8.8';
+  const year = (featured.first_air_date || featured.release_date || '').substring(0, 4);
+
+  const inWatchlist = isWatchlist(id);
+
+  return `
+    <section class="hero-slider" id="hero-slider-section">
+      <div class="glow-beam glow-beam-red"></div>
+      <div class="glow-beam glow-beam-blue"></div>
+
+      <div class="hero-backdrop" id="hero-backdrop-img" style="background-image: url('${backdropUrl}')"></div>
+      
+      <div class="container">
+        <div class="hero-content">
+          <div class="hero-badge-row" id="hero-badge-row">
+            <span class="badge badge-primary" id="hero-top-badge">TOP ${currentSlideIndex + 1} ÖNE ÇIKAN</span>
+            <span class="badge badge-rating" id="hero-rating-badge">
+              <i data-lucide="star" style="width:14px; height:14px; fill: currentColor"></i> ${rating} IMDb
+            </span>
+            <span class="badge" id="hero-year-badge">${year}</span>
+            <span class="badge" id="hero-type-badge">${type === 'tv' ? 'DİZİ' : 'FİLM'}</span>
+            <span class="badge" style="background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border-color: rgba(0, 242, 254, 0.3);">4K ULTRA HD</span>
+          </div>
+
+          <h1 class="hero-title" id="hero-title-text">${title}</h1>
+          <p class="hero-overview" id="hero-overview-text">${overview}</p>
+
+          <div class="hero-actions">
+            <button class="btn-primary" id="hero-play-btn" data-id="${id}" data-type="${type}">
+              <i data-lucide="play" style="fill: currentColor"></i>
+              <span>Hemen İzle</span>
+            </button>
+
+            <button class="btn-secondary" id="hero-list-btn" data-id="${id}" data-type="${type}">
+              <i data-lucide="${inWatchlist ? 'check' : 'plus'}"></i>
+              <span>${inWatchlist ? 'Listemde' : 'Listeme Ekle'}</span>
+            </button>
+          </div>
+
+          <!-- Carousel Dots (max 15 items) -->
+          <div style="display: flex; gap: 0.4rem; margin-top: 2rem; align-items: center; flex-wrap: wrap;" id="hero-dots-container">
+            ${slides.map((_, idx) => `
+              <div class="hero-dot ${idx === currentSlideIndex ? 'active' : ''}" data-index="${idx}" style="
+                width: ${idx === currentSlideIndex ? '28px' : '8px'};
+                height: 8px;
+                border-radius: var(--radius-full);
+                background: ${idx === currentSlideIndex ? 'var(--primary-gradient)' : 'rgba(255,255,255,0.2)'};
+                cursor: pointer;
+                transition: var(--transition-smooth);
+              "></div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+export function attachHeroSliderEvents(items = []) {
+  const slides = items.slice(0, 15);
+  const playBtn = document.getElementById('hero-play-btn');
+  const listBtn = document.getElementById('hero-list-btn');
+
+  if (playBtn) {
+    playBtn.addEventListener('click', () => {
+      const id = playBtn.getAttribute('data-id');
+      const type = playBtn.getAttribute('data-type');
+      window.location.hash = `#detail?type=${type}&id=${id}`;
+    });
+  }
+
+  if (listBtn && slides.length > 0) {
+    listBtn.addEventListener('click', () => {
+      const currentItem = slides[currentSlideIndex];
+      const added = toggleWatchlist(currentItem);
+      showToast(added ? 'İzleme listene eklendi!' : 'İzleme listenden çıkarıldı.', added ? 'success' : 'info');
+      const icon = listBtn.querySelector('i');
+      const text = listBtn.querySelector('span');
+      if (icon && text) {
+        icon.setAttribute('data-lucide', added ? 'check' : 'plus');
+        text.textContent = added ? 'Listemde' : 'Listeme Ekle';
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+  }
+
+  // Handle dot clicks
+  document.querySelectorAll('.hero-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      const idx = parseInt(dot.getAttribute('data-index'), 10);
+      currentSlideIndex = idx;
+      updateHeroSlide(slides[idx]);
+    });
+  });
+
+  // Auto-rotator every 5 seconds for dynamic feel
+  clearInterval(slideInterval);
+  slideInterval = setInterval(() => {
+    if (slides.length > 0) {
+      currentSlideIndex = (currentSlideIndex + 1) % slides.length;
+      updateHeroSlide(slides[currentSlideIndex]);
+    }
+  }, 5000);
+}
+
+function updateHeroSlide(item) {
+  if (!item) return;
+  const backdropEl = document.getElementById('hero-backdrop-img');
+  const titleEl = document.getElementById('hero-title-text');
+  const overviewEl = document.getElementById('hero-overview-text');
+  const playBtn = document.getElementById('hero-play-btn');
+  const listBtn = document.getElementById('hero-list-btn');
+
+  const topBadge = document.getElementById('hero-top-badge');
+  const ratingBadge = document.getElementById('hero-rating-badge');
+  const yearBadge = document.getElementById('hero-year-badge');
+  const typeBadge = document.getElementById('hero-type-badge');
+
+  const type = item.first_air_date || item.media_type === 'tv' ? 'tv' : 'movie';
+  const backdropUrl = getImageUrl(item.backdrop_path, TMDB_IMAGE_SIZES.BACKDROP_ORIGINAL);
+  const rating = item.vote_average ? item.vote_average.toFixed(1) : '8.5';
+  const year = (item.first_air_date || item.release_date || '').substring(0, 4);
+
+  if (backdropEl) backdropEl.style.backgroundImage = `url('${backdropUrl}')`;
+  if (titleEl) titleEl.textContent = item.title || item.name;
+  if (overviewEl) overviewEl.textContent = item.overview || 'Bu yapım için Türkçe özet henüz eklenmedi.';
+
+  if (topBadge) topBadge.textContent = `TOP ${currentSlideIndex + 1} ÖNE ÇIKAN`;
+  if (ratingBadge) ratingBadge.innerHTML = `<i data-lucide="star" style="width:14px; height:14px; fill: currentColor"></i> ${rating} IMDb`;
+  if (yearBadge) yearBadge.textContent = year || '2024';
+  if (typeBadge) typeBadge.textContent = type === 'tv' ? 'DİZİ' : 'FİLM';
+
+  if (playBtn) {
+    playBtn.setAttribute('data-id', item.id);
+    playBtn.setAttribute('data-type', type);
+  }
+  if (listBtn) {
+    listBtn.setAttribute('data-id', item.id);
+    listBtn.setAttribute('data-type', type);
+    const inList = isWatchlist(item.id);
+    const text = listBtn.querySelector('span');
+    if (text) text.textContent = inList ? 'Listemde' : 'Listeme Ekle';
+  }
+
+  if (window.lucide) window.lucide.createIcons();
+
+  // Update dots
+  document.querySelectorAll('.hero-dot').forEach((dot, idx) => {
+    if (idx === currentSlideIndex) {
+      dot.style.width = '28px';
+      dot.style.background = 'var(--primary-gradient)';
+    } else {
+      dot.style.width = '8px';
+      dot.style.background = 'rgba(255,255,255,0.2)';
+    }
+  });
+}
