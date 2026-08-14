@@ -1875,4 +1875,25 @@ button {
   box-shadow: 0 0 12px var(--primary-glow);
 }
 
+/* Watched Active Status Button */
+.btn-watched-active {
+  background: rgba(16, 185, 129, 0.25) !important;
+  border-color: #10b981 !important;
+  color: #10b981 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.3) !important;
+}
+
+.btn-watched-active svg,
+.btn-watched-active i,
+.btn-watched-active span {
+  color: #10b981 !important;
+  stroke: #10b981 !important;
+}
+
+.btn-watched-active:hover {
+  background: rgba(16, 185, 129, 0.35) !important;
+  border-color: #34d399 !important;
+}
+
 
