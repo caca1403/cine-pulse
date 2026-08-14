@@ -1,11 +1,11 @@
 /* ==========================================================================
    CinePulse Studio - Media Card Component
    Renders poster, title, IMDb rating, resolution badges, watch progress bar,
-   and handles direct click-to-play with saved timestamp (Kaldığın Yerden Devam Et).
+   remaining time badge, and handles direct click-to-play with saved timestamp.
    ========================================================================== */
 
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime } from '../services/storage.js';
+import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime } from '../services/storage.js';
 import { openPlayerModal } from './PlayerModal.js';
 
 export function renderMediaCard(item, options = {}) {
@@ -14,16 +14,18 @@ export function renderMediaCard(item, options = {}) {
   const title = item.title || item.name || 'İsimsiz İçerik';
   const posterPath = item.poster_path || item.posterPath;
   const posterUrl = getImageUrl(posterPath, TMDB_IMAGE_SIZES.POSTER_MEDIUM);
-  const rating = item.vote_average ? item.vote_average.toFixed(1) : (item.voteAverage || '8.5');
+  const rating = item.vote_average ? Number(item.vote_average).toFixed(1) : (item.voteAverage ? Number(item.voteAverage).toFixed(1) : '8.5');
   const year = (item.release_date || item.first_air_date || '').substring(0, 4) || '2024';
 
   let progressPercent = item.progressPercent || 0;
   let season = item.season || 1;
   let episode = item.episode || 1;
   let currentTime = item.currentTime || 0;
+  let isCompleted = item.completed || false;
   let isContinue = false;
+  let effectiveDuration = item.duration || (type === 'movie' ? 6600 : 3000);
 
-  if (progressPercent > 0 || item.currentTime > 0) {
+  if (progressPercent > 0 || item.currentTime > 0 || item.completed) {
     isContinue = true;
   } else {
     if (type === 'tv') {
@@ -33,6 +35,8 @@ export function renderMediaCard(item, options = {}) {
         season = lastWatched.season || 1;
         episode = lastWatched.episode || 1;
         currentTime = lastWatched.currentTime || 0;
+        isCompleted = lastWatched.completed || false;
+        effectiveDuration = lastWatched.duration || 3000;
         isContinue = true;
       }
     } else {
@@ -40,6 +44,8 @@ export function renderMediaCard(item, options = {}) {
       if (progress) {
         progressPercent = progress.progressPercent || 0;
         currentTime = progress.currentTime || 0;
+        isCompleted = progress.completed || false;
+        effectiveDuration = progress.duration || 6600;
         isContinue = true;
       }
     }
@@ -47,14 +53,17 @@ export function renderMediaCard(item, options = {}) {
 
   let episodeInfoStr = '';
   const timeStr = formatSecondsToTime(currentTime);
+  const remTimeStr = (currentTime > 0 && !isCompleted) ? formatRemainingTime(currentTime, effectiveDuration) : '';
 
   if (item.subtitle) {
     episodeInfoStr = item.subtitle;
   } else if (isContinue) {
-    if (type === 'tv') {
-      episodeInfoStr = `S${season} B${episode}${timeStr ? ' • ' + timeStr : ''}`;
+    if (isCompleted) {
+      episodeInfoStr = '✓ İzlendi';
+    } else if (type === 'tv') {
+      episodeInfoStr = `S${season} B${episode}${timeStr ? ' • ' + timeStr : ''}${remTimeStr ? ' • ' + remTimeStr : ''}`;
     } else {
-      episodeInfoStr = `Kaldığın: ${timeStr || 'İzleniyor'}`;
+      episodeInfoStr = `Kaldığın: ${timeStr || 'İzleniyor'}${remTimeStr ? ' • ' + remTimeStr : ''}`;
     }
   } else {
     episodeInfoStr = `${year} • ${type === 'tv' ? 'Dizi' : 'Film'}`;
@@ -62,16 +71,26 @@ export function renderMediaCard(item, options = {}) {
 
   const progressBarHTML = progressPercent > 0 ? `
     <div class="card-progress-bar">
-      <div class="card-progress-fill" style="width: ${progressPercent}%"></div>
+      <div class="card-progress-fill" style="width: ${progressPercent}%; background: ${isCompleted ? 'var(--accent-green)' : 'var(--secondary-gradient)'};"></div>
     </div>
   ` : '';
 
-  const timeBadgeHTML = timeStr ? `
-    <span class="card-time-badge">
-      <i data-lucide="clock" style="width:10px; height:10px;"></i>
-      <span>${timeStr}</span>
-    </span>
-  ` : '';
+  let statusBadgeHTML = '';
+  if (isCompleted) {
+    statusBadgeHTML = `
+      <span class="card-time-badge" style="background: rgba(16, 185, 129, 0.9); color: #fff; border: 1px solid rgba(16, 185, 129, 0.4);">
+        <i data-lucide="check" style="width:10px; height:10px;"></i>
+        <span>İZLENDİ</span>
+      </span>
+    `;
+  } else if (timeStr) {
+    statusBadgeHTML = `
+      <span class="card-time-badge" title="${remTimeStr || timeStr}">
+        <i data-lucide="clock" style="width:10px; height:10px;"></i>
+        <span>${timeStr}</span>
+      </span>
+    `;
+  }
 
   return `
     <div class="media-card" 
@@ -92,7 +111,7 @@ export function renderMediaCard(item, options = {}) {
             <i data-lucide="star" style="width:11px; height:11px; fill:#fbbf24; color:#fbbf24;"></i>
             <span>${rating}</span>
           </span>
-          ${timeBadgeHTML}
+          ${statusBadgeHTML}
           <span class="card-type-badge">${type === 'tv' ? 'DİZİ' : 'FİLM'}</span>
         </div>
 
@@ -106,10 +125,10 @@ export function renderMediaCard(item, options = {}) {
       </div>
 
       <div class="card-info">
-        <div class="card-title">${title}</div>
+        <div class="card-title" title="${title}">${title}</div>
         <div class="card-meta">
-          <span style="${timeStr ? 'color: #fbbf24; font-weight: 700;' : ''}">${episodeInfoStr}</span>
-          <span style="color: var(--accent-cyan); font-weight: 600;">1080p HD</span>
+          <span class="card-subtitle-text" style="${timeStr ? 'color: #fbbf24; font-weight: 600;' : ''}">${episodeInfoStr}</span>
+          <span class="card-res-badge">1080p HD</span>
         </div>
       </div>
     </div>
@@ -131,7 +150,6 @@ export function attachMediaCardEvents(container) {
       const backdropPath = card.getAttribute('data-backdrop') || '';
       const isContinue = card.getAttribute('data-iscontinue') === 'true';
 
-      // If clicked from Continue Watching rail or card has saved watch history, open player directly
       if (isContinue && (card.closest('#continue-watching-rail') || currentTime > 0)) {
         openPlayerModal({
           type,
