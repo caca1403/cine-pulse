@@ -1,16 +1,16 @@
 /* ==========================================================================
    CinePulse Studio - Complete Turkish Live TV Catalog
-   Includes Ulusal (Kanal D, Show TV, Star, ATV, NOW, TV8...), Haber, Spor,
-   Belgesel (DMAX, TLC, TRT Belgesel...), Çocuk & Müzik.
+   Includes Ulusal, Haber, Spor, Belgesel, Çocuk (Çizgi Film), ve Müzik.
    ========================================================================== */
 
 export const LIVE_TV_CATEGORIES = [
   { id: 'all', name: 'Tüm Kanallar', icon: 'tv' },
   { id: 'national', name: 'Ulusal Kanallar', icon: 'home' },
   { id: 'news', name: 'Haber & Gündem', icon: 'newspaper' },
-  { id: 'sports', name: 'Spor', icon: 'trophy' },
+  { id: 'sports', name: 'Spor Kanalları', icon: 'trophy' },
   { id: 'doc', name: 'Belgesel & Doğa', icon: 'compass' },
-  { id: 'kids_music', name: 'Çocuk & Müzik', icon: 'music' }
+  { id: 'kids', name: 'Çocuk & Çizgi Dizi', icon: 'smile' },
+  { id: 'music', name: 'Müzik & Gençlik', icon: 'music' }
 ];
 
 export const LIVE_TV_CHANNELS = [
@@ -296,13 +296,43 @@ export const LIVE_TV_CHANNELS = [
     isHls: true
   },
   {
-    id: 'ch_bein_haber',
-    name: 'beIN Sports Haber HD',
+    id: 'ch_sportstv',
+    name: 'Sports TV HD',
     category: 'sports',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/BeIN_Sports_1_logo.svg/300px-BeIN_Sports_1_logo.svg.png',
-    badge: '⚡ Canlı Spor Haber',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/9/90/Sports_TV_logo.png/300px-Sports_TV_logo.png',
+    badge: '⚡ Sporun Her Rengi',
     quality: '1080p Full HD',
-    streamUrl: 'https://www.canlitv.fun/iframe/bein-sports-haber',
+    streamUrl: 'https://www.canlitv.fun/iframe/sportstv',
+    isHls: false
+  },
+  {
+    id: 'ch_fbtv',
+    name: 'Fenerbahçe TV (FB TV) HD',
+    category: 'sports',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/a/a2/FB_TV_logo.png/300px-FB_TV_logo.png',
+    badge: '🟡🔵 Kulüp TV',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/fbtv',
+    isHls: false
+  },
+  {
+    id: 'ch_gstv',
+    name: 'Galatasaray TV (GS TV) HD',
+    category: 'sports',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/4/4e/GS_TV_logo.png/300px-GS_TV_logo.png',
+    badge: '🟡🔴 Kulüp TV',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/gstv',
+    isHls: false
+  },
+  {
+    id: 'ch_tjktv',
+    name: 'TJK TV HD (Canlı Yarış)',
+    category: 'sports',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/9/9c/TJK_TV_logo.png/300px-TJK_TV_logo.png',
+    badge: '🐎 Canlı Yarış & Spor',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/tjk-tv',
     isHls: false
   },
 
@@ -361,12 +391,12 @@ export const LIVE_TV_CHANNELS = [
   },
 
   // ==========================================
-  // --- 👶 ÇOCUK & 🎵 MÜZİK (KIDS & MUSIC) ---
+  // --- 👶 ÇOCUK & ANİMASYON (KIDS) ---
   // ==========================================
   {
     id: 'ch_trtcocuk',
     name: 'TRT Çocuk HD',
-    category: 'kids_music',
+    category: 'kids',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/TRT_%C3%87ocuk_logo.svg/300px-TRT_%C3%87ocuk_logo.svg.png',
     badge: '👶 Çizgi Film & Eğlence',
     quality: '1080p Full HD',
@@ -376,7 +406,7 @@ export const LIVE_TV_CHANNELS = [
   {
     id: 'ch_minikago',
     name: 'Minika GO HD',
-    category: 'kids_music',
+    category: 'kids',
     logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/8/87/Minika_GO_logo.png/300px-Minika_GO_logo.png',
     badge: '👶 Macera & Çizgi Dizi',
     quality: '1080p Full HD',
@@ -384,13 +414,107 @@ export const LIVE_TV_CHANNELS = [
     isHls: true
   },
   {
+    id: 'ch_minikacocuk',
+    name: 'Minika Çocuk HD',
+    category: 'kids',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/b/b3/Minika_%C3%87ocuk_logo.png/300px-Minika_%C3%87ocuk_logo.png',
+    badge: '👶 Okul Öncesi & Çizgi Film',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/minika-cocuk',
+    isHls: false
+  },
+  {
+    id: 'ch_cartoonnetwork',
+    name: 'Cartoon Network TR HD',
+    category: 'kids',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Cartoon_Network_2010_logo.svg/300px-Cartoon_Network_2010_logo.svg.png',
+    badge: '⚡ Efsane Çizgi Diziler',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/cartoon-network',
+    isHls: false
+  },
+  {
+    id: 'ch_disneychannel',
+    name: 'Disney Channel TR HD',
+    category: 'kids',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/2019_Disney_Channel_logo.svg/300px-2019_Disney_Channel_logo.svg.png',
+    badge: '✨ Disney Çizgi Filmleri',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/disney-channel',
+    isHls: false
+  },
+  {
+    id: 'ch_zaroktv',
+    name: 'Zarok TV HD',
+    category: 'kids',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Zarok_TV_logo.png/300px-Zarok_TV_logo.png',
+    badge: '👶 Eğlenceli Çizgi Dizi',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/zarok-tv',
+    isHls: false
+  },
+
+  // ==========================================
+  // --- 🎵 MÜZİK & GENÇLİK (MUSIC) ---
+  // ==========================================
+  {
     id: 'ch_trtmuzik',
     name: 'TRT Müzik HD',
-    category: 'kids_music',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Kral_Pop_TV_logo.png/300px-Kral_Pop_TV_logo.png',
+    category: 'music',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/TRT_M%C3%BCzik_logo.svg/300px-TRT_M%C3%BCzik_logo.svg.png',
     badge: '🎵 Canlı Müzik & Konser',
     quality: '1080p Full HD',
     streamUrl: 'https://tv-trtmuzik.medya.trt.com.tr/master_480.m3u8',
     isHls: true
+  },
+  {
+    id: 'ch_kralpop',
+    name: 'Kral Pop TV HD',
+    category: 'music',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Kral_Pop_TV_logo.png/300px-Kral_Pop_TV_logo.png',
+    badge: '🔥 Türkçe Pop Hit',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/kral-pop',
+    isHls: false
+  },
+  {
+    id: 'ch_powerturk',
+    name: 'PowerTürk TV HD',
+    category: 'music',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/8/86/Power_T%C3%BCrk_TV_logo.png/300px-Power_T%C3%BCrk_TV_logo.png',
+    badge: '⚡ En Sevilen Klipler',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/powerturk',
+    isHls: false
+  },
+  {
+    id: 'ch_dreamturk',
+    name: 'Dream Türk TV HD',
+    category: 'music',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/b/b5/Dream_T%C3%BCrk_logo.png/300px-Dream_T%C3%BCrk_logo.png',
+    badge: '🎸 Gençlik & Müzik',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/dream-turk',
+    isHls: false
+  },
+  {
+    id: 'ch_numberone',
+    name: 'Number 1 TV HD',
+    category: 'music',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/2/2f/Number_One_TV_logo.png/300px-Number_One_TV_logo.png',
+    badge: '🌍 Yabancı Hit Müzik',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/number-one-tv',
+    isHls: false
+  },
+  {
+    id: 'ch_numberoneturk',
+    name: 'Number 1 Türk TV HD',
+    category: 'music',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/a/a2/Number_One_T%C3%BCrk_TV_logo.png/300px-Number_One_T%C3%BCrk_TV_logo.png',
+    badge: '🎵 Türkçe Müzik Listesi',
+    quality: '1080p Full HD',
+    streamUrl: 'https://www.canlitv.fun/iframe/number-one-turk',
+    isHls: false
   }
 ];
