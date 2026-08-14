@@ -1,6 +1,7 @@
 /* ==========================================================================
-   SineFlix Pro - Season & Episode Selector Component
-   Renders season tabs and episode cards with REAL TMDB overviews & interactive 'Devamını Oku (...)' expansion
+   CinePulse Studio - Season & Episode Selector Component
+   Renders season tabs and episode cards with REAL TMDB overviews,
+   instant episode click-to-play, and 'Devamını Oku (...)' overview expansion.
    ========================================================================== */
 
 import { fetchSeasonDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
@@ -38,7 +39,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
     init: (container) => {
       if (!container) return;
       
-      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, activeSeasonNumber, container, posterPath, backdropPath);
+      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, activeSeasonNumber, container, posterPath, backdropPath, originalTitle);
 
       container.querySelectorAll('.season-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -46,14 +47,14 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
           container.querySelectorAll('.season-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           const seasonNum = parseInt(btn.getAttribute('data-season'), 10);
-          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath, backdropPath);
+          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath, backdropPath, originalTitle);
         });
       });
     }
   };
 }
 
-async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath = '', backdropPath = '') {
+async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath = '', backdropPath = '', originalTitle = '') {
   const gridContainer = container.querySelector('#episode-grid-container');
   if (!gridContainer) return;
 
@@ -159,11 +160,13 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
     });
   });
 
-  // Attach Episode Card Play Click
+  // Attach Episode Card & Play Triggers
   gridContainer.querySelectorAll('.episode-card').forEach(card => {
-    card.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+    const playEpisode = (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       const season = parseInt(card.getAttribute('data-season'), 10);
       const episode = parseInt(card.getAttribute('data-episode'), 10);
       const epTitle = card.getAttribute('data-title');
@@ -176,13 +179,22 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
         tmdbId: tvId,
         title: `${seriesTitle} - S${season}E${episode}: ${epTitle}`,
         seriesTitle,
-        originalTitle,
+        originalTitle: originalTitle || seriesTitle,
         season,
         episode,
         posterPath,
         backdropPath,
         currentTime: startTime
       });
-    });
+    };
+
+    card.addEventListener('click', playEpisode);
+    
+    // Explicit trigger listeners for thumb and play button
+    const thumbWrapper = card.querySelector('.episode-thumb-wrapper');
+    if (thumbWrapper) thumbWrapper.addEventListener('click', playEpisode);
+
+    const playTrigger = card.querySelector('.btn-play-episode-trigger');
+    if (playTrigger) playTrigger.addEventListener('click', playEpisode);
   });
 }
