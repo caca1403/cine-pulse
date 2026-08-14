@@ -67,13 +67,16 @@ export async function renderDiscoverView(initialType = 'tv') {
               </p>
             </div>
 
-            <!-- Content Type Switcher (Dizi / Film) -->
-            <div style="display: flex; background: rgba(0, 0, 0, 0.4); padding: 0.35rem; border-radius: var(--radius-full); border: 1px solid var(--border-color);">
-              <button class="type-switch-btn ${currentType === 'tv' ? 'active' : ''}" id="discover-type-tv" style="padding: 0.6rem 1.6rem; font-weight: 700; font-size: 0.9rem; border-radius: var(--radius-full);">
+                   <!-- Content Type Switcher (Dizi / Film / Anime) -->
+            <div style="display: flex; background: rgba(0, 0, 0, 0.4); padding: 0.35rem; border-radius: var(--radius-full); border: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.25rem;">
+              <button class="type-switch-btn ${currentType === 'tv' ? 'active' : ''}" id="discover-type-tv" style="padding: 0.6rem 1.4rem; font-weight: 700; font-size: 0.9rem; border-radius: var(--radius-full);">
                 <i data-lucide="tv-2" style="width: 16px; height: 16px;"></i> Diziler
               </button>
-              <button class="type-switch-btn ${currentType === 'movie' ? 'active' : ''}" id="discover-type-movie" style="padding: 0.6rem 1.6rem; font-weight: 700; font-size: 0.9rem; border-radius: var(--radius-full);">
+              <button class="type-switch-btn ${currentType === 'movie' ? 'active' : ''}" id="discover-type-movie" style="padding: 0.6rem 1.4rem; font-weight: 700; font-size: 0.9rem; border-radius: var(--radius-full);">
                 <i data-lucide="clapperboard" style="width: 16px; height: 16px;"></i> Filmler
+              </button>
+              <button class="type-switch-btn ${currentType === 'anime' ? 'active' : ''}" id="discover-type-anime" style="padding: 0.6rem 1.4rem; font-weight: 700; font-size: 0.9rem; border-radius: var(--radius-full);">
+                <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i> Anime
               </button>
             </div>
           </div>
@@ -88,43 +91,37 @@ export async function renderDiscoverView(initialType = 'tv') {
               </label>
               <select id="discover-sort-select" class="discover-filter-select">
                 <option value="popularity.desc">🔥 En Popülerler (Trend)</option>
-                <option value="vote_count.desc">👑 Tüm Zamanların En Çok Oy Alanları</option>
-                <option value="vote_average.desc">⭐ En Yüksek IMDb Puanlılar</option>
-                <option value="first_air_date.desc">✨ En Yeni Yayınlananlar</option>
+                <option value="vote_average.desc">⭐ En Yüksek IMDb Puanı</option>
+                <option value="first_air_date.desc">📅 En Yeniler (Vizyon / Çıkış)</option>
               </select>
             </div>
 
-            <!-- Min Rating Select -->
+            <!-- Min IMDb Rating Slider/Select -->
             <div>
               <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
-                <i data-lucide="star" style="width:12px; height:12px; color: #fbbf24;"></i> Asgari IMDb Puanı
+                <i data-lucide="star" style="width:12px; height:12px;"></i> Minimum IMDb Puanı
               </label>
               <select id="discover-rating-select" class="discover-filter-select">
-                <option value="0">Tüm Puanlar (Fark Etmez)</option>
-                <option value="8.5">🏆 8.5 ve Üzeri (Kült Efsaneler)</option>
-                <option value="8.0">⭐ 8.0 ve Üzeri (Çok Yüksek Puanlı)</option>
-                <option value="7.5">🌟 7.5 ve Üzeri (Harika Seçimler)</option>
-                <option value="7.0">👍 7.0 ve Üzeri (Kaliteli Yapımlar)</option>
-                <option value="6.0">🎬 6.0 ve Üzeri (Ortalama Üstü)</option>
+                <option value="0">Tümü (Puan Sınırı Yok)</option>
+                <option value="8.0">⭐ 8.0 ve Üzeri (Başyapıtlar)</option>
+                <option value="7.0">⭐ 7.0 ve Üzeri (Çok İyi)</option>
+                <option value="6.0">⭐ 6.0 ve Üzeri (İyi)</option>
               </select>
             </div>
-
           </div>
         </div>
 
-        <!-- Dynamic Genre Bar -->
-        <div class="discover-genre-scroll-wrapper" style="margin-bottom: 2rem;">
-          <div class="season-bar" id="discover-genre-bar">
-            <!-- Genre pills injected via JS -->
-          </div>
+        <!-- Quick Genre Pills Filter Bar -->
+        <div id="discover-genre-bar" class="genre-pills-bar" style="display: flex; gap: 0.6rem; overflow-x: auto; padding-bottom: 1.2rem; margin-bottom: 2rem; scrollbar-width: none;">
+          <!-- Dynamically populated -->
         </div>
 
-        <!-- Media Grid -->
-        <div class="media-grid" id="discover-grid">
-          <div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">İçerikler filtreleniyor...</div>
+        <!-- Results Grid -->
+        <div class="media-grid" id="discover-media-grid">
+          <div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">İçerikler yükleniyor...</div>
         </div>
 
-        <!-- Scroll Sentinel -->
+        <!-- Scroll Sentinel / Loader -->
         <div id="discover-sentinel" style="height: 60px; display: flex; align-items: center; justify-content: center; margin-top: 2rem; color: var(--text-muted);">
           <i data-lucide="loader-2" class="spin-loader" style="width: 28px; height: 28px; display: none;"></i>
         </div>
@@ -138,30 +135,31 @@ export async function renderDiscoverView(initialType = 'tv') {
     init: (container) => {
       if (!container) return;
 
-      const genreBar = container.querySelector('#discover-genre-bar');
-      const grid = container.querySelector('#discover-grid');
-      const sentinel = container.querySelector('#discover-sentinel');
-      const spinner = sentinel ? sentinel.querySelector('.spin-loader') : null;
       const tvBtn = container.querySelector('#discover-type-tv');
       const movieBtn = container.querySelector('#discover-type-movie');
+      const animeBtn = container.querySelector('#discover-type-anime');
       const sortSelect = container.querySelector('#discover-sort-select');
       const ratingSelect = container.querySelector('#discover-rating-select');
+      const genreBar = container.querySelector('#discover-genre-bar');
+      const grid = container.querySelector('#discover-media-grid');
+      const sentinel = container.querySelector('#discover-sentinel');
+      const spinner = sentinel ? sentinel.querySelector('.spin-loader') : null;
 
       const renderGenreBar = () => {
-        if (!genreBar) return;
-        const genres = getActiveGenres();
-        genreBar.innerHTML = genres.map(g => `
-          <button class="season-btn ${g.id === currentGenreId ? 'active' : ''}" data-genre="${g.id || ''}">
+        const activeGenres = getActiveGenres();
+        genreBar.innerHTML = activeGenres.map(g => `
+          <button class="genre-pill-btn ${currentGenreId === g.id ? 'active' : ''}" data-genre-id="${g.id || ''}">
             ${g.name}
           </button>
         `).join('');
 
-        genreBar.querySelectorAll('.season-btn').forEach(btn => {
+        genreBar.querySelectorAll('.genre-pill-btn').forEach(btn => {
           btn.addEventListener('click', () => {
-            genreBar.querySelectorAll('.season-btn').forEach(b => b.classList.remove('active'));
+            const gid = btn.dataset.genreId ? parseInt(btn.dataset.genreId, 10) : null;
+            if (currentGenreId === gid) return;
+            currentGenreId = gid;
+            genreBar.querySelectorAll('.genre-pill-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            const attr = btn.getAttribute('data-genre');
-            currentGenreId = attr ? parseInt(attr, 10) : null;
             resetAndFetch();
           });
         });
@@ -175,15 +173,18 @@ export async function renderDiscoverView(initialType = 'tv') {
 
         try {
           let results = [];
+          const effectiveType = currentType === 'anime' ? 'tv' : currentType;
           if (currentGenreId) {
-            results = await fetchByGenre(currentType, currentGenreId, currentPage, currentSortBy);
+            results = await fetchByGenre(effectiveType, currentGenreId, currentPage, currentSortBy);
+          } else if (currentType === 'anime') {
+            results = await fetchByGenre('tv', '16', currentPage, currentSortBy);
           } else {
             if (currentSortBy === 'vote_average.desc') {
-              results = await fetchTopRated(currentType, currentPage);
+              results = await fetchTopRated(effectiveType, currentPage);
             } else if (currentSortBy === 'first_air_date.desc' || currentSortBy === 'primary_release_date.desc') {
-              results = await fetchByGenre(currentType, null, currentPage, 'primary_release_date.desc');
+              results = await fetchByGenre(effectiveType, null, currentPage, 'primary_release_date.desc');
             } else {
-              results = currentType === 'tv' ? await fetchPopularSeries(currentPage) : await fetchPopularMovies(currentPage);
+              results = effectiveType === 'tv' ? await fetchPopularSeries(currentPage) : await fetchPopularMovies(currentPage);
             }
           }
 
@@ -239,27 +240,21 @@ export async function renderDiscoverView(initialType = 'tv') {
       }
 
       // Filter listeners
-      if (tvBtn && movieBtn) {
-        tvBtn.addEventListener('click', () => {
-          if (currentType === 'tv') return;
-          currentType = 'tv';
-          currentGenreId = null;
-          tvBtn.classList.add('active');
-          movieBtn.classList.remove('active');
-          renderGenreBar();
-          resetAndFetch();
-        });
+      const setType = (newType) => {
+        if (currentType === newType) return;
+        currentType = newType;
+        currentGenreId = null;
+        [tvBtn, movieBtn, animeBtn].forEach(b => b?.classList.remove('active'));
+        if (newType === 'tv') tvBtn?.classList.add('active');
+        if (newType === 'movie') movieBtn?.classList.add('active');
+        if (newType === 'anime') animeBtn?.classList.add('active');
+        renderGenreBar();
+        resetAndFetch();
+      };
 
-        movieBtn.addEventListener('click', () => {
-          if (currentType === 'movie') return;
-          currentType = 'movie';
-          currentGenreId = null;
-          movieBtn.classList.add('active');
-          tvBtn.classList.remove('active');
-          renderGenreBar();
-          resetAndFetch();
-        });
-      }
+      if (tvBtn) tvBtn.addEventListener('click', () => setType('tv'));
+      if (movieBtn) movieBtn.addEventListener('click', () => setType('movie'));
+      if (animeBtn) animeBtn.addEventListener('click', () => setType('anime'));
 
       if (sortSelect) {
         sortSelect.addEventListener('change', (e) => {

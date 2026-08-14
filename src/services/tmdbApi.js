@@ -114,6 +114,17 @@ export async function fetchPopularMovies(page = 1) {
   return res && res.results ? res.results.filter(item => item.poster_path || item.backdrop_path) : [];
 }
 
+export async function fetchPopularAnime(page = 1) {
+  const res = await tmdbFetch('/discover/tv', {
+    sort_by: 'popularity.desc',
+    page,
+    language: 'tr-TR',
+    with_genres: '16',
+    with_original_language: 'ja'
+  });
+  return res && res.results ? res.results.filter(item => item.poster_path || item.backdrop_path) : [];
+}
+
 export async function fetchTopRated(type = 'tv', page = 1) {
   const res = await tmdbFetch(`/${type}/top_rated`, { page, language: 'tr-TR' });
   return res && res.results ? res.results.filter(item => item.poster_path || item.backdrop_path) : [];
