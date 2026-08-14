@@ -1,6 +1,6 @@
 /* ==========================================================================
    CinePulse Studio - Master Stream Aggregator
-   Aggregates live Turkish sources:
+   Aggregates live Turkish sources with strict title & year matching:
    - DiziBal (VIP 1080p)
    - SezonlukDizi (VidMoly, Sibnet, Filemoon)
    - Dizipal (1080p)
@@ -11,8 +11,6 @@
    - TRAnimeİzle (1080p)
    - TürkAnime TV (1080p)
    - BelgeselX / Belgeselce (1080p)
-   - DMAX TV (Direct 1080p HLS)
-   - TLC TV (Direct 1080p HLS)
    ========================================================================== */
 
 import { fetchDiziBalSources } from './diziBalScraper.js';
@@ -34,7 +32,6 @@ function cleanTitle(raw) {
     .replace(/\s*-\s*S\d+E\d+.*$/i, '')
     .replace(/\s*-\s*S\d+.*$/i, '')
     .replace(/\s*-\s*\d+\.\s*Sezon.*$/i, '')
-    .replace(/\s*:\s*.*$/, '')
     .replace(/\s*\(\d{4}\).*/, '')
     .trim();
 }
@@ -43,6 +40,8 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
   const titles = new Set();
   if (targetTitle) titles.add(targetTitle);
   if (originalTitle) titles.add(originalTitle);
+
+  let detectedYear = null;
 
   if (tmdbId) {
     try {
@@ -54,6 +53,8 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
           if (enName) titles.add(cleanTitle(enName));
           if (enData.original_name) titles.add(cleanTitle(enData.original_name));
           if (enData.original_title) titles.add(cleanTitle(enData.original_title));
+          const dateStr = enData.release_date || enData.first_air_date;
+          if (dateStr) detectedYear = dateStr.substring(0, 4);
         }
       }
 
@@ -71,17 +72,21 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
     } catch (_) {}
   }
 
-  return [...titles].filter(t => t && typeof t === 'string' && t.trim().length > 1);
+  return {
+    candidateTitles: [...titles].filter(t => t && typeof t === 'string' && t.trim().length > 1),
+    detectedYear
+  };
 }
 
-export async function getStreamingServers({ type = 'tv', tmdbId, title = '', seriesTitle = '', originalTitle = '', season = 1, episode = 1 }) {
+export async function getStreamingServers({ type = 'tv', tmdbId, title = '', seriesTitle = '', originalTitle = '', year = null, season = 1, episode = 1 }) {
   const isMovie = type === 'movie';
   const targetTitle = cleanTitle(seriesTitle) || cleanTitle(title) || cleanTitle(originalTitle);
 
-  // Fetch all alias titles (English, Romaji, Turkish, etc.)
-  const candidateTitles = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle);
+  // Fetch all alias titles and release year
+  const { candidateTitles, detectedYear } = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle);
+  const targetYear = year || detectedYear;
 
-  // Concurrently fetch sources from live Turkish providers
+  // Concurrently fetch sources from live Turkish providers with accurate matching
   const [
     dblDub, dblSub,
     szdDub, szdSub,
@@ -94,12 +99,12 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     taSub,
     blgDub
   ] = await Promise.all([
-    fetchDiziBalSources({ titles: candidateTitles, type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
-    fetchDiziBalSources({ titles: candidateTitles, type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
+    fetchDiziBalSources({ titles: candidateTitles, type, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true }).catch(() => []),
+    fetchDiziBalSources({ titles: candidateTitles, type, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false }).catch(() => []),
     !isMovie ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []) : Promise.resolve([]),
     !isMovie ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []) : Promise.resolve([]),
     fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
-    fetchSinewixSources({ type, title: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
+    fetchSinewixSources({ type, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true }).catch(() => []),
     fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
     fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),

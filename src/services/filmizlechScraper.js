@@ -1,6 +1,7 @@
 /* ==========================================================================
    CinePulse Studio - Now Stream (FilmIzleCh / Now) Scraper
    Fetches live 1080p Turkish Dubbed & Subtitled Streams via CF Worker Gateway
+   Strict title matching to prevent wrong movie playback.
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
@@ -20,6 +21,20 @@ function toSlug(title) {
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
+}
+
+function isSlugSimilar(targetSlug, candidateSlug) {
+  if (!targetSlug || !candidateSlug) return false;
+  const cleanT = targetSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '');
+  const cleanC = candidateSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '');
+  if (cleanT === cleanC) return true;
+
+  const tParts = cleanT.split('-').filter(p => p.length > 1);
+  const cParts = cleanC.split('-').filter(p => p.length > 1);
+
+  const matched = tParts.filter(p => cParts.includes(p)).length;
+  const ratio = matched / Math.max(tParts.length, 1);
+  return ratio >= 0.75;
 }
 
 export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
@@ -83,7 +98,7 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
       } catch (e) {}
     }
 
-    // 2. Try search if direct slug didn't resolve
+    // 2. Try search with strict title matching
     for (const searchKeyword of candidateTitles) {
       try {
         const sUrl = `${baseDomain}/search/${encodeURIComponent(searchKeyword)}`;
@@ -94,10 +109,16 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
 
         const itemRegex = isMovie ? /href="([^"]*\/film\/[^"]*)"/gi : /href="([^"]*\/dizi\/[^"]*)"/gi;
         const foundHrefs = [...sHtml.matchAll(itemRegex)].map(m => m[1]);
-        const cleanHref = [...new Set(foundHrefs)].find(h => !h.includes('/search/'));
+        const cleanHrefs = [...new Set(foundHrefs)].filter(h => !h.includes('/search/'));
 
-        if (cleanHref) {
-          let movieOrSeriesUrl = cleanHref.startsWith('http') ? cleanHref : `${baseDomain}${cleanHref.startsWith('/') ? '' : '/'}${cleanHref}`;
+        // Strict slug similarity matching - NEVER blindly take cleanHrefs[0]
+        const matchedHref = cleanHrefs.find(h => {
+          const hrefSlug = h.split('/').pop();
+          return candidateSlugs.some(cs => isSlugSimilar(cs, hrefSlug));
+        });
+
+        if (matchedHref) {
+          let movieOrSeriesUrl = matchedHref.startsWith('http') ? matchedHref : `${baseDomain}${matchedHref.startsWith('/') ? '' : '/'}${matchedHref}`;
           if (!isMovie) {
             movieOrSeriesUrl = `${movieOrSeriesUrl}/sezon-${season}/bolum-${episode}`;
           }

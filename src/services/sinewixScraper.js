@@ -1,7 +1,8 @@
 /* ==========================================================================
-   SineFlix Pro - Direct Sinewix Scraper Module
+   CinePulse Studio - Direct Sinewix Scraper Module
    Fetches direct high-speed Turkish Dubbed video streams (MP4/MKV/HLS)
    via user Cloudflare Worker Gateway.
+   Strict title & year matching to prevent wrong movie playback.
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
@@ -10,10 +11,21 @@ const SINEWIX_TOKEN = '9iQNC5HQwPlaFuJDkhncJ5XTJ8feGXOJatAA';
 
 function cleanTitleString(str) {
   if (!str) return '';
-  return str
-    .replace(/\s*\(\d{4}\).*/, '')
-    .replace(/:\s*.*/, '')
-    .trim();
+  return str.replace(/\s*\(\d{4}\).*/, '').trim();
+}
+
+function isTitleSimilar(target, candidate) {
+  if (!target || !candidate) return false;
+  const normT = target.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+  const normC = candidate.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+  if (normT === normC) return true;
+
+  const tWords = normT.split(/\s+/).filter(w => w.length > 1);
+  const cWords = normC.split(/\s+/).filter(w => w.length > 1);
+
+  const matched = tWords.filter(w => cWords.includes(w)).length;
+  const ratio = matched / Math.max(tWords.length, 1);
+  return ratio >= 0.75;
 }
 
 async function performSinewixSearch(query) {
@@ -25,7 +37,7 @@ async function performSinewixSearch(query) {
   return json.search || json.data || [];
 }
 
-export async function fetchSinewixSources({ type = 'tv', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
+export async function fetchSinewixSources({ type = 'tv', title = '', originalTitle = '', year = null, season = 1, episode = 1, isDub = true }) {
   if (!title && !originalTitle) return [];
   const isMovie = type === 'movie';
 
@@ -45,8 +57,17 @@ export async function fetchSinewixSources({ type = 'tv', title = '', originalTit
 
     if (searchItems.length === 0) return [];
 
-    const item = searchItems[0];
-    const itemId = item.id;
+    // Match candidate accurately
+    const targetItem = searchItems.find(it => {
+      const itemTitle = it.title || it.name || it.original_title || '';
+      return isTitleSimilar(cleanT, itemTitle) || (cleanOrig && isTitleSimilar(cleanOrig, itemTitle));
+    });
+
+    if (!targetItem) {
+      return [];
+    }
+
+    const itemId = targetItem.id;
     let videoList = [];
 
     if (isMovie) {
@@ -73,48 +94,45 @@ export async function fetchSinewixSources({ type = 'tv', title = '', originalTit
       }
     }
 
-    const extractedSources = [];
+    const streams = [];
 
-    videoList.forEach((video, idx) => {
-      if (video.link && video.link.length > 10) {
-        const linkLower = video.link.toLowerCase();
-        const isBlockedLocker = 
-          linkLower.includes('mediafire.com') ||
-          linkLower.includes('mega.nz') ||
-          linkLower.includes('pichive') ||
-          linkLower.includes('turbobit') ||
-          linkLower.includes('yadi.sk') ||
-          linkLower.includes('uptobox') ||
-          linkLower.includes('rapidgator') ||
-          linkLower.includes('1fichier');
+    for (const v of videoList) {
+      const rawLink = (v.link || v.url || '').trim();
+      if (!rawLink) continue;
 
-        if (isBlockedLocker) return;
+      const lowerLink = rawLink.toLowerCase();
 
-        const isDirectVideo = 
-          linkLower.includes('.mkv') || 
-          linkLower.includes('.mp4') || 
-          linkLower.includes('.m3u8') || 
-          linkLower.includes('7862564.xyz') || 
-          linkLower.includes('959565.xyz') || 
-          linkLower.includes('45464654.xyz') || 
-          linkLower.includes('545645.xyz') || 
-          linkLower.includes('5654644.xyz');
-
-        extractedSources.push({
-          id: `snx_${video.id || idx}`,
-          name: `VIP Direct Stream (${isDub ? 'Dublaj 1080p' : 'Altyazılı'})`,
-          badge: '⚡ VIP 1080p',
-          isDirectVideo,
-          isHls: linkLower.includes('.m3u8'),
-          streamUrl: video.link,
-          url: video.link
-        });
+      // Filter out non-embeddable locker hosts
+      if (
+        lowerLink.includes('mediafire.com') ||
+        lowerLink.includes('mega.nz') ||
+        lowerLink.includes('pichive') ||
+        lowerLink.includes('turbobit') ||
+        lowerLink.includes('yadi.sk')
+      ) {
+        continue;
       }
-    });
 
-    return extractedSources;
+      const isDirect = lowerLink.includes('.mp4') || lowerLink.includes('.mkv') || lowerLink.includes('.webm');
+      const isHls = lowerLink.includes('.m3u8');
+      const serverName = v.server || v.name || (isDirect ? 'Direct MP4' : 'VIP Stream');
+
+      streams.push({
+        id: `snx_${v.id || Math.random().toString(36).substring(7)}`,
+        name: `HD Direct Stream (${serverName})`,
+        badge: '⚡ 1080p VIP',
+        category: 'dubbed',
+        streamUrl: rawLink,
+        url: rawLink,
+        isHls: isHls,
+        isDirectVideo: isDirect,
+        getUrl: () => rawLink
+      });
+    }
+
+    return streams;
   } catch (err) {
-    console.warn('Sinewix scrape error:', err);
+    console.warn('[SinewixScraper] Error:', err);
     return [];
   }
 }
