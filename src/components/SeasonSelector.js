@@ -54,7 +54,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
       let currentActiveSeason = activeSeasonNumber;
       let currentEpCount = initialEpCount;
 
-      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle);
+      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons);
 
       const updateSeasonBtnVisual = () => {
         const seasonAllBtn = container.querySelector('#btn-mark-season-all');
@@ -83,7 +83,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
           btn.classList.add('active');
           currentActiveSeason = parseInt(btn.getAttribute('data-season'), 10);
           currentEpCount = parseInt(btn.getAttribute('data-ep-count'), 10) || 10;
-          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle);
+          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons);
           updateSeasonBtnVisual();
         });
       });
@@ -101,7 +101,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
           });
 
           showToast(!isWatched ? `${currentActiveSeason}. Sezonun tüm bölümleri izlendi!` : `${currentActiveSeason}. Sezon izlenmedi olarak işaretlendi.`, !isWatched ? 'success' : 'info');
-          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle);
+          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons);
           updateSeasonBtnVisual();
         });
       }
@@ -109,7 +109,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
   };
 }
 
-async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath = '', backdropPath = '', originalTitle = '') {
+async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath = '', backdropPath = '', originalTitle = '', validSeasons = []) {
   const gridContainer = container.querySelector('#episode-grid-container');
   if (!gridContainer) return;
 
