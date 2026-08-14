@@ -1,7 +1,19 @@
 /* ==========================================================================
    CinePulse Studio - Master Stream Aggregator
-   Aggregates live Turkish sources (DiziBal, SezonlukDizi, Dizipal, Sinewix,
-   Filmizlech, FilmizleNow, AnimeciX, AnimeTR, BelgeselX, DMAX, TLC).
+   Aggregates live Turkish sources:
+   - DiziBal (VIP 1080p)
+   - SezonlukDizi (VidMoly, Sibnet, Filemoon)
+   - Dizipal (1080p)
+   - Sinewix (Android VIP 1080p)
+   - Filmizlech (1080p Dublaj & Altyazılı)
+   - FilmizleNow (1080p Dublaj & Altyazılı)
+   - AnimeTR (VidMoly, OK.ru, Vidoza, VOE, Drive 1080p)
+   - TRAnimeİzle (1080p)
+   - TürkAnime TV (1080p)
+   - AnimeciX (VIP 1080p)
+   - BelgeselX (1080p)
+   - DMAX TV (Direct 1080p HLS)
+   - TLC TV (Direct 1080p HLS)
    ========================================================================== */
 
 import { fetchDiziBalSources } from './diziBalScraper.js';
@@ -10,8 +22,10 @@ import { fetchDizipalSources } from './dizipalScraper.js';
 import { fetchSinewixSources } from './sinewixScraper.js';
 import { fetchFilmizlechSources } from './filmizlechScraper.js';
 import { fetchFilmizleNowSources } from './filmizleNowScraper.js';
-import { fetchAnimecixSources } from './animecixScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
+import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
+import { fetchTurkAnimeSources } from './turkanimeScraper.js';
+import { fetchAnimecixSources } from './animecixScraper.js';
 import { fetchBelgeselSources } from './belgeselScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -77,8 +91,10 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     snxDub,
     flzDub, flzSub,
     finDub, finSub,
-    acxSub,
     antrSub,
+    traSub,
+    taSub,
+    acxSub,
     blgDub
   ] = await Promise.all([
     fetchDiziBalSources({ titles: candidateTitles, type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
@@ -91,8 +107,10 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
     fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
-    fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
     fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
+    fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
+    fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
+    fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
     fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => [])
   ]);
 
@@ -162,6 +180,8 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
 
   const cleanSubtitled = [
     ...mapSubtitledSources(antrSub),
+    ...mapSubtitledSources(traSub),
+    ...mapSubtitledSources(taSub),
     ...mapSubtitledSources(dblSub),
     ...mapSubtitledSources(szdSub),
     ...mapSubtitledSources(flzSub),
@@ -216,8 +236,13 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
 
   // If dubbed is completely empty, fallback anime/subtitled sources so user has instant streams
   if (cleanDubbed.length === 0) {
-    if (antrSub.length > 0 || acxSub.length > 0) {
-      cleanDubbed.push(...mapSubtitledSources(antrSub), ...mapSubtitledSources(acxSub));
+    if (antrSub.length > 0 || traSub.length > 0 || taSub.length > 0 || acxSub.length > 0) {
+      cleanDubbed.push(
+        ...mapSubtitledSources(antrSub),
+        ...mapSubtitledSources(traSub),
+        ...mapSubtitledSources(taSub),
+        ...mapSubtitledSources(acxSub)
+      );
     } else {
       cleanDubbed.push({
         id: 'dubbed_not_found',

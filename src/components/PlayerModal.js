@@ -128,30 +128,29 @@ export async function openPlayerModal({
       `;
     }
 
-    if (srv.isDirectVideo || srv.isHls) {
-      const isMkv = srv.streamUrl && srv.streamUrl.toLowerCase().includes('.mkv');
-      let warningBanner = '';
-      if (isMkv) {
-        warningBanner = `
-          <div class="player-audio-warning" style="margin-top: 12px; padding: 12px; background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.25); border-radius: 8px; color: #fef08a; display: flex; flex-direction: column; gap: 6px; text-align: left; animation: fadeIn 0.4s ease;">
-            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem;">
-              <i data-lucide="volume-x" style="width: 16px; height: 16px; color: #eab308;"></i>
-              <span>Ses Gelmiyor mu? (Dolby AC3 Ses Hatası)</span>
+    if (srv.isDirectVideo || srv.isHls || (srv.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))) {
+      const streamUrl = srv.streamUrl || srv.getUrl();
+      const warningBanner = `
+        <div class="player-audio-warning" style="margin-top: 10px; padding: 10px 14px; background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.25); border-radius: 8px; color: #fef08a; display: flex; flex-direction: column; gap: 6px; text-align: left; animation: fadeIn 0.4s ease;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.88rem;">
+              <i data-lucide="volume-2" style="width: 16px; height: 16px; color: #eab308;"></i>
+              <span>Ses Gelmiyor mu? (Tarayıcı Dolby AC3 / Ses Formatı)</span>
             </div>
-            <p style="margin: 0; color: #cbd5e1; font-size: 0.8rem; line-height: 1.4;">
-              Tarayıcılar MKV dosyalarındaki yüksek kaliteli Dolby (AC-3/DTS) ses formatlarını lisans nedeniyle desteklemez. Sesi duymak için videoyu <strong>VLC Player</strong> ile açabilir veya diğer sunucuları deneyebilirsiniz.
-            </p>
-            <div style="display: flex; gap: 8px; margin-top: 4px;">
-              <a href="vlc://${srv.streamUrl}" class="btn-primary" style="padding: 0.35rem 0.8rem; font-size: 0.78rem; background: #eab308; color: #000; border: none; border-radius: 4px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
-                <i data-lucide="play" style="width: 12px; height: 12px;"></i> VLC Player ile Aç
+            <div style="display: flex; gap: 8px;">
+              <a href="vlc://${streamUrl}" class="btn-primary" style="padding: 0.3rem 0.75rem; font-size: 0.75rem; background: #eab308; color: #000; border: none; border-radius: 4px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                <i data-lucide="play" style="width: 12px; height: 12px;"></i> VLC ile Aç
               </a>
-              <a href="${srv.streamUrl}" target="_blank" download class="btn-secondary" style="padding: 0.35rem 0.8rem; font-size: 0.78rem; border-color: rgba(255,255,255,0.2); color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
-                <i data-lucide="download" style="width: 12px; height: 12px;"></i> Videoyu İndir
+              <a href="${streamUrl}" target="_blank" download class="btn-secondary" style="padding: 0.3rem 0.75rem; font-size: 0.75rem; border-color: rgba(255,255,255,0.2); color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                <i data-lucide="download" style="width: 12px; height: 12px;"></i> İndir
               </a>
             </div>
           </div>
-        `;
-      }
+          <p style="margin: 0; color: #94a3b8; font-size: 0.76rem; line-height: 1.3;">
+            Bazı yayınlar yüksek kaliteli Dolby (AC-3/DTS) çok kanallı ses barındırır. Tarayıcınızda ses çıkmazsa videoyu <strong>VLC Player</strong> ile açabilir veya diğer sunucu seçeneklerini deneyebilirsiniz.
+          </p>
+        </div>
+      `;
       return `
         <div style="display: flex; flex-direction: column; height: 100%; width: 100%;">
           <div style="flex: 1; min-height: 0; position: relative;">
