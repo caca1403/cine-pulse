@@ -1,0 +1,17 @@
+{
+  "name": "cinepulse-studio",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide": "^0.344.0"
+  },
+  "devDependencies": {
+    "vite": "^5.1.4"
+  }
+}

@@ -1,0 +1,291 @@
+/* ==========================================================================
+   SineFlix Pro - Local Storage & Data Management Service (No-Backend)
+   Handles watch history, timestamps, favorites, watchlist, item removal, and JSON Export/Import
+   ========================================================================== */
+
+const STORAGE_KEYS = {
+  WATCH_HISTORY: 'sineflix_watch_history_v1',
+  FAVORITES: 'sineflix_favorites_v1',
+  WATCHLIST: 'sineflix_watchlist_v1',
+  USER_SETTINGS: 'sineflix_user_settings_v1'
+};
+
+function getLocalItem(key, defaultValue = []) {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return defaultValue;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : defaultValue;
+  } catch (err) {
+    return defaultValue;
+  }
+}
+
+function setLocalItem(key, value) {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    localStorage.setItem(key, JSON.stringify(value));
+    window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { key, value } }));
+  } catch (err) {
+    console.error(`Error saving ${key} to localStorage:`, err);
+  }
+}
+
+/* ==========================================================================
+   Watch History & Progress Management
+   ========================================================================== */
+
+export function getWatchHistory() {
+  const history = getLocalItem(STORAGE_KEYS.WATCH_HISTORY, []);
+  return history.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+}
+
+export function saveWatchProgress({
+  id,
+  title,
+  posterPath,
+  backdropPath,
+  type = 'tv',
+  season = 1,
+  episode = 1,
+  currentTime = 0,
+  duration = 0,
+  completed = false
+}) {
+  if (!id) return;
+
+  const history = getWatchHistory();
+  const existingIndex = history.findIndex(item => item.id == id && item.season == season && item.episode == episode);
+  
+  const anyExisting = history.find(item => item.id == id && (item.posterPath || item.poster_path));
+  const resolvedPoster = posterPath || (anyExisting ? (anyExisting.posterPath || anyExisting.poster_path) : '');
+  const resolvedBackdrop = backdropPath || (anyExisting ? (anyExisting.backdropPath || anyExisting.backdrop_path) : '');
+
+  const progressPercent = duration > 0 ? Math.min(100, Math.round((currentTime / duration) * 100)) : 0;
+  const isCompleted = completed || progressPercent >= 90;
+
+  const record = {
+    id,
+    title,
+    posterPath: resolvedPoster,
+    backdropPath: resolvedBackdrop,
+    type,
+    season: Number(season),
+    episode: Number(episode),
+    currentTime: Math.round(currentTime),
+    duration: Math.round(duration),
+    progressPercent,
+    completed: isCompleted,
+    lastWatchedAt: Date.now()
+  };
+
+  if (existingIndex >= 0) {
+    history[existingIndex] = record;
+  } else {
+    history.push(record);
+  }
+
+  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
+}
+
+export function removeWatchHistoryItem(id, season = 1, episode = 1) {
+  let history = getWatchHistory();
+  history = history.filter(item => !(item.id == id && item.season == season && item.episode == episode));
+  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
+}
+
+export function clearCompletedHistory() {
+  let history = getWatchHistory();
+  history = history.filter(item => !item.completed && item.progressPercent < 90);
+  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
+}
+
+export function getMediaProgress(id, season = 1, episode = 1) {
+  const history = getWatchHistory();
+  return history.find(item => item.id == id && item.season == season && item.episode == episode) || null;
+}
+
+export function getLastWatchedEpisode(seriesId) {
+  const history = getWatchHistory();
+  const seriesItems = history.filter(item => item.id == seriesId);
+  return seriesItems.length > 0 ? seriesItems[0] : null;
+}
+
+export function formatSecondsToTime(seconds) {
+  if (!seconds || seconds <= 0) return '';
+  const min = Math.floor(seconds / 60);
+  const sec = Math.floor(seconds % 60);
+  if (min >= 60) {
+    const hrs = Math.floor(min / 60);
+    const remMin = min % 60;
+    return `${hrs}sa ${remMin}dk`;
+  }
+  return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+}
+
+/* ==========================================================================
+   Favorites & Watchlist Management
+   ========================================================================== */
+
+export function getFavorites() {
+  return getLocalItem(STORAGE_KEYS.FAVORITES, []);
+}
+
+export function isFavorite(id) {
+  const favorites = getFavorites();
+  return favorites.some(item => item.id == id);
+}
+
+export function toggleFavorite(mediaItem) {
+  let favorites = getFavorites();
+  const index = favorites.findIndex(item => item.id == mediaItem.id);
+  
+  if (index >= 0) {
+    favorites.splice(index, 1);
+  } else {
+    favorites.push({
+      id: mediaItem.id,
+      title: mediaItem.title || mediaItem.name,
+      posterPath: mediaItem.poster_path || mediaItem.posterPath,
+      type: mediaItem.first_air_date ? 'tv' : (mediaItem.type || 'movie'),
+      voteAverage: mediaItem.vote_average || mediaItem.voteAverage,
+      addedAt: Date.now()
+    });
+  }
+
+  setLocalItem(STORAGE_KEYS.FAVORITES, favorites);
+  return index < 0;
+}
+
+export function getWatchlist() {
+  return getLocalItem(STORAGE_KEYS.WATCHLIST, []);
+}
+
+export function isWatchlist(id) {
+  const watchlist = getWatchlist();
+  return watchlist.some(item => item.id == id);
+}
+
+export function toggleWatchlist(mediaItem) {
+  let watchlist = getWatchlist();
+  const index = watchlist.findIndex(item => item.id == mediaItem.id);
+
+  if (index >= 0) {
+    watchlist.splice(index, 1);
+  } else {
+    watchlist.push({
+      id: mediaItem.id,
+      title: mediaItem.title || mediaItem.name,
+      posterPath: mediaItem.poster_path || mediaItem.posterPath,
+      type: mediaItem.first_air_date ? 'tv' : (mediaItem.type || 'movie'),
+      addedAt: Date.now()
+    });
+  }
+
+  setLocalItem(STORAGE_KEYS.WATCHLIST, watchlist);
+  return index < 0;
+}
+
+/* ==========================================================================
+   JSON Export & Import System
+   ========================================================================== */
+
+export function exportDataAsJSON() {
+  const backupObject = {
+    app: "SineFlix Pro",
+    version: "1.0",
+    exportedAt: new Date().toISOString(),
+    watchHistory: getWatchHistory(),
+    favorites: getFavorites(),
+    watchlist: getWatchlist(),
+    userSettings: getLocalItem(STORAGE_KEYS.USER_SETTINGS, { preferredServer: 'alfa_tr' })
+  };
+
+  const jsonString = JSON.stringify(backupObject, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const dateStr = new Date().toISOString().split('T')[0];
+  const downloadLink = document.createElement('a');
+  downloadLink.href = url;
+  downloadLink.download = `sineflix_backup_${dateStr}.json`;
+  
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+  URL.revokeObjectURL(url);
+}
+
+export function importDataFromJSON(jsonData, mode = 'merge') {
+  try {
+    const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+
+    if (!data.app && !data.watchHistory) {
+      throw new Error("Geçersiz JSON formatı. SineFlix yedek dosyası seçiniz.");
+    }
+
+    if (mode === 'replace') {
+      if (Array.isArray(data.watchHistory)) setLocalItem(STORAGE_KEYS.WATCH_HISTORY, data.watchHistory);
+      if (Array.isArray(data.favorites)) setLocalItem(STORAGE_KEYS.FAVORITES, data.favorites);
+      if (Array.isArray(data.watchlist)) setLocalItem(STORAGE_KEYS.WATCHLIST, data.watchlist);
+    } else {
+      if (Array.isArray(data.watchHistory)) {
+        const current = getWatchHistory();
+        const merged = [...data.watchHistory];
+        current.forEach(item => {
+          if (!merged.some(m => m.id == item.id && m.season == item.season && m.episode == item.episode)) {
+            merged.push(item);
+          }
+        });
+        setLocalItem(STORAGE_KEYS.WATCH_HISTORY, merged);
+      }
+
+      if (Array.isArray(data.favorites)) {
+        const current = getFavorites();
+        const merged = [...data.favorites];
+        current.forEach(item => {
+          if (!merged.some(f => f.id == item.id)) merged.push(item);
+        });
+        setLocalItem(STORAGE_KEYS.FAVORITES, merged);
+      }
+
+      if (Array.isArray(data.watchlist)) {
+        const current = getWatchlist();
+        const merged = [...data.watchlist];
+        current.forEach(item => {
+          if (!merged.some(w => w.id == item.id)) merged.push(item);
+        });
+        setLocalItem(STORAGE_KEYS.WATCHLIST, merged);
+      }
+    }
+
+    return { success: true, countHistory: (data.watchHistory || []).length };
+  } catch (err) {
+    console.error("Import JSON Error:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+export function getStorageStats() {
+  let totalBytes = 0;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    for (let key in localStorage) {
+      if (localStorage.hasOwnProperty(key)) {
+        totalBytes += (localStorage[key].length + key.length) * 2;
+      }
+    }
+  }
+  const kb = (totalBytes / 1024).toFixed(2);
+  const historyCount = getWatchHistory().length;
+  const favoritesCount = getFavorites().length;
+
+  return { totalBytes, kb, historyCount, favoritesCount };
+}
+
+export function clearAllData() {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    localStorage.removeItem(STORAGE_KEYS.WATCH_HISTORY);
+    localStorage.removeItem(STORAGE_KEYS.FAVORITES);
+    localStorage.removeItem(STORAGE_KEYS.WATCHLIST);
+    window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { action: 'clear' } }));
+  }
+}
