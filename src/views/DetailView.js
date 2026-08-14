@@ -154,7 +154,7 @@ export async function renderDetailView(type = 'tv', id) {
                 </button>
 
                 <!-- Mark Watched Button -->
-                <button class="btn-secondary" id="btn-toggle-watched-detail" style="cursor: pointer; ${isCurrentWatched ? 'background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981; font-weight: 700;' : ''}">
+                <button class="btn-secondary ${isCurrentWatched ? 'btn-watched-active' : ''}" id="btn-toggle-watched-detail" style="cursor: pointer;">
                   <i data-lucide="${isCurrentWatched ? 'check-circle-2' : 'check'}"></i>
                   <span>${watchedBtnLabel}</span>
                 </button>
@@ -269,7 +269,8 @@ export async function renderDetailView(type = 'tv', id) {
       // Mark Watched Detail Action
       const watchedDetailBtn = container.querySelector('#btn-toggle-watched-detail');
       if (watchedDetailBtn) {
-        watchedDetailBtn.addEventListener('click', () => {
+        watchedDetailBtn.addEventListener('click', (e) => {
+          e.preventDefault();
           if (effectiveType === 'movie') {
             const updated = toggleEpisodeWatched(id, 1, 1, {
               title: title,
@@ -281,24 +282,16 @@ export async function renderDetailView(type = 'tv', id) {
             const nowWatched = updated.completed;
             showToast(nowWatched ? '✓ Film izlendi olarak işaretlendi!' : 'Film izlendi işareti kaldırıldı.', nowWatched ? 'success' : 'info');
             
-            const icon = watchedDetailBtn.querySelector('i');
-            const text = watchedDetailBtn.querySelector('span');
-            if (icon && text) {
-              icon.setAttribute('data-lucide', nowWatched ? 'check-circle-2' : 'check');
-              text.textContent = nowWatched ? 'Film İzlendi' : 'İzlendi Olarak İşaretle';
-              if (nowWatched) {
-                watchedDetailBtn.style.borderColor = '#10b981';
-                watchedDetailBtn.style.color = '#10b981';
-                watchedDetailBtn.style.background = 'rgba(16, 185, 129, 0.2)';
-                watchedDetailBtn.style.fontWeight = '700';
-              } else {
-                watchedDetailBtn.style.borderColor = '';
-                watchedDetailBtn.style.color = '';
-                watchedDetailBtn.style.background = '';
-                watchedDetailBtn.style.fontWeight = '';
-              }
-              if (window.lucide) window.lucide.createIcons();
+            if (nowWatched) {
+              watchedDetailBtn.classList.add('btn-watched-active');
+            } else {
+              watchedDetailBtn.classList.remove('btn-watched-active');
             }
+            watchedDetailBtn.innerHTML = `
+              <i data-lucide="${nowWatched ? 'check-circle-2' : 'check'}"></i>
+              <span>${nowWatched ? 'Film İzlendi' : 'İzlendi Olarak İşaretle'}</span>
+            `;
+            if (window.lucide) window.lucide.createIcons();
           } else {
             // TV / Anime / Doc Series Bulk Watched
             const currentAllWatched = isEntireSeriesWatched(id, media.seasons || []);
@@ -313,24 +306,16 @@ export async function renderDetailView(type = 'tv', id) {
 
             showToast(targetState ? '✓ Dizinin tüm bölümleri izlendi olarak işaretlendi!' : 'Tüm bölümler izlenmedi yapıldı.', targetState ? 'success' : 'info');
 
-            const icon = watchedDetailBtn.querySelector('i');
-            const text = watchedDetailBtn.querySelector('span');
-            if (icon && text) {
-              icon.setAttribute('data-lucide', targetState ? 'check-circle-2' : 'check');
-              text.textContent = targetState ? 'Tüm Sezonlar İzlendi' : 'Tümünü İzlendi İşaretle';
-              if (targetState) {
-                watchedDetailBtn.style.borderColor = '#10b981';
-                watchedDetailBtn.style.color = '#10b981';
-                watchedDetailBtn.style.background = 'rgba(16, 185, 129, 0.2)';
-                watchedDetailBtn.style.fontWeight = '700';
-              } else {
-                watchedDetailBtn.style.borderColor = '';
-                watchedDetailBtn.style.color = '';
-                watchedDetailBtn.style.background = '';
-                watchedDetailBtn.style.fontWeight = '';
-              }
-              if (window.lucide) window.lucide.createIcons();
+            if (targetState) {
+              watchedDetailBtn.classList.add('btn-watched-active');
+            } else {
+              watchedDetailBtn.classList.remove('btn-watched-active');
             }
+            watchedDetailBtn.innerHTML = `
+              <i data-lucide="${targetState ? 'check-circle-2' : 'check'}"></i>
+              <span>${targetState ? 'Tüm Sezonlar İzlendi' : 'Tümünü İzlendi İşaretle'}</span>
+            `;
+            if (window.lucide) window.lucide.createIcons();
 
             // Update all episode cards in DOM
             container.querySelectorAll('.episode-card').forEach(card => {
@@ -362,7 +347,8 @@ export async function renderDetailView(type = 'tv', id) {
       // Halfway in-progress button handler
       const halfwayBtn = container.querySelector('#btn-mark-halfway-detail');
       if (halfwayBtn) {
-        halfwayBtn.addEventListener('click', () => {
+        halfwayBtn.addEventListener('click', (e) => {
+          e.preventDefault();
           if (effectiveType === 'movie') {
             setMediaHalfway(id, 1, 1, 1800, {
               title: title,
