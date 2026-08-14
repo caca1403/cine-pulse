@@ -59,16 +59,16 @@ export async function openPlayerModal({
     'info'
   );
 
-  let categorizedServers = await getStreamingServers({ 
-    type, 
-    tmdbId, 
-    title: cleanSeriesName, 
-    seriesTitle: cleanSeriesName, 
-    originalTitle, 
-    season: currentSeason, 
-    episode: currentEpisode 
+  let categorizedServers = await getStreamingServers({
+    type,
+    tmdbId,
+    title: cleanSeriesName,
+    seriesTitle: cleanSeriesName,
+    originalTitle,
+    season: currentSeason,
+    episode: currentEpisode
   });
-  
+
   let currentCategory = 'dubbed'; // Default to Türkçe Dublaj
   if ((!categorizedServers.dubbed || categorizedServers.dubbed.length === 0 || categorizedServers.dubbed[0]?.notFound) && categorizedServers.subtitled && categorizedServers.subtitled.length > 0 && !categorizedServers.subtitled[0]?.notFound) {
     currentCategory = 'subtitled';
@@ -163,7 +163,7 @@ export async function openPlayerModal({
   }
 
   function getDisplayTitle() {
-    return type === 'tv' 
+    return type === 'tv'
       ? `${cleanSeriesName} - S${currentSeason}E${currentEpisode}`
       : cleanSeriesName;
   }
@@ -372,14 +372,14 @@ export async function openPlayerModal({
     showToast(`S${currentSeason} B${currentEpisode} kaynakları aranıyor...`, 'info');
 
     // 4. Fetch new episode streaming servers
-    categorizedServers = await getStreamingServers({ 
-      type, 
-      tmdbId, 
-      title: cleanSeriesName, 
-      seriesTitle: cleanSeriesName, 
-      originalTitle, 
-      season: currentSeason, 
-      episode: currentEpisode 
+    categorizedServers = await getStreamingServers({
+      type,
+      tmdbId,
+      title: cleanSeriesName,
+      seriesTitle: cleanSeriesName,
+      originalTitle,
+      season: currentSeason,
+      episode: currentEpisode
     });
 
     if ((!categorizedServers.dubbed || categorizedServers.dubbed.length === 0 || categorizedServers.dubbed[0]?.notFound) && categorizedServers.subtitled && categorizedServers.subtitled.length > 0 && !categorizedServers.subtitled[0]?.notFound) {
@@ -494,7 +494,7 @@ export async function openPlayerModal({
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = streamUrl;
         if (initialTime > 5) video.currentTime = initialTime;
-        video.play().catch(() => {});
+        video.play().catch(() => { });
       } else {
         const attachHls = () => {
           if (window.Hls && window.Hls.isSupported()) {
@@ -512,7 +512,7 @@ export async function openPlayerModal({
                 const timeFormatted = formatSecondsToTime(initialTime);
                 showToast(`Kaldığınız ${timeFormatted} dakikasından devam ediliyor...`, 'info');
               }
-              video.play().catch(() => {});
+              video.play().catch(() => { });
             });
             hls.on(window.Hls.Events.ERROR, (event, data) => {
               if (data.fatal) {
@@ -544,7 +544,7 @@ export async function openPlayerModal({
     } else {
       video.src = streamUrl;
       if (initialTime > 5) video.currentTime = initialTime;
-      video.play().catch(() => {});
+      video.play().catch(() => { });
     }
   }
 
@@ -582,7 +582,7 @@ export async function openPlayerModal({
         btn.classList.add('active');
         const srvIdx = parseInt(btn.getAttribute('data-index'), 10);
         currentServerIndex = srvIdx;
-        
+
         updatePlayerContainer();
 
         const popoutBtn = document.getElementById('player-popout-btn');
@@ -613,7 +613,7 @@ export async function openPlayerModal({
       currentServerIndex = 0;
       dubbedBtn.classList.add('active');
       subtitledBtn.classList.remove('active');
-      
+
       updateServerPillsEvents();
       updatePlayerContainer();
     });
@@ -625,7 +625,7 @@ export async function openPlayerModal({
       currentServerIndex = 0;
       subtitledBtn.classList.add('active');
       dubbedBtn.classList.remove('active');
-      
+
       updateServerPillsEvents();
       updatePlayerContainer();
       showToast('💬 Türkçe Altyazılı VidAPI & VIP sunucularına geçildi.', 'info');
@@ -671,7 +671,7 @@ export async function openPlayerModal({
       });
       isWatched = updated.completed;
       showToast(isWatched ? '✓ İzlendi olarak işaretlendi!' : 'İzlendi işareti kaldırıldı.', isWatched ? 'success' : 'info');
-      
+
       const span = toggleWatchedPlayerBtn.querySelector('span');
       const icon = toggleWatchedPlayerBtn.querySelector('i');
       if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Olarak İşaretle';
