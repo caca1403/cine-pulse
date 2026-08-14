@@ -1,6 +1,6 @@
 /* ==========================================================================
    CinePulse Studio - 100% Verified Official Turkish Live TV Catalog
-   Clean official feeds with Hls.js native hardware playback & clean embeds.
+   Clean official feeds with Hls.js native hardware playback.
    Zero broken 404 iframes, zero audio-only streams.
    ========================================================================== */
 
@@ -345,30 +345,20 @@ export const LIVE_TV_CHANNELS = [
     name: 'Çiftçi TV HD',
     category: 'doc',
     logo: 'https://live.artidijitalmedya.com/artidijital_ciftcitv/ciftcitv/playlist.m3u8',
-    badge: '🌿 Tarım & Doğa',
+    badge: '🌿 Tarım & Doğa Belgeseli',
     quality: '1080p Full HD',
     streamUrl: 'https://live.artidijitalmedya.com/artidijital_ciftcitv/ciftcitv/chunks.m3u8',
     isHls: true
   },
   {
-    id: 'ch_ekoturk',
-    name: 'Ekotürk TV HD',
+    id: 'ch_kanalv',
+    name: 'Kanal V HD',
     category: 'doc',
-    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/a/ae/Ekot%C3%BCrk_logo.png/300px-Ekot%C3%BCrk_logo.png',
-    badge: '🌍 Dünya & Belgesel HD',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/3/30/Kanal_V_logo.png/300px-Kanal_V_logo.png',
+    badge: '🌿 Akdeniz, Doğa & Kültür',
     quality: '1080p Full HD',
-    streamUrl: 'https://www.youtube-nocookie.com/embed/lu2h-0FTH-w?autoplay=1',
-    isHls: false
-  },
-  {
-    id: 'ch_agrotv',
-    name: 'Agro TV HD',
-    category: 'doc',
-    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/9/9e/Agro_TV_logo.png/300px-Agro_TV_logo.png',
-    badge: '🌿 Tarım & Hayvancılık',
-    quality: '1080p Full HD',
-    streamUrl: 'https://agro.fatihdemirsoy.com:8181/agrotv-player-embed.html',
-    isHls: false
+    streamUrl: 'https://live.artidijitalmedya.com/artidijital_kanalv/kanalv/chunks.m3u8',
+    isHls: true
   },
 
   // ==========================================
@@ -403,39 +393,19 @@ export const LIVE_TV_CHANNELS = [
     name: 'TRT Müzik HD',
     category: 'music',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/TRT_M%C3%BCzik_logo.svg/300px-TRT_M%C3%BCzik_logo.svg.png',
-    badge: '🎵 Canlı Müzik & Konser',
+    badge: '🎵 Canlı Müzik & Konser HD',
     quality: '1080p Full HD',
     streamUrl: 'https://tv-trtmuzik.medya.trt.com.tr/master_480.m3u8',
     isHls: true
   },
   {
-    id: 'ch_numberone',
-    name: 'Number 1 TV HD',
+    id: 'ch_tempotv',
+    name: 'Tempo TV HD',
     category: 'music',
-    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/2/2f/Number_One_TV_logo.png/300px-Number_One_TV_logo.png',
-    badge: '🌍 Yabancı Hit Müzik HD',
+    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/6/62/Tempo_TV_logo.png/300px-Tempo_TV_logo.png',
+    badge: '🎵 Türk Halk & Pop Müzik HD',
     quality: '1080p Full HD',
-    streamUrl: 'https://playercache.mediatriple.net/embed/player/2/broadcast_5c9e17cd59e8b',
-    isHls: false
-  },
-  {
-    id: 'ch_kralpop',
-    name: 'Kral Pop TV HD',
-    category: 'music',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Kral_Pop_TV_logo.png/300px-Kral_Pop_TV_logo.png',
-    badge: '🔥 Türkçe Pop Hit HD',
-    quality: '1080p Full HD',
-    streamUrl: 'https://www.kralmuzik.com.tr/tv/kral-pop-tv',
-    isHls: false
-  },
-  {
-    id: 'ch_dreamturk',
-    name: 'Dream Türk TV HD',
-    category: 'music',
-    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/b/b5/Dream_T%C3%BCrk_logo.png/300px-Dream_T%C3%BCrk_logo.png',
-    badge: '🎸 Gençlik & Müzik HD',
-    quality: '1080p Full HD',
-    streamUrl: 'https://www.dreamturk.com.tr/canli-yayin',
-    isHls: false
+    streamUrl: 'https://live.artidijitalmedya.com/artidijital_tempotv/tempotv/chunks.m3u8',
+    isHls: true
   }
 ];
