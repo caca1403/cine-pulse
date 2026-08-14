@@ -79,7 +79,7 @@ export async function openPlayerModal({
   const existingRecord = getMediaProgress(tmdbId, currentSeason, currentEpisode);
   let initialTime = currentTime || (existingRecord ? existingRecord.currentTime : 0);
   let isWatched = isMediaWatched(tmdbId, currentSeason, currentEpisode);
-  const estimatedDuration = 2700;
+  const estimatedDuration = duration > 0 ? duration : (type === 'movie' ? 6600 : 3000);
   let simulatedCurrentTime = initialTime;
   let isSwitchingEpisode = false;
 

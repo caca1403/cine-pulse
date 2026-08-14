@@ -2,7 +2,7 @@
    CinePulse Studio - Media Detail View
    Displays full TMDB metadata, backdrop banner, season/episode list or play movie button
    Supports seamless navigation for Movies, TV Shows, Anime, and Documentaries.
-   Includes bulk series mark-watched, season selectors, and halfway in-progress states.
+   Includes movie runtime, bulk series mark-watched, season selectors, and halfway in-progress states.
    ========================================================================== */
 
 import { fetchMediaDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
@@ -11,6 +11,16 @@ import { renderSeasonSelector } from '../components/SeasonSelector.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { openPlayerModal } from '../components/PlayerModal.js';
 import { showToast } from '../components/Toast.js';
+
+function formatMediaRuntime(minutes) {
+  if (!minutes || minutes <= 0) return '';
+  const hrs = Math.floor(minutes / 60);
+  const remMin = minutes % 60;
+  if (hrs > 0) {
+    return `${hrs} sa ${remMin > 0 ? remMin + ' dk' : ''} (${minutes} dk)`;
+  }
+  return `${minutes} dk`;
+}
 
 export async function renderDetailView(type = 'tv', id) {
   // Normalize type: Anime/Doc series are 'tv', Anime/Doc films are 'movie'
@@ -40,6 +50,7 @@ export async function renderDetailView(type = 'tv', id) {
   const year = (media.first_air_date || media.release_date || '').substring(0, 4);
   const overview = media.overview || 'Bu yapım için henüz Türkçe özet bulunmuyor.';
   const genres = media.genres || [];
+  const movieDurationSec = media.runtime ? (media.runtime * 60) : 6600;
 
   const inFav = isFavorite(id);
   const inWatch = isWatchlist(id);
@@ -84,6 +95,13 @@ export async function renderDetailView(type = 'tv', id) {
     ? (isMovieWatched ? 'Film İzlendi' : 'İzlendi Olarak İşaretle')
     : (isSeriesAllWatched ? 'Tüm Sezonlar İzlendi' : 'Tümünü İzlendi İşaretle');
 
+  const runtimeBadgeHTML = media.runtime ? `
+    <span class="badge" style="background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+      <i data-lucide="clock" style="width:13px; height:13px"></i>
+      <span>${formatMediaRuntime(media.runtime)}</span>
+    </span>
+  ` : '';
+
   const html = `
     <div class="detail-view">
       <div class="detail-header">
@@ -100,7 +118,10 @@ export async function renderDetailView(type = 'tv', id) {
                   <i data-lucide="star" style="width:14px; height:14px; fill: currentColor"></i> ${rating} IMDb
                 </span>
                 <span class="badge">${year}</span>
-                ${media.episode_run_time && media.episode_run_time.length > 0 ? `<span class="badge">${media.episode_run_time[0]} DK / BÖLÜM</span>` : ''}
+                ${runtimeBadgeHTML}
+                ${media.number_of_seasons ? `<span class="badge">${media.number_of_seasons} Sezon</span>` : ''}
+                ${media.number_of_episodes ? `<span class="badge">${media.number_of_episodes} Bölüm</span>` : ''}
+                ${!media.runtime && media.episode_run_time && media.episode_run_time.length > 0 ? `<span class="badge">${media.episode_run_time[0]} dk / bölüm</span>` : ''}
               </div>
 
               <h1 class="detail-title">${title}</h1>
@@ -208,6 +229,7 @@ export async function renderDetailView(type = 'tv', id) {
             originalTitle: originalTitle,
             posterPath: media.poster_path,
             backdropPath: media.backdrop_path,
+            duration: movieDurationSec,
             currentTime: progress ? progress.currentTime : 0
           });
         });
@@ -277,7 +299,7 @@ export async function renderDetailView(type = 'tv', id) {
               posterPath: media.poster_path,
               backdropPath: media.backdrop_path,
               type: 'movie',
-              duration: 5400
+              duration: movieDurationSec
             });
             const nowWatched = updated.completed;
             showToast(nowWatched ? '✓ Film izlendi olarak işaretlendi!' : 'Film izlendi işareti kaldırıldı.', nowWatched ? 'success' : 'info');
@@ -350,16 +372,18 @@ export async function renderDetailView(type = 'tv', id) {
         halfwayBtn.addEventListener('click', (e) => {
           e.preventDefault();
           if (effectiveType === 'movie') {
-            setMediaHalfway(id, 1, 1, 1800, {
+            const halfwayTime = Math.round(movieDurationSec * 0.5);
+            const timeStr = formatSecondsToTime(halfwayTime);
+            setMediaHalfway(id, 1, 1, halfwayTime, {
               title: title,
               posterPath: media.poster_path,
               backdropPath: media.backdrop_path,
               type: 'movie',
-              duration: 5400
+              duration: movieDurationSec
             });
-            showToast('⏳ Film 30. dakikada yarıda bırakıldı olarak işaretlendi! Ana sayfada Devam Et listesinde görünecek.', 'info');
+            showToast(`⏳ Film ${timeStr} dakikasında yarıda bırakıldı olarak işaretlendi!`, 'info');
             const playBtnSpan = container.querySelector('#btn-play-movie span');
-            if (playBtnSpan) playBtnSpan.textContent = 'Kaldığın Yerden Devam Et (30:00)';
+            if (playBtnSpan) playBtnSpan.textContent = `Kaldığın Yerden Devam Et (${timeStr})`;
           } else {
             const seasonNum = lastWatchedEp ? lastWatchedEp.season : 1;
             const epNum = lastWatchedEp ? lastWatchedEp.episode : 1;
@@ -368,7 +392,7 @@ export async function renderDetailView(type = 'tv', id) {
               posterPath: media.poster_path,
               backdropPath: media.backdrop_path,
               type: 'tv',
-              duration: 2700
+              duration: 3000
             });
             showToast(`⏳ S${seasonNum} B${epNum} 20. dakikada yarıda bırakıldı olarak işaretlendi!`, 'info');
             const resumeBtnSpan = container.querySelector('#btn-resume-series span');
