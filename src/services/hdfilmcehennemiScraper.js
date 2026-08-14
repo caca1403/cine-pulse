@@ -35,14 +35,10 @@ export async function fetchHdfilmcehennemiSources({ type = 'movie', seriesTitle 
       try {
         const cleanKw = keyword.toLowerCase().trim();
         const searchUrl = `${baseRoute}/search/${encodeURIComponent(cleanKw)}/`;
-        const res = await fetch(searchUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-          }
-        });
+        const headers = isBrowser ? { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } : { 'User-Agent': 'Mozilla/5.0' };
+        const res = await fetch(searchUrl, { headers }).catch(() => null);
 
-        if (!res.ok) continue;
+        if (!res || !res.ok) continue;
         const html = await res.text();
 
         const rawArticles = html.match(/<article[\s\S]*?<\/article>/gi) || [];
