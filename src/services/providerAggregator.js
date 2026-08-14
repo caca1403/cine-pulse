@@ -161,12 +161,12 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     }));
 
   const cleanSubtitled = [
-    ...mapSubtitledSources(acxSub),
     ...mapSubtitledSources(antrSub),
     ...mapSubtitledSources(dblSub),
     ...mapSubtitledSources(szdSub),
     ...mapSubtitledSources(flzSub),
     ...mapSubtitledSources(finSub),
+    ...mapSubtitledSources(acxSub),
     {
       id: 'sub_superembed',
       name: 'SuperEmbed Stream (1080p Altyazılı)',
@@ -216,8 +216,8 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
 
   // If dubbed is completely empty, fallback anime/subtitled sources so user has instant streams
   if (cleanDubbed.length === 0) {
-    if (acxSub.length > 0 || antrSub.length > 0) {
-      cleanDubbed.push(...mapSubtitledSources(acxSub), ...mapSubtitledSources(antrSub));
+    if (antrSub.length > 0 || acxSub.length > 0) {
+      cleanDubbed.push(...mapSubtitledSources(antrSub), ...mapSubtitledSources(acxSub));
     } else {
       cleanDubbed.push({
         id: 'dubbed_not_found',

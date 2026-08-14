@@ -1,7 +1,6 @@
 /* ==========================================================================
    CinePulse Studio - AnimeciX Dedicated Scraper
-   Fetches 1080p Turkish Subtitled Anime Streams via AnimeciX REST API
-   Supports multi-alias searches (English, Romaji, Turkish, TMDB)
+   Fetches AnimeciX official streams (Configured for popup mode to bypass SAMEORIGIN)
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
@@ -55,9 +54,10 @@ export async function fetchAnimecixSources({ titles = [], seriesTitle = '', titl
       return [
         {
           id: `acx_${match.id}_${episode}`,
-          name: `AnimeciX Stream (${animeName} 1080p)`,
+          name: `AnimeciX VIP (${animeName} 1080p)`,
           badge: '⚡ AnimeciX',
           category: isDub ? 'dubbed' : 'subtitled',
+          isExternalPopout: true, // Opens in external popout so iframe never breaks
           streamUrl: watchUrl,
           url: watchUrl,
           getUrl: () => watchUrl
