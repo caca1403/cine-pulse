@@ -107,7 +107,9 @@ window.addEventListener('DOMContentLoaded', route);
 // Immediate execution for module script execution
 route();
 
-// Data change event listener (for auto UI refresh when JSON backup is loaded)
-window.addEventListener('dizibol_data_changed', () => {
-  route();
-});
+// Data change event listeners (for instant UI refresh when JSON backup is loaded or progress saved)
+const refreshView = () => route();
+window.addEventListener('sineflix_data_changed', refreshView);
+window.addEventListener('dizibol_data_changed', refreshView);
+window.addEventListener('cinepulse_data_changed', refreshView);
+

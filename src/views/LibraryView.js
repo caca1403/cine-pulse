@@ -14,6 +14,7 @@ import {
   getWatchlist,
   getTotalWatchStats,
   exportDataAsJSON,
+  importDataFromJSON,
   removeEpisodeFromHistory,
   removeSeriesFromHistory,
   removeFavorite,
@@ -64,6 +65,10 @@ export function renderLibraryView() {
             <button id="lib-export-btn" class="btn-backup" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full);">
               <i data-lucide="download"></i> JSON İndir (Yedekle)
             </button>
+            <button id="lib-import-btn" class="btn-secondary" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full); background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #10b981;">
+              <i data-lucide="upload"></i> JSON Yükle (Aktar)
+            </button>
+            <input type="file" id="lib-file-input" accept=".json,application/json,text/plain" style="display: none;" />
             <button id="lib-data-modal-btn" class="btn-secondary" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full);">
               <i data-lucide="settings"></i> Veri Yönetimi
             </button>
@@ -223,6 +228,29 @@ export function renderLibraryView() {
       const exportBtn = container.querySelector('#lib-export-btn');
       if (exportBtn) {
         exportBtn.addEventListener('click', () => exportDataAsJSON());
+      }
+
+      // Quick Import JSON Button Handler
+      const importBtn = container.querySelector('#lib-import-btn');
+      const fileInput = container.querySelector('#lib-file-input');
+      if (importBtn && fileInput) {
+        importBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const res = importDataFromJSON(event.target.result, 'merge');
+              if (res.success) {
+                showToast(`✓ Yedek başarıyla yüklendi! (${res.countHistory} izleme, ${res.countFavs} favori aktarıldı)`, 'success');
+              } else {
+                showToast(`Yükleme hatası: ${res.message || res.error}`, 'error');
+              }
+            };
+            reader.onerror = () => showToast('Dosya okunamadı.', 'error');
+            reader.readAsText(file);
+          }
+        });
       }
 
       // Open Data Manager Modal Handler

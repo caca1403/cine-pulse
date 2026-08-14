@@ -142,24 +142,27 @@ export function openDataManagerModal() {
   }
 
   function handleFileSelect(file) {
-    if (!file.name.endsWith('.json')) {
-      showToast('Lütfen geçerli bir .json yedek dosyası seçiniz.', 'error');
-      return;
-    }
+    if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const modeRadio = document.querySelector('input[name="import-mode"]:checked');
-      const mode = modeRadio ? modeRadio.value : 'merge';
-      
-      const result = importDataFromJSON(event.target.result, mode);
-      if (result.success) {
-        showToast(`Yedek yüklendi! (${result.countHistory} içerik aktarıldı)`, 'success');
-        closeModal();
-        window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { action: 'import' } }));
-      } else {
-        showToast(`Yükleme hatası: ${result.error}`, 'error');
+      try {
+        const modeRadio = document.querySelector('input[name="import-mode"]:checked');
+        const mode = modeRadio ? modeRadio.value : 'merge';
+        
+        const result = importDataFromJSON(event.target.result, mode);
+        if (result.success) {
+          showToast(`✓ Yedek yüklendi! (${result.countHistory} izleme kaydı, ${result.countFavs} favori aktarıldı)`, 'success');
+          closeModal();
+        } else {
+          showToast(`Yükleme hatası: ${result.message || result.error}`, 'error');
+        }
+      } catch (err) {
+        showToast(`Yedek dosyası işlenirken hata oluştu: ${err.message}`, 'error');
       }
+    };
+    reader.onerror = () => {
+      showToast('Dosya okunamadı.', 'error');
     };
     reader.readAsText(file);
   }

@@ -599,47 +599,149 @@ export function saveUserSettings(settings) {
    ========================================================================== */
 
 export function exportDataAsJSON() {
+  const history = getLocalItem(STORAGE_KEYS.WATCH_HISTORY, []);
+  const favs = getLocalItem(STORAGE_KEYS.FAVORITES, []);
+  const watch = getLocalItem(STORAGE_KEYS.WATCHLIST, []);
+  const settings = getLocalItem(STORAGE_KEYS.USER_SETTINGS, {});
+
   const exportPayload = {
     version: '1.0.0',
     exportDate: new Date().toISOString(),
     appName: 'CinePulse Studio',
+    watchHistory: history,
+    favorites: favs,
+    watchlist: watch,
+    userSettings: settings,
     data: {
-      watchHistory: getLocalItem(STORAGE_KEYS.WATCH_HISTORY, []),
-      favorites: getLocalItem(STORAGE_KEYS.FAVORITES, []),
-      watchlist: getLocalItem(STORAGE_KEYS.WATCHLIST, []),
-      userSettings: getLocalItem(STORAGE_KEYS.USER_SETTINGS, {})
+      watchHistory: history,
+      favorites: favs,
+      watchlist: watch,
+      userSettings: settings
     }
   };
 
-  const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+  const jsonStr = JSON.stringify(exportPayload, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = `cinepulse_yedek_${new Date().toISOString().split('T')[0]}.json`;
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 1000);
 }
 
-export function importDataFromJSON(jsonString) {
+export function importDataFromJSON(jsonInput, mode = 'merge') {
   try {
-    const parsed = JSON.parse(jsonString);
-    if (!parsed || !parsed.data) {
-      throw new Error('Geçersiz yedek dosyası yapısı.');
+    let parsed = null;
+    if (typeof jsonInput === 'string') {
+      parsed = JSON.parse(jsonInput.trim());
+    } else if (typeof jsonInput === 'object' && jsonInput !== null) {
+      parsed = jsonInput;
     }
 
-    const { watchHistory, favorites, watchlist, userSettings } = parsed.data;
+    if (!parsed) {
+      throw new Error('Geçersiz veya boş yedek dosyası.');
+    }
 
-    if (Array.isArray(watchHistory)) setLocalItem(STORAGE_KEYS.WATCH_HISTORY, watchHistory);
-    if (Array.isArray(favorites)) setLocalItem(STORAGE_KEYS.FAVORITES, favorites);
-    if (Array.isArray(watchlist)) setLocalItem(STORAGE_KEYS.WATCHLIST, watchlist);
-    if (userSettings && typeof userSettings === 'object') setLocalItem(STORAGE_KEYS.USER_SETTINGS, userSettings);
+    let incomingHistory = [];
+    let incomingFavs = [];
+    let incomingWatchlist = [];
+    let incomingSettings = {};
 
-    return { success: true, message: 'Verileriniz başarıyla içe aktarıldı ve geri yüklendi.' };
+    if (Array.isArray(parsed)) {
+      incomingHistory = parsed;
+    } else if (typeof parsed === 'object') {
+      incomingHistory = parsed.watchHistory || parsed.data?.watchHistory || parsed.sineflix_watch_history_v1 || parsed.history || [];
+      incomingFavs = parsed.favorites || parsed.data?.favorites || parsed.sineflix_favorites_v1 || [];
+      incomingWatchlist = parsed.watchlist || parsed.data?.watchlist || parsed.sineflix_watchlist_v1 || [];
+      incomingSettings = parsed.userSettings || parsed.data?.userSettings || parsed.sineflix_user_settings_v1 || {};
+    }
+
+    if (!Array.isArray(incomingHistory)) incomingHistory = [];
+    if (!Array.isArray(incomingFavs)) incomingFavs = [];
+    if (!Array.isArray(incomingWatchlist)) incomingWatchlist = [];
+
+    if (mode === 'replace') {
+      setLocalItem(STORAGE_KEYS.WATCH_HISTORY, incomingHistory);
+      setLocalItem(STORAGE_KEYS.FAVORITES, incomingFavs);
+      setLocalItem(STORAGE_KEYS.WATCHLIST, incomingWatchlist);
+      if (incomingSettings && typeof incomingSettings === 'object') {
+        setLocalItem(STORAGE_KEYS.USER_SETTINGS, incomingSettings);
+      }
+    } else {
+      // Merge mode
+      const existingHistory = getLocalItem(STORAGE_KEYS.WATCH_HISTORY, []);
+      const historyMap = new Map();
+
+      // Load existing
+      existingHistory.forEach(item => {
+        const key = `${item.id}_${item.season || 1}_${item.episode || 1}`;
+        historyMap.set(key, item);
+      });
+
+      // Merge incoming
+      incomingHistory.forEach(item => {
+        const key = `${item.id}_${item.season || 1}_${item.episode || 1}`;
+        if (!historyMap.has(key)) {
+          historyMap.set(key, item);
+        } else {
+          const existing = historyMap.get(key);
+          // Keep the one with latest timestamp or completed status
+          if ((item.lastWatchedAt || 0) >= (existing.lastWatchedAt || 0) || item.completed) {
+            historyMap.set(key, { ...existing, ...item });
+          }
+        }
+      });
+
+      const mergedHistory = Array.from(historyMap.values()).sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+      setLocalItem(STORAGE_KEYS.WATCH_HISTORY, mergedHistory);
+
+      // Merge Favorites
+      const existingFavs = getLocalItem(STORAGE_KEYS.FAVORITES, []);
+      const favsMap = new Map();
+      existingFavs.forEach(f => favsMap.set(String(f.id), f));
+      incomingFavs.forEach(f => {
+        if (!favsMap.has(String(f.id))) favsMap.set(String(f.id), f);
+      });
+      setLocalItem(STORAGE_KEYS.FAVORITES, Array.from(favsMap.values()));
+
+      // Merge Watchlist
+      const existingWatch = getLocalItem(STORAGE_KEYS.WATCHLIST, []);
+      const watchMap = new Map();
+      existingWatch.forEach(w => watchMap.set(String(w.id), w));
+      incomingWatchlist.forEach(w => {
+        if (!watchMap.has(String(w.id))) watchMap.set(String(w.id), w);
+      });
+      setLocalItem(STORAGE_KEYS.WATCHLIST, Array.from(watchMap.values()));
+
+      // Merge Settings
+      const existingSettings = getLocalItem(STORAGE_KEYS.USER_SETTINGS, {});
+      setLocalItem(STORAGE_KEYS.USER_SETTINGS, { ...existingSettings, ...incomingSettings });
+    }
+
+    // Fire all legacy & active synchronization events
+    window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { action: 'import' } }));
+    window.dispatchEvent(new CustomEvent('dizibol_data_changed', { detail: { action: 'import' } }));
+    window.dispatchEvent(new CustomEvent('cinepulse_data_changed', { detail: { action: 'import' } }));
+
+    return {
+      success: true,
+      countHistory: incomingHistory.length,
+      countFavs: incomingFavs.length,
+      countWatchlist: incomingWatchlist.length,
+      message: `${incomingHistory.length} izleme kaydı ve ${incomingFavs.length} favori başarıyla aktarıldı.`
+    };
   } catch (err) {
     console.error('Import error:', err);
-    return { success: false, message: 'Yedek dosyası okunamadı: ' + err.message };
+    return {
+      success: false,
+      error: err.message,
+      message: 'Yedek dosyası okunamadı: ' + err.message
+    };
   }
 }
 
