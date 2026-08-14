@@ -2,6 +2,10 @@
   "version": 2,
   "rewrites": [
     {
+      "source": "/api/:match*",
+      "destination": "/api/proxy"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
