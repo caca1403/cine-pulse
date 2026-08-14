@@ -114,27 +114,32 @@ export async function fetchFilmMakinesiSources({
   for (const baseDomain of baseDomains) {
     if (sources.length > 0) break;
 
-    // 1. Generate Direct URLs to test
+    // Generate Direct candidate URLs
     const candidateUrls = [];
     for (const slug of candidateSlugs) {
       if (isMovie) {
         candidateUrls.push(
+          `${baseDomain}/${slug}-izle-fm1/`,
           `${baseDomain}/${slug}-izle/`,
           `${baseDomain}/${slug}/`,
+          `${baseDomain}/${slug}-fm1/`,
           `${baseDomain}/film/${slug}-izle/`,
           `${baseDomain}/film/${slug}/`
         );
       } else {
         candidateUrls.push(
-          `${baseDomain}/dizi/${slug}/sezon-${season}/bolum-${episode}/`,
-          `${baseDomain}/dizi/${slug}-izle/sezon-${season}/bolum-${episode}/`,
           `${baseDomain}/dizi/${slug}-izle-2022-fm1/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}-izle-2023-fm14/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}-izle-2024-fmxrpu/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}-izle-fm1/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}-izle/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}-2026/sezon-${season}/bolum-${episode}/`,
           `${baseDomain}/dizi/${slug}-2024/sezon-${season}/bolum-${episode}/`
         );
       }
     }
 
-    // 2. Also try site search if needed
     for (const testUrl of candidateUrls) {
       try {
         const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(testUrl)}`;
