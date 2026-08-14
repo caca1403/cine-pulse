@@ -1,9 +1,32 @@
 /* ==========================================================================
-   SineFlix Pro - Direct REST API Scraper (Anonymous Server Labels)
-   Supports multi-alias searches (English, Romaji, Turkish, TMDB)
+   CinePulse Studio - Direct REST API Scraper (DiziBal)
+   High-accuracy title & year matching to prevent wrong movie playback.
    ========================================================================== */
 
-export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
+function isTitleMatch(targetTitle, candidateTitle, targetYear = null, candidateYear = null) {
+  if (!targetTitle || !candidateTitle) return false;
+  
+  const normTarget = targetTitle.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+  const normCand = candidateTitle.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+  
+  if (normTarget === normCand) return true;
+  
+  const targetWords = normTarget.split(/\s+/).filter(w => w.length > 1);
+  const candWords = normCand.split(/\s+/).filter(w => w.length > 1);
+  
+  const matchCount = targetWords.filter(w => candWords.includes(w)).length;
+  const ratio = matchCount / Math.max(targetWords.length, 1);
+  
+  if (ratio >= 0.75) {
+    if (targetYear && candidateYear) {
+      return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
+    }
+    return true;
+  }
+  return false;
+}
+
+export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesTitle = '', title = '', originalTitle = '', year = null, season = 1, episode = 1, isDub = true }) {
   const isBrowser = typeof window !== 'undefined';
   const apiBase = isBrowser ? '/api/dbl' : 'https://dizibal.com/api';
   const isMovie = type === 'movie';
@@ -32,12 +55,17 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         const moviesList = searchJson?.data || [];
         if (moviesList.length === 0) continue;
 
-        const normTarget = cleanQuery.toLowerCase().replace(/[^a-z0-9]/g, '');
-        let targetMovie = moviesList.find(m => (m.title || '').toLowerCase().replace(/[^a-z0-9]/g, '') === normTarget);
+        // Accurate match by title & year - NEVER blindly take moviesList[0]
+        let targetMovie = moviesList.find(m => isTitleMatch(cleanQuery, m.title || m.name || m.slug, year, m.year || m.release_date));
         if (!targetMovie) {
-          targetMovie = moviesList.find(m => (m.slug || '').toLowerCase().includes(normTarget));
+          targetMovie = moviesList.find(m => isTitleMatch(rawQuery, m.title || m.name || m.slug, year, m.year || m.release_date));
         }
-        if (!targetMovie) targetMovie = moviesList[0];
+
+        if (!targetMovie) {
+          // If no movie matches the target title, skip to avoid streaming the wrong film
+          continue;
+        }
+
         const targetSlug = targetMovie.slug;
 
         const detailRes = await fetch(`${apiBase}/movies/${targetSlug}`, {
@@ -76,7 +104,16 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         const seriesList = searchJson?.data || [];
         if (seriesList.length === 0) continue;
 
-        const seriesSlug = seriesList[0].slug;
+        let targetSeries = seriesList.find(s => isTitleMatch(cleanQuery, s.title || s.name || s.slug, year, s.year || s.first_air_date));
+        if (!targetSeries) {
+          targetSeries = seriesList.find(s => isTitleMatch(rawQuery, s.title || s.name || s.slug, year, s.year || s.first_air_date));
+        }
+
+        if (!targetSeries) {
+          continue;
+        }
+
+        const seriesSlug = targetSeries.slug;
 
         const seasonRes = await fetch(`${apiBase}/series/${seriesSlug}/seasons/${season}`, {
           headers: { 'Accept': 'application/json' }
