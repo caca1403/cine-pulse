@@ -1,15 +1,16 @@
 /* ==========================================================================
    CinePulse Studio - Library & Watch Analytics View
-   Displays unified watch history, user watch time statistics,
-   favorites, watchlist, and JSON Data Management.
+   Displays in-progress continue watching, completed watch history,
+   user watch time statistics, favorites, watchlist, and JSON Data Management.
    ========================================================================== */
 
-import { getWatchHistory, getUnifiedContinueWatching, getFavorites, getWatchlist, getTotalWatchStats, exportDataAsJSON } from '../services/storage.js';
+import { getWatchHistory, getContinueWatchingList, getCompletedWatchList, getFavorites, getWatchlist, getTotalWatchStats, exportDataAsJSON } from '../services/storage.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { openDataManagerModal } from '../components/DataManagerModal.js';
 
 export function renderLibraryView() {
-  const unifiedHistory = getUnifiedContinueWatching();
+  const continueHistory = getContinueWatchingList();
+  const completedHistory = getCompletedWatchList();
   const allHistory = getWatchHistory();
   const favorites = getFavorites();
   const watchlist = getWatchlist();
@@ -83,30 +84,46 @@ export function renderLibraryView() {
 
         </div>
 
-        <!-- Section Tabs: Geçmiş, Favoriler, Listem -->
+        <!-- Section Tabs: Devam Et, Tamamlananlar, Favoriler, Listem, Tüm Bölümler -->
         <div class="season-bar" id="library-tabs" style="margin-bottom: 2rem;">
-          <button class="season-btn active" data-tab="history">İzlemeye Devam Et (${unifiedHistory.length})</button>
+          <button class="season-btn active" data-tab="continue">İzlemeye Devam Et (${continueHistory.length})</button>
+          <button class="season-btn" data-tab="completed">Tamamlananlar (${completedHistory.length})</button>
           <button class="season-btn" data-tab="favorites">Favorilerim (${favorites.length})</button>
           <button class="season-btn" data-tab="watchlist">İzleme Listesi (${watchlist.length})</button>
           <button class="season-btn" data-tab="all-episodes">Tüm Bölüm Geçmişi (${allHistory.length})</button>
         </div>
 
-        <!-- Tab 1: Unified History Grid -->
-        <div class="tab-content" id="tab-history">
-          ${unifiedHistory.length === 0 ? `
+        <!-- Tab 1: Continue Watching (In-Progress Only) -->
+        <div class="tab-content" id="tab-continue">
+          ${continueHistory.length === 0 ? `
             <div style="padding: 4rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md);">
               <i data-lucide="clock" style="width: 48px; height: 48px; opacity: 0.4; margin-bottom: 1rem;"></i>
-              <h3>Henüz izleme geçmişiniz yok.</h3>
+              <h3>Yarım kalan içerik yok.</h3>
               <p style="font-size: 0.9rem; margin-top: 0.5rem;">Dizi veya film izlemeye başladığınızda burada otomatik görünecektir.</p>
             </div>
           ` : `
             <div class="media-grid">
-              ${unifiedHistory.map(item => renderMediaCard(item)).join('')}
+              ${continueHistory.map(item => renderMediaCard(item)).join('')}
             </div>
           `}
         </div>
 
-        <!-- Tab 2: Favorites Grid -->
+        <!-- Tab 2: Completed / Finished Watch List -->
+        <div class="tab-content hidden" id="tab-completed">
+          ${completedHistory.length === 0 ? `
+            <div style="padding: 4rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md);">
+              <i data-lucide="check-circle-2" style="width: 48px; height: 48px; opacity: 0.4; margin-bottom: 1rem; color: #10b981;"></i>
+              <h3>Henüz tamamlanmış içerik bulunmuyor.</h3>
+              <p style="font-size: 0.9rem; margin-top: 0.5rem;">İzlediğiniz filmler ve bitirdiğiniz diziler burada listelenir.</p>
+            </div>
+          ` : `
+            <div class="media-grid">
+              ${completedHistory.map(item => renderMediaCard(item)).join('')}
+            </div>
+          `}
+        </div>
+
+        <!-- Tab 3: Favorites Grid -->
         <div class="tab-content hidden" id="tab-favorites">
           ${favorites.length === 0 ? `
             <div style="padding: 4rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md);">
@@ -120,7 +137,7 @@ export function renderLibraryView() {
           `}
         </div>
 
-        <!-- Tab 3: Watchlist Grid -->
+        <!-- Tab 4: Watchlist Grid -->
         <div class="tab-content hidden" id="tab-watchlist">
           ${watchlist.length === 0 ? `
             <div style="padding: 4rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md);">
@@ -134,7 +151,7 @@ export function renderLibraryView() {
           `}
         </div>
 
-        <!-- Tab 4: All Episodes Breakdown -->
+        <!-- Tab 5: All Episodes Breakdown -->
         <div class="tab-content hidden" id="tab-all-episodes">
           ${allHistory.length === 0 ? `
             <div style="padding: 4rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md);">
