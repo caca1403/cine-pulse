@@ -91,6 +91,9 @@ async function route() {
 window.addEventListener('hashchange', route);
 window.addEventListener('DOMContentLoaded', route);
 
+// Immediate execution for module script execution
+route();
+
 // Data change event listener (for auto UI refresh when JSON backup is loaded)
 window.addEventListener('dizibol_data_changed', () => {
   route();
