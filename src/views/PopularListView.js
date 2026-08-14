@@ -3,7 +3,7 @@
    Pure popularity-ordered infinite scrolling view for Series and Movies.
    ========================================================================== */
 
-import { fetchPopularSeries, fetchPopularMovies } from '../services/tmdbApi.js';
+import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 
 export async function renderPopularListView(type = 'tv') {
@@ -12,8 +12,15 @@ export async function renderPopularListView(type = 'tv') {
   let isLoading = false;
   let isExhausted = false;
 
-  const titleText = type === 'tv' ? 'Tüm Zamanların En Popüler Dizileri' : 'Tüm Zamanların En Popüler Filmleri';
-  const iconName = type === 'tv' ? 'tv-2' : 'clapperboard';
+  let titleText = 'Tüm Zamanların En Popüler Dizileri';
+  let iconName = 'tv-2';
+  if (type === 'movie') {
+    titleText = 'Tüm Zamanların En Popüler Filmleri';
+    iconName = 'clapperboard';
+  } else if (type === 'anime') {
+    titleText = 'En Çok İzlenen Popüler Animeler';
+    iconName = 'sparkles';
+  }
 
   const html = `
     <div class="popular-list-view" style="padding-top: 6.5rem; padding-bottom: 4rem;">
@@ -23,7 +30,7 @@ export async function renderPopularListView(type = 'tv') {
           <h1 style="font-size: 2.2rem; display: flex; align-items: center; gap: 0.75rem; color: #fff;">
             <i data-lucide="${iconName}" style="color: var(--primary)"></i> ${titleText}
           </h1>
-          <span style="color: var(--text-muted); font-size: 0.9rem;" id="popular-count-label">Tüm zamanların oy sayısına ve genel popülerliğine göre listeleniyor</span>
+          <span style="color: var(--text-muted); font-size: 0.9rem;" id="popular-count-label">Popülerliğe ve izlenme oranına göre listeleniyor</span>
         </div>
 
         <!-- Media Grid -->
@@ -55,7 +62,14 @@ export async function renderPopularListView(type = 'tv') {
         if (spinner) spinner.style.display = 'block';
 
         try {
-          const newItems = type === 'tv' ? await fetchPopularSeries(currentPage) : await fetchPopularMovies(currentPage);
+          let newItems = [];
+          if (type === 'tv') {
+            newItems = await fetchPopularSeries(currentPage);
+          } else if (type === 'movie') {
+            newItems = await fetchPopularMovies(currentPage);
+          } else if (type === 'anime') {
+            newItems = await fetchPopularAnime(currentPage);
+          }
           if (spinner) spinner.style.display = 'none';
 
           if (!newItems || newItems.length === 0) {

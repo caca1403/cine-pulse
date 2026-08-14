@@ -13,6 +13,7 @@ import { fetchSinewixSources } from './sinewixScraper.js';
 import { fetchFilmizlechSources } from './filmizlechScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchFilmizleNowSources } from './filmizleNowScraper.js';
+import { fetchAnimecixSources } from './animecixScraper.js';
 
 function cleanTitle(raw) {
   if (!raw) return '';
@@ -37,7 +38,8 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     snxDub,
     flzDub, flzSub,
     hdfcDub, hdfcSub,
-    finDub, finSub
+    finDub, finSub,
+    acxSub
   ] = await Promise.all([
     fetchDiziBalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchDiziBalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
@@ -50,7 +52,8 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     fetchHdfilmcehennemiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchHdfilmcehennemiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
     fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
-    fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => [])
+    fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
+    fetchAnimecixSources({ seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => [])
   ]);
 
   // Helper mapper for Dubbed sources
@@ -129,6 +132,7 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
 
   const cleanSubtitled = [
     ...mapSubtitledSources(dblSub),
+    ...mapSubtitledSources(acxSub),
     ...mapSubtitledSources(szdSub),
     ...mapSubtitledSources(flzSub),
     ...mapSubtitledSources(hdfcSub),
