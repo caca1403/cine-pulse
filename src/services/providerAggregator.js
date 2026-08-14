@@ -1,12 +1,13 @@
 /* ==========================================================================
    CinePulse Studio - Master Stream Aggregator
    Aggregates live Turkish & Global VIP sources:
+   - FilmMakinesi (Rapid & CloseLoad 1080p DUAL)
    - SezonlukDizi (VidMoly, Sibnet, Netu, VideoSoft, FileMoon)
    - DiziBal (VIP 1080p Dublaj & Altyazılı)
    - Sinewix (Android VIP 1080p HLS)
    - Dizipal (1080p HLS FastStream)
+   - FilmizleCh / Channel Stream (1080p)
    - Now Stream / Filmizle (1080p Dublaj & Altyazılı)
-   - FilmizleCh (1080p)
    - AnimeTR / TRAnimeİzle / TürkAnime TV (1080p)
    - BelgeselX / Belgeselce (1080p)
    - AutoEmbed VIP / EmbedSU / VidSrc ICU / SmashyStream / VidLink / SuperEmbed
@@ -18,6 +19,7 @@ import { fetchDizipalSources } from './dizipalScraper.js';
 import { fetchSinewixSources } from './sinewixScraper.js';
 import { fetchFilmizlechSources } from './filmizlechScraper.js';
 import { fetchFilmizleNowSources } from './filmizleNowScraper.js';
+import { fetchFilmMakinesiSources } from './filmMakinesiScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
 import { fetchTurkAnimeSources } from './turkanimeScraper.js';
@@ -70,28 +72,33 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
       const altRes = await fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}/alternative_titles?api_key=${TMDB_API_KEY}`).catch(() => null);
       if (altRes && altRes.ok) {
         const altData = await altRes.json().catch(() => null);
-        const results = altData && (altData.results || altData.titles) ? (altData.results || altData.titles) : [];
-        for (const r of results) {
-          const t = r.title || r.name;
-          if (t && (r.iso_3166_1 === 'US' || r.iso_3166_1 === 'JP' || r.iso_3166_1 === 'TR' || !r.iso_3166_1)) {
-            titles.add(cleanTitle(t));
+        const altList = altData?.titles || altData?.results || [];
+        for (const item of altList) {
+          if (item.iso_3166_1 === 'TR' || item.iso_3166_1 === 'US' || item.iso_3166_1 === 'GB') {
+            if (item.title) titles.add(cleanTitle(item.title));
           }
         }
       }
     } catch (_) {}
   }
 
-  return {
-    candidateTitles: [...titles].filter(t => t && typeof t === 'string' && t.trim().length > 1),
-    detectedYear
-  };
+  return { candidateTitles: Array.from(titles).filter(Boolean), detectedYear };
 }
 
-export async function getStreamingServers({ type = 'tv', tmdbId, title = '', seriesTitle = '', originalTitle = '', year = null, season = 1, episode = 1 }) {
-  const isMovie = type === 'movie';
-  const targetTitle = cleanTitle(seriesTitle) || cleanTitle(title) || cleanTitle(originalTitle);
-
+export async function getStreamingServers({
+  type = 'movie',
+  tmdbId = null,
+  title = '',
+  originalTitle = '',
+  seriesTitle = '',
+  year = null,
+  season = 1,
+  episode = 1
+}) {
+  const isMovie = (type === 'movie');
+  const targetTitle = cleanTitle(seriesTitle || title);
   const cacheKey = `${type}_${tmdbId || targetTitle}_s${season}_e${episode}`;
+
   if (streamServersCache.has(cacheKey)) {
     return streamServersCache.get(cacheKey);
   }
@@ -99,23 +106,32 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
   const { candidateTitles, detectedYear } = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle);
   const targetYear = year || detectedYear;
 
+  // Concurrent scraping of all premium providers
   const [
-    dblDub, dblSub,
-    szdDub, szdSub,
+    fmkDub,
+    fmkSub,
+    dblDub,
+    dblSub,
+    szdDub,
+    szdSub,
     snxDub,
     dzpDub,
-    flzDub, flzSub,
-    finDub, finSub,
+    flzDub,
+    flzSub,
+    finDub,
+    finSub,
     antrSub,
     traSub,
     taSub,
     blgDub
   ] = await Promise.all([
-    withTimeout(fetchDiziBalSources({ titles: candidateTitles, type, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })),
-    withTimeout(fetchDiziBalSources({ titles: candidateTitles, type, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })),
-    !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })) : Promise.resolve([]),
-    !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })) : Promise.resolve([]),
-    withTimeout(fetchSinewixSources({ type, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })),
+    withTimeout(fetchFilmMakinesiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
+    withTimeout(fetchFilmMakinesiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
+    withTimeout(fetchDiziBalSources({ type, title: targetTitle, originalTitle, season, episode, isDub: true })),
+    withTimeout(fetchDiziBalSources({ type, title: targetTitle, originalTitle, season, episode, isDub: false })),
+    !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: true })) : Promise.resolve([]),
+    !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: false })) : Promise.resolve([]),
+    withTimeout(fetchSinewixSources({ titles: candidateTitles, season, episode })),
     withTimeout(fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
@@ -144,6 +160,7 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     }));
 
   const cleanDubbed = [
+    ...mapDubbedSources(fmkDub),
     ...mapDubbedSources(dblDub),
     ...mapDubbedSources(szdDub),
     ...mapDubbedSources(snxDub),
@@ -179,6 +196,7 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
         ? `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}`
         : `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}&season=${season}&episode=${episode}`
     },
+    ...mapSubtitledSources(fmkSub),
     ...mapSubtitledSources(antrSub),
     ...mapSubtitledSources(traSub),
     ...mapSubtitledSources(taSub),
@@ -205,9 +223,9 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
         : `https://embed.su/embed/tv/${tmdbId}/${season}/${episode}`
     },
     {
-      id: 'sub_vidsrc_icu',
+      id: 'sub_vidsrcicu',
       name: 'VidSrc ICU (1080p Altyazılı)',
-      badge: '⚡ VidSrc 1080p',
+      badge: '⚡ VidSrc ICU',
       category: 'subtitled',
       getUrl: () => isMovie
         ? `https://vidsrc.icu/embed/movie/${tmdbId}`
@@ -216,7 +234,7 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     {
       id: 'sub_vidlink',
       name: 'VidLink VIP Stream',
-      badge: '⚡ VidLink 1080p',
+      badge: '⚡ VidLink VIP',
       category: 'subtitled',
       getUrl: () => isMovie
         ? `https://vidlink.pro/movie/${tmdbId}`
@@ -225,7 +243,7 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     {
       id: 'sub_superembed',
       name: 'SuperEmbed Stream (1080p Altyazılı)',
-      badge: '💬 SuperEmbed',
+      badge: '⚡ SuperEmbed',
       category: 'subtitled',
       getUrl: () => isMovie
         ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
@@ -233,22 +251,14 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     }
   ];
 
-  if (cleanDubbed.length === 0) {
-    cleanDubbed.push({
-      id: 'dub_not_found',
-      name: 'Dublaj Bulunamadı',
-      badge: '⚠️ Yok',
-      category: 'dubbed',
-      notFound: true,
-      getUrl: () => ''
-    });
-  }
-
   const result = {
     dubbed: cleanDubbed,
-    subtitled: cleanSubtitled
+    subtitled: cleanSubtitled,
+    totalServers: cleanDubbed.length + cleanSubtitled.length
   };
 
+  // Cache for instant navigation
   streamServersCache.set(cacheKey, result);
+
   return result;
 }
