@@ -99,7 +99,9 @@ export async function fetchPopularSeries(page = 1) {
     page,
     language: 'tr-TR'
   });
-  return res && res.results ? res.results.filter(item => item.poster_path || item.backdrop_path) : [];
+  return res && res.results
+    ? res.results.filter(item => item.poster_path || item.backdrop_path).map(item => ({ ...item, type: 'tv', media_type: 'tv' }))
+    : [];
 }
 
 export async function fetchPopularMovies(page = 1) {
@@ -108,7 +110,9 @@ export async function fetchPopularMovies(page = 1) {
     page,
     language: 'tr-TR'
   });
-  return res && res.results ? res.results.filter(item => item.poster_path || item.backdrop_path) : [];
+  return res && res.results
+    ? res.results.filter(item => item.poster_path || item.backdrop_path).map(item => ({ ...item, type: 'movie', media_type: 'movie' }))
+    : [];
 }
 
 export async function fetchPopularAnime(page = 1) {
