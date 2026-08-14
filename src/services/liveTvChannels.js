@@ -188,7 +188,7 @@ export const LIVE_TV_CHANNELS = [
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/CNN_Turk_logo.svg/300px-CNN_Turk_logo.svg.png',
     badge: '📰 İlk Bilen Siz Olun',
     quality: '1080p Full HD',
-    streamUrl: 'https://www.youtube-nocookie.com/embed/fA9aL58r-fE?autoplay=1',
+    streamUrl: 'https://www.cnnturk.com/canli-yayin',
     isHls: false
   },
   {
@@ -302,7 +302,7 @@ export const LIVE_TV_CHANNELS = [
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/BeIN_Sports_1_logo.svg/300px-BeIN_Sports_1_logo.svg.png',
     badge: '⚡ Canlı Spor Haber',
     quality: '1080p Full HD',
-    streamUrl: 'https://www.youtube-nocookie.com/embed/i7UpPgxfZZ8?autoplay=1',
+    streamUrl: 'https://www.canlitv.fun/iframe/bein-sports-haber',
     isHls: false
   },
 
@@ -326,7 +326,7 @@ export const LIVE_TV_CHANNELS = [
     logo: 'https://img-dmax.mncdn.com/dmaxcomtr_logo.png',
     badge: '🌿 Macera & Otomobil',
     quality: '1080p Full HD',
-    streamUrl: 'https://tr.canlitv.watch/iframe/dmax',
+    streamUrl: 'https://www.dmax.com.tr/canli-izle',
     isHls: false
   },
   {
@@ -336,7 +336,7 @@ export const LIVE_TV_CHANNELS = [
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/TLC_Logo.svg/300px-TLC_Logo.svg.png',
     badge: '🌿 Yaşam & Realite',
     quality: '1080p Full HD',
-    streamUrl: 'https://tr.canlitv.watch/iframe/tlc',
+    streamUrl: 'https://www.tlctv.com.tr/canli-izle',
     isHls: false
   },
   {
