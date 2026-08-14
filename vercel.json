@@ -2,14 +2,6 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/szd/(.*)",
-      "destination": "/api/szd?path=$1"
-    },
-    {
-      "source": "/api/snx/(.*)",
-      "destination": "/api/snx?path=$1"
-    },
-    {
       "source": "/api/dbl/(.*)",
       "destination": "https://dizibal.com/api/$1"
     },
