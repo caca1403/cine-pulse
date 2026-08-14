@@ -107,8 +107,8 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     fetchSinewixSources({ type, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true }).catch(() => []),
     fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
-    fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
-    fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
+    fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true }).catch(() => []),
+    fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false }).catch(() => []),
     fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
     fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
     fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
@@ -220,15 +220,6 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
       getUrl: () => isMovie
         ? `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`
         : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}`
-    },
-    {
-      id: 'sub_smashy',
-      name: 'Smashy Stream (1080p Altyazılı)',
-      badge: '💬 Smashy 1080p',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://smashystream.xyz/movie/${tmdbId}`
-        : `https://smashystream.xyz/tv/${tmdbId}/${season}/${episode}`
     }
   ];
 

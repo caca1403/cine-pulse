@@ -1,7 +1,7 @@
 /* ==========================================================================
    CinePulse Studio - Filmizle.now Scraper
    Fetches 1080p Vidmixi stream sources from https://filmizle.now
-   Strict bidirectional whole-title matching to prevent wrong movie playback.
+   Strict bidirectional whole-title & year matching to prevent wrong movie playback.
    ========================================================================== */
 
 function normalizeTitle(title) {
@@ -35,10 +35,27 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
-function isTitleSimilar(target, candidate) {
+const FRANCHISE_SUBTITLES = [
+  'inanilmaz', 'amazing', 'eve donus yok', 'no way home', 'evden uzakta', 'far from home',
+  'eve donus', 'homecoming', 'orumcek evreninde', 'into the spider verse', 'orumcek evrenine gecis',
+  'across the spider verse', 'beyond the spider verse', 'yepyeni bir gun', 'brand new day', 'lotus'
+];
+
+function isTitleStrictMatch(target, candidate, targetYear = null) {
   const normT = normalizeTitle(target).replace(/^the\s+/, '');
-  const normC = normalizeTitle(candidate).replace(/^the\s+/, '');
+  const normC = normalizeTitle(candidate).replace(/^the\s+/, '').replace(/\sizle$/, '');
+
   if (normT === normC) return true;
+
+  // Check if candidate has extra franchise modifiers not present in target
+  for (const mod of FRANCHISE_SUBTITLES) {
+    const tHas = normT.includes(mod);
+    const cHas = normC.includes(mod);
+    if (tHas !== cHas) {
+      // One has the modifier while the other doesn't (e.g. Inanilmaz Orumcek Adam vs Orumcek Adam 2026) -> REJECT!
+      return false;
+    }
+  }
 
   const tWords = normT.split(' ').filter(w => w.length > 0);
   const cWords = normC.split(' ').filter(w => w.length > 0);
@@ -55,6 +72,7 @@ export async function fetchFilmizleNowSources({
   seriesTitle = '',
   title = '',
   originalTitle = '',
+  year = null,
   season = 1,
   episode = 1,
   isDub = true
@@ -83,7 +101,7 @@ export async function fetchFilmizleNowSources({
       if (directRes && directRes.ok) {
         targetPath = directPath;
       } else {
-        // Search dynamically with strict bidirectional validation
+        // Search dynamically with strict franchise & subtitle matching
         const searchRes = await fetch(`${baseRoute}/arama?q=${encodeURIComponent(query)}`).catch(() => null);
         if (searchRes && searchRes.ok) {
           const sHtml = await searchRes.text();
@@ -93,7 +111,8 @@ export async function fetchFilmizleNowSources({
             if (h.includes('/arama') || h.includes('/diziler') || h.includes('/kesfet') || h.includes('/seri-filmler') || h.includes('/yil/')) continue;
             const slugPart = h.split('/').pop();
             const candName = slugPart.replace(/-/g, ' ');
-            if (isTitleSimilar(query, candName)) {
+
+            if (isTitleStrictMatch(query, candName, year)) {
               const cleanHref = h.replace(/^https?:\/\/(?:www\.)?filmizle\.now/, '');
               targetPath = type === 'tv'
                 ? `${cleanHref}/${season}-sezon-${episode}-bolum`
