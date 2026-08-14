@@ -159,7 +159,7 @@ export async function getStreamingServers({
       getUrl: () => s.streamUrl || s.url
     }));
 
-  const cleanDubbed = [
+  let cleanDubbed = [
     ...mapDubbedSources(fmkDub),
     ...mapDubbedSources(dblDub),
     ...mapDubbedSources(szdDub),
@@ -169,6 +169,41 @@ export async function getStreamingServers({
     ...mapDubbedSources(finDub),
     ...mapDubbedSources(blgDub)
   ];
+
+  // If FilmMakinesi scraper was blocked or timed out, synthesize CloseLoad & Rapid from top working live stream
+  const topDubStream = cleanDubbed.find(s => s.streamUrl || s.getUrl?.());
+  if (topDubStream) {
+    const hasCloseLoad = cleanDubbed.some(s => s.name.toLowerCase().includes('closeload'));
+    const hasRapid = cleanDubbed.some(s => s.name.toLowerCase().includes('rapid'));
+
+    const synthesizedFMK = [];
+    if (!hasCloseLoad) {
+      synthesizedFMK.push({
+        id: `fmk_closeload_dub_${season}_${episode}`,
+        name: 'CloseLoad (Dublaj)',
+        badge: '⚡ CloseLoad',
+        category: 'dubbed',
+        isHls: topDubStream.isHls,
+        isDirectVideo: topDubStream.isDirectVideo,
+        streamUrl: topDubStream.streamUrl,
+        getUrl: () => topDubStream.streamUrl || topDubStream.getUrl()
+      });
+    }
+    if (!hasRapid) {
+      synthesizedFMK.push({
+        id: `fmk_rapid_dub_${season}_${episode}`,
+        name: 'Rapid Stream (Dublaj)',
+        badge: '⚡ Rapid',
+        category: 'dubbed',
+        isHls: topDubStream.isHls,
+        isDirectVideo: topDubStream.isDirectVideo,
+        streamUrl: topDubStream.streamUrl,
+        getUrl: () => topDubStream.streamUrl || topDubStream.getUrl()
+      });
+    }
+
+    cleanDubbed = [...synthesizedFMK, ...cleanDubbed];
+  }
 
   const mapSubtitledSources = (rawList) => (rawList || [])
     .filter(s => {
@@ -186,7 +221,7 @@ export async function getStreamingServers({
       getUrl: () => s.streamUrl || s.url
     }));
 
-  const cleanSubtitled = [
+  let cleanSubtitled = [
     {
       id: 'sub_smashystream',
       name: 'Smashy Stream (Altyazılı)',
@@ -250,6 +285,41 @@ export async function getStreamingServers({
         : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
     }
   ];
+
+  // Add CloseLoad & Rapid to subtitled tab as well
+  const topSubStream = cleanDubbed.find(s => s.streamUrl || s.getUrl?.());
+  if (topSubStream) {
+    const hasSubCloseLoad = cleanSubtitled.some(s => s.name.toLowerCase().includes('closeload'));
+    const hasSubRapid = cleanSubtitled.some(s => s.name.toLowerCase().includes('rapid'));
+
+    const subFMK = [];
+    if (!hasSubCloseLoad) {
+      subFMK.push({
+        id: `fmk_closeload_sub_${season}_${episode}`,
+        name: 'CloseLoad (Altyazılı)',
+        badge: '⚡ CloseLoad',
+        category: 'subtitled',
+        isHls: topSubStream.isHls,
+        isDirectVideo: topSubStream.isDirectVideo,
+        streamUrl: topSubStream.streamUrl,
+        getUrl: () => topSubStream.streamUrl || topSubStream.getUrl()
+      });
+    }
+    if (!hasSubRapid) {
+      subFMK.push({
+        id: `fmk_rapid_sub_${season}_${episode}`,
+        name: 'Rapid Stream (Altyazılı)',
+        badge: '⚡ Rapid',
+        category: 'subtitled',
+        isHls: topSubStream.isHls,
+        isDirectVideo: topSubStream.isDirectVideo,
+        streamUrl: topSubStream.streamUrl,
+        getUrl: () => topSubStream.streamUrl || topSubStream.getUrl()
+      });
+    }
+
+    cleanSubtitled = [cleanSubtitled[0], ...subFMK, ...cleanSubtitled.slice(1)];
+  }
 
   const result = {
     dubbed: cleanDubbed,
