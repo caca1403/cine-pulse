@@ -149,6 +149,123 @@ export function toggleEpisodeWatched(id, season = 1, episode = 1, mediaData = {}
   return markEpisodeWatched(id, season, episode, !isCompleted, mediaData);
 }
 
+export function markAllEpisodesWatched(seriesId, seasonsList = [], completed = true, mediaData = {}) {
+  const history = getWatchHistory();
+  const title = mediaData.title || 'Dizi';
+  const posterPath = mediaData.posterPath || '';
+  const backdropPath = mediaData.backdropPath || '';
+  const type = mediaData.type || 'tv';
+
+  for (const season of seasonsList) {
+    const seasonNum = season.season_number;
+    if (seasonNum === 0 && seasonsList.length > 1) continue;
+    const count = season.episode_count || 10;
+    for (let ep = 1; ep <= count; ep++) {
+      const existingIndex = history.findIndex(item => item.id == seriesId && item.season == seasonNum && item.episode == ep);
+      const record = {
+        id: seriesId,
+        title,
+        posterPath,
+        backdropPath,
+        type,
+        season: Number(seasonNum),
+        episode: ep,
+        currentTime: completed ? 2700 : 0,
+        duration: 2700,
+        progressPercent: completed ? 100 : 0,
+        completed: !!completed,
+        lastWatchedAt: Date.now()
+      };
+      if (existingIndex >= 0) {
+        history[existingIndex] = record;
+      } else {
+        history.push(record);
+      }
+    }
+  }
+  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
+}
+
+export function markSeasonEpisodesWatched(seriesId, seasonNum, episodeCount = 10, completed = true, mediaData = {}) {
+  const history = getWatchHistory();
+  const title = mediaData.title || 'Dizi';
+  const posterPath = mediaData.posterPath || '';
+  const backdropPath = mediaData.backdropPath || '';
+  const type = mediaData.type || 'tv';
+
+  for (let ep = 1; ep <= episodeCount; ep++) {
+    const existingIndex = history.findIndex(item => item.id == seriesId && item.season == seasonNum && item.episode == ep);
+    const record = {
+      id: seriesId,
+      title,
+      posterPath,
+      backdropPath,
+      type,
+      season: Number(seasonNum),
+      episode: ep,
+      currentTime: completed ? 2700 : 0,
+      duration: 2700,
+      progressPercent: completed ? 100 : 0,
+      completed: !!completed,
+      lastWatchedAt: Date.now()
+    };
+    if (existingIndex >= 0) {
+      history[existingIndex] = record;
+    } else {
+      history.push(record);
+    }
+  }
+  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
+}
+
+export function isEntireSeriesWatched(seriesId, seasonsList = []) {
+  if (!seasonsList || seasonsList.length === 0) {
+    return isMediaWatched(seriesId, 1, 1);
+  }
+  const history = getWatchHistory();
+  for (const season of seasonsList) {
+    const seasonNum = season.season_number;
+    if (seasonNum === 0 && seasonsList.length > 1) continue;
+    const count = season.episode_count || 1;
+    for (let ep = 1; ep <= count; ep++) {
+      const item = history.find(r => r.id == seriesId && r.season == seasonNum && r.episode == ep);
+      if (!item || (!item.completed && item.progressPercent < 90)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+export function isSeasonFullyWatched(seriesId, seasonNum, episodeCount = 10) {
+  const history = getWatchHistory();
+  for (let ep = 1; ep <= episodeCount; ep++) {
+    const item = history.find(r => r.id == seriesId && r.season == seasonNum && r.episode == ep);
+    if (!item || (!item.completed && item.progressPercent < 90)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function setMediaHalfway(id, season = 1, episode = 1, currentTime = 1500, mediaData = {}) {
+  const duration = mediaData.duration || 5400;
+  const time = currentTime || Math.round(duration * 0.5);
+
+  return saveWatchProgress({
+    id,
+    title: mediaData.title || 'İçerik',
+    posterPath: mediaData.posterPath || '',
+    backdropPath: mediaData.backdropPath || '',
+    type: mediaData.type || 'movie',
+    season: Number(season),
+    episode: Number(episode),
+    currentTime: time,
+    duration,
+    completed: false
+  });
+}
+
 export function getLastWatchedEpisode(seriesId) {
   const history = getWatchHistory();
   const seriesItems = history.filter(item => item.id == seriesId);
