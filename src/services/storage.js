@@ -93,6 +93,12 @@ export function removeWatchHistoryItem(id, season = 1, episode = 1) {
   setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
 }
 
+export function removeSeriesFromHistory(id) {
+  let history = getWatchHistory();
+  history = history.filter(item => item.id != id);
+  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
+}
+
 export function clearCompletedHistory() {
   let history = getWatchHistory();
   history = history.filter(item => !item.completed && item.progressPercent < 90);
@@ -159,6 +165,150 @@ export function formatSecondsToTime(seconds) {
     return `${hrs}sa ${remMin}dk`;
   }
   return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+}
+
+export function formatTotalWatchTime(totalSeconds) {
+  if (!totalSeconds || totalSeconds <= 0) return '0 dakika';
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  if (hours > 0) {
+    return `${hours} saat ${minutes} dakika`;
+  }
+  return `${minutes} dakika`;
+}
+
+export function getTotalWatchStats() {
+  const history = getWatchHistory();
+  let totalSeconds = 0;
+  let moviesCount = 0;
+  let episodesCount = 0;
+
+  for (const item of history) {
+    if (item.completed) {
+      totalSeconds += (item.duration || 2700);
+    } else if (item.currentTime > 0) {
+      totalSeconds += item.currentTime;
+    }
+
+    if (item.type === 'movie') {
+      if (item.completed || item.progressPercent >= 50) moviesCount++;
+    } else {
+      if (item.completed || item.progressPercent >= 50) episodesCount++;
+    }
+  }
+
+  return {
+    totalSeconds,
+    totalMinutes: Math.floor(totalSeconds / 60),
+    totalHours: (totalSeconds / 3600).toFixed(1),
+    formattedTotalTime: formatTotalWatchTime(totalSeconds),
+    moviesCount,
+    episodesCount,
+    totalEntries: history.length
+  };
+}
+
+export function getUnifiedContinueWatching() {
+  const history = getWatchHistory();
+  const seriesMap = new Map();
+
+  for (const item of history) {
+    const id = item.id;
+    if (!seriesMap.has(id)) {
+      seriesMap.set(id, []);
+    }
+    seriesMap.get(id).push(item);
+  }
+
+  const unifiedList = [];
+
+  for (const [id, records] of seriesMap.entries()) {
+    records.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+    const firstRecord = records[0];
+
+    if (firstRecord.type === 'movie') {
+      unifiedList.push({
+        ...firstRecord,
+        subtitle: firstRecord.completed ? 'İzlendi' : (firstRecord.currentTime > 0 ? `Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)}` : 'İzleniyor')
+      });
+    } else {
+      const currentSeason = firstRecord.season || 1;
+      const watchedEpNumbers = new Set(
+        records
+          .filter(r => r.season === currentSeason && (r.completed || r.progressPercent >= 90))
+          .map(r => r.episode)
+      );
+
+      // Check if there is an in-progress episode (yarıda bırakılan)
+      const inProgressEp = records.find(r => !r.completed && r.progressPercent > 0 && r.progressPercent < 90);
+
+      let targetSeason = currentSeason;
+      let targetEpisode = 1;
+      let targetTime = 0;
+      let targetProgressPercent = 0;
+      let isUnwatchedNext = false;
+
+      if (inProgressEp) {
+        targetSeason = inProgressEp.season;
+        targetEpisode = inProgressEp.episode;
+        targetTime = inProgressEp.currentTime;
+        targetProgressPercent = inProgressEp.progressPercent;
+      } else {
+        const maxWatched = Math.max(0, ...Array.from(watchedEpNumbers));
+        let foundMissing = 0;
+        for (let ep = 1; ep <= maxWatched; ep++) {
+          if (!watchedEpNumbers.has(ep)) {
+            foundMissing = ep;
+            break;
+          }
+        }
+
+        if (foundMissing > 0) {
+          targetEpisode = foundMissing;
+        } else {
+          targetEpisode = maxWatched > 0 ? maxWatched + 1 : 1;
+        }
+        isUnwatchedNext = true;
+      }
+
+      unifiedList.push({
+        id: firstRecord.id,
+        title: firstRecord.title,
+        posterPath: firstRecord.posterPath,
+        backdropPath: firstRecord.backdropPath,
+        type: 'tv',
+        season: targetSeason,
+        episode: targetEpisode,
+        currentTime: targetTime,
+        duration: firstRecord.duration || 2700,
+        progressPercent: targetProgressPercent,
+        completed: false,
+        isNextEpisode: isUnwatchedNext,
+        lastWatchedAt: firstRecord.lastWatchedAt,
+        totalWatchedCount: watchedEpNumbers.size,
+        subtitle: inProgressEp 
+          ? `S${targetSeason} B${targetEpisode} • Kaldığın: ${formatSecondsToTime(targetTime)}`
+          : `S${targetSeason} B${targetEpisode} • Sıradaki Bölüm`
+      });
+    }
+  }
+
+  return unifiedList.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+}
+
+export function markAsInProgress(id, season = 1, episode = 1, minuteTime = 1200, mediaData = {}) {
+  return saveWatchProgress({
+    id,
+    title: mediaData.title,
+    posterPath: mediaData.posterPath,
+    backdropPath: mediaData.backdropPath,
+    type: mediaData.type || 'tv',
+    season,
+    episode,
+    currentTime: minuteTime,
+    duration: mediaData.duration || 2700,
+    completed: false
+  });
 }
 
 /* ==========================================================================

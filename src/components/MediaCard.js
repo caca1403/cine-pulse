@@ -48,7 +48,9 @@ export function renderMediaCard(item, options = {}) {
   let episodeInfoStr = '';
   const timeStr = formatSecondsToTime(currentTime);
 
-  if (isContinue) {
+  if (item.subtitle) {
+    episodeInfoStr = item.subtitle;
+  } else if (isContinue) {
     if (type === 'tv') {
       episodeInfoStr = `S${season} B${episode}${timeStr ? ' • ' + timeStr : ''}`;
     } else {

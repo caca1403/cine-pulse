@@ -8,7 +8,7 @@ import {
   fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated,
 } from '../services/tmdbApi.js';
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { getWatchHistory, removeWatchHistoryItem } from '../services/storage.js';
+import { getUnifiedContinueWatching, removeSeriesFromHistory } from '../services/storage.js';
 import { renderHeroSlider, attachHeroSliderEvents } from '../components/HeroSlider.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
@@ -253,7 +253,7 @@ export async function renderHomeView() {
     fetchTopRated('movie', 1)
   ]);
 
-  const watchHistory = getWatchHistory();
+  const watchHistory = getUnifiedContinueWatching();
   const heroHTML = renderHeroSlider(trending);
 
   // Register infinite loaders
@@ -348,11 +348,9 @@ export async function renderHomeView() {
           e.stopPropagation();
           const wrapper = btn.closest('.continue-card-wrapper');
           if (!wrapper) return;
-          const id      = wrapper.getAttribute('data-id');
-          const season  = parseInt(wrapper.getAttribute('data-season'), 10);
-          const episode = parseInt(wrapper.getAttribute('data-episode'), 10);
-          removeWatchHistoryItem(id, season, episode);
-          showToast('İçerik geçmişten kaldırıldı.', 'info');
+          const id = wrapper.getAttribute('data-id');
+          removeSeriesFromHistory(id);
+          showToast('İçerik izleme geçmişinden kaldırıldı.', 'info');
           wrapper.style.transition = 'all 0.28s ease-out';
           wrapper.style.transform  = 'scale(0.85)';
           wrapper.style.opacity    = '0';
