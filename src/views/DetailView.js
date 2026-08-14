@@ -64,7 +64,7 @@ export async function renderDetailView(type = 'tv', id) {
   const isSeriesAllWatched = effectiveType === 'tv' ? isEntireSeriesWatched(id, media.seasons || []) : false;
   const isCurrentWatched = effectiveType === 'movie' ? isMovieWatched : isSeriesAllWatched;
 
-  let playButtonLabel = effectiveType === 'movie' ? 'Filmi İzle (1080p HD)' : '1. Sezon 1. Bölümü İzle';
+  let playButtonLabel = effectiveType === 'movie' ? 'Filmi İzle' : '1. Sezon 1. Bölümü İzle';
   if (effectiveType === 'tv' && lastWatchedEp) {
     const timeStr = formatSecondsToTime(lastWatchedEp.currentTime);
     playButtonLabel = `Kaldığın Yerden Devam Et (S${lastWatchedEp.season} B${lastWatchedEp.episode}${timeStr ? ' • ' + timeStr : ''})`;

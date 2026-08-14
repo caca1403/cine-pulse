@@ -128,7 +128,6 @@ export function renderMediaCard(item, options = {}) {
         <div class="card-title" title="${title}">${title}</div>
         <div class="card-meta">
           <span class="card-subtitle-text" style="${timeStr ? 'color: #fbbf24; font-weight: 600;' : ''}">${episodeInfoStr}</span>
-          <span class="card-res-badge">1080p HD</span>
         </div>
       </div>
     </div>
