@@ -150,19 +150,26 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
       </div>
     ` : '';
 
-    const badgeStatusHTML = isCompleted ? `
-      <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green);">
-        <i data-lucide="check" style="width:12px; height:12px"></i> İZLENDİ
-      </span>
-    ` : (isHalfway ? `
-      <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: rgba(245, 158, 11, 0.9); color: #000; font-weight: 700;">
-        <i data-lucide="clock" style="width:12px; height:12px"></i> YARIDA
-      </span>
-    ` : `
-      <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green); display: none;">
-        <i data-lucide="check" style="width:12px; height:12px"></i> İZLENDİ
-      </span>
-    `);
+    let badgeStatusHTML = '';
+    if (isCompleted) {
+      badgeStatusHTML = `
+        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green);">
+          <i data-lucide="check" style="width:12px; height:12px"></i> İZLENDİ
+        </span>
+      `;
+    } else if (isHalfway) {
+      badgeStatusHTML = `
+        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: rgba(245, 158, 11, 0.9); color: #000; font-weight: 700;">
+          <i data-lucide="clock" style="width:12px; height:12px"></i> YARIDA
+        </span>
+      `;
+    } else {
+      badgeStatusHTML = `
+        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green); display: none;">
+          <i data-lucide="check" style="width:12px; height:12px"></i> İZLENDİ
+        </span>
+      `;
+    }
 
     return `
       <div class="episode-card" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" data-title="${epTitle}">
