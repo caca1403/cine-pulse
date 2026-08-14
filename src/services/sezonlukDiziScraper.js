@@ -92,13 +92,17 @@ export async function fetchSezonlukDiziEpisodeSources({ seriesTitle = '', season
           let iframeUrl = srcMatch ? srcMatch[1] : null;
 
           if (iframeUrl && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
+            // Skip Filemoon as it has iframe domain restrictions
+            if (
+              item.baslik?.toLowerCase().includes('filemoon') ||
+              iframeUrl.includes('bysejikuar') ||
+              iframeUrl.includes('filemoon')
+            ) {
+              continue;
+            }
+
             if (iframeUrl.startsWith('//')) {
               iframeUrl = 'https:' + iframeUrl;
-            }
-            if (iframeUrl.includes('bysejikuar') || iframeUrl.includes('filemoon')) {
-              iframeUrl = iframeUrl
-                .replace(/bysejikuar\.[a-z0-9]+/i, 'filemoon.sx')
-                .replace(/filemoon\.[a-z0-9]+/i, 'filemoon.sx');
             }
 
             extractedSources.push({

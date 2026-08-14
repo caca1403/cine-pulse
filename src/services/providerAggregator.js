@@ -57,7 +57,9 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
   const mapDubbedSources = (rawList) => rawList
     .filter(s => {
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
-      return urlStr && !urlStr.includes('recaptcha') && urlStr.length > 8;
+      const nameStr = (s.name || '').toLowerCase();
+      const isFilemoon = nameStr.includes('filemoon') || urlStr.includes('filemoon') || urlStr.includes('bysejikuar');
+      return urlStr && !urlStr.includes('recaptcha') && !isFilemoon && urlStr.length > 8;
     })
     .map(s => ({
       id: s.id,
@@ -97,7 +99,9 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
   const mapSubtitledSources = (rawList) => rawList
     .filter(s => {
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
-      return urlStr && !urlStr.includes('recaptcha') && urlStr.length > 8;
+      const nameStr = (s.name || '').toLowerCase();
+      const isFilemoon = nameStr.includes('filemoon') || urlStr.includes('filemoon') || urlStr.includes('bysejikuar');
+      return urlStr && !urlStr.includes('recaptcha') && !isFilemoon && urlStr.length > 8;
     })
     .map(s => ({
       id: s.id,
