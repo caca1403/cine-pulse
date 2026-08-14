@@ -1,7 +1,7 @@
 /* ==========================================================================
    SineFlix Pro - Video Player Modal Component
-   Giant Widescreen Theater Mode Player with Live Reverse-Engineered
-   SezonlukDizi, Dizipal & Sinewix Android API Sources.
+   Giant Widescreen Theater Mode Player with Instant-Open Modal Architecture,
+   Memory Caching, and Live Reverse-Engineered Stream Sources.
    Features seamless in-place episode switching without modal closure,
    interactive watched status toggles, and live video streaming.
    ========================================================================== */
@@ -24,7 +24,8 @@ export async function openPlayerModal({
   episode = 1,
   posterPath = '',
   backdropPath = '',
-  currentTime = 0
+  currentTime = 0,
+  duration = 0
 }) {
   const modalContainer = document.getElementById('player-modal');
   if (!modalContainer) return;
@@ -52,30 +53,6 @@ export async function openPlayerModal({
     .replace(/\s*\(\d{4}\).*/, '')
     .trim();
 
-  showToast(
-    type === 'movie'
-      ? 'Yüksek hızlı film depoları taranıyor...'
-      : 'Yüksek hızlı dizi kaynakları taranıyor...',
-    'info'
-  );
-
-  let categorizedServers = await getStreamingServers({
-    type,
-    tmdbId,
-    title: cleanSeriesName,
-    seriesTitle: cleanSeriesName,
-    originalTitle,
-    season: currentSeason,
-    episode: currentEpisode
-  });
-
-  let currentCategory = 'dubbed'; // Default to Türkçe Dublaj
-  if ((!categorizedServers.dubbed || categorizedServers.dubbed.length === 0 || categorizedServers.dubbed[0]?.notFound) && categorizedServers.subtitled && categorizedServers.subtitled.length > 0 && !categorizedServers.subtitled[0]?.notFound) {
-    currentCategory = 'subtitled';
-  }
-  let activeServers = categorizedServers[currentCategory] || [];
-  let currentServerIndex = 0;
-
   const existingRecord = getMediaProgress(tmdbId, currentSeason, currentEpisode);
   let initialTime = currentTime || (existingRecord ? existingRecord.currentTime : 0);
   let isWatched = isMediaWatched(tmdbId, currentSeason, currentEpisode);
@@ -83,7 +60,27 @@ export async function openPlayerModal({
   let simulatedCurrentTime = initialTime;
   let isSwitchingEpisode = false;
 
+  let currentCategory = 'dubbed';
+  let activeServers = [];
+  let currentServerIndex = 0;
+  let categorizedServers = { dubbed: [], subtitled: [] };
+
+  function getDisplayTitle() {
+    return type === 'tv'
+      ? `${cleanSeriesName} - S${currentSeason}E${currentEpisode}`
+      : cleanSeriesName;
+  }
+
   function renderServerPills() {
+    if (!activeServers || activeServers.length === 0) {
+      return `
+        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.82rem; padding: 0.2rem 0.5rem;">
+          <span style="width: 13px; height: 13px; border: 2px solid rgba(245, 158, 11, 0.3); border-top-color: var(--primary); border-radius: 50%; display: inline-block; animation: spin 0.6s linear infinite;"></span>
+          <span>Yayın sunucuları hazırlanıyor...</span>
+        </div>
+      `;
+    }
+
     return activeServers.map((srv, idx) => `
       <button class="server-btn ${idx === currentServerIndex ? 'active' : ''} ${srv.notFound ? 'not-found-pill' : ''}" data-index="${idx}" style="border-radius: var(--radius-full); padding: 0.45rem 1rem;">
         <span style="width: 7px; height: 7px; border-radius: 50%; background: ${srv.notFound ? '#ef4444' : (idx === currentServerIndex ? '#34d399' : '#64748b')}; box-shadow: ${idx === currentServerIndex && !srv.notFound ? '0 0 10px #34d399' : 'none'};"></span>
@@ -94,6 +91,26 @@ export async function openPlayerModal({
   }
 
   function renderPlayerContent() {
+    if (!activeServers || activeServers.length === 0) {
+      return `
+        <div class="player-loading-overlay" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 480px; background: rgba(8, 11, 18, 0.98); border-radius: 12px; gap: 1.2rem; text-align: center; padding: 2rem; animation: fadeIn 0.2s ease;">
+          <div style="position: relative; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
+            <div style="position: absolute; inset: 0; border: 3px solid rgba(245, 158, 11, 0.15); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.75s linear infinite;"></div>
+            <i data-lucide="play" style="width: 26px; height: 26px; color: var(--primary); fill: var(--primary);"></i>
+          </div>
+          <div>
+            <h3 style="font-size: 1.4rem; font-weight: 800; color: #f8fafc; margin-bottom: 0.35rem;">${cleanSeriesName}</h3>
+            <p style="font-size: 0.95rem; color: #38bdf8; font-weight: 700; margin-bottom: 0.4rem;">
+              ${type === 'tv' ? `Sezon ${currentSeason} • Bölüm ${currentEpisode}` : 'Film Yayını'} Başlatılıyor...
+            </p>
+            <p style="font-size: 0.82rem; color: var(--text-muted); max-width: 420px; margin: 0 auto; line-height: 1.5;">
+              Yüksek hızlı Türkiye ve VIP depoları taranıyor, video akış hattı bağlanıyor.
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
     const srv = activeServers[currentServerIndex];
     if (!srv || srv.notFound) {
       return `
@@ -103,7 +120,7 @@ export async function openPlayerModal({
           </div>
           <h3 style="font-size: 1.45rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.6rem;">Dublaj Sunucularda Bu İçerik Bulunamadı</h3>
           <p style="font-size: 0.95rem; color: #94a3b8; max-width: 500px; margin-bottom: 1.6rem; line-height: 1.6;">
-            "${seriesTitle || title}" içeriği aktif dublaj sunucularında yer almamaktadır veya kaldırılmıştır.
+            "${seriesTitle || title}" içeriği aktif dublaj sunucularında yer almamaktadır.
           </p>
           <button id="btn-switch-subtitled-fallback" class="btn-primary" style="padding: 0.75rem 1.8rem; font-size: 0.95rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 8px; font-weight: 600; cursor: pointer;">
             <span>💬 Türkçe Altyazılı Sunuculara Geç (1080p Full HD)</span>
@@ -162,12 +179,24 @@ export async function openPlayerModal({
     `;
   }
 
-  function getDisplayTitle() {
-    return type === 'tv'
-      ? `${cleanSeriesName} - S${currentSeason}E${currentEpisode}`
-      : cleanSeriesName;
+  function renderFooterNavButtonsHTML() {
+    if (type !== 'tv') return '';
+    return `
+      ${currentEpisode > 1 ? `
+        <button id="btn-prev-episode" class="btn-secondary" style="padding: 0.45rem 1.1rem; font-size: 0.85rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+          <i data-lucide="chevron-left" style="width: 14px; height: 14px;"></i>
+          <span>Önceki Bölüm (B${currentEpisode - 1})</span>
+        </button>
+      ` : ''}
+
+      <button id="btn-next-episode" class="btn-primary" style="padding: 0.45rem 1.3rem; font-size: 0.85rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+        <span>Sonraki Bölüm (B${currentEpisode + 1})</span>
+        <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+      </button>
+    `;
   }
 
+  // 1. INSTANT MODAL OPEN (0ms)
   modalContainer.innerHTML = `
     <div class="modal-content player-modal-content" style="background: #000; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius-lg); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.98); overflow: hidden; display: flex; flex-direction: column;">
       
@@ -200,7 +229,7 @@ export async function openPlayerModal({
 
         <!-- Right: Actions & Close -->
         <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <a id="player-popout-btn" href="${activeServers[currentServerIndex]?.streamUrl || activeServers[currentServerIndex]?.getUrl() || '#'}" target="_blank" class="btn-action-icon" title="Harici Pencerede Aç" style="width: 34px; height: 34px; border-radius: 8px;">
+          <a id="player-popout-btn" href="#" target="_blank" class="btn-action-icon" title="Harici Pencerede Aç" style="width: 34px; height: 34px; border-radius: 8px;">
             <i data-lucide="external-link" style="width:15px; height:15px"></i>
           </a>
 
@@ -220,7 +249,7 @@ export async function openPlayerModal({
         ${renderPlayerContent()}
       </div>
 
-      <!-- Footer Controls (Previous / Mark Watched / Next episode / Status) -->
+      <!-- Footer Controls -->
       <div class="player-footer-bar" style="background: rgba(10, 14, 22, 0.96); padding: 0.7rem 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem;">
         
         <!-- Left: Status & Watched & Halfway Toggle -->
@@ -252,23 +281,6 @@ export async function openPlayerModal({
   document.body.style.overflow = 'hidden';
   if (window.lucide) window.lucide.createIcons();
 
-  function renderFooterNavButtonsHTML() {
-    if (type !== 'tv') return '';
-    return `
-      ${currentEpisode > 1 ? `
-        <button id="btn-prev-episode" class="btn-secondary" style="padding: 0.45rem 1.1rem; font-size: 0.85rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
-          <i data-lucide="chevron-left" style="width: 14px; height: 14px;"></i>
-          <span>Önceki Bölüm (B${currentEpisode - 1})</span>
-        </button>
-      ` : ''}
-
-      <button id="btn-next-episode" class="btn-primary" style="padding: 0.45rem 1.3rem; font-size: 0.85rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
-        <span>Sonraki Bölüm (B${currentEpisode + 1})</span>
-        <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
-      </button>
-    `;
-  }
-
   function attachFooterNavEvents() {
     const prevEpBtn = document.getElementById('btn-prev-episode');
     if (prevEpBtn) {
@@ -284,7 +296,6 @@ export async function openPlayerModal({
     if (nextEpBtn) {
       nextEpBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        // Auto-mark current episode as watched when proceeding
         markEpisodeWatched(tmdbId, currentSeason, currentEpisode, true, {
           title: cleanSeriesName,
           posterPath,
@@ -297,22 +308,165 @@ export async function openPlayerModal({
     }
   }
 
+  attachFooterNavEvents();
+
+  function updateServerPillsEvents() {
+    const toolbar = document.getElementById('player-server-toolbar');
+    if (!toolbar) return;
+    toolbar.innerHTML = renderServerPills();
+
+    toolbar.querySelectorAll('.server-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const idx = parseInt(btn.getAttribute('data-index'), 10);
+        if (idx === currentServerIndex) return;
+
+        currentServerIndex = idx;
+        toolbar.querySelectorAll('.server-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        updatePlayerContainer();
+      });
+    });
+  }
+
+  function updatePlayerContainer() {
+    const wrapper = document.getElementById('player-iframe-wrapper');
+    if (!wrapper) return;
+
+    if (activeHlsInstance) {
+      activeHlsInstance.destroy();
+      activeHlsInstance = null;
+    }
+
+    wrapper.innerHTML = renderPlayerContent();
+    if (window.lucide) window.lucide.createIcons();
+
+    const srv = activeServers[currentServerIndex];
+    const popoutBtn = document.getElementById('player-popout-btn');
+    if (popoutBtn) {
+      popoutBtn.href = srv?.streamUrl || srv?.getUrl() || '#';
+    }
+
+    const switchSubBtn = document.getElementById('btn-switch-subtitled-fallback');
+    if (switchSubBtn) {
+      switchSubBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        currentCategory = 'subtitled';
+        activeServers = categorizedServers['subtitled'] || [];
+        currentServerIndex = 0;
+        document.getElementById('tab-dubbed')?.classList.remove('active');
+        document.getElementById('tab-subtitled')?.classList.add('active');
+        updateServerPillsEvents();
+        updatePlayerContainer();
+      });
+    }
+
+    if (srv && (srv.isDirectVideo || srv.isHls || (srv.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv'))))) {
+      initHlsPlayer(srv.streamUrl || srv.getUrl());
+    }
+  }
+
+  function initHlsPlayer(streamUrl) {
+    if (activeHlsInstance) {
+      activeHlsInstance.destroy();
+      activeHlsInstance = null;
+    }
+
+    const video = document.getElementById('hls-video-player');
+    if (!video) return;
+
+    video.addEventListener('timeupdate', () => {
+      if (video.currentTime > 0) {
+        simulatedCurrentTime = Math.round(video.currentTime);
+        saveWatchProgress({
+          id: tmdbId,
+          title: cleanSeriesName,
+          posterPath,
+          backdropPath,
+          type,
+          season: currentSeason,
+          episode: currentEpisode,
+          currentTime: Math.round(video.currentTime),
+          duration: Math.round(video.duration || estimatedDuration)
+        });
+      }
+    });
+
+    const srv = activeServers[currentServerIndex];
+    const isHlsStream = streamUrl.includes('.m3u8') || streamUrl.includes('master.txt') || (srv && srv.isHls);
+
+    if (isHlsStream) {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = streamUrl;
+        if (initialTime > 5) video.currentTime = initialTime;
+        video.play().catch(() => {});
+      } else {
+        const attachHls = () => {
+          if (window.Hls && window.Hls.isSupported()) {
+            const hlsConfig = {
+              startPosition: initialTime > 5 ? Math.round(initialTime) : -1,
+              enableWorker: true,
+              lowLatencyMode: true
+            };
+            const hls = new window.Hls(hlsConfig);
+            activeHlsInstance = hls;
+            hls.loadSource(streamUrl);
+            hls.attachMedia(video);
+            hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+              if (initialTime > 5) {
+                const timeFormatted = formatSecondsToTime(initialTime);
+                showToast(`Kaldığınız ${timeFormatted} dakikasından devam ediliyor...`, 'info');
+              }
+              video.play().catch(() => {});
+            });
+            hls.on(window.Hls.Events.ERROR, (event, data) => {
+              if (data.fatal) {
+                switch (data.type) {
+                  case window.Hls.ErrorTypes.NETWORK_ERROR:
+                    hls.startLoad();
+                    break;
+                  case window.Hls.ErrorTypes.MEDIA_ERROR:
+                    hls.recoverMediaError();
+                    break;
+                  default:
+                    hls.destroy();
+                    break;
+                }
+              }
+            });
+          }
+        };
+
+        if (window.Hls) {
+          attachHls();
+        } else {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+          script.onload = attachHls;
+          document.head.appendChild(script);
+        }
+      }
+    } else {
+      video.src = streamUrl;
+      if (initialTime > 5) video.currentTime = initialTime;
+      video.play().catch(() => {});
+    }
+  }
+
   async function switchEpisodeInPlayer(newSeason, newEpisode) {
     if (isSwitchingEpisode) return;
     isSwitchingEpisode = true;
 
-    // 1. Give instant visual button feedback
     const prevBtn = document.getElementById('btn-prev-episode');
     const nextBtn = document.getElementById('btn-next-episode');
     if (prevBtn) {
       prevBtn.disabled = true;
       prevBtn.style.opacity = '0.6';
-      prevBtn.style.cursor = 'not-allowed';
     }
     if (nextBtn) {
       nextBtn.disabled = true;
       nextBtn.style.opacity = '0.6';
-      nextBtn.style.cursor = 'not-allowed';
       if (newEpisode > currentEpisode) {
         nextBtn.innerHTML = `
           <span style="width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; display: inline-block; animation: spin 0.6s linear infinite;"></span>
@@ -320,58 +474,28 @@ export async function openPlayerModal({
         `;
       }
     }
-    if (prevBtn && newEpisode < currentEpisode) {
-      prevBtn.innerHTML = `
-        <span style="width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; display: inline-block; animation: spin 0.6s linear infinite;"></span>
-        <span>Bölüm ${newEpisode} Yükleniyor...</span>
-      `;
-    }
 
-    // 2. Cleanly teardown current player and progress
     if (activeHlsInstance) {
       activeHlsInstance.destroy();
       activeHlsInstance = null;
     }
     clearInterval(activeProgressInterval);
 
-    // 3. Show smooth loading overlay inside player frame
-    const iframeWrapper = document.getElementById('player-iframe-wrapper');
-    if (iframeWrapper) {
-      iframeWrapper.innerHTML = `
-        <div class="player-loading-overlay" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 420px; background: rgba(8, 11, 18, 0.98); border-radius: 12px; gap: 1.2rem; text-align: center; padding: 2rem; animation: fadeIn 0.3s ease;">
-          <div style="position: relative; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
-            <div style="position: absolute; inset: 0; border: 3px solid rgba(245, 158, 11, 0.15); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.75s linear infinite;"></div>
-            <i data-lucide="tv-2" style="width: 26px; height: 26px; color: var(--primary);"></i>
-          </div>
-          <div>
-            <h3 style="font-size: 1.35rem; font-weight: 800; color: #f8fafc; margin-bottom: 0.35rem;">${cleanSeriesName}</h3>
-            <p style="font-size: 0.95rem; color: #38bdf8; font-weight: 700; margin-bottom: 0.4rem;">
-              Sezon ${newSeason} • Bölüm ${newEpisode} Hazırlanıyor...
-            </p>
-            <p style="font-size: 0.82rem; color: var(--text-muted); max-width: 420px; margin: 0 auto; line-height: 1.5;">
-              Yüksek hızlı yayın sunucuları taranıyor, video akışı başlatılıyor. Lütfen bekleyin...
-            </p>
-          </div>
-        </div>
-      `;
-      if (window.lucide) window.lucide.createIcons();
-    }
-
     currentSeason = newSeason;
     currentEpisode = newEpisode;
 
-    // Update modal top bar title
     const titleEl = document.getElementById('player-modal-title');
-    if (titleEl) {
-      titleEl.textContent = getDisplayTitle();
-    }
+    if (titleEl) titleEl.textContent = getDisplayTitle();
 
     const timeBadge = document.getElementById('player-resume-time-badge');
     if (timeBadge) timeBadge.style.display = 'none';
 
-    showToast(`S${currentSeason} B${currentEpisode} kaynakları aranıyor...`, 'info');
+    // Show loading skeleton inside player
+    activeServers = [];
+    updateServerPillsEvents();
+    updatePlayerContainer();
 
-    // 4. Fetch new episode streaming servers
+    // Fetch new episode
     categorizedServers = await getStreamingServers({
       type,
       tmdbId,
@@ -392,11 +516,9 @@ export async function openPlayerModal({
     initialTime = newRecord ? newRecord.currentTime : 0;
     isWatched = isMediaWatched(tmdbId, currentSeason, currentEpisode);
 
-    // 5. Update UI components
     updateServerPillsEvents();
     updatePlayerContainer();
 
-    // 6. Update Watched status button visual
     const toggleWatchedPlayerBtn = document.getElementById('btn-toggle-watched-player');
     if (toggleWatchedPlayerBtn) {
       const span = toggleWatchedPlayerBtn.querySelector('span');
@@ -414,14 +536,12 @@ export async function openPlayerModal({
       }
     }
 
-    // 7. Re-render and rebind footer previous/next buttons
     const navGroup = document.getElementById('player-nav-btn-group');
     if (navGroup) {
       navGroup.innerHTML = renderFooterNavButtonsHTML();
       attachFooterNavEvents();
     }
 
-    // 8. Restart watch progress timer
     simulatedCurrentTime = initialTime;
     clearInterval(activeProgressInterval);
     activeProgressInterval = setInterval(() => {
@@ -440,198 +560,44 @@ export async function openPlayerModal({
     }, 5000);
 
     if (window.lucide) window.lucide.createIcons();
-    showToast(`✓ S${currentSeason} B${currentEpisode} yayında!`, 'success');
     isSwitchingEpisode = false;
   }
 
-  function initHlsPlayer(streamUrl) {
-    if (activeHlsInstance) {
-      activeHlsInstance.destroy();
-      activeHlsInstance = null;
-    }
+  // 2. Tab switcher (Dubbed vs Subtitled)
+  const tabDubbed = document.getElementById('tab-dubbed');
+  const tabSubtitled = document.getElementById('tab-subtitled');
 
-    const video = document.getElementById('hls-video-player');
-    if (!video) return;
-
-    video.removeAttribute('src');
-
-    let hasSeeked = false;
-    const applyNativeSeek = () => {
-      if (!hasSeeked && initialTime > 5 && video.duration && initialTime < (video.duration - 10)) {
-        hasSeeked = true;
-        try {
-          video.currentTime = initialTime;
-          const timeFormatted = formatSecondsToTime(initialTime);
-          showToast(`Kaldığınız ${timeFormatted} dakikasından devam ediliyor...`, 'info');
-        } catch (err) {
-          console.warn('Seek error:', err);
-        }
-      }
-    };
-
-    video.addEventListener('playing', applyNativeSeek, { once: true });
-
-    video.addEventListener('timeupdate', () => {
-      if (video.currentTime > 2 && video.duration > 0) {
-        saveWatchProgress({
-          id: tmdbId,
-          title: cleanSeriesName,
-          posterPath,
-          backdropPath,
-          type,
-          season: currentSeason,
-          episode: currentEpisode,
-          currentTime: Math.round(video.currentTime),
-          duration: Math.round(video.duration)
-        });
-      }
-    });
-
-    const srv = activeServers[currentServerIndex];
-    const isHlsStream = streamUrl.includes('.m3u8') || streamUrl.includes('master.txt') || (srv && srv.isHls);
-
-    if (isHlsStream) {
-      if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = streamUrl;
-        if (initialTime > 5) video.currentTime = initialTime;
-        video.play().catch(() => { });
-      } else {
-        const attachHls = () => {
-          if (window.Hls && window.Hls.isSupported()) {
-            const hlsConfig = {
-              startPosition: initialTime > 5 ? Math.round(initialTime) : -1,
-              enableWorker: true,
-              lowLatencyMode: true
-            };
-            const hls = new window.Hls(hlsConfig);
-            activeHlsInstance = hls;
-            hls.loadSource(streamUrl);
-            hls.attachMedia(video);
-            hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
-              if (initialTime > 5) {
-                const timeFormatted = formatSecondsToTime(initialTime);
-                showToast(`Kaldığınız ${timeFormatted} dakikasından devam ediliyor...`, 'info');
-              }
-              video.play().catch(() => { });
-            });
-            hls.on(window.Hls.Events.ERROR, (event, data) => {
-              if (data.fatal) {
-                switch (data.type) {
-                  case window.Hls.ErrorTypes.NETWORK_ERROR:
-                    hls.startLoad();
-                    break;
-                  case window.Hls.ErrorTypes.MEDIA_ERROR:
-                    hls.recoverMediaError();
-                    break;
-                  default:
-                    hls.destroy();
-                    break;
-                }
-              }
-            });
-          }
-        };
-
-        if (!window.Hls) {
-          const script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
-          script.onload = attachHls;
-          document.head.appendChild(script);
-        } else {
-          attachHls();
-        }
-      }
-    } else {
-      video.src = streamUrl;
-      if (initialTime > 5) video.currentTime = initialTime;
-      video.play().catch(() => { });
-    }
-  }
-
-  function updatePlayerContainer() {
-    const iframeWrapper = document.getElementById('player-iframe-wrapper');
-    if (iframeWrapper) {
-      iframeWrapper.innerHTML = renderPlayerContent();
-      if (window.lucide) window.lucide.createIcons();
-
-      const srv = activeServers[currentServerIndex];
-      if (srv && (srv.isHls || srv.isDirectVideo) && srv.streamUrl) {
-        initHlsPlayer(srv.streamUrl);
-      }
-
-      const switchBtn = document.getElementById('btn-switch-subtitled-fallback');
-      if (switchBtn) {
-        switchBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          const subtitledBtn = document.getElementById('tab-subtitled');
-          if (subtitledBtn) subtitledBtn.click();
-        });
-      }
-    }
-  }
-
-  function updateServerPillsEvents() {
-    const toolbar = document.getElementById('player-server-toolbar');
-    if (!toolbar) return;
-    toolbar.innerHTML = renderServerPills();
-
-    toolbar.querySelectorAll('.server-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        toolbar.querySelectorAll('.server-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const srvIdx = parseInt(btn.getAttribute('data-index'), 10);
-        currentServerIndex = srvIdx;
-
-        updatePlayerContainer();
-
-        const popoutBtn = document.getElementById('player-popout-btn');
-        const srv = activeServers[srvIdx];
-        const targetUrl = srv?.streamUrl || srv?.getUrl();
-        if (popoutBtn) popoutBtn.href = targetUrl || '#';
-
-        if (srv && !srv.notFound) {
-          showToast(`${srv.name} sunucusuna geçildi.`, 'info');
-        }
-      });
-    });
-  }
-
-  updateServerPillsEvents();
-  updatePlayerContainer();
-  attachFooterNavEvents();
-
-  // Category Tab Switches
-  const dubbedBtn = document.getElementById('tab-dubbed');
-  const subtitledBtn = document.getElementById('tab-subtitled');
-
-  if (dubbedBtn && subtitledBtn) {
-    dubbedBtn.addEventListener('click', (e) => {
+  if (tabDubbed) {
+    tabDubbed.addEventListener('click', (e) => {
       e.preventDefault();
+      if (currentCategory === 'dubbed') return;
       currentCategory = 'dubbed';
-      activeServers = categorizedServers.dubbed || [];
+      tabSubtitled.classList.remove('active');
+      tabDubbed.classList.add('active');
+      activeServers = categorizedServers['dubbed'] || [];
       currentServerIndex = 0;
-      dubbedBtn.classList.add('active');
-      subtitledBtn.classList.remove('active');
-
       updateServerPillsEvents();
       updatePlayerContainer();
+      showToast('🇹🇷 Türkçe Dublaj sunucularına geçildi.', 'info');
     });
+  }
 
-    subtitledBtn.addEventListener('click', (e) => {
+  if (tabSubtitled) {
+    tabSubtitled.addEventListener('click', (e) => {
       e.preventDefault();
+      if (currentCategory === 'subtitled') return;
       currentCategory = 'subtitled';
-      activeServers = categorizedServers.subtitled || [];
+      tabDubbed.classList.remove('active');
+      tabSubtitled.classList.add('active');
+      activeServers = categorizedServers['subtitled'] || [];
       currentServerIndex = 0;
-      subtitledBtn.classList.add('active');
-      dubbedBtn.classList.remove('active');
-
       updateServerPillsEvents();
       updatePlayerContainer();
       showToast('💬 Türkçe Altyazılı VidAPI & VIP sunucularına geçildi.', 'info');
     });
   }
 
+  // Close modal handler
   const closeBtn = document.getElementById('player-close-btn');
   const closeModal = () => {
     if (activeHlsInstance) {
@@ -658,6 +624,7 @@ export async function openPlayerModal({
   };
   document.addEventListener('keydown', escHandler);
 
+  // Watched button toggle
   const toggleWatchedPlayerBtn = document.getElementById('btn-toggle-watched-player');
   if (toggleWatchedPlayerBtn) {
     toggleWatchedPlayerBtn.addEventListener('click', (e) => {
@@ -671,7 +638,7 @@ export async function openPlayerModal({
       });
       isWatched = updated.completed;
       showToast(isWatched ? '✓ İzlendi olarak işaretlendi!' : 'İzlendi işareti kaldırıldı.', isWatched ? 'success' : 'info');
-
+      
       const span = toggleWatchedPlayerBtn.querySelector('span');
       const icon = toggleWatchedPlayerBtn.querySelector('i');
       if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Olarak İşaretle';
@@ -689,11 +656,12 @@ export async function openPlayerModal({
     });
   }
 
+  // Halfway button toggle
   const halfwayPlayerBtn = document.getElementById('btn-halfway-player');
   if (halfwayPlayerBtn) {
     halfwayPlayerBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      const currentSec = simulatedCurrentTime > 5 ? simulatedCurrentTime : 1200;
+      const currentSec = simulatedCurrentTime > 5 ? simulatedCurrentTime : Math.round(estimatedDuration * 0.5);
       saveWatchProgress({
         id: tmdbId,
         title: cleanSeriesName,
@@ -706,23 +674,46 @@ export async function openPlayerModal({
         duration: estimatedDuration,
         completed: false
       });
-      showToast(`⏳ ${formatSecondsToTime(currentSec)} dakikasında yarıda bırakıldı olarak kaydedildi!`, 'info');
+      showToast(`⏳ ${formatSecondsToTime(currentSec)} dakikasında yarıda bırakıldı kaydedildi!`, 'info');
     });
   }
 
-  clearInterval(activeProgressInterval);
-  activeProgressInterval = setInterval(() => {
-    simulatedCurrentTime += 5;
-    saveWatchProgress({
-      id: tmdbId,
-      title: cleanSeriesName,
-      posterPath,
-      backdropPath,
-      type,
-      season: currentSeason,
-      episode: currentEpisode,
-      currentTime: simulatedCurrentTime,
-      duration: estimatedDuration
-    });
-  }, 5000);
+  // 3. ASYNC BACKGROUND STREAM RESOLUTION (Non-blocking)
+  getStreamingServers({
+    type,
+    tmdbId,
+    title: cleanSeriesName,
+    seriesTitle: cleanSeriesName,
+    originalTitle,
+    season: currentSeason,
+    episode: currentEpisode
+  }).then(resolved => {
+    categorizedServers = resolved;
+    if ((!categorizedServers.dubbed || categorizedServers.dubbed.length === 0 || categorizedServers.dubbed[0]?.notFound) && categorizedServers.subtitled && categorizedServers.subtitled.length > 0 && !categorizedServers.subtitled[0]?.notFound) {
+      currentCategory = 'subtitled';
+      document.getElementById('tab-dubbed')?.classList.remove('active');
+      document.getElementById('tab-subtitled')?.classList.add('active');
+    }
+    activeServers = categorizedServers[currentCategory] || [];
+    currentServerIndex = 0;
+
+    updateServerPillsEvents();
+    updatePlayerContainer();
+
+    clearInterval(activeProgressInterval);
+    activeProgressInterval = setInterval(() => {
+      simulatedCurrentTime += 5;
+      saveWatchProgress({
+        id: tmdbId,
+        title: cleanSeriesName,
+        posterPath,
+        backdropPath,
+        type,
+        season: currentSeason,
+        episode: currentEpisode,
+        currentTime: simulatedCurrentTime,
+        duration: estimatedDuration
+      });
+    }, 5000);
+  });
 }
