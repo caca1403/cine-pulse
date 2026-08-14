@@ -67,16 +67,19 @@ export async function renderDiscoverView(initialType = 'tv') {
               </p>
             </div>
 
-                   <!-- Content Type Switcher (Dizi / Film / Anime) -->
+                   <!-- Content Type Switcher (Dizi / Film / Anime / Belgesel) -->
             <div style="display: flex; background: rgba(0, 0, 0, 0.4); padding: 0.35rem; border-radius: var(--radius-full); border: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.25rem;">
-              <button class="type-switch-btn ${currentType === 'tv' ? 'active' : ''}" id="discover-type-tv" style="padding: 0.6rem 1.4rem; font-weight: 700; font-size: 0.9rem; border-radius: var(--radius-full);">
-                <i data-lucide="tv-2" style="width: 16px; height: 16px;"></i> Diziler
+              <button class="type-switch-btn ${currentType === 'tv' ? 'active' : ''}" id="discover-type-tv" style="padding: 0.6rem 1.2rem; font-weight: 700; font-size: 0.85rem; border-radius: var(--radius-full);">
+                <i data-lucide="tv-2" style="width: 15px; height: 15px;"></i> Diziler
               </button>
-              <button class="type-switch-btn ${currentType === 'movie' ? 'active' : ''}" id="discover-type-movie" style="padding: 0.6rem 1.4rem; font-weight: 700; font-size: 0.9rem; border-radius: var(--radius-full);">
-                <i data-lucide="clapperboard" style="width: 16px; height: 16px;"></i> Filmler
+              <button class="type-switch-btn ${currentType === 'movie' ? 'active' : ''}" id="discover-type-movie" style="padding: 0.6rem 1.2rem; font-weight: 700; font-size: 0.85rem; border-radius: var(--radius-full);">
+                <i data-lucide="clapperboard" style="width: 15px; height: 15px;"></i> Filmler
               </button>
-              <button class="type-switch-btn ${currentType === 'anime' ? 'active' : ''}" id="discover-type-anime" style="padding: 0.6rem 1.4rem; font-weight: 700; font-size: 0.9rem; border-radius: var(--radius-full);">
-                <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i> Anime
+              <button class="type-switch-btn ${currentType === 'anime' ? 'active' : ''}" id="discover-type-anime" style="padding: 0.6rem 1.2rem; font-weight: 700; font-size: 0.85rem; border-radius: var(--radius-full);">
+                <i data-lucide="sparkles" style="width: 15px; height: 15px;"></i> Anime
+              </button>
+              <button class="type-switch-btn ${currentType === 'documentary' ? 'active' : ''}" id="discover-type-doc" style="padding: 0.6rem 1.2rem; font-weight: 700; font-size: 0.85rem; border-radius: var(--radius-full);">
+                <i data-lucide="globe" style="width: 15px; height: 15px;"></i> Belgesel
               </button>
             </div>
           </div>
@@ -138,6 +141,7 @@ export async function renderDiscoverView(initialType = 'tv') {
       const tvBtn = container.querySelector('#discover-type-tv');
       const movieBtn = container.querySelector('#discover-type-movie');
       const animeBtn = container.querySelector('#discover-type-anime');
+      const docBtn = container.querySelector('#discover-type-doc');
       const sortSelect = container.querySelector('#discover-sort-select');
       const ratingSelect = container.querySelector('#discover-rating-select');
       const genreBar = container.querySelector('#discover-genre-bar');
@@ -173,11 +177,13 @@ export async function renderDiscoverView(initialType = 'tv') {
 
         try {
           let results = [];
-          const effectiveType = currentType === 'anime' ? 'tv' : currentType;
+          const effectiveType = (currentType === 'anime' || currentType === 'documentary') ? 'tv' : currentType;
           if (currentGenreId) {
             results = await fetchByGenre(effectiveType, currentGenreId, currentPage, currentSortBy);
           } else if (currentType === 'anime') {
             results = await fetchByGenre('tv', '16', currentPage, currentSortBy);
+          } else if (currentType === 'documentary') {
+            results = await fetchByGenre('tv', '99', currentPage, currentSortBy);
           } else {
             if (currentSortBy === 'vote_average.desc') {
               results = await fetchTopRated(effectiveType, currentPage);
@@ -244,10 +250,11 @@ export async function renderDiscoverView(initialType = 'tv') {
         if (currentType === newType) return;
         currentType = newType;
         currentGenreId = null;
-        [tvBtn, movieBtn, animeBtn].forEach(b => b?.classList.remove('active'));
+        [tvBtn, movieBtn, animeBtn, docBtn].forEach(b => b?.classList.remove('active'));
         if (newType === 'tv') tvBtn?.classList.add('active');
         if (newType === 'movie') movieBtn?.classList.add('active');
         if (newType === 'anime') animeBtn?.classList.add('active');
+        if (newType === 'documentary') docBtn?.classList.add('active');
         renderGenreBar();
         resetAndFetch();
       };
@@ -255,6 +262,7 @@ export async function renderDiscoverView(initialType = 'tv') {
       if (tvBtn) tvBtn.addEventListener('click', () => setType('tv'));
       if (movieBtn) movieBtn.addEventListener('click', () => setType('movie'));
       if (animeBtn) animeBtn.addEventListener('click', () => setType('anime'));
+      if (docBtn) docBtn.addEventListener('click', () => setType('documentary'));
 
       if (sortSelect) {
         sortSelect.addEventListener('change', (e) => {

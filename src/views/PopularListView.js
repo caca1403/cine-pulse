@@ -3,7 +3,7 @@
    Pure popularity-ordered infinite scrolling view for Series and Movies.
    ========================================================================== */
 
-import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime } from '../services/tmdbApi.js';
+import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 
 export async function renderPopularListView(type = 'tv') {
@@ -20,6 +20,9 @@ export async function renderPopularListView(type = 'tv') {
   } else if (type === 'anime') {
     titleText = 'Tüm Zamanların En Popüler Animeleri';
     iconName = 'sparkles';
+  } else if (type === 'documentary') {
+    titleText = 'Tüm Zamanların En Çok İzlenen Belgeselleri';
+    iconName = 'globe';
   }
 
   const html = `
@@ -69,6 +72,8 @@ export async function renderPopularListView(type = 'tv') {
             newItems = await fetchPopularMovies(currentPage);
           } else if (type === 'anime') {
             newItems = await fetchPopularAnime(currentPage);
+          } else if (type === 'documentary') {
+            newItems = await fetchPopularDocumentaries(currentPage);
           }
           if (spinner) spinner.style.display = 'none';
 
