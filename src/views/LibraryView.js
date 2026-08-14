@@ -2,11 +2,42 @@
    CinePulse Studio - Library & Watch Analytics View
    Displays in-progress continue watching, completed watch history,
    user watch time statistics, favorites, watchlist, and JSON Data Management.
+   Features safe item & episode deletion with confirmation controls to prevent
+   accidental clicks.
    ========================================================================== */
 
-import { getWatchHistory, getContinueWatchingList, getCompletedWatchList, getFavorites, getWatchlist, getTotalWatchStats, exportDataAsJSON } from '../services/storage.js';
+import {
+  getWatchHistory,
+  getContinueWatchingList,
+  getCompletedWatchList,
+  getFavorites,
+  getWatchlist,
+  getTotalWatchStats,
+  exportDataAsJSON,
+  removeEpisodeFromHistory,
+  removeSeriesFromHistory,
+  removeFavorite,
+  removeWatchlist
+} from '../services/storage.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { openDataManagerModal } from '../components/DataManagerModal.js';
+import { showToast } from '../components/Toast.js';
+
+function renderLibraryCard(item, tabType) {
+  return `
+    <div class="continue-card-wrapper library-card-item" 
+         data-id="${item.id}" 
+         data-season="${item.season || 1}" 
+         data-episode="${item.episode || 1}" 
+         data-tab="${tabType}"
+         data-title="${item.title || item.name || 'İçerik'}">
+      ${renderMediaCard(item)}
+      <button class="btn-delete-history btn-lib-delete" title="Listeden / Geçmişten Sil" aria-label="Sil">
+        <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+      </button>
+    </div>
+  `;
+}
 
 export function renderLibraryView() {
   const continueHistory = getContinueWatchingList();
@@ -26,7 +57,7 @@ export function renderLibraryView() {
             <h1 style="font-size: 2.2rem; display: flex; align-items: center; gap: 0.75rem; font-weight: 800; letter-spacing: -0.02em;">
               <i data-lucide="bookmark" style="color: var(--primary)"></i> Kitaplığım & İzleme İstatistikleri
             </h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">İzleme geçmişiniz ve tercihleriniz yerel tarayıcı hafızanızda saklanır.</p>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">İzleme geçmişiniz, bitirdikleriniz ve tercihleriniz yerel tarayıcı hafızanızda saklanır.</p>
           </div>
 
           <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
@@ -48,7 +79,7 @@ export function renderLibraryView() {
             </div>
             <div>
               <div style="font-size: 0.8rem; text-transform: uppercase; font-weight: 700; color: #fbbf24; letter-spacing: 0.05em;">Toplam İzleme Süresi</div>
-              <div style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.2rem;">${stats.formattedTotalTime}</div>
+              <div id="stat-total-time" style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.2rem;">${stats.formattedTotalTime}</div>
             </div>
           </div>
 
@@ -58,7 +89,7 @@ export function renderLibraryView() {
             </div>
             <div>
               <div style="font-size: 0.8rem; text-transform: uppercase; font-weight: 700; color: #38bdf8; letter-spacing: 0.05em;">İzlenen Bölüm</div>
-              <div style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.2rem;">${stats.episodesCount} Bölüm</div>
+              <div id="stat-episodes-count" style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.2rem;">${stats.episodesCount} Bölüm</div>
             </div>
           </div>
 
@@ -68,7 +99,7 @@ export function renderLibraryView() {
             </div>
             <div>
               <div style="font-size: 0.8rem; text-transform: uppercase; font-weight: 700; color: #c084fc; letter-spacing: 0.05em;">İzlenen Film</div>
-              <div style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.2rem;">${stats.moviesCount} Film</div>
+              <div id="stat-movies-count" style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.2rem;">${stats.moviesCount} Film</div>
             </div>
           </div>
 
@@ -78,7 +109,7 @@ export function renderLibraryView() {
             </div>
             <div>
               <div style="font-size: 0.8rem; text-transform: uppercase; font-weight: 700; color: #f87171; letter-spacing: 0.05em;">Favori & Listem</div>
-              <div style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.2rem;">${favorites.length + watchlist.length} Yapım</div>
+              <div id="stat-favs-count" style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.2rem;">${favorites.length + watchlist.length} Yapım</div>
             </div>
           </div>
 
@@ -86,11 +117,11 @@ export function renderLibraryView() {
 
         <!-- Section Tabs: Devam Et, Tamamlananlar, Favoriler, Listem, Tüm Bölümler -->
         <div class="season-bar" id="library-tabs" style="margin-bottom: 2rem;">
-          <button class="season-btn active" data-tab="continue">İzlemeye Devam Et (${continueHistory.length})</button>
-          <button class="season-btn" data-tab="completed">Tamamlananlar (${completedHistory.length})</button>
-          <button class="season-btn" data-tab="favorites">Favorilerim (${favorites.length})</button>
-          <button class="season-btn" data-tab="watchlist">İzleme Listesi (${watchlist.length})</button>
-          <button class="season-btn" data-tab="all-episodes">Tüm Bölüm Geçmişi (${allHistory.length})</button>
+          <button class="season-btn active" data-tab="continue">İzlemeye Devam Et (<span id="tab-count-continue">${continueHistory.length}</span>)</button>
+          <button class="season-btn" data-tab="completed">Tamamlananlar (<span id="tab-count-completed">${completedHistory.length}</span>)</button>
+          <button class="season-btn" data-tab="favorites">Favorilerim (<span id="tab-count-favorites">${favorites.length}</span>)</button>
+          <button class="season-btn" data-tab="watchlist">İzleme Listesi (<span id="tab-count-watchlist">${watchlist.length}</span>)</button>
+          <button class="season-btn" data-tab="all-episodes">Tüm Bölüm Geçmişi (<span id="tab-count-all-episodes">${allHistory.length}</span>)</button>
         </div>
 
         <!-- Tab 1: Continue Watching (In-Progress Only) -->
@@ -103,7 +134,7 @@ export function renderLibraryView() {
             </div>
           ` : `
             <div class="media-grid">
-              ${continueHistory.map(item => renderMediaCard(item)).join('')}
+              ${continueHistory.map(item => renderLibraryCard(item, 'continue')).join('')}
             </div>
           `}
         </div>
@@ -118,7 +149,7 @@ export function renderLibraryView() {
             </div>
           ` : `
             <div class="media-grid">
-              ${completedHistory.map(item => renderMediaCard(item)).join('')}
+              ${completedHistory.map(item => renderLibraryCard(item, 'completed')).join('')}
             </div>
           `}
         </div>
@@ -132,7 +163,7 @@ export function renderLibraryView() {
             </div>
           ` : `
             <div class="media-grid">
-              ${favorites.map(item => renderMediaCard(item)).join('')}
+              ${favorites.map(item => renderLibraryCard(item, 'favorites')).join('')}
             </div>
           `}
         </div>
@@ -146,7 +177,7 @@ export function renderLibraryView() {
             </div>
           ` : `
             <div class="media-grid">
-              ${watchlist.map(item => renderMediaCard(item)).join('')}
+              ${watchlist.map(item => renderLibraryCard(item, 'watchlist')).join('')}
             </div>
           `}
         </div>
@@ -160,7 +191,7 @@ export function renderLibraryView() {
             </div>
           ` : `
             <div class="media-grid">
-              ${allHistory.map(item => renderMediaCard(item)).join('')}
+              ${allHistory.map(item => renderLibraryCard(item, 'all-episodes')).join('')}
             </div>
           `}
         </div>
@@ -199,6 +230,77 @@ export function renderLibraryView() {
       if (dataModalBtn) {
         dataModalBtn.addEventListener('click', () => openDataManagerModal());
       }
+
+      // Safe Item & Episode Deletion with Confirmation
+      container.querySelectorAll('.btn-lib-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const wrapper = btn.closest('.library-card-item');
+          if (!wrapper) return;
+
+          const id = wrapper.getAttribute('data-id');
+          const season = parseInt(wrapper.getAttribute('data-season') || '1', 10);
+          const episode = parseInt(wrapper.getAttribute('data-episode') || '1', 10);
+          const tab = wrapper.getAttribute('data-tab');
+          const title = wrapper.getAttribute('data-title') || 'İçerik';
+
+          let confirmMsg = `"${title}" kaydını silmek istediğinize emin misiniz?`;
+          if (tab === 'all-episodes') {
+            confirmMsg = `"${title}" (Sezon ${season}, Bölüm ${episode}) izleme geçmişinizden silinsin mi?`;
+          } else if (tab === 'continue') {
+            confirmMsg = `"${title}" devam et listesinden kaldırılsın mı?`;
+          } else if (tab === 'completed') {
+            confirmMsg = `"${title}" tamamlananlar geçmişinden silinsin mi?`;
+          } else if (tab === 'favorites') {
+            confirmMsg = `"${title}" favorilerinizden kaldırılsın mı?`;
+          } else if (tab === 'watchlist') {
+            confirmMsg = `"${title}" izleme listenizden kaldırılsın mı?`;
+          }
+
+          if (window.confirm(confirmMsg)) {
+            if (tab === 'all-episodes') {
+              removeEpisodeFromHistory(id, season, episode);
+            } else if (tab === 'continue' || tab === 'completed') {
+              removeSeriesFromHistory(id);
+            } else if (tab === 'favorites') {
+              removeFavorite(id);
+            } else if (tab === 'watchlist') {
+              removeWatchlist(id);
+            }
+
+            showToast('✓ Kayıt başarıyla silindi.', 'success');
+
+            wrapper.style.transition = 'all 0.28s ease-out';
+            wrapper.style.transform = 'scale(0.85)';
+            wrapper.style.opacity = '0';
+            setTimeout(() => {
+              wrapper.remove();
+
+              // Refresh stats & tab counts dynamically
+              const updatedStats = getTotalWatchStats();
+              const elTime = container.querySelector('#stat-total-time');
+              const elEp = container.querySelector('#stat-episodes-count');
+              const elMov = container.querySelector('#stat-movies-count');
+              const elFav = container.querySelector('#stat-favs-count');
+              if (elTime) elTime.textContent = updatedStats.formattedTotalTime;
+              if (elEp) elEp.textContent = `${updatedStats.episodesCount} Bölüm`;
+              if (elMov) elMov.textContent = `${updatedStats.moviesCount} Film`;
+              if (elFav) elFav.textContent = `${getFavorites().length + getWatchlist().length} Yapım`;
+
+              const cCont = container.querySelector('#tab-count-continue');
+              const cComp = container.querySelector('#tab-count-completed');
+              const cFav = container.querySelector('#tab-count-favorites');
+              const cWatch = container.querySelector('#tab-count-watchlist');
+              const cAll = container.querySelector('#tab-count-all-episodes');
+              if (cCont) cCont.textContent = getContinueWatchingList().length;
+              if (cComp) cComp.textContent = getCompletedWatchList().length;
+              if (cFav) cFav.textContent = getFavorites().length;
+              if (cWatch) cWatch.textContent = getWatchlist().length;
+              if (cAll) cAll.textContent = getWatchHistory().length;
+            }, 300);
+          }
+        });
+      });
 
       attachMediaCardEvents(container);
     }

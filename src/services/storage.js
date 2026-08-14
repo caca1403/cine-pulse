@@ -522,6 +522,13 @@ export function toggleFavorite(media) {
   return added;
 }
 
+export function removeFavorite(id) {
+  let favs = getFavorites();
+  favs = favs.filter(item => item.id != id);
+  setLocalItem(STORAGE_KEYS.FAVORITES, favs);
+  return favs;
+}
+
 export function getWatchlist() {
   return getLocalItem(STORAGE_KEYS.WATCHLIST, []);
 }
@@ -556,6 +563,17 @@ export function toggleWatchlist(media) {
 
   setLocalItem(STORAGE_KEYS.WATCHLIST, list);
   return added;
+}
+
+export function removeWatchlist(id) {
+  let list = getWatchlist();
+  list = list.filter(item => item.id != id);
+  setLocalItem(STORAGE_KEYS.WATCHLIST, list);
+  return list;
+}
+
+export function removeEpisodeFromHistory(id, season = 1, episode = 1) {
+  return removeWatchHistoryItem(id, season, episode);
 }
 
 /* ==========================================================================
