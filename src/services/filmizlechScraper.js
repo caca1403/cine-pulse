@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CinePulse Studio - Now Stream (FilmIzleCh / Now) Scraper
+   CinePulse Studio - Channel Stream (FilmIzleCh) Scraper
    Fetches live 1080p Turkish Dubbed & Subtitled Streams via CF Worker Gateway
    Strict bidirectional whole-title slug matching to prevent wrong movie playback.
    ========================================================================== */
@@ -25,19 +25,18 @@ function toSlug(title) {
 
 function isSlugSimilar(targetSlug, candidateSlug) {
   if (!targetSlug || !candidateSlug) return false;
-  const cleanT = targetSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '').replace(/^the-/, '');
-  const cleanC = candidateSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '').replace(/^the-/, '');
+  const cleanT = targetSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '').replace(/^the-/, '').replace(/^\d+-/, '');
+  const cleanC = candidateSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '').replace(/^the-/, '').replace(/^\d+-/, '');
   if (cleanT === cleanC) return true;
 
   const tParts = cleanT.split('-').filter(p => p.length > 0);
   const cParts = cleanC.split('-').filter(p => p.length > 0);
 
   const matched = tParts.filter(p => cParts.includes(p)).length;
-  // Symmetrical Jaccard / Max token ratio - must match both directions
   const maxLen = Math.max(tParts.length, cParts.length, 1);
   const ratio = matched / maxLen;
 
-  return ratio >= 0.85;
+  return ratio >= 0.75;
 }
 
 export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
@@ -61,7 +60,7 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
   const baseDomains = ['https://filmizlech.com'];
 
   for (const baseDomain of baseDomains) {
-    // 1. Try direct slugs first
+    // 1. Direct Slug Check
     for (const slug of candidateSlugs) {
       const targetUrl = isMovie
         ? `${baseDomain}/film/${slug}`
@@ -81,15 +80,17 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
         if (pid && ts && sig) {
           const tokenUrl = `${baseDomain}/api/player-token.php?pid=${pid}&_t=${ts}&_s=${encodeURIComponent(sig)}`;
           const proxyTokenUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(tokenUrl)}`;
-          const tRes = await fetch(proxyTokenUrl).catch(() => null);
+          const tRes = await fetch(proxyTokenUrl, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Referer': targetUrl }
+          }).catch(() => null);
 
           if (tRes && tRes.ok) {
             const data = await tRes.json().catch(() => null);
             if (data && data.url) {
               return [{
-                id: `now_${isDub ? 'dub' : 'sub'}`,
-                name: `Now Stream (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
-                badge: isDub ? '⚡ Now 1080p' : '💬 Now 1080p',
+                id: `channel_${isDub ? 'dub' : 'sub'}_${slug}`,
+                name: `Channel Stream (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
+                badge: isDub ? '⚡ Channel 1080p' : '💬 Channel 1080p',
                 category: isDub ? 'dubbed' : 'subtitled',
                 streamUrl: data.url,
                 url: data.url,
@@ -98,30 +99,26 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
             }
           }
         }
-      } catch (e) {}
+      } catch (_) {}
     }
 
-    // 2. Try search with strict bidirectional title validation
+    // 2. High-speed API Search Check
     for (const searchKeyword of candidateTitles) {
       try {
-        const sUrl = `${baseDomain}/search/${encodeURIComponent(searchKeyword)}`;
+        const sUrl = `${baseDomain}/api/search.php?q=${encodeURIComponent(searchKeyword)}`;
         const proxySearchUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(sUrl)}`;
         const sRes = await fetch(proxySearchUrl).catch(() => null);
         if (!sRes || !sRes.ok) continue;
-        const sHtml = await sRes.text();
+        const searchResults = await sRes.json().catch(() => []);
+        if (!Array.isArray(searchResults) || searchResults.length === 0) continue;
 
-        const itemRegex = isMovie ? /href="([^"]*\/film\/[^"]*)"/gi : /href="([^"]*\/dizi\/[^"]*)"/gi;
-        const foundHrefs = [...sHtml.matchAll(itemRegex)].map(m => m[1]);
-        const cleanHrefs = [...new Set(foundHrefs)].filter(h => !h.includes('/search/'));
-
-        // Strict bidirectional similarity matching
-        const matchedHref = cleanHrefs.find(h => {
-          const hrefSlug = h.split('/').pop();
-          return candidateSlugs.some(cs => isSlugSimilar(cs, hrefSlug));
+        const matchedItem = searchResults.find(item => {
+          const itemSlug = item.url ? item.url.split('/').pop() : '';
+          return candidateSlugs.some(cs => isSlugSimilar(cs, itemSlug));
         });
 
-        if (matchedHref) {
-          let movieOrSeriesUrl = matchedHref.startsWith('http') ? matchedHref : `${baseDomain}${matchedHref.startsWith('/') ? '' : '/'}${matchedHref}`;
+        if (matchedItem && matchedItem.url) {
+          let movieOrSeriesUrl = matchedItem.url;
           if (!isMovie) {
             movieOrSeriesUrl = `${movieOrSeriesUrl}/sezon-${season}/bolum-${episode}`;
           }
@@ -138,15 +135,17 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
           if (pid && ts && sig) {
             const tokenUrl = `${baseDomain}/api/player-token.php?pid=${pid}&_t=${ts}&_s=${encodeURIComponent(sig)}`;
             const proxyTokenUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(tokenUrl)}`;
-            const tRes = await fetch(proxyTokenUrl).catch(() => null);
+            const tRes = await fetch(proxyTokenUrl, {
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'Referer': movieOrSeriesUrl }
+            }).catch(() => null);
 
             if (tRes && tRes.ok) {
               const data = await tRes.json().catch(() => null);
               if (data && data.url) {
                 return [{
-                  id: `now_${isDub ? 'dub' : 'sub'}`,
-                  name: `Now Stream (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
-                  badge: isDub ? '⚡ Now 1080p' : '💬 Now 1080p',
+                  id: `channel_${isDub ? 'dub' : 'sub'}`,
+                  name: `Channel Stream (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
+                  badge: isDub ? '⚡ Channel 1080p' : '💬 Channel 1080p',
                   category: isDub ? 'dubbed' : 'subtitled',
                   streamUrl: data.url,
                   url: data.url,
@@ -156,7 +155,7 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
             }
           }
         }
-      } catch (e) {}
+      } catch (_) {}
     }
   }
 

@@ -1,8 +1,10 @@
 /* ==========================================================================
    SineFlix Pro - Direct Dizipal Reverse Engineered Scraper
-   Fetches live video sources (ag2m4, vidsrc, etc.) directly from Dizipal for both Movies and TV Series.
-   Supports Vite proxy route /api/dzp to bypass CORS in web browsers.
+   Fetches live video sources (ag2m4, vidsrc, etc.) directly from Dizipal for both Movies and TV Series
+   via Cloudflare Worker Gateway for 100% reliable CORS bypass.
    ========================================================================== */
+
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 function toTurkishSlug(title) {
   if (!title) return '';
@@ -42,34 +44,28 @@ export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title
 
   if (candidateSlugs.length === 0) return [];
 
-  const isBrowser = typeof window !== 'undefined';
-  const baseRoutes = isBrowser
-    ? ['/api/dzp', 'https://dizipal.bid', 'https://dizipal.im']
-    : ['https://dizipal.bid', 'https://dizipal.im'];
-
+  const baseDomains = ['https://dizipal.bid', 'https://dizipal.im', 'https://dizipal.me'];
   const isMovie = type === 'movie';
 
-  for (const baseRoute of baseRoutes) {
+  for (const baseDomain of baseDomains) {
     for (const slug of candidateSlugs) {
       const candidateUrls = isMovie
         ? [
-            `${baseRoute}/${slug}/`,
-            `${baseRoute}/${slug}-izle/`,
-            `${baseRoute}/film/${slug}/`,
-            `${baseRoute}/film/${slug}-izle/`
+            `${baseDomain}/${slug}/`,
+            `${baseDomain}/${slug}-izle/`,
+            `${baseDomain}/film/${slug}/`,
+            `${baseDomain}/film/${slug}-izle/`
           ]
         : [
-            `${baseRoute}/bolum/${slug}-${season}-sezon-${episode}-bolum-izle/`,
-            `${baseRoute}/bolum/${slug}-${season}-sezon-${episode}-bolum/`,
-            `${baseRoute}/dizi/${slug}/${season}-sezon-${episode}-bolum/`
+            `${baseDomain}/bolum/${slug}-${season}-sezon-${episode}-bolum-izle/`,
+            `${baseDomain}/bolum/${slug}-${season}-sezon-${episode}-bolum/`,
+            `${baseDomain}/dizi/${slug}/${season}-sezon-${episode}-bolum/`
           ];
 
       for (const epUrl of candidateUrls) {
         try {
-          console.log(`Dizipal Scraper: Fetching ${type} ->`, epUrl);
-          const isBrowser = typeof window !== 'undefined';
-          const headers = isBrowser ? { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } : { 'User-Agent': 'Mozilla/5.0' };
-          const res = await fetch(epUrl, { headers }).catch(() => null);
+          const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
+          const res = await fetch(proxyUrl).catch(() => null);
 
           if (!res || !res.ok) continue;
           const html = await res.text();
@@ -82,32 +78,26 @@ export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title
 
           if (iframeUrl) {
             if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
-            if (iframeUrl.startsWith('/') && !iframeUrl.startsWith('/api/')) {
-              iframeUrl = `${baseRoute}${iframeUrl}`;
+            if (iframeUrl.startsWith('/')) {
+              iframeUrl = `${baseDomain}${iframeUrl}`;
             }
 
             if (!iframeUrl.includes('jquery') && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
-              console.log('Dizipal Scraper: Extracted embed page ->', iframeUrl);
               return [
                 {
-                  id: `dzp_${slug}`,
+                  id: `dzp_${slug}_${season}_${episode}`,
                   name: `FastStream (${isDub ? 'Dublaj 1080p' : 'Altyazılı 1080p'})`,
                   badge: '⚡ FastStream',
-                  url: iframeUrl
+                  url: iframeUrl,
+                  streamUrl: iframeUrl
                 }
               ];
             }
           }
-        } catch (err) {
-          console.error('Dizipal Scraper error on route', baseRoute, err);
-        }
+        } catch (_) {}
       }
     }
   }
 
   return [];
-}
-
-export async function fetchDizipalEpisodeSources(params) {
-  return fetchDizipalSources({ ...params, type: 'tv' });
 }
