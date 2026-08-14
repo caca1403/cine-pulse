@@ -2,20 +2,12 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/szd/(.*)",
-      "destination": "https://sezonlukdizi.cc/$1"
-    },
-    {
       "source": "/api/dbl/(.*)",
       "destination": "https://dizibal.com/api/$1"
     },
     {
       "source": "/api/dzp/(.*)",
       "destination": "https://dizipal.bid/$1"
-    },
-    {
-      "source": "/api/snx/(.*)",
-      "destination": "https://ydfvfdizipanel.ru/public/api/$1"
     },
     {
       "source": "/api/flz/(.*)",
