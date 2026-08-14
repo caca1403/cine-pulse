@@ -2,8 +2,8 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/:match*",
-      "destination": "/api/proxy"
+      "source": "/api/(.*)",
+      "destination": "/api/proxy?path=$1"
     },
     {
       "source": "/((?!api/).*)",

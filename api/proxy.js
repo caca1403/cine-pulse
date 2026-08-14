@@ -8,21 +8,20 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // Parse path: e.g. /api/szd/ajax/dataAlternatif22.asp
+  // Parse path: e.g. /api/hdfc/search/Breaking%20Bad/
   let fullPath = '';
-  if (req.query.match) {
-    if (Array.isArray(req.query.match)) {
-      fullPath = req.query.match.join('/');
-    } else {
-      fullPath = req.query.match;
-    }
+  if (req.query.path) {
+    fullPath = Array.isArray(req.query.path) ? req.query.path.join('/') : req.query.path;
+  } else if (req.query.match) {
+    fullPath = Array.isArray(req.query.match) ? req.query.match.join('/') : req.query.match;
   } else {
     fullPath = req.url.replace(/^\/api\/proxy\??/, '').replace(/^\/api\/?/, '');
   }
 
-  // Clean query string (delete Vercel internal 'match' parameter)
+  // Clean query string (delete Vercel internal parameters)
   const parsedReqUrl = new URL(req.url, 'https://localhost');
   parsedReqUrl.searchParams.delete('match');
+  parsedReqUrl.searchParams.delete('path');
   const userQs = parsedReqUrl.searchParams.toString() ? `?${parsedReqUrl.searchParams.toString()}` : '';
 
   function cleanPath(sub) {
@@ -32,6 +31,7 @@ export default async function handler(req, res) {
   }
 
   let targetUrl = '';
+  let fallbackUrls = [];
   let customHeaders = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -56,7 +56,12 @@ export default async function handler(req, res) {
     customHeaders['Referer'] = 'https://filmizle.now/';
   } else if (fullPath.startsWith('szd')) {
     const sub = fullPath.replace(/^szd\/?/, '');
-    targetUrl = `https://sezonlukdizi.cc/${cleanPath(sub)}${userQs}`;
+    const cleanSub = cleanPath(sub);
+    targetUrl = `https://sezonlukdizi.cc/${cleanSub}${userQs}`;
+    fallbackUrls = [
+      `https://sezonlukdizi8.com/${cleanSub}${userQs}`,
+      `https://sezonlukdizi.org/${cleanSub}${userQs}`
+    ];
     customHeaders['Referer'] = 'https://sezonlukdizi.cc/';
     customHeaders['Origin'] = 'https://sezonlukdizi.cc';
     if (req.method === 'POST') {
@@ -107,11 +112,27 @@ export default async function handler(req, res) {
       }
     }
 
-    const upstreamRes = await fetch(targetUrl, {
+    let upstreamRes = await fetch(targetUrl, {
       method: req.method,
       headers: customHeaders,
       body: body
     });
+
+    if (!upstreamRes.ok && fallbackUrls.length > 0) {
+      for (const fbUrl of fallbackUrls) {
+        try {
+          const fbRes = await fetch(fbUrl, {
+            method: req.method,
+            headers: customHeaders,
+            body: body
+          });
+          if (fbRes.ok) {
+            upstreamRes = fbRes;
+            break;
+          }
+        } catch (_) {}
+      }
+    }
 
     // Forward Set-Cookie headers if any
     const setCookies = upstreamRes.headers.getSetCookie ? upstreamRes.headers.getSetCookie() : [upstreamRes.headers.get('set-cookie')];
