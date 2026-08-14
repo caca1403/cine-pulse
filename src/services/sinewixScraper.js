@@ -77,22 +77,35 @@ export async function fetchSinewixSources({ type = 'tv', title = '', originalTit
 
     videoList.forEach((video, idx) => {
       if (video.link && video.link.length > 10) {
+        const linkLower = video.link.toLowerCase();
+        const isBlockedLocker = 
+          linkLower.includes('mediafire.com') ||
+          linkLower.includes('mega.nz') ||
+          linkLower.includes('pichive') ||
+          linkLower.includes('turbobit') ||
+          linkLower.includes('yadi.sk') ||
+          linkLower.includes('uptobox') ||
+          linkLower.includes('rapidgator') ||
+          linkLower.includes('1fichier');
+
+        if (isBlockedLocker) return;
+
         const isDirectVideo = 
-          video.link.includes('.mkv') || 
-          video.link.includes('.mp4') || 
-          video.link.includes('.m3u8') || 
-          video.link.includes('7862564.xyz') || 
-          video.link.includes('959565.xyz') || 
-          video.link.includes('45464654.xyz') || 
-          video.link.includes('545645.xyz') || 
-          video.link.includes('5654644.xyz');
+          linkLower.includes('.mkv') || 
+          linkLower.includes('.mp4') || 
+          linkLower.includes('.m3u8') || 
+          linkLower.includes('7862564.xyz') || 
+          linkLower.includes('959565.xyz') || 
+          linkLower.includes('45464654.xyz') || 
+          linkLower.includes('545645.xyz') || 
+          linkLower.includes('5654644.xyz');
 
         extractedSources.push({
           id: `snx_${video.id || idx}`,
-          name: `HD Direct Stream (${isDub ? 'Dublaj 1080p' : 'Altyazılı'})`,
-          badge: '⚡ Direct 1080p',
+          name: `VIP Direct Stream (${isDub ? 'Dublaj 1080p' : 'Altyazılı'})`,
+          badge: '⚡ VIP 1080p',
           isDirectVideo,
-          isHls: video.link.includes('.m3u8'),
+          isHls: linkLower.includes('.m3u8'),
           streamUrl: video.link,
           url: video.link
         });
