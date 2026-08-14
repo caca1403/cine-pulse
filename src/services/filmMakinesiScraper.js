@@ -1,10 +1,14 @@
 /* ==========================================================================
    CinePulse Studio - FilmMakinesi (Rapid & CloseLoad) Scraper
-   Fetches live 1080p DUAL (Turkish Dubbed & Subtitled) Rapid and CloseLoad
-   streams from FilmMakinesi.to with high-speed concurrent matching.
+   Fetches live DUAL (Turkish Dubbed & Subtitled) Rapid and CloseLoad
+   streams from FilmMakinesi with high-speed multi-proxy fallback.
    ========================================================================== */
 
-const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+const PROXIES = [
+  (u) => `https://wild-credit-e1ae.cagatayca07.workers.dev?url=${encodeURIComponent(u)}`,
+  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`
+];
 
 function toTurkishSlug(title) {
   if (!title) return '';
@@ -53,49 +57,54 @@ export async function fetchFilmMakinesiSources({
 
   if (candidateSlugs.length === 0) return [];
 
-  const baseDomain = 'https://filmmakinesi.to';
+  const baseDomains = ['https://filmmakinesi.to', 'https://filmmakinesi.org', 'https://filmmakinesi.net'];
   const candidateUrls = [];
 
-  for (const slug of candidateSlugs) {
-    if (isMovie) {
-      candidateUrls.push(
-        `${baseDomain}/${slug}-izle-fm1/`,
-        `${baseDomain}/${slug}-izle/`,
-        `${baseDomain}/${slug}/`,
-        `${baseDomain}/${slug}-fm1/`,
-        `${baseDomain}/film/${slug}-izle/`,
-        `${baseDomain}/film/${slug}/`
-      );
-    } else {
-      candidateUrls.push(
-        `${baseDomain}/dizi/${slug}-izle-2022-fm1/sezon-${season}/bolum-${episode}/`,
-        `${baseDomain}/dizi/${slug}-izle-2023-fm14/sezon-${season}/bolum-${episode}/`,
-        `${baseDomain}/dizi/${slug}-izle-2024-fmxrpu/sezon-${season}/bolum-${episode}/`,
-        `${baseDomain}/dizi/${slug}-izle-fm1/sezon-${season}/bolum-${episode}/`,
-        `${baseDomain}/dizi/${slug}-izle/sezon-${season}/bolum-${episode}/`,
-        `${baseDomain}/dizi/${slug}/sezon-${season}/bolum-${episode}/`,
-        `${baseDomain}/dizi/${slug}-2026/sezon-${season}/bolum-${episode}/`,
-        `${baseDomain}/dizi/${slug}-2024/sezon-${season}/bolum-${episode}/`
-      );
+  for (const baseDomain of baseDomains) {
+    for (const slug of candidateSlugs) {
+      if (isMovie) {
+        candidateUrls.push(
+          `${baseDomain}/${slug}-izle-fm1/`,
+          `${baseDomain}/${slug}-izle/`,
+          `${baseDomain}/${slug}/`,
+          `${baseDomain}/${slug}-fm1/`,
+          `${baseDomain}/film/${slug}-izle/`,
+          `${baseDomain}/film/${slug}/`
+        );
+      } else {
+        candidateUrls.push(
+          `${baseDomain}/dizi/${slug}-izle-2022-fm1/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}-izle-2023-fm14/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}-izle-2024-fmxrpu/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}-izle-fm1/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}-izle/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}-2026/sezon-${season}/bolum-${episode}/`,
+          `${baseDomain}/dizi/${slug}-2024/sezon-${season}/bolum-${episode}/`
+        );
+      }
     }
   }
 
-  // Concurrent URL check for ultra-fast < 400ms discovery
-  const fetchPromises = candidateUrls.map(async (testUrl) => {
-    try {
-      const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(testUrl)}`;
-      const res = await fetch(proxyUrl, {
-        headers: { 'Referer': baseDomain }
-      });
-      if (!res.ok) return null;
-      const html = await res.text();
-      if (html.includes('404 - Sayfa Bulunamadı') || html.includes('Mevcut Değil') || html.length < 5000) {
-        return null;
+  // Fast concurrent probe
+  const fetchPromises = candidateUrls.slice(0, 12).map(async (testUrl) => {
+    for (const getProxyUrl of PROXIES) {
+      try {
+        const proxyUrl = getProxyUrl(testUrl);
+        const res = await fetch(proxyUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
+        if (!res.ok) continue;
+        const html = await res.text();
+        if (html.includes('404 - Sayfa Bulunamadı') || html.includes('Mevcut Değil') || html.includes('Just a moment') || html.length < 2000) {
+          continue;
+        }
+        return { testUrl, html };
+      } catch {
+        continue;
       }
-      return { testUrl, html };
-    } catch {
-      return null;
     }
+    return null;
   });
 
   const responses = await Promise.all(fetchPromises);
@@ -118,8 +127,8 @@ export async function fetchFilmMakinesiSources({
     if (isRapid) {
       sources.push({
         id: `fmk_rapid_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
-        name: `Rapid Stream (${isDub ? 'Dublaj 1080p' : 'Altyazılı 1080p'})`,
-        badge: '⚡ Rapid 1080p',
+        name: `Rapid Stream (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+        badge: '⚡ Rapid',
         category: isDub ? 'dubbed' : 'subtitled',
         streamUrl: embedUrl,
         url: embedUrl,
@@ -128,8 +137,8 @@ export async function fetchFilmMakinesiSources({
     } else if (isClose) {
       sources.push({
         id: `fmk_close_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
-        name: `CloseLoad (${isDub ? 'Dublaj 1080p' : 'Altyazılı 1080p'})`,
-        badge: '⚡ CloseLoad 1080p',
+        name: `CloseLoad (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+        badge: '⚡ CloseLoad',
         category: isDub ? 'dubbed' : 'subtitled',
         streamUrl: embedUrl,
         url: embedUrl,
@@ -138,8 +147,8 @@ export async function fetchFilmMakinesiSources({
     } else {
       sources.push({
         id: `fmk_stream_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
-        name: `FilmMakinesi (${isDub ? 'Dublaj 1080p' : 'Altyazılı 1080p'})`,
-        badge: '⚡ FMK 1080p',
+        name: `FilmMakinesi (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+        badge: '⚡ FMK',
         category: isDub ? 'dubbed' : 'subtitled',
         streamUrl: embedUrl,
         url: embedUrl,

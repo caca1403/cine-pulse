@@ -150,8 +150,8 @@ export async function getStreamingServers({
     })
     .map(s => ({
       id: s.id,
-      name: s.name,
-      badge: s.badge || '⚡ 1080p',
+      name: s.name.replace(/\s*1080p\s*/gi, '').replace(/\s*HD\s*/gi, '').replace(/\(\s*\)/g, '').trim(),
+      badge: (s.badge || '⚡ VIP').replace(/\s*1080p\s*/gi, '').trim(),
       category: 'dubbed',
       isHls: s.isHls,
       isDirectVideo: s.isDirectVideo,
@@ -177,8 +177,8 @@ export async function getStreamingServers({
     })
     .map(s => ({
       id: s.id,
-      name: s.name,
-      badge: s.badge || '💬 1080p',
+      name: s.name.replace(/\s*1080p\s*/gi, '').replace(/\s*HD\s*/gi, '').replace(/\(\s*\)/g, '').trim(),
+      badge: (s.badge || '💬 Altyazılı').replace(/\s*1080p\s*/gi, '').trim(),
       category: 'subtitled',
       isHls: s.isHls,
       isDirectVideo: s.isDirectVideo,
@@ -189,8 +189,8 @@ export async function getStreamingServers({
   const cleanSubtitled = [
     {
       id: 'sub_smashystream',
-      name: 'Smashy Stream (1080p Altyazılı)',
-      badge: '⚡ Smashy 1080p',
+      name: 'Smashy Stream (Altyazılı)',
+      badge: '⚡ Smashy',
       category: 'subtitled',
       getUrl: () => isMovie
         ? `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}`
@@ -206,7 +206,7 @@ export async function getStreamingServers({
     ...mapSubtitledSources(finSub),
     {
       id: 'sub_autoembed',
-      name: 'AutoEmbed VIP (1080p Altyazılı)',
+      name: 'AutoEmbed VIP (Altyazılı)',
       badge: '⚡ AutoEmbed',
       category: 'subtitled',
       getUrl: () => isMovie
@@ -215,7 +215,7 @@ export async function getStreamingServers({
     },
     {
       id: 'sub_embedsu',
-      name: 'EmbedSU 4K VIP (Altyazılı)',
+      name: 'EmbedSU 4K (Altyazılı)',
       badge: '⚡ EmbedSU 4K',
       category: 'subtitled',
       getUrl: () => isMovie
@@ -224,8 +224,8 @@ export async function getStreamingServers({
     },
     {
       id: 'sub_vidsrcicu',
-      name: 'VidSrc ICU (1080p Altyazılı)',
-      badge: '⚡ VidSrc ICU',
+      name: 'VidSrc ICU (Altyazılı)',
+      badge: '⚡ VidSrc',
       category: 'subtitled',
       getUrl: () => isMovie
         ? `https://vidsrc.icu/embed/movie/${tmdbId}`
@@ -234,7 +234,7 @@ export async function getStreamingServers({
     {
       id: 'sub_vidlink',
       name: 'VidLink VIP Stream',
-      badge: '⚡ VidLink VIP',
+      badge: '⚡ VidLink',
       category: 'subtitled',
       getUrl: () => isMovie
         ? `https://vidlink.pro/movie/${tmdbId}`
@@ -242,7 +242,7 @@ export async function getStreamingServers({
     },
     {
       id: 'sub_superembed',
-      name: 'SuperEmbed Stream (1080p Altyazılı)',
+      name: 'SuperEmbed Stream (Altyazılı)',
       badge: '⚡ SuperEmbed',
       category: 'subtitled',
       getUrl: () => isMovie
