@@ -50,18 +50,16 @@ export async function fetchSezonlukDiziEpisodeSources({ seriesTitle = '', season
     ? ['/api/szd', 'https://sezonlukdizi.cc']
     : ['https://sezonlukdizi.cc', 'https://sezonlukdizi8.com'];
 
+  const getHeaders = isBrowser ? { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } : { 'User-Agent': 'Mozilla/5.0' };
+  const postHeaders = isBrowser ? { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' } : { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest', 'User-Agent': 'Mozilla/5.0' };
+
   for (const baseRoute of baseRoutes) {
     for (const slug of candidateSlugs) {
       try {
         const pageUrl = `${baseRoute}/${slug}/${season}-sezon-${episode}-bolum.html`;
 
-        const res = await fetch(pageUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        });
-
-        if (!res.ok) continue;
+        const res = await fetch(pageUrl, { headers: getHeaders }).catch(() => null);
+        if (!res || !res.ok) continue;
         const html = await res.text();
 
         const bidMatch = html.match(/data-id=["'](\d+)["']/i) || html.match(/var\s+bid\s*=\s*["']?(\d+)["']?/i) || html.match(/bid\s*=\s*(\d+)/i);
@@ -81,12 +79,7 @@ export async function fetchSezonlukDiziEpisodeSources({ seriesTitle = '', season
           try {
             const altRes = await fetch(`${baseRoute}/ajax/${altEp}`, {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'X-Requested-With': 'XMLHttpRequest',
-                'Referer': pageUrl,
-                'User-Agent': 'Mozilla/5.0'
-              },
+              headers: postHeaders,
               body: formData.toString()
             });
             const text = await altRes.text();
@@ -108,23 +101,17 @@ export async function fetchSezonlukDiziEpisodeSources({ seriesTitle = '', season
           const embedEndpoints = ['dataEmbed22.asp', 'dataEmbed.asp', 'dataEmbed23.asp'];
           let iframeUrl = null;
 
-          for (const embEp of embedEndpoints) {
+          for (const emEp of embedEndpoints) {
             try {
-              const embedRes = await fetch(`${baseRoute}/ajax/${embEp}`, {
+              const emRes = await fetch(`${baseRoute}/ajax/${emEp}`, {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                  'X-Requested-With': 'XMLHttpRequest',
-                  'Referer': pageUrl,
-                  'User-Agent': 'Mozilla/5.0'
-                },
+                headers: postHeaders,
                 body: embedFormData.toString()
               });
-              const embedHtml = await embedRes.text();
-              const iframeMatch = embedHtml.match(/iframe\s+src=["']([^"']+)["']/i) || embedHtml.match(/src=["']([^"']+)["']/i);
-              if (iframeMatch && iframeMatch[1]) {
-                iframeUrl = iframeMatch[1];
-                if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
+              const emText = await emRes.text();
+              const srcMatch = emText.match(/src=["']([^"']+)["']/i);
+              if (srcMatch) {
+                iframeUrl = srcMatch[1];
                 break;
               }
             } catch (_) {}
