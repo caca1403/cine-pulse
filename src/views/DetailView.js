@@ -253,7 +253,8 @@ export async function renderDetailView(type = 'tv', id) {
             episode: episodeNum,
             posterPath: media.poster_path,
             backdropPath: media.backdrop_path,
-            currentTime
+            currentTime,
+            seasonsList: media.seasons || []
           });
         });
       }

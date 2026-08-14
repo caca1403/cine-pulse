@@ -1853,13 +1853,97 @@ button {
 }
 
 /* Minimalist Cinema Player Segmented Control Tab */
+.player-cinema-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.4rem;
+  background: rgba(10, 14, 22, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 0.8rem;
+  z-index: 10;
+}
+
+.player-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.player-header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.player-header-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.player-header-badge {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.player-header-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.2rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.player-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-player-close {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.btn-player-close:hover {
+  background: rgba(239, 68, 68, 0.85) !important;
+  color: #fff !important;
+}
+
 .cinema-tab-btn {
   background: transparent;
   color: var(--text-muted);
   border: none;
-  padding: 0.4rem 1.1rem;
+  padding: 0.35rem 0.95rem;
   border-radius: var(--radius-full);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
   transition: var(--transition-fast);
@@ -1875,25 +1959,45 @@ button {
   box-shadow: 0 0 12px var(--primary-glow);
 }
 
-/* Watched Active Status Button */
-.btn-watched-active {
-  background: rgba(16, 185, 129, 0.25) !important;
+.player-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.player-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-footer-action {
+  padding: 0.45rem 0.95rem;
+  font-size: 0.82rem;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.btn-footer-action.watched-active {
+  background: rgba(16, 185, 129, 0.22) !important;
   border-color: #10b981 !important;
   color: #10b981 !important;
   font-weight: 700 !important;
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.3) !important;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.25) !important;
 }
 
-.btn-watched-active svg,
-.btn-watched-active i,
-.btn-watched-active span {
-  color: #10b981 !important;
-  stroke: #10b981 !important;
-}
-
-.btn-watched-active:hover {
-  background: rgba(16, 185, 129, 0.35) !important;
-  border-color: #34d399 !important;
+.player-status-indicator {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 /* Card Subtitle & Resolution Badge */
@@ -1901,18 +2005,18 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
-  font-size: 0.78rem;
+  max-width: 130px;
+  font-size: 0.76rem;
   color: var(--text-muted);
 }
 
 .card-res-badge {
   color: var(--accent-cyan);
   font-weight: 700;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   flex-shrink: 0;
   background: rgba(6, 182, 212, 0.12);
-  padding: 0.12rem 0.4rem;
+  padding: 0.15rem 0.4rem;
   border-radius: 4px;
   border: 1px solid rgba(6, 182, 212, 0.25);
   line-height: 1;
@@ -1946,6 +2050,50 @@ button {
   }
 }
 
+@media (max-width: 768px) {
+  .modal-backdrop {
+    padding: 0 !important;
+  }
+  .player-modal-content {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+  .player-cinema-bar {
+    padding: 0.5rem 0.8rem !important;
+    gap: 0.5rem !important;
+  }
+  .player-header-title {
+    max-width: 160px !important;
+    font-size: 0.88rem !important;
+  }
+  .cinema-tab-btn {
+    padding: 0.28rem 0.65rem !important;
+    font-size: 0.74rem !important;
+  }
+  .server-toolbar {
+    padding: 0.4rem 0.8rem !important;
+    gap: 0.4rem !important;
+  }
+  .server-btn {
+    padding: 0.32rem 0.75rem !important;
+    font-size: 0.75rem !important;
+  }
+  .player-footer-bar {
+    padding: 0.5rem 0.8rem !important;
+    gap: 0.5rem !important;
+  }
+  .btn-footer-action {
+    padding: 0.35rem 0.75rem !important;
+    font-size: 0.76rem !important;
+  }
+  .player-status-indicator {
+    display: none !important;
+  }
+}
+
 @media (max-width: 640px) {
   .episode-grid {
     grid-template-columns: 1fr !important;
@@ -1972,16 +2120,22 @@ button {
     padding: 0.5rem 1.1rem;
     font-size: 0.82rem;
   }
-  .player-modal-header {
-    padding: 0.6rem 0.8rem;
+  .player-header-title {
+    max-width: 130px !important;
+    font-size: 0.84rem !important;
   }
-  #player-modal-title {
-    max-width: 160px;
-    font-size: 0.9rem;
+  .card-time-badge {
+    font-size: 0.62rem !important;
+    padding: 0.2rem 0.4rem !important;
+    max-width: 75px !important;
   }
-  .player-footer-bar {
-    padding: 0.6rem 0.8rem !important;
-    gap: 0.5rem !important;
+  .card-type-badge {
+    font-size: 0.58rem !important;
+    padding: 0.2rem 0.4rem !important;
+  }
+  .card-rating-badge {
+    font-size: 0.62rem !important;
+    padding: 0.2rem 0.4rem !important;
   }
 }
 
