@@ -104,6 +104,45 @@ export function getMediaProgress(id, season = 1, episode = 1) {
   return history.find(item => item.id == id && item.season == season && item.episode == episode) || null;
 }
 
+export function isMediaWatched(id, season = 1, episode = 1) {
+  const progress = getMediaProgress(id, season, episode);
+  return !!(progress && (progress.completed || progress.progressPercent >= 90));
+}
+
+export function markEpisodeWatched(id, season = 1, episode = 1, completed = true, mediaData = {}) {
+  const history = getWatchHistory();
+  const existingIndex = history.findIndex(item => item.id == id && item.season == season && item.episode == episode);
+  const record = {
+    id,
+    title: mediaData.title || (existingIndex >= 0 ? history[existingIndex].title : 'İçerik'),
+    posterPath: mediaData.posterPath || (existingIndex >= 0 ? history[existingIndex].posterPath : ''),
+    backdropPath: mediaData.backdropPath || (existingIndex >= 0 ? history[existingIndex].backdropPath : ''),
+    type: mediaData.type || (existingIndex >= 0 ? history[existingIndex].type : 'tv'),
+    season: Number(season),
+    episode: Number(episode),
+    currentTime: completed ? (mediaData.duration || 2700) : 0,
+    duration: mediaData.duration || 2700,
+    progressPercent: completed ? 100 : 0,
+    completed: !!completed,
+    lastWatchedAt: Date.now()
+  };
+
+  if (existingIndex >= 0) {
+    history[existingIndex] = record;
+  } else {
+    history.push(record);
+  }
+
+  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
+  return record;
+}
+
+export function toggleEpisodeWatched(id, season = 1, episode = 1, mediaData = {}) {
+  const progress = getMediaProgress(id, season, episode);
+  const isCompleted = progress ? (progress.completed || progress.progressPercent >= 90) : false;
+  return markEpisodeWatched(id, season, episode, !isCompleted, mediaData);
+}
+
 export function getLastWatchedEpisode(seriesId) {
   const history = getWatchHistory();
   const seriesItems = history.filter(item => item.id == seriesId);

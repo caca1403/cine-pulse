@@ -1,12 +1,14 @@
 /* ==========================================================================
    CinePulse Studio - Season & Episode Selector Component
    Renders season tabs and episode cards with REAL TMDB overviews,
-   instant episode click-to-play, and 'Devamını Oku (...)' overview expansion.
+   instant episode click-to-play, interactive mark-as-watched toggles,
+   and 'Devamını Oku (...)' overview expansion.
    ========================================================================== */
 
 import { fetchSeasonDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { getMediaProgress } from '../services/storage.js';
+import { getMediaProgress, isMediaWatched, toggleEpisodeWatched } from '../services/storage.js';
 import { openPlayerModal } from './PlayerModal.js';
+import { showToast } from './Toast.js';
 
 export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = '', seriesOverview = '', seasons = [], posterPath = '', backdropPath = '' }) {
   const validSeasons = seasons.filter(s => s.season_number > 0);
@@ -95,10 +97,14 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
     ` : '';
 
     const badgeStatusHTML = isCompleted ? `
-      <span class="badge badge-primary" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green);">
+      <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green);">
         <i data-lucide="check" style="width:12px; height:12px"></i> İZLENDİ
       </span>
-    ` : '';
+    ` : `
+      <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green); display: none;">
+        <i data-lucide="check" style="width:12px; height:12px"></i> İZLENDİ
+      </span>
+    `;
 
     return `
       <div class="episode-card" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" data-title="${epTitle}">
@@ -106,6 +112,12 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
           <img class="episode-thumb" src="${stillUrl}" alt="${epTitle}" loading="lazy" onerror="this.onerror=null; this.src='${SINEFLIX_POSTER_FALLBACK}';" />
           <span class="episode-number-badge">${seasonNum}x${epNum < 10 ? '0' + epNum : epNum}</span>
           ${badgeStatusHTML}
+          
+          <!-- Interactive Mark as Watched Check Button -->
+          <button class="btn-mark-ep-watched ${isCompleted ? 'watched' : ''}" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" title="${isCompleted ? 'İzlendi işaretini kaldır' : 'İzlendi olarak işaretle'}" style="position: absolute; top: 0.5rem; right: 0.5rem; width: 28px; height: 28px; border-radius: 50%; background: ${isCompleted ? '#10b981' : 'rgba(0,0,0,0.65)'}; border: 1px solid ${isCompleted ? '#10b981' : 'rgba(255,255,255,0.3)'}; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5; transition: all 0.2s ease;">
+            <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+          </button>
+
           ${progressHTML}
         </div>
 
@@ -160,9 +172,56 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
     });
   });
 
+  // Attach Mark as Watched button clicks
+  gridContainer.querySelectorAll('.btn-mark-ep-watched').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const epSeason = parseInt(btn.getAttribute('data-season'), 10);
+      const epNumber = parseInt(btn.getAttribute('data-episode'), 10);
+      const card = btn.closest('.episode-card');
+
+      const updated = toggleEpisodeWatched(tvId, epSeason, epNumber, {
+        title: seriesTitle,
+        posterPath,
+        backdropPath,
+        type: 'tv'
+      });
+
+      const isNowCompleted = updated.completed;
+      showToast(isNowCompleted ? `S${epSeason} B${epNumber} izlendi olarak işaretlendi!` : `S${epSeason} B${epNumber} izlendi işareti kaldırıldı.`, isNowCompleted ? 'success' : 'info');
+
+      // Update button visual
+      if (isNowCompleted) {
+        btn.classList.add('watched');
+        btn.style.background = '#10b981';
+        btn.style.borderColor = '#10b981';
+        btn.title = 'İzlendi işaretini kaldır';
+      } else {
+        btn.classList.remove('watched');
+        btn.style.background = 'rgba(0,0,0,0.65)';
+        btn.style.borderColor = 'rgba(255,255,255,0.3)';
+        btn.title = 'İzlendi olarak işaretle';
+      }
+
+      // Update badge visual
+      if (card) {
+        const badgeEl = card.querySelector('.badge-watched-status');
+        if (badgeEl) {
+          badgeEl.style.display = isNowCompleted ? 'inline-flex' : 'none';
+        }
+      }
+    });
+  });
+
   // Attach Episode Card & Play Triggers
   gridContainer.querySelectorAll('.episode-card').forEach(card => {
     const playEpisode = (e) => {
+      // Don't trigger if clicked on the mark-as-watched button
+      if (e && e.target && (e.target.closest('.btn-mark-ep-watched') || e.target.closest('.btn-toggle-overview'))) {
+        return;
+      }
       if (e) {
         e.preventDefault();
         e.stopPropagation();

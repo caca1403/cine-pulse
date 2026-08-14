@@ -2,10 +2,11 @@
    CinePulse Studio - Media Detail View
    Displays full TMDB metadata, backdrop banner, season/episode list or play movie button
    Supports seamless navigation for Movies, TV Shows, Anime, and Documentaries.
+   Includes interactive Watch/Watched progress toggle.
    ========================================================================== */
 
 import { fetchMediaDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime } from '../services/storage.js';
+import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched } from '../services/storage.js';
 import { renderSeasonSelector } from '../components/SeasonSelector.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { openPlayerModal } from '../components/PlayerModal.js';
@@ -46,6 +47,7 @@ export async function renderDetailView(type = 'tv', id) {
   // Watch history progress for hero button
   const lastWatchedEp = effectiveType === 'tv' ? getLastWatchedEpisode(id) : null;
   const movieProgress = effectiveType === 'movie' ? getMediaProgress(id, 1, 1) : null;
+  const isWatchedMedia = isMediaWatched(id, lastWatchedEp ? lastWatchedEp.season : 1, lastWatchedEp ? lastWatchedEp.episode : 1);
 
   let playButtonLabel = effectiveType === 'movie' ? 'Filmi İzle (1080p HD)' : '1. Sezon 1. Bölümü İzle';
   if (effectiveType === 'tv' && lastWatchedEp) {
@@ -120,7 +122,7 @@ export async function renderDetailView(type = 'tv', id) {
                 </div>
               ` : ''}
 
-              <div class="hero-actions" style="margin-top: 1.5rem;">
+              <div class="hero-actions" style="margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.75rem;">
                 ${effectiveType === 'movie' ? `
                   <button class="btn-primary" id="btn-play-movie">
                     <i data-lucide="play" style="fill: currentColor"></i>
@@ -141,6 +143,11 @@ export async function renderDetailView(type = 'tv', id) {
                 <button class="btn-secondary" id="btn-toggle-watchlist">
                   <i data-lucide="${inWatch ? 'check' : 'plus'}"></i>
                   <span>${inWatch ? 'Listemde' : 'İzleme Listeme Ekle'}</span>
+                </button>
+
+                <button class="btn-secondary" id="btn-toggle-watched-detail" style="${isWatchedMedia ? 'border-color: #10b981; color: #10b981; background: rgba(16, 185, 129, 0.15);' : ''}">
+                  <i data-lucide="${isWatchedMedia ? 'check-circle-2' : 'check'}"></i>
+                  <span>${isWatchedMedia ? 'İzlendi' : 'İzlendi Olarak İşaretle'}</span>
                 </button>
               </div>
             </div>
@@ -240,6 +247,39 @@ export async function renderDetailView(type = 'tv', id) {
             icon.setAttribute('data-lucide', added ? 'check' : 'plus');
             if (window.lucide) window.lucide.createIcons();
             text.textContent = added ? 'Listemde' : 'İzleme Listeme Ekle';
+          }
+        });
+      }
+
+      const watchedDetailBtn = container.querySelector('#btn-toggle-watched-detail');
+      if (watchedDetailBtn) {
+        watchedDetailBtn.addEventListener('click', () => {
+          const seasonNum = lastWatchedEp ? lastWatchedEp.season : 1;
+          const epNum = lastWatchedEp ? lastWatchedEp.episode : 1;
+          const updated = toggleEpisodeWatched(id, seasonNum, epNum, {
+            title: title,
+            posterPath: media.poster_path,
+            backdropPath: media.backdrop_path,
+            type: effectiveType,
+            duration: 2700
+          });
+          const nowWatched = updated.completed;
+          showToast(nowWatched ? '✓ İzlendi olarak işaretlendi!' : 'İzlendi işareti kaldırıldı.', nowWatched ? 'success' : 'info');
+          const icon = watchedDetailBtn.querySelector('i');
+          const text = watchedDetailBtn.querySelector('span');
+          if (icon && text) {
+            icon.setAttribute('data-lucide', nowWatched ? 'check-circle-2' : 'check');
+            text.textContent = nowWatched ? 'İzlendi' : 'İzlendi Olarak İşaretle';
+            if (nowWatched) {
+              watchedDetailBtn.style.borderColor = '#10b981';
+              watchedDetailBtn.style.color = '#10b981';
+              watchedDetailBtn.style.background = 'rgba(16, 185, 129, 0.15)';
+            } else {
+              watchedDetailBtn.style.borderColor = '';
+              watchedDetailBtn.style.color = '';
+              watchedDetailBtn.style.background = '';
+            }
+            if (window.lucide) window.lucide.createIcons();
           }
         });
       }
