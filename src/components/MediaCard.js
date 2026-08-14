@@ -48,12 +48,14 @@ export function renderMediaCard(item, options = {}) {
   let episodeInfoStr = '';
   const timeStr = formatSecondsToTime(currentTime);
 
-  if (type === 'tv' && (season || episode)) {
-    episodeInfoStr = `S${season} B${episode}${timeStr ? ' • ' + timeStr : ''}`;
-  } else if (timeStr) {
-    episodeInfoStr = `Kaldığın: ${timeStr}`;
+  if (isContinue) {
+    if (type === 'tv') {
+      episodeInfoStr = `S${season} B${episode}${timeStr ? ' • ' + timeStr : ''}`;
+    } else {
+      episodeInfoStr = `Kaldığın: ${timeStr || 'İzleniyor'}`;
+    }
   } else {
-    episodeInfoStr = year;
+    episodeInfoStr = `${year} • ${type === 'tv' ? 'Dizi' : 'Film'}`;
   }
 
   const progressBarHTML = progressPercent > 0 ? `
