@@ -1,9 +1,7 @@
 /* ==========================================================================
-   CinePulse Studio - Stream Aggregator
-   Fetches live direct Turkish sources (DiziBal & SezonlukDizi) for Türkçe Dublaj
-   and Türkçe Altyazılı modes.
-   Strictly filters out broken servers: filemoon, videosoft, faststream (sub),
-   hddirect (sub), multiembed, embed.su, vidsrc, 2embed.
+   CinePulse Studio - Master Stream Aggregator
+   Aggregates live Turkish sources (DiziBal, SezonlukDizi, Dizipal, Sinewix,
+   Filmizlech, FilmizleNow, AnimeciX, AnimeTR, BelgeselX, DMAX, TLC).
    ========================================================================== */
 
 import { fetchDiziBalSources } from './diziBalScraper.js';
@@ -11,7 +9,6 @@ import { fetchSezonlukDiziEpisodeSources } from './sezonlukDiziScraper.js';
 import { fetchDizipalSources } from './dizipalScraper.js';
 import { fetchSinewixSources } from './sinewixScraper.js';
 import { fetchFilmizlechSources } from './filmizlechScraper.js';
-import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchFilmizleNowSources } from './filmizleNowScraper.js';
 import { fetchAnimecixSources } from './animecixScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
@@ -79,7 +76,6 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     dzpDub,
     snxDub,
     flzDub, flzSub,
-    hdfcDub, hdfcSub,
     finDub, finSub,
     acxSub,
     antrSub,
@@ -93,8 +89,6 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     fetchSinewixSources({ type, title: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
-    fetchHdfilmcehennemiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
-    fetchHdfilmcehennemiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
     fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
     fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
@@ -131,24 +125,13 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
 
   const cleanDubbed = [
     ...mapDubbedSources(dblDub),
-    ...mapDubbedSources(blgDub),
     ...mapDubbedSources(szdDub),
     ...mapDubbedSources(flzDub),
+    ...mapDubbedSources(finDub),
     ...mapDubbedSources(snxDub),
-    ...mapDubbedSources(dzpDub)
+    ...mapDubbedSources(dzpDub),
+    ...mapDubbedSources(blgDub)
   ];
-
-  if (cleanDubbed.length === 0) {
-    cleanDubbed.push({
-      id: 'dubbed_not_found',
-      name: '⚠️ Dublaj Sunucularda Bulunamadı',
-      badge: '❌ Mevcut Değil',
-      category: 'dubbed',
-      notFound: true,
-      showTitle: targetTitle,
-      getUrl: () => ''
-    });
-  }
 
   // Helper mapper for Subtitled sources
   const mapSubtitledSources = (rawList) => rawList
@@ -178,12 +161,11 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     }));
 
   const cleanSubtitled = [
-    ...mapSubtitledSources(dblSub),
     ...mapSubtitledSources(acxSub),
     ...mapSubtitledSources(antrSub),
+    ...mapSubtitledSources(dblSub),
     ...mapSubtitledSources(szdSub),
     ...mapSubtitledSources(flzSub),
-    ...mapSubtitledSources(hdfcSub),
     ...mapSubtitledSources(finSub),
     {
       id: 'sub_superembed',
@@ -231,6 +213,23 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
         : `https://smashystream.xyz/tv/${tmdbId}/${season}/${episode}`
     }
   ];
+
+  // If dubbed is completely empty, fallback anime/subtitled sources so user has instant streams
+  if (cleanDubbed.length === 0) {
+    if (acxSub.length > 0 || antrSub.length > 0) {
+      cleanDubbed.push(...mapSubtitledSources(acxSub), ...mapSubtitledSources(antrSub));
+    } else {
+      cleanDubbed.push({
+        id: 'dubbed_not_found',
+        name: '⚠️ Dublaj Sunucularda Bulunamadı',
+        badge: '❌ Mevcut Değil',
+        category: 'dubbed',
+        notFound: true,
+        showTitle: targetTitle,
+        getUrl: () => ''
+      });
+    }
+  }
 
   if (cleanSubtitled.length === 0) {
     cleanSubtitled.push({

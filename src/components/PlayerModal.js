@@ -69,7 +69,10 @@ export async function openPlayerModal({
   });
   
   let currentCategory = 'dubbed'; // Default to Türkçe Dublaj
-  let activeServers = categorizedServers[currentCategory];
+  if ((!categorizedServers.dubbed || categorizedServers.dubbed.length === 0 || categorizedServers.dubbed[0]?.notFound) && categorizedServers.subtitled && categorizedServers.subtitled.length > 0 && !categorizedServers.subtitled[0]?.notFound) {
+    currentCategory = 'subtitled';
+  }
+  let activeServers = categorizedServers[currentCategory] || [];
   let currentServerIndex = 0;
 
   const existingRecord = getMediaProgress(tmdbId, season, episode);

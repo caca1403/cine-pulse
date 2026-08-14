@@ -115,24 +115,49 @@ export async function fetchPopularMovies(page = 1) {
 }
 
 export async function fetchPopularAnime(page = 1) {
-  const res = await tmdbFetch('/discover/tv', {
-    sort_by: 'vote_count.desc',
-    page,
-    language: 'tr-TR',
-    with_genres: '16',
-    with_original_language: 'ja'
-  });
-  return res && res.results ? res.results.filter(item => item.poster_path || item.backdrop_path) : [];
+  const [tvRes, movieRes] = await Promise.all([
+    tmdbFetch('/discover/tv', {
+      sort_by: 'vote_count.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '16',
+      with_original_language: 'ja'
+    }),
+    tmdbFetch('/discover/movie', {
+      sort_by: 'vote_count.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '16',
+      with_original_language: 'ja'
+    })
+  ]);
+
+  const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv' }));
+  const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
+  const combined = [...tvItems, ...movieItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+  return combined.filter(item => item.poster_path || item.backdrop_path);
 }
 
 export async function fetchPopularDocumentaries(page = 1) {
-  const res = await tmdbFetch('/discover/tv', {
-    sort_by: 'vote_count.desc',
-    page,
-    language: 'tr-TR',
-    with_genres: '99'
-  });
-  return res && res.results ? res.results.filter(item => item.poster_path || item.backdrop_path) : [];
+  const [tvRes, movieRes] = await Promise.all([
+    tmdbFetch('/discover/tv', {
+      sort_by: 'vote_count.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '99'
+    }),
+    tmdbFetch('/discover/movie', {
+      sort_by: 'vote_count.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '99'
+    })
+  ]);
+
+  const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv' }));
+  const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
+  const combined = [...tvItems, ...movieItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+  return combined.filter(item => item.poster_path || item.backdrop_path);
 }
 
 export async function fetchTopRated(type = 'tv', page = 1) {
