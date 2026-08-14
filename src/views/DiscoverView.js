@@ -4,17 +4,14 @@
    ========================================================================== */
 
 import {
-  fetchByGenre,
+  fetchDiscoverMedia,
   GENRE_MAP_TV,
-  GENRE_MAP_MOVIE,
-  fetchPopularSeries,
-  fetchPopularMovies,
-  fetchTopRated
+  GENRE_MAP_MOVIE
 } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 
 export async function renderDiscoverView(initialType = 'tv') {
-  let currentType = initialType; // 'tv' or 'movie'
+  let currentType = initialType; // 'tv', 'movie', 'anime', 'documentary'
   let currentGenreId = null;
   let currentSortBy = 'popularity.desc';
   let currentMinRating = 0;
@@ -49,7 +46,7 @@ export async function renderDiscoverView(initialType = 'tv') {
     { id: GENRE_MAP_MOVIE.ROMANCE, name: 'Romantik' }
   ];
 
-  const getActiveGenres = () => currentType === 'tv' ? tvGenres : movieGenres;
+  const getActiveGenres = () => currentType === 'movie' ? movieGenres : tvGenres;
 
   const html = `
     <div class="discover-view" style="padding-top: 6.5rem; padding-bottom: 5rem;">
@@ -67,7 +64,7 @@ export async function renderDiscoverView(initialType = 'tv') {
               </p>
             </div>
 
-                   <!-- Content Type Switcher (Dizi / Film / Anime / Belgesel) -->
+            <!-- Content Type Switcher (Dizi / Film / Anime / Belgesel) -->
             <div style="display: flex; background: rgba(0, 0, 0, 0.4); padding: 0.35rem; border-radius: var(--radius-full); border: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.25rem;">
               <button class="type-switch-btn ${currentType === 'tv' ? 'active' : ''}" id="discover-type-tv" style="padding: 0.6rem 1.2rem; font-weight: 700; font-size: 0.85rem; border-radius: var(--radius-full);">
                 <i data-lucide="tv-2" style="width: 15px; height: 15px;"></i> Diziler
@@ -95,6 +92,7 @@ export async function renderDiscoverView(initialType = 'tv') {
               <select id="discover-sort-select" class="discover-filter-select">
                 <option value="popularity.desc">🔥 En Popülerler (Trend)</option>
                 <option value="vote_average.desc">⭐ En Yüksek IMDb Puanı</option>
+                <option value="vote_count.desc">👥 En Çok Oylananlar</option>
                 <option value="first_air_date.desc">📅 En Yeniler (Vizyon / Çıkış)</option>
               </select>
             </div>
@@ -107,6 +105,7 @@ export async function renderDiscoverView(initialType = 'tv') {
               <select id="discover-rating-select" class="discover-filter-select">
                 <option value="0">Tümü (Puan Sınırı Yok)</option>
                 <option value="8.0">⭐ 8.0 ve Üzeri (Başyapıtlar)</option>
+                <option value="7.5">⭐ 7.5 ve Üzeri (Çok Yüksek)</option>
                 <option value="7.0">⭐ 7.0 ve Üzeri (Çok İyi)</option>
                 <option value="6.0">⭐ 6.0 ve Üzeri (İyi)</option>
               </select>
@@ -176,28 +175,24 @@ export async function renderDiscoverView(initialType = 'tv') {
         if (spinner) spinner.style.display = 'block';
 
         try {
-          let results = [];
           const effectiveType = (currentType === 'anime' || currentType === 'documentary') ? 'tv' : currentType;
-          if (currentGenreId) {
-            results = await fetchByGenre(effectiveType, currentGenreId, currentPage, currentSortBy);
-          } else if (currentType === 'anime') {
-            results = await fetchByGenre('tv', '16', currentPage, currentSortBy);
-          } else if (currentType === 'documentary') {
-            results = await fetchByGenre('tv', '99', currentPage, currentSortBy);
-          } else {
-            if (currentSortBy === 'vote_average.desc') {
-              results = await fetchTopRated(effectiveType, currentPage);
-            } else if (currentSortBy === 'first_air_date.desc' || currentSortBy === 'primary_release_date.desc') {
-              results = await fetchByGenre(effectiveType, null, currentPage, 'primary_release_date.desc');
-            } else {
-              results = effectiveType === 'tv' ? await fetchPopularSeries(currentPage) : await fetchPopularMovies(currentPage);
-            }
+          const isAnime = currentType === 'anime';
+          const isDoc = currentType === 'documentary';
+
+          let effectiveSort = currentSortBy;
+          if (currentSortBy === 'first_air_date.desc' && effectiveType === 'movie') {
+            effectiveSort = 'primary_release_date.desc';
           }
 
-          // Min rating filter
-          if (currentMinRating > 0) {
-            results = results.filter(item => (item.vote_average || 0) >= currentMinRating);
-          }
+          const results = await fetchDiscoverMedia({
+            type: effectiveType,
+            genreId: currentGenreId,
+            page: currentPage,
+            sortBy: effectiveSort,
+            minRating: currentMinRating,
+            isAnime,
+            isDoc
+          });
 
           if (spinner) spinner.style.display = 'none';
 

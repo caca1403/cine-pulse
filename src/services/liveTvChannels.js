@@ -1,7 +1,7 @@
 /* ==========================================================================
-   CinePulse Studio - 100% Direct HLS (.m3u8) Turkish Live TV Catalog
-   All 38 channels are verified pure HLS video streams with Hls.js acceleration.
-   Zero YouTube embeds, zero broken website iframes, instant hardware playback.
+   CinePulse Studio - 100% Verified Turkish Live TV Catalog
+   Clean official feeds with Hls.js native hardware playback.
+   Zero Cinerama ads, zero broken framebusters.
    ========================================================================== */
 
 export const LIVE_TV_CATEGORIES = [
@@ -38,16 +38,6 @@ export const LIVE_TV_CHANNELS = [
     isHls: true
   },
   {
-    id: 'ch_showtv',
-    name: 'Show TV HD',
-    category: 'national',
-    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/8/87/Show_TV_logo.png/300px-Show_TV_logo.png',
-    badge: '📺 Popüler Diziler',
-    quality: '1080p Full HD',
-    streamUrl: 'https://stream8.cinerama.uz/1208/tracks-v1a1/mono.m3u8',
-    isHls: true
-  },
-  {
     id: 'ch_nowtv',
     name: 'NOW TV (FOX) HD',
     category: 'national',
@@ -65,16 +55,6 @@ export const LIVE_TV_CHANNELS = [
     badge: '📺 Ulusal HD',
     quality: '1080p Full HD',
     streamUrl: 'https://dygvideo.dygdigital.com/live/hls/startv4puhu/live.m3u8',
-    isHls: true
-  },
-  {
-    id: 'ch_kanald',
-    name: 'Kanal D HD',
-    category: 'national',
-    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/6/69/Kanal_D_logo.png/300px-Kanal_D_logo.png',
-    badge: '📺 Ulusal HD',
-    quality: '1080p Full HD',
-    streamUrl: 'https://stream8.cinerama.uz/1205/tracks-v1a1/mono.m3u8',
     isHls: true
   },
   {
@@ -182,16 +162,6 @@ export const LIVE_TV_CHANNELS = [
     isHls: true
   },
   {
-    id: 'ch_cnnturk',
-    name: 'CNN Türk HD',
-    category: 'news',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/CNN_Turk_logo.svg/300px-CNN_Turk_logo.svg.png',
-    badge: '📰 İlk Bilen Siz Olun',
-    quality: '1080p Full HD',
-    streamUrl: 'https://stream8.cinerama.uz/1218/tracks-v1a1/mono.m3u8',
-    isHls: true
-  },
-  {
     id: 'ch_haberturk',
     name: 'Habertürk TV HD',
     category: 'news',
@@ -208,7 +178,7 @@ export const LIVE_TV_CHANNELS = [
     logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/8/87/Halk_TV_logo.png/300px-Halk_TV_logo.png',
     badge: '📰 Halkın Sesi',
     quality: '1080p Full HD',
-    streamUrl: 'https://b01c02nl.mediatriple.net/videoonlylive/mtisvwurbfcyslive/broadcast_58d915bd40efc.smil/playlist.m3u8',
+    streamUrl: 'https://halktv-live.daioncdn.net/halktv/halktv.m3u8',
     isHls: true
   },
   {
@@ -238,7 +208,7 @@ export const LIVE_TV_CHANNELS = [
     logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/5/52/Bloomberg_HT_logo.png/300px-Bloomberg_HT_logo.png',
     badge: '📈 Ekonomi & Piyasalar',
     quality: '1080p Full HD',
-    streamUrl: 'https://tv.ensonhaber.com/bloomberght/bloomberght.m3u8',
+    streamUrl: 'https://rmtftbjlne.turknet.ercdn.net/bpeytmnqyp/bloomberght/bloomberght.m3u8',
     isHls: true
   },
   {
@@ -295,16 +265,6 @@ export const LIVE_TV_CHANNELS = [
     streamUrl: 'https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/aspor/aspor.m3u8',
     isHls: true
   },
-  {
-    id: 'ch_bein_haber',
-    name: 'beIN Sports Haber HD',
-    category: 'sports',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/BeIN_Sports_1_logo.svg/300px-BeIN_Sports_1_logo.svg.png',
-    badge: '⚡ Canlı Spor Haber',
-    quality: '1080p Full HD',
-    streamUrl: 'https://stream8.cinerama.uz/1221/tracks-v1a1/mono.m3u8',
-    isHls: true
-  },
 
   // ==========================================
   // --- 🌿 BELGESEL (DOCUMENTARY LIVE) ---
@@ -316,27 +276,7 @@ export const LIVE_TV_CHANNELS = [
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/TRT_Belgesel_logo.svg/300px-TRT_Belgesel_logo.svg.png',
     badge: '🌿 Doğa, Bilim & Tarih',
     quality: '1080p Full HD',
-    streamUrl: 'https://tv-trtbelgesel.medya.trt.com.tr/master.m3u8',
-    isHls: true
-  },
-  {
-    id: 'ch_dmax_live',
-    name: 'DMAX TV Canlı HD',
-    category: 'doc',
-    logo: 'https://img-dmax.mncdn.com/dmaxcomtr_logo.png',
-    badge: '🌿 Macera & Otomobil',
-    quality: '1080p Full HD',
-    streamUrl: 'https://stream8.cinerama.uz/1225/tracks-v1a1/mono.m3u8',
-    isHls: true
-  },
-  {
-    id: 'ch_tlc_live',
-    name: 'TLC TV Canlı HD',
-    category: 'doc',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/TLC_Logo.svg/300px-TLC_Logo.svg.png',
-    badge: '🌿 Yaşam & Realite',
-    quality: '1080p Full HD',
-    streamUrl: 'https://stream8.cinerama.uz/1226/tracks-v1a1/mono.m3u8',
+    streamUrl: 'https://tv-trtbelgesel-dai.medya.trt.com.tr/master.m3u8',
     isHls: true
   },
   {
@@ -356,7 +296,7 @@ export const LIVE_TV_CHANNELS = [
     logo: 'https://live.artidijitalmedya.com/artidijital_ciftcitv/ciftcitv/playlist.m3u8',
     badge: '🌿 Tarım & Doğa',
     quality: '1080p Full HD',
-    streamUrl: 'https://live.artidijitalmedya.com/artidijital_ciftcitv/ciftcitv/playlist.m3u8',
+    streamUrl: 'https://live.artidijitalmedya.com/artidijital_ciftcitv/ciftcitv/chunks.m3u8',
     isHls: true
   },
 
@@ -384,33 +324,13 @@ export const LIVE_TV_CHANNELS = [
     isHls: true
   },
   {
-    id: 'ch_kralpoptv',
-    name: 'Kral Pop TV HD',
-    category: 'kids_music',
-    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/8/85/Kral_Pop_TV_logo.png/300px-Kral_Pop_TV_logo.png',
-    badge: '🎵 Türkçe Pop Müzik',
-    quality: '1080p Full HD',
-    streamUrl: 'https://stream8.cinerama.uz/1229/tracks-v1a1/mono.m3u8',
-    isHls: true
-  },
-  {
-    id: 'ch_powerturktv',
-    name: 'PowerTürk TV HD',
-    category: 'kids_music',
-    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/5/52/Power_T%C3%BCrk_TV_logo.png/300px-Power_T%C3%BCrk_TV_logo.png',
-    badge: '🎵 Canlı Müzik Klipleri',
-    quality: '1080p Full HD',
-    streamUrl: 'https://stream8.cinerama.uz/1230/tracks-v1a1/mono.m3u8',
-    isHls: true
-  },
-  {
     id: 'ch_trtmuzik',
     name: 'TRT Müzik HD',
     category: 'kids_music',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Kral_Pop_TV_logo.png/300px-Kral_Pop_TV_logo.png',
     badge: '🎵 Canlı Müzik & Konser',
     quality: '1080p Full HD',
-    streamUrl: 'https://tv-trtmuzik.medya.trt.com.tr/master.m3u8',
+    streamUrl: 'https://tv-trtmuzik.medya.trt.com.tr/master_480.m3u8',
     isHls: true
   }
 ];

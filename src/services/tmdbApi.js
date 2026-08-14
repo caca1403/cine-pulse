@@ -39,9 +39,6 @@ export function getImageUrl(path, size = TMDB_IMAGE_SIZES.POSTER_MEDIUM) {
   return `${size}${path}`;
 }
 
-/**
- * Free Instant Auto-Translation to Turkish
- */
 const translationCache = {};
 export async function translateToTurkish(text) {
   if (!text || text.trim().length === 0) return '';
@@ -165,16 +162,50 @@ export async function fetchTopRated(type = 'tv', page = 1) {
   return res && res.results ? res.results.filter(item => item.poster_path || item.backdrop_path) : [];
 }
 
-export async function fetchByGenre(type = 'tv', genreId, page = 1, sortBy = 'popularity.desc') {
+export async function fetchDiscoverMedia({
+  type = 'tv',
+  genreId = null,
+  page = 1,
+  sortBy = 'popularity.desc',
+  minRating = 0,
+  isAnime = false,
+  isDoc = false
+}) {
   const params = {
     sort_by: sortBy,
     page,
     language: 'tr-TR'
   };
-  if (genreId) params.with_genres = genreId;
 
-  const res = await tmdbFetch(`/discover/${type}`, params);
-  return res && res.results ? res.results.filter(item => item.poster_path || item.backdrop_path) : [];
+  if (genreId) params.with_genres = genreId;
+  if (isAnime) {
+    params.with_genres = '16';
+    params.with_original_language = 'ja';
+  }
+  if (isDoc) {
+    params.with_genres = '99';
+  }
+
+  if (minRating > 0) {
+    params['vote_average.gte'] = minRating;
+    params['vote_count.gte'] = 50; // Minimum 50 votes for quality ratings
+  }
+
+  const endpoint = type === 'movie' ? '/discover/movie' : '/discover/tv';
+  const res = await tmdbFetch(endpoint, params);
+  const items = res?.results || [];
+
+  return items
+    .filter(item => item.poster_path || item.backdrop_path)
+    .map(item => ({
+      ...item,
+      type: type,
+      media_type: type
+    }));
+}
+
+export async function fetchByGenre(type = 'tv', genreId, page = 1, sortBy = 'popularity.desc') {
+  return fetchDiscoverMedia({ type, genreId, page, sortBy });
 }
 
 export async function fetchMediaDetails(type = 'tv', id) {
@@ -200,7 +231,7 @@ export async function fetchSeasonDetails(tvId, seasonNumber = 1) {
       }
     }
 
-    if (overviewText && overviewText.length > 5) {
+    if (overviewText && (!ep.overview || ep.overview.length < 5)) {
       ep.overview = await translateToTurkish(overviewText);
     }
   }));
@@ -209,9 +240,8 @@ export async function fetchSeasonDetails(tvId, seasonNumber = 1) {
 }
 
 export async function searchMulti(query, page = 1) {
-  if (!query || query.trim().length < 2) return [];
-  const res = await tmdbFetch('/search/multi', { query: query.trim(), page, language: 'tr-TR' });
-  return res && res.results ? res.results.filter(item => (item.media_type === 'tv' || item.media_type === 'movie')) : [];
+  const res = await tmdbFetch('/search/multi', { query, page, language: 'tr-TR' });
+  return res && res.results ? res.results.filter(item => (item.media_type === 'tv' || item.media_type === 'movie') && (item.poster_path || item.backdrop_path)) : [];
 }
 
 export const GENRE_MAP_TV = {
@@ -253,19 +283,4 @@ export const GENRE_MAP_MOVIE = {
   THRILLER: 53,
   WAR: 10752,
   WESTERN: 37
-};
-
-// Geriye dönük uyumluluk için
-export const GENRE_MAP = {
-  ACTION: 28,
-  ANIMATION: 16,
-  COMEDY: 35,
-  CRIME: 80,
-  DOCUMENTARY: 99,
-  DRAMA: 18,
-  FAMILY: 10751,
-  KIDS: 10762,
-  MYSTERY: 9648,
-  SCI_FI: 878,
-  HORROR: 27
 };
