@@ -1,7 +1,7 @@
 /* ==========================================================================
    CinePulse Studio - Filmizle.now Scraper
    Fetches 1080p Vidmixi stream sources from https://filmizle.now
-   Strict bidirectional whole-title & year matching to prevent wrong movie playback.
+   Strict bidirectional whole-title & year matching with timeout protection.
    ========================================================================== */
 
 function normalizeTitle(title) {
@@ -47,12 +47,10 @@ function isTitleStrictMatch(target, candidate, targetYear = null) {
 
   if (normT === normC) return true;
 
-  // Check if candidate has extra franchise modifiers not present in target
   for (const mod of FRANCHISE_SUBTITLES) {
     const tHas = normT.includes(mod);
     const cHas = normC.includes(mod);
     if (tHas !== cHas) {
-      // One has the modifier while the other doesn't (e.g. Inanilmaz Orumcek Adam vs Orumcek Adam 2026) -> REJECT!
       return false;
     }
   }
@@ -96,13 +94,11 @@ export async function fetchFilmizleNowSources({
         ? `/dizi/${cleanSlug}/${season}-sezon-${episode}-bolum`
         : `/film/${cleanSlug}`;
 
-      // First check direct slug
-      let directRes = await fetch(`${baseRoute}${directPath}`).catch(() => null);
+      let directRes = await fetch(`${baseRoute}${directPath}`, { signal: AbortSignal.timeout(3500) }).catch(() => null);
       if (directRes && directRes.ok) {
         targetPath = directPath;
       } else {
-        // Search dynamically with strict franchise & subtitle matching
-        const searchRes = await fetch(`${baseRoute}/arama?q=${encodeURIComponent(query)}`).catch(() => null);
+        const searchRes = await fetch(`${baseRoute}/arama?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(3500) }).catch(() => null);
         if (searchRes && searchRes.ok) {
           const sHtml = await searchRes.text();
           const allHrefs = [...sHtml.matchAll(/href="([^"]*(?:film|dizi)[^"]*)"/gi)].map(m => m[1]);
@@ -125,8 +121,8 @@ export async function fetchFilmizleNowSources({
 
       if (!targetPath) continue;
 
-      const pageRes = await fetch(`${baseRoute}${targetPath}`);
-      if (!pageRes.ok) continue;
+      const pageRes = await fetch(`${baseRoute}${targetPath}`, { signal: AbortSignal.timeout(3500) }).catch(() => null);
+      if (!pageRes || !pageRes.ok) continue;
 
       const html = await pageRes.text();
       const csrfToken = html.match(/<meta name="csrf-token" content="([^"]+)"/i)?.[1];
@@ -154,7 +150,8 @@ export async function fetchFilmizleNowSources({
             'X-CSRF-TOKEN': csrfToken || '',
             'X-Requested-With': 'XMLHttpRequest'
           },
-          body: bodyData.toString()
+          body: bodyData.toString(),
+          signal: AbortSignal.timeout(3500)
         }).catch(() => null);
 
         if (!videoRes || !videoRes.ok) continue;
@@ -166,8 +163,8 @@ export async function fetchFilmizleNowSources({
 
         results.push({
           id: `fin_${item.id}`,
-          name: `${item.title || 'Vidmixi Stream'} (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
-          badge: isDub ? '⚡ 1080p Dublaj' : '💬 1080p Altyazılı',
+          name: `${item.title || 'Now Stream'} (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
+          badge: isDub ? '⚡ Now 1080p' : '💬 Now 1080p',
           category: isDub ? 'dubbed' : 'subtitled',
           streamUrl: finalUrl,
           url: finalUrl,
@@ -176,9 +173,7 @@ export async function fetchFilmizleNowSources({
       }
 
       if (results.length > 0) return results;
-    } catch (e) {
-      console.warn('[FilmizleNowScraper] Error:', e);
-    }
+    } catch (e) {}
   }
 
   return [];

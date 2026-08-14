@@ -3,11 +3,10 @@
    Aggregates live Turkish sources with strict title & year matching:
    - Smashy Stream (1080p Video Embed)
    - DiziBal (VIP 1080p)
-   - SezonlukDizi (VidMoly, Sibnet, Filemoon)
-   - Dizipal (1080p)
    - Sinewix (Android VIP 1080p)
-   - Filmizlech (1080p Dublaj & Altyazılı)
-   - FilmizleNow (1080p Dublaj & Altyazılı)
+   - Dizipal (1080p)
+   - SezonlukDizi (VidMoly, Sibnet, Filemoon)
+   - Now Stream / Filmizle (1080p Dublaj & Altyazılı)
    - AnimeTR (VidMoly, OK.ru, Vidoza, VOE, Drive 1080p)
    - TRAnimeİzle (1080p)
    - TürkAnime TV (1080p)
@@ -83,16 +82,14 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
   const isMovie = type === 'movie';
   const targetTitle = cleanTitle(seriesTitle) || cleanTitle(title) || cleanTitle(originalTitle);
 
-  // Fetch all alias titles and release year
   const { candidateTitles, detectedYear } = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle);
   const targetYear = year || detectedYear;
 
-  // Concurrently fetch sources from live Turkish providers with accurate matching
   const [
     dblDub, dblSub,
     szdDub, szdSub,
-    dzpDub,
     snxDub,
+    dzpDub,
     flzDub, flzSub,
     finDub, finSub,
     antrSub,
@@ -104,8 +101,8 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     fetchDiziBalSources({ titles: candidateTitles, type, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false }).catch(() => []),
     !isMovie ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []) : Promise.resolve([]),
     !isMovie ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []) : Promise.resolve([]),
-    fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchSinewixSources({ type, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true }).catch(() => []),
+    fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => []),
     fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).catch(() => []),
     fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true }).catch(() => []),
@@ -116,7 +113,6 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true }).catch(() => [])
   ]);
 
-  // Helper mapper for Dubbed sources
   const mapDubbedSources = (rawList) => rawList
     .filter(s => {
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
@@ -145,14 +141,13 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
   const cleanDubbed = [
     ...mapDubbedSources(dblDub),
     ...mapDubbedSources(szdDub),
-    ...mapDubbedSources(flzDub),
-    ...mapDubbedSources(finDub),
     ...mapDubbedSources(snxDub),
     ...mapDubbedSources(dzpDub),
+    ...mapDubbedSources(flzDub),
+    ...mapDubbedSources(finDub),
     ...mapDubbedSources(blgDub)
   ];
 
-  // Helper mapper for Subtitled sources
   const mapSubtitledSources = (rawList) => rawList
     .filter(s => {
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
@@ -233,7 +228,6 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     }
   ];
 
-  // If dubbed is completely empty, fallback anime/subtitled sources so user has instant streams
   if (cleanDubbed.length === 0) {
     if (antrSub.length > 0 || traSub.length > 0 || taSub.length > 0) {
       cleanDubbed.push(
