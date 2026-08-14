@@ -2,10 +2,12 @@
    SineFlix Pro - Video Player Modal Component
    Giant Widescreen Theater Mode Player with Live Reverse-Engineered
    SezonlukDizi, Dizipal & Sinewix Android API Sources.
+   Features seamless in-place episode switching without modal closure,
+   interactive watched status toggles, and live video streaming.
    ========================================================================== */
 
 import { getStreamingServers } from '../services/providerAggregator.js';
-import { saveWatchProgress, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched } from '../services/storage.js';
+import { saveWatchProgress, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markEpisodeWatched } from '../services/storage.js';
 import { showToast } from './Toast.js';
 
 let activeProgressInterval = null;
@@ -38,6 +40,9 @@ export async function openPlayerModal({
     return null;
   };
 
+  let currentSeason = Number(season) || 1;
+  let currentEpisode = Number(episode) || 1;
+
   const rawSeries = seriesTitle || title || '';
   const cleanSeriesName = rawSeries
     .replace(/\s*-\s*S\d+E\d+.*$/i, '')
@@ -47,10 +52,6 @@ export async function openPlayerModal({
     .replace(/\s*\(\d{4}\).*/, '')
     .trim();
 
-  const displayTitle = type === 'tv' 
-    ? `${cleanSeriesName} - S${season}E${episode}`
-    : cleanSeriesName;
-
   showToast(
     type === 'movie'
       ? 'Yüksek hızlı film depoları taranıyor...'
@@ -58,14 +59,14 @@ export async function openPlayerModal({
     'info'
   );
 
-  const categorizedServers = await getStreamingServers({ 
+  let categorizedServers = await getStreamingServers({ 
     type, 
     tmdbId, 
     title: cleanSeriesName, 
     seriesTitle: cleanSeriesName, 
     originalTitle, 
-    season, 
-    episode 
+    season: currentSeason, 
+    episode: currentEpisode 
   });
   
   let currentCategory = 'dubbed'; // Default to Türkçe Dublaj
@@ -75,9 +76,12 @@ export async function openPlayerModal({
   let activeServers = categorizedServers[currentCategory] || [];
   let currentServerIndex = 0;
 
-  const existingRecord = getMediaProgress(tmdbId, season, episode);
+  const existingRecord = getMediaProgress(tmdbId, currentSeason, currentEpisode);
   let initialTime = currentTime || (existingRecord ? existingRecord.currentTime : 0);
-  let isWatched = isMediaWatched(tmdbId, season, episode);
+  let isWatched = isMediaWatched(tmdbId, currentSeason, currentEpisode);
+  const estimatedDuration = 2700;
+  let simulatedCurrentTime = initialTime;
+  let isSwitchingEpisode = false;
 
   function renderServerPills() {
     return activeServers.map((srv, idx) => `
@@ -91,7 +95,7 @@ export async function openPlayerModal({
 
   function renderPlayerContent() {
     const srv = activeServers[currentServerIndex];
-    if (srv.notFound) {
+    if (!srv || srv.notFound) {
       return `
         <div class="player-not-found-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 2.5rem; background: rgba(11, 15, 25, 0.98); border-radius: 12px;">
           <div style="width: 72px; height: 72px; border-radius: 50%; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); display: flex; align-items: center; justify-content: center; margin-bottom: 1.3rem;">
@@ -158,6 +162,12 @@ export async function openPlayerModal({
     `;
   }
 
+  function getDisplayTitle() {
+    return type === 'tv' 
+      ? `${cleanSeriesName} - S${currentSeason}E${currentEpisode}`
+      : cleanSeriesName;
+  }
+
   modalContainer.innerHTML = `
     <div class="modal-content player-modal-content" style="background: #000; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius-lg); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.98); overflow: hidden; display: flex; flex-direction: column;">
       
@@ -169,9 +179,9 @@ export async function openPlayerModal({
           <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
             <i data-lucide="play" style="width: 14px; height: 14px; color: var(--primary); fill: var(--primary);"></i>
           </div>
-          <span style="font-weight: 700; font-size: 1.05rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px;">${displayTitle}</span>
+          <span id="player-modal-title" style="font-weight: 700; font-size: 1.05rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px;">${getDisplayTitle()}</span>
           ${initialTime > 5 ? `
-            <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
+            <span id="player-resume-time-badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
               <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
               <span>Kaldığın Dakika: ${formatSecondsToTime(initialTime)}</span>
             </span>
@@ -190,7 +200,7 @@ export async function openPlayerModal({
 
         <!-- Right: Actions & Close -->
         <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <a id="player-popout-btn" href="${activeServers[currentServerIndex].streamUrl || activeServers[currentServerIndex].getUrl() || '#'}" target="_blank" class="btn-action-icon" title="Harici Pencerede Aç" style="width: 34px; height: 34px; border-radius: 8px;">
+          <a id="player-popout-btn" href="${activeServers[currentServerIndex]?.streamUrl || activeServers[currentServerIndex]?.getUrl() || '#'}" target="_blank" class="btn-action-icon" title="Harici Pencerede Aç" style="width: 34px; height: 34px; border-radius: 8px;">
             <i data-lucide="external-link" style="width:15px; height:15px"></i>
           </a>
 
@@ -226,21 +236,9 @@ export async function openPlayerModal({
         </div>
 
         <!-- Right: Prev / Next Navigation for Series & Anime -->
-        ${type === 'tv' ? `
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            ${episode > 1 ? `
-              <button id="btn-prev-episode" class="btn-secondary" style="padding: 0.45rem 1rem; font-size: 0.85rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.25rem;">
-                <i data-lucide="chevron-left" style="width: 14px; height: 14px;"></i>
-                <span>Önceki Bölüm (B${episode - 1})</span>
-              </button>
-            ` : ''}
-
-            <button id="btn-next-episode" class="btn-primary" style="padding: 0.45rem 1.3rem; font-size: 0.85rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.25rem;">
-              <span>Sonraki Bölüm (B${episode + 1})</span>
-              <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
-            </button>
-          </div>
-        ` : ''}
+        <div id="player-nav-btn-group" style="display: flex; align-items: center; gap: 0.5rem;">
+          ${renderFooterNavButtonsHTML()}
+        </div>
       </div>
     </div>
   `;
@@ -248,6 +246,198 @@ export async function openPlayerModal({
   modalContainer.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   if (window.lucide) window.lucide.createIcons();
+
+  function renderFooterNavButtonsHTML() {
+    if (type !== 'tv') return '';
+    return `
+      ${currentEpisode > 1 ? `
+        <button id="btn-prev-episode" class="btn-secondary" style="padding: 0.45rem 1.1rem; font-size: 0.85rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+          <i data-lucide="chevron-left" style="width: 14px; height: 14px;"></i>
+          <span>Önceki Bölüm (B${currentEpisode - 1})</span>
+        </button>
+      ` : ''}
+
+      <button id="btn-next-episode" class="btn-primary" style="padding: 0.45rem 1.3rem; font-size: 0.85rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+        <span>Sonraki Bölüm (B${currentEpisode + 1})</span>
+        <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+      </button>
+    `;
+  }
+
+  function attachFooterNavEvents() {
+    const prevEpBtn = document.getElementById('btn-prev-episode');
+    if (prevEpBtn) {
+      prevEpBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentEpisode > 1) {
+          switchEpisodeInPlayer(currentSeason, currentEpisode - 1);
+        }
+      });
+    }
+
+    const nextEpBtn = document.getElementById('btn-next-episode');
+    if (nextEpBtn) {
+      nextEpBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        // Auto-mark current episode as watched when proceeding
+        markEpisodeWatched(tmdbId, currentSeason, currentEpisode, true, {
+          title: cleanSeriesName,
+          posterPath,
+          backdropPath,
+          type,
+          duration: estimatedDuration
+        });
+        switchEpisodeInPlayer(currentSeason, currentEpisode + 1);
+      });
+    }
+  }
+
+  async function switchEpisodeInPlayer(newSeason, newEpisode) {
+    if (isSwitchingEpisode) return;
+    isSwitchingEpisode = true;
+
+    // 1. Give instant visual button feedback
+    const prevBtn = document.getElementById('btn-prev-episode');
+    const nextBtn = document.getElementById('btn-next-episode');
+    if (prevBtn) {
+      prevBtn.disabled = true;
+      prevBtn.style.opacity = '0.6';
+      prevBtn.style.cursor = 'not-allowed';
+    }
+    if (nextBtn) {
+      nextBtn.disabled = true;
+      nextBtn.style.opacity = '0.6';
+      nextBtn.style.cursor = 'not-allowed';
+      if (newEpisode > currentEpisode) {
+        nextBtn.innerHTML = `
+          <span style="width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; display: inline-block; animation: spin 0.6s linear infinite;"></span>
+          <span>Bölüm ${newEpisode} Yükleniyor...</span>
+        `;
+      }
+    }
+    if (prevBtn && newEpisode < currentEpisode) {
+      prevBtn.innerHTML = `
+        <span style="width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; display: inline-block; animation: spin 0.6s linear infinite;"></span>
+        <span>Bölüm ${newEpisode} Yükleniyor...</span>
+      `;
+    }
+
+    // 2. Cleanly teardown current player and progress
+    if (activeHlsInstance) {
+      activeHlsInstance.destroy();
+      activeHlsInstance = null;
+    }
+    clearInterval(activeProgressInterval);
+
+    // 3. Show smooth loading overlay inside player frame
+    const iframeWrapper = document.getElementById('player-iframe-wrapper');
+    if (iframeWrapper) {
+      iframeWrapper.innerHTML = `
+        <div class="player-loading-overlay" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 420px; background: rgba(8, 11, 18, 0.98); border-radius: 12px; gap: 1.2rem; text-align: center; padding: 2rem; animation: fadeIn 0.3s ease;">
+          <div style="position: relative; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+            <div style="position: absolute; inset: 0; border: 3px solid rgba(245, 158, 11, 0.15); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.75s linear infinite;"></div>
+            <i data-lucide="tv-2" style="width: 26px; height: 26px; color: var(--primary);"></i>
+          </div>
+          <div>
+            <h3 style="font-size: 1.35rem; font-weight: 800; color: #f8fafc; margin-bottom: 0.35rem;">${cleanSeriesName}</h3>
+            <p style="font-size: 0.95rem; color: #38bdf8; font-weight: 700; margin-bottom: 0.4rem;">
+              Sezon ${newSeason} • Bölüm ${newEpisode} Hazırlanıyor...
+            </p>
+            <p style="font-size: 0.82rem; color: var(--text-muted); max-width: 420px; margin: 0 auto; line-height: 1.5;">
+              Yüksek hızlı yayın sunucuları taranıyor, video akışı başlatılıyor. Lütfen bekleyin...
+            </p>
+          </div>
+        </div>
+      `;
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    currentSeason = newSeason;
+    currentEpisode = newEpisode;
+
+    // Update modal top bar title
+    const titleEl = document.getElementById('player-modal-title');
+    if (titleEl) {
+      titleEl.textContent = getDisplayTitle();
+    }
+
+    const timeBadge = document.getElementById('player-resume-time-badge');
+    if (timeBadge) timeBadge.style.display = 'none';
+
+    showToast(`S${currentSeason} B${currentEpisode} kaynakları aranıyor...`, 'info');
+
+    // 4. Fetch new episode streaming servers
+    categorizedServers = await getStreamingServers({ 
+      type, 
+      tmdbId, 
+      title: cleanSeriesName, 
+      seriesTitle: cleanSeriesName, 
+      originalTitle, 
+      season: currentSeason, 
+      episode: currentEpisode 
+    });
+
+    if ((!categorizedServers.dubbed || categorizedServers.dubbed.length === 0 || categorizedServers.dubbed[0]?.notFound) && categorizedServers.subtitled && categorizedServers.subtitled.length > 0 && !categorizedServers.subtitled[0]?.notFound) {
+      currentCategory = 'subtitled';
+    }
+    activeServers = categorizedServers[currentCategory] || [];
+    currentServerIndex = 0;
+
+    const newRecord = getMediaProgress(tmdbId, currentSeason, currentEpisode);
+    initialTime = newRecord ? newRecord.currentTime : 0;
+    isWatched = isMediaWatched(tmdbId, currentSeason, currentEpisode);
+
+    // 5. Update UI components
+    updateServerPillsEvents();
+    updatePlayerContainer();
+
+    // 6. Update Watched status button visual
+    const toggleWatchedPlayerBtn = document.getElementById('btn-toggle-watched-player');
+    if (toggleWatchedPlayerBtn) {
+      const span = toggleWatchedPlayerBtn.querySelector('span');
+      const icon = toggleWatchedPlayerBtn.querySelector('i');
+      if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Olarak İşaretle';
+      if (icon) icon.setAttribute('data-lucide', isWatched ? 'check-circle-2' : 'check');
+      if (isWatched) {
+        toggleWatchedPlayerBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+        toggleWatchedPlayerBtn.style.borderColor = '#10b981';
+        toggleWatchedPlayerBtn.style.color = '#10b981';
+      } else {
+        toggleWatchedPlayerBtn.style.background = '';
+        toggleWatchedPlayerBtn.style.borderColor = '';
+        toggleWatchedPlayerBtn.style.color = '';
+      }
+    }
+
+    // 7. Re-render and rebind footer previous/next buttons
+    const navGroup = document.getElementById('player-nav-btn-group');
+    if (navGroup) {
+      navGroup.innerHTML = renderFooterNavButtonsHTML();
+      attachFooterNavEvents();
+    }
+
+    // 8. Restart watch progress timer
+    simulatedCurrentTime = initialTime;
+    clearInterval(activeProgressInterval);
+    activeProgressInterval = setInterval(() => {
+      simulatedCurrentTime += 5;
+      saveWatchProgress({
+        id: tmdbId,
+        title: cleanSeriesName,
+        posterPath,
+        backdropPath,
+        type,
+        season: currentSeason,
+        episode: currentEpisode,
+        currentTime: simulatedCurrentTime,
+        duration: estimatedDuration
+      });
+    }, 5000);
+
+    if (window.lucide) window.lucide.createIcons();
+    showToast(`✓ S${currentSeason} B${currentEpisode} yayında!`, 'success');
+    isSwitchingEpisode = false;
+  }
 
   function initHlsPlayer(streamUrl) {
     if (activeHlsInstance) {
@@ -284,8 +474,8 @@ export async function openPlayerModal({
           posterPath,
           backdropPath,
           type,
-          season,
-          episode,
+          season: currentSeason,
+          episode: currentEpisode,
           currentTime: Math.round(video.currentTime),
           duration: Math.round(video.duration)
         });
@@ -392,10 +582,10 @@ export async function openPlayerModal({
 
         const popoutBtn = document.getElementById('player-popout-btn');
         const srv = activeServers[srvIdx];
-        const targetUrl = srv.streamUrl || srv.getUrl();
+        const targetUrl = srv?.streamUrl || srv?.getUrl();
         if (popoutBtn) popoutBtn.href = targetUrl || '#';
 
-        if (!srv.notFound) {
+        if (srv && !srv.notFound) {
           showToast(`${srv.name} sunucusuna geçildi.`, 'info');
         }
       });
@@ -404,6 +594,7 @@ export async function openPlayerModal({
 
   updateServerPillsEvents();
   updatePlayerContainer();
+  attachFooterNavEvents();
 
   // Category Tab Switches
   const dubbedBtn = document.getElementById('tab-dubbed');
@@ -413,7 +604,7 @@ export async function openPlayerModal({
     dubbedBtn.addEventListener('click', (e) => {
       e.preventDefault();
       currentCategory = 'dubbed';
-      activeServers = categorizedServers.dubbed;
+      activeServers = categorizedServers.dubbed || [];
       currentServerIndex = 0;
       dubbedBtn.classList.add('active');
       subtitledBtn.classList.remove('active');
@@ -425,7 +616,7 @@ export async function openPlayerModal({
     subtitledBtn.addEventListener('click', (e) => {
       e.preventDefault();
       currentCategory = 'subtitled';
-      activeServers = categorizedServers.subtitled;
+      activeServers = categorizedServers.subtitled || [];
       currentServerIndex = 0;
       subtitledBtn.classList.add('active');
       dubbedBtn.classList.remove('active');
@@ -462,60 +653,11 @@ export async function openPlayerModal({
   };
   document.addEventListener('keydown', escHandler);
 
-  const prevEpBtn = document.getElementById('btn-prev-episode');
-  if (prevEpBtn) {
-    prevEpBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      closeModal();
-      openPlayerModal({
-        type,
-        tmdbId,
-        title: `${cleanSeriesName} - S${season}E${episode - 1}`,
-        seriesTitle: cleanSeriesName,
-        originalTitle,
-        season,
-        episode: Math.max(1, episode - 1),
-        posterPath,
-        backdropPath,
-        currentTime: 0
-      });
-    });
-  }
-
-  const nextEpBtn = document.getElementById('btn-next-episode');
-  if (nextEpBtn) {
-    nextEpBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      // Auto-mark current episode as watched when proceeding to next episode
-      markEpisodeWatched(tmdbId, season, episode, true, {
-        title: cleanSeriesName,
-        posterPath,
-        backdropPath,
-        type,
-        duration: estimatedDuration
-      });
-
-      closeModal();
-      openPlayerModal({
-        type,
-        tmdbId,
-        title: `${cleanSeriesName} - S${season}E${episode + 1}`,
-        seriesTitle: cleanSeriesName,
-        originalTitle,
-        season,
-        episode: episode + 1,
-        posterPath,
-        backdropPath,
-        currentTime: 0
-      });
-    });
-  }
-
   const toggleWatchedPlayerBtn = document.getElementById('btn-toggle-watched-player');
   if (toggleWatchedPlayerBtn) {
     toggleWatchedPlayerBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      const updated = toggleEpisodeWatched(tmdbId, season, episode, {
+      const updated = toggleEpisodeWatched(tmdbId, currentSeason, currentEpisode, {
         title: cleanSeriesName,
         posterPath,
         backdropPath,
@@ -542,9 +684,6 @@ export async function openPlayerModal({
     });
   }
 
-  let simulatedCurrentTime = initialTime;
-  const estimatedDuration = 2700;
-
   clearInterval(activeProgressInterval);
   activeProgressInterval = setInterval(() => {
     simulatedCurrentTime += 5;
@@ -554,8 +693,8 @@ export async function openPlayerModal({
       posterPath,
       backdropPath,
       type,
-      season,
-      episode,
+      season: currentSeason,
+      episode: currentEpisode,
       currentTime: simulatedCurrentTime,
       duration: estimatedDuration
     });
