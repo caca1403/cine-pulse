@@ -85,7 +85,34 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     ...mapDubbedSources(szdDub),
     ...mapDubbedSources(flzDub),
     ...mapDubbedSources(snxDub),
-    ...mapDubbedSources(dzpDub)
+    ...mapDubbedSources(dzpDub),
+    {
+      id: 'dub_videasy',
+      name: 'Videasy Stream (Multi-Dublaj 1080p)',
+      badge: '🌐 Videasy 1080p',
+      category: 'dubbed',
+      getUrl: () => isMovie
+        ? `https://player.videasy.net/movie/${tmdbId}`
+        : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'dub_autoembed',
+      name: 'AutoEmbed Stream (Multi-Dublaj 1080p)',
+      badge: '🌐 AutoEmbed',
+      category: 'dubbed',
+      getUrl: () => isMovie
+        ? `https://autoembed.co/movie/tmdb/${tmdbId}`
+        : `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`
+    },
+    {
+      id: 'dub_superembed',
+      name: 'SuperEmbed Stream (Multi-Dublaj 1080p)',
+      badge: '🌐 SuperEmbed',
+      category: 'dubbed',
+      getUrl: () => isMovie
+        ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
+        : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
+    }
   ];
 
   if (cleanDubbed.length === 0) {
@@ -134,6 +161,33 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
     ...mapSubtitledSources(hdfcSub),
     ...mapSubtitledSources(finSub),
     {
+      id: 'sub_videasy',
+      name: 'Videasy Stream (1080p Altyazılı)',
+      badge: '💬 Videasy 1080p',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://player.videasy.net/movie/${tmdbId}`
+        : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'sub_autoembed',
+      name: 'AutoEmbed Stream (1080p Altyazılı)',
+      badge: '💬 Auto 1080p',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://autoembed.co/movie/tmdb/${tmdbId}`
+        : `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`
+    },
+    {
+      id: 'sub_superembed',
+      name: 'SuperEmbed Stream (1080p Altyazılı)',
+      badge: '💬 SuperEmbed',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
+        : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
+    },
+    {
       id: 'sub_vidsrc',
       name: 'VidSrc Stream (1080p Altyazılı)',
       badge: '💬 VidSrc 1080p',
@@ -150,15 +204,6 @@ export async function getStreamingServers({ type = 'tv', tmdbId, title = '', ser
       getUrl: () => isMovie
         ? `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`
         : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}`
-    },
-    {
-      id: 'sub_autoembed',
-      name: 'AutoEmbed Stream (1080p Altyazılı)',
-      badge: '💬 Auto 1080p',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://autoembed.co/movie/tmdb/${tmdbId}`
-        : `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`
     },
     {
       id: 'sub_smashy',
