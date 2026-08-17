@@ -2820,10 +2820,10 @@ button {
   gap: 0.4rem;
 }
 
-/* In-Player Quick Episodes Rail */
+/* In-Player Quick Episodes Rail (Mobile Only) */
 .player-quick-episodes-wrap {
+  display: none;
   width: 100%;
-  display: flex;
   flex-direction: column;
   gap: 0.45rem;
   margin-top: 0.2rem;

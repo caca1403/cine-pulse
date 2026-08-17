@@ -425,12 +425,7 @@ export async function openPlayerModal({
       <!-- Modern Footer Action Bar -->
       <div class="player-footer-bar">
         
-        <!-- Top Row: Next / Previous Navigation Controls -->
-        <div id="player-nav-btn-group" class="player-nav-btn-row">
-          ${renderFooterNavButtonsHTML()}
-        </div>
-
-        <!-- Middle Row: Action Tools (Watched, Halfway, Drawer) -->
+        <!-- Left: Action Tools (Watched, Halfway, Drawer) -->
         <div class="player-footer-left">
           <button id="btn-toggle-watched-player" class="btn-footer-pill ${isWatched ? 'watched-active' : ''}">
             <i data-lucide="${isWatched ? 'check-circle-2' : 'check'}" style="width: 15px; height: 15px;"></i>
@@ -455,7 +450,12 @@ export async function openPlayerModal({
           </span>
         </div>
 
-        <!-- Bottom Row: In-Player Quick Episode Carousel (TV Only) -->
+        <!-- Right: Next / Previous Navigation Controls -->
+        <div id="player-nav-btn-group" class="player-footer-right player-nav-btn-row">
+          ${renderFooterNavButtonsHTML()}
+        </div>
+
+        <!-- In-Player Quick Episode Carousel (Mobile Portrait Only) -->
         ${type === 'tv' ? `
           <div class="player-quick-episodes-wrap" id="player-quick-episodes-wrap">
             <div class="quick-episodes-header">
