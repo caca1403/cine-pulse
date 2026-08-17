@@ -1309,18 +1309,19 @@ button {
 /* Detail Page Header */
 .detail-header {
   position: relative;
-  min-height: 70vh;
+  min-height: 60vh;
   width: 100%;
   display: flex;
   align-items: flex-end;
-  padding: 7rem 0 4rem 0;
+  padding: 6.5rem 0 3.5rem 0;
+  overflow: hidden;
 }
 
 .detail-backdrop {
   position: absolute;
   inset: 0;
   background-size: cover;
-  background-position: center;
+  background-position: center 25%;
   z-index: 1;
 }
 
@@ -1329,28 +1330,45 @@ button {
   position: absolute;
   inset: 0;
   background: 
-    linear-gradient(0deg, var(--bg-dark) 0%, rgba(5,7,12,0.85) 60%, rgba(5,7,12,0.5) 100%);
+    linear-gradient(180deg, rgba(5,7,12,0.3) 0%, rgba(5,7,12,0.85) 60%, var(--bg-dark) 100%),
+    linear-gradient(90deg, rgba(5,7,12,0.95) 0%, rgba(5,7,12,0.7) 50%, transparent 100%);
 }
 
 .detail-content {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 3rem;
+  grid-template-columns: 280px 1fr;
+  gap: 2.5rem;
   align-items: flex-end;
+  width: 100%;
 }
 
 .detail-poster {
   width: 100%;
+  max-width: 280px;
   border-radius: var(--radius-lg);
   box-shadow: 0 25px 60px rgba(0,0,0,0.9);
   border: 1px solid var(--border-light);
+  object-fit: cover;
 }
 
 .detail-title {
-  font-size: 3.5rem;
-  line-height: 1.05;
+  font-size: 3.2rem;
+  line-height: 1.1;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0.4rem 0;
+  color: #f8fafc;
+}
+
+.detail-overview-text {
+  font-size: 0.96rem;
+  color: var(--text-sub);
+  line-height: 1.6;
+  max-width: 780px;
+  margin: 0.8rem 0;
 }
 
 .detail-genres {
@@ -3253,48 +3271,93 @@ button {
 /* Comprehensive Responsive Styling for Detail, Library & Mobile Grids */
 @media (max-width: 900px) {
   .detail-header {
-    padding: 5rem 0 2.5rem 0 !important;
+    padding: 4.5rem 0 2rem 0 !important;
     min-height: auto !important;
+    width: 100% !important;
+  }
+  .detail-backdrop::after {
+    background: linear-gradient(180deg, rgba(5,7,12,0.65) 0%, rgba(5,7,12,0.95) 75%, var(--bg-dark) 100%) !important;
   }
   .detail-content {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     text-align: center !important;
-    gap: 1.5rem !important;
+    gap: 1.2rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0 !important;
   }
   .detail-poster {
-    max-width: 190px !important;
+    width: 160px !important;
+    max-width: 160px !important;
     margin: 0 auto !important;
     display: block !important;
     border-radius: 14px !important;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9) !important;
   }
   .detail-info {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
+    text-align: center !important;
     width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
   .hero-badge-row {
     justify-content: center !important;
-    gap: 0.45rem !important;
+    flex-wrap: wrap !important;
+    gap: 0.4rem !important;
   }
   .detail-title {
-    font-size: 2.1rem !important;
+    font-size: 1.9rem !important;
     text-align: center !important;
+    line-height: 1.2 !important;
   }
   .detail-genres {
     justify-content: center !important;
-    gap: 0.45rem !important;
+    flex-wrap: wrap !important;
+    gap: 0.4rem !important;
+  }
+  .detail-overview-text {
+    text-align: center !important;
+    font-size: 0.9rem !important;
+    line-height: 1.55 !important;
+    color: #cbd5e1 !important;
+    padding: 0 0.5rem !important;
+    max-width: 100% !important;
+    margin: 0.6rem 0 !important;
   }
   .detail-cast-section {
     text-align: left !important;
     width: 100% !important;
+    margin-top: 0.5rem !important;
   }
   .hero-actions-container {
     width: 100% !important;
     max-width: 100% !important;
+    margin-top: 1rem !important;
+  }
+  .btn-hero-main-play {
+    width: 100% !important;
+    height: 50px !important;
+    font-size: 0.96rem !important;
+    font-weight: 800 !important;
+    border-radius: 12px !important;
+  }
+  .detail-action-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+  .btn-action-tile {
+    height: 44px !important;
+    width: 100% !important;
+    font-size: 0.78rem !important;
+    border-radius: 10px !important;
   }
   .stats-grid {
     grid-template-columns: repeat(2, 1fr) !important;
