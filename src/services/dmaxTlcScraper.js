@@ -1,6 +1,7 @@
 /* ==========================================================================
    CinePulse Studio - DMAX & TLC Official Documentary & Program Scraper
-   Fetches 1080p / 720p Turkish Dubbed streams directly from DMAX & TLC Turkey
+   Fetches 1080p / 720p Turkish Dubbed streams strictly from DMAX & TLC Turkey
+   Strict matching to ensure DMAX/TLC only appears on actual DMAX/TLC content.
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
@@ -30,56 +31,72 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
-async function verifyPageAndExtractStream(targetUrl) {
+function normalizeTitle(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]/g, ' ')
+    .trim();
+}
+
+async function verifyPageAndExtractStream(targetUrl, expectedTitle) {
   try {
     const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
     const res = await fetch(proxyUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      }
+      },
+      signal: AbortSignal.timeout(2500)
     }).catch(() => null);
 
     if (!res || !res.ok) return null;
 
     const html = await res.text();
-    if (!html || html.length < 1500) return null;
+    if (!html || html.length < 2000) return null;
 
     const lowerHtml = html.toLowerCase();
 
-    // Geo-block detection — skip pages with Turkey-only restriction
-    if (
-      lowerHtml.includes('sadece türkiye') ||
-      lowerHtml.includes('sadece turkiye') ||
-      lowerHtml.includes('uluslararası yayın hakları') ||
-      lowerHtml.includes('uluslararasi yayin haklari')
-    ) {
-      return null;
-    }
-
+    // Check for 404 / generic SPA not-found pages
     if (
       lowerHtml.includes('sayfa bulunamadı') ||
+      lowerHtml.includes('sayfa bulunamadi') ||
       lowerHtml.includes('404 not found') ||
-      lowerHtml.includes('böyle bir içerik bulunmuyor')
+      lowerHtml.includes('böyle bir içerik bulunmuyor') ||
+      lowerHtml.includes('böyle bir sayfa yok')
     ) {
       return null;
     }
 
-    // Check for video player presence on DMAX / TLC
-    const hasPlayer = 
-      html.includes('video-player') ||
-      html.includes('data-video') ||
-      html.includes('brightcove') ||
-      html.includes('player') ||
-      html.includes('.m3u8') ||
-      html.includes('<video') ||
-      html.includes('embed');
+    // Verify title match in page title or h1
+    const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
+    const normPageTitle = normalizeTitle(pageTitle);
+    const normExpected = normalizeTitle(expectedTitle);
 
-    if (!hasPlayer) return null;
+    if (!normExpected || normExpected.length < 3) return null;
 
-    // Check if direct m3u8 is embedded in script tags
+    const expectedWords = normExpected.split(/\s+/).filter(w => w.length > 2);
+    const matchCount = expectedWords.filter(w => normPageTitle.includes(w)).length;
+    const isTitleMatched = expectedWords.length > 0 && (matchCount / expectedWords.length) >= 0.6;
+
+    if (!isTitleMatched) {
+      return null;
+    }
+
+    // Strictly check for active video player tag or Brightcove video ID
+    const hasBrightcove = /data-video-id=["']\d+["']/i.test(html) || /videoId:\s*["']?\d+["']?/i.test(html);
     const m3u8Match = html.match(/(https?:\/\/[^"'\s\\]+?\.m3u8[^"'\s\\]*)/i);
     const directM3u8 = m3u8Match ? m3u8Match[1].replace(/\\u0026/g, '&') : null;
+
+    if (!hasBrightcove && !directM3u8 && !html.includes('class="vjs-tech"')) {
+      return null;
+    }
 
     return {
       streamUrl: directM3u8 || targetUrl,
@@ -90,125 +107,82 @@ async function verifyPageAndExtractStream(targetUrl) {
   }
 }
 
-async function searchChannelPrograms(channelDomain, query, season, episode) {
-  try {
-    const searchUrl = `https://${channelDomain}/arama?sorgu=${encodeURIComponent(query)}`;
-    const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(searchUrl)}`;
-    const res = await fetch(proxyUrl).catch(() => null);
-    if (!res || !res.ok) return null;
+export async function fetchDmaxTlcSources({ titles = [], seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
+  const targetTitle = seriesTitle || title;
+  if (!targetTitle) return [];
 
-    const html = await res.text();
-    if (!html || html.length < 1000) return null;
-
-    // Match links like /program-slug/1-sezon-1-bolum or /program-slug
-    const linkRegex = new RegExp(`href=["']\\/([a-z0-9-]+(?:\\/${season}-sezon-${episode}-bolum)?)["']`, 'gi');
-    const matchedLinks = [];
-    let match;
-    while ((match = linkRegex.exec(html)) !== null) {
-      const path = match[1];
-      if (
-        !path.includes('arama') &&
-        !path.includes('canli-izle') &&
-        !path.includes('yayin-akisi') &&
-        !path.includes('blog') &&
-        !path.includes('kesfet')
-      ) {
-        matchedLinks.push(path);
-      }
-    }
-
-    if (matchedLinks.length > 0) {
-      const topSlug = matchedLinks[0].split('/')[0];
-      return `https://${channelDomain}/${topSlug}/${season}-sezon-${episode}-bolum`;
-    }
-  } catch (e) {
-    // Ignore search errors
+  // Ignore typical Hollywood movies and Western TV series that never air on DMAX / TLC
+  const normT = normalizeTitle(targetTitle);
+  const skipKeywords = ['batman', 'dark knight', 'breaking bad', 'lucifer', 'avatar', 'inception', 'interstellar', 'deadpool', 'game of thrones', 'stranger things', 'spider'];
+  if (skipKeywords.some(kw => normT.includes(kw))) {
+    return [];
   }
-  return null;
-}
 
-export async function fetchDmaxTlcSources({
-  type = 'tv',
-  titles = [],
-  seriesTitle = '',
-  title = '',
-  originalTitle = '',
-  season = 1,
-  episode = 1
-}) {
-  const targetTitles = [...new Set([
+  const candidateQueries = [...new Set([
     ...titles,
     seriesTitle,
     title,
     originalTitle
-  ])].filter(t => t && typeof t === 'string' && t.trim().length > 1);
+  ])].filter(t => t && typeof t === 'string' && t.trim().length > 2);
 
-  if (targetTitles.length === 0) return [];
+  const results = [];
 
-  const streams = [];
-
-  for (const rawTitle of targetTitles) {
-    const slug = toTurkishSlug(rawTitle);
+  for (const q of candidateQueries) {
+    const slug = toTurkishSlug(q);
     if (!slug) continue;
 
-    // 1. Try DMAX Turkey
-    const dmaxDirectUrl = type === 'movie'
-      ? `https://www.dmax.com.tr/${slug}`
-      : `https://www.dmax.com.tr/${slug}/${season}-sezon-${episode}-bolum`;
+    // 1. Check DMAX
+    const dmaxUrls = [
+      `https://www.dmax.com.tr/${slug}/${season}-sezon-${episode}-bolum`,
+      `https://www.dmax.com.tr/${slug}`
+    ];
 
-    let dmaxResult = await verifyPageAndExtractStream(dmaxDirectUrl);
-
-    if (!dmaxResult) {
-      const searchDmaxUrl = await searchChannelPrograms('www.dmax.com.tr', rawTitle, season, episode);
-      if (searchDmaxUrl) {
-        dmaxResult = await verifyPageAndExtractStream(searchDmaxUrl);
+    for (const u of dmaxUrls) {
+      const data = await verifyPageAndExtractStream(u, q);
+      if (data) {
+        results.push({
+          id: `dmax_${slug}_s${season}_e${episode}`,
+          name: `DMAX (Resmi Dublaj)`,
+          displayName: `DMAX`,
+          badge: '🌿 DMAX',
+          category: 'dubbed',
+          isHls: data.isDirectHls,
+          isDirectVideo: data.isDirectHls,
+          streamUrl: data.streamUrl,
+          url: data.streamUrl,
+          getUrl: () => data.streamUrl
+        });
+        break;
       }
     }
 
-    if (dmaxResult) {
-      streams.push({
-        id: `dmax_${slug}_${season}_${episode}`,
-        name: `DMAX TV (Dublaj HD)`,
-        badge: '🔴 DMAX',
-        category: 'dubbed',
-        isHls: dmaxResult.isDirectHls,
-        isDirectVideo: dmaxResult.isDirectHls,
-        streamUrl: dmaxResult.streamUrl,
-        url: dmaxResult.streamUrl,
-        getUrl: () => dmaxResult.streamUrl
-      });
-      break; // Found on DMAX
-    }
+    // 2. Check TLC
+    const tlcUrls = [
+      `https://www.tlctv.com.tr/${slug}/${season}-sezon-${episode}-bolum`,
+      `https://www.tlctv.com.tr/${slug}`
+    ];
 
-    // 2. Try TLC Turkey
-    const tlcDirectUrl = type === 'movie'
-      ? `https://www.tlctv.com.tr/${slug}`
-      : `https://www.tlctv.com.tr/${slug}/${season}-sezon-${episode}-bolum`;
-
-    let tlcResult = await verifyPageAndExtractStream(tlcDirectUrl);
-
-    if (!tlcResult) {
-      const searchTlcUrl = await searchChannelPrograms('www.tlctv.com.tr', rawTitle, season, episode);
-      if (searchTlcUrl) {
-        tlcResult = await verifyPageAndExtractStream(searchTlcUrl);
+    for (const u of tlcUrls) {
+      const data = await verifyPageAndExtractStream(u, q);
+      if (data) {
+        results.push({
+          id: `tlc_${slug}_s${season}_e${episode}`,
+          name: `TLC (Resmi Dublaj)`,
+          displayName: `TLC`,
+          badge: '🌿 TLC',
+          category: 'dubbed',
+          isHls: data.isDirectHls,
+          isDirectVideo: data.isDirectHls,
+          streamUrl: data.streamUrl,
+          url: data.streamUrl,
+          getUrl: () => data.streamUrl
+        });
+        break;
       }
     }
 
-    if (tlcResult) {
-      streams.push({
-        id: `tlc_${slug}_${season}_${episode}`,
-        name: `TLC TV (Dublaj HD)`,
-        badge: '🟣 TLC',
-        category: 'dubbed',
-        isHls: tlcResult.isDirectHls,
-        isDirectVideo: tlcResult.isDirectHls,
-        streamUrl: tlcResult.streamUrl,
-        url: tlcResult.streamUrl,
-        getUrl: () => tlcResult.streamUrl
-      });
-      break; // Found on TLC
-    }
+    if (results.length > 0) break;
   }
 
-  return streams;
+  return results;
 }

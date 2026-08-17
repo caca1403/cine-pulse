@@ -241,34 +241,45 @@ export async function openPlayerModal({
     const hasNextSeason = currentSeasonsList.some(s => s.season_number === currentSeason + 1);
 
     let nextBtnHTML = '';
-    if (currentSeasonEpCount > 0 && currentEpisode < currentSeasonEpCount) {
-      nextBtnHTML = `
-        <button id="btn-next-episode" class="btn-primary btn-nav-episode btn-nav-next" data-action="next-ep">
-          <span>Sonraki Bölüm (B${currentEpisode + 1})</span>
-          <i data-lucide="chevron-right" style="width: 15px; height: 15px;"></i>
-        </button>
-      `;
-    } else if (currentSeasonEpCount > 0 && currentEpisode >= currentSeasonEpCount && hasNextSeason) {
-      nextBtnHTML = `
-        <button id="btn-next-episode" class="btn-primary btn-nav-episode btn-nav-next-season" data-action="next-season">
-          <span>Sonraki Sezon (S${currentSeason + 1} B1)</span>
-          <i data-lucide="fast-forward" style="width: 15px; height: 15px;"></i>
-        </button>
-      `;
-    } else if (currentSeasonEpCount > 0 && currentEpisode >= currentSeasonEpCount && !hasNextSeason) {
-      nextBtnHTML = `
-        <span class="badge-series-finished">
-          <i data-lucide="check-check" style="width: 14px; height: 14px;"></i>
-          <span>Dizi Tamamlandı</span>
-        </span>
-      `;
+    if (currentSeasonEpCount > 0) {
+      if (currentEpisode < currentSeasonEpCount) {
+        nextBtnHTML = `
+          <button id="btn-next-episode" class="btn-primary btn-nav-episode btn-nav-next" data-action="next-ep">
+            <span>Sonraki Bölüm (B${currentEpisode + 1})</span>
+            <i data-lucide="chevron-right" style="width: 15px; height: 15px;"></i>
+          </button>
+        `;
+      } else if (hasNextSeason) {
+        nextBtnHTML = `
+          <button id="btn-next-episode" class="btn-primary btn-nav-episode btn-nav-next-season" data-action="next-season">
+            <span>Sonraki Sezon (S${currentSeason + 1} B1)</span>
+            <i data-lucide="fast-forward" style="width: 15px; height: 15px;"></i>
+          </button>
+        `;
+      } else {
+        nextBtnHTML = `
+          <span class="badge-series-finished">
+            <i data-lucide="check-check" style="width: 14px; height: 14px;"></i>
+            <span>Dizi Tamamlandı</span>
+          </span>
+        `;
+      }
     } else {
-      nextBtnHTML = `
-        <button id="btn-next-episode" class="btn-primary btn-nav-episode btn-nav-next" data-action="next-ep">
-          <span>Sonraki Bölüm (B${currentEpisode + 1})</span>
-          <i data-lucide="chevron-right" style="width: 15px; height: 15px;"></i>
-        </button>
-      `;
+      if (hasNextSeason) {
+        nextBtnHTML = `
+          <button id="btn-next-episode" class="btn-primary btn-nav-episode btn-nav-next-season" data-action="next-season">
+            <span>Sonraki Sezon (S${currentSeason + 1} B1)</span>
+            <i data-lucide="fast-forward" style="width: 15px; height: 15px;"></i>
+          </button>
+        `;
+      } else {
+        nextBtnHTML = `
+          <span class="badge-series-finished">
+            <i data-lucide="check-check" style="width: 14px; height: 14px;"></i>
+            <span>Dizi Tamamlandı</span>
+          </span>
+        `;
+      }
     }
 
     let prevBtnHTML = '';
