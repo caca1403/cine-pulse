@@ -1,6 +1,7 @@
 /* ==========================================================================
    CinePulse Studio - FilmMakinesi Scraper (https://filmmakinesi.to)
-   Fetches live DUAL (Turkish Dubbed & Subtitled) Rapid, CloseLoad & Direct Streams
+   Fetches ONLY verified direct video embeds (Rapid Stream, CloseLoad, VidMoly)
+   Never returns raw website page URLs to avoid iframe connection blocks.
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
@@ -34,7 +35,7 @@ async function fetchWithFallback(pathOrUrl) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Referer': 'https://filmmakinesi.to/'
       },
-      signal: AbortSignal.timeout(2000)
+      signal: AbortSignal.timeout(2500)
     }).catch(() => null);
 
     if (!res || !res.ok) return null;
@@ -94,7 +95,7 @@ export async function fetchFilmMakinesiSources({
     }
   }
 
-  // Step 2: Probe content pages for CloseLoad & Rapid embeds
+  // Step 2: Probe content pages for actual video embeds ONLY
   for (const link of targetContentLinks.slice(0, 3)) {
     let epPath = '';
     if (!isMovie) {
@@ -109,7 +110,10 @@ export async function fetchFilmMakinesiSources({
       const videoUrls = [...epHtml.matchAll(/data-video_url="([^"]+)"/gi)].map(m => m[1]);
       const iframes = [...epHtml.matchAll(/<iframe[^>]*(?:data-src|src)="([^"]+)"/gi)].map(m => m[1]);
       const allEmbeds = [...new Set([...videoUrls, ...iframes])].filter(u => 
-        (u.includes('closeload') || u.includes('rapid') || u.includes('vidmoly')) && !u.includes('google') && !u.includes('recaptcha')
+        (u.includes('closeload') || u.includes('rapid') || u.includes('vidmoly')) &&
+        !u.includes('google') &&
+        !u.includes('recaptcha') &&
+        !u.includes('filmmakinesi.to')
       );
 
       if (allEmbeds.length > 0) {
@@ -120,8 +124,8 @@ export async function fetchFilmMakinesiSources({
 
           sources.push({
             id: `fmk_${isRapid ? 'rapid' : isClose ? 'close' : 'vid'}_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
-            name: `${isRapid ? 'Rapid Stream' : isClose ? 'CloseLoad' : 'FilmMakinesi HD'} (${isDub ? 'Dublaj' : 'Altyazılı'})`,
-            badge: isRapid ? '⚡ Rapid' : isClose ? '⚡ CloseLoad' : '⚡ FilmMakinesi',
+            name: `${isRapid ? 'Rapid Stream' : isClose ? 'CloseLoad' : 'VidMoly'} (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+            badge: isRapid ? '⚡ Rapid' : isClose ? '⚡ CloseLoad' : '⚡ VidMoly',
             category: isDub ? 'dubbed' : 'subtitled',
             streamUrl: embedUrl,
             url: embedUrl,
@@ -133,23 +137,5 @@ export async function fetchFilmMakinesiSources({
     }
   }
 
-  // Step 3: Direct slug player fallback
-  const directFallbackUrl = isMovie
-    ? `${FMK_BASE}/film/${topSlug}-izle-fm1/`
-    : `${FMK_BASE}/dizi/${topSlug}-izle-fm1/sezon-${season}/bolum-${episode}/`;
-
-  return [
-    {
-      id: `fmk_direct_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
-      name: `FilmMakinesi (${isDub ? 'Dublaj' : 'Altyazılı'})`,
-      displayName: `FilmMakinesi`,
-      badge: '⚡ FilmMakinesi',
-      category: isDub ? 'dubbed' : 'subtitled',
-      url: directFallbackUrl,
-      streamUrl: directFallbackUrl,
-      isHls: false,
-      isDirectVideo: false,
-      getUrl: () => directFallbackUrl
-    }
-  ];
+  return [];
 }
