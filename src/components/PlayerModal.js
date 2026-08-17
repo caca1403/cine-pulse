@@ -192,10 +192,11 @@ export async function openPlayerModal({
       `;
     }
 
+    const finalIframeUrl = (srv.getUrl() || '').replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd');
     return `
       <iframe 
         id="video-iframe" 
-        src="${srv.getUrl()}" 
+        src="${finalIframeUrl}" 
         allowfullscreen 
         referrerpolicy="no-referrer-when-downgrade"
         allow="autoplay; encrypted-media; fullscreen; picture-in-picture; accelerometer; gyroscope; clipboard-write; payment">

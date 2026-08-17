@@ -83,13 +83,14 @@ export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title
             }
 
             if (!iframeUrl.includes('jquery') && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
+              const playableUrl = iframeUrl.replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd');
               return [
                 {
                   id: `dzp_${slug}_${season}_${episode}`,
                   name: `FastStream (${isDub ? 'Dublaj 1080p' : 'Altyazılı 1080p'})`,
                   badge: '⚡ FastStream',
-                  url: iframeUrl,
-                  streamUrl: iframeUrl
+                  url: playableUrl,
+                  streamUrl: playableUrl
                 }
               ];
             }
