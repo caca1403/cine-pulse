@@ -9,6 +9,7 @@
    - Smashy 1080p (Top Altyazılı)
    - AutoEmbed 4K (Ultra HD Çoklu Dil)
    - MultiEmbed VIP (4K Premium)
+   - VidSrc Pro (Hızlı VIP Hat)
    - AnimeTR / TRAnimeİzle / TürkAnime TV (1080p)
    - Belgesel & DMAX / TLC (Official HD Dublaj)
    ========================================================================== */
@@ -230,6 +231,16 @@ export async function getStreamingServers({
       getUrl: () => isMovie
         ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
         : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
+    },
+    {
+      id: 'dub_vidsrcme',
+      name: 'VidSrc Pro',
+      displayName: 'VidSrc Pro',
+      badge: '⚡ VidSrc',
+      category: 'dubbed',
+      getUrl: () => isMovie
+        ? `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`
+        : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&sea=${season}&epi=${episode}`
     }
   ];
 
@@ -293,7 +304,18 @@ export async function getStreamingServers({
         ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
         : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
     },
-    // 4. Local Turkish / Anime Subtitled Scrapers
+    // 4. VidSrc Pro (Hızlı & Doğrulanmış)
+    {
+      id: 'sub_vidsrcme',
+      name: 'VidSrc Pro',
+      displayName: 'VidSrc Pro',
+      badge: '⚡ VidSrc',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`
+        : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&sea=${season}&epi=${episode}`
+    },
+    // 5. Local Turkish / Anime Subtitled Scrapers
     ...mapSubtitledSources(dzpDub),
     ...mapSubtitledSources(dblSub),
     ...mapSubtitledSources(flzSub),

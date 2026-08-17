@@ -27,7 +27,7 @@ function isTitleSimilar(target, candidate) {
 
   const matched = tWords.filter(w => cWords.includes(w)).length;
   const ratio = matched / Math.max(tWords.length, 1);
-  return ratio >= 0.65;
+  return ratio >= 0.5;
 }
 
 async function performSinewixRequest(endpoint) {
@@ -151,8 +151,8 @@ export async function fetchSinewixSources({
 
       streams.push({
         id: `snx_${v.id || Math.random().toString(36).substring(7)}`,
-        name: `VIP Hat 6`,
-        displayName: `VIP Hat 6`,
+        name: `VIP Hat 1`,
+        displayName: `VIP Hat 1`,
         badge: '⚡ VIP 1080p',
         category: 'dubbed',
         streamUrl: rawLink,
