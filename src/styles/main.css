@@ -4134,14 +4134,36 @@ button {
     display: none !important;
   }
 
-  /* Mobile Always-Open Episodes Section */
+  /* Mobile Action Strip (Right below Video) */
+  .mobile-action-strip {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.65rem 0.85rem 0.35rem 0.85rem !important;
+    background: #06090f !important;
+    width: 100% !important;
+    flex-shrink: 0 !important;
+  }
+
+  .mobile-action-strip .btn-footer-pill {
+    flex: 1 !important;
+    height: 38px !important;
+    border-radius: 9px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    justify-content: center !important;
+  }
+
+  /* Mobile Always-Open Horizontal Episodes Section (Middle Rail) */
   .mobile-episodes-section {
     display: flex !important;
     flex-direction: column !important;
     flex: 1 !important;
     background: #06090f !important;
-    padding: 0.85rem 0.85rem 1.8rem 0.85rem !important;
-    gap: 0.75rem !important;
+    padding: 0.35rem 0.85rem 0.75rem 0.85rem !important;
+    gap: 0.55rem !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
   }
 
   .mobile-episodes-header {
@@ -4149,8 +4171,8 @@ button {
     align-items: center !important;
     justify-content: space-between !important;
     gap: 0.6rem !important;
-    padding-bottom: 0.55rem !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding-bottom: 0.45rem !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
     flex-shrink: 0 !important;
   }
 
@@ -4158,7 +4180,7 @@ button {
     display: flex !important;
     align-items: center !important;
     gap: 0.4rem !important;
-    font-size: 0.88rem !important;
+    font-size: 0.84rem !important;
     font-weight: 700 !important;
     color: #f1f5f9 !important;
     white-space: nowrap !important;
@@ -4176,20 +4198,140 @@ button {
     display: none !important;
   }
 
-  .mobile-episodes-scroll {
+  .mobile-season-picker .drawer-season-btn {
+    padding: 0.25rem 0.65rem !important;
+    font-size: 0.72rem !important;
+    border-radius: 16px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Horizontal Episode Cards Rail */
+  .mobile-episodes-rail {
+    display: flex !important;
+    align-items: stretch !important;
+    gap: 0.65rem !important;
+    overflow-x: auto !important;
+    padding: 0.2rem 0 0.4rem 0 !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: thin !important;
+    flex: 1 !important;
+  }
+
+  .mobile-episodes-rail::-webkit-scrollbar {
+    height: 3px !important;
+  }
+  .mobile-episodes-rail::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-radius: 3px !important;
+  }
+
+  .mobile-ep-card {
     display: flex !important;
     flex-direction: column !important;
-    gap: 0.65rem !important;
+    min-width: 140px !important;
+    max-width: 150px !important;
+    border-radius: 10px !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    overflow: hidden !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .mobile-ep-card:hover,
+  .mobile-ep-card:active {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+  }
+
+  .mobile-ep-card.playing {
+    background: rgba(245, 158, 11, 0.14) !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.25) !important;
+  }
+
+  .mobile-ep-thumb {
+    position: relative !important;
+    width: 100% !important;
+    height: 78px !important;
+    overflow: hidden !important;
+    background: #0f172a !important;
+  }
+
+  .mobile-ep-thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .mobile-ep-badge {
+    position: absolute !important;
+    top: 4px !important;
+    left: 4px !important;
+    padding: 0.1rem 0.35rem !important;
+    border-radius: 4px !important;
+    background: rgba(0, 0, 0, 0.75) !important;
+    backdrop-filter: blur(4px) !important;
+    color: #fff !important;
+    font-size: 0.65rem !important;
+    font-weight: 800 !important;
+  }
+
+  .mobile-ep-playing-tag {
+    position: absolute !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.65) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.3rem !important;
+    color: #fef08a !important;
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
+  }
+
+  .mobile-ep-info {
+    padding: 0.4rem 0.45rem 0.45rem 0.45rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.18rem !important;
+  }
+
+  .mobile-ep-name {
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    color: #f8fafc !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .mobile-ep-meta {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    font-size: 0.66rem !important;
+    color: #94a3b8 !important;
+  }
+
+  .ep-watched-tag {
+    color: #10b981 !important;
+    font-weight: 700 !important;
   }
 
   .player-footer-bar {
     flex-shrink: 0 !important;
     height: auto !important;
-    padding: 0.6rem 0.85rem !important;
+    padding: 0.55rem 0.85rem !important;
     flex-direction: column !important;
     gap: 0.5rem !important;
     background: rgba(9, 13, 22, 0.98) !important;
     border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .player-footer-left {
+    display: none !important;
   }
 
   .player-nav-btn-row {
@@ -4205,24 +4347,6 @@ button {
     padding: 0 0.5rem !important;
     font-size: 0.78rem !important;
     border-radius: 9px !important;
-    justify-content: center !important;
-  }
-
-  .player-footer-left {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 0.45rem !important;
-    width: 100% !important;
-  }
-
-  .player-footer-left .btn-footer-pill {
-    flex: 1 !important;
-    height: 36px !important;
-    padding: 0 0.4rem !important;
-    font-size: 0.76rem !important;
-    font-weight: 600 !important;
-    border-radius: 8px !important;
     justify-content: center !important;
   }
 

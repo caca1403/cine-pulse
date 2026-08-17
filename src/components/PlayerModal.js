@@ -388,7 +388,20 @@ export async function openPlayerModal({
           ${renderPlayerContent()}
         </div>
 
-        <!-- Mobile Always-Open Episodes & Season Selector (Below Player) -->
+        <!-- Mobile Action Strip (Watched & Halfway right below Video) -->
+        <div class="mobile-action-strip">
+          <button id="btn-toggle-watched-mobile" class="btn-footer-pill ${isWatched ? 'watched-active' : ''}">
+            <i data-lucide="${isWatched ? 'check-circle-2' : 'check'}" style="width: 15px; height: 15px;"></i>
+            <span>${isWatched ? 'İzlendi' : 'İzlendi Yap'}</span>
+          </button>
+
+          <button id="btn-halfway-mobile" class="btn-footer-pill" title="Kaldığım Yeri Kaydet (20. dk)">
+            <i data-lucide="clock" style="width: 14px; height: 14px; color: #fbbf24;"></i>
+            <span>⏳ Yarıda Bırak</span>
+          </button>
+        </div>
+
+        <!-- Mobile Always-Open Horizontal Episodes & Season Selector (Middle Rail) -->
         ${type === 'tv' ? `
           <div class="mobile-episodes-section" id="mobile-episodes-section">
             <div class="mobile-episodes-header">
@@ -397,11 +410,11 @@ export async function openPlayerModal({
                 <span>Tüm Bölümler</span>
               </div>
               <div class="mobile-season-picker" id="mobile-season-picker">
-                <!-- Injected dynamically -->
+                <!-- Season tabs injected dynamically -->
               </div>
             </div>
             
-            <div class="mobile-episodes-scroll" id="mobile-episodes-scroll">
+            <div class="mobile-episodes-rail" id="mobile-episodes-rail">
               <div class="drawer-loading">
                 <div class="drawer-spinner"></div>
                 <p>Bölümler yükleniyor...</p>
@@ -514,7 +527,7 @@ export async function openPlayerModal({
     const tabsContainer = document.getElementById('drawer-season-tabs');
     const listContainer = document.getElementById('drawer-episodes-list');
     const mobileTabsContainer = document.getElementById('mobile-season-picker');
-    const mobileListContainer = document.getElementById('mobile-episodes-scroll');
+    const mobileRailContainer = document.getElementById('mobile-episodes-rail');
 
     // Render Season Pills
     const seasons = currentSeasonsList.length > 0
@@ -547,20 +560,23 @@ export async function openPlayerModal({
     const loadingHTML = `
       <div class="drawer-loading">
         <div class="drawer-spinner"></div>
-        <p>Sezon ${drawerSeason} bölümleri yükleniyor...</p>
+        <p>Sezon ${drawerSeason} yükleniyor...</p>
       </div>
     `;
 
     if (listContainer) listContainer.innerHTML = loadingHTML;
-    if (mobileListContainer) mobileListContainer.innerHTML = loadingHTML;
+    if (mobileRailContainer) mobileRailContainer.innerHTML = loadingHTML;
 
     const episodes = await fetchSeasonEpisodes(drawerSeason);
 
-    let epCardsHTML = '';
+    let desktopEpCardsHTML = '';
+    let mobileEpCardsHTML = '';
+
     if (!episodes || episodes.length === 0) {
-      // Fallback if TMDB is offline or episodes not found
       const count = getSeasonEpisodeCount(drawerSeason) || 12;
-      epCardsHTML = Array.from({ length: count }, (_, i) => i + 1).map(epNum => {
+      const arr = Array.from({ length: count }, (_, i) => i + 1);
+      
+      desktopEpCardsHTML = arr.map(epNum => {
         const isCurrent = drawerSeason === currentSeason && epNum === currentEpisode;
         const epWatched = isMediaWatched(tmdbId, drawerSeason, epNum);
         return `
@@ -578,8 +594,29 @@ export async function openPlayerModal({
           </div>
         `;
       }).join('');
+
+      mobileEpCardsHTML = arr.map(epNum => {
+        const isCurrent = drawerSeason === currentSeason && epNum === currentEpisode;
+        const epWatched = isMediaWatched(tmdbId, drawerSeason, epNum);
+        return `
+          <div class="mobile-ep-card ${isCurrent ? 'playing' : ''}" data-season="${drawerSeason}" data-episode="${epNum}">
+            <div class="mobile-ep-thumb">
+              <div class="ep-thumb-fallback"><i data-lucide="film" style="width:16px;height:16px"></i></div>
+              <span class="mobile-ep-badge">B${epNum}</span>
+              ${isCurrent ? '<div class="mobile-ep-playing-tag"><span class="pulse-bar"></span> Oynatılıyor</div>' : ''}
+            </div>
+            <div class="mobile-ep-info">
+              <span class="mobile-ep-name">${epNum}. Bölüm</span>
+              <div class="mobile-ep-meta">
+                <span>${drawerSeason}. Sezon</span>
+                ${epWatched ? '<span class="ep-watched-tag">✓ İzlendi</span>' : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
     } else {
-      epCardsHTML = episodes.map(ep => {
+      desktopEpCardsHTML = episodes.map(ep => {
         const epNum = ep.episode_number;
         const isCurrent = drawerSeason === currentSeason && epNum === currentEpisode;
         const epWatched = isMediaWatched(tmdbId, drawerSeason, epNum);
@@ -608,14 +645,37 @@ export async function openPlayerModal({
           </div>
         `;
       }).join('');
+
+      mobileEpCardsHTML = episodes.map(ep => {
+        const epNum = ep.episode_number;
+        const isCurrent = drawerSeason === currentSeason && epNum === currentEpisode;
+        const epWatched = isMediaWatched(tmdbId, drawerSeason, epNum);
+        const stillUrl = ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : '';
+        const airDate = ep.air_date ? ep.air_date.substring(0, 4) : '';
+        const durationText = ep.runtime ? `${ep.runtime} dk` : '';
+
+        return `
+          <div class="mobile-ep-card ${isCurrent ? 'playing' : ''}" data-season="${drawerSeason}" data-episode="${epNum}">
+            <div class="mobile-ep-thumb">
+              ${stillUrl ? `<img src="${stillUrl}" alt="B${epNum}" loading="lazy" />` : `<div class="ep-thumb-fallback"><i data-lucide="film" style="width:16px;height:16px"></i></div>`}
+              <span class="mobile-ep-badge">B${epNum}</span>
+              ${isCurrent ? '<div class="mobile-ep-playing-tag"><span class="pulse-bar"></span> Oynatılıyor</div>' : ''}
+            </div>
+            <div class="mobile-ep-info">
+              <span class="mobile-ep-name">${ep.name || `${epNum}. Bölüm`}</span>
+              <div class="mobile-ep-meta">
+                <span>${durationText || airDate || `${drawerSeason}. Sezon`}</span>
+                ${epWatched ? '<span class="ep-watched-tag">✓ İzlendi</span>' : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
-    if (listContainer) listContainer.innerHTML = epCardsHTML;
-    if (mobileListContainer) mobileListContainer.innerHTML = epCardsHTML;
-
-    const bindCardClicks = (container) => {
-      if (!container) return;
-      container.querySelectorAll('.drawer-ep-card').forEach(card => {
+    if (listContainer) {
+      listContainer.innerHTML = desktopEpCardsHTML;
+      listContainer.querySelectorAll('.drawer-ep-card').forEach(card => {
         card.addEventListener('click', () => {
           const s = parseInt(card.getAttribute('data-season'), 10);
           const e = parseInt(card.getAttribute('data-episode'), 10);
@@ -624,10 +684,27 @@ export async function openPlayerModal({
           switchEpisodeInPlayer(s, e);
         });
       });
-    };
+    }
 
-    bindCardClicks(listContainer);
-    bindCardClicks(mobileListContainer);
+    if (mobileRailContainer) {
+      mobileRailContainer.innerHTML = mobileEpCardsHTML;
+      mobileRailContainer.querySelectorAll('.mobile-ep-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const s = parseInt(card.getAttribute('data-season'), 10);
+          const e = parseInt(card.getAttribute('data-episode'), 10);
+          if (s === currentSeason && e === currentEpisode) return;
+          switchEpisodeInPlayer(s, e);
+        });
+      });
+
+      // Auto-scroll active card into view
+      const activeMobileCard = mobileRailContainer.querySelector('.mobile-ep-card.playing');
+      if (activeMobileCard) {
+        setTimeout(() => {
+          activeMobileCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }, 100);
+      }
+    }
 
     if (window.lucide) window.lucide.createIcons();
   }
@@ -792,6 +869,69 @@ export async function openPlayerModal({
   }
 
   attachFooterNavEvents();
+
+  const handleToggleWatched = () => {
+    isWatched = !isWatched;
+    if (type === 'tv') {
+      markEpisodeWatched(tmdbId, currentSeason, currentEpisode, isWatched, {
+        title: cleanSeriesName,
+        posterPath,
+        backdropPath,
+        type,
+        duration: estimatedDuration
+      });
+    } else {
+      markMediaWatched(tmdbId, isWatched, {
+        title: cleanSeriesName,
+        posterPath,
+        backdropPath,
+        type,
+        duration: estimatedDuration
+      });
+    }
+
+    [document.getElementById('btn-toggle-watched-player'), document.getElementById('btn-toggle-watched-mobile')].forEach(btn => {
+      if (!btn) return;
+      const span = btn.querySelector('span');
+      const icon = btn.querySelector('i');
+      if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Yap';
+      if (icon) icon.setAttribute('data-lucide', isWatched ? 'check-circle-2' : 'check');
+      if (isWatched) {
+        btn.classList.add('watched-active');
+      } else {
+        btn.classList.remove('watched-active');
+      }
+    });
+
+    showToast(isWatched ? '✓ İzlendi olarak işaretlendi.' : 'İzlendi işareti kaldırıldı.', 'success');
+    if (type === 'tv') renderDrawerContent();
+    if (window.lucide) window.lucide.createIcons();
+  };
+
+  const handleHalfway = () => {
+    saveWatchProgress({
+      id: tmdbId,
+      title: cleanSeriesName,
+      posterPath,
+      backdropPath,
+      type,
+      season: currentSeason,
+      episode: currentEpisode,
+      currentTime: 1200,
+      duration: estimatedDuration
+    });
+    showToast('⏳ 20. dakikada yarıda bırakıldı olarak kaydedildi.', 'info');
+  };
+
+  const btnWatchedDesktop = document.getElementById('btn-toggle-watched-player');
+  const btnWatchedMobile = document.getElementById('btn-toggle-watched-mobile');
+  if (btnWatchedDesktop) btnWatchedDesktop.addEventListener('click', handleToggleWatched);
+  if (btnWatchedMobile) btnWatchedMobile.addEventListener('click', handleToggleWatched);
+
+  const btnHalfwayDesktop = document.getElementById('btn-halfway-player');
+  const btnHalfwayMobile = document.getElementById('btn-halfway-mobile');
+  if (btnHalfwayDesktop) btnHalfwayDesktop.addEventListener('click', handleHalfway);
+  if (btnHalfwayMobile) btnHalfwayMobile.addEventListener('click', handleHalfway);
 
   function updateServerPillsEvents() {
     const toolbar = document.getElementById('player-server-toolbar');
