@@ -2946,6 +2946,38 @@ button {
   .card-poster-wrapper {
     padding-top: 148%;
   }
+  /* Extra small phone detail view */
+  .detail-poster-col {
+    max-width: 120px !important;
+    width: 120px !important;
+  }
+  .detail-poster-img {
+    width: 110px !important;
+    max-width: 110px !important;
+  }
+  .detail-heading-title {
+    font-size: 1.4rem !important;
+  }
+  .detail-storyline {
+    -webkit-line-clamp: 3 !important;
+    font-size: 0.8rem !important;
+  }
+  .detail-view .media-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.6rem !important;
+  }
+  .episode-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.8rem !important;
+  }
+  .detail-action-subgrid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.35rem !important;
+  }
+  .btn-action-tile {
+    height: 38px !important;
+    font-size: 0.68rem !important;
+  }
 }
 
 /* Discover Filter Custom Elements */
@@ -3334,42 +3366,54 @@ button {
 
 /* Comprehensive Responsive Styling for Detail, Library & Mobile Grids */
 @media (max-width: 900px) {
+  .detail-view {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
   .detail-hero-banner {
-    padding: 5rem 1rem 2rem 1rem !important;
+    padding: 5rem 0.75rem 1.5rem 0.75rem !important;
     min-height: auto !important;
     width: 100% !important;
     box-sizing: border-box !important;
+    overflow: hidden !important;
   }
   .detail-backdrop-gradient {
-    background: linear-gradient(180deg, rgba(8, 10, 15, 0.6) 0%, rgba(8, 10, 15, 0.95) 70%, var(--bg-dark) 100%) !important;
+    background: linear-gradient(180deg, rgba(8, 10, 15, 0.5) 0%, rgba(8, 10, 15, 0.92) 60%, var(--bg-dark) 100%) !important;
   }
   .detail-container {
     padding: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
   .detail-layout {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     text-align: center !important;
-    gap: 1.2rem !important;
+    gap: 1rem !important;
     width: 100% !important;
     max-width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
   .detail-poster-col {
-    max-width: 170px !important;
+    max-width: 140px !important;
+    width: 140px !important;
     margin: 0 auto !important;
     display: flex !important;
     justify-content: center !important;
+    flex-shrink: 0 !important;
   }
   .detail-poster-img {
-    width: 160px !important;
-    max-width: 160px !important;
-    border-radius: 14px !important;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9) !important;
+    width: 130px !important;
+    max-width: 130px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.85) !important;
     margin: 0 auto !important;
   }
   .detail-info-col {
@@ -3379,61 +3423,147 @@ button {
     text-align: center !important;
     width: 100% !important;
     max-width: 100% !important;
-    padding: 0 !important;
+    padding: 0 0.25rem !important;
     box-sizing: border-box !important;
+    overflow: hidden !important;
   }
   .detail-badge-deck {
     justify-content: center !important;
     flex-wrap: wrap !important;
-    gap: 0.4rem !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .detail-badge-deck .badge {
+    font-size: 0.68rem !important;
+    padding: 0.2rem 0.5rem !important;
   }
   .detail-heading-title {
-    font-size: 1.9rem !important;
+    font-size: 1.65rem !important;
     text-align: center !important;
-    line-height: 1.2 !important;
-    margin: 0.3rem 0 !important;
+    line-height: 1.15 !important;
+    margin: 0.2rem 0 !important;
+    word-break: break-word !important;
+  }
+  .detail-orig-title {
+    font-size: 0.88rem !important;
+    margin-bottom: 0.3rem !important;
   }
   .detail-genre-row {
     justify-content: center !important;
     flex-wrap: wrap !important;
-    gap: 0.4rem !important;
+    gap: 0.3rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .detail-genre-chip {
+    font-size: 0.72rem !important;
+    padding: 0.22rem 0.65rem !important;
   }
   .detail-storyline {
     text-align: center !important;
-    font-size: 0.9rem !important;
-    line-height: 1.55 !important;
+    font-size: 0.85rem !important;
+    line-height: 1.5 !important;
     color: #cbd5e1 !important;
-    padding: 0 0.5rem !important;
+    padding: 0 0.25rem !important;
     max-width: 100% !important;
-    margin: 0.6rem 0 !important;
+    margin: 0.4rem 0 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 4 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
   }
   .detail-cast-block {
     text-align: left !important;
     width: 100% !important;
-    margin-top: 0.5rem !important;
+    margin-top: 0.4rem !important;
+    overflow: hidden !important;
+  }
+  .detail-cast-rail {
+    gap: 0.4rem !important;
+    padding-bottom: 0.3rem !important;
+  }
+  .detail-actor-pill {
+    font-size: 0.72rem !important;
+    padding: 0.2rem 0.55rem 0.2rem 0.2rem !important;
+  }
+  .detail-actor-avatar {
+    width: 24px !important;
+    height: 24px !important;
   }
   .detail-action-deck {
     width: 100% !important;
     max-width: 100% !important;
-    margin-top: 1rem !important;
+    margin-top: 0.75rem !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
   }
   .btn-play-primary {
     width: 100% !important;
-    height: 50px !important;
-    font-size: 0.96rem !important;
-    border-radius: 12px !important;
+    height: 46px !important;
+    font-size: 0.88rem !important;
+    border-radius: 11px !important;
+    box-sizing: border-box !important;
+  }
+  .btn-play-primary span {
+    font-size: 0.88rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: calc(100vw - 100px) !important;
   }
   .detail-action-subgrid {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.5rem !important;
+    gap: 0.45rem !important;
     width: 100% !important;
+    box-sizing: border-box !important;
   }
   .btn-action-tile {
-    height: 44px !important;
+    height: 40px !important;
     width: 100% !important;
-    font-size: 0.78rem !important;
-    border-radius: 10px !important;
+    font-size: 0.72rem !important;
+    border-radius: 9px !important;
+    padding: 0 0.35rem !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+  .btn-action-tile span {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  .btn-action-tile svg,
+  .btn-action-tile i {
+    width: 14px !important;
+    height: 14px !important;
+    flex-shrink: 0 !important;
+  }
+  /* Recommendations grid */
+  .detail-view .media-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.7rem !important;
+  }
+  .detail-view .section {
+    padding: 1rem 0 !important;
+  }
+  .detail-view .section-title {
+    font-size: 1.1rem !important;
+    margin-bottom: 0.8rem !important;
+  }
+  /* Episode grid on detail page */
+  .episode-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+    gap: 1rem !important;
+  }
+  .season-bar {
+    gap: 0.5rem !important;
+    padding-bottom: 0.6rem !important;
+    margin-bottom: 1.2rem !important;
+  }
+  .season-btn {
+    padding: 0.5rem 1.1rem !important;
+    font-size: 0.82rem !important;
   }
   .stats-grid {
     grid-template-columns: repeat(2, 1fr) !important;
