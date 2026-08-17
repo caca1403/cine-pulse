@@ -425,7 +425,12 @@ export async function openPlayerModal({
       <!-- Modern Footer Action Bar -->
       <div class="player-footer-bar">
         
-        <!-- Left Actions: Watched & Halfway & Quick Drawer Button -->
+        <!-- Top Row: Next / Previous Navigation Controls -->
+        <div id="player-nav-btn-group" class="player-nav-btn-row">
+          ${renderFooterNavButtonsHTML()}
+        </div>
+
+        <!-- Middle Row: Action Tools (Watched, Halfway, Drawer) -->
         <div class="player-footer-left">
           <button id="btn-toggle-watched-player" class="btn-footer-pill ${isWatched ? 'watched-active' : ''}">
             <i data-lucide="${isWatched ? 'check-circle-2' : 'check'}" style="width: 15px; height: 15px;"></i>
@@ -446,14 +451,22 @@ export async function openPlayerModal({
 
           <span class="player-status-badge">
             <i data-lucide="shield-check" style="width: 13px; height: 13px; color: #10b981;"></i>
-            <span>Güvenli & Canlı Hat</span>
+            <span>Canlı Hat</span>
           </span>
         </div>
 
-        <!-- Right: Smart Episode Navigation Controls -->
-        <div id="player-nav-btn-group" class="player-footer-right">
-          ${renderFooterNavButtonsHTML()}
-        </div>
+        <!-- Bottom Row: In-Player Quick Episode Carousel (TV Only) -->
+        ${type === 'tv' ? `
+          <div class="player-quick-episodes-wrap" id="player-quick-episodes-wrap">
+            <div class="quick-episodes-header">
+              <span class="quick-ep-title"><i data-lucide="layers" style="width: 13px; height: 13px; color: var(--primary);"></i> ${currentSeason}. Sezon Bölümleri</span>
+              <span class="quick-ep-count" id="quick-ep-count-text">Yükleniyor...</span>
+            </div>
+            <div class="player-quick-episodes-rail" id="player-quick-episodes-rail">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        ` : ''}
       </div>
     </div>
   `;
@@ -578,6 +591,78 @@ export async function openPlayerModal({
     });
 
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  // --- IN-PLAYER QUICK EPISODES RAIL (TV ONLY) ---
+  async function renderQuickEpisodesRail() {
+    const rail = document.getElementById('player-quick-episodes-rail');
+    const countText = document.getElementById('quick-ep-count-text');
+    if (!rail) return;
+
+    rail.innerHTML = `
+      <div class="quick-ep-loading">
+        <div class="quick-ep-spinner"></div>
+        <span>Bölümler yükleniyor...</span>
+      </div>
+    `;
+
+    const episodes = await fetchSeasonEpisodes(currentSeason);
+    const count = (episodes && episodes.length > 0) ? episodes.length : (getSeasonEpisodeCount(currentSeason) || 12);
+    if (countText) countText.textContent = `${count} Bölüm`;
+
+    if (!episodes || episodes.length === 0) {
+      rail.innerHTML = Array.from({ length: count }, (_, i) => i + 1).map(epNum => {
+        const isCurrent = epNum === currentEpisode;
+        const epWatched = isMediaWatched(tmdbId, currentSeason, epNum);
+        return `
+          <div class="quick-ep-card ${isCurrent ? 'active' : ''}" data-season="${currentSeason}" data-episode="${epNum}">
+            <div class="quick-ep-pill">
+              <span class="quick-ep-num">B${epNum}</span>
+              ${isCurrent ? '<span class="quick-ep-now">Oynatılıyor</span>' : ''}
+              ${epWatched && !isCurrent ? '<i data-lucide="check" class="quick-ep-watched"></i>' : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      rail.innerHTML = episodes.map(ep => {
+        const epNum = ep.episode_number;
+        const isCurrent = epNum === currentEpisode;
+        const epWatched = isMediaWatched(tmdbId, currentSeason, epNum);
+        const stillUrl = ep.still_path ? `https://image.tmdb.org/t/p/w200${ep.still_path}` : '';
+        return `
+          <div class="quick-ep-card ${isCurrent ? 'active' : ''}" data-season="${currentSeason}" data-episode="${epNum}">
+            ${stillUrl ? `<div class="quick-ep-thumb"><img src="${stillUrl}" alt="B${epNum}" loading="lazy" /></div>` : ''}
+            <div class="quick-ep-info">
+              <div class="quick-ep-title-row">
+                <span class="quick-ep-num">B${epNum}</span>
+                <span class="quick-ep-name">${ep.name || `${epNum}. Bölüm`}</span>
+              </div>
+              ${isCurrent ? '<span class="quick-ep-now">Oynatılıyor</span>' : (epWatched ? '<span class="quick-ep-watched-label">İzlendi</span>' : '')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    rail.querySelectorAll('.quick-ep-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const s = parseInt(card.getAttribute('data-season'), 10);
+        const e = parseInt(card.getAttribute('data-episode'), 10);
+        if (s === currentSeason && e === currentEpisode) return;
+        switchEpisodeInPlayer(s, e);
+      });
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+
+    // Auto-scroll active card into view
+    const activeCard = rail.querySelector('.quick-ep-card.active');
+    if (activeCard) {
+      setTimeout(() => {
+        activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }, 100);
+    }
   }
 
   function toggleDrawer(forceState) {
@@ -792,6 +877,7 @@ export async function openPlayerModal({
 
   updateServerPillsEvents();
   updatePlayerContainer();
+  if (type === 'tv') renderQuickEpisodesRail();
 
   // Progress Saving Interval
   clearInterval(activeProgressInterval);
@@ -891,8 +977,12 @@ export async function openPlayerModal({
     }
 
     updateNavButtons();
+    if (type === 'tv') renderQuickEpisodesRail();
 
     simulatedCurrentTime = initialTime;
+    isSwitchingEpisode = false;
+    if (window.lucide) window.lucide.createIcons();
+
     clearInterval(activeProgressInterval);
     activeProgressInterval = setInterval(() => {
       simulatedCurrentTime += 5;
