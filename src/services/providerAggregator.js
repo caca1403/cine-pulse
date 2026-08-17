@@ -9,7 +9,6 @@
    - Smashy 1080p (Top Altyazılı)
    - AutoEmbed 4K (Ultra HD Çoklu Dil)
    - MultiEmbed VIP (4K Premium)
-   - VidLink VIP
    - AnimeTR / TRAnimeİzle / TürkAnime TV (1080p)
    - Belgesel & DMAX / TLC (Official HD Dublaj)
    ========================================================================== */
@@ -231,16 +230,6 @@ export async function getStreamingServers({
       getUrl: () => isMovie
         ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
         : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
-    },
-    {
-      id: 'dub_vidlink',
-      name: 'VidLink VIP',
-      displayName: 'VidLink VIP',
-      badge: '⚡ VidLink',
-      category: 'dubbed',
-      getUrl: () => isMovie
-        ? `https://vidlink.pro/movie/${tmdbId}`
-        : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`
     }
   ];
 
@@ -311,18 +300,7 @@ export async function getStreamingServers({
     ...mapSubtitledSources(antrSub),
     ...mapSubtitledSources(traSub),
     ...mapSubtitledSources(taSub),
-    ...mapSubtitledSources(szdSub),
-    // 5. VidLink VIP
-    {
-      id: 'sub_vidlink',
-      name: 'VidLink VIP',
-      displayName: 'VidLink VIP',
-      badge: '⚡ VidLink',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://vidlink.pro/movie/${tmdbId}`
-        : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`
-    }
+    ...mapSubtitledSources(szdSub)
   ];
 
   const result = {
