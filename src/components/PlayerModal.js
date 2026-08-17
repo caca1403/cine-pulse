@@ -222,7 +222,7 @@ export async function openPlayerModal({
       `;
     }
 
-    const finalIframeUrl = (srv.getUrl() || '').replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd');
+    const finalIframeUrl = srv.getUrl() || srv.streamUrl || '';
     return `
       <iframe 
         id="video-iframe" 
