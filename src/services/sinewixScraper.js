@@ -134,12 +134,12 @@ export async function fetchSinewixSources({
 
       const isDirect = lowerLink.includes('.mp4') || lowerLink.includes('.mkv') || lowerLink.includes('.webm');
       const isHls = lowerLink.includes('.m3u8');
-      const serverName = v.server || v.name || (isDirect ? 'Direct MP4' : 'VIP Stream');
+      const serverLabel = v.server || v.name || (isDirect ? 'Direct Stream' : 'HLS Stream');
 
       streams.push({
         id: `snx_${v.id || Math.random().toString(36).substring(7)}`,
-        name: `Sinewix VIP Stream (${serverName})`,
-        badge: '⚡ Sinewix VIP',
+        name: `${serverLabel} (Dublaj)`,
+        badge: isDirect ? '⚡ Direct' : '⚡ HLS',
         category: 'dubbed',
         streamUrl: rawLink,
         url: rawLink,

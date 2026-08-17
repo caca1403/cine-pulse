@@ -1862,101 +1862,89 @@ button {
 
 /* Direct Video & HLS Video Layout */
 .direct-video-wrapper {
-  display: flex;
-  flex-direction: column;
+  position: relative;
   width: 100%;
   height: 100%;
   background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.direct-video-inner {
-  flex: 1;
-  min-height: 0;
-  position: relative;
-  background: #000;
-}
-
-.direct-video-inner video {
+.direct-video-wrapper video {
   width: 100%;
   height: 100%;
   object-fit: contain;
   background: #000;
 }
 
-.player-audio-warning {
-  flex-shrink: 0;
-  margin: 8px 14px 10px;
-  padding: 10px 14px;
-  background: rgba(234, 179, 8, 0.08);
-  border: 1px solid rgba(234, 179, 8, 0.28);
-  border-radius: 10px;
-  color: #fef08a;
+/* Non-intrusive Floating Audio Chip */
+.floating-audio-chip {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 25;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 30px;
+  padding: 6px 14px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
   animation: fadeIn 0.3s ease;
 }
 
-.audio-warning-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.audio-warning-title {
+.audio-chip-content {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 700;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
+  color: #fef08a;
+  font-weight: 600;
 }
 
-.audio-warning-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-vlc {
-  padding: 0.35rem 0.85rem;
-  font-size: 0.76rem;
-  background: #eab308;
+.btn-audio-mini {
+  padding: 3px 9px;
+  background: #f59e0b;
   color: #000;
-  border-radius: 6px;
+  font-size: 0.72rem;
   font-weight: 800;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.btn-vlc:hover {
-  transform: translateY(-1px);
-}
-
-.btn-download-direct {
-  padding: 0.35rem 0.85rem;
-  font-size: 0.76rem;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: #fff;
   border-radius: 6px;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  cursor: pointer;
+  transition: transform 0.15s ease;
 }
 
-.audio-warning-desc {
-  margin: 0;
+.btn-audio-mini:hover {
+  transform: scale(1.05);
+}
+
+.btn-audio-chip-close {
+  background: transparent;
+  border: none;
   color: #94a3b8;
-  font-size: 0.76rem;
-  line-height: 1.4;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  transition: color 0.15s ease;
+}
+
+.btn-audio-chip-close:hover {
+  color: #fff;
+}
+
+.icon-mobile-back {
+  display: none;
+}
+
+.icon-desktop-close {
+  display: inline-block;
 }
 
 /* Loading & Not Found Overlays */
@@ -3186,9 +3174,9 @@ button {
   }
   .player-cinema-bar {
     flex-shrink: 0 !important;
-    height: 52px !important;
-    min-height: 52px !important;
-    padding: 0 0.75rem !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    padding: 0 0.6rem !important;
     background: rgba(10, 14, 22, 0.98) !important;
     display: flex !important;
     align-items: center !important;
@@ -3197,32 +3185,44 @@ button {
     z-index: 30 !important;
     gap: 0.4rem !important;
   }
+  .icon-mobile-back {
+    display: inline-flex !important;
+  }
+  .icon-desktop-close {
+    display: none !important;
+  }
+  .desktop-only-tool {
+    display: none !important;
+  }
   .player-live-pulse-badge {
     display: none !important;
   }
   .player-header-left {
     min-width: 0 !important;
     flex: 1 1 auto !important;
-    gap: 0.35rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.45rem !important;
   }
   .player-header-title {
-    max-width: 120px !important;
+    max-width: 130px !important;
     font-size: 0.84rem !important;
+    font-weight: 700 !important;
   }
   .player-resume-badge {
     display: none !important;
   }
   .player-header-toggle {
-    padding: 0.15rem !important;
-    gap: 0.15rem !important;
+    padding: 0.12rem !important;
+    gap: 0.12rem !important;
   }
   .cinema-tab-btn {
-    padding: 0.25rem 0.55rem !important;
-    font-size: 0.7rem !important;
+    padding: 0.24rem 0.52rem !important;
+    font-size: 0.68rem !important;
   }
   .btn-player-tool {
     height: 32px !important;
-    padding: 0 0.5rem !important;
+    padding: 0 0.45rem !important;
     border-radius: 8px !important;
   }
   .tool-label-text {
@@ -3230,9 +3230,9 @@ button {
   }
   .server-toolbar {
     flex-shrink: 0 !important;
-    height: 42px !important;
-    min-height: 42px !important;
-    padding: 0.25rem 0.65rem !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0.2rem 0.6rem !important;
     gap: 0.35rem !important;
     background: rgba(6, 8, 14, 0.98) !important;
     overflow-x: auto !important;
@@ -3242,7 +3242,7 @@ button {
     z-index: 25 !important;
   }
   .server-btn {
-    padding: 0.25rem 0.65rem !important;
+    padding: 0.22rem 0.6rem !important;
     font-size: 0.72rem !important;
     border-radius: var(--radius-full) !important;
   }
@@ -3282,15 +3282,13 @@ button {
     border: none !important;
     object-fit: contain !important;
   }
-  .player-audio-warning {
-    margin: 4px 8px !important;
-    padding: 6px 10px !important;
-  }
-  .audio-warning-title {
-    font-size: 0.76rem !important;
-  }
-  .audio-warning-desc {
-    display: none !important;
+  .floating-audio-chip {
+    bottom: 8px !important;
+    right: 8px !important;
+    left: 8px !important;
+    padding: 4px 10px !important;
+    font-size: 0.72rem !important;
+    justify-content: space-between !important;
   }
   .in-player-drawer {
     width: 100% !important;
@@ -3309,37 +3307,52 @@ button {
     to { transform: translateY(0); opacity: 1; }
   }
   .ep-card-thumbnail {
-    width: 90px !important;
-    height: 56px !important;
+    width: 85px !important;
+    height: 54px !important;
   }
   .ep-card-overview {
     display: none !important;
   }
   .shortcuts-popover {
-    width: calc(100vw - 30px) !important;
-    left: 15px !important;
-    right: 15px !important;
+    width: calc(100vw - 20px) !important;
+    left: 10px !important;
+    right: 10px !important;
   }
   .player-footer-bar {
     flex-shrink: 0 !important;
-    height: 54px !important;
-    min-height: 54px !important;
-    padding: 0.35rem 0.75rem !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    padding: 0.35rem 0.6rem !important;
     background: rgba(10, 14, 22, 0.98) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
+    flex-wrap: nowrap !important;
     border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
     z-index: 30 !important;
     padding-bottom: max(0.35rem, env(safe-area-inset-bottom)) !important;
-    gap: 0.4rem !important;
+    gap: 0.35rem !important;
+    overflow-x: auto !important;
   }
   .player-footer-left {
-    gap: 0.35rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.3rem !important;
+    flex-shrink: 0 !important;
+    flex-wrap: nowrap !important;
+  }
+  .player-footer-right {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.3rem !important;
+    flex-shrink: 0 !important;
+    flex-wrap: nowrap !important;
   }
   .btn-footer-pill {
-    padding: 0.32rem 0.65rem !important;
-    font-size: 0.74rem !important;
+    padding: 0.32rem 0.55rem !important;
+    font-size: 0.72rem !important;
+    white-space: nowrap !important;
+    border-radius: var(--radius-full) !important;
   }
   .mobile-drawer-btn {
     display: inline-flex !important;
@@ -3348,8 +3361,9 @@ button {
     display: none !important;
   }
   .btn-nav-episode {
-    padding: 0.36rem 0.85rem !important;
-    font-size: 0.76rem !important;
+    padding: 0.34rem 0.7rem !important;
+    font-size: 0.72rem !important;
+    white-space: nowrap !important;
   }
 }
 
