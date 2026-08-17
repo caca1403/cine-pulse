@@ -131,7 +131,7 @@ export async function renderDetailView(type = 'tv', id) {
                 ${genres.map(g => `<span class="detail-genre-tag">${g.name}</span>`).join('')}
               </div>
 
-              <p style="font-size: 1rem; color: var(--text-sub); line-height: 1.6; max-width: 800px;">${overview}</p>
+              <p class="detail-overview-text">${overview}</p>
 
               <!-- Oyuncular (Horizontal Smooth Carousel) -->
               ${castList.length > 0 ? `
