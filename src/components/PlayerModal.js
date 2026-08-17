@@ -353,10 +353,10 @@ export async function openPlayerModal({
           </button>
         </div>
 
-        <!-- Right: Action Icons (Drawer, Shortcuts, Fullscreen, External) -->
+        <!-- Right: Action Icons (Drawer on Desktop, Shortcuts, Fullscreen, External) -->
         <div class="player-header-right">
           ${type === 'tv' ? `
-            <button id="btn-toggle-drawer" class="btn-player-tool" title="Bölümler & Sezonlar Menüsü (E / B)">
+            <button id="btn-toggle-drawer" class="btn-player-tool desktop-only-tool" title="Bölümler & Sezonlar Menüsü (E / B)">
               <i data-lucide="layout-grid" style="width: 16px; height: 16px;"></i>
               <span class="tool-label-text">Bölümler</span>
             </button>
@@ -388,7 +388,29 @@ export async function openPlayerModal({
           ${renderPlayerContent()}
         </div>
 
-        <!-- Netflix-Style In-Player Episode Selector Drawer -->
+        <!-- Mobile Always-Open Episodes & Season Selector (Below Player) -->
+        ${type === 'tv' ? `
+          <div class="mobile-episodes-section" id="mobile-episodes-section">
+            <div class="mobile-episodes-header">
+              <div class="mobile-episodes-title">
+                <i data-lucide="layers" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                <span>Tüm Bölümler</span>
+              </div>
+              <div class="mobile-season-picker" id="mobile-season-picker">
+                <!-- Injected dynamically -->
+              </div>
+            </div>
+            
+            <div class="mobile-episodes-scroll" id="mobile-episodes-scroll">
+              <div class="drawer-loading">
+                <div class="drawer-spinner"></div>
+                <p>Bölümler yükleniyor...</p>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Desktop Netflix-Style In-Player Episode Selector Drawer (Desktop Only) -->
         ${type === 'tv' ? `
           <div class="in-player-drawer hidden" id="player-episode-drawer">
             <div class="drawer-header">
@@ -439,7 +461,7 @@ export async function openPlayerModal({
       <!-- Modern Footer Action Bar -->
       <div class="player-footer-bar">
         
-        <!-- Left: Action Tools (Watched, Halfway, Drawer) -->
+        <!-- Left: Action Tools (Watched, Halfway) -->
         <div class="player-footer-left">
           <button id="btn-toggle-watched-player" class="btn-footer-pill ${isWatched ? 'watched-active' : ''}">
             <i data-lucide="${isWatched ? 'check-circle-2' : 'check'}" style="width: 15px; height: 15px;"></i>
@@ -451,13 +473,6 @@ export async function openPlayerModal({
             <span>⏳ Yarıda Bırak</span>
           </button>
 
-          ${type === 'tv' ? `
-            <button id="btn-drawer-trigger-mobile" class="btn-footer-pill mobile-drawer-btn" title="Bölümler">
-              <i data-lucide="layout-grid" style="width: 14px; height: 14px; color: var(--primary);"></i>
-              <span>Bölümler</span>
-            </button>
-          ` : ''}
-
           <span class="player-status-badge">
             <i data-lucide="shield-check" style="width: 13px; height: 13px; color: #10b981;"></i>
             <span>Canlı Hat</span>
@@ -468,19 +483,6 @@ export async function openPlayerModal({
         <div id="player-nav-btn-group" class="player-footer-right player-nav-btn-row">
           ${renderFooterNavButtonsHTML()}
         </div>
-
-        <!-- In-Player Quick Episode Carousel (Mobile Portrait Only) -->
-        ${type === 'tv' ? `
-          <div class="player-quick-episodes-wrap" id="player-quick-episodes-wrap">
-            <div class="quick-episodes-header">
-              <span class="quick-ep-title"><i data-lucide="layers" style="width: 13px; height: 13px; color: var(--primary);"></i> ${currentSeason}. Sezon Bölümleri</span>
-              <span class="quick-ep-count" id="quick-ep-count-text">Yükleniyor...</span>
-            </div>
-            <div class="player-quick-episodes-rail" id="player-quick-episodes-rail">
-              <!-- Dynamically populated -->
-            </div>
-          </div>
-        ` : ''}
       </div>
     </div>
   `;
@@ -511,40 +513,54 @@ export async function openPlayerModal({
   async function renderDrawerContent() {
     const tabsContainer = document.getElementById('drawer-season-tabs');
     const listContainer = document.getElementById('drawer-episodes-list');
-    if (!tabsContainer || !listContainer) return;
+    const mobileTabsContainer = document.getElementById('mobile-season-picker');
+    const mobileListContainer = document.getElementById('mobile-episodes-scroll');
 
     // Render Season Pills
     const seasons = currentSeasonsList.length > 0
       ? currentSeasonsList
       : Array.from({ length: 5 }, (_, i) => ({ season_number: i + 1, name: `${i + 1}. Sezon` }));
 
-    tabsContainer.innerHTML = seasons.map(s => `
+    const seasonPillsHTML = seasons.map(s => `
       <button class="drawer-season-btn ${s.season_number === drawerSeason ? 'active' : ''}" data-season="${s.season_number}">
         Sezon ${s.season_number}
       </button>
     `).join('');
 
-    tabsContainer.querySelectorAll('.drawer-season-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const s = parseInt(btn.getAttribute('data-season'), 10);
-        drawerSeason = s;
-        renderDrawerContent();
-      });
-    });
+    if (tabsContainer) tabsContainer.innerHTML = seasonPillsHTML;
+    if (mobileTabsContainer) mobileTabsContainer.innerHTML = seasonPillsHTML;
 
-    listContainer.innerHTML = `
+    const bindSeasonClicks = (container) => {
+      if (!container) return;
+      container.querySelectorAll('.drawer-season-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const s = parseInt(btn.getAttribute('data-season'), 10);
+          drawerSeason = s;
+          renderDrawerContent();
+        });
+      });
+    };
+
+    bindSeasonClicks(tabsContainer);
+    bindSeasonClicks(mobileTabsContainer);
+
+    const loadingHTML = `
       <div class="drawer-loading">
         <div class="drawer-spinner"></div>
         <p>Sezon ${drawerSeason} bölümleri yükleniyor...</p>
       </div>
     `;
 
+    if (listContainer) listContainer.innerHTML = loadingHTML;
+    if (mobileListContainer) mobileListContainer.innerHTML = loadingHTML;
+
     const episodes = await fetchSeasonEpisodes(drawerSeason);
 
+    let epCardsHTML = '';
     if (!episodes || episodes.length === 0) {
       // Fallback if TMDB is offline or episodes not found
       const count = getSeasonEpisodeCount(drawerSeason) || 12;
-      listContainer.innerHTML = Array.from({ length: count }, (_, i) => i + 1).map(epNum => {
+      epCardsHTML = Array.from({ length: count }, (_, i) => i + 1).map(epNum => {
         const isCurrent = drawerSeason === currentSeason && epNum === currentEpisode;
         const epWatched = isMediaWatched(tmdbId, drawerSeason, epNum);
         return `
@@ -563,7 +579,7 @@ export async function openPlayerModal({
         `;
       }).join('');
     } else {
-      listContainer.innerHTML = episodes.map(ep => {
+      epCardsHTML = episodes.map(ep => {
         const epNum = ep.episode_number;
         const isCurrent = drawerSeason === currentSeason && epNum === currentEpisode;
         const epWatched = isMediaWatched(tmdbId, drawerSeason, epNum);
@@ -594,15 +610,24 @@ export async function openPlayerModal({
       }).join('');
     }
 
-    listContainer.querySelectorAll('.drawer-ep-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const s = parseInt(card.getAttribute('data-season'), 10);
-        const e = parseInt(card.getAttribute('data-episode'), 10);
-        if (s === currentSeason && e === currentEpisode) return;
-        toggleDrawer(false);
-        switchEpisodeInPlayer(s, e);
+    if (listContainer) listContainer.innerHTML = epCardsHTML;
+    if (mobileListContainer) mobileListContainer.innerHTML = epCardsHTML;
+
+    const bindCardClicks = (container) => {
+      if (!container) return;
+      container.querySelectorAll('.drawer-ep-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const s = parseInt(card.getAttribute('data-season'), 10);
+          const e = parseInt(card.getAttribute('data-episode'), 10);
+          if (s === currentSeason && e === currentEpisode) return;
+          toggleDrawer(false);
+          switchEpisodeInPlayer(s, e);
+        });
       });
-    });
+    };
+
+    bindCardClicks(listContainer);
+    bindCardClicks(mobileListContainer);
 
     if (window.lucide) window.lucide.createIcons();
   }
