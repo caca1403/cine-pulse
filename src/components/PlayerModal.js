@@ -139,7 +139,7 @@ export async function openPlayerModal({
       return `
         <div class="server-pill-loading">
           <span class="server-pulse-dot"></span>
-          <span>VIP yayın hatları bağlanıyor...</span>
+          <span>Yayın hatları bağlanıyor...</span>
         </div>
       `;
     }
@@ -147,8 +147,7 @@ export async function openPlayerModal({
     return activeServers.map((srv, idx) => `
       <button class="server-btn ${idx === currentServerIndex ? 'active' : ''} ${srv.notFound ? 'not-found-pill' : ''}" data-index="${idx}" title="${srv.name}">
         <span class="server-status-dot ${srv.notFound ? 'dot-red' : (idx === currentServerIndex ? 'dot-green' : 'dot-amber')}"></span>
-        <span class="server-name-label">${srv.name}</span>
-        <span class="server-badge-chip">${srv.badge || 'VIP'}</span>
+        <span class="server-name-label">${srv.displayName || srv.name}</span>
       </button>
     `).join('');
   }

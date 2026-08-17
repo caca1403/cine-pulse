@@ -146,21 +146,38 @@ export async function getStreamingServers({
     withTimeout(fetchDmaxTlcSources({ type, titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode }))
   ]);
 
+  function cleanServerLabel(rawName) {
+    if (!rawName) return 'Sunucu';
+    return rawName
+      .replace(/\s*\(Dublaj\)/gi, '')
+      .replace(/\s*\(Altyazılı\)/gi, '')
+      .replace(/\s*Stream\s*/gi, '')
+      .replace(/\s*VIP\s*/gi, '')
+      .replace(/\s*1080p\s*/gi, '')
+      .replace(/\s*HD\s*/gi, '')
+      .replace(/\s*TV\s*/gi, '')
+      .trim() || rawName.trim();
+  }
+
   const mapDubbedSources = (rawList) => (rawList || [])
     .filter(s => {
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
       return urlStr && !urlStr.includes('recaptcha') && urlStr.length > 8;
     })
-    .map(s => ({
-      id: s.id,
-      name: s.name.replace(/\s*1080p\s*/gi, '').replace(/\s*HD\s*/gi, '').replace(/\(\s*\)/g, '').trim(),
-      badge: (s.badge || '⚡ VIP').replace(/\s*1080p\s*/gi, '').trim(),
-      category: 'dubbed',
-      isHls: s.isHls,
-      isDirectVideo: s.isDirectVideo,
-      streamUrl: s.streamUrl,
-      getUrl: () => s.streamUrl || s.url
-    }));
+    .map(s => {
+      const shortName = cleanServerLabel(s.name);
+      return {
+        id: s.id,
+        name: shortName,
+        displayName: shortName,
+        badge: (s.badge || '⚡ VIP').replace(/\s*1080p\s*/gi, '').replace(/\s*HD\s*/gi, '').trim(),
+        category: 'dubbed',
+        isHls: s.isHls,
+        isDirectVideo: s.isDirectVideo,
+        streamUrl: s.streamUrl,
+        getUrl: () => s.streamUrl || s.url
+      };
+    });
 
   const cleanDubbed = [
     ...mapDubbedSources(fmkDub),
@@ -179,21 +196,26 @@ export async function getStreamingServers({
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
       return urlStr && !urlStr.includes('recaptcha') && urlStr.length > 8;
     })
-    .map(s => ({
-      id: s.id,
-      name: s.name.replace(/\s*1080p\s*/gi, '').replace(/\s*HD\s*/gi, '').replace(/\(\s*\)/g, '').trim(),
-      badge: (s.badge || '💬 Altyazılı').replace(/\s*1080p\s*/gi, '').trim(),
-      category: 'subtitled',
-      isHls: s.isHls,
-      isDirectVideo: s.isDirectVideo,
-      streamUrl: s.streamUrl,
-      getUrl: () => s.streamUrl || s.url
-    }));
+    .map(s => {
+      const shortName = cleanServerLabel(s.name);
+      return {
+        id: s.id,
+        name: shortName,
+        displayName: shortName,
+        badge: (s.badge || '💬 Altyazılı').replace(/\s*1080p\s*/gi, '').replace(/\s*HD\s*/gi, '').trim(),
+        category: 'subtitled',
+        isHls: s.isHls,
+        isDirectVideo: s.isDirectVideo,
+        streamUrl: s.streamUrl,
+        getUrl: () => s.streamUrl || s.url
+      };
+    });
 
   const cleanSubtitled = [
     {
       id: 'sub_smashystream',
-      name: 'Smashy Stream (Altyazılı)',
+      name: 'Smashy',
+      displayName: 'Smashy',
       badge: '⚡ Smashy',
       category: 'subtitled',
       getUrl: () => isMovie
@@ -210,7 +232,8 @@ export async function getStreamingServers({
     ...mapSubtitledSources(finSub),
     {
       id: 'sub_autoembed',
-      name: 'AutoEmbed VIP (Altyazılı)',
+      name: 'AutoEmbed',
+      displayName: 'AutoEmbed',
       badge: '⚡ AutoEmbed',
       category: 'subtitled',
       getUrl: () => isMovie
@@ -219,7 +242,8 @@ export async function getStreamingServers({
     },
     {
       id: 'sub_embedsu',
-      name: 'EmbedSU 4K (Altyazılı)',
+      name: 'EmbedSU',
+      displayName: 'EmbedSU',
       badge: '⚡ EmbedSU 4K',
       category: 'subtitled',
       getUrl: () => isMovie
