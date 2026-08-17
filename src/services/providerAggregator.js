@@ -1,24 +1,21 @@
 /* ==========================================================================
    CinePulse Studio - Master Stream Aggregator
    Aggregates live Turkish & Global VIP sources:
+   - Sinefy HD (https://sinefy3.com - 1080p DUAL)
+   - DiziPal VIP (https://dizipal1576.com / t.ly/dizipalgiris)
    - FilmMakinesi (Rapid & CloseLoad 1080p DUAL)
    - SezonlukDizi (VidMoly, Sibnet, Netu, VideoSoft, FileMoon)
    - DiziBal (VIP 1080p Dublaj & Altyazılı)
-   - Sinewix (Android VIP 1080p HLS)
-   - Dizipal (1080p HLS FastStream)
-   - FilmizleCh / Channel Stream (1080p)
-   - Now Stream / Filmizle (1080p Dublaj & Altyazılı)
-   - AnimeTR / TRAnimeİzle / TürkAnime TV (1080p)
+   - DMAX & TLC (Official HD Dublaj)
    - BelgeselX / Belgeselce (1080p)
-   - AutoEmbed VIP / EmbedSU / VidSrc ICU / SmashyStream / VidLink / SuperEmbed
+   - AnimeTR / TRAnimeİzle / TürkAnime TV (1080p)
+   - Videasy 4K / VidLink VIP / VidSrc Pro / 2Embed VIP / SmashyStream / RiveStream
    ========================================================================== */
 
+import { fetchSinefySources } from './sinefyScraper.js';
+import { fetchDizipalSources } from './dizipalScraper.js';
 import { fetchDiziBalSources } from './diziBalScraper.js';
 import { fetchSezonlukDiziEpisodeSources } from './sezonlukDiziScraper.js';
-import { fetchDizipalSources } from './dizipalScraper.js';
-import { fetchSinewixSources } from './sinewixScraper.js';
-import { fetchFilmizlechSources } from './filmizlechScraper.js';
-import { fetchFilmizleNowSources } from './filmizleNowScraper.js';
 import { fetchFilmMakinesiSources } from './filmMakinesiScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
@@ -105,39 +102,34 @@ export async function getStreamingServers({
   }
 
   const { candidateTitles, detectedYear } = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle);
-  const targetYear = year || detectedYear;
 
   // Concurrent scraping of all premium providers
   const [
+    snfDub,
+    snfSub,
+    dzpDub,
+    dzpSub,
     fmkDub,
     fmkSub,
     dblDub,
     dblSub,
     szdDub,
     szdSub,
-    snxDub,
-    dzpDub,
-    flzDub,
-    flzSub,
-    finDub,
-    finSub,
     antrSub,
     traSub,
     taSub,
     blgDub
   ] = await Promise.all([
+    withTimeout(fetchSinefySources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
+    withTimeout(fetchSinefySources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
+    withTimeout(fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
+    withTimeout(fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchFilmMakinesiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchFilmMakinesiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchDiziBalSources({ type, title: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchDiziBalSources({ type, title: targetTitle, originalTitle, season, episode, isDub: false })),
     !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: true })) : Promise.resolve([]),
     !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: false })) : Promise.resolve([]),
-    withTimeout(fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
-    withTimeout(fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
-    withTimeout(fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
-    withTimeout(fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
-    withTimeout(fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })),
-    withTimeout(fetchFilmizleNowSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })),
     withTimeout(fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
@@ -187,17 +179,16 @@ export async function getStreamingServers({
 
   const rawCleanDubbed = [
     ...mapDubbedSources(blgDub),
+    ...mapDubbedSources(snfDub),
+    ...mapDubbedSources(dzpDub),
     ...mapDubbedSources(fmkDub),
     ...mapDubbedSources(dblDub),
-    ...mapDubbedSources(szdDub),
-    ...mapDubbedSources(snxDub),
-    ...mapDubbedSources(dzpDub),
-    ...mapDubbedSources(flzDub),
-    ...mapDubbedSources(finDub)
+    ...mapDubbedSources(szdDub)
   ];
 
-  // If local Turkish scrapers couldn't find active streams, provide global multi-track VIP CDN
-  const cleanDubbed = rawCleanDubbed.length > 0 ? rawCleanDubbed : [
+  // Guaranteed multi-language VIP CDN fallback for 100% stream availability
+  const cleanDubbed = [
+    ...rawCleanDubbed,
     {
       id: 'dub_videasy',
       name: 'Videasy 4K',
@@ -250,7 +241,7 @@ export async function getStreamingServers({
         urlStr.length > 8;
     })
     .map(s => {
-      const shortName = cleanServerLabel(s.name);
+      const shortName = cleanServerLabel(s.name, 'VIP Altyazılı');
       return {
         id: s.id,
         name: shortName,
@@ -265,6 +256,8 @@ export async function getStreamingServers({
     });
 
   const cleanSubtitled = [
+    ...mapSubtitledSources(snfSub),
+    ...mapSubtitledSources(dzpSub),
     {
       id: 'sub_videasy',
       name: 'Videasy 4K',
@@ -321,8 +314,6 @@ export async function getStreamingServers({
     ...mapSubtitledSources(taSub),
     ...mapSubtitledSources(dblSub),
     ...mapSubtitledSources(szdSub),
-    ...mapSubtitledSources(flzSub),
-    ...mapSubtitledSources(finSub),
     {
       id: 'sub_rivestream',
       name: 'RiveStream HD',

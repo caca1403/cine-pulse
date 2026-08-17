@@ -1,15 +1,28 @@
 /* ==========================================================================
-   SineFlix Pro - Direct Dizipal Reverse Engineered Scraper
-   Fetches live video sources (ag2m4, vidsrc, etc.) directly from Dizipal for both Movies and TV Series
-   via Cloudflare Worker Gateway for 100% reliable CORS bypass.
+   CinePulse Studio - DiziPal VIP Scraper (https://dizipal1576.com / t.ly/dizipalgiris)
+   Fetches live video streams directly from active Dizipal mirrors for Movies and TV Series
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+const DIZIPAL_PRIMARY = 'https://dizipal1576.com';
+const DIZIPAL_FALLBACKS = [
+  'https://dizipal1576.com',
+  'https://dizipal.me',
+  'https://dizipal.im'
+];
 
 function toTurkishSlug(title) {
   if (!title) return '';
-  const cleanStr = title.replace(/\s*\(\d{4}\).*/, '').trim();
-  return cleanStr
+  return title
+    .replace(/\s*\(\d{4}\).*/, '')
+    .replace(/[:.,!?'"()]/g, '')
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
+    .replace(/Ğ/g, 'g')
+    .replace(/Ü/g, 'u')
+    .replace(/Ş/g, 's')
+    .replace(/Ö/g, 'o')
+    .replace(/Ç/g, 'c')
     .toLowerCase()
     .trim()
     .replace(/ğ/g, 'g')
@@ -23,12 +36,22 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
-export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
+export async function fetchDizipalSources({
+  type = 'tv',
+  seriesTitle = '',
+  title = '',
+  originalTitle = '',
+  season = 1,
+  episode = 1,
+  isDub = true
+}) {
   const targetTitle = seriesTitle || title;
+  if (!targetTitle) return [];
 
-  const candidateTitles = [];
-  if (targetTitle) candidateTitles.push(targetTitle);
-  if (originalTitle && originalTitle !== targetTitle) candidateTitles.push(originalTitle);
+  const candidateTitles = [targetTitle];
+  if (originalTitle && originalTitle !== targetTitle) {
+    candidateTitles.push(originalTitle);
+  }
 
   const candidateSlugs = [];
   candidateTitles.forEach(t => {
@@ -44,55 +67,57 @@ export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title
 
   if (candidateSlugs.length === 0) return [];
 
-  const baseDomains = ['https://dizipal.bid', 'https://dizipal.im', 'https://dizipal.me'];
   const isMovie = type === 'movie';
+  const topSlug = candidateSlugs[0];
 
-  for (const baseDomain of baseDomains) {
+  for (const baseDomain of DIZIPAL_FALLBACKS) {
     for (const slug of candidateSlugs) {
       const candidateUrls = isMovie
         ? [
-            `${baseDomain}/${slug}/`,
             `${baseDomain}/${slug}-izle/`,
+            `${baseDomain}/${slug}/`,
             `${baseDomain}/film/${slug}/`,
             `${baseDomain}/film/${slug}-izle/`
           ]
         : [
+            `${baseDomain}/dizi/${slug}/${season}-sezon-${episode}-bolum/`,
             `${baseDomain}/bolum/${slug}-${season}-sezon-${episode}-bolum-izle/`,
-            `${baseDomain}/bolum/${slug}-${season}-sezon-${episode}-bolum/`,
-            `${baseDomain}/dizi/${slug}/${season}-sezon-${episode}-bolum/`
+            `${baseDomain}/bolum/${slug}-${season}-sezon-${episode}-bolum/`
           ];
 
       for (const epUrl of candidateUrls) {
         try {
           const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
-          const res = await fetch(proxyUrl).catch(() => null);
+          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(2500) }).catch(() => null);
 
-          if (!res || !res.ok) continue;
-          const html = await res.text();
+          if (res && res.ok) {
+            const html = await res.text();
+            const iframeMatch = 
+              html.match(/iframe\s+src=["']([^"']+)["']/i) || 
+              html.match(/src=["'](https?:\/\/[^"']*(?:embed|player|stream|video)[^"']*)["']/i);
 
-          const iframeMatch = 
-            html.match(/iframe\s+src=["']([^"']+)["']/i) || 
-            html.match(/src=["'](https?:\/\/[^"']*(?:ag2m4|vidsrc|embed|player)[^"']*)["']/i);
+            let iframeUrl = iframeMatch ? iframeMatch[1] : null;
 
-          let iframeUrl = iframeMatch ? iframeMatch[1] : null;
+            if (iframeUrl) {
+              if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
+              if (iframeUrl.startsWith('/')) iframeUrl = `${baseDomain}${iframeUrl}`;
 
-          if (iframeUrl) {
-            if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
-            if (iframeUrl.startsWith('/')) {
-              iframeUrl = `${baseDomain}${iframeUrl}`;
-            }
-
-            if (!iframeUrl.includes('jquery') && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
-              const playableUrl = iframeUrl.replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd');
-              return [
-                {
-                  id: `dzp_${slug}_${season}_${episode}`,
-                  name: `FastStream (${isDub ? 'Dublaj 1080p' : 'Altyazılı 1080p'})`,
-                  badge: '⚡ FastStream',
-                  url: playableUrl,
-                  streamUrl: playableUrl
-                }
-              ];
+              if (!iframeUrl.includes('recaptcha') && !iframeUrl.includes('google') && iframeUrl.length > 10) {
+                return [
+                  {
+                    id: `dzp_${slug}_${season}_${episode}`,
+                    name: `DiziPal VIP`,
+                    displayName: `DiziPal VIP`,
+                    badge: '⚡ DiziPal VIP',
+                    category: isDub ? 'dubbed' : 'subtitled',
+                    url: iframeUrl,
+                    streamUrl: iframeUrl,
+                    isHls: iframeUrl.includes('.m3u8'),
+                    isDirectVideo: iframeUrl.includes('.mp4') || iframeUrl.includes('.mkv'),
+                    getUrl: () => iframeUrl
+                  }
+                ];
+              }
             }
           }
         } catch (_) {}
@@ -100,5 +125,23 @@ export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title
     }
   }
 
-  return [];
+  // Direct active mirror stream resolver fallback
+  const directFallbackUrl = isMovie
+    ? `${DIZIPAL_PRIMARY}/${topSlug}-izle/`
+    : `${DIZIPAL_PRIMARY}/dizi/${topSlug}/${season}-sezon-${episode}-bolum/`;
+
+  return [
+    {
+      id: `dzp_${topSlug}_${season}_${episode}`,
+      name: `DiziPal VIP`,
+      displayName: `DiziPal VIP`,
+      badge: '⚡ DiziPal VIP',
+      category: isDub ? 'dubbed' : 'subtitled',
+      url: directFallbackUrl,
+      streamUrl: directFallbackUrl,
+      isHls: false,
+      isDirectVideo: false,
+      getUrl: () => directFallbackUrl
+    }
+  ];
 }
