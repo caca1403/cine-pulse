@@ -136,7 +136,10 @@ export async function renderDetailView(type = 'tv', id) {
                 ${genres.map(g => `<span class="detail-genre-chip">${g.name}</span>`).join('')}
               </div>
 
-              <p class="detail-storyline">${overview}</p>
+              <div class="detail-storyline-wrapper">
+                <p class="detail-storyline truncated" id="detail-storyline-text">${overview}</p>
+                ${overview.length > 120 ? '<button class="btn-storyline-expand" id="btn-expand-storyline"><span>Devamını Oku</span><i data-lucide="chevron-down" style="width:14px;height:14px"></i></button>' : ''}
+              </div>
 
               <!-- Oyuncular (Horizontal Smooth Carousel) -->
               ${castList.length > 0 ? `
@@ -406,6 +409,20 @@ export async function renderDetailView(type = 'tv', id) {
             const resumeBtnSpan = container.querySelector('#btn-resume-series span');
             if (resumeBtnSpan) resumeBtnSpan.textContent = `Kaldığın Yerden Devam Et (S${seasonNum} B${epNum} • 20:00)`;
           }
+        });
+      }
+
+      // Storyline expand/collapse
+      const expandBtn = container.querySelector('#btn-expand-storyline');
+      const storylineEl = container.querySelector('#detail-storyline-text');
+      if (expandBtn && storylineEl) {
+        expandBtn.addEventListener('click', () => {
+          const isExpanded = !storylineEl.classList.contains('truncated');
+          storylineEl.classList.toggle('truncated');
+          const span = expandBtn.querySelector('span');
+          const icon = expandBtn.querySelector('i');
+          if (span) span.textContent = isExpanded ? 'Devamını Oku' : 'Daralt';
+          if (icon) icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
         });
       }
 

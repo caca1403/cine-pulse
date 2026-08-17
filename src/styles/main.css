@@ -1425,18 +1425,55 @@ button {
   color: var(--text-sub);
 }
 
+.detail-storyline-wrapper {
+  width: 100%;
+  max-width: 780px;
+  margin: 0.6rem 0;
+}
+
 .detail-storyline {
   font-size: 0.98rem;
   color: #cbd5e1;
   line-height: 1.6;
-  max-width: 780px;
-  margin: 0.8rem 0;
+  margin: 0;
+  transition: max-height 0.4s ease;
+}
+
+.detail-storyline.truncated {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.btn-storyline-expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.2rem 0;
+  transition: color 0.2s ease;
+}
+
+.btn-storyline-expand:hover {
+  color: #fbbf24;
+}
+
+.btn-storyline-expand i {
+  transition: transform 0.3s ease;
 }
 
 /* Cast Carousel Section */
 .detail-cast-block {
   margin-top: 1rem;
   width: 100%;
+  overflow: visible;
 }
 
 .detail-cast-label {
@@ -1452,10 +1489,13 @@ button {
   display: flex;
   gap: 0.55rem;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 0.4rem;
   scrollbar-width: none;
   width: 100%;
+  max-width: 100%;
+  scroll-behavior: smooth;
 }
 .detail-cast-rail::-webkit-scrollbar {
   display: none;
@@ -3460,6 +3500,11 @@ button {
     font-size: 0.72rem !important;
     padding: 0.22rem 0.65rem !important;
   }
+  .detail-storyline-wrapper {
+    text-align: center !important;
+    max-width: 100% !important;
+    margin: 0.3rem 0 !important;
+  }
   .detail-storyline {
     text-align: center !important;
     font-size: 0.85rem !important;
@@ -3467,17 +3512,21 @@ button {
     color: #cbd5e1 !important;
     padding: 0 0.25rem !important;
     max-width: 100% !important;
-    margin: 0.4rem 0 !important;
-    display: -webkit-box !important;
-    -webkit-line-clamp: 4 !important;
-    -webkit-box-orient: vertical !important;
-    overflow: hidden !important;
+    margin: 0 !important;
+  }
+  .detail-storyline.truncated {
+    -webkit-line-clamp: 3 !important;
+  }
+  .btn-storyline-expand {
+    justify-content: center !important;
+    width: 100% !important;
+    font-size: 0.78rem !important;
   }
   .detail-cast-block {
     text-align: left !important;
     width: 100% !important;
     margin-top: 0.4rem !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
   .detail-cast-rail {
     gap: 0.4rem !important;
