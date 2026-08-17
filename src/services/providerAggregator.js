@@ -141,15 +141,19 @@ export async function getStreamingServers({
   function cleanServerLabel(rawName, fallback = 'VIP Stream') {
     if (!rawName) return fallback;
     let clean = rawName
-      .replace(/\s*\(Dublaj\)/gi, '')
-      .replace(/\s*\(Altyazılı\)/gi, '')
-      .replace(/\s*\(Türkçe\)/gi, '')
+      .replace(/\s*\([^)]*(?:Dublaj|Altyazılı|Türkçe|1080p)[^)]*\)/gi, '')
       .replace(/\s*\(1080p\)/gi, '')
       .replace(/\s*1080p/gi, '')
       .replace(/\s*Stream\s*/gi, '')
       .trim();
 
     if (!clean || clean.toLowerCase() === 'vip' || clean.toLowerCase() === 'fast' || clean.length < 2) {
+      const lower = rawName.toLowerCase();
+      if (lower.includes('dizipal')) return 'DiziPal';
+      if (lower.includes('dizibal')) return 'DiziBal';
+      if (lower.includes('channel')) return 'Channel';
+      if (lower.includes('rapid')) return 'Rapid Stream';
+      if (lower.includes('close')) return 'CloseLoad';
       return fallback;
     }
     return clean;
@@ -161,6 +165,7 @@ export async function getStreamingServers({
       return urlStr &&
         !urlStr.includes('recaptcha') &&
         !urlStr.includes('liderfilm') &&
+        !urlStr.includes('filmmakinesi.to') &&
         urlStr.length > 8;
     })
     .map(s => {
@@ -238,10 +243,11 @@ export async function getStreamingServers({
       return urlStr &&
         !urlStr.includes('recaptcha') &&
         !urlStr.includes('liderfilm') &&
+        !urlStr.includes('filmmakinesi.to') &&
         urlStr.length > 8;
     })
     .map(s => {
-      const shortName = cleanServerLabel(s.name);
+      const shortName = cleanServerLabel(s.name, 'VIP Altyazılı');
       return {
         id: s.id,
         name: shortName,
