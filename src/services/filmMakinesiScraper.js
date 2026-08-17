@@ -1,42 +1,10 @@
 /* ==========================================================================
-   CinePulse Studio - FilmMakinesi (Rapid & CloseLoad) Scraper
-   Fetches verified live DUAL (Turkish Dubbed & Subtitled) Rapid and CloseLoad
-   streams from FilmMakinesi via smart search & direct episode resolver.
+   CinePulse Studio - FilmMakinesi Scraper (https://filmmakinesi.to)
+   Fetches live DUAL (Turkish Dubbed & Subtitled) Rapid, CloseLoad & Direct Streams
    ========================================================================== */
 
-function getProxyUrls(pathOrUrl) {
-  const isFull = pathOrUrl.startsWith('http');
-  const path = isFull ? new URL(pathOrUrl).pathname + new URL(pathOrUrl).search : pathOrUrl;
-  const fullUrl = isFull ? pathOrUrl : `https://filmmakinesi.to${path}`;
-
-  return [
-    `/api/fmk${path}`,
-    `https://wild-credit-e1ae.cagatayca07.workers.dev?url=${encodeURIComponent(fullUrl)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(fullUrl)}`
-  ];
-}
-
-async function fetchWithFallback(pathOrUrl) {
-  const proxies = getProxyUrls(pathOrUrl);
-  for (const pUrl of proxies) {
-    try {
-      const res = await fetch(pUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Referer': 'https://filmmakinesi.to/'
-        }
-      });
-      if (!res.ok) continue;
-      const html = await res.text();
-      if (html && html.length > 1000 && !html.includes('404 - Sayfa Bulunamadı')) {
-        return html;
-      }
-    } catch (_) {
-      continue;
-    }
-  }
-  return null;
-}
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+const FMK_BASE = 'https://filmmakinesi.to';
 
 function toTurkishSlug(title) {
   if (!title) return '';
@@ -55,6 +23,29 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
+async function fetchWithFallback(pathOrUrl) {
+  const isFull = pathOrUrl.startsWith('http');
+  const fullUrl = isFull ? pathOrUrl : `${FMK_BASE}${pathOrUrl}`;
+  const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(fullUrl)}`;
+
+  try {
+    const res = await fetch(proxyUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': 'https://filmmakinesi.to/'
+      },
+      signal: AbortSignal.timeout(2000)
+    }).catch(() => null);
+
+    if (!res || !res.ok) return null;
+    const html = await res.text();
+    if (html && html.length > 1000 && !html.includes('404 - Sayfa Bulunamadı') && !html.includes('Just a moment...')) {
+      return html;
+    }
+  } catch (_) {}
+  return null;
+}
+
 export async function fetchFilmMakinesiSources({
   type = 'tv',
   seriesTitle = '',
@@ -70,9 +61,11 @@ export async function fetchFilmMakinesiSources({
   if (!targetTitle && !imdbId) return [];
 
   const candidateQueries = [];
-  if (imdbId) candidateQueries.push(imdbId);
   if (targetTitle) candidateQueries.push(targetTitle);
   if (originalTitle && originalTitle !== targetTitle) candidateQueries.push(originalTitle);
+
+  const topSlug = toTurkishSlug(targetTitle);
+  if (!topSlug) return [];
 
   let targetContentLinks = [];
 
@@ -94,18 +87,15 @@ export async function fetchFilmMakinesiSources({
 
   // Fallback candidate slugs if search is empty
   if (targetContentLinks.length === 0) {
-    const slug = toTurkishSlug(targetTitle);
-    if (slug) {
-      if (isMovie) {
-        targetContentLinks.push(`/film/${slug}-izle/`, `/${slug}-izle-fm1/`, `/${slug}/`);
-      } else {
-        targetContentLinks.push(`/dizi/${slug}-izle-2022-fm1/`, `/dizi/${slug}-izle-fm1/`, `/dizi/${slug}/`);
-      }
+    if (isMovie) {
+      targetContentLinks.push(`/film/${topSlug}-izle-fm1/`, `/film/${topSlug}-izle/`, `/${topSlug}-izle-fm1/`);
+    } else {
+      targetContentLinks.push(`/dizi/${topSlug}-izle-fm1/`, `/dizi/${topSlug}/`);
     }
   }
 
   // Step 2: Probe content pages for CloseLoad & Rapid embeds
-  for (const link of targetContentLinks.slice(0, 4)) {
+  for (const link of targetContentLinks.slice(0, 3)) {
     let epPath = '';
     if (!isMovie) {
       const cleanBase = link.replace(/\/$/, '');
@@ -115,48 +105,51 @@ export async function fetchFilmMakinesiSources({
     }
 
     const epHtml = await fetchWithFallback(epPath);
-    if (!epHtml) continue;
+    if (epHtml) {
+      const videoUrls = [...epHtml.matchAll(/data-video_url="([^"]+)"/gi)].map(m => m[1]);
+      const iframes = [...epHtml.matchAll(/<iframe[^>]*(?:data-src|src)="([^"]+)"/gi)].map(m => m[1]);
+      const allEmbeds = [...new Set([...videoUrls, ...iframes])].filter(u => 
+        (u.includes('closeload') || u.includes('rapid') || u.includes('vidmoly')) && !u.includes('google') && !u.includes('recaptcha')
+      );
 
-    const videoUrls = [...epHtml.matchAll(/data-video_url="([^"]+)"/gi)].map(m => m[1]);
-    const iframes = [...epHtml.matchAll(/<iframe[^>]*(?:data-src|src)="([^"]+)"/gi)].map(m => m[1]);
-    const allEmbeds = [...new Set([...videoUrls, ...iframes])].filter(u => 
-      (u.includes('closeload') || u.includes('rapid')) && !u.includes('google') && !u.includes('recaptcha')
-    );
+      if (allEmbeds.length > 0) {
+        const sources = [];
+        for (const embedUrl of allEmbeds) {
+          const isRapid = embedUrl.includes('rapid');
+          const isClose = embedUrl.includes('closeload');
 
-    if (allEmbeds.length === 0) continue;
-
-    const sources = [];
-    for (const embedUrl of allEmbeds) {
-      const isRapid = embedUrl.includes('rapid');
-      const isClose = embedUrl.includes('closeload');
-
-      if (isRapid) {
-        sources.push({
-          id: `fmk_rapid_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
-          name: `Rapid Stream (${isDub ? 'Dublaj' : 'Altyazılı'})`,
-          badge: '⚡ Rapid',
-          category: isDub ? 'dubbed' : 'subtitled',
-          streamUrl: embedUrl,
-          url: embedUrl,
-          getUrl: () => embedUrl
-        });
-      } else if (isClose) {
-        sources.push({
-          id: `fmk_close_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
-          name: `CloseLoad (${isDub ? 'Dublaj' : 'Altyazılı'})`,
-          badge: '⚡ CloseLoad',
-          category: isDub ? 'dubbed' : 'subtitled',
-          streamUrl: embedUrl,
-          url: embedUrl,
-          getUrl: () => embedUrl
-        });
+          sources.push({
+            id: `fmk_${isRapid ? 'rapid' : isClose ? 'close' : 'vid'}_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
+            name: `${isRapid ? 'Rapid Stream' : isClose ? 'CloseLoad' : 'FilmMakinesi HD'} (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+            badge: isRapid ? '⚡ Rapid' : isClose ? '⚡ CloseLoad' : '⚡ FilmMakinesi',
+            category: isDub ? 'dubbed' : 'subtitled',
+            streamUrl: embedUrl,
+            url: embedUrl,
+            getUrl: () => embedUrl
+          });
+        }
+        return sources;
       }
-    }
-
-    if (sources.length > 0) {
-      return sources;
     }
   }
 
-  return [];
+  // Step 3: Direct slug player fallback
+  const directFallbackUrl = isMovie
+    ? `${FMK_BASE}/film/${topSlug}-izle-fm1/`
+    : `${FMK_BASE}/dizi/${topSlug}-izle-fm1/sezon-${season}/bolum-${episode}/`;
+
+  return [
+    {
+      id: `fmk_direct_${isDub ? 'dub' : 'sub'}_${season}_${episode}`,
+      name: `FilmMakinesi (${isDub ? 'Dublaj' : 'Altyazılı'})`,
+      displayName: `FilmMakinesi`,
+      badge: '⚡ FilmMakinesi',
+      category: isDub ? 'dubbed' : 'subtitled',
+      url: directFallbackUrl,
+      streamUrl: directFallbackUrl,
+      isHls: false,
+      isDirectVideo: false,
+      getUrl: () => directFallbackUrl
+    }
+  ];
 }
