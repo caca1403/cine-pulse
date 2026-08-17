@@ -1,11 +1,13 @@
 /* ==========================================================================
    CinePulse Studio - Master Stream Aggregator
    Aggregates live Turkish & Global VIP sources:
-   - VIP Hat 1 / VIP Hat 2 / VIP Hat 3 / VIP Hat 4 / VIP Hat 5
-   - Rapid Stream & CloseLoad (1080p DUAL)
+   - VIP Hat 1 / VIP Hat 2 / VIP Hat 3 / VIP Hat 4 / VIP Hat 5 / VIP Hat 6
+   - Smashy (Top Altyazılı Kaynak)
+   - AutoEmbed (Ultra HD Çoklu Dil)
+   - MultiEmbed (4K VIP)
+   - VidLink VIP
    - AnimeTR / TRAnimeİzle / TürkAnime TV (1080p)
    - Belgesel (Official HD Dublaj)
-   - Videasy 4K / VidLink VIP / VidSrc Pro / 2Embed VIP / SmashyStream / RiveStream
    ========================================================================== */
 
 import { fetchDiziBalSources } from './diziBalScraper.js';
@@ -204,25 +206,35 @@ export async function getStreamingServers({
 
   const rawCleanDubbed = [
     ...mapDubbedSources(blgDub),
+    ...mapDubbedSources(snxDub),
     ...mapDubbedSources(dzpDub),
     ...mapDubbedSources(dblDub),
     ...mapDubbedSources(flzDub),
     ...mapDubbedSources(fmkDub),
-    ...mapDubbedSources(szdDub),
-    ...mapDubbedSources(snxDub)
+    ...mapDubbedSources(szdDub)
   ];
 
-  // If local Turkish scrapers couldn't find active streams, provide global multi-track VIP CDN
+  // If local Turkish scrapers couldn't find active streams, provide verified fast global failovers
   const cleanDubbed = rawCleanDubbed.length > 0 ? rawCleanDubbed : [
     {
-      id: 'dub_videasy',
-      name: 'Videasy 4K',
-      displayName: 'Videasy 4K',
-      badge: '⚡ Videasy 4K',
+      id: 'dub_autoembed',
+      name: 'AutoEmbed 4K',
+      displayName: 'AutoEmbed 4K',
+      badge: '⚡ AutoEmbed',
       category: 'dubbed',
       getUrl: () => isMovie
-        ? `https://player.videasy.net/movie/${tmdbId}`
-        : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`
+        ? `https://player.autoembed.co/embed/movie/${tmdbId}`
+        : `https://player.autoembed.co/embed/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'dub_multiembed',
+      name: 'MultiEmbed VIP',
+      displayName: 'MultiEmbed VIP',
+      badge: '⚡ MultiEmbed',
+      category: 'dubbed',
+      getUrl: () => isMovie
+        ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
+        : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
     },
     {
       id: 'dub_vidlink',
@@ -233,26 +245,6 @@ export async function getStreamingServers({
       getUrl: () => isMovie
         ? `https://vidlink.pro/movie/${tmdbId}`
         : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'dub_vidsrccc',
-      name: 'VidSrc Pro',
-      displayName: 'VidSrc Pro',
-      badge: '⚡ VidSrc Pro',
-      category: 'dubbed',
-      getUrl: () => isMovie
-        ? `https://vidsrc.cc/v2/embed/movie/${tmdbId}`
-        : `https://vidsrc.cc/v2/embed/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'dub_2embed',
-      name: '2Embed VIP',
-      displayName: '2Embed VIP',
-      badge: '⚡ 2Embed',
-      category: 'dubbed',
-      getUrl: () => isMovie
-        ? `https://www.2embed.cc/embed/${tmdbId}`
-        : `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`
     }
   ];
 
@@ -283,16 +275,49 @@ export async function getStreamingServers({
     });
 
   const cleanSubtitled = [
+    // 1. Smashy (Top / 1st source for Subtitles)
     {
-      id: 'sub_videasy',
-      name: 'Videasy 4K',
-      displayName: 'Videasy 4K',
-      badge: '⚡ Videasy 4K',
+      id: 'sub_smashystream',
+      name: 'Smashy 1080p',
+      displayName: 'Smashy 1080p',
+      badge: '⚡ Smashy',
       category: 'subtitled',
       getUrl: () => isMovie
-        ? `https://player.videasy.net/movie/${tmdbId}`
-        : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`
+        ? `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}`
+        : `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}&season=${season}&episode=${episode}`
     },
+    // 2. AutoEmbed (Ultra HD)
+    {
+      id: 'sub_autoembed',
+      name: 'AutoEmbed 4K',
+      displayName: 'AutoEmbed 4K',
+      badge: '⚡ AutoEmbed',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://player.autoembed.co/embed/movie/${tmdbId}`
+        : `https://player.autoembed.co/embed/tv/${tmdbId}/${season}/${episode}`
+    },
+    // 3. MultiEmbed (4K Premium)
+    {
+      id: 'sub_multiembed',
+      name: 'MultiEmbed VIP',
+      displayName: 'MultiEmbed VIP',
+      badge: '⚡ MultiEmbed',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
+        : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
+    },
+    // 4. Local Turkish / Anime Subtitled Scrapers
+    ...mapSubtitledSources(dzpDub),
+    ...mapSubtitledSources(dblSub),
+    ...mapSubtitledSources(flzSub),
+    ...mapSubtitledSources(fmkSub),
+    ...mapSubtitledSources(antrSub),
+    ...mapSubtitledSources(traSub),
+    ...mapSubtitledSources(taSub),
+    ...mapSubtitledSources(szdSub),
+    // 5. VidLink VIP
     {
       id: 'sub_vidlink',
       name: 'VidLink VIP',
@@ -302,54 +327,6 @@ export async function getStreamingServers({
       getUrl: () => isMovie
         ? `https://vidlink.pro/movie/${tmdbId}`
         : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'sub_vidsrccc',
-      name: 'VidSrc Pro',
-      displayName: 'VidSrc Pro',
-      badge: '⚡ VidSrc Pro',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://vidsrc.cc/v2/embed/movie/${tmdbId}`
-        : `https://vidsrc.cc/v2/embed/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'sub_2embed',
-      name: '2Embed VIP',
-      displayName: '2Embed VIP',
-      badge: '⚡ 2Embed',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://www.2embed.cc/embed/${tmdbId}`
-        : `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`
-    },
-    {
-      id: 'sub_smashystream',
-      name: 'Smashy',
-      displayName: 'Smashy',
-      badge: '⚡ Smashy',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}`
-        : `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}&season=${season}&episode=${episode}`
-    },
-    ...mapSubtitledSources(dzpDub),
-    ...mapSubtitledSources(dblSub),
-    ...mapSubtitledSources(flzSub),
-    ...mapSubtitledSources(fmkSub),
-    ...mapSubtitledSources(antrSub),
-    ...mapSubtitledSources(traSub),
-    ...mapSubtitledSources(taSub),
-    ...mapSubtitledSources(szdSub),
-    {
-      id: 'sub_rivestream',
-      name: 'RiveStream HD',
-      displayName: 'RiveStream HD',
-      badge: '⚡ RiveStream',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://rivestream.live/embed?type=movie&id=${tmdbId}`
-        : `https://rivestream.live/embed?type=series&id=${tmdbId}&season=${season}&episode=${episode}`
     }
   ];
 
