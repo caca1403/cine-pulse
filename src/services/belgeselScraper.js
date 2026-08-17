@@ -1,11 +1,10 @@
 /* ==========================================================================
    CinePulse Studio - Comprehensive Türkçe Dublaj Belgesel Scraper
    Aggregates live 1080p Turkish dubbed documentary streams from:
-   - DMAX (Direct 1080p HLS)
-   - TLC (Direct 1080p HLS)
-   - BelgeselX (1080p Embed)
-   - Belgeselce (1080p Embed)
-   - TürkçeBelgesel (1080p Embed)
+   - DMAX (Official Turkish Dubbed Stream)
+   - TLC (Official Turkish Dubbed Stream)
+   - BelgeselX (1080p HD Embed)
+   - Belgeselce (1080p HD Embed)
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
@@ -44,7 +43,14 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
-export async function fetchBelgeselSources({ titles = [], seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
+export async function fetchBelgeselSources({
+  titles = [],
+  seriesTitle = '',
+  title = '',
+  originalTitle = '',
+  season = 1,
+  episode = 1
+}) {
   const candidateTitles = [...new Set([
     ...titles,
     seriesTitle,
@@ -62,91 +68,158 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
     if (!slug) continue;
     const normQ = normalizeText(q);
 
-    // 1. DMAX TV (Direct HLS Stream) — strict title match + geo-block guard
+    // 1. DMAX TV (Official Turkish Dubbed Stream)
     try {
       const dmaxEpUrl = `https://www.dmax.com.tr/${slug}/${season}-sezon-${episode}-bolum`;
       const proxyDmaxUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(dmaxEpUrl)}`;
       const res = await fetch(proxyDmaxUrl).catch(() => null);
       if (res && res.ok) {
         const html = await res.text();
-        const lowerHtml = html.toLowerCase();
-        // Skip geo-blocked or live-redirect pages
-        if (!lowerHtml.includes('sadece türkiye') && !lowerHtml.includes('sadece turkiye') && !lowerHtml.includes('canli-izle')) {
-          const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
+        const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
+        const normPageTitle = normalizeText(pageTitle);
+        const matchLen = Math.min(normQ.length, 6);
+
+        if (
+          !normPageTitle.includes('404') &&
+          !normPageTitle.includes('bulunamadi') &&
+          normPageTitle.includes(normQ.substring(0, matchLen))
+        ) {
+          if (!seenUrls.has(dmaxEpUrl)) {
+            seenUrls.add(dmaxEpUrl);
+            results.push({
+              id: `dmax_${slug}_${season}_${episode}`,
+              name: `DMAX (Dublaj HD)`,
+              badge: '🌿 DMAX',
+              category: 'dubbed',
+              isHls: false,
+              isDirectVideo: false,
+              streamUrl: dmaxEpUrl,
+              url: dmaxEpUrl,
+              getUrl: () => dmaxEpUrl
+            });
+          }
+        }
+      }
+
+      // If exact episode page wasn't found directly, check program catalog on DMAX
+      if (results.length === 0) {
+        const mainDmaxUrl = `https://www.dmax.com.tr/${slug}`;
+        const mainRes = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(mainDmaxUrl)}`).catch(() => null);
+        if (mainRes && mainRes.ok) {
+          const mainHtml = await mainRes.text();
+          const pageTitle = mainHtml.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
           const normPageTitle = normalizeText(pageTitle);
-          const matchLen = Math.min(normQ.length, 8);
+          const matchLen = Math.min(normQ.length, 6);
 
-          if (matchLen >= 5 && !normPageTitle.includes('canlitv') && !normPageTitle.includes('404') && normPageTitle.includes(normQ.substring(0, matchLen))) {
-            const refId = html.match(/referenceId\s*:\s*['"]([^'"]+)['"]/i)?.[1];
-            if (refId) {
-              const metaUrl = `https://www.dmax.com.tr/player/info?referenceId=${refId}`;
-              const metaRes = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(metaUrl)}`, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-              }).catch(() => null);
+          if (
+            !normPageTitle.includes('404') &&
+            !normPageTitle.includes('bulunamadi') &&
+            normPageTitle.includes(normQ.substring(0, matchLen))
+          ) {
+            const linkRegex = new RegExp(`href=["'](https?:\\/\\/www\\.dmax\\.com\\.tr\\/${slug}\\/(\\d+)-sezon-(\\d+)-bolum)["']`, 'gi');
+            let m;
+            const eps = [];
+            while ((m = linkRegex.exec(mainHtml)) !== null) {
+              eps.push({ url: m[1], season: parseInt(m[2], 10), episode: parseInt(m[3], 10) });
+            }
 
-              if (metaRes && metaRes.ok) {
-                const metaData = await metaRes.json().catch(() => null);
-                const hlsUrl = metaData?.video?.data?.flavors?.hls;
-                if (hlsUrl && !seenUrls.has(hlsUrl)) {
-                  seenUrls.add(hlsUrl);
-                  results.push({
-                    id: `dmax_${slug}_${season}_${episode}`,
-                    name: `DMAX HD (Türkçe Dublaj 1080p)`,
-                    badge: '🌿 DMAX HD',
-                    category: 'dubbed',
-                    isHls: true,
-                    isDirectVideo: false,
-                    streamUrl: hlsUrl,
-                    url: hlsUrl,
-                    getUrl: () => hlsUrl
-                  });
-                }
-              }
+            const targetUrl = eps.find(e => e.season === season && e.episode === episode)?.url ||
+                              eps.find(e => e.episode === episode)?.url ||
+                              eps[0]?.url ||
+                              mainDmaxUrl;
+
+            if (!seenUrls.has(targetUrl)) {
+              seenUrls.add(targetUrl);
+              results.push({
+                id: `dmax_${slug}_${season}_${episode}`,
+                name: `DMAX (Dublaj HD)`,
+                badge: '🌿 DMAX',
+                category: 'dubbed',
+                isHls: false,
+                isDirectVideo: false,
+                streamUrl: targetUrl,
+                url: targetUrl,
+                getUrl: () => targetUrl
+              });
             }
           }
         }
       }
     } catch (_) {}
 
-    // 2. TLC TV (Direct HLS Stream) — strict title match + geo-block guard
+    // 2. TLC TV (Official Turkish Dubbed Stream)
     try {
       const tlcEpUrl = `https://www.tlctv.com.tr/${slug}/${season}-sezon-${episode}-bolum`;
       const proxyTlcUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(tlcEpUrl)}`;
       const res = await fetch(proxyTlcUrl).catch(() => null);
       if (res && res.ok) {
         const html = await res.text();
-        const lowerHtml = html.toLowerCase();
-        if (!lowerHtml.includes('sadece türkiye') && !lowerHtml.includes('sadece turkiye') && !lowerHtml.includes('canli-izle')) {
-          const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
+        const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
+        const normPageTitle = normalizeText(pageTitle);
+        const matchLen = Math.min(normQ.length, 6);
+
+        if (
+          !normPageTitle.includes('404') &&
+          !normPageTitle.includes('bulunamadi') &&
+          normPageTitle.includes(normQ.substring(0, matchLen))
+        ) {
+          if (!seenUrls.has(tlcEpUrl)) {
+            seenUrls.add(tlcEpUrl);
+            results.push({
+              id: `tlc_${slug}_${season}_${episode}`,
+              name: `TLC (Dublaj HD)`,
+              badge: '🌿 TLC',
+              category: 'dubbed',
+              isHls: false,
+              isDirectVideo: false,
+              streamUrl: tlcEpUrl,
+              url: tlcEpUrl,
+              getUrl: () => tlcEpUrl
+            });
+          }
+        }
+      }
+
+      // If exact episode wasn't found, check main TLC catalog
+      if (!results.some(r => r.id.startsWith('tlc_'))) {
+        const mainTlcUrl = `https://www.tlctv.com.tr/${slug}`;
+        const mainRes = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(mainTlcUrl)}`).catch(() => null);
+        if (mainRes && mainRes.ok) {
+          const mainHtml = await mainRes.text();
+          const pageTitle = mainHtml.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
           const normPageTitle = normalizeText(pageTitle);
-          const matchLen = Math.min(normQ.length, 8);
+          const matchLen = Math.min(normQ.length, 6);
 
-          if (matchLen >= 5 && !normPageTitle.includes('canlitv') && !normPageTitle.includes('404') && normPageTitle.includes(normQ.substring(0, matchLen))) {
-            const refId = html.match(/referenceId\s*:\s*['"]([^'"]+)['"]/i)?.[1];
-            if (refId) {
-              const metaUrl = `https://www.tlctv.com.tr/player/info?referenceId=${refId}`;
-              const metaRes = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(metaUrl)}`, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-              }).catch(() => null);
+          if (
+            !normPageTitle.includes('404') &&
+            !normPageTitle.includes('bulunamadi') &&
+            normPageTitle.includes(normQ.substring(0, matchLen))
+          ) {
+            const linkRegex = new RegExp(`href=["'](https?:\\/\\/www\\.tlctv\\.com\\.tr\\/${slug}\\/(\\d+)-sezon-(\\d+)-bolum)["']`, 'gi');
+            let m;
+            const eps = [];
+            while ((m = linkRegex.exec(mainHtml)) !== null) {
+              eps.push({ url: m[1], season: parseInt(m[2], 10), episode: parseInt(m[3], 10) });
+            }
 
-              if (metaRes && metaRes.ok) {
-                const metaData = await metaRes.json().catch(() => null);
-                const hlsUrl = metaData?.video?.data?.flavors?.hls;
-                if (hlsUrl && !seenUrls.has(hlsUrl)) {
-                  seenUrls.add(hlsUrl);
-                  results.push({
-                    id: `tlc_${slug}_${season}_${episode}`,
-                    name: `TLC TV HD (Türkçe Dublaj 1080p)`,
-                    badge: '🌿 TLC HD',
-                    category: 'dubbed',
-                    isHls: true,
-                    isDirectVideo: false,
-                    streamUrl: hlsUrl,
-                    url: hlsUrl,
-                    getUrl: () => hlsUrl
-                  });
-                }
-              }
+            const targetUrl = eps.find(e => e.season === season && e.episode === episode)?.url ||
+                              eps.find(e => e.episode === episode)?.url ||
+                              eps[0]?.url ||
+                              mainTlcUrl;
+
+            if (!seenUrls.has(targetUrl)) {
+              seenUrls.add(targetUrl);
+              results.push({
+                id: `tlc_${slug}_${season}_${episode}`,
+                name: `TLC (Dublaj HD)`,
+                badge: '🌿 TLC',
+                category: 'dubbed',
+                isHls: false,
+                isDirectVideo: false,
+                streamUrl: targetUrl,
+                url: targetUrl,
+                getUrl: () => targetUrl
+              });
             }
           }
         }
@@ -155,26 +228,37 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
 
     // 3. BelgeselX (1080p Embed)
     try {
-      const bxUrl = `https://belgeselx.com/belgeseldizi/${slug}`;
-      const proxyBxUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(bxUrl)}`;
-      const res = await fetch(proxyBxUrl).catch(() => null);
-      if (res && res.ok) {
-        const html = await res.text();
-        const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
-        const normPageTitle = normalizeText(pageTitle);
+      const bxUrls = [
+        `https://belgeselx.com/belgeseldizi/${slug}`,
+        `https://belgeselx.com/belgesel/${slug}`
+      ];
 
-        if (!normPageTitle.includes('404') && !normPageTitle.includes('bulunamadi') && normPageTitle.includes(normQ.substring(0, 5))) {
-          if (!seenUrls.has(bxUrl)) {
-            seenUrls.add(bxUrl);
-            results.push({
-              id: `bx_${slug}`,
-              name: `BelgeselX (Türkçe Dublaj 1080p)`,
-              badge: '🌿 BelgeselX',
-              category: 'dubbed',
-              streamUrl: bxUrl,
-              url: bxUrl,
-              getUrl: () => bxUrl
-            });
+      for (const bxUrl of bxUrls) {
+        const proxyBxUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(bxUrl)}`;
+        const res = await fetch(proxyBxUrl).catch(() => null);
+        if (res && res.ok) {
+          const html = await res.text();
+          const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
+          const normPageTitle = normalizeText(pageTitle);
+
+          if (
+            !normPageTitle.includes('404') &&
+            !normPageTitle.includes('bulunamadi') &&
+            normPageTitle.includes(normQ.substring(0, 5))
+          ) {
+            if (!seenUrls.has(bxUrl)) {
+              seenUrls.add(bxUrl);
+              results.push({
+                id: `bx_${slug}`,
+                name: `BelgeselX`,
+                badge: '🌿 BelgeselX',
+                category: 'dubbed',
+                streamUrl: bxUrl,
+                url: bxUrl,
+                getUrl: () => bxUrl
+              });
+              break;
+            }
           }
         }
       }
@@ -195,7 +279,7 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
             seenUrls.add(bcUrl);
             results.push({
               id: `bc_${slug}`,
-              name: `Belgeselce (Türkçe Dublaj 1080p)`,
+              name: `Belgeselce`,
               badge: '🌿 Belgeselce',
               category: 'dubbed',
               streamUrl: bcUrl,
@@ -212,3 +296,4 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
 
   return results;
 }
+
