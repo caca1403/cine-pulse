@@ -23,22 +23,6 @@ function toSlug(title) {
     .replace(/-+/g, '-');
 }
 
-function isSlugSimilar(targetSlug, candidateSlug) {
-  if (!targetSlug || !candidateSlug) return false;
-  const cleanT = targetSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '').replace(/^the-/, '').replace(/^\d+-/, '');
-  const cleanC = candidateSlug.replace(/^film\//, '').replace(/^dizi\//, '').replace(/^\//, '').replace(/\/$/, '').replace(/^the-/, '').replace(/^\d+-/, '');
-  if (cleanT === cleanC) return true;
-
-  const tParts = cleanT.split('-').filter(p => p.length > 0);
-  const cParts = cleanC.split('-').filter(p => p.length > 0);
-
-  const matched = tParts.filter(p => cParts.includes(p)).length;
-  const maxLen = Math.max(tParts.length, cParts.length, 1);
-  const ratio = matched / maxLen;
-
-  return ratio >= 0.75;
-}
-
 export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
   const targetTitle = seriesTitle || title;
   const isMovie = type === 'movie';
@@ -57,109 +41,76 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
     }
   });
 
+  if (candidateSlugs.length === 0) return [];
+
   const baseDomains = ['https://filmizlech.com'];
 
   for (const baseDomain of baseDomains) {
-    // 1. Direct Slug Check
     for (const slug of candidateSlugs) {
-      const targetUrl = isMovie
-        ? `${baseDomain}/film/${slug}`
-        : `${baseDomain}/dizi/${slug}/sezon-${season}/bolum-${episode}`;
+      const targetUrls = isMovie
+        ? [
+            `${baseDomain}/${slug}-izle/`,
+            `${baseDomain}/${slug}-izle-1/`,
+            `${baseDomain}/${slug}/`,
+            `${baseDomain}/film/${slug}-izle/`,
+            `${baseDomain}/film/${slug}/`
+          ]
+        : [
+            `${baseDomain}/dizi/${slug}/sezon-${season}/bolum-${episode}/`,
+            `${baseDomain}/dizi/${slug}/sezon-${season}/bolum-${episode}`
+          ];
 
-      try {
-        const proxyTargetUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
-        const res = await fetch(proxyTargetUrl, { signal: AbortSignal.timeout(2000) }).catch(() => null);
-
-        if (!res || !res.ok) continue;
-        const html = await res.text();
-
-        const pid = html.match(/data-pid="([^"]+)"/)?.[1];
-        const ts = html.match(/data-ts="([^"]+)"/)?.[1];
-        const sig = html.match(/data-sig="([^"]+)"/)?.[1];
-
-        if (pid && ts && sig) {
-          const tokenUrl = `${baseDomain}/api/player-token.php?pid=${pid}&_t=${ts}&_s=${encodeURIComponent(sig)}`;
-          const proxyTokenUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(tokenUrl)}`;
-          const tRes = await fetch(proxyTokenUrl, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Referer': targetUrl },
-            signal: AbortSignal.timeout(2000)
-          }).catch(() => null);
-
-          if (tRes && tRes.ok) {
-            const data = await tRes.json().catch(() => null);
-            if (data && data.url) {
-              const playableUrl = data.url;
-              return [{
-                id: `channel_${isDub ? 'dub' : 'sub'}_${slug}`,
-                name: `Channel Stream (${isDub ? 'Dublaj' : 'Altyazılı'})`,
-                badge: '⚡ Channel',
-                category: isDub ? 'dubbed' : 'subtitled',
-                streamUrl: playableUrl,
-                url: playableUrl,
-                getUrl: () => playableUrl
-              }];
-            }
-          }
-        }
-      } catch (_) {}
-    }
-
-    // 2. High-speed API Search Check
-    for (const searchKeyword of candidateTitles) {
-      try {
-        const sUrl = `${baseDomain}/api/search.php?q=${encodeURIComponent(searchKeyword)}`;
-        const proxySearchUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(sUrl)}`;
-        const sRes = await fetch(proxySearchUrl, { signal: AbortSignal.timeout(2000) }).catch(() => null);
-        if (!sRes || !sRes.ok) continue;
-        const searchResults = await sRes.json().catch(() => []);
-        if (!Array.isArray(searchResults) || searchResults.length === 0) continue;
-
-        const matchedItem = searchResults.find(item => {
-          const itemSlug = item.url ? item.url.split('/').pop() : '';
-          return candidateSlugs.some(cs => isSlugSimilar(cs, itemSlug));
-        });
-
-        if (matchedItem && matchedItem.url) {
-          let movieOrSeriesUrl = matchedItem.url;
-          if (!isMovie) {
-            movieOrSeriesUrl = `${movieOrSeriesUrl}/sezon-${season}/bolum-${episode}`;
-          }
-
-          const proxyPageUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(movieOrSeriesUrl)}`;
-          const pageRes = await fetch(proxyPageUrl, { signal: AbortSignal.timeout(2000) }).catch(() => null);
+      for (const targetUrl of targetUrls) {
+        try {
+          const proxyTargetUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
+          const pageRes = await fetch(proxyTargetUrl, { signal: AbortSignal.timeout(2200) }).catch(() => null);
           if (!pageRes || !pageRes.ok) continue;
-          const pageHtml = await pageRes.text();
 
-          const pid = pageHtml.match(/data-pid="([^"]+)"/)?.[1];
-          const ts = pageHtml.match(/data-ts="([^"]+)"/)?.[1];
-          const sig = pageHtml.match(/data-sig="([^"]+)"/)?.[1];
+          const html = await pageRes.text().catch(() => '');
+          if (!html || html.includes('404 Not Found') || html.length < 500) continue;
 
-          if (pid && ts && sig) {
-            const tokenUrl = `${baseDomain}/api/player-token.php?pid=${pid}&_t=${ts}&_s=${encodeURIComponent(sig)}`;
-            const proxyTokenUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(tokenUrl)}`;
-            const tRes = await fetch(proxyTokenUrl, {
-              headers: { 'X-Requested-With': 'XMLHttpRequest', 'Referer': movieOrSeriesUrl },
+          const pidMatch = html.match(/data-pid=["']([^"']+)["']/i);
+          const tsMatch = html.match(/data-ts=["']([^"']+)["']/i);
+          const sigMatch = html.match(/data-sig=["']([^"']+)["']/i);
+
+          if (pidMatch && tsMatch && sigMatch) {
+            const pid = pidMatch[1];
+            const ts = tsMatch[1];
+            const sig = sigMatch[1];
+
+            const ajaxUrl = `${baseDomain}/ajax/get_sources.php?pid=${pid}&ts=${ts}&sig=${sig}`;
+            const proxyAjaxUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(ajaxUrl)}`;
+
+            const ajaxRes = await fetch(proxyAjaxUrl, {
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Referer': targetUrl
+              },
               signal: AbortSignal.timeout(2000)
             }).catch(() => null);
 
-            if (tRes && tRes.ok) {
-              const data = await tRes.json().catch(() => null);
-              if (data && data.url) {
-                const playableUrl = data.url;
-                return [{
-                  id: `channel_${isDub ? 'dub' : 'sub'}`,
-                  name: `Channel Stream (${isDub ? 'Dublaj' : 'Altyazılı'})`,
-                  badge: '⚡ Channel',
-                  category: isDub ? 'dubbed' : 'subtitled',
-                  streamUrl: playableUrl,
-                  url: playableUrl,
-                  getUrl: () => playableUrl
-                }];
+            if (ajaxRes && ajaxRes.ok) {
+              const data = await ajaxRes.json().catch(() => null);
+              if (data && data.status === 'success' && data.src) {
+                return [
+                  {
+                    id: `flz_${slug}_${season}_${episode}`,
+                    name: `VIP Hat 4`,
+                    displayName: `VIP Hat 4`,
+                    badge: '⚡ VIP',
+                    category: isDub ? 'dubbed' : 'subtitled',
+                    streamUrl: data.src,
+                    url: data.src,
+                    isHls: data.src.includes('.m3u8'),
+                    isDirectVideo: false,
+                    getUrl: () => data.src
+                  }
+                ];
               }
             }
           }
-        }
-      } catch (_) {}
+        } catch (_) {}
+      }
     }
   }
 
