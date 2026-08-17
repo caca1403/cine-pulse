@@ -144,26 +144,34 @@ export async function getStreamingServers({
     withTimeout(fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true }))
   ]);
 
-  function cleanServerLabel(rawName) {
-    if (!rawName) return 'Sunucu';
-    return rawName
+  function cleanServerLabel(rawName, fallback = 'VIP Stream') {
+    if (!rawName) return fallback;
+    let clean = rawName
       .replace(/\s*\(Dublaj\)/gi, '')
       .replace(/\s*\(Altyazılı\)/gi, '')
+      .replace(/\s*\(Türkçe\)/gi, '')
+      .replace(/\s*\(1080p\)/gi, '')
+      .replace(/\s*1080p/gi, '')
       .replace(/\s*Stream\s*/gi, '')
-      .replace(/\s*VIP\s*/gi, '')
-      .replace(/\s*1080p\s*/gi, '')
-      .replace(/\s*HD\s*/gi, '')
-      .replace(/\s*TV\s*/gi, '')
-      .trim() || rawName.trim();
+      .trim();
+
+    if (!clean || clean.toLowerCase() === 'channel' || clean.toLowerCase() === 'vip' || clean.toLowerCase() === 'fast' || clean.length < 2) {
+      return fallback;
+    }
+    return clean;
   }
 
   const mapDubbedSources = (rawList) => (rawList || [])
     .filter(s => {
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
-      return urlStr && !urlStr.includes('recaptcha') && urlStr.length > 8;
+      return urlStr &&
+        !urlStr.includes('recaptcha') &&
+        !urlStr.includes('ag2m4.cfd') &&
+        !urlStr.includes('liderfilm') &&
+        urlStr.length > 8;
     })
     .map(s => {
-      const shortName = cleanServerLabel(s.name);
+      const shortName = cleanServerLabel(s.name, 'VIP Dublaj');
       return {
         id: s.id,
         name: shortName,
@@ -177,7 +185,7 @@ export async function getStreamingServers({
       };
     });
 
-  const cleanDubbed = [
+  const rawCleanDubbed = [
     ...mapDubbedSources(blgDub),
     ...mapDubbedSources(fmkDub),
     ...mapDubbedSources(dblDub),
@@ -188,10 +196,58 @@ export async function getStreamingServers({
     ...mapDubbedSources(finDub)
   ];
 
+  // If local Turkish scrapers couldn't find active streams, provide global multi-track VIP CDN
+  const cleanDubbed = rawCleanDubbed.length > 0 ? rawCleanDubbed : [
+    {
+      id: 'dub_videasy',
+      name: 'Videasy 4K',
+      displayName: 'Videasy 4K',
+      badge: '⚡ Videasy 4K',
+      category: 'dubbed',
+      getUrl: () => isMovie
+        ? `https://player.videasy.net/movie/${tmdbId}`
+        : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'dub_vidlink',
+      name: 'VidLink VIP',
+      displayName: 'VidLink VIP',
+      badge: '⚡ VidLink',
+      category: 'dubbed',
+      getUrl: () => isMovie
+        ? `https://vidlink.pro/movie/${tmdbId}`
+        : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'dub_vidsrccc',
+      name: 'VidSrc Pro',
+      displayName: 'VidSrc Pro',
+      badge: '⚡ VidSrc Pro',
+      category: 'dubbed',
+      getUrl: () => isMovie
+        ? `https://vidsrc.cc/v2/embed/movie/${tmdbId}`
+        : `https://vidsrc.cc/v2/embed/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'dub_2embed',
+      name: '2Embed VIP',
+      displayName: '2Embed VIP',
+      badge: '⚡ 2Embed',
+      category: 'dubbed',
+      getUrl: () => isMovie
+        ? `https://www.2embed.cc/embed/${tmdbId}`
+        : `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`
+    }
+  ];
+
   const mapSubtitledSources = (rawList) => (rawList || [])
     .filter(s => {
       const urlStr = (s.url || s.streamUrl || '').toLowerCase();
-      return urlStr && !urlStr.includes('recaptcha') && urlStr.length > 8;
+      return urlStr &&
+        !urlStr.includes('recaptcha') &&
+        !urlStr.includes('ag2m4.cfd') &&
+        !urlStr.includes('liderfilm') &&
+        urlStr.length > 8;
     })
     .map(s => {
       const shortName = cleanServerLabel(s.name);
