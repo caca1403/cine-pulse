@@ -429,7 +429,7 @@ export async function openPlayerModal({
         <div class="player-footer-left">
           <button id="btn-toggle-watched-player" class="btn-footer-pill ${isWatched ? 'watched-active' : ''}">
             <i data-lucide="${isWatched ? 'check-circle-2' : 'check'}" style="width: 15px; height: 15px;"></i>
-            <span>${isWatched ? 'İzlendi' : 'İzlendi Olarak İşaretle'}</span>
+            <span>${isWatched ? 'İzlendi' : 'İzlendi Yap'}</span>
           </button>
 
           <button id="btn-halfway-player" class="btn-footer-pill" title="Kaldığım Yeri Kaydet (20. dk)">
@@ -881,7 +881,7 @@ export async function openPlayerModal({
     if (toggleWatchedPlayerBtn) {
       const span = toggleWatchedPlayerBtn.querySelector('span');
       const icon = toggleWatchedPlayerBtn.querySelector('i');
-      if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Olarak İşaretle';
+      if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Yap';
       if (icon) icon.setAttribute('data-lucide', isWatched ? 'check-circle-2' : 'check');
       if (isWatched) {
         toggleWatchedPlayerBtn.classList.add('watched-active');
@@ -1050,10 +1050,7 @@ export async function openPlayerModal({
         duration: estimatedDuration
       });
 
-      isWatched = updated.completed;
-      const span = toggleWatchedBtn.querySelector('span');
-      const icon = toggleWatchedBtn.querySelector('i');
-      if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Olarak İşaretle';
+      if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Yap';
       if (icon) icon.setAttribute('data-lucide', isWatched ? 'check-circle-2' : 'check');
       if (isWatched) {
         toggleWatchedBtn.classList.add('watched-active');

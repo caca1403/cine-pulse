@@ -104,15 +104,20 @@ export async function renderDetailView(type = 'tv', id) {
 
   const html = `
     <div class="detail-view">
-      <div class="detail-header">
-        <div class="detail-backdrop" style="background-image: url('${backdropUrl}')"></div>
+      <div class="detail-hero-banner">
+        <div class="detail-backdrop-img" style="background-image: url('${backdropUrl}')"></div>
+        <div class="detail-backdrop-gradient"></div>
 
-        <div class="container" style="position: relative; z-index: 2;">
-          <div class="detail-content">
-            <img class="detail-poster" src="${posterUrl}" alt="${title}" onerror="this.onerror=null; this.src='${SINEFLIX_POSTER_FALLBACK}';" />
+        <div class="detail-container">
+          <div class="detail-layout">
+            <!-- Poster Card -->
+            <div class="detail-poster-col">
+              <img class="detail-poster-img" src="${posterUrl}" alt="${title}" onerror="this.onerror=null; this.src='${SINEFLIX_POSTER_FALLBACK}';" />
+            </div>
 
-            <div class="detail-info">
-              <div class="hero-badge-row">
+            <!-- Content Details -->
+            <div class="detail-info-col">
+              <div class="detail-badge-deck">
                 <span class="badge badge-primary">${effectiveType === 'tv' ? 'DİZİ / SERİ' : 'FİLM'}</span>
                 <span class="badge badge-rating">
                   <i data-lucide="star" style="width:14px; height:14px; fill: currentColor"></i> ${rating} IMDb
@@ -124,26 +129,26 @@ export async function renderDetailView(type = 'tv', id) {
                 ${!media.runtime && media.episode_run_time && media.episode_run_time.length > 0 ? `<span class="badge">${media.episode_run_time[0]} dk / bölüm</span>` : ''}
               </div>
 
-              <h1 class="detail-title">${title}</h1>
-              ${originalTitle && originalTitle !== title ? `<div style="font-size: 1.1rem; color: var(--text-muted); margin-top: -0.5rem; font-style: italic;">${originalTitle}</div>` : ''}
+              <h1 class="detail-heading-title">${title}</h1>
+              ${originalTitle && originalTitle !== title ? `<div class="detail-orig-title">${originalTitle}</div>` : ''}
 
-              <div class="detail-genres">
-                ${genres.map(g => `<span class="detail-genre-tag">${g.name}</span>`).join('')}
+              <div class="detail-genre-row">
+                ${genres.map(g => `<span class="detail-genre-chip">${g.name}</span>`).join('')}
               </div>
 
-              <p class="detail-overview-text">${overview}</p>
+              <p class="detail-storyline">${overview}</p>
 
               <!-- Oyuncular (Horizontal Smooth Carousel) -->
               ${castList.length > 0 ? `
-                <div class="detail-cast-section">
-                  <div class="detail-section-subtitle">Oyuncular</div>
-                  <div class="detail-cast-carousel">
+                <div class="detail-cast-block">
+                  <div class="detail-cast-label">Oyuncular</div>
+                  <div class="detail-cast-rail">
                     ${castList.map(actor => {
                       const actorPic = actor.profile_path ? getImageUrl(actor.profile_path, TMDB_IMAGE_SIZES.POSTER_SMALL) : SINEFLIX_ACTOR_FALLBACK;
                       return `
-                        <div class="actor-card-chip">
-                          <img src="${actorPic}" alt="${actor.name}" class="actor-avatar-img" onerror="this.onerror=null; this.src='${SINEFLIX_ACTOR_FALLBACK}';" />
-                          <span class="actor-name-text">${actor.name}</span>
+                        <div class="detail-actor-pill">
+                          <img src="${actorPic}" alt="${actor.name}" class="detail-actor-avatar" onerror="this.onerror=null; this.src='${SINEFLIX_ACTOR_FALLBACK}';" />
+                          <span class="detail-actor-name">${actor.name}</span>
                         </div>
                       `;
                     }).join('')}
@@ -152,21 +157,21 @@ export async function renderDetailView(type = 'tv', id) {
               ` : ''}
 
               <!-- Modern Hero Action Deck -->
-              <div class="hero-actions-container">
+              <div class="detail-action-deck">
                 ${effectiveType === 'movie' ? `
-                  <button class="btn-primary btn-hero-main-play" id="btn-play-movie">
-                    <i data-lucide="play" style="fill: currentColor; width: 20px; height: 20px;"></i>
+                  <button class="btn-play-primary" id="btn-play-movie">
+                    <i data-lucide="play" style="fill: currentColor; width: 22px; height: 22px;"></i>
                     <span>${playButtonLabel}</span>
                   </button>
                 ` : `
-                  <button class="btn-primary btn-hero-main-play" id="btn-resume-series">
-                    <i data-lucide="play" style="fill: currentColor; width: 20px; height: 20px;"></i>
+                  <button class="btn-play-primary" id="btn-resume-series">
+                    <i data-lucide="play" style="fill: currentColor; width: 22px; height: 22px;"></i>
                     <span>${playButtonLabel}</span>
                   </button>
                 `}
 
                 <!-- Compact Quick Action Tiles Grid -->
-                <div class="detail-action-grid">
+                <div class="detail-action-subgrid">
                   <button class="btn-action-tile ${inFav ? 'active-fav' : ''}" id="btn-toggle-fav">
                     <i data-lucide="heart" style="${inFav ? 'fill: var(--primary); color: var(--primary)' : ''}"></i>
                     <span>${inFav ? 'Favorilerimde' : 'Favori'}</span>
