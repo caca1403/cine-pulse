@@ -40,7 +40,7 @@ function cleanTitle(raw) {
     .trim();
 }
 
-function withTimeout(promise, ms = 2200) {
+function withTimeout(promise, ms = 3500) {
   return Promise.race([
     promise.catch(() => []),
     new Promise(resolve => setTimeout(() => resolve([]), ms))
@@ -131,7 +131,7 @@ export async function getStreamingServers({
     withTimeout(fetchDiziBalSources({ type, title: targetTitle, originalTitle, season, episode, isDub: false })),
     !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: true })) : Promise.resolve([]),
     !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: false })) : Promise.resolve([]),
-    withTimeout(fetchSinewixSources({ titles: candidateTitles, season, episode })),
+    withTimeout(fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),

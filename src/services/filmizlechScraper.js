@@ -39,6 +39,13 @@ function isSlugSimilar(targetSlug, candidateSlug) {
   return ratio >= 0.75;
 }
 
+function unblockEmbedUrl(rawUrl) {
+  if (!rawUrl) return '';
+  // play.liderfilm.cc enforces frame-ancestors restrictions on iframes.
+  // The direct embed host x.ag2m4.cfd plays smoothly in all browsers without frame restrictions.
+  return rawUrl.replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd');
+}
+
 export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
   const targetTitle = seriesTitle || title;
   const isMovie = type === 'movie';
@@ -87,14 +94,15 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
           if (tRes && tRes.ok) {
             const data = await tRes.json().catch(() => null);
             if (data && data.url) {
+              const playableUrl = unblockEmbedUrl(data.url);
               return [{
                 id: `channel_${isDub ? 'dub' : 'sub'}_${slug}`,
                 name: `Channel Stream (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
                 badge: isDub ? '⚡ Channel 1080p' : '💬 Channel 1080p',
                 category: isDub ? 'dubbed' : 'subtitled',
-                streamUrl: data.url,
-                url: data.url,
-                getUrl: () => data.url
+                streamUrl: playableUrl,
+                url: playableUrl,
+                getUrl: () => playableUrl
               }];
             }
           }
@@ -142,14 +150,15 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
             if (tRes && tRes.ok) {
               const data = await tRes.json().catch(() => null);
               if (data && data.url) {
+                const playableUrl = unblockEmbedUrl(data.url);
                 return [{
                   id: `channel_${isDub ? 'dub' : 'sub'}`,
                   name: `Channel Stream (${isDub ? 'Dublaj' : 'Altyazılı'} 1080p)`,
                   badge: isDub ? '⚡ Channel 1080p' : '💬 Channel 1080p',
                   category: isDub ? 'dubbed' : 'subtitled',
-                  streamUrl: data.url,
-                  url: data.url,
-                  getUrl: () => data.url
+                  streamUrl: playableUrl,
+                  url: playableUrl,
+                  getUrl: () => playableUrl
                 }];
               }
             }

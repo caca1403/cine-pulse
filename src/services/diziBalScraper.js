@@ -79,7 +79,7 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
 
         const srcId = movieData.src || (movieData.streamUrl ? movieData.streamUrl.match(/embed-([^.]+)/)?.[1] : null);
         if (srcId) {
-          const embedUrl = movieData.streamUrl || `https://x.ag2m4.cfd/embed-${srcId}.html`;
+          const embedUrl = (movieData.streamUrl ? movieData.streamUrl.replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd') : null) || `https://x.ag2m4.cfd/embed-${srcId}.html`;
 
           return [
             {

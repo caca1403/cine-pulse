@@ -37,20 +37,39 @@ async function performSinewixSearch(query) {
   return json.search || json.data || [];
 }
 
-export async function fetchSinewixSources({ type = 'tv', title = '', originalTitle = '', year = null, season = 1, episode = 1, isDub = true }) {
-  if (!title && !originalTitle) return [];
+export async function fetchSinewixSources({
+  type = 'tv',
+  titles = [],
+  seriesTitle = '',
+  title = '',
+  originalTitle = '',
+  year = null,
+  season = 1,
+  episode = 1,
+  isDub = true
+}) {
   const isMovie = type === 'movie';
 
   try {
-    const queries = [];
-    const cleanT = cleanTitleString(title);
-    if (cleanT) queries.push(cleanT);
-    const cleanOrig = cleanTitleString(originalTitle);
-    if (cleanOrig && cleanOrig !== cleanT) queries.push(cleanOrig);
+    const rawQueries = [
+      ...(Array.isArray(titles) ? titles : []),
+      seriesTitle,
+      title,
+      originalTitle
+    ].filter(Boolean);
+
+    if (rawQueries.length === 0) return [];
+
+    const cleanedQueries = [];
+    for (const q of rawQueries) {
+      const c = cleanTitleString(q);
+      if (c && !cleanedQueries.includes(c)) cleanedQueries.push(c);
+    }
+
+    if (cleanedQueries.length === 0) return [];
 
     let searchItems = [];
-
-    for (const query of queries) {
+    for (const query of cleanedQueries) {
       searchItems = await performSinewixSearch(query);
       if (searchItems.length > 0) break;
     }
@@ -59,9 +78,9 @@ export async function fetchSinewixSources({ type = 'tv', title = '', originalTit
 
     // Match candidate accurately
     const targetItem = searchItems.find(it => {
-      const itemTitle = it.title || it.name || it.original_title || '';
-      return isTitleSimilar(cleanT, itemTitle) || (cleanOrig && isTitleSimilar(cleanOrig, itemTitle));
-    });
+      const itemTitle = it.title || it.name || it.original_name || it.original_title || '';
+      return cleanedQueries.some(q => isTitleSimilar(q, itemTitle));
+    }) || searchItems[0];
 
     if (!targetItem) {
       return [];
@@ -84,10 +103,10 @@ export async function fetchSinewixSources({ type = 'tv', title = '', originalTit
       const detailRes = await fetch(proxyDetailUrl).catch(() => null);
       if (detailRes && detailRes.ok) {
         const detailData = await detailRes.json().catch(() => ({}));
-        if (detailData.seasons) {
-          const seasonMatch = detailData.seasons.find(s => s.season_number === season) || detailData.seasons[0];
-          if (seasonMatch && seasonMatch.episodes) {
-            const epMatch = seasonMatch.episodes.find(e => e.episode_number === episode) || seasonMatch.episodes[0];
+        if (detailData.seasons && Array.isArray(detailData.seasons)) {
+          const seasonMatch = detailData.seasons.find(s => s.season_number === Number(season)) || detailData.seasons[0];
+          if (seasonMatch && seasonMatch.episodes && Array.isArray(seasonMatch.episodes)) {
+            const epMatch = seasonMatch.episodes.find(e => e.episode_number === Number(episode)) || seasonMatch.episodes[0];
             videoList = epMatch ? epMatch.videos || [] : [];
           }
         }
@@ -119,8 +138,8 @@ export async function fetchSinewixSources({ type = 'tv', title = '', originalTit
 
       streams.push({
         id: `snx_${v.id || Math.random().toString(36).substring(7)}`,
-        name: `HD Direct Stream (${serverName})`,
-        badge: '⚡ 1080p VIP',
+        name: `Sinewix VIP Stream (${serverName})`,
+        badge: '⚡ Sinewix VIP',
         category: 'dubbed',
         streamUrl: rawLink,
         url: rawLink,
