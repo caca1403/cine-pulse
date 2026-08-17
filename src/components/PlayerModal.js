@@ -324,13 +324,14 @@ export async function openPlayerModal({
         
         <!-- Left: Close Button, Title & Indicators -->
         <div class="player-header-left">
-          <button id="player-close-btn" class="btn-player-tool btn-close-cinema" title="Kapat (ESC)">
+          <button id="player-close-btn" class="btn-player-close" title="Kapat (ESC)">
             <i data-lucide="arrow-left" class="icon-mobile-back" style="width: 18px; height: 18px;"></i>
             <i data-lucide="x" class="icon-desktop-close" style="width: 18px; height: 18px;"></i>
           </button>
           
           <div class="player-title-box">
-            <span id="player-modal-title" class="player-header-title">${getDisplayTitle()}</span>
+            <span id="player-modal-title" class="player-header-title">${cleanSeriesName}</span>
+            <span class="player-media-badge">${type === 'tv' ? `S${currentSeason} B${currentEpisode}` : '4K UHD'}</span>
             ${initialTime > 5 ? `
               <span id="player-resume-time-badge" class="player-resume-badge" title="Kaldığın Süre">
                 <i data-lucide="clock" style="width: 11px; height: 11px;"></i>
@@ -343,14 +344,16 @@ export async function openPlayerModal({
         <!-- Center: Dubbed / Subtitled Segmented Toggle -->
         <div class="player-header-toggle">
           <button id="tab-dubbed" class="cinema-tab-btn ${currentCategory === 'dubbed' ? 'active' : ''}">
-            <span>🇹🇷 Dublaj</span>
+            <span class="tab-flag">🇹🇷</span>
+            <span>Dublaj</span>
           </button>
           <button id="tab-subtitled" class="cinema-tab-btn ${currentCategory === 'subtitled' ? 'active' : ''}">
-            <span>💬 Altyazılı</span>
+            <span class="tab-flag">💬</span>
+            <span>Altyazılı</span>
           </button>
         </div>
 
-        <!-- Right: Action Icons (Drawer, Fullscreen, Shortcuts, External) -->
+        <!-- Right: Action Icons (Drawer, Shortcuts, Fullscreen, External) -->
         <div class="player-header-right">
           ${type === 'tv' ? `
             <button id="btn-toggle-drawer" class="btn-player-tool" title="Bölümler & Sezonlar Menüsü (E / B)">
