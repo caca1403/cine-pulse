@@ -24,6 +24,7 @@ import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
 import { fetchTurkAnimeSources } from './turkanimeScraper.js';
 import { fetchBelgeselSources } from './belgeselScraper.js';
+import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -123,7 +124,8 @@ export async function getStreamingServers({
     antrSub,
     traSub,
     taSub,
-    blgDub
+    blgDub,
+    dmxDub
   ] = await Promise.all([
     withTimeout(fetchFilmMakinesiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchFilmMakinesiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
@@ -140,7 +142,8 @@ export async function getStreamingServers({
     withTimeout(fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
-    withTimeout(fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true }))
+    withTimeout(fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })),
+    withTimeout(fetchDmaxTlcSources({ type, titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode }))
   ]);
 
   const mapDubbedSources = (rawList) => (rawList || [])
@@ -167,7 +170,8 @@ export async function getStreamingServers({
     ...mapDubbedSources(dzpDub),
     ...mapDubbedSources(flzDub),
     ...mapDubbedSources(finDub),
-    ...mapDubbedSources(blgDub)
+    ...mapDubbedSources(blgDub),
+    ...mapDubbedSources(dmxDub)
   ];
 
   const mapSubtitledSources = (rawList) => (rawList || [])
