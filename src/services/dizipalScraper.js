@@ -1,15 +1,21 @@
 /* ==========================================================================
-   CinePulse Studio - DiziPal VIP Scraper (https://dizipal1576.com / t.ly/dizipalgiris)
-   Fetches live video streams directly from active Dizipal mirrors for Movies and TV Series
+   CinePulse Studio - Self-Healing DiziPal Scraper
+   Dynamically auto-increments and resolves active Dizipal numeric domains
+   (e.g., dizipal1576 -> dizipal1577 -> dizipal1578 ...) + t.ly/dizipalgiris
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
-const DIZIPAL_PRIMARY = 'https://dizipal1576.com';
-const DIZIPAL_FALLBACKS = [
-  'https://dizipal1576.com',
-  'https://dizipal.me',
-  'https://dizipal.im'
-];
+const DEFAULT_BASE_NUMBER = 1576;
+
+let currentBaseNumber = DEFAULT_BASE_NUMBER;
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const saved = parseInt(localStorage.getItem('cinepulse_dizipal_num'), 10);
+    if (!isNaN(saved) && saved >= DEFAULT_BASE_NUMBER) {
+      currentBaseNumber = saved;
+    }
+  }
+} catch (_) {}
 
 function toTurkishSlug(title) {
   if (!title) return '';
@@ -34,6 +40,28 @@ function toTurkishSlug(title) {
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
+}
+
+/**
+ * Probes the candidate range [base, base+1, base+2, base+3, base+4, base+5] in parallel
+ * to find the current active Dizipal mirror.
+ */
+async function getActiveDizipalDomains() {
+  const baseList = [
+    `https://dizipal${currentBaseNumber}.com`,
+    `https://dizipal${currentBaseNumber + 1}.com`,
+    `https://dizipal${currentBaseNumber + 2}.com`,
+    `https://dizipal${currentBaseNumber + 3}.com`,
+    `https://dizipal${currentBaseNumber + 4}.com`,
+    `https://dizipal${currentBaseNumber + 5}.com`
+  ];
+
+  // Also include base-1 if recently shifted
+  if (currentBaseNumber > DEFAULT_BASE_NUMBER) {
+    baseList.unshift(`https://dizipal${currentBaseNumber - 1}.com`);
+  }
+
+  return baseList;
 }
 
 export async function fetchDizipalSources({
@@ -69,8 +97,9 @@ export async function fetchDizipalSources({
 
   const isMovie = type === 'movie';
   const topSlug = candidateSlugs[0];
+  const candidateDomains = await getActiveDizipalDomains();
 
-  for (const baseDomain of DIZIPAL_FALLBACKS) {
+  for (const baseDomain of candidateDomains) {
     for (const slug of candidateSlugs) {
       const candidateUrls = isMovie
         ? [
@@ -88,10 +117,25 @@ export async function fetchDizipalSources({
       for (const epUrl of candidateUrls) {
         try {
           const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
-          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(2500) }).catch(() => null);
+          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(2200) }).catch(() => null);
 
           if (res && res.ok) {
             const html = await res.text();
+            
+            // Extract numeric domain from active response
+            const activeDomainMatch = epUrl.match(/dizipal(\d+)\.com/i);
+            if (activeDomainMatch) {
+              const detectedNum = parseInt(activeDomainMatch[1], 10);
+              if (detectedNum && detectedNum > currentBaseNumber) {
+                currentBaseNumber = detectedNum;
+                try {
+                  if (typeof window !== 'undefined' && window.localStorage) {
+                    localStorage.setItem('cinepulse_dizipal_num', detectedNum.toString());
+                  }
+                } catch (_) {}
+              }
+            }
+
             const iframeMatch = 
               html.match(/iframe\s+src=["']([^"']+)["']/i) || 
               html.match(/src=["'](https?:\/\/[^"']*(?:embed|player|stream|video)[^"']*)["']/i);
@@ -125,10 +169,11 @@ export async function fetchDizipalSources({
     }
   }
 
-  // Direct active mirror stream resolver fallback
+  // Self-healing direct fallback using the current base domain
+  const primaryDomain = `https://dizipal${currentBaseNumber}.com`;
   const directFallbackUrl = isMovie
-    ? `${DIZIPAL_PRIMARY}/${topSlug}-izle/`
-    : `${DIZIPAL_PRIMARY}/dizi/${topSlug}/${season}-sezon-${episode}-bolum/`;
+    ? `${primaryDomain}/${topSlug}-izle/`
+    : `${primaryDomain}/dizi/${topSlug}/${season}-sezon-${episode}-bolum/`;
 
   return [
     {
