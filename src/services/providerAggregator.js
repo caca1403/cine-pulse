@@ -2,6 +2,7 @@
    CinePulse Studio - Master Stream Aggregator
    Aggregates live Turkish & Global VIP sources:
    - FilmMakinesi (Rapid & CloseLoad 1080p DUAL)
+   - Channel Stream / FilmizleCh (1080p DUAL)
    - SezonlukDizi (VidMoly, Sibnet, Netu, VideoSoft, FileMoon)
    - DiziBal (VIP 1080p Dublaj & Altyazılı)
    - Sinewix (Android VIP 1080p HLS)
@@ -16,6 +17,7 @@ import { fetchDiziBalSources } from './diziBalScraper.js';
 import { fetchSezonlukDiziEpisodeSources } from './sezonlukDiziScraper.js';
 import { fetchDizipalSources } from './dizipalScraper.js';
 import { fetchSinewixSources } from './sinewixScraper.js';
+import { fetchFilmizlechSources } from './filmizlechScraper.js';
 import { fetchFilmMakinesiSources } from './filmMakinesiScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
@@ -111,6 +113,8 @@ export async function getStreamingServers({
     dblSub,
     szdDub,
     szdSub,
+    flzDub,
+    flzSub,
     snxDub,
     dzpDub,
     antrSub,
@@ -124,6 +128,8 @@ export async function getStreamingServers({
     withTimeout(fetchDiziBalSources({ type, title: targetTitle, originalTitle, season, episode, isDub: false })),
     !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: true })) : Promise.resolve([]),
     !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: false })) : Promise.resolve([]),
+    withTimeout(fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
+    withTimeout(fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
@@ -143,7 +149,7 @@ export async function getStreamingServers({
       .replace(/\s*Stream\s*/gi, '')
       .trim();
 
-    if (!clean || clean.toLowerCase() === 'channel' || clean.toLowerCase() === 'vip' || clean.toLowerCase() === 'fast' || clean.length < 2) {
+    if (!clean || clean.toLowerCase() === 'vip' || clean.toLowerCase() === 'fast' || clean.length < 2) {
       return fallback;
     }
     return clean;
@@ -175,6 +181,7 @@ export async function getStreamingServers({
   const rawCleanDubbed = [
     ...mapDubbedSources(blgDub),
     ...mapDubbedSources(fmkDub),
+    ...mapDubbedSources(flzDub),
     ...mapDubbedSources(dblDub),
     ...mapDubbedSources(szdDub),
     ...mapDubbedSources(snxDub),
@@ -300,6 +307,7 @@ export async function getStreamingServers({
         : `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}&season=${season}&episode=${episode}`
     },
     ...mapSubtitledSources(fmkSub),
+    ...mapSubtitledSources(flzSub),
     ...mapSubtitledSources(antrSub),
     ...mapSubtitledSources(traSub),
     ...mapSubtitledSources(taSub),
