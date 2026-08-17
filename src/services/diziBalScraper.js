@@ -47,7 +47,8 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
     try {
       if (isMovie) {
         const searchRes = await fetch(`${apiBase}/movies?search=${encodeURIComponent(cleanQuery)}`, {
-          headers: { 'Accept': 'application/json' }
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(2000)
         }).catch(() => null);
 
         if (!searchRes || !searchRes.ok) continue;
@@ -62,14 +63,14 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         }
 
         if (!targetMovie) {
-          // If no movie matches the target title, skip to avoid streaming the wrong film
           continue;
         }
 
         const targetSlug = targetMovie.slug;
 
         const detailRes = await fetch(`${apiBase}/movies/${targetSlug}`, {
-          headers: { 'Accept': 'application/json' }
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(2000)
         }).catch(() => null);
 
         if (!detailRes || !detailRes.ok) continue;
@@ -84,8 +85,9 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
           return [
             {
               id: `dbl_${movieData.slug || 'movie'}`,
-              name: `VIP Stream (${isDub ? 'Dublaj 1080p' : 'Altyazılı'})`,
-              badge: '⚡ VIP 1080p',
+              name: `VIP Hat 2`,
+              displayName: `VIP Hat 2`,
+              badge: '⚡ VIP',
               isHls: false,
               isDirectVideo: false,
               getUrl: () => embedUrl,
@@ -96,7 +98,8 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         }
       } else {
         const searchRes = await fetch(`${apiBase}/series?search=${encodeURIComponent(cleanQuery)}`, {
-          headers: { 'Accept': 'application/json' }
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(2000)
         }).catch(() => null);
 
         if (!searchRes || !searchRes.ok) continue;
@@ -116,7 +119,8 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         const seriesSlug = targetSeries.slug;
 
         const seasonRes = await fetch(`${apiBase}/series/${seriesSlug}/seasons/${season}`, {
-          headers: { 'Accept': 'application/json' }
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(2000)
         }).catch(() => null);
 
         if (!seasonRes || !seasonRes.ok) continue;
@@ -131,8 +135,9 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
           return [
             {
               id: `dbl_${seriesSlug}_s${season}_e${episode}`,
-              name: `VIP Stream (S${season}:E${episode} ${isDub ? 'Dublaj HD' : 'Altyazılı'})`,
-              badge: '⚡ VIP 1080p',
+              name: `VIP Hat 2`,
+              displayName: `VIP Hat 2`,
+              badge: '⚡ VIP',
               isHls: false,
               isDirectVideo: false,
               getUrl: () => embedUrl,

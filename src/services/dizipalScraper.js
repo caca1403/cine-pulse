@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SineFlix Pro - Direct Dizipal Reverse Engineered Scraper
+   CinePulse Studio - Direct Dizipal Reverse Engineered Scraper
    Fetches live video sources (ag2m4, vidsrc, etc.) directly from Dizipal for both Movies and TV Series
    via Cloudflare Worker Gateway for 100% reliable CORS bypass.
    ========================================================================== */
@@ -65,7 +65,7 @@ export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title
       for (const epUrl of candidateUrls) {
         try {
           const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
-          const res = await fetch(proxyUrl).catch(() => null);
+          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(2000) }).catch(() => null);
 
           if (!res || !res.ok) continue;
           const html = await res.text();
@@ -87,10 +87,14 @@ export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title
               return [
                 {
                   id: `dzp_${slug}_${season}_${episode}`,
-                  name: `FastStream (${isDub ? 'Dublaj 1080p' : 'Altyazılı 1080p'})`,
-                  badge: '⚡ FastStream',
+                  name: `VIP Hat 1`,
+                  displayName: `VIP Hat 1`,
+                  badge: '⚡ VIP',
                   url: playableUrl,
-                  streamUrl: playableUrl
+                  streamUrl: playableUrl,
+                  isHls: playableUrl.includes('.m3u8'),
+                  isDirectVideo: false,
+                  getUrl: () => playableUrl
                 }
               ];
             }

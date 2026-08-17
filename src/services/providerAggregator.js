@@ -1,15 +1,10 @@
 /* ==========================================================================
    CinePulse Studio - Master Stream Aggregator
    Aggregates live Turkish & Global VIP sources:
-   - FilmMakinesi (Rapid & CloseLoad 1080p DUAL)
-   - Channel Stream / FilmizleCh (1080p DUAL)
-   - SezonlukDizi (VidMoly, Sibnet, Netu, VideoSoft, FileMoon)
-   - DiziBal (VIP 1080p Dublaj & Altyazılı)
-   - Sinewix (Android VIP 1080p HLS)
-   - Dizipal (1080p HLS FastStream)
+   - VIP Hat 1 / VIP Hat 2 / VIP Hat 3 / VIP Hat 4 / VIP Hat 5
+   - Rapid Stream & CloseLoad (1080p DUAL)
    - AnimeTR / TRAnimeİzle / TürkAnime TV (1080p)
-   - BelgeselX / Belgeselce (1080p)
-   - DMAX & TLC (Official HD Dublaj)
+   - Belgesel (Official HD Dublaj)
    - Videasy 4K / VidLink VIP / VidSrc Pro / 2Embed VIP / SmashyStream / RiveStream
    ========================================================================== */
 
@@ -138,25 +133,47 @@ export async function getStreamingServers({
     withTimeout(fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true }))
   ]);
 
-  function cleanServerLabel(rawName, fallback = 'VIP Stream') {
+  function anonymizeServerLabel(rawName, fallback = 'VIP Hat') {
     if (!rawName) return fallback;
     let clean = rawName
-      .replace(/\s*\([^)]*(?:Dublaj|Altyazılı|Türkçe|1080p)[^)]*\)/gi, '')
+      .replace(/\s*\([^)]*(?:Dublaj|Altyazılı|Türkçe|1080p|HD|S\d+:E\d+)[^)]*\)/gi, '')
       .replace(/\s*\(1080p\)/gi, '')
       .replace(/\s*1080p/gi, '')
       .replace(/\s*Stream\s*/gi, '')
       .trim();
 
+    // Sanitize any site names or brand identifiers into anonymous clean labels
+    clean = clean
+      .replace(/dizipal/gi, 'VIP Hat 1')
+      .replace(/dizibal/gi, 'VIP Hat 2')
+      .replace(/filmmakinesi/gi, 'VIP Hat 3')
+      .replace(/filmizlech/gi, 'VIP Hat 4')
+      .replace(/channel/gi, 'VIP Hat 4')
+      .replace(/sezonlukdizi/gi, 'VIP Hat 5')
+      .replace(/sinewix/gi, 'VIP Hat 6')
+      .trim();
+
     if (!clean || clean.toLowerCase() === 'vip' || clean.toLowerCase() === 'fast' || clean.length < 2) {
-      const lower = rawName.toLowerCase();
-      if (lower.includes('dizipal')) return 'DiziPal';
-      if (lower.includes('dizibal')) return 'DiziBal';
-      if (lower.includes('channel')) return 'Channel';
-      if (lower.includes('rapid')) return 'Rapid Stream';
-      if (lower.includes('close')) return 'CloseLoad';
       return fallback;
     }
     return clean;
+  }
+
+  function anonymizeBadge(rawBadge, fallback = '⚡ VIP') {
+    if (!rawBadge) return fallback;
+    let clean = rawBadge
+      .replace(/dizipal/gi, 'VIP')
+      .replace(/dizibal/gi, 'VIP')
+      .replace(/filmmakinesi/gi, 'VIP')
+      .replace(/filmizlech/gi, 'VIP')
+      .replace(/channel/gi, 'VIP')
+      .replace(/sezonlukdizi/gi, 'VIP')
+      .replace(/sinewix/gi, 'VIP')
+      .replace(/\s*1080p\s*/gi, '')
+      .replace(/\s*HD\s*/gi, '')
+      .trim();
+    if (!clean || clean.length < 2) return fallback;
+    return clean.startsWith('⚡') || clean.startsWith('💬') || clean.startsWith('🌿') ? clean : `⚡ ${clean}`;
   }
 
   const mapDubbedSources = (rawList) => (rawList || [])
@@ -166,15 +183,17 @@ export async function getStreamingServers({
         !urlStr.includes('recaptcha') &&
         !urlStr.includes('liderfilm') &&
         !urlStr.includes('filmmakinesi.to') &&
+        !urlStr.includes('dizipal.bid') &&
         urlStr.length > 8;
     })
     .map(s => {
-      const shortName = cleanServerLabel(s.name, 'VIP Dublaj');
+      const shortName = anonymizeServerLabel(s.name, 'VIP Dublaj');
+      const badge = anonymizeBadge(s.badge, '⚡ VIP');
       return {
         id: s.id,
         name: shortName,
         displayName: shortName,
-        badge: (s.badge || '⚡ VIP').replace(/\s*1080p\s*/gi, '').replace(/\s*HD\s*/gi, '').trim(),
+        badge: badge,
         category: 'dubbed',
         isHls: s.isHls,
         isDirectVideo: s.isDirectVideo,
@@ -185,12 +204,12 @@ export async function getStreamingServers({
 
   const rawCleanDubbed = [
     ...mapDubbedSources(blgDub),
-    ...mapDubbedSources(fmkDub),
-    ...mapDubbedSources(flzDub),
+    ...mapDubbedSources(dzpDub),
     ...mapDubbedSources(dblDub),
+    ...mapDubbedSources(flzDub),
+    ...mapDubbedSources(fmkDub),
     ...mapDubbedSources(szdDub),
-    ...mapDubbedSources(snxDub),
-    ...mapDubbedSources(dzpDub)
+    ...mapDubbedSources(snxDub)
   ];
 
   // If local Turkish scrapers couldn't find active streams, provide global multi-track VIP CDN
@@ -244,15 +263,17 @@ export async function getStreamingServers({
         !urlStr.includes('recaptcha') &&
         !urlStr.includes('liderfilm') &&
         !urlStr.includes('filmmakinesi.to') &&
+        !urlStr.includes('dizipal.bid') &&
         urlStr.length > 8;
     })
     .map(s => {
-      const shortName = cleanServerLabel(s.name, 'VIP Altyazılı');
+      const shortName = anonymizeServerLabel(s.name, 'VIP Altyazılı');
+      const badge = anonymizeBadge(s.badge, '💬 Altyazılı');
       return {
         id: s.id,
         name: shortName,
         displayName: shortName,
-        badge: (s.badge || '💬 Altyazılı').replace(/\s*1080p\s*/gi, '').replace(/\s*HD\s*/gi, '').trim(),
+        badge: badge,
         category: 'subtitled',
         isHls: s.isHls,
         isDirectVideo: s.isDirectVideo,
@@ -312,12 +333,13 @@ export async function getStreamingServers({
         ? `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}`
         : `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}&season=${season}&episode=${episode}`
     },
-    ...mapSubtitledSources(fmkSub),
+    ...mapSubtitledSources(dzpDub),
+    ...mapSubtitledSources(dblSub),
     ...mapSubtitledSources(flzSub),
+    ...mapSubtitledSources(fmkSub),
     ...mapSubtitledSources(antrSub),
     ...mapSubtitledSources(traSub),
     ...mapSubtitledSources(taSub),
-    ...mapSubtitledSources(dblSub),
     ...mapSubtitledSources(szdSub),
     {
       id: 'sub_rivestream',
