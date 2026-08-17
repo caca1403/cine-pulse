@@ -1,13 +1,17 @@
 /* ==========================================================================
    CinePulse Studio - Master Stream Aggregator
    Aggregates live Turkish & Global VIP sources:
-   - VIP Hat 1 / VIP Hat 2 / VIP Hat 3 / VIP Hat 4 / VIP Hat 5 / VIP Hat 6
-   - Smashy (Top Altyazılı Kaynak)
-   - AutoEmbed (Ultra HD Çoklu Dil)
-   - MultiEmbed (4K VIP)
+   - VIP Hat 1 (Sinewix 1080p MKV/MP4 Direct)
+   - VIP Hat 2 (DiziBal VIP 1080p)
+   - VIP Hat 3 (DiziPal FastStream)
+   - VIP Hat 4 (Channel Stream)
+   - SezonlukDizi (VidMoly, Sibnet, VideoSoft, Netu)
+   - Smashy 1080p (Top Altyazılı)
+   - AutoEmbed 4K (Ultra HD Çoklu Dil)
+   - MultiEmbed VIP (4K Premium)
    - VidLink VIP
    - AnimeTR / TRAnimeİzle / TürkAnime TV (1080p)
-   - Belgesel (Official HD Dublaj)
+   - Belgesel & DMAX / TLC (Official HD Dublaj)
    ========================================================================== */
 
 import { fetchDiziBalSources } from './diziBalScraper.js';
@@ -15,7 +19,6 @@ import { fetchSezonlukDiziEpisodeSources } from './sezonlukDiziScraper.js';
 import { fetchDizipalSources } from './dizipalScraper.js';
 import { fetchSinewixSources } from './sinewixScraper.js';
 import { fetchFilmizlechSources } from './filmizlechScraper.js';
-import { fetchFilmMakinesiSources } from './filmMakinesiScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
 import { fetchTurkAnimeSources } from './turkanimeScraper.js';
@@ -102,33 +105,29 @@ export async function getStreamingServers({
 
   const { candidateTitles } = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle);
 
-  // Concurrent scraping of all premium providers
+  // Concurrent scraping of active, verified premium providers
   const [
-    fmkDub,
-    fmkSub,
+    snxDub,
     dblDub,
     dblSub,
-    szdDub,
-    szdSub,
+    dzpDub,
     flzDub,
     flzSub,
-    snxDub,
-    dzpDub,
+    szdDub,
+    szdSub,
     antrSub,
     traSub,
     taSub,
     blgDub
   ] = await Promise.all([
-    withTimeout(fetchFilmMakinesiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
-    withTimeout(fetchFilmMakinesiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
+    withTimeout(fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchDiziBalSources({ type, title: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchDiziBalSources({ type, title: targetTitle, originalTitle, season, episode, isDub: false })),
-    !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: true })) : Promise.resolve([]),
-    !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: false })) : Promise.resolve([]),
+    withTimeout(fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
-    withTimeout(fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
-    withTimeout(fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
+    !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: true })) : Promise.resolve([]),
+    !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: false })) : Promise.resolve([]),
     withTimeout(fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
@@ -146,13 +145,12 @@ export async function getStreamingServers({
 
     // Sanitize any site names or brand identifiers into anonymous clean labels
     clean = clean
-      .replace(/dizipal/gi, 'VIP Hat 1')
+      .replace(/sinewix/gi, 'VIP Hat 1')
       .replace(/dizibal/gi, 'VIP Hat 2')
-      .replace(/filmmakinesi/gi, 'VIP Hat 3')
+      .replace(/dizipal/gi, 'VIP Hat 3')
       .replace(/filmizlech/gi, 'VIP Hat 4')
       .replace(/channel/gi, 'VIP Hat 4')
       .replace(/sezonlukdizi/gi, 'VIP Hat 5')
-      .replace(/sinewix/gi, 'VIP Hat 6')
       .trim();
 
     if (!clean || clean.toLowerCase() === 'vip' || clean.toLowerCase() === 'fast' || clean.length < 2) {
@@ -164,13 +162,12 @@ export async function getStreamingServers({
   function anonymizeBadge(rawBadge, fallback = '⚡ VIP') {
     if (!rawBadge) return fallback;
     let clean = rawBadge
-      .replace(/dizipal/gi, 'VIP')
+      .replace(/sinewix/gi, 'VIP')
       .replace(/dizibal/gi, 'VIP')
-      .replace(/filmmakinesi/gi, 'VIP')
+      .replace(/dizipal/gi, 'VIP')
       .replace(/filmizlech/gi, 'VIP')
       .replace(/channel/gi, 'VIP')
       .replace(/sezonlukdizi/gi, 'VIP')
-      .replace(/sinewix/gi, 'VIP')
       .replace(/\s*1080p\s*/gi, '')
       .replace(/\s*HD\s*/gi, '')
       .trim();
@@ -184,7 +181,7 @@ export async function getStreamingServers({
       return urlStr &&
         !urlStr.includes('recaptcha') &&
         !urlStr.includes('liderfilm') &&
-        !urlStr.includes('filmmakinesi.to') &&
+        !urlStr.includes('filmmakinesi') &&
         !urlStr.includes('dizipal.bid') &&
         urlStr.length > 8;
     })
@@ -207,10 +204,9 @@ export async function getStreamingServers({
   const rawCleanDubbed = [
     ...mapDubbedSources(blgDub),
     ...mapDubbedSources(snxDub),
-    ...mapDubbedSources(dzpDub),
     ...mapDubbedSources(dblDub),
+    ...mapDubbedSources(dzpDub),
     ...mapDubbedSources(flzDub),
-    ...mapDubbedSources(fmkDub),
     ...mapDubbedSources(szdDub)
   ];
 
@@ -254,7 +250,7 @@ export async function getStreamingServers({
       return urlStr &&
         !urlStr.includes('recaptcha') &&
         !urlStr.includes('liderfilm') &&
-        !urlStr.includes('filmmakinesi.to') &&
+        !urlStr.includes('filmmakinesi') &&
         !urlStr.includes('dizipal.bid') &&
         urlStr.length > 8;
     })
@@ -312,7 +308,6 @@ export async function getStreamingServers({
     ...mapSubtitledSources(dzpDub),
     ...mapSubtitledSources(dblSub),
     ...mapSubtitledSources(flzSub),
-    ...mapSubtitledSources(fmkSub),
     ...mapSubtitledSources(antrSub),
     ...mapSubtitledSources(traSub),
     ...mapSubtitledSources(taSub),
