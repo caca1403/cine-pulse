@@ -210,6 +210,46 @@ export async function getStreamingServers({
 
   const cleanSubtitled = [
     {
+      id: 'sub_videasy',
+      name: 'Videasy 4K',
+      displayName: 'Videasy 4K',
+      badge: '⚡ Videasy 4K',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://player.videasy.net/movie/${tmdbId}`
+        : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'sub_vidlink',
+      name: 'VidLink VIP',
+      displayName: 'VidLink VIP',
+      badge: '⚡ VidLink',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://vidlink.pro/movie/${tmdbId}`
+        : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'sub_vidsrccc',
+      name: 'VidSrc Pro',
+      displayName: 'VidSrc Pro',
+      badge: '⚡ VidSrc Pro',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://vidsrc.cc/v2/embed/movie/${tmdbId}`
+        : `https://vidsrc.cc/v2/embed/tv/${tmdbId}/${season}/${episode}`
+    },
+    {
+      id: 'sub_2embed',
+      name: '2Embed VIP',
+      displayName: '2Embed VIP',
+      badge: '⚡ 2Embed',
+      category: 'subtitled',
+      getUrl: () => isMovie
+        ? `https://www.2embed.cc/embed/${tmdbId}`
+        : `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`
+    },
+    {
       id: 'sub_smashystream',
       name: 'Smashy',
       displayName: 'Smashy',
@@ -228,51 +268,14 @@ export async function getStreamingServers({
     ...mapSubtitledSources(flzSub),
     ...mapSubtitledSources(finSub),
     {
-      id: 'sub_autoembed',
-      name: 'AutoEmbed',
-      displayName: 'AutoEmbed',
-      badge: '⚡ AutoEmbed',
+      id: 'sub_rivestream',
+      name: 'RiveStream HD',
+      displayName: 'RiveStream HD',
+      badge: '⚡ RiveStream',
       category: 'subtitled',
       getUrl: () => isMovie
-        ? `https://player.autoembed.cc/embed/movie/${tmdbId}`
-        : `https://player.autoembed.cc/embed/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'sub_embedsu',
-      name: 'EmbedSU',
-      displayName: 'EmbedSU',
-      badge: '⚡ EmbedSU 4K',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://embed.su/embed/movie/${tmdbId}`
-        : `https://embed.su/embed/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'sub_vidsrcicu',
-      name: 'VidSrc ICU (Altyazılı)',
-      badge: '⚡ VidSrc',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://vidsrc.icu/embed/movie/${tmdbId}`
-        : `https://vidsrc.icu/embed/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'sub_vidlink',
-      name: 'VidLink VIP Stream',
-      badge: '⚡ VidLink',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://vidlink.pro/movie/${tmdbId}`
-        : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'sub_superembed',
-      name: 'SuperEmbed Stream (Altyazılı)',
-      badge: '⚡ SuperEmbed',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
-        : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
+        ? `https://rivestream.live/embed?type=movie&id=${tmdbId}`
+        : `https://rivestream.live/embed?type=series&id=${tmdbId}&season=${season}&episode=${episode}`
     }
   ];
 
