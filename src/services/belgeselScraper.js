@@ -12,14 +12,19 @@ const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 function normalizeText(text) {
   if (!text) return '';
   return text
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
+    .replace(/Ğ/g, 'g')
+    .replace(/Ü/g, 'u')
+    .replace(/Ş/g, 's')
+    .replace(/Ö/g, 'o')
+    .replace(/Ç/g, 'c')
     .toLowerCase()
     .trim()
     .replace(/ğ/g, 'g')
     .replace(/ü/g, 'u')
     .replace(/ş/g, 's')
     .replace(/ı/g, 'i')
-    .replace(/İ/g, 'i')
-    .replace(/I/g, 'i')
     .replace(/ö/g, 'o')
     .replace(/ç/g, 'c')
     .replace(/[^a-z0-9]/g, '');
@@ -28,14 +33,21 @@ function normalizeText(text) {
 function toTurkishSlug(title) {
   if (!title) return '';
   return title
+    .replace(/\s*\(\d{4}\).*/, '')
+    .replace(/[:.,!?'"()]/g, '')
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
+    .replace(/Ğ/g, 'g')
+    .replace(/Ü/g, 'u')
+    .replace(/Ş/g, 's')
+    .replace(/Ö/g, 'o')
+    .replace(/Ç/g, 'c')
     .toLowerCase()
     .trim()
     .replace(/ğ/g, 'g')
     .replace(/ü/g, 'u')
     .replace(/ş/g, 's')
     .replace(/ı/g, 'i')
-    .replace(/İ/g, 'i')
-    .replace(/I/g, 'i')
     .replace(/ö/g, 'o')
     .replace(/ç/g, 'c')
     .replace(/[^a-z0-9\s-]/g, '')
