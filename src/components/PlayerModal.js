@@ -195,40 +195,30 @@ export async function openPlayerModal({
       (srv.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
     ) {
       const streamUrl = srv.streamUrl || srv.getUrl();
-      const warningBanner = `
-        <div class="player-audio-warning">
-          <div class="audio-warning-top">
-            <div class="audio-warning-title">
-              <i data-lucide="volume-2" style="width: 16px; height: 16px; color: #eab308;"></i>
-              <span>Ses Gelmiyor mu? (Tarayıcı Dolby AC3 / Ses Formatı)</span>
-            </div>
-            <div class="audio-warning-actions">
-              <a href="vlc://${streamUrl}" class="btn-vlc" title="VLC Media Player ile Aç">
-                <i data-lucide="play" style="width: 12px; height: 12px;"></i> VLC ile Aç
-              </a>
-              <a href="${streamUrl}" target="_blank" download class="btn-download-direct" title="Doğrudan İndir">
-                <i data-lucide="download" style="width: 12px; height: 12px;"></i> İndir
-              </a>
-            </div>
+      const floatingAudioTip = `
+        <div class="floating-audio-chip" id="floating-audio-chip">
+          <div class="audio-chip-content">
+            <i data-lucide="volume-2" style="width: 13px; height: 13px; color: #f59e0b;"></i>
+            <span>Ses Gelmiyor mu? (Dolby AC3)</span>
+            <a href="vlc://${streamUrl}" class="btn-audio-mini" title="VLC ile Aç">VLC</a>
+            <a href="${streamUrl}" target="_blank" download class="btn-audio-mini" title="İndir">İndir</a>
           </div>
-          <p class="audio-warning-desc">
-            Bazı VIP yayınlar yüksek kaliteli Dolby (AC-3 / DTS 5.1) ses barındırır. Tarayıcınızda ses çıkmazsa videoyu <strong>VLC Player</strong> ile açabilir veya üstteki diğer sunucu seçeneklerini deneyebilirsiniz.
-          </p>
+          <button class="btn-audio-chip-close" onclick="document.getElementById('floating-audio-chip')?.remove()">
+            <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+          </button>
         </div>
       `;
       return `
         <div class="direct-video-wrapper">
-          <div class="direct-video-inner">
-            <video 
-              id="hls-video-player" 
-              controls 
-              autoplay 
-              playsinline
-              webkit-playsinline
-              preload="auto">
-            </video>
-          </div>
-          ${warningBanner}
+          <video 
+            id="hls-video-player" 
+            controls 
+            autoplay 
+            playsinline
+            webkit-playsinline
+            preload="auto">
+          </video>
+          ${floatingAudioTip}
         </div>
       `;
     }
@@ -322,12 +312,13 @@ export async function openPlayerModal({
       <!-- Top Cinematic Glassmorphism Bar -->
       <div class="player-cinema-bar">
         
-        <!-- Left: Logo, Title & Indicators -->
+        <!-- Left: Close Button, Title & Indicators -->
         <div class="player-header-left">
-          <div class="player-live-pulse-badge">
-            <span class="live-pulse-dot"></span>
-            <span>4K ULTRA HD</span>
-          </div>
+          <button id="player-close-btn" class="btn-player-tool btn-close-cinema" title="Kapat (ESC)">
+            <i data-lucide="arrow-left" class="icon-mobile-back" style="width: 18px; height: 18px;"></i>
+            <i data-lucide="x" class="icon-desktop-close" style="width: 18px; height: 18px;"></i>
+          </button>
+          
           <div class="player-title-box">
             <span id="player-modal-title" class="player-header-title">${getDisplayTitle()}</span>
             ${initialTime > 5 ? `
@@ -342,14 +333,14 @@ export async function openPlayerModal({
         <!-- Center: Dubbed / Subtitled Segmented Toggle -->
         <div class="player-header-toggle">
           <button id="tab-dubbed" class="cinema-tab-btn ${currentCategory === 'dubbed' ? 'active' : ''}">
-            <span>🇹🇷 Türkçe Dublaj</span>
+            <span>🇹🇷 Dublaj</span>
           </button>
           <button id="tab-subtitled" class="cinema-tab-btn ${currentCategory === 'subtitled' ? 'active' : ''}">
-            <span>💬 Türkçe Altyazılı</span>
+            <span>💬 Altyazılı</span>
           </button>
         </div>
 
-        <!-- Right: Action Icons (Drawer, Fullscreen, Shortcuts, External, Close) -->
+        <!-- Right: Action Icons (Drawer, Fullscreen, Shortcuts, External) -->
         <div class="player-header-right">
           ${type === 'tv' ? `
             <button id="btn-toggle-drawer" class="btn-player-tool" title="Bölümler & Sezonlar Menüsü (E / B)">
@@ -358,7 +349,7 @@ export async function openPlayerModal({
             </button>
           ` : ''}
 
-          <button id="btn-player-shortcuts" class="btn-player-tool" title="Klavye Kısayolları (?)">
+          <button id="btn-player-shortcuts" class="btn-player-tool desktop-only-tool" title="Klavye Kısayolları (?)">
             <i data-lucide="keyboard" style="width: 16px; height: 16px;"></i>
           </button>
 
@@ -366,13 +357,9 @@ export async function openPlayerModal({
             <i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i>
           </button>
 
-          <a id="player-popout-btn" href="#" target="_blank" class="btn-player-tool" title="Harici Pencerede Aç">
+          <a id="player-popout-btn" href="#" target="_blank" class="btn-player-tool desktop-only-tool" title="Harici Pencerede Aç">
             <i data-lucide="external-link" style="width: 16px; height: 16px;"></i>
           </a>
-
-          <button id="player-close-btn" class="btn-player-tool btn-close-cinema" title="Kapat (ESC)">
-            <i data-lucide="x" style="width: 18px; height: 18px;"></i>
-          </button>
         </div>
       </div>
 
