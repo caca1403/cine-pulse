@@ -62,40 +62,45 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
     if (!slug) continue;
     const normQ = normalizeText(q);
 
-    // 1. DMAX TV (Direct HLS Stream)
+    // 1. DMAX TV (Direct HLS Stream) — strict title match + geo-block guard
     try {
       const dmaxEpUrl = `https://www.dmax.com.tr/${slug}/${season}-sezon-${episode}-bolum`;
       const proxyDmaxUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(dmaxEpUrl)}`;
       const res = await fetch(proxyDmaxUrl).catch(() => null);
       if (res && res.ok) {
         const html = await res.text();
-        const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
-        const normPageTitle = normalizeText(pageTitle);
+        const lowerHtml = html.toLowerCase();
+        // Skip geo-blocked or live-redirect pages
+        if (!lowerHtml.includes('sadece türkiye') && !lowerHtml.includes('sadece turkiye') && !lowerHtml.includes('canli-izle')) {
+          const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
+          const normPageTitle = normalizeText(pageTitle);
+          const matchLen = Math.min(normQ.length, 8);
 
-        if (!normPageTitle.includes('canlitv') && !normPageTitle.includes('404') && normPageTitle.includes(normQ.substring(0, 5))) {
-          const refId = html.match(/referenceId\s*:\s*['"]([^'"]+)['"]/i)?.[1];
-          if (refId) {
-            const metaUrl = `https://www.dmax.com.tr/player/info?referenceId=${refId}`;
-            const metaRes = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(metaUrl)}`, {
-              headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            }).catch(() => null);
+          if (matchLen >= 5 && !normPageTitle.includes('canlitv') && !normPageTitle.includes('404') && normPageTitle.includes(normQ.substring(0, matchLen))) {
+            const refId = html.match(/referenceId\s*:\s*['"]([^'"]+)['"]/i)?.[1];
+            if (refId) {
+              const metaUrl = `https://www.dmax.com.tr/player/info?referenceId=${refId}`;
+              const metaRes = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(metaUrl)}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+              }).catch(() => null);
 
-            if (metaRes && metaRes.ok) {
-              const metaData = await metaRes.json().catch(() => null);
-              const hlsUrl = metaData?.video?.data?.flavors?.hls;
-              if (hlsUrl && !seenUrls.has(hlsUrl)) {
-                seenUrls.add(hlsUrl);
-                results.push({
-                  id: `dmax_${slug}_${season}_${episode}`,
-                  name: `DMAX HD (Türkçe Dublaj 1080p)`,
-                  badge: '🌿 DMAX HD',
-                  category: 'dubbed',
-                  isHls: true,
-                  isDirectVideo: false,
-                  streamUrl: hlsUrl,
-                  url: hlsUrl,
-                  getUrl: () => hlsUrl
-                });
+              if (metaRes && metaRes.ok) {
+                const metaData = await metaRes.json().catch(() => null);
+                const hlsUrl = metaData?.video?.data?.flavors?.hls;
+                if (hlsUrl && !seenUrls.has(hlsUrl)) {
+                  seenUrls.add(hlsUrl);
+                  results.push({
+                    id: `dmax_${slug}_${season}_${episode}`,
+                    name: `DMAX HD (Türkçe Dublaj 1080p)`,
+                    badge: '🌿 DMAX HD',
+                    category: 'dubbed',
+                    isHls: true,
+                    isDirectVideo: false,
+                    streamUrl: hlsUrl,
+                    url: hlsUrl,
+                    getUrl: () => hlsUrl
+                  });
+                }
               }
             }
           }
@@ -103,40 +108,44 @@ export async function fetchBelgeselSources({ titles = [], seriesTitle = '', titl
       }
     } catch (_) {}
 
-    // 2. TLC TV (Direct HLS Stream)
+    // 2. TLC TV (Direct HLS Stream) — strict title match + geo-block guard
     try {
       const tlcEpUrl = `https://www.tlctv.com.tr/${slug}/${season}-sezon-${episode}-bolum`;
       const proxyTlcUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(tlcEpUrl)}`;
       const res = await fetch(proxyTlcUrl).catch(() => null);
       if (res && res.ok) {
         const html = await res.text();
-        const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
-        const normPageTitle = normalizeText(pageTitle);
+        const lowerHtml = html.toLowerCase();
+        if (!lowerHtml.includes('sadece türkiye') && !lowerHtml.includes('sadece turkiye') && !lowerHtml.includes('canli-izle')) {
+          const pageTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1] || '';
+          const normPageTitle = normalizeText(pageTitle);
+          const matchLen = Math.min(normQ.length, 8);
 
-        if (!normPageTitle.includes('canlitv') && !normPageTitle.includes('404') && normPageTitle.includes(normQ.substring(0, 5))) {
-          const refId = html.match(/referenceId\s*:\s*['"]([^'"]+)['"]/i)?.[1];
-          if (refId) {
-            const metaUrl = `https://www.tlctv.com.tr/player/info?referenceId=${refId}`;
-            const metaRes = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(metaUrl)}`, {
-              headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            }).catch(() => null);
+          if (matchLen >= 5 && !normPageTitle.includes('canlitv') && !normPageTitle.includes('404') && normPageTitle.includes(normQ.substring(0, matchLen))) {
+            const refId = html.match(/referenceId\s*:\s*['"]([^'"]+)['"]/i)?.[1];
+            if (refId) {
+              const metaUrl = `https://www.tlctv.com.tr/player/info?referenceId=${refId}`;
+              const metaRes = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(metaUrl)}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+              }).catch(() => null);
 
-            if (metaRes && metaRes.ok) {
-              const metaData = await metaRes.json().catch(() => null);
-              const hlsUrl = metaData?.video?.data?.flavors?.hls;
-              if (hlsUrl && !seenUrls.has(hlsUrl)) {
-                seenUrls.add(hlsUrl);
-                results.push({
-                  id: `tlc_${slug}_${season}_${episode}`,
-                  name: `TLC TV HD (Türkçe Dublaj 1080p)`,
-                  badge: '🌿 TLC HD',
-                  category: 'dubbed',
-                  isHls: true,
-                  isDirectVideo: false,
-                  streamUrl: hlsUrl,
-                  url: hlsUrl,
-                  getUrl: () => hlsUrl
-                });
+              if (metaRes && metaRes.ok) {
+                const metaData = await metaRes.json().catch(() => null);
+                const hlsUrl = metaData?.video?.data?.flavors?.hls;
+                if (hlsUrl && !seenUrls.has(hlsUrl)) {
+                  seenUrls.add(hlsUrl);
+                  results.push({
+                    id: `tlc_${slug}_${season}_${episode}`,
+                    name: `TLC TV HD (Türkçe Dublaj 1080p)`,
+                    badge: '🌿 TLC HD',
+                    category: 'dubbed',
+                    isHls: true,
+                    isDirectVideo: false,
+                    streamUrl: hlsUrl,
+                    url: hlsUrl,
+                    getUrl: () => hlsUrl
+                  });
+                }
               }
             }
           }

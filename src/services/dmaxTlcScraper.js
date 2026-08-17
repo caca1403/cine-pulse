@@ -42,6 +42,17 @@ async function verifyPageAndExtractStream(targetUrl) {
     if (!html || html.length < 1500) return null;
 
     const lowerHtml = html.toLowerCase();
+
+    // Geo-block detection — skip pages with Turkey-only restriction
+    if (
+      lowerHtml.includes('sadece türkiye') ||
+      lowerHtml.includes('sadece turkiye') ||
+      lowerHtml.includes('uluslararası yayın hakları') ||
+      lowerHtml.includes('uluslararasi yayin haklari')
+    ) {
+      return null;
+    }
+
     if (
       lowerHtml.includes('sayfa bulunamadı') ||
       lowerHtml.includes('404 not found') ||
