@@ -1153,38 +1153,35 @@ button {
 
 .media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
-  gap: 1.4rem;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1.8rem 1.4rem;
 }
 
-
-/* Media Card */
+/* ==========================================================================
+   Media Card System - Luxury Borderless Poster & Floating Rating
+   ========================================================================== */
 .media-card {
   position: relative;
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  transition: var(--transition-smooth);
+  background: transparent;
+  border-radius: 14px;
+  overflow: visible;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
-  border: 1px solid var(--border-color);
+  border: none;
   display: flex;
   flex-direction: column;
-}
-
-.media-card:hover {
-  transform: translateY(-8px) scale(1.03);
-  box-shadow:
-    0 20px 48px rgba(0,0,0,0.85),
-    0 0 22px rgba(245, 158, 11, 0.22);
-  border-color: rgba(245, 158, 11, 0.35);
 }
 
 .card-poster-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 145%;
+  padding-top: 150%;
+  border-radius: 14px;
   overflow: hidden;
   background: #0d111a;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .card-poster {
@@ -1193,82 +1190,57 @@ button {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: var(--transition-smooth);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.media-card:hover .card-poster-wrapper {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 40px -8px rgba(0, 0, 0, 0.85), 0 0 24px rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.35);
 }
 
 .media-card:hover .card-poster {
-  transform: scale(1.09);
+  transform: scale(1.05);
 }
 
-.card-badges {
-  position: absolute;
-  top: 0.6rem;
-  left: 0.6rem;
-  right: 0.6rem;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  z-index: 5;
-  gap: 0.35rem;
-}
-
-/* Rating badge: dark solid pill — always readable on any poster */
+/* Floating Rating Badge (Top Right) */
 .card-rating-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #fff;
-  font-size: 0.78rem;
+  gap: 0.32rem;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ffffff;
+  font-size: 0.82rem;
   font-weight: 700;
-  padding: 0.28rem 0.6rem;
-  border-radius: var(--radius-full);
+  padding: 0.24rem 0.55rem;
+  border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   line-height: 1;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-/* Time badge: bright amber pill for timestamp display */
-.card-time-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: #000;
-  font-size: 0.7rem;
-  font-weight: 800;
-  padding: 0.28rem 0.55rem;
-  border-radius: var(--radius-full);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-  line-height: 1;
-}
-
-/* Type badge: solid teal/amber pill */
-.card-type-badge {
-  display: inline-flex;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #34d399;
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 0.28rem 0.55rem;
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(52, 211, 153, 0.35);
-  line-height: 1;
+.card-rating-badge svg,
+.card-rating-badge .star-icon {
+  width: 12px;
+  height: 12px;
+  fill: #fbbf24;
+  color: #fbbf24;
+  flex-shrink: 0;
 }
 
 .card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(0deg, rgba(8,10,15,0.96) 0%, rgba(8,10,15,0.4) 55%, transparent 100%);
+  background: linear-gradient(0deg, rgba(8,10,15,0.92) 0%, rgba(8,10,15,0.3) 55%, transparent 100%);
   opacity: 0;
-  transition: var(--transition-fast);
+  transition: opacity 0.25s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1280,17 +1252,17 @@ button {
 }
 
 .card-play-btn {
-  width: 58px;
-  height: 58px;
-  border-radius: var(--radius-full);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
   background: var(--primary-gradient);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 30px var(--primary-glow);
-  transform: scale(0.7);
-  transition: var(--transition-smooth);
+  box-shadow: 0 0 25px var(--primary-glow);
+  transform: scale(0.75);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .media-card:hover .card-play-btn {
@@ -1302,38 +1274,53 @@ button {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.2);
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
   z-index: 6;
 }
 
 .card-progress-fill {
   height: 100%;
-  background: var(--secondary-gradient);
-  box-shadow: 0 0 10px var(--secondary-glow);
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
 }
 
 .card-info {
-  padding: 1rem;
+  padding: 0.65rem 0.15rem 0 0.15rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.22rem;
 }
 
 .card-title {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+  padding: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.35;
+  transition: color 0.2s ease;
+}
+
+.media-card:hover .card-title {
+  color: #fbbf24;
 }
 
 .card-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   font-size: 0.82rem;
-  color: var(--text-muted);
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.card-year {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 500;
 }
 
 /* ==========================================================================

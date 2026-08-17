@@ -1,7 +1,7 @@
 /* ==========================================================================
    CinePulse Studio - Media Card Component
-   Renders poster, title, IMDb rating, resolution badges, watch progress bar,
-   remaining time badge, and handles direct click-to-play with saved timestamp.
+   Ultra-sleek, borderless luxury cards with floating gold star rating badge,
+   clean typography, and smooth responsive hover animations.
    ========================================================================== */
 
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
@@ -14,8 +14,8 @@ export function renderMediaCard(item, options = {}) {
   const title = item.title || item.name || 'İsimsiz İçerik';
   const posterPath = item.poster_path || item.posterPath;
   const posterUrl = getImageUrl(posterPath, TMDB_IMAGE_SIZES.POSTER_MEDIUM);
-  const rating = item.vote_average ? Number(item.vote_average).toFixed(1) : (item.voteAverage ? Number(item.voteAverage).toFixed(1) : '8.5');
-  const year = (item.release_date || item.first_air_date || '').substring(0, 4) || '2024';
+  const rating = item.vote_average ? Number(item.vote_average).toFixed(1) : (item.voteAverage ? Number(item.voteAverage).toFixed(1) : (item.rating ? Number(item.rating).toFixed(1) : '7.8'));
+  const year = (item.release_date || item.first_air_date || '').substring(0, 4) || (item.year ? String(item.year) : '2024');
 
   let progressPercent = item.progressPercent || 0;
   let season = item.season || 1;
@@ -51,50 +51,26 @@ export function renderMediaCard(item, options = {}) {
     }
   }
 
-  let episodeInfoStr = '';
+  let subtitleText = year;
   const timeStr = formatSecondsToTime(currentTime);
-  const remTimeStr = (currentTime > 0 && !isCompleted) ? formatRemainingTime(currentTime, effectiveDuration) : '';
 
   if (item.subtitle) {
-    episodeInfoStr = item.subtitle;
+    subtitleText = item.subtitle;
   } else if (isContinue) {
     if (isCompleted) {
-      episodeInfoStr = '✓ İzlendi';
+      subtitleText = `${year} • ✓ İzlendi`;
     } else if (type === 'tv') {
-      episodeInfoStr = `S${season} B${episode}${timeStr ? ' • ' + timeStr : ''}${remTimeStr ? ' • ' + remTimeStr : ''}`;
+      subtitleText = `${year} • S${season} B${episode}`;
     } else {
-      episodeInfoStr = `Kaldığın: ${timeStr || 'İzleniyor'}${remTimeStr ? ' • ' + remTimeStr : ''}`;
+      subtitleText = `${year} • ${timeStr || 'İzleniyor'}`;
     }
-  } else {
-    episodeInfoStr = `${year} • ${type === 'tv' ? 'Dizi' : 'Film'}`;
   }
 
   const progressBarHTML = progressPercent > 0 ? `
     <div class="card-progress-bar">
-      <div class="card-progress-fill" style="width: ${progressPercent}%; background: ${isCompleted ? 'var(--accent-green)' : 'var(--secondary-gradient)'};"></div>
+      <div class="card-progress-fill" style="width: ${progressPercent}%; background: ${isCompleted ? 'var(--accent-green)' : '#f59e0b'};"></div>
     </div>
   ` : '';
-
-  let statusBadgeHTML = '';
-  if (isCompleted) {
-    statusBadgeHTML = `
-      <div class="card-status-overlay">
-        <span class="card-status-badge watched">
-          <i data-lucide="check-circle-2" style="width:12px; height:12px;"></i>
-          <span>İZLENDİ</span>
-        </span>
-      </div>
-    `;
-  } else if (timeStr) {
-    statusBadgeHTML = `
-      <div class="card-status-overlay">
-        <span class="card-status-badge in-progress" title="${remTimeStr || timeStr}">
-          <i data-lucide="clock" style="width:11px; height:11px;"></i>
-          <span>${timeStr}</span>
-        </span>
-      </div>
-    `;
-  }
 
   return `
     <div class="media-card" 
@@ -110,17 +86,11 @@ export function renderMediaCard(item, options = {}) {
       <div class="card-poster-wrapper">
         <img class="card-poster" src="${posterUrl}" alt="${title}" loading="lazy" onerror="this.onerror=null; this.src='${SINEFLIX_POSTER_FALLBACK}';" />
         
-        <!-- Top Row Badges (Rating on Left, Type on Right) -->
-        <div class="card-badges">
-          <span class="card-rating-badge">
-            <i data-lucide="star" style="width:11px; height:11px; fill:#fbbf24; color:#fbbf24;"></i>
-            <span>${rating}</span>
-          </span>
-          <span class="card-type-badge">${type === 'tv' ? 'DİZİ' : 'FİLM'}</span>
+        <!-- Floating Rating Badge (Top Right) -->
+        <div class="card-rating-badge">
+          <svg class="star-icon" viewBox="0 0 24 24" width="12" height="12" fill="#fbbf24" style="flex-shrink: 0;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <span>${rating}</span>
         </div>
-
-        <!-- Bottom Status Badge (Watched or Remaining Time) -->
-        ${statusBadgeHTML}
 
         <div class="card-overlay">
           <div class="card-play-btn">
@@ -132,9 +102,9 @@ export function renderMediaCard(item, options = {}) {
       </div>
 
       <div class="card-info">
-        <div class="card-title" title="${title}">${title}</div>
+        <h3 class="card-title" title="${title}">${title}</h3>
         <div class="card-meta">
-          <span class="card-subtitle-text" style="${timeStr ? 'color: #fbbf24; font-weight: 600;' : ''}">${episodeInfoStr}</span>
+          <span class="card-year">${subtitleText}</span>
         </div>
       </div>
     </div>
