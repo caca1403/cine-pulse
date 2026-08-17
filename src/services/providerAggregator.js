@@ -124,8 +124,7 @@ export async function getStreamingServers({
     antrSub,
     traSub,
     taSub,
-    blgDub,
-    dmxDub
+    blgDub
   ] = await Promise.all([
     withTimeout(fetchFilmMakinesiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchFilmMakinesiSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
@@ -142,8 +141,7 @@ export async function getStreamingServers({
     withTimeout(fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
-    withTimeout(fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })),
-    withTimeout(fetchDmaxTlcSources({ type, titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode }))
+    withTimeout(fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true }))
   ]);
 
   function cleanServerLabel(rawName) {
@@ -187,8 +185,7 @@ export async function getStreamingServers({
     ...mapDubbedSources(dzpDub),
     ...mapDubbedSources(flzDub),
     ...mapDubbedSources(finDub),
-    ...mapDubbedSources(blgDub),
-    ...mapDubbedSources(dmxDub)
+    ...mapDubbedSources(blgDub)
   ];
 
   const mapSubtitledSources = (rawList) => (rawList || [])

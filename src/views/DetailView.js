@@ -133,17 +133,17 @@ export async function renderDetailView(type = 'tv', id) {
 
               <p style="font-size: 1rem; color: var(--text-sub); line-height: 1.6; max-width: 800px;">${overview}</p>
 
-              <!-- Oyuncular (Clean Flex Chips) -->
+              <!-- Oyuncular (Horizontal Smooth Carousel) -->
               ${castList.length > 0 ? `
-                <div style="margin-top: 0.8rem;">
-                  <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Oyuncular</div>
-                  <div style="display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;">
+                <div class="detail-cast-section">
+                  <div class="detail-section-subtitle">Oyuncular</div>
+                  <div class="detail-cast-carousel">
                     ${castList.map(actor => {
                       const actorPic = actor.profile_path ? getImageUrl(actor.profile_path, TMDB_IMAGE_SIZES.POSTER_SMALL) : SINEFLIX_ACTOR_FALLBACK;
                       return `
-                        <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.06); backdrop-filter: blur(10px); padding: 0.3rem 0.8rem 0.3rem 0.3rem; border-radius: var(--radius-full); border: 1px solid var(--border-color); font-size: 0.82rem; font-weight: 500;">
-                          <img src="${actorPic}" alt="${actor.name}" style="width: 26px; height: 26px; border-radius: 50%; object-fit: cover;" onerror="this.onerror=null; this.src='${SINEFLIX_ACTOR_FALLBACK}';" />
-                          <span>${actor.name}</span>
+                        <div class="actor-card-chip">
+                          <img src="${actorPic}" alt="${actor.name}" class="actor-avatar-img" onerror="this.onerror=null; this.src='${SINEFLIX_ACTOR_FALLBACK}';" />
+                          <span class="actor-name-text">${actor.name}</span>
                         </div>
                       `;
                     }).join('')}
@@ -151,40 +151,42 @@ export async function renderDetailView(type = 'tv', id) {
                 </div>
               ` : ''}
 
-              <div class="hero-actions" style="margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.75rem;">
+              <!-- Modern Hero Action Deck -->
+              <div class="hero-actions-container">
                 ${effectiveType === 'movie' ? `
-                  <button class="btn-primary" id="btn-play-movie">
-                    <i data-lucide="play" style="fill: currentColor"></i>
+                  <button class="btn-primary btn-hero-main-play" id="btn-play-movie">
+                    <i data-lucide="play" style="fill: currentColor; width: 20px; height: 20px;"></i>
                     <span>${playButtonLabel}</span>
                   </button>
                 ` : `
-                  <button class="btn-primary" id="btn-resume-series">
-                    <i data-lucide="play" style="fill: currentColor"></i>
+                  <button class="btn-primary btn-hero-main-play" id="btn-resume-series">
+                    <i data-lucide="play" style="fill: currentColor; width: 20px; height: 20px;"></i>
                     <span>${playButtonLabel}</span>
                   </button>
                 `}
 
-                <button class="btn-secondary" id="btn-toggle-fav">
-                  <i data-lucide="heart" style="${inFav ? 'fill: var(--primary); color: var(--primary)' : ''}"></i>
-                  <span>${inFav ? 'Favorilerimde' : 'Favorilere Ekle'}</span>
-                </button>
+                <!-- Compact Quick Action Tiles Grid -->
+                <div class="detail-action-grid">
+                  <button class="btn-action-tile ${inFav ? 'active-fav' : ''}" id="btn-toggle-fav">
+                    <i data-lucide="heart" style="${inFav ? 'fill: var(--primary); color: var(--primary)' : ''}"></i>
+                    <span>${inFav ? 'Favorilerimde' : 'Favori'}</span>
+                  </button>
 
-                <button class="btn-secondary" id="btn-toggle-watchlist">
-                  <i data-lucide="${inWatch ? 'check' : 'plus'}"></i>
-                  <span>${inWatch ? 'Listemde' : 'İzleme Listeme Ekle'}</span>
-                </button>
+                  <button class="btn-action-tile ${inWatch ? 'active-watch' : ''}" id="btn-toggle-watchlist">
+                    <i data-lucide="${inWatch ? 'check' : 'plus'}"></i>
+                    <span>${inWatch ? 'Listemde' : 'Listem'}</span>
+                  </button>
 
-                <!-- Mark Watched Button -->
-                <button class="btn-secondary ${isCurrentWatched ? 'btn-watched-active' : ''}" id="btn-toggle-watched-detail" style="cursor: pointer;">
-                  <i data-lucide="${isCurrentWatched ? 'check-circle-2' : 'check'}"></i>
-                  <span>${watchedBtnLabel}</span>
-                </button>
+                  <button class="btn-action-tile ${isCurrentWatched ? 'active-watched' : ''}" id="btn-toggle-watched-detail">
+                    <i data-lucide="${isCurrentWatched ? 'check-circle-2' : 'check'}"></i>
+                    <span>${watchedBtnLabel}</span>
+                  </button>
 
-                <!-- Halfway in-progress button -->
-                <button class="btn-secondary" id="btn-mark-halfway-detail" title="Kaldığım Yer (Yarıda Bırakıldı)" style="cursor: pointer;">
-                  <i data-lucide="clock"></i>
-                  <span>⏳ Yarıda Bırak</span>
-                </button>
+                  <button class="btn-action-tile" id="btn-mark-halfway-detail" title="Kaldığım Yer (Yarıda Bırakıldı)">
+                    <i data-lucide="clock" style="color: #fbbf24;"></i>
+                    <span>⏳ Yarıda Bırak</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
