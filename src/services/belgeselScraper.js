@@ -92,15 +92,16 @@ export async function fetchBelgeselSources({
         const matchLen = Math.min(normQ.length, 6);
 
         if (
+          !normPageTitle.includes('sayfa bulunamadi') &&
           !normPageTitle.includes('404') &&
-          !normPageTitle.includes('bulunamadi') &&
-          normPageTitle.includes(normQ.substring(0, matchLen))
+          (normPageTitle.includes(normQ.substring(0, matchLen)) || html.includes('referenceId'))
         ) {
           if (!seenUrls.has(dmaxEpUrl)) {
             seenUrls.add(dmaxEpUrl);
             results.push({
               id: `dmax_${slug}_${season}_${episode}`,
-              name: `DMAX (Dublaj HD)`,
+              name: `DMAX`,
+              displayName: `DMAX`,
               badge: '🌿 DMAX',
               category: 'dubbed',
               isHls: false,
@@ -124,9 +125,9 @@ export async function fetchBelgeselSources({
           const matchLen = Math.min(normQ.length, 6);
 
           if (
+            !normPageTitle.includes('sayfa bulunamadi') &&
             !normPageTitle.includes('404') &&
-            !normPageTitle.includes('bulunamadi') &&
-            normPageTitle.includes(normQ.substring(0, matchLen))
+            (normPageTitle.includes(normQ.substring(0, matchLen)) || mainHtml.includes('referenceId'))
           ) {
             const linkRegex = new RegExp(`href=["'](https?:\\/\\/www\\.dmax\\.com\\.tr\\/${slug}\\/(\\d+)-sezon-(\\d+)-bolum)["']`, 'gi');
             let m;
@@ -144,7 +145,8 @@ export async function fetchBelgeselSources({
               seenUrls.add(targetUrl);
               results.push({
                 id: `dmax_${slug}_${season}_${episode}`,
-                name: `DMAX (Dublaj HD)`,
+                name: `DMAX`,
+                displayName: `DMAX`,
                 badge: '🌿 DMAX',
                 category: 'dubbed',
                 isHls: false,

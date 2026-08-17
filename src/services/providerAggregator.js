@@ -41,7 +41,7 @@ function cleanTitle(raw) {
     .trim();
 }
 
-function withTimeout(promise, ms = 3500) {
+function withTimeout(promise, ms = 5500) {
   return Promise.race([
     promise.catch(() => []),
     new Promise(resolve => setTimeout(() => resolve([]), ms))
@@ -178,14 +178,14 @@ export async function getStreamingServers({
     });
 
   const cleanDubbed = [
+    ...mapDubbedSources(blgDub),
     ...mapDubbedSources(fmkDub),
     ...mapDubbedSources(dblDub),
     ...mapDubbedSources(szdDub),
     ...mapDubbedSources(snxDub),
     ...mapDubbedSources(dzpDub),
     ...mapDubbedSources(flzDub),
-    ...mapDubbedSources(finDub),
-    ...mapDubbedSources(blgDub)
+    ...mapDubbedSources(finDub)
   ];
 
   const mapSubtitledSources = (rawList) => (rawList || [])
