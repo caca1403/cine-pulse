@@ -13,7 +13,7 @@ let slideInterval = null;
 export function renderHeroSlider(items = []) {
   if (!items || items.length === 0) return '';
 
-  const slides = items.slice(0, 15);
+  const slides = items.slice(0, 10);
   const featured = slides[currentSlideIndex] || slides[0];
 
   const id = featured.id;
@@ -38,39 +38,32 @@ export function renderHeroSlider(items = []) {
           <div class="hero-badge-row" id="hero-badge-row">
             <span class="badge badge-primary" id="hero-top-badge">TOP ${currentSlideIndex + 1} ÖNE ÇIKAN</span>
             <span class="badge badge-rating" id="hero-rating-badge">
-              <i data-lucide="star" style="width:14px; height:14px; fill: currentColor"></i> ${rating} IMDb
+              <i data-lucide="star" style="width:13px; height:13px; fill: currentColor"></i> ${rating} IMDb
             </span>
             <span class="badge" id="hero-year-badge">${year}</span>
             <span class="badge" id="hero-type-badge">${type === 'tv' ? 'DİZİ' : 'FİLM'}</span>
-            <span class="badge" style="background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border-color: rgba(0, 242, 254, 0.3);">4K ULTRA HD</span>
+            <span class="badge badge-quality">4K ULTRA HD</span>
           </div>
 
           <h1 class="hero-title" id="hero-title-text">${title}</h1>
           <p class="hero-overview" id="hero-overview-text">${overview}</p>
 
           <div class="hero-actions">
-            <button class="btn-primary" id="hero-play-btn" data-id="${id}" data-type="${type}">
-              <i data-lucide="play" style="fill: currentColor"></i>
+            <button class="btn-primary hero-btn-play" id="hero-play-btn" data-id="${id}" data-type="${type}">
+              <i data-lucide="play" style="fill: currentColor; width: 18px; height: 18px;"></i>
               <span>Hemen İzle</span>
             </button>
 
-            <button class="btn-secondary" id="hero-list-btn" data-id="${id}" data-type="${type}">
-              <i data-lucide="${inWatchlist ? 'check' : 'plus'}"></i>
+            <button class="btn-secondary hero-btn-list" id="hero-list-btn" data-id="${id}" data-type="${type}">
+              <i data-lucide="${inWatchlist ? 'check' : 'plus'}" style="width: 18px; height: 18px;"></i>
               <span>${inWatchlist ? 'Listemde' : 'Listeme Ekle'}</span>
             </button>
           </div>
 
-          <!-- Carousel Dots (max 15 items) -->
-          <div style="display: flex; gap: 0.4rem; margin-top: 2rem; align-items: center; flex-wrap: wrap;" id="hero-dots-container">
+          <!-- Carousel Dots (max 10 items) -->
+          <div class="hero-dots-wrapper" id="hero-dots-container">
             ${slides.map((_, idx) => `
-              <div class="hero-dot ${idx === currentSlideIndex ? 'active' : ''}" data-index="${idx}" style="
-                width: ${idx === currentSlideIndex ? '28px' : '8px'};
-                height: 8px;
-                border-radius: var(--radius-full);
-                background: ${idx === currentSlideIndex ? 'var(--primary-gradient)' : 'rgba(255,255,255,0.2)'};
-                cursor: pointer;
-                transition: var(--transition-smooth);
-              "></div>
+              <div class="hero-dot ${idx === currentSlideIndex ? 'active' : ''}" data-index="${idx}"></div>
             `).join('')}
           </div>
         </div>
@@ -80,7 +73,7 @@ export function renderHeroSlider(items = []) {
 }
 
 export function attachHeroSliderEvents(items = []) {
-  const slides = items.slice(0, 15);
+  const slides = items.slice(0, 10);
   const playBtn = document.getElementById('hero-play-btn');
   const listBtn = document.getElementById('hero-list-btn');
 
@@ -169,12 +162,6 @@ function updateHeroSlide(item) {
 
   // Update dots
   document.querySelectorAll('.hero-dot').forEach((dot, idx) => {
-    if (idx === currentSlideIndex) {
-      dot.style.width = '28px';
-      dot.style.background = 'var(--primary-gradient)';
-    } else {
-      dot.style.width = '8px';
-      dot.style.background = 'rgba(255,255,255,0.2)';
-    }
+    dot.classList.toggle('active', idx === currentSlideIndex);
   });
 }
