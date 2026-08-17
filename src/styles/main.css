@@ -1306,93 +1306,140 @@ button {
   color: var(--text-muted);
 }
 
-/* Detail Page Header */
-.detail-header {
+/* ==========================================================================
+   Detail Page Hero Banner & Content System
+   ========================================================================== */
+.detail-hero-banner {
   position: relative;
-  min-height: 60vh;
   width: 100%;
-  display: flex;
-  align-items: flex-end;
-  padding: 6.5rem 0 3.5rem 0;
+  padding: 6.5rem 1.5rem 3.5rem 1.5rem;
   overflow: hidden;
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
-.detail-backdrop {
+.detail-backdrop-img {
   position: absolute;
   inset: 0;
   background-size: cover;
   background-position: center 25%;
   z-index: 1;
+  filter: brightness(0.6);
+  transform: scale(1.02);
 }
 
-.detail-backdrop::after {
-  content: '';
+.detail-backdrop-gradient {
   position: absolute;
   inset: 0;
+  z-index: 2;
   background: 
-    linear-gradient(180deg, rgba(5,7,12,0.3) 0%, rgba(5,7,12,0.85) 60%, var(--bg-dark) 100%),
-    linear-gradient(90deg, rgba(5,7,12,0.95) 0%, rgba(5,7,12,0.7) 50%, transparent 100%);
+    linear-gradient(180deg, rgba(8, 10, 15, 0.4) 0%, rgba(8, 10, 15, 0.88) 55%, var(--bg-dark) 100%),
+    linear-gradient(90deg, rgba(8, 10, 15, 0.95) 0%, rgba(8, 10, 15, 0.72) 48%, transparent 100%);
 }
 
-.detail-content {
+.detail-container {
   position: relative;
-  z-index: 2;
+  z-index: 3;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.detail-layout {
   display: grid;
   grid-template-columns: 280px 1fr;
-  gap: 2.5rem;
+  gap: 3rem;
   align-items: flex-end;
   width: 100%;
+  box-sizing: border-box;
 }
 
-.detail-poster {
+.detail-poster-col {
   width: 100%;
   max-width: 280px;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 25px 60px rgba(0,0,0,0.9);
-  border: 1px solid var(--border-light);
-  object-fit: cover;
+  flex-shrink: 0;
 }
 
-.detail-title {
+.detail-poster-img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  object-fit: cover;
+  display: block;
+}
+
+.detail-info-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.detail-badge-deck {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.detail-heading-title {
   font-size: 3.2rem;
   line-height: 1.1;
   font-family: var(--font-heading);
   font-weight: 800;
   letter-spacing: -0.02em;
-  margin: 0.4rem 0;
-  color: #f8fafc;
+  color: #fff;
+  margin: 0.2rem 0 0.4rem 0;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
 }
 
-.detail-overview-text {
-  font-size: 0.96rem;
+.detail-orig-title {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: -0.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.detail-genre-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.6rem 0;
+}
+
+.detail-genre-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.3rem 0.85rem;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 600;
   color: var(--text-sub);
+}
+
+.detail-storyline {
+  font-size: 0.98rem;
+  color: #cbd5e1;
   line-height: 1.6;
   max-width: 780px;
   margin: 0.8rem 0;
 }
 
-.detail-genres {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
-
-.detail-genre-tag {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--border-color);
-  padding: 0.35rem 0.9rem;
-  border-radius: var(--radius-full);
-  font-size: 0.85rem;
-  color: var(--text-sub);
-}
-
 /* Cast Carousel Section */
-.detail-cast-section {
-  margin-top: 1.2rem;
+.detail-cast-block {
+  margin-top: 1rem;
   width: 100%;
 }
 
-.detail-section-subtitle {
+.detail-cast-label {
   font-weight: 700;
   font-size: 0.78rem;
   color: #94a3b8;
@@ -1401,28 +1448,29 @@ button {
   margin-bottom: 0.6rem;
 }
 
-.detail-cast-carousel {
+.detail-cast-rail {
   display: flex;
-  gap: 0.6rem;
+  gap: 0.55rem;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 0.4rem;
   scrollbar-width: none;
+  width: 100%;
 }
-.detail-cast-carousel::-webkit-scrollbar {
+.detail-cast-rail::-webkit-scrollbar {
   display: none;
 }
 
-.actor-card-chip {
+.detail-actor-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   padding: 0.25rem 0.75rem 0.25rem 0.25rem;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 0.8rem;
   font-weight: 600;
   color: #f1f5f9;
@@ -1431,62 +1479,77 @@ button {
   transition: transform 0.2s ease, background 0.2s ease;
 }
 
-.actor-card-chip:hover {
+.detail-actor-pill:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
-.actor-avatar-img {
+.detail-actor-avatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
-.actor-name-text {
+.detail-actor-name {
   font-size: 0.8rem;
 }
 
 /* Modern Hero Action Deck */
-.hero-actions-container {
+.detail-action-deck {
   margin-top: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   width: 100%;
   max-width: 580px;
+  box-sizing: border-box;
 }
 
-.btn-hero-main-play {
+.btn-play-primary {
   width: 100%;
   height: 52px;
   border-radius: 12px;
   font-size: 1.02rem;
   font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   gap: 0.65rem;
-  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
-  color: #000;
-  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.4);
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%) !important;
+  color: #000 !important;
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.45);
   border: none;
   cursor: pointer;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
 }
 
-.btn-hero-main-play:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 32px rgba(245, 158, 11, 0.55);
+.btn-play-primary span {
+  color: #000 !important;
+  font-weight: 800 !important;
+  font-size: 1.02rem !important;
+  display: inline-block !important;
 }
 
-.detail-action-grid {
+.btn-play-primary svg {
+  color: #000 !important;
+  stroke: #000 !important;
+  fill: #000 !important;
+}
+
+.btn-play-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(245, 158, 11, 0.6);
+}
+
+.detail-action-subgrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0.55rem;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .btn-action-tile {
@@ -1507,6 +1570,7 @@ button {
   transition: all 0.2s ease;
   white-space: nowrap;
   padding: 0 0.5rem;
+  box-sizing: border-box;
 }
 
 .btn-action-tile:hover {
@@ -3270,15 +3334,21 @@ button {
 
 /* Comprehensive Responsive Styling for Detail, Library & Mobile Grids */
 @media (max-width: 900px) {
-  .detail-header {
-    padding: 4.5rem 0 2rem 0 !important;
+  .detail-hero-banner {
+    padding: 5rem 1rem 2rem 1rem !important;
     min-height: auto !important;
     width: 100% !important;
+    box-sizing: border-box !important;
   }
-  .detail-backdrop::after {
-    background: linear-gradient(180deg, rgba(5,7,12,0.65) 0%, rgba(5,7,12,0.95) 75%, var(--bg-dark) 100%) !important;
+  .detail-backdrop-gradient {
+    background: linear-gradient(180deg, rgba(8, 10, 15, 0.6) 0%, rgba(8, 10, 15, 0.95) 70%, var(--bg-dark) 100%) !important;
   }
-  .detail-content {
+  .detail-container {
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .detail-layout {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -3286,42 +3356,49 @@ button {
     gap: 1.2rem !important;
     width: 100% !important;
     max-width: 100% !important;
-    box-sizing: border-box !important;
     padding: 0 !important;
+    margin: 0 !important;
   }
-  .detail-poster {
+  .detail-poster-col {
+    max-width: 170px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+  .detail-poster-img {
     width: 160px !important;
     max-width: 160px !important;
-    margin: 0 auto !important;
-    display: block !important;
     border-radius: 14px !important;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9) !important;
+    margin: 0 auto !important;
   }
-  .detail-info {
+  .detail-info-col {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     text-align: center !important;
     width: 100% !important;
     max-width: 100% !important;
+    padding: 0 !important;
     box-sizing: border-box !important;
   }
-  .hero-badge-row {
+  .detail-badge-deck {
     justify-content: center !important;
     flex-wrap: wrap !important;
     gap: 0.4rem !important;
   }
-  .detail-title {
+  .detail-heading-title {
     font-size: 1.9rem !important;
     text-align: center !important;
     line-height: 1.2 !important;
+    margin: 0.3rem 0 !important;
   }
-  .detail-genres {
+  .detail-genre-row {
     justify-content: center !important;
     flex-wrap: wrap !important;
     gap: 0.4rem !important;
   }
-  .detail-overview-text {
+  .detail-storyline {
     text-align: center !important;
     font-size: 0.9rem !important;
     line-height: 1.55 !important;
@@ -3330,24 +3407,23 @@ button {
     max-width: 100% !important;
     margin: 0.6rem 0 !important;
   }
-  .detail-cast-section {
+  .detail-cast-block {
     text-align: left !important;
     width: 100% !important;
     margin-top: 0.5rem !important;
   }
-  .hero-actions-container {
+  .detail-action-deck {
     width: 100% !important;
     max-width: 100% !important;
     margin-top: 1rem !important;
   }
-  .btn-hero-main-play {
+  .btn-play-primary {
     width: 100% !important;
     height: 50px !important;
     font-size: 0.96rem !important;
-    font-weight: 800 !important;
     border-radius: 12px !important;
   }
-  .detail-action-grid {
+  .detail-action-subgrid {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 0.5rem !important;
