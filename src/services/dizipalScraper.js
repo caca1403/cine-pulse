@@ -1,21 +1,10 @@
 /* ==========================================================================
-   CinePulse Studio - Self-Healing DiziPal Scraper
-   Dynamically auto-increments and resolves active Dizipal numeric domains
-   (e.g., dizipal1576 -> dizipal1577 -> dizipal1578 ...) + t.ly/dizipalgiris
+   CinePulse Studio - DiziPal VIP Scraper (https://dizipal1576.com)
+   Ultra-fast, non-blocking direct stream resolver for DiziPal movies & series
    ========================================================================== */
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
-const DEFAULT_BASE_NUMBER = 1576;
-
-let currentBaseNumber = DEFAULT_BASE_NUMBER;
-try {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    const saved = parseInt(localStorage.getItem('cinepulse_dizipal_num'), 10);
-    if (!isNaN(saved) && saved >= DEFAULT_BASE_NUMBER) {
-      currentBaseNumber = saved;
-    }
-  }
-} catch (_) {}
+const DIZIPAL_ACTIVE_BASE = 'https://dizipal1576.com';
 
 function toTurkishSlug(title) {
   if (!title) return '';
@@ -42,28 +31,6 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
-/**
- * Probes the candidate range [base, base+1, base+2, base+3, base+4, base+5] in parallel
- * to find the current active Dizipal mirror.
- */
-async function getActiveDizipalDomains() {
-  const baseList = [
-    `https://dizipal${currentBaseNumber}.com`,
-    `https://dizipal${currentBaseNumber + 1}.com`,
-    `https://dizipal${currentBaseNumber + 2}.com`,
-    `https://dizipal${currentBaseNumber + 3}.com`,
-    `https://dizipal${currentBaseNumber + 4}.com`,
-    `https://dizipal${currentBaseNumber + 5}.com`
-  ];
-
-  // Also include base-1 if recently shifted
-  if (currentBaseNumber > DEFAULT_BASE_NUMBER) {
-    baseList.unshift(`https://dizipal${currentBaseNumber - 1}.com`);
-  }
-
-  return baseList;
-}
-
 export async function fetchDizipalSources({
   type = 'tv',
   seriesTitle = '',
@@ -84,12 +51,8 @@ export async function fetchDizipalSources({
   const candidateSlugs = [];
   candidateTitles.forEach(t => {
     const slug = toTurkishSlug(t);
-    if (slug) {
-      if (!candidateSlugs.includes(slug)) candidateSlugs.push(slug);
-      if (slug.startsWith('the-')) {
-        const noThe = slug.replace(/^the-/, '');
-        if (!candidateSlugs.includes(noThe)) candidateSlugs.push(noThe);
-      }
+    if (slug && !candidateSlugs.includes(slug)) {
+      candidateSlugs.push(slug);
     }
   });
 
@@ -97,83 +60,47 @@ export async function fetchDizipalSources({
 
   const isMovie = type === 'movie';
   const topSlug = candidateSlugs[0];
-  const candidateDomains = await getActiveDizipalDomains();
 
-  for (const baseDomain of candidateDomains) {
-    for (const slug of candidateSlugs) {
-      const candidateUrls = isMovie
-        ? [
-            `${baseDomain}/${slug}-izle/`,
-            `${baseDomain}/${slug}/`,
-            `${baseDomain}/film/${slug}/`,
-            `${baseDomain}/film/${slug}-izle/`
-          ]
-        : [
-            `${baseDomain}/dizi/${slug}/${season}-sezon-${episode}-bolum/`,
-            `${baseDomain}/bolum/${slug}-${season}-sezon-${episode}-bolum-izle/`,
-            `${baseDomain}/bolum/${slug}-${season}-sezon-${episode}-bolum/`
-          ];
+  const candidateUrls = isMovie
+    ? [
+        `${DIZIPAL_ACTIVE_BASE}/${topSlug}-izle/`,
+        `${DIZIPAL_ACTIVE_BASE}/${topSlug}/`,
+        `${DIZIPAL_ACTIVE_BASE}/film/${topSlug}-izle/`
+      ]
+    : [
+        `${DIZIPAL_ACTIVE_BASE}/dizi/${topSlug}/${season}-sezon-${episode}-bolum/`,
+        `${DIZIPAL_ACTIVE_BASE}/bolum/${topSlug}-${season}-sezon-${episode}-bolum-izle/`
+      ];
 
-      for (const epUrl of candidateUrls) {
-        try {
-          const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
-          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(2200) }).catch(() => null);
+  // Fast direct inspection of the active DiziPal mirror in parallel
+  const probePromises = candidateUrls.map(async (epUrl) => {
+    try {
+      const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(1800) }).catch(() => null);
+      if (res && res.ok) {
+        const html = await res.text();
+        const iframeMatch = 
+          html.match(/iframe\s+src=["']([^"']+)["']/i) || 
+          html.match(/src=["'](https?:\/\/[^"']*(?:embed|player|stream|video)[^"']*)["']/i);
 
-          if (res && res.ok) {
-            const html = await res.text();
-            
-            // Extract numeric domain from active response
-            const activeDomainMatch = epUrl.match(/dizipal(\d+)\.com/i);
-            if (activeDomainMatch) {
-              const detectedNum = parseInt(activeDomainMatch[1], 10);
-              if (detectedNum && detectedNum > currentBaseNumber) {
-                currentBaseNumber = detectedNum;
-                try {
-                  if (typeof window !== 'undefined' && window.localStorage) {
-                    localStorage.setItem('cinepulse_dizipal_num', detectedNum.toString());
-                  }
-                } catch (_) {}
-              }
-            }
+        let iframeUrl = iframeMatch ? iframeMatch[1] : null;
+        if (iframeUrl) {
+          if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
+          if (iframeUrl.startsWith('/')) iframeUrl = `${DIZIPAL_ACTIVE_BASE}${iframeUrl}`;
 
-            const iframeMatch = 
-              html.match(/iframe\s+src=["']([^"']+)["']/i) || 
-              html.match(/src=["'](https?:\/\/[^"']*(?:embed|player|stream|video)[^"']*)["']/i);
-
-            let iframeUrl = iframeMatch ? iframeMatch[1] : null;
-
-            if (iframeUrl) {
-              if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
-              if (iframeUrl.startsWith('/')) iframeUrl = `${baseDomain}${iframeUrl}`;
-
-              if (!iframeUrl.includes('recaptcha') && !iframeUrl.includes('google') && iframeUrl.length > 10) {
-                return [
-                  {
-                    id: `dzp_${slug}_${season}_${episode}`,
-                    name: `DiziPal VIP`,
-                    displayName: `DiziPal VIP`,
-                    badge: '⚡ DiziPal VIP',
-                    category: isDub ? 'dubbed' : 'subtitled',
-                    url: iframeUrl,
-                    streamUrl: iframeUrl,
-                    isHls: iframeUrl.includes('.m3u8'),
-                    isDirectVideo: iframeUrl.includes('.mp4') || iframeUrl.includes('.mkv'),
-                    getUrl: () => iframeUrl
-                  }
-                ];
-              }
-            }
+          if (!iframeUrl.includes('recaptcha') && !iframeUrl.includes('google') && iframeUrl.length > 10) {
+            return iframeUrl;
           }
-        } catch (_) {}
+        }
       }
-    }
-  }
+    } catch (_) {}
+    return null;
+  });
 
-  // Self-healing direct fallback using the current base domain
-  const primaryDomain = `https://dizipal${currentBaseNumber}.com`;
-  const directFallbackUrl = isMovie
-    ? `${primaryDomain}/${topSlug}-izle/`
-    : `${primaryDomain}/dizi/${topSlug}/${season}-sezon-${episode}-bolum/`;
+  const resolvedUrls = await Promise.all(probePromises);
+  const foundIframe = resolvedUrls.find(Boolean);
+
+  const finalStreamUrl = foundIframe || candidateUrls[0];
 
   return [
     {
@@ -182,11 +109,11 @@ export async function fetchDizipalSources({
       displayName: `DiziPal VIP`,
       badge: '⚡ DiziPal VIP',
       category: isDub ? 'dubbed' : 'subtitled',
-      url: directFallbackUrl,
-      streamUrl: directFallbackUrl,
-      isHls: false,
-      isDirectVideo: false,
-      getUrl: () => directFallbackUrl
+      url: finalStreamUrl,
+      streamUrl: finalStreamUrl,
+      isHls: finalStreamUrl.includes('.m3u8'),
+      isDirectVideo: finalStreamUrl.includes('.mp4') || finalStreamUrl.includes('.mkv'),
+      getUrl: () => finalStreamUrl
     }
   ];
 }

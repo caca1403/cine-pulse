@@ -1,6 +1,6 @@
 /* ==========================================================================
    CinePulse Studio - Direct REST API Scraper (DiziBal)
-   High-accuracy title & year matching to prevent wrong movie playback.
+   High-accuracy title & year matching for DiziBal (https://dizibal.com)
    ========================================================================== */
 
 function isTitleMatch(targetTitle, candidateTitle, targetYear = null, candidateYear = null) {
@@ -47,7 +47,8 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
     try {
       if (isMovie) {
         const searchRes = await fetch(`${apiBase}/movies?search=${encodeURIComponent(cleanQuery)}`, {
-          headers: { 'Accept': 'application/json' }
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(2000)
         }).catch(() => null);
 
         if (!searchRes || !searchRes.ok) continue;
@@ -55,48 +56,34 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         const moviesList = searchJson?.data || [];
         if (moviesList.length === 0) continue;
 
-        // Accurate match by title & year - NEVER blindly take moviesList[0]
         let targetMovie = moviesList.find(m => isTitleMatch(cleanQuery, m.title || m.name || m.slug, year, m.year || m.release_date));
         if (!targetMovie) {
           targetMovie = moviesList.find(m => isTitleMatch(rawQuery, m.title || m.name || m.slug, year, m.year || m.release_date));
         }
 
-        if (!targetMovie) {
-          // If no movie matches the target title, skip to avoid streaming the wrong film
-          continue;
-        }
+        if (!targetMovie) continue;
 
         const targetSlug = targetMovie.slug;
+        const fallbackUrl = `https://dizibal.com/film/${targetSlug}`;
 
-        const detailRes = await fetch(`${apiBase}/movies/${targetSlug}`, {
-          headers: { 'Accept': 'application/json' }
-        }).catch(() => null);
-
-        if (!detailRes || !detailRes.ok) continue;
-        const detailJson = await detailRes.json().catch(() => null);
-        const movieData = detailJson?.data;
-        if (!movieData) continue;
-
-        const srcId = movieData.src || (movieData.streamUrl ? movieData.streamUrl.match(/embed-([^.]+)/)?.[1] : null);
-        if (srcId) {
-          const embedUrl = (movieData.streamUrl ? movieData.streamUrl.replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd') : null) || `https://x.ag2m4.cfd/embed-${srcId}.html`;
-
-          return [
-            {
-              id: `dbl_${movieData.slug || 'movie'}`,
-              name: `VIP Stream (${isDub ? 'Dublaj 1080p' : 'Altyazılı'})`,
-              badge: '⚡ VIP 1080p',
-              isHls: false,
-              isDirectVideo: false,
-              getUrl: () => embedUrl,
-              streamUrl: embedUrl,
-              url: embedUrl
-            }
-          ];
-        }
+        return [
+          {
+            id: `dbl_${targetSlug}`,
+            name: `DiziBal HD`,
+            displayName: `DiziBal HD`,
+            badge: '⚡ DiziBal',
+            category: isDub ? 'dubbed' : 'subtitled',
+            isHls: false,
+            isDirectVideo: false,
+            getUrl: () => fallbackUrl,
+            streamUrl: fallbackUrl,
+            url: fallbackUrl
+          }
+        ];
       } else {
         const searchRes = await fetch(`${apiBase}/series?search=${encodeURIComponent(cleanQuery)}`, {
-          headers: { 'Accept': 'application/json' }
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(2000)
         }).catch(() => null);
 
         if (!searchRes || !searchRes.ok) continue;
@@ -109,42 +96,27 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
           targetSeries = seriesList.find(s => isTitleMatch(rawQuery, s.title || s.name || s.slug, year, s.year || s.first_air_date));
         }
 
-        if (!targetSeries) {
-          continue;
-        }
+        if (!targetSeries) continue;
 
         const seriesSlug = targetSeries.slug;
+        const fallbackUrl = `https://dizibal.com/dizi/${seriesSlug}/${season}-sezon-${episode}-bolum`;
 
-        const seasonRes = await fetch(`${apiBase}/series/${seriesSlug}/seasons/${season}`, {
-          headers: { 'Accept': 'application/json' }
-        }).catch(() => null);
-
-        if (!seasonRes || !seasonRes.ok) continue;
-        const seasonJson = await seasonRes.json().catch(() => null);
-        const episodes = seasonJson?.data?.episodes || [];
-
-        const targetEp = episodes.find(e => e.episode_number === parseInt(episode, 10)) || episodes[0];
-
-        if (targetEp && targetEp.src) {
-          const embedUrl = `https://x.ag2m4.cfd/embed-${targetEp.src}.html`;
-
-          return [
-            {
-              id: `dbl_${seriesSlug}_s${season}_e${episode}`,
-              name: `VIP Stream (S${season}:E${episode} ${isDub ? 'Dublaj HD' : 'Altyazılı'})`,
-              badge: '⚡ VIP 1080p',
-              isHls: false,
-              isDirectVideo: false,
-              getUrl: () => embedUrl,
-              streamUrl: embedUrl,
-              url: embedUrl
-            }
-          ];
-        }
+        return [
+          {
+            id: `dbl_${seriesSlug}_s${season}_e${episode}`,
+            name: `DiziBal HD`,
+            displayName: `DiziBal HD`,
+            badge: '⚡ DiziBal',
+            category: isDub ? 'dubbed' : 'subtitled',
+            isHls: false,
+            isDirectVideo: false,
+            getUrl: () => fallbackUrl,
+            streamUrl: fallbackUrl,
+            url: fallbackUrl
+          }
+        ];
       }
-    } catch (err) {
-      console.warn('[DiziBalScraper] Search error:', err);
-    }
+    } catch (_) {}
   }
 
   return [];
