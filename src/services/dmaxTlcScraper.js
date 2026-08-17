@@ -7,12 +7,16 @@ const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 function toTurkishSlug(title) {
   if (!title) return '';
-  const cleanStr = title
+  return title
     .replace(/\s*\(\d{4}\).*/, '')
     .replace(/[:.,!?'"()]/g, '')
-    .trim();
-
-  return cleanStr
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
+    .replace(/Ğ/g, 'g')
+    .replace(/Ü/g, 'u')
+    .replace(/Ş/g, 's')
+    .replace(/Ö/g, 'o')
+    .replace(/Ç/g, 'c')
     .toLowerCase()
     .trim()
     .replace(/ğ/g, 'g')
