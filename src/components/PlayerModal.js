@@ -709,7 +709,10 @@ export async function openPlayerModal({
     if (window.lucide) window.lucide.createIcons();
   }
 
-  // --- IN-PLAYER QUICK EPISODES RAIL (TV ONLY) ---
+  // Trigger initial drawer & mobile episode rail rendering for TV
+  if (type === 'tv') {
+    renderDrawerContent();
+  }
   async function renderQuickEpisodesRail() {
     const rail = document.getElementById('player-quick-episodes-rail');
     const countText = document.getElementById('quick-ep-count-text');
@@ -1056,7 +1059,7 @@ export async function openPlayerModal({
 
   updateServerPillsEvents();
   updatePlayerContainer();
-  if (type === 'tv') renderQuickEpisodesRail();
+  if (type === 'tv') renderDrawerContent();
 
   // Progress Saving Interval
   clearInterval(activeProgressInterval);
@@ -1156,7 +1159,7 @@ export async function openPlayerModal({
     }
 
     updateNavButtons();
-    if (type === 'tv') renderQuickEpisodesRail();
+    if (type === 'tv') renderDrawerContent();
 
     simulatedCurrentTime = initialTime;
     isSwitchingEpisode = false;
