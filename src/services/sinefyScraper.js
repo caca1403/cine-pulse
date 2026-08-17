@@ -98,9 +98,8 @@ export async function fetchSinefySources({
         u.length > 10
       );
 
-      const streamUrl = validIframe 
-        ? (validIframe.startsWith('//') ? `https:${validIframe}` : validIframe)
-        : fullUrl;
+      // Use the Sinefy player URL directly to bypass external pichive SAMEORIGIN restrictions
+      const streamUrl = fullUrl;
 
       return [
         {
@@ -111,8 +110,8 @@ export async function fetchSinefySources({
           category: isDub ? 'dubbed' : 'subtitled',
           url: streamUrl,
           streamUrl: streamUrl,
-          isHls: streamUrl.includes('.m3u8'),
-          isDirectVideo: streamUrl.includes('.mp4') || streamUrl.includes('.mkv'),
+          isHls: false,
+          isDirectVideo: false,
           getUrl: () => streamUrl
         }
       ];

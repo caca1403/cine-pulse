@@ -177,58 +177,13 @@ export async function getStreamingServers({
       };
     });
 
-  const rawCleanDubbed = [
+  const cleanDubbed = [
     ...mapDubbedSources(blgDub),
     ...mapDubbedSources(snfDub),
     ...mapDubbedSources(dzpDub),
     ...mapDubbedSources(fmkDub),
     ...mapDubbedSources(dblDub),
     ...mapDubbedSources(szdDub)
-  ];
-
-  // Guaranteed multi-language VIP CDN fallback for 100% stream availability
-  const cleanDubbed = [
-    ...rawCleanDubbed,
-    {
-      id: 'dub_videasy',
-      name: 'Videasy 4K',
-      displayName: 'Videasy 4K',
-      badge: '⚡ Videasy 4K',
-      category: 'dubbed',
-      getUrl: () => isMovie
-        ? `https://player.videasy.net/movie/${tmdbId}`
-        : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'dub_vidlink',
-      name: 'VidLink VIP',
-      displayName: 'VidLink VIP',
-      badge: '⚡ VidLink',
-      category: 'dubbed',
-      getUrl: () => isMovie
-        ? `https://vidlink.pro/movie/${tmdbId}`
-        : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'dub_vidsrccc',
-      name: 'VidSrc Pro',
-      displayName: 'VidSrc Pro',
-      badge: '⚡ VidSrc Pro',
-      category: 'dubbed',
-      getUrl: () => isMovie
-        ? `https://vidsrc.cc/v2/embed/movie/${tmdbId}`
-        : `https://vidsrc.cc/v2/embed/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'dub_2embed',
-      name: '2Embed VIP',
-      displayName: '2Embed VIP',
-      badge: '⚡ 2Embed',
-      category: 'dubbed',
-      getUrl: () => isMovie
-        ? `https://www.2embed.cc/embed/${tmdbId}`
-        : `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`
-    }
   ];
 
   const mapSubtitledSources = (rawList) => (rawList || [])
