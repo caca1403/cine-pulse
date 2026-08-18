@@ -2817,9 +2817,10 @@ button {
   gap: 0.4rem;
 }
 
-/* Mobile In-Player Always-Open Episodes Section (Desktop: Hidden, Mobile: Always Open) */
+/* Mobile In-Player Elements (Desktop: Hidden, Mobile: Active) */
+.mobile-action-strip,
 .mobile-episodes-section {
-  display: none;
+  display: none !important;
 }
 
 .player-quick-episodes-rail::-webkit-scrollbar {
