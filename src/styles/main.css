@@ -4009,90 +4009,6 @@ button {
   .server-name-label {
     font-size: 0.72rem !important;
   }
-  .player-stage-wrapper {
-    flex-shrink: 0 !important;
-    width: 100% !important;
-    aspect-ratio: 16 / 9 !important;
-    max-height: 38vh !important;
-    height: auto !important;
-    position: relative !important;
-    background: #000 !important;
-    overflow: hidden !important;
-  }
-  .player-iframe-container {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    background: #000 !important;
-  }
-  .player-iframe-container iframe,
-  .player-iframe-container video {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    border: none !important;
-    object-fit: contain !important;
-  }
-  .floating-audio-chip {
-    bottom: 6px !important;
-    right: 6px !important;
-    left: 6px !important;
-    padding: 4px 8px !important;
-    font-size: 0.7rem !important;
-    justify-content: space-between !important;
-  }
-  .in-player-drawer {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 80vh !important;
-    max-height: 80vh !important;
-    top: auto !important;
-    bottom: 0 !important;
-    border-left: none !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
-    border-radius: 20px 20px 0 0 !important;
-    animation: slideInUpMobile 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  }
-  @keyframes slideInUpMobile {
-    from { transform: translateY(100%); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-  .ep-card-thumbnail {
-    width: 80px !important;
-    height: 50px !important;
-  }
-  .ep-card-overview {
-    display: none !important;
-  }
-  .shortcuts-popover {
-    width: calc(100vw - 20px) !important;
-    left: 10px !important;
-    right: 10px !important;
-  }
-  .player-footer-bar {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    padding: 0.65rem 0.75rem !important;
-    background: #080b11 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.55rem !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-    z-index: 30 !important;
-    padding-bottom: max(0.65rem, env(safe-area-inset-bottom)) !important;
-  }
-  #player-nav-btn-group,
-  .player-nav-btn-row {
-    display: flex !important;
-    align-items: center !important;
-    gap: 0.45rem !important;
-    width: 100% !important;
-    order: 1 !important;
-  }
   #btn-toggle-drawer,
   .mobile-drawer-btn {
     display: none !important;
@@ -4108,26 +4024,58 @@ button {
     display: flex !important;
     flex-direction: column !important;
     background: #06090f !important;
+    overflow: hidden !important;
+  }
+
+  .player-cinema-bar {
+    flex-shrink: 0 !important;
+    height: 48px !important;
+    padding: 0 0.65rem !important;
+  }
+
+  .server-toolbar {
+    flex-shrink: 0 !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0.15rem 0.5rem !important;
+    gap: 0.35rem !important;
+    background: #0a0d14 !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    z-index: 25 !important;
   }
 
   .player-stage-wrapper {
     display: flex !important;
     flex-direction: column !important;
-    flex: 1 !important;
+    flex: 1 1 auto !important;
     min-height: 0 !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
+    background: #06090f !important;
   }
 
   .player-iframe-container {
     width: 100% !important;
+    aspect-ratio: 16 / 9 !important;
     height: auto !important;
-    aspect-ratio: 16/9 !important;
+    min-height: 200px !important;
+    max-height: 40vh !important;
     flex-shrink: 0 !important;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 20 !important;
+    position: relative !important;
     background: #000 !important;
+  }
+
+  .player-iframe-container iframe,
+  .player-iframe-container video {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    object-fit: contain !important;
   }
 
   .in-player-drawer {
@@ -4158,12 +4106,11 @@ button {
   .mobile-episodes-section {
     display: flex !important;
     flex-direction: column !important;
-    flex: 1 !important;
+    flex-shrink: 0 !important;
     background: #06090f !important;
-    padding: 0.35rem 0.85rem 0.75rem 0.85rem !important;
+    padding: 0.45rem 0.85rem 0.75rem 0.85rem !important;
     gap: 0.55rem !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
+    width: 100% !important;
   }
 
   .mobile-episodes-header {
@@ -4214,7 +4161,8 @@ button {
     padding: 0.2rem 0 0.4rem 0 !important;
     -webkit-overflow-scrolling: touch !important;
     scrollbar-width: thin !important;
-    flex: 1 !important;
+    width: 100% !important;
+    min-height: 140px !important;
   }
 
   .mobile-episodes-rail::-webkit-scrollbar {
@@ -4324,10 +4272,13 @@ button {
     flex-shrink: 0 !important;
     height: auto !important;
     padding: 0.55rem 0.85rem !important;
+    display: flex !important;
     flex-direction: column !important;
     gap: 0.5rem !important;
     background: rgba(9, 13, 22, 0.98) !important;
     border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    margin-top: auto !important;
+    z-index: 30 !important;
   }
 
   .player-footer-left {
