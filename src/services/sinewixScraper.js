@@ -2,9 +2,11 @@
    CinePulse Studio - Direct Sinewix Scraper Module
    Fetches direct high-speed Turkish Dubbed video streams (MKV/MP4/HLS)
    Supports both Movies (/media/detail) and TV Series (/series/show).
+   Triple gateway (CF Worker -> Vercel Serverless Proxy -> Direct) for 100% reliability.
    Strict title & year & type matching to prevent wrong media playback.
    ========================================================================== */
 
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const SINEWIX_API_BASE = 'https://ydfvfdizipanel.ru/public/api';
 const SINEWIX_TOKEN = '9iQNC5HQwPlaFuJDkhncJ5XTJ8feGXOJatAA';
 
@@ -58,31 +60,45 @@ function isTitleSimilar(target, candidate, targetYear = null, candidateYear = nu
 }
 
 async function performSinewixRequest(endpoint) {
-  const isBrowser = typeof window !== 'undefined';
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  const fullUrl = isBrowser ? `/api/snx?path=${encodeURIComponent(cleanEndpoint)}` : `${SINEWIX_API_BASE}${cleanEndpoint}`;
+  const directTarget = `${SINEWIX_API_BASE}${cleanEndpoint}`;
 
+  // 1. Try Cloudflare Worker Gateway first
   try {
-    const res = await fetch(fullUrl, {
-      headers: isBrowser ? {} : SINEWIX_HEADERS,
-      signal: AbortSignal.timeout(5000)
+    const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(directTarget)}`;
+    const res = await fetch(workerUrl, {
+      signal: AbortSignal.timeout(4000)
     }).catch(() => null);
 
     if (res && res.ok) {
-      return await res.json().catch(() => null);
+      const data = await res.json().catch(() => null);
+      if (data) return data;
     }
   } catch (_) {}
 
-  // Direct backend fallback
+  // 2. Try Vercel Serverless Proxy (/api/snx)
   try {
-    const directUrl = `${SINEWIX_API_BASE}${cleanEndpoint}`;
-    const res = await fetch(directUrl, {
-      headers: SINEWIX_HEADERS,
-      signal: AbortSignal.timeout(5000)
+    const vercelProxyUrl = `/api/snx?path=${encodeURIComponent(cleanEndpoint)}`;
+    const res = await fetch(vercelProxyUrl, {
+      signal: AbortSignal.timeout(4000)
     }).catch(() => null);
 
     if (res && res.ok) {
-      return await res.json().catch(() => null);
+      const data = await res.json().catch(() => null);
+      if (data) return data;
+    }
+  } catch (_) {}
+
+  // 3. Direct backend fallback (for Node/native environments)
+  try {
+    const res = await fetch(directTarget, {
+      headers: SINEWIX_HEADERS,
+      signal: AbortSignal.timeout(4000)
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data) return data;
     }
   } catch (_) {}
 
@@ -153,11 +169,9 @@ export async function fetchSinewixSources({
     let videoList = [];
 
     if (isMovie) {
-      // Sinewix Movie detail endpoint is /media/detail/{id}/{token}
       const movieData = await performSinewixRequest(`/media/detail/${itemId}/${SINEWIX_TOKEN}`);
       videoList = movieData?.videos || [];
     } else {
-      // Sinewix TV Series detail endpoint is /series/show/{id}/{token}
       const seriesData = await performSinewixRequest(`/series/show/${itemId}/${SINEWIX_TOKEN}`);
       if (seriesData?.seasons && Array.isArray(seriesData.seasons)) {
         const seasonMatch = seriesData.seasons.find(s => s.season_number === Number(season)) || seriesData.seasons[0];
@@ -190,12 +204,10 @@ export async function fetchSinewixSources({
       const isSubtitledVideo = lowerLink.includes('trsub') || lowerLink.includes('.sub.') || lowerLink.includes('altyazi') || (v.lang && v.lang.toLowerCase().includes('sub'));
 
       if (isDub && isSubtitledVideo) {
-        // Skip subtitled video when requesting dubbed
         continue;
       }
 
       if (!isDub && !isSubtitledVideo && lowerLink.includes('dub')) {
-        // Skip dubbed video when requesting subtitled
         continue;
       }
 
