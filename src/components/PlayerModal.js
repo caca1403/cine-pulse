@@ -13,7 +13,7 @@
    - Watched & Halfway Progress Bookmarking with Auto-Sync
    ========================================================================== */
 
-import { getStreamingServers } from '../services/providerAggregator.js';
+import { getStreamingServers, getStreamingServersProgressive } from '../services/providerAggregator.js';
 import {
   saveWatchProgress,
   getMediaProgress,
@@ -1068,37 +1068,133 @@ export async function openPlayerModal({
     }
   }
 
-  // Initial Fetch of Servers
-  categorizedServers = await getStreamingServers({
-    type,
-    tmdbId,
-    title: cleanSeriesName,
-    seriesTitle: cleanSeriesName,
-    originalTitle,
-    season: currentSeason,
-    episode: currentEpisode
-  });
+  let countdownTimer = null;
+  let countdownSeconds = 10;
+  let hasPlayerStartedPlaying = false;
 
-  if (
-    (!categorizedServers.dubbed || categorizedServers.dubbed.length === 0 || categorizedServers.dubbed[0]?.notFound) &&
-    categorizedServers.subtitled &&
-    categorizedServers.subtitled.length > 0 &&
-    !categorizedServers.subtitled[0]?.notFound
-  ) {
-    currentCategory = 'subtitled';
-    const tabDub = document.getElementById('tab-dubbed');
-    const tabSub = document.getElementById('tab-subtitled');
-    if (tabDub && tabSub) {
-      tabDub.classList.remove('active');
-      tabSub.classList.add('active');
-    }
+  function showDubbedFoundBanner(stream) {
+    if (document.getElementById('dubbed-found-banner')) return;
+    const wrapper = document.getElementById('player-iframe-wrapper');
+    if (!wrapper) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'dubbed-found-banner';
+    banner.className = 'dubbed-found-banner';
+    banner.innerHTML = `
+      <div class="dubbed-found-text">
+        <i data-lucide="sparkles" style="width: 15px; height: 15px; color: #f59e0b;"></i>
+        <span>🇹🇷 Türkçe Dublaj Yayını Bulundu! (${stream.displayName || '1080p'})</span>
+      </div>
+      <button class="dubbed-found-btn" id="btn-switch-to-new-dubbed">
+        <span>Dublaja Geç</span>
+        <i data-lucide="arrow-right" style="width: 13px; height: 13px;"></i>
+      </button>
+      <button class="dubbed-found-close" id="btn-close-dubbed-banner" title="Kapat">
+        <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+      </button>
+    `;
+
+    wrapper.appendChild(banner);
+    if (window.lucide) window.lucide.createIcons();
+
+    document.getElementById('btn-switch-to-new-dubbed')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      banner.remove();
+      const tabDub = document.getElementById('tab-dubbed');
+      if (tabDub) tabDub.click();
+    });
+
+    document.getElementById('btn-close-dubbed-banner')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      banner.remove();
+    });
   }
 
-  activeServers = categorizedServers[currentCategory] || [];
-  currentServerIndex = 0;
+  function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownSeconds = 10;
+    hasPlayerStartedPlaying = false;
+    categorizedServers = { dubbed: [], subtitled: [] };
+    activeServers = [];
 
-  updateServerPillsEvents();
-  updatePlayerContainer();
+    const updateCountdownDisplay = () => {
+      const hint = document.querySelector('.player-loader-hint');
+      if (hint) {
+        hint.innerHTML = `Türkiye ve küresel CDN hatları taranıyor... <span class="player-countdown-badge"><span class="server-pulse-dot"></span> Canlı Tarama: ${countdownSeconds}s</span>`;
+      }
+    };
+
+    updateCountdownDisplay();
+    countdownTimer = setInterval(() => {
+      countdownSeconds--;
+      updateCountdownDisplay();
+
+      // When 10s countdown finishes:
+      if (countdownSeconds <= 0) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+
+        // If user is on Dubbed and NO dubbed source was found, automatically redirect to Subtitled
+        if (currentCategory === 'dubbed' && (!categorizedServers.dubbed || categorizedServers.dubbed.length === 0)) {
+          if (categorizedServers.subtitled && categorizedServers.subtitled.length > 0) {
+            showToast('💬 Türkçe Dublaj bulunamadı. Türkçe Altyazılı sunuculara yönlendirildiniz.', 'info');
+            currentCategory = 'subtitled';
+            const tabDub = document.getElementById('tab-dubbed');
+            const tabSub = document.getElementById('tab-subtitled');
+            if (tabDub && tabSub) {
+              tabDub.classList.remove('active');
+              tabSub.classList.add('active');
+            }
+            activeServers = categorizedServers['subtitled'] || [];
+            currentServerIndex = 0;
+            updateServerPillsEvents();
+            updatePlayerContainer();
+          }
+        }
+      }
+    }, 1000);
+
+    getStreamingServersProgressive({
+      type,
+      tmdbId,
+      title: cleanSeriesName,
+      seriesTitle: cleanSeriesName,
+      originalTitle,
+      season: currentSeason,
+      episode: currentEpisode,
+      onUpdate: ({ dubbed = [], subtitled = [], isComplete = false, newStream = null, isDubbedStream = false }) => {
+        categorizedServers = { dubbed, subtitled };
+
+        // Live Dubbed stream alert while user is watching in Subtitled
+        if (currentCategory === 'subtitled' && isDubbedStream && newStream) {
+          showDubbedFoundBanner(newStream);
+          showToast(`🇹🇷 Türkçe Dublaj yayını bulundu: ${newStream.displayName}`, 'success');
+        }
+
+        // If in Dubbed mode and first Dubbed stream just arrived:
+        if (currentCategory === 'dubbed' && dubbed.length > 0 && !hasPlayerStartedPlaying) {
+          hasPlayerStartedPlaying = true;
+          activeServers = dubbed;
+          currentServerIndex = 0;
+          updateServerPillsEvents();
+          updatePlayerContainer();
+        } else {
+          activeServers = categorizedServers[currentCategory] || [];
+          updateServerPillsEvents();
+
+          // If in subtitled mode and player not started yet:
+          if (!hasPlayerStartedPlaying && activeServers.length > 0 && currentCategory === 'subtitled') {
+            hasPlayerStartedPlaying = true;
+            currentServerIndex = 0;
+            updatePlayerContainer();
+          }
+        }
+      }
+    });
+  }
+
+  // Initial Progressive Server Discovery
+  startServerDiscovery();
   if (type === 'tv') renderDrawerContent();
 
   // Progress Saving Interval
@@ -1143,47 +1239,18 @@ export async function openPlayerModal({
           <div class="player-loader-text">
             <h3>${cleanSeriesName}</h3>
             <p class="player-loader-sub">Sezon ${currentSeason} • Bölüm ${currentEpisode} Yükleniyor...</p>
-            <p class="player-loader-hint">Yeni bölüm akış hatları bağlanıyor...</p>
+            <p class="player-loader-hint">Yeni bölüm akış hatları taranıyor...</p>
           </div>
         </div>
       `;
       if (window.lucide) window.lucide.createIcons();
     }
 
-    categorizedServers = await getStreamingServers({
-      type,
-      tmdbId,
-      title: cleanSeriesName,
-      seriesTitle: cleanSeriesName,
-      originalTitle,
-      season: currentSeason,
-      episode: currentEpisode
-    });
-
-    if (
-      (!categorizedServers.dubbed || categorizedServers.dubbed.length === 0 || categorizedServers.dubbed[0]?.notFound) &&
-      categorizedServers.subtitled &&
-      categorizedServers.subtitled.length > 0 &&
-      !categorizedServers.subtitled[0]?.notFound
-    ) {
-      currentCategory = 'subtitled';
-      const tabDub = document.getElementById('tab-dubbed');
-      const tabSub = document.getElementById('tab-subtitled');
-      if (tabDub && tabSub) {
-        tabDub.classList.remove('active');
-        tabSub.classList.add('active');
-      }
-    }
-
-    activeServers = categorizedServers[currentCategory] || [];
-    currentServerIndex = 0;
+    startServerDiscovery({ isEpisodeSwitch: true });
 
     const newRecord = getMediaProgress(tmdbId, currentSeason, currentEpisode);
     initialTime = newRecord ? newRecord.currentTime : 0;
     isWatched = isMediaWatched(tmdbId, currentSeason, currentEpisode);
-
-    updateServerPillsEvents();
-    updatePlayerContainer();
 
     const toggleWatchedPlayerBtn = document.getElementById('btn-toggle-watched-player');
     if (toggleWatchedPlayerBtn) {

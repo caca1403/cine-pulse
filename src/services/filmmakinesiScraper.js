@@ -30,6 +30,8 @@ function isTitleSimilar(target, candidate, targetYear = null, candidateYear = nu
   if (!target || !candidate) return false;
   const normT = normalizeText(target);
   const normC = normalizeText(candidate);
+  if (!normT || !normC) return false;
+
   if (normT === normC) {
     if (targetYear && candidateYear) {
       return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
@@ -37,12 +39,13 @@ function isTitleSimilar(target, candidate, targetYear = null, candidateYear = nu
     return true;
   }
 
-  const tWords = normT.split(/\s+/).filter(w => w.length > 1);
-  const cWords = normC.split(/\s+/).filter(w => w.length > 1);
+  const tWords = normT.split(/\s+/).filter(w => w.length > 0);
+  const cWords = normC.split(/\s+/).filter(w => w.length > 0);
 
-  const matched = tWords.filter(w => cWords.includes(w)).length;
-  const ratio = matched / Math.max(tWords.length, 1);
-  if (ratio >= 0.5) {
+  const allTargetInCandidate = tWords.length > 0 && tWords.every(w => cWords.includes(w));
+  const allCandidateInTarget = cWords.length > 0 && cWords.every(w => tWords.includes(w));
+
+  if (allTargetInCandidate || allCandidateInTarget) {
     if (targetYear && candidateYear) {
       return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
     }
@@ -197,7 +200,7 @@ export async function fetchFilmMakinesiSources({
 
     const targetItem = pool.find(it => {
       return cleanedQueries.some(q => isTitleSimilar(q, it.title, year, null));
-    }) || pool[0];
+    });
 
     if (!targetItem) return [];
 

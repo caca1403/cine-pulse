@@ -23,32 +23,45 @@ function normalizeText(text) {
 function isTitleMatch(targetTitle, candidateObj, targetYear = null) {
   if (!targetTitle || !candidateObj) return false;
 
-  const candidateTitle = candidateObj.title || candidateObj.name || candidateObj.display_title_tr || candidateObj.display_title_en || candidateObj.slug || '';
+  const candidateTitles = [
+    candidateObj.title,
+    candidateObj.name,
+    candidateObj.name_en,
+    candidateObj.name_tr,
+    candidateObj.original_name,
+    candidateObj.display_title_tr,
+    candidateObj.display_title_en,
+    candidateObj.slug
+  ].filter(Boolean);
+
   const candidateYear = candidateObj.year || (candidateObj.release_date || candidateObj.first_air_date || '').substring(0, 4) || null;
-
   const normTarget = normalizeText(targetTitle);
-  const normCand = normalizeText(candidateTitle);
+  if (!normTarget) return false;
+  const targetWords = normTarget.split(/\s+/).filter(w => w.length > 0);
 
-  if (normTarget === normCand) {
-    if (targetYear && candidateYear) {
-      return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
+  return candidateTitles.some(cand => {
+    const normCand = normalizeText(cand);
+    if (!normCand) return false;
+
+    if (normTarget === normCand) {
+      if (targetYear && candidateYear) {
+        return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
+      }
+      return true;
     }
-    return true;
-  }
 
-  const targetWords = normTarget.split(/\s+/).filter(w => w.length > 1);
-  const candWords = normCand.split(/\s+/).filter(w => w.length > 1);
+    const candWords = normCand.split(/\s+/).filter(w => w.length > 0);
+    const allTargetInCand = targetWords.length > 0 && targetWords.every(w => candWords.includes(w));
+    const allCandInTarget = candWords.length > 0 && candWords.every(w => targetWords.includes(w));
 
-  const matchCount = targetWords.filter(w => candWords.includes(w)).length;
-  const ratio = matchCount / Math.max(targetWords.length, 1);
-
-  if (ratio >= 0.6) {
-    if (targetYear && candidateYear) {
-      return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
+    if (allTargetInCand || allCandInTarget) {
+      if (targetYear && candidateYear) {
+        return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
+      }
+      return true;
     }
-    return true;
-  }
-  return false;
+    return false;
+  });
 }
 
 export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesTitle = '', title = '', originalTitle = '', year = null, season = 1, episode = 1, isDub = true }) {
@@ -152,7 +165,7 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         const seasonJson = await seasonRes.json().catch(() => null);
         const episodes = seasonJson?.data?.episodes || [];
 
-        const targetEp = episodes.find(e => e.episode_number === parseInt(episode, 10)) || episodes[0];
+        const targetEp = episodes.find(e => e.episode_number === parseInt(episode, 10));
 
         if (targetEp && targetEp.src) {
           const embedUrl = `https://x.ag2m4.cfd/embed-${targetEp.src}.html`;
