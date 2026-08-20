@@ -223,8 +223,17 @@ export async function getStreamingServers({
     ...mapDubbedSources(szdDub)
   ];
 
-  // Dubbed must strictly contain ONLY genuine Turkish Dubbed streams
-  const cleanDubbed = rawCleanDubbed;
+  // Dubbed must strictly contain ONLY genuine Turkish Dubbed streams (deduplicated by URL)
+  const cleanDubbed = [];
+  const seenDubUrls = new Set();
+  for (const s of rawCleanDubbed) {
+    const rawUrl = (s.streamUrl || s.url || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').trim().toLowerCase();
+    if (rawUrl) {
+      if (seenDubUrls.has(rawUrl)) continue;
+      seenDubUrls.add(rawUrl);
+    }
+    cleanDubbed.push(s);
+  }
 
   const mapSubtitledSources = (rawList) => (rawList || [])
     .filter(s => {
