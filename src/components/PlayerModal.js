@@ -126,6 +126,10 @@ export async function openPlayerModal({
   let activeServers = [];
   let currentServerIndex = 0;
   let categorizedServers = { dubbed: [], subtitled: [] };
+  let isSearching = true;
+  let countdownTimer = null;
+  let countdownSeconds = 10;
+  let hasPlayerStartedPlaying = false;
 
   function getSeasonEpisodeCount(sNum) {
     const sObj = currentSeasonsList.find(s => s.season_number === sNum);
@@ -139,8 +143,6 @@ export async function openPlayerModal({
       ? `${cleanSeriesName} • S${currentSeason} B${currentEpisode}`
       : cleanSeriesName;
   }
-
-  let isSearching = true;
 
   function renderServerPills() {
     if (isSearching && (!activeServers || activeServers.length === 0)) {
@@ -1094,10 +1096,6 @@ export async function openPlayerModal({
       }
     }
   }
-
-  let countdownTimer = null;
-  let countdownSeconds = 10;
-  let hasPlayerStartedPlaying = false;
 
   function showDubbedFoundBanner(stream) {
     if (document.getElementById('dubbed-found-banner')) return;
