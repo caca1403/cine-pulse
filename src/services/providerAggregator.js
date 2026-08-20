@@ -24,6 +24,9 @@ import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
 import { fetchTurkAnimeSources } from './turkanimeScraper.js';
 import { fetchBelgeselSources } from './belgeselScraper.js';
 import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
+import { fetchDiziyouSources } from './diziyouScraper.js';
+import { fetchFilmEkseniSources } from './filmekseniScraper.js';
+import { fetchHDFilmDelisiSources } from './hdfilmdelisiScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -115,6 +118,10 @@ export async function getStreamingServers({
     flzSub,
     szdDub,
     szdSub,
+    dzyDub,
+    fexDub,
+    fexSub,
+    hfdDub,
     antrSub,
     traSub,
     taSub,
@@ -128,6 +135,10 @@ export async function getStreamingServers({
     withTimeout(fetchFilmizlechSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
     !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: true })) : Promise.resolve([]),
     !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: false })) : Promise.resolve([]),
+    !isMovie ? withTimeout(fetchDiziyouSources({ titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })) : Promise.resolve([]),
+    isMovie ? withTimeout(fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })) : Promise.resolve([]),
+    isMovie ? withTimeout(fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })) : Promise.resolve([]),
+    isMovie ? withTimeout(fetchHDFilmDelisiSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })) : Promise.resolve([]),
     withTimeout(fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
@@ -203,6 +214,9 @@ export async function getStreamingServers({
 
   const rawCleanDubbed = [
     ...mapDubbedSources(blgDub),
+    ...mapDubbedSources(dzyDub),
+    ...mapDubbedSources(fexDub),
+    ...mapDubbedSources(hfdDub),
     ...mapDubbedSources(snxDub),
     ...mapDubbedSources(dblDub),
     ...mapDubbedSources(dzpDub),
@@ -316,6 +330,7 @@ export async function getStreamingServers({
         : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&sea=${season}&epi=${episode}`
     },
     // 5. Local Turkish / Anime Subtitled Scrapers
+    ...mapSubtitledSources(fexSub),
     ...mapSubtitledSources(dzpDub),
     ...mapSubtitledSources(dblSub),
     ...mapSubtitledSources(flzSub),
