@@ -126,7 +126,7 @@ export function attachMediaCardEvents(container) {
       const backdropPath = card.getAttribute('data-backdrop') || '';
       const isContinue = card.getAttribute('data-iscontinue') === 'true';
 
-      if (isContinue && (card.closest('#continue-watching-rail') || currentTime > 0)) {
+      if (isContinue && (card.closest('#continue-watching-rail') || card.closest('.continue-card-wrapper') || currentTime > 0)) {
         openPlayerModal({
           type,
           tmdbId: id,
