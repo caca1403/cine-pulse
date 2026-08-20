@@ -121,6 +121,8 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
+  if (url.includes('rapidrame') || url.includes('rapid') || raw.includes('rapid')) return 'Rapid FastStream 1080p';
+  if (url.includes('closeload') || raw.includes('closeload')) return 'Closeload HD';
   if (url.includes('filmmakinesi') || raw.includes('filmmakinesi')) return 'FilmMakinesi VIP';
   if (id.startsWith('snx') || raw.includes('direct') || url.includes('.mkv') || url.includes('.webm') || url.includes('sinewix')) return 'Direct 1080p';
   if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'VidMoly 1080p';
@@ -191,6 +193,7 @@ export async function getStreamingServers({
     traSub,
     taSub,
     blgDub,
+    fmkDub,
     fmkSub
   ] = await Promise.all([
     isMovie ? withTimeout(fetchHDFilmizleSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })) : Promise.resolve([]),
@@ -211,6 +214,7 @@ export async function getStreamingServers({
     withTimeout(fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })),
+    withTimeout(fetchFilmMakinesiSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, tmdbId, isDub: true })),
     withTimeout(fetchFilmMakinesiSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, tmdbId, isDub: false }))
   ]);
 
@@ -220,7 +224,6 @@ export async function getStreamingServers({
       return urlStr &&
         !urlStr.includes('recaptcha') &&
         !urlStr.includes('liderfilm') &&
-        !urlStr.includes('filmmakinesi') &&
         !urlStr.includes('dizipal.bid') &&
         !urlStr.includes('hdfilmdelisi') &&
         urlStr.length > 8;
@@ -243,6 +246,7 @@ export async function getStreamingServers({
 
   const rawCleanDubbed = [
     ...mapDubbedSources(hdiDub),
+    ...mapDubbedSources(fmkDub),
     ...mapDubbedSources(blgDub),
     ...mapDubbedSources(dzyDub),
     ...mapDubbedSources(fexDub),
@@ -271,7 +275,6 @@ export async function getStreamingServers({
       return urlStr &&
         !urlStr.includes('recaptcha') &&
         !urlStr.includes('liderfilm') &&
-        !urlStr.includes('filmmakinesi') &&
         !urlStr.includes('dizipal.bid') &&
         urlStr.length > 8;
     })
@@ -337,6 +340,7 @@ export async function getStreamingServers({
         : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&sea=${season}&epi=${episode}`
     },
     // 5. Local Turkish / Anime Subtitled Scrapers
+    ...mapSubtitledSources(fmkSub),
     ...mapSubtitledSources(hdiSub),
     ...mapSubtitledSources(snxSub),
     ...mapSubtitledSources(fexSub),
@@ -346,20 +350,7 @@ export async function getStreamingServers({
     ...mapSubtitledSources(antrSub),
     ...mapSubtitledSources(traSub),
     ...mapSubtitledSources(taSub),
-    ...mapSubtitledSources(szdSub),
-    // 6. FilmMakinesi (bypasses URL filter since it's a dedicated embed provider)
-    ...(fmkSub || []).map(s => ({
-      id: s.id,
-      name: s.name || 'FilmMakinesi VIP',
-      displayName: s.displayName || 'FilmMakinesi VIP',
-      badge: s.badge || '💬 TR Altyazı',
-      category: 'subtitled',
-      isHls: false,
-      isDirectVideo: false,
-      isEmbed: true,
-      streamUrl: s.streamUrl || s.url,
-      getUrl: () => s.streamUrl || s.url
-    }))
+    ...mapSubtitledSources(szdSub)
   ];
 
   const result = {

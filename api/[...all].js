@@ -81,12 +81,18 @@ export default async function handler(req, res) {
     targetUrl = `https://www.hdfilmizle.vip${subPath}${search}`;
     customHeaders['Referer'] = 'https://www.hdfilmizle.vip/';
     customHeaders['Origin'] = 'https://www.hdfilmizle.vip';
+  } else if (pathname.startsWith('/api/fmk_rapid')) {
+    const subPath = pathname.replace(/^\/api\/fmk_rapid/, '');
+    targetUrl = `https://rapid.filmmakinesi.to${subPath}${search}`;
+    customHeaders['Referer'] = 'https://filmmakinesi.to/';
+    customHeaders['Origin'] = 'https://filmmakinesi.to';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   } else if (pathname.startsWith('/api/fmk')) {
     const subPath = pathname.replace(/^\/api\/fmk/, '');
     targetUrl = `https://filmmakinesi.to${subPath}${search}`;
     customHeaders['Referer'] = 'https://filmmakinesi.to/';
     customHeaders['Origin'] = 'https://filmmakinesi.to';
-    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   } else {
     return res.status(404).json({ error: 'Not found' });
   }
