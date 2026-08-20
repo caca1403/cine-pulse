@@ -1,10 +1,7 @@
 /* ==========================================================================
-   CinePulse Studio - Direct Dizipal Reverse Engineered Scraper
-   Fetches live video sources (ag2m4, vidsrc, etc.) directly from Dizipal for both Movies and TV Series
-   via Cloudflare Worker Gateway for 100% reliable CORS bypass.
+   CinePulse Studio - Direct Dizipal Scraper
+   Fetches live video sources (ag2m4 Alpha Stream CDN) from Dizipal
    ========================================================================== */
-
-const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 function toTurkishSlug(title) {
   if (!title) return '';
@@ -23,12 +20,25 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
-export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
+export async function fetchDizipalSources({
+  type = 'tv',
+  titles = [],
+  seriesTitle = '',
+  title = '',
+  originalTitle = '',
+  season = 1,
+  episode = 1,
+  isDub = true
+}) {
   const targetTitle = seriesTitle || title;
+  const isBrowser = typeof window !== 'undefined';
+  const baseUrl = isBrowser ? '/api/dzp' : 'https://dizipal.bid';
 
-  const candidateTitles = [];
-  if (targetTitle) candidateTitles.push(targetTitle);
-  if (originalTitle && originalTitle !== targetTitle) candidateTitles.push(originalTitle);
+  const candidateTitles = Array.from(new Set([
+    targetTitle,
+    originalTitle,
+    ...(titles || [])
+  ])).filter(Boolean);
 
   const candidateSlugs = [];
   candidateTitles.forEach(t => {
@@ -44,63 +54,59 @@ export async function fetchDizipalSources({ type = 'tv', seriesTitle = '', title
 
   if (candidateSlugs.length === 0) return [];
 
-  const baseDomains = ['https://dizipal.bid', 'https://dizipal.im', 'https://dizipal.me'];
   const isMovie = type === 'movie';
 
-  for (const baseDomain of baseDomains) {
-    for (const slug of candidateSlugs) {
-      const candidateUrls = isMovie
-        ? [
-            `${baseDomain}/${slug}/`,
-            `${baseDomain}/${slug}-izle/`,
-            `${baseDomain}/film/${slug}/`,
-            `${baseDomain}/film/${slug}-izle/`
-          ]
-        : [
-            `${baseDomain}/bolum/${slug}-${season}-sezon-${episode}-bolum-izle/`,
-            `${baseDomain}/bolum/${slug}-${season}-sezon-${episode}-bolum/`,
-            `${baseDomain}/dizi/${slug}/${season}-sezon-${episode}-bolum/`
-          ];
+  for (const slug of candidateSlugs) {
+    const candidateUrls = isMovie
+      ? [
+          `${baseUrl}/${slug}/`,
+          `${baseUrl}/${slug}-izle/`,
+          `${baseUrl}/film/${slug}/`,
+          `${baseUrl}/film/${slug}-izle/`
+        ]
+      : [
+          `${baseUrl}/bolum/${slug}-${season}-sezon-${episode}-bolum-izle/`,
+          `${baseUrl}/bolum/${slug}-${season}-sezon-${episode}-bolum/`,
+          `${baseUrl}/dizi/${slug}/${season}-sezon-${episode}-bolum/`
+        ];
 
-      for (const epUrl of candidateUrls) {
-        try {
-          const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
-          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(2000) }).catch(() => null);
+    for (const epUrl of candidateUrls) {
+      try {
+        const res = await fetch(epUrl, { signal: AbortSignal.timeout(2500) }).catch(() => null);
+        if (!res || !res.ok) continue;
+        const html = await res.text();
+        if (!html || html.length < 500 || html.includes('404 Not Found')) continue;
 
-          if (!res || !res.ok) continue;
-          const html = await res.text();
+        const iframeMatch =
+          html.match(/<iframe[^>]+src=["']([^"']+)["']/i) ||
+          html.match(/src=["'](https?:\/\/[^"']*(?:ag2m4|vidsrc|liderfilm|embed|player)[^"']*)["']/i);
 
-          const iframeMatch = 
-            html.match(/iframe\s+src=["']([^"']+)["']/i) || 
-            html.match(/src=["'](https?:\/\/[^"']*(?:ag2m4|vidsrc|embed|player)[^"']*)["']/i);
+        let iframeUrl = iframeMatch ? iframeMatch[1] : null;
 
-          let iframeUrl = iframeMatch ? iframeMatch[1] : null;
-
-          if (iframeUrl) {
-            if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
-            if (iframeUrl.startsWith('/')) {
-              iframeUrl = `${baseDomain}${iframeUrl}`;
-            }
-
-            if (!iframeUrl.includes('jquery') && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
-              const playableUrl = iframeUrl.replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd');
-              return [
-                {
-                  id: `dzp_${slug}_${season}_${episode}`,
-                  name: `VIP Hat 1`,
-                  displayName: `VIP Hat 1`,
-                  badge: '⚡ VIP',
-                  url: playableUrl,
-                  streamUrl: playableUrl,
-                  isHls: playableUrl.includes('.m3u8'),
-                  isDirectVideo: false,
-                  getUrl: () => playableUrl
-                }
-              ];
-            }
+        if (iframeUrl) {
+          if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
+          if (iframeUrl.startsWith('/')) {
+            iframeUrl = `https://dizipal.bid${iframeUrl}`;
           }
-        } catch (_) {}
-      }
+
+          if (!iframeUrl.includes('jquery') && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
+            const playableUrl = iframeUrl.replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd');
+            return [
+              {
+                id: `dzp_${slug}_${season}_${episode}`,
+                name: `Alpha Stream 1080p`,
+                displayName: `Alpha Stream 1080p`,
+                badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
+                url: playableUrl,
+                streamUrl: playableUrl,
+                isHls: playableUrl.includes('.m3u8'),
+                isDirectVideo: false,
+                getUrl: () => playableUrl
+              }
+            ];
+          }
+        }
+      } catch (_) {}
     }
   }
 
