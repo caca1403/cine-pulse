@@ -111,6 +111,7 @@ export async function getStreamingServers({
   // Concurrent scraping of active, verified premium providers
   const [
     snxDub,
+    snxSub,
     dblDub,
     dblSub,
     dzpDub,
@@ -128,6 +129,7 @@ export async function getStreamingServers({
     blgDub
   ] = await Promise.all([
     withTimeout(fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
+    withTimeout(fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchDiziBalSources({ type, title: targetTitle, originalTitle, season, episode, isDub: true })),
     withTimeout(fetchDiziBalSources({ type, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchDizipalSources({ type, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
@@ -224,39 +226,8 @@ export async function getStreamingServers({
     ...mapDubbedSources(szdDub)
   ];
 
-  // If local Turkish scrapers couldn't find active streams, provide verified fast global failovers
-  const cleanDubbed = rawCleanDubbed.length > 0 ? rawCleanDubbed : [
-    {
-      id: 'dub_autoembed',
-      name: 'AutoEmbed 4K',
-      displayName: 'AutoEmbed 4K',
-      badge: '⚡ AutoEmbed',
-      category: 'dubbed',
-      getUrl: () => isMovie
-        ? `https://player.autoembed.co/embed/movie/${tmdbId}`
-        : `https://player.autoembed.co/embed/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'dub_multiembed',
-      name: 'MultiEmbed VIP',
-      displayName: 'MultiEmbed VIP',
-      badge: '⚡ MultiEmbed',
-      category: 'dubbed',
-      getUrl: () => isMovie
-        ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
-        : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
-    },
-    {
-      id: 'dub_vidsrcme',
-      name: 'VidSrc Pro',
-      displayName: 'VidSrc Pro',
-      badge: '⚡ VidSrc',
-      category: 'dubbed',
-      getUrl: () => isMovie
-        ? `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`
-        : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&sea=${season}&epi=${episode}`
-    }
-  ];
+  // Dubbed must strictly contain ONLY genuine Turkish Dubbed streams
+  const cleanDubbed = rawCleanDubbed;
 
   const mapSubtitledSources = (rawList) => (rawList || [])
     .filter(s => {
@@ -330,6 +301,7 @@ export async function getStreamingServers({
         : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&sea=${season}&epi=${episode}`
     },
     // 5. Local Turkish / Anime Subtitled Scrapers
+    ...mapSubtitledSources(snxSub),
     ...mapSubtitledSources(fexSub),
     ...mapSubtitledSources(dzpDub),
     ...mapSubtitledSources(dblSub),

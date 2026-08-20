@@ -135,6 +135,15 @@ export async function openPlayerModal({
   }
 
   function renderServerPills() {
+    if (currentCategory === 'dubbed' && (!activeServers || activeServers.length === 0)) {
+      return `
+        <div class="server-pill-alert">
+          <span class="server-status-dot dot-amber"></span>
+          <span>Bu içerikte henüz Türkçe Dublaj akışı bulunamadı. Altyazılı sekmesine geçebilirsiniz.</span>
+        </div>
+      `;
+    }
+
     if (!activeServers || activeServers.length === 0) {
       return `
         <div class="server-pill-loading">
@@ -153,6 +162,24 @@ export async function openPlayerModal({
   }
 
   function renderPlayerContent() {
+    if (currentCategory === 'dubbed' && (!activeServers || activeServers.length === 0)) {
+      return `
+        <div class="player-not-found-container">
+          <div class="not-found-icon-wrap">
+            <i data-lucide="volume-x" style="width: 38px; height: 38px; color: #f59e0b;"></i>
+          </div>
+          <h3>Türkçe Dublaj Henüz Mevcut Değil</h3>
+          <p>
+            "${cleanSeriesName}" yapımı için resmi veya aktif Türkçe Dublaj akışı bulunamadı. Türkçe Altyazılı yüksek kaliteli (1080p / 4K) kaynaklardan hemen izleyebilirsiniz.
+          </p>
+          <button id="btn-switch-subtitled-fallback" class="btn-primary btn-switch-category-fallback">
+            <i data-lucide="repeat" style="width: 16px; height: 16px;"></i>
+            <span>💬 Türkçe Altyazılı Sunucuları Aç (${categorizedServers.subtitled?.length || 0} Hat Aktif)</span>
+          </button>
+        </div>
+      `;
+    }
+
     if (!activeServers || activeServers.length === 0) {
       return `
         <div class="player-loading-overlay">
@@ -178,7 +205,7 @@ export async function openPlayerModal({
           </div>
           <h3>${currentCategory === 'dubbed' ? 'Dublaj Sunucularda Bulunamadı' : 'Altyazılı Sunucularda Bulunamadı'}</h3>
           <p>
-            "${seriesTitle || title}" içeriği seçili kategorideki aktif depolarda yer almamaktadır.
+            "${cleanSeriesName}" içeriği seçili kategorideki aktif depolarda yer almamaktadır.
           </p>
           <button id="btn-switch-subtitled-fallback" class="btn-primary btn-switch-category-fallback">
             <i data-lucide="repeat" style="width: 16px; height: 16px;"></i>
