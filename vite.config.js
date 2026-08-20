@@ -102,6 +102,46 @@ export default defineConfig({
           'Referer': 'https://filmizle.now/'
         },
         rewrite: (path) => path.replace(/^\/api\/vidmixi/, '')
+      },
+      '/api/dzy': {
+        target: 'https://www.diziyou.one',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://www.diziyou.one/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/dzy/, '')
+      },
+      '/api/fex': {
+        target: 'https://filmekseni.vip',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://filmekseni.vip/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/fex/, '')
+      },
+      '/api/hfd': {
+        target: 'https://hdfilmdelisi.one',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://hdfilmdelisi.one/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/hfd/, '')
+      },
+      '/api/hdi': {
+        target: 'https://www.hdfilmizle.vip',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://www.hdfilmizle.vip/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/hdi/, '')
       }
     }
   },
