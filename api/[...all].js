@@ -18,6 +18,46 @@ export default async function handler(req, res) {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
   };
 
+  if (pathname.startsWith('/api/dzm_video')) {
+    const hash = urlObj.searchParams.get('hash') || urlObj.searchParams.get('data') || '';
+    if (!hash) {
+      return res.status(400).json({ error: 'Missing hash' });
+    }
+
+    try {
+      const postUrl = `https://hdplayersystem.com/player/index.php?data=${hash}&do=getVideo`;
+      const form = new URLSearchParams();
+      form.append('hash', hash);
+      form.append('r', 'https://www.dizimom.surf/');
+
+      const upstreamRes = await fetch(postUrl, {
+        method: 'POST',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://www.dizimom.surf/',
+          'Origin': 'https://hdplayersystem.com',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: form.toString()
+      });
+
+      if (upstreamRes.ok) {
+        const data = await upstreamRes.json().catch(() => null);
+        if (data && (data.securedLink || data.videoSource)) {
+          return res.status(200).json({
+            success: true,
+            streamUrl: data.securedLink || data.videoSource,
+            isHls: true
+          });
+        }
+      }
+      return res.status(404).json({ error: 'Video not found or upstream error' });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (pathname.startsWith('/api/hdfc')) {
     const subPath = pathname.replace(/^\/api\/hdfc/, '');
     targetUrl = `https://www.hdfilmcehennemi.now${subPath}${search}`;

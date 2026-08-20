@@ -84,64 +84,57 @@ async function resolveHdPlayerHls(embedUrl) {
     const dataMatch = embedUrl.match(/[?&]data=([a-zA-Z0-9]+)/);
     if (dataMatch) {
       const hash = dataMatch[1];
-      let postUrl = isBrowser
-        ? `/api/hdp/player/index.php?data=${hash}&do=getVideo`
-        : `https://hdplayersystem.com/player/index.php?data=${hash}&do=getVideo`;
 
-      const form = new URLSearchParams();
-      form.append('hash', hash);
-      form.append('r', 'https://www.dizimom.surf/');
+      if (isBrowser) {
+        const res = await fetch(`/api/dzm_video?hash=${hash}`, {
+          signal: AbortSignal.timeout(4500)
+        }).catch(() => null);
 
-      const res = await fetch(postUrl, {
-        method: 'POST',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': 'https://www.dizimom.surf/',
-          'Origin': 'https://hdplayersystem.com',
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: form.toString(),
-        signal: AbortSignal.timeout(4500)
-      }).catch(() => null);
+        if (res && res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && data.streamUrl) {
+            return {
+              streamUrl: data.streamUrl,
+              isHls: true,
+              isDirectVideo: true
+            };
+          }
+        }
+      } else {
+        const postUrl = `https://hdplayersystem.com/player/index.php?data=${hash}&do=getVideo`;
+        const form = new URLSearchParams();
+        form.append('hash', hash);
+        form.append('r', 'https://www.dizimom.surf/');
 
-      if (res && res.ok) {
-        const data = await res.json().catch(() => null);
-        if (data && data.securedLink) {
-          return {
-            streamUrl: data.securedLink,
-            isHls: true,
-            isDirectVideo: true
-          };
+        const res = await fetch(postUrl, {
+          method: 'POST',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.dizimom.surf/',
+            'Origin': 'https://hdplayersystem.com',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: form.toString(),
+          signal: AbortSignal.timeout(4500)
+        }).catch(() => null);
+
+        if (res && res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && (data.securedLink || data.videoSource)) {
+            return {
+              streamUrl: data.securedLink || data.videoSource,
+              isHls: true,
+              isDirectVideo: true
+            };
+          }
         }
       }
     }
   } catch (_) {}
 
-  // For any embed url from hdplayersystem or hdmomplayer, proxy via /api/hdp to send Referer
-  if (embedUrl.includes('hdplayersystem.com')) {
-    const sub = embedUrl.replace(/^https?:\/\/hdplayersystem\.com/, '');
-    const proxied = isBrowser ? `/api/hdp${sub}` : embedUrl;
-    return {
-      streamUrl: proxied,
-      isHls: false,
-      isDirectVideo: false
-    };
-  } else if (embedUrl.includes('hdmomplayer.com')) {
-    const sub = embedUrl.replace(/^https?:\/\/hdmomplayer\.com/, '');
-    const proxied = isBrowser ? `/api/hdm${sub}` : embedUrl;
-    return {
-      streamUrl: proxied,
-      isHls: false,
-      isDirectVideo: false
-    };
-  }
-
-  return {
-    streamUrl: embedUrl,
-    isHls: false,
-    isDirectVideo: false
-  };
+  // Fallback: If no direct HLS could be extracted, return null so it doesn't try to load broken iframes
+  return null;
 }
 
 export async function fetchDizimomSources({
@@ -197,14 +190,16 @@ export async function fetchDizimomSources({
       if (embedMatch && embedMatch[1] && !embedMatch[1].includes('about:blank')) {
         const rawEmbed = embedMatch[1];
         const resolved = await resolveHdPlayerHls(rawEmbed);
-        const streamUrl = resolved?.streamUrl || rawEmbed;
-        const isHls = resolved?.isHls || false;
-        const isDirectVideo = resolved?.isDirectVideo || false;
+        if (!resolved || !resolved.streamUrl) continue;
+
+        const streamUrl = resolved.streamUrl;
+        const isHls = resolved.isHls || false;
+        const isDirectVideo = resolved.isDirectVideo || false;
 
         return [
           {
             id: `dzm_${candidateSlugs[0] || 'stream'}_${isDub ? 'dub' : 'sub'}_s${season}_e${episode}`,
-            name: 'DiziMOM HD',
+            name: 'DiziMOM 1080p',
             displayName: isHls ? 'DiziMOM 1080p' : 'DiziMOM HD',
             badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
             isHls,
@@ -248,14 +243,16 @@ export async function fetchDizimomSources({
             if (embedMatch && embedMatch[1] && !embedMatch[1].includes('about:blank')) {
               const rawEmbed = embedMatch[1];
               const resolved = await resolveHdPlayerHls(rawEmbed);
-              const streamUrl = resolved?.streamUrl || rawEmbed;
-              const isHls = resolved?.isHls || false;
-              const isDirectVideo = resolved?.isDirectVideo || false;
+              if (!resolved || !resolved.streamUrl) continue;
+
+              const streamUrl = resolved.streamUrl;
+              const isHls = resolved.isHls || false;
+              const isDirectVideo = resolved.isDirectVideo || false;
 
               return [
                 {
                   id: `dzm_${candidateSlugs[0] || 'stream'}_${isDub ? 'dub' : 'sub'}_s${season}_e${episode}`,
-                  name: 'DiziMOM HD',
+                  name: 'DiziMOM 1080p',
                   displayName: isHls ? 'DiziMOM 1080p' : 'DiziMOM HD',
                   badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
                   isHls,
