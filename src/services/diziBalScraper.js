@@ -85,9 +85,9 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
           return [
             {
               id: `dbl_${movieData.slug || 'movie'}`,
-              name: `VIP Hat 2`,
-              displayName: `VIP Hat 2`,
-              badge: '⚡ VIP',
+              name: `Alpha Stream 1080p`,
+              displayName: `Alpha Stream 1080p`,
+              badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
               isHls: false,
               isDirectVideo: false,
               getUrl: () => embedUrl,
@@ -135,9 +135,9 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
           return [
             {
               id: `dbl_${seriesSlug}_s${season}_e${episode}`,
-              name: `VIP Hat 2`,
-              displayName: `VIP Hat 2`,
-              badge: '⚡ VIP',
+              name: `Alpha Stream 1080p`,
+              displayName: `Alpha Stream 1080p`,
+              badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
               isHls: false,
               isDirectVideo: false,
               getUrl: () => embedUrl,

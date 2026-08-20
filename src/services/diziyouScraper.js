@@ -29,6 +29,9 @@ export async function fetchDiziyouSources({
   episode = 1,
   isDub = true
 }) {
+  const isBrowser = typeof window !== 'undefined';
+  const baseUrl = isBrowser ? '/api/dzy' : 'https://www.diziyou.one';
+
   const allTitles = Array.from(new Set([
     seriesTitle,
     title,
@@ -44,11 +47,24 @@ export async function fetchDiziyouSources({
 
     // Test common episode URL patterns on Diziyou
     const candidateUrls = [
-      `/api/dzy/${slug}-${season}-sezon-${episode}-bolum/`,
-      `/api/dzy/${slug}-${season}-sezon-${episode}-bolum-izle/`,
-      `/api/dzy/dizi/${slug}-${season}-sezon-${episode}-bolum/`,
-      `/api/dzy/dizi/${slug}-${season}-sezon-${episode}-bolum-izle/`
+      `${baseUrl}/${slug}-${season}-sezon-${episode}-bolum/`,
+      `${baseUrl}/${slug}-${season}-sezon-${episode}-bolum-izle/`,
+      `${baseUrl}/dizi/${slug}-${season}-sezon-${episode}-bolum/`,
+      `${baseUrl}/dizi/${slug}-${season}-sezon-${episode}-bolum-izle/`
     ];
+
+    // Try search if direct slug fails
+    try {
+      const searchRes = await fetch(`${baseUrl}/?s=${encodeURIComponent(t)}`, { signal: AbortSignal.timeout(3000) });
+      if (searchRes.ok) {
+        const searchHtml = await searchRes.text();
+        const epPattern = new RegExp(`href=["'](?:https:\\/\\/www\\.diziyou\\.one)?(\\/[^"']*-${season}-sezon-${episode}-bolum[^"']*)["']`, 'i');
+        const epMatch = searchHtml.match(epPattern);
+        if (epMatch) {
+          candidateUrls.unshift(`${baseUrl}${epMatch[1]}`);
+        }
+      }
+    } catch (_) {}
 
     for (const epUrl of candidateUrls) {
       try {
@@ -57,7 +73,7 @@ export async function fetchDiziyouSources({
         const html = await res.text();
         if (!html || html.length < 500) continue;
 
-        // 1. Extract Player Iframe
+        // 1. Extract Player Iframe & direct HLS
         const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']*(?:player|embed)[^"']*)["']/i);
         const playerIdMatch = html.match(/\/player\/(\d+)\.html/i);
 
@@ -68,7 +84,8 @@ export async function fetchDiziyouSources({
 
           sources.push({
             id: `dzy_m3u8_${playerId}`,
-            name: 'VIP Hat 5',
+            name: 'HLS FastCDN 1080p',
+            displayName: 'HLS FastCDN 1080p',
             badge: '⚡ HLS 1080p',
             url: playerEmbed,
             streamUrl: directM3u8,
@@ -78,8 +95,9 @@ export async function fetchDiziyouSources({
 
           sources.push({
             id: `dzy_embed_${playerId}`,
-            name: 'VIP Hat 5 (Player)',
-            badge: '⚡ VIP Web',
+            name: 'Fast Player VIP',
+            displayName: 'Fast Player VIP',
+            badge: '⚡ Web Player',
             url: playerEmbed,
             isHls: false,
             isDirectVideo: false
@@ -89,8 +107,9 @@ export async function fetchDiziyouSources({
           const iframeSrc = iframeMatch[1].startsWith('//') ? `https:${iframeMatch[1]}` : iframeMatch[1];
           sources.push({
             id: `dzy_frame_${slug}_s${season}_e${episode}`,
-            name: 'VIP Hat 5',
-            badge: '⚡ VIP',
+            name: 'Fast Player VIP',
+            displayName: 'Fast Player VIP',
+            badge: '⚡ Web Player',
             url: iframeSrc,
             isHls: false,
             isDirectVideo: false
@@ -100,7 +119,7 @@ export async function fetchDiziyouSources({
       } catch (_) {}
     }
 
-    if (sources.length > 0) break;
+    if (sources.length > 0) return sources;
   }
 
   return sources;

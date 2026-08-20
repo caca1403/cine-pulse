@@ -161,10 +161,11 @@ export async function fetchSinewixSources({
       const isDirect = lowerLink.includes('.mp4') || lowerLink.includes('.mkv') || lowerLink.includes('.webm');
       const isHls = lowerLink.includes('.m3u8');
 
+      const serverTitle = isDirect ? 'Direct 1080p Stream' : 'Sinewix VIP 1080p';
       streams.push({
         id: `snx_${v.id || Math.random().toString(36).substring(7)}`,
-        name: `VIP Hat 1`,
-        displayName: `VIP Hat 1`,
+        name: serverTitle,
+        displayName: serverTitle,
         badge: isSubtitledVideo ? '💬 TR Altyazı 1080p' : '⚡ VIP 1080p',
         category: isSubtitledVideo ? 'subtitled' : 'dubbed',
         streamUrl: rawLink,
