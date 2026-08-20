@@ -1,6 +1,32 @@
 {
   "version": 2,
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "*" }
+      ]
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/api/fex/(.*)",
+      "destination": "https://filmekseni.vip/$1"
+    },
+    {
+      "source": "/api/hdi/(.*)",
+      "destination": "https://www.hdfilmizle.vip/$1"
+    },
+    {
+      "source": "/api/dzy/(.*)",
+      "destination": "https://www.diziyou.one/$1"
+    },
+    {
+      "source": "/api/szd/(.*)",
+      "destination": "https://sezonlukdizi.cc/$1"
+    },
     {
       "source": "/api/dbl/(.*)",
       "destination": "https://dizibal.com/api/$1"
@@ -14,6 +40,10 @@
       "destination": "https://filmizlech.com/$1"
     },
     {
+      "source": "/api/hfd/(.*)",
+      "destination": "https://hdfilmdelisi.one/$1"
+    },
+    {
       "source": "/api/hdfc/(.*)",
       "destination": "https://www.hdfilmcehennemi.now/$1"
     },
@@ -24,6 +54,14 @@
     {
       "source": "/api/vidmixi/(.*)",
       "destination": "https://vidmixi.com/$1"
+    },
+    {
+      "source": "/api/fmk/(.*)",
+      "destination": "https://filmmakinesi.to/$1"
+    },
+    {
+      "source": "/api/snx/(.*)",
+      "destination": "/api/[...all]"
     },
     {
       "source": "/((?!api/).*)",
