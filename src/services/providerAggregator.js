@@ -26,6 +26,7 @@ import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
 import { fetchHDFilmizleSources } from './hdfilmizleScraper.js';
 import { fetchFilmMakinesiSources } from './filmmakinesiScraper.js';
+import { fetchDizimomSources } from './dizimomScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -128,11 +129,12 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (url.includes('multiembed') || raw.includes('multiembed')) return 'MultiEmbed VIP';
   if (url.includes('vidsrc') || raw.includes('vidsrc')) return 'VidSrc Pro';
   if (raw.includes('channel') || url.includes('filmizlech')) return 'Channel Stream 1080p';
+  if (url.includes('hdplayersystem') || url.includes('hdmomplayer') || id.startsWith('dzm') || raw.includes('dizimom')) return 'DiziMOM HD';
   if (raw.includes('belgesel')) return 'Belgesel TR';
   if (raw.includes('tranime') || raw.includes('turkanime') || raw.includes('animetr')) return 'Anime VIP';
 
   let clean = (s.displayName || s.name || '')
-    .replace(/sinewix|dizibal|dizipal|filmizlech|sezonlukdizi|filmekseni|hdfilmdelisi|hdfilmizle|hdfilmcehennemi|diziyou|vip\s*hat\s*\d*/gi, '')
+    .replace(/sinewix|dizibal|dizipal|dizimom|filmizlech|sezonlukdizi|filmekseni|hdfilmdelisi|hdfilmizle|hdfilmcehennemi|diziyou|vip\s*hat\s*\d*/gi, '')
     .replace(/\s*\(.*?\)/g, '')
     .trim();
 
@@ -340,6 +342,12 @@ export async function getStreamingServersProgressive({
     fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    // DiziMOM (Dubbed & Subtitled)
+    fetchDizimomSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    fetchDizimomSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // AnimeTR / TRAnime / TurkAnime / Belgesel

@@ -140,7 +140,18 @@ export async function openPlayerModal({
       : cleanSeriesName;
   }
 
+  let isSearching = true;
+
   function renderServerPills() {
+    if (isSearching && (!activeServers || activeServers.length === 0)) {
+      return `
+        <div class="server-pill-loading">
+          <span class="server-pulse-dot"></span>
+          <span>Yayın hatları taranıyor (${countdownSeconds}s)...</span>
+        </div>
+      `;
+    }
+
     if (currentCategory === 'dubbed' && (!activeServers || activeServers.length === 0)) {
       return `
         <div class="server-pill-alert">
@@ -154,7 +165,7 @@ export async function openPlayerModal({
       return `
         <div class="server-pill-loading">
           <span class="server-pulse-dot"></span>
-          <span>Yayın hatları bağlanıyor...</span>
+          <span>Yayın hatları taranıyor...</span>
         </div>
       `;
     }
@@ -168,6 +179,22 @@ export async function openPlayerModal({
   }
 
   function renderPlayerContent() {
+    if (isSearching && (!activeServers || activeServers.length === 0)) {
+      return `
+        <div class="player-loading-overlay">
+          <div class="player-loader-core">
+            <div class="player-loader-spinner"></div>
+            <i data-lucide="play" class="player-loader-icon"></i>
+          </div>
+          <div class="player-loader-text">
+            <h3>${cleanSeriesName}</h3>
+            <p class="player-loader-sub">${type === 'tv' ? `Sezon ${currentSeason} • Bölüm ${currentEpisode}` : '4K Ultra HD Film Yayını'} Başlatılıyor...</p>
+            <p class="player-loader-hint">Türkiye ve küresel CDN hatları taranıyor... <span class="player-countdown-badge"><span class="server-pulse-dot"></span> Canlı Tarama: ${countdownSeconds}s</span></p>
+          </div>
+        </div>
+      `;
+    }
+
     if (currentCategory === 'dubbed' && (!activeServers || activeServers.length === 0)) {
       return `
         <div class="player-not-found-container">
@@ -1113,14 +1140,22 @@ export async function openPlayerModal({
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
     if (countdownTimer) clearInterval(countdownTimer);
     countdownSeconds = 10;
+    isSearching = true;
     hasPlayerStartedPlaying = false;
     categorizedServers = { dubbed: [], subtitled: [] };
     activeServers = [];
+
+    updateServerPillsEvents();
+    updatePlayerContainer();
 
     const updateCountdownDisplay = () => {
       const hint = document.querySelector('.player-loader-hint');
       if (hint) {
         hint.innerHTML = `Türkiye ve küresel CDN hatları taranıyor... <span class="player-countdown-badge"><span class="server-pulse-dot"></span> Canlı Tarama: ${countdownSeconds}s</span>`;
+      }
+      const pillLoading = document.querySelector('.server-pill-loading span:last-child');
+      if (pillLoading) {
+        pillLoading.textContent = `Yayın hatları taranıyor (${countdownSeconds}s)...`;
       }
     };
 
@@ -1133,6 +1168,7 @@ export async function openPlayerModal({
       if (countdownSeconds <= 0) {
         clearInterval(countdownTimer);
         countdownTimer = null;
+        isSearching = false;
 
         // If user is on Dubbed and NO dubbed source was found, automatically redirect to Subtitled
         if (currentCategory === 'dubbed' && (!categorizedServers.dubbed || categorizedServers.dubbed.length === 0)) {
@@ -1149,7 +1185,13 @@ export async function openPlayerModal({
             currentServerIndex = 0;
             updateServerPillsEvents();
             updatePlayerContainer();
+          } else {
+            updateServerPillsEvents();
+            updatePlayerContainer();
           }
+        } else {
+          updateServerPillsEvents();
+          updatePlayerContainer();
         }
       }
     }, 1000);
@@ -1174,6 +1216,7 @@ export async function openPlayerModal({
         // If in Dubbed mode and first Dubbed stream just arrived:
         if (currentCategory === 'dubbed' && dubbed.length > 0 && !hasPlayerStartedPlaying) {
           hasPlayerStartedPlaying = true;
+          isSearching = false;
           activeServers = dubbed;
           currentServerIndex = 0;
           updateServerPillsEvents();
@@ -1185,6 +1228,7 @@ export async function openPlayerModal({
           // If in subtitled mode and player not started yet:
           if (!hasPlayerStartedPlaying && activeServers.length > 0 && currentCategory === 'subtitled') {
             hasPlayerStartedPlaying = true;
+            isSearching = false;
             currentServerIndex = 0;
             updatePlayerContainer();
           }
