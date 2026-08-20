@@ -85,7 +85,34 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
     } catch (_) {}
   }
 
-  return { candidateTitles: Array.from(titles).filter(Boolean), detectedYear };
+  // Smart franchise and sequel alias expansions
+  const expanded = new Set(titles);
+  for (const t of titles) {
+    if (!t) continue;
+    const withNums = t
+      .replace(/\bpart\s+two\b/i, 'Part 2')
+      .replace(/\bpart\s+three\b/i, 'Part 3')
+      .replace(/\bpart\s+four\b/i, 'Part 4')
+      .replace(/\bpart\s+one\b/i, 'Part 1')
+      .replace(/\bbolum\s+iki\b/i, 'Bölüm 2')
+      .replace(/\bbolum\s+uc\b/i, 'Bölüm 3')
+      .replace(/\bpart\s+ii\b/i, 'Part 2')
+      .replace(/\bpart\s+iii\b/i, 'Part 3')
+      .replace(/\bpart\s+iv\b/i, 'Part 4')
+      .replace(/:\s*çöl gezegeni bölüm iki/i, ' 2')
+      .replace(/:\s*çöl gezegeni/i, '')
+      .replace(/:\s*suyun yolu/i, ' 2')
+      .replace(/:\s*the way of water/i, ' 2')
+      .replace(/:\s*part two/i, ' 2')
+      .replace(/:\s*part 2/i, ' 2')
+      .replace(/:\s*bölüm 2/i, ' 2');
+    
+    if (withNums !== t) {
+      expanded.add(cleanTitle(withNums));
+    }
+  }
+
+  return { candidateTitles: Array.from(expanded).filter(Boolean), detectedYear };
 }
 
 export function resolveEngineName(s, fallback = 'Fast Stream') {
