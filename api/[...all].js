@@ -18,6 +18,61 @@ export default async function handler(req, res) {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
   };
 
+  if (pathname.startsWith('/api/hls_proxy')) {
+    const rawTarget = urlObj.searchParams.get('url') || '';
+    const ref = urlObj.searchParams.get('ref') || 'https://hdplayersystem.com/';
+    if (!rawTarget) {
+      return res.status(400).send('Missing url param');
+    }
+
+    try {
+      const decodedTarget = decodeURIComponent(rawTarget);
+      const upstreamRes = await fetch(decodedTarget, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': ref,
+          'Origin': 'https://hdplayersystem.com'
+        }
+      });
+
+      const contentType = upstreamRes.headers.get('content-type') || '';
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+
+      if (decodedTarget.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('application/x-mpegURL')) {
+        const text = await upstreamRes.text();
+        const baseOrigin = new URL(decodedTarget).origin;
+
+        const rewritten = text.split('\n').map(line => {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) return line;
+          let fullLineUrl;
+          if (trimmed.startsWith('http')) {
+            fullLineUrl = trimmed;
+          } else if (trimmed.startsWith('/')) {
+            fullLineUrl = `${baseOrigin}${trimmed}`;
+          } else {
+            const urlPath = new URL(decodedTarget).pathname;
+            const lastSlash = urlPath.lastIndexOf('/');
+            const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
+            fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
+          }
+          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(ref)}`;
+        }).join('\n');
+
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        return res.status(upstreamRes.status).send(rewritten);
+      } else {
+        res.setHeader('Content-Type', contentType || 'video/mp2t');
+        const buf = await upstreamRes.arrayBuffer();
+        return res.status(upstreamRes.status).send(Buffer.from(buf));
+      }
+    } catch (err) {
+      console.error('HLS Proxy Error:', err);
+      return res.status(500).send(err.message);
+    }
+  }
+
   if (pathname.startsWith('/api/dzm_video')) {
     const hash = urlObj.searchParams.get('hash') || urlObj.searchParams.get('data') || '';
     if (!hash) {
@@ -44,10 +99,13 @@ export default async function handler(req, res) {
 
       if (upstreamRes.ok) {
         const data = await upstreamRes.json().catch(() => null);
-        if (data && (data.securedLink || data.videoSource)) {
+        const originalSecured = data?.securedLink || data?.videoSource;
+        if (originalSecured) {
+          const proxiedHls = `/api/hls_proxy?url=${encodeURIComponent(originalSecured)}&ref=https://hdplayersystem.com/`;
           return res.status(200).json({
             success: true,
-            streamUrl: data.securedLink || data.videoSource,
+            streamUrl: proxiedHls,
+            rawUrl: originalSecured,
             isHls: true
           });
         }
