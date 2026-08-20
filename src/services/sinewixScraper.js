@@ -2,10 +2,9 @@
    CinePulse Studio - Direct Sinewix Scraper Module
    Fetches direct high-speed Turkish Dubbed video streams (MKV/MP4/HLS)
    Supports both Movies (/media/detail) and TV Series (/series/show).
-   Strict title matching to prevent wrong media playback.
+   Strict title & year & type matching to prevent wrong media playback.
    ========================================================================== */
 
-const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const SINEWIX_API_BASE = 'https://ydfvfdizipanel.ru/public/api';
 const SINEWIX_TOKEN = '9iQNC5HQwPlaFuJDkhncJ5XTJ8feGXOJatAA';
 
@@ -16,23 +15,52 @@ const SINEWIX_HEADERS = {
   'Accept': 'application/json'
 };
 
-function isTitleSimilar(target, candidate) {
+function normalizeText(text) {
+  if (!text) return '';
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isTitleSimilar(target, candidate, targetYear = null, candidateYear = null) {
   if (!target || !candidate) return false;
-  const normT = target.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
-  const normC = candidate.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
-  if (normT === normC) return true;
+  const normT = normalizeText(target);
+  const normC = normalizeText(candidate);
+  if (normT === normC) {
+    if (targetYear && candidateYear) {
+      return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
+    }
+    return true;
+  }
 
   const tWords = normT.split(/\s+/).filter(w => w.length > 1);
   const cWords = normC.split(/\s+/).filter(w => w.length > 1);
 
   const matched = tWords.filter(w => cWords.includes(w)).length;
   const ratio = matched / Math.max(tWords.length, 1);
-  return ratio >= 0.5;
+  if (ratio >= 0.6) {
+    if (targetYear && candidateYear) {
+      return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
+    }
+    return true;
+  }
+  return false;
 }
 
 async function performSinewixRequest(endpoint) {
   const isBrowser = typeof window !== 'undefined';
-  const fullUrl = isBrowser ? `/api/snx?path=${encodeURIComponent(endpoint)}` : `${SINEWIX_API_BASE}${endpoint}`;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const fullUrl = isBrowser ? `/api/snx?path=${encodeURIComponent(cleanEndpoint)}` : `${SINEWIX_API_BASE}${cleanEndpoint}`;
 
   try {
     const res = await fetch(fullUrl, {
@@ -47,7 +75,7 @@ async function performSinewixRequest(endpoint) {
 
   // Direct backend fallback
   try {
-    const directUrl = `${SINEWIX_API_BASE}${endpoint}`;
+    const directUrl = `${SINEWIX_API_BASE}${cleanEndpoint}`;
     const res = await fetch(directUrl, {
       headers: SINEWIX_HEADERS,
       signal: AbortSignal.timeout(5000)
@@ -67,6 +95,7 @@ export async function fetchSinewixSources({
   seriesTitle = '',
   title = '',
   originalTitle = '',
+  year = null,
   season = 1,
   episode = 1,
   isDub = true
@@ -99,10 +128,22 @@ export async function fetchSinewixSources({
 
     if (searchItems.length === 0) return [];
 
-    const targetItem = searchItems.find(it => {
+    // Filter candidate items by requested type (movie vs tv)
+    const filteredSearchItems = searchItems.filter(it => {
+      if (isMovie) {
+        return it.type === 'movie' || it.type === 'film';
+      } else {
+        return it.type === 'serie' || it.type === 'series' || it.type === 'tv';
+      }
+    });
+
+    const candidatePool = filteredSearchItems.length > 0 ? filteredSearchItems : searchItems;
+
+    const targetItem = candidatePool.find(it => {
       const itemTitle = it.title || it.name || it.original_name || it.original_title || '';
-      return cleanedQueries.some(q => isTitleSimilar(q, itemTitle));
-    }) || searchItems[0];
+      const itemYear = (it.release_date || it.first_air_date || '').substring(0, 4);
+      return cleanedQueries.some(q => isTitleSimilar(q, itemTitle, year, itemYear));
+    }) || candidatePool[0];
 
     if (!targetItem) {
       return [];

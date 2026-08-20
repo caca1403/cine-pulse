@@ -139,7 +139,8 @@ export async function getStreamingServers({
     return streamServersCache.get(cacheKey);
   }
 
-  const { candidateTitles } = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle);
+  const { candidateTitles, detectedYear } = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle);
+  const targetYear = year || detectedYear;
 
   // Concurrent scraping of active, verified premium providers
   const [
@@ -162,20 +163,20 @@ export async function getStreamingServers({
     taSub,
     blgDub
   ] = await Promise.all([
-    isMovie ? withTimeout(fetchHDFilmizleSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })) : Promise.resolve([]),
-    isMovie ? withTimeout(fetchHDFilmizleSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })) : Promise.resolve([]),
-    withTimeout(fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
-    withTimeout(fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
-    withTimeout(fetchDiziBalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
-    withTimeout(fetchDiziBalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
-    withTimeout(fetchDizipalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
-    withTimeout(fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })),
-    withTimeout(fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })),
+    isMovie ? withTimeout(fetchHDFilmizleSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })) : Promise.resolve([]),
+    isMovie ? withTimeout(fetchHDFilmizleSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })) : Promise.resolve([]),
+    withTimeout(fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })),
+    withTimeout(fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })),
+    withTimeout(fetchDiziBalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })),
+    withTimeout(fetchDiziBalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })),
+    withTimeout(fetchDizipalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })),
+    withTimeout(fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })),
+    withTimeout(fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })),
     !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: true })) : Promise.resolve([]),
     !isMovie ? withTimeout(fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: false })) : Promise.resolve([]),
     !isMovie ? withTimeout(fetchDiziyouSources({ titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })) : Promise.resolve([]),
-    isMovie ? withTimeout(fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })) : Promise.resolve([]),
-    isMovie ? withTimeout(fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })) : Promise.resolve([]),
+    isMovie ? withTimeout(fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })) : Promise.resolve([]),
+    isMovie ? withTimeout(fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })) : Promise.resolve([]),
     withTimeout(fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
