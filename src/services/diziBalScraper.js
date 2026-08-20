@@ -3,21 +3,46 @@
    High-accuracy title & year matching to prevent wrong movie playback.
    ========================================================================== */
 
-function isTitleMatch(targetTitle, candidateTitle, targetYear = null, candidateYear = null) {
-  if (!targetTitle || !candidateTitle) return false;
-  
-  const normTarget = targetTitle.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
-  const normCand = candidateTitle.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
-  
-  if (normTarget === normCand) return true;
-  
+function normalizeText(text) {
+  if (!text) return '';
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isTitleMatch(targetTitle, candidateObj, targetYear = null) {
+  if (!targetTitle || !candidateObj) return false;
+
+  const candidateTitle = candidateObj.title || candidateObj.name || candidateObj.display_title_tr || candidateObj.display_title_en || candidateObj.slug || '';
+  const candidateYear = candidateObj.year || (candidateObj.release_date || candidateObj.first_air_date || '').substring(0, 4) || null;
+
+  const normTarget = normalizeText(targetTitle);
+  const normCand = normalizeText(candidateTitle);
+
+  if (normTarget === normCand) {
+    if (targetYear && candidateYear) {
+      return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
+    }
+    return true;
+  }
+
   const targetWords = normTarget.split(/\s+/).filter(w => w.length > 1);
   const candWords = normCand.split(/\s+/).filter(w => w.length > 1);
-  
+
   const matchCount = targetWords.filter(w => candWords.includes(w)).length;
   const ratio = matchCount / Math.max(targetWords.length, 1);
-  
-  if (ratio >= 0.75) {
+
+  if (ratio >= 0.6) {
     if (targetYear && candidateYear) {
       return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
     }
@@ -48,7 +73,7 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
       if (isMovie) {
         const searchRes = await fetch(`${apiBase}/movies?search=${encodeURIComponent(cleanQuery)}`, {
           headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(2000)
+          signal: AbortSignal.timeout(5000)
         }).catch(() => null);
 
         if (!searchRes || !searchRes.ok) continue;
@@ -57,9 +82,9 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         if (moviesList.length === 0) continue;
 
         // Accurate match by title & year - NEVER blindly take moviesList[0]
-        let targetMovie = moviesList.find(m => isTitleMatch(cleanQuery, m.title || m.name || m.slug, year, m.year || m.release_date));
+        let targetMovie = moviesList.find(m => isTitleMatch(cleanQuery, m, year));
         if (!targetMovie) {
-          targetMovie = moviesList.find(m => isTitleMatch(rawQuery, m.title || m.name || m.slug, year, m.year || m.release_date));
+          targetMovie = moviesList.find(m => isTitleMatch(rawQuery, m, year));
         }
 
         if (!targetMovie) {
@@ -70,7 +95,7 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
 
         const detailRes = await fetch(`${apiBase}/movies/${targetSlug}`, {
           headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(2000)
+          signal: AbortSignal.timeout(5000)
         }).catch(() => null);
 
         if (!detailRes || !detailRes.ok) continue;
@@ -99,7 +124,7 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
       } else {
         const searchRes = await fetch(`${apiBase}/series?search=${encodeURIComponent(cleanQuery)}`, {
           headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(2000)
+          signal: AbortSignal.timeout(5000)
         }).catch(() => null);
 
         if (!searchRes || !searchRes.ok) continue;
@@ -107,9 +132,9 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         const seriesList = searchJson?.data || [];
         if (seriesList.length === 0) continue;
 
-        let targetSeries = seriesList.find(s => isTitleMatch(cleanQuery, s.title || s.name || s.slug, year, s.year || s.first_air_date));
+        let targetSeries = seriesList.find(s => isTitleMatch(cleanQuery, s, year));
         if (!targetSeries) {
-          targetSeries = seriesList.find(s => isTitleMatch(rawQuery, s.title || s.name || s.slug, year, s.year || s.first_air_date));
+          targetSeries = seriesList.find(s => isTitleMatch(rawQuery, s, year));
         }
 
         if (!targetSeries) {
@@ -120,7 +145,7 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
 
         const seasonRes = await fetch(`${apiBase}/series/${seriesSlug}/seasons/${season}`, {
           headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(2000)
+          signal: AbortSignal.timeout(5000)
         }).catch(() => null);
 
         if (!seasonRes || !seasonRes.ok) continue;
