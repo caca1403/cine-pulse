@@ -46,6 +46,8 @@ export async function fetchFilmEkseniSources({
 
     const candidateUrls = [
       `${baseUrl}/${slug}-izle/`,
+      `${baseUrl}/hd-${slug}-izle/`,
+      `${baseUrl}/hd-${slug}/`,
       `${baseUrl}/${slug}-izle-hd/`,
       `${baseUrl}/${slug}/`,
       `${baseUrl}/${slug}-2024-izle/`,
@@ -61,48 +63,57 @@ export async function fetchFilmEkseniSources({
         if (!html || html.length < 500 || html.includes('404 Not Found')) continue;
 
         // Check for videoPlayerData JSON
-        const vDataMatch = html.match(/videoPlayerData\(([\s\S]*?)\),\s*defaultLang/i) || html.match(/videoPlayerData\(([\s\S]*?)\)/i);
-        if (vDataMatch) {
+        let parsedData = null;
+        const jsonParseMatch = html.match(/videoPlayerData\(JSON\.parse\('([\s\S]*?)'\)/i)
+          || html.match(/JSON\.parse\('(\{\\u0022[\s\S]*?\})'\)/i);
+
+        if (jsonParseMatch) {
           try {
-            const rawJsonStr = vDataMatch[1].trim();
-            let parsedData = null;
-            if (rawJsonStr.startsWith("JSON.parse('")) {
-              const unescaped = rawJsonStr.slice(12, -2).replace(/\\u0022/g, '"').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-              parsedData = JSON.parse(unescaped);
-            } else {
-              parsedData = JSON.parse(rawJsonStr);
-            }
-
-            if (parsedData) {
-              const items = isDub ? (parsedData.dual || parsedData.tr || parsedData.dublaj || []) : (parsedData.sub || parsedData.altyazi || parsedData.en || []);
-              for (const item of items) {
-                if (item.link) {
-                  let playerUrl = `https://eksenload.top/eplayer/${item.link}`;
-                  if (item.template) {
-                    try {
-                      const decodedTemplate = atob(item.template);
-                      const srcMatch = decodedTemplate.match(/data-src=["']([^"']+)["']/i) || decodedTemplate.match(/src=["']([^"']+)["']/i);
-                      if (srcMatch) {
-                        playerUrl = srcMatch[1].replace('{url}', item.link).replace('{slug}', item.slug || slug);
-                        if (playerUrl.startsWith('//')) playerUrl = `https:${playerUrl}`;
-                      }
-                    } catch (_) {}
-                  }
-
-                  const hostName = item.service_name || (playerUrl.includes('eksenload') ? 'EksenLoad VIP' : 'Eksen Player 1080p');
-                  sources.push({
-                    id: `fex_${item.service_slug || 'vip'}_${item.link}`,
-                    name: `${hostName}`,
-                    displayName: `${hostName}`,
-                    badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-                    url: playerUrl,
-                    isHls: false,
-                    isDirectVideo: false
-                  });
-                }
-              }
-            }
+            const unescaped = jsonParseMatch[1]
+              .replace(/\\u0022/g, '"')
+              .replace(/\\"/g, '"')
+              .replace(/\\\\/g, '\\');
+            parsedData = JSON.parse(unescaped);
           } catch (_) {}
+        }
+
+        if (!parsedData) {
+          const rawMatch = html.match(/videoPlayerData\((\{[\s\S]*?\}),\s*(?:['"][a-z]+['"]|defaultLang)/i);
+          if (rawMatch) {
+            try {
+              parsedData = JSON.parse(rawMatch[1]);
+            } catch (_) {}
+          }
+        }
+
+        if (parsedData) {
+          const items = isDub ? (parsedData.dual || parsedData.tr || parsedData.dublaj || []) : (parsedData.sub || parsedData.altyazi || parsedData.en || []);
+          for (const item of items) {
+            if (item.link) {
+              let playerUrl = `https://eksenload.top/eplayer/${item.link}`;
+              if (item.template) {
+                try {
+                  const decodedTemplate = atob(item.template);
+                  const srcMatch = decodedTemplate.match(/data-src=["']([^"']+)["']/i) || decodedTemplate.match(/src=["']([^"']+)["']/i);
+                  if (srcMatch) {
+                    playerUrl = srcMatch[1].replace('{url}', item.link).replace('{slug}', item.slug || slug);
+                    if (playerUrl.startsWith('//')) playerUrl = `https:${playerUrl}`;
+                  }
+                } catch (_) {}
+              }
+
+              const hostName = item.service_name || (playerUrl.includes('eksenload') ? 'EksenLoad VIP' : 'Eksen Player 1080p');
+              sources.push({
+                id: `fex_${item.service_slug || 'vip'}_${item.link}`,
+                name: `${hostName}`,
+                displayName: `${hostName}`,
+                badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
+                url: playerUrl,
+                isHls: false,
+                isDirectVideo: false
+              });
+            }
+          }
         }
 
         // Direct iframes fallback
