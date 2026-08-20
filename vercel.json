@@ -4,9 +4,18 @@
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "*" }
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "*"
+        }
       ]
     }
   ],
@@ -60,8 +69,12 @@
       "destination": "https://filmmakinesi.to/$1"
     },
     {
+      "source": "/api/snx",
+      "destination": "/api/snx"
+    },
+    {
       "source": "/api/snx/(.*)",
-      "destination": "/api/[...all]"
+      "destination": "/api/snx?path=$1"
     },
     {
       "source": "/((?!api/).*)",

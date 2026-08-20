@@ -83,30 +83,17 @@ export async function fetchDiziyouSources({
     if (playerIdMatch) {
       const playerId = playerIdMatch[1];
       const directM3u8 = `https://storage.diziyou.one/episodes/${playerId}/play.m3u8`;
-      const playerEmbed = `https://www.diziyou.one/player/${playerId}.html`;
 
       sources.push({
         id: `dzy_m3u8_${playerId}`,
         name: 'HLS FastCDN 1080p',
         displayName: 'HLS FastCDN 1080p',
         badge: '⚡ HLS 1080p',
-        url: playerEmbed,
+        url: directM3u8,
         streamUrl: directM3u8,
         isHls: true,
         isDirectVideo: false,
         getUrl: () => directM3u8
-      });
-
-      sources.push({
-        id: `dzy_embed_${playerId}`,
-        name: 'Fast Player VIP',
-        displayName: 'Fast Player VIP',
-        badge: '⚡ Web Player',
-        url: playerEmbed,
-        streamUrl: playerEmbed,
-        isHls: false,
-        isDirectVideo: false,
-        getUrl: () => playerEmbed
       });
       break;
     } else if (iframeMatch) {
