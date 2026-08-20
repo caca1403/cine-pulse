@@ -74,7 +74,13 @@ export async function openPlayerModal({
     }
     console.warn('CinePulse Anti-Ad Shield: Blocked gambling pop-up redirect ->', url);
     showToast('Bahis/Reklam yönlendirmesi engellendi.', 'info');
-    return null;
+    return {
+      closed: false,
+      focus: () => {},
+      blur: () => {},
+      close: () => {},
+      location: { href: '' }
+    };
   };
 
   let currentSeason = Number(season) || 1;
@@ -256,9 +262,11 @@ export async function openPlayerModal({
       <iframe 
         id="video-iframe" 
         src="${finalIframeUrl}" 
-        allowfullscreen 
+        allowfullscreen="true"
+        webkitallowfullscreen="true"
+        mozallowfullscreen="true"
         referrerpolicy="${iframeReferrerPolicy}"
-        allow="autoplay; encrypted-media; fullscreen; picture-in-picture; accelerometer; gyroscope; clipboard-write; payment">
+        allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *; payment *; screen-wake-lock *; web-share *">
       </iframe>
     `;
   }
@@ -438,6 +446,9 @@ export async function openPlayerModal({
                 <i data-lucide="layers" style="width: 15px; height: 15px; color: var(--primary);"></i>
                 <span>Tüm Bölümler</span>
               </div>
+            </div>
+            
+            <div class="mobile-season-picker-rail">
               <div class="mobile-season-picker" id="mobile-season-picker">
                 <!-- Season tabs injected dynamically -->
               </div>

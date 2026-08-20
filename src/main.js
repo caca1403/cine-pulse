@@ -12,6 +12,17 @@ import { renderLiveTvView } from './views/LiveTvView.js';
 
 const app = document.getElementById('app');
 
+let previousRoute = '';
+const scrollMemory = new Map();
+
+// Record scroll position before route changes
+window.addEventListener('scroll', () => {
+  const currentHash = window.location.hash || '#home';
+  if (!currentHash.startsWith('#detail')) {
+    scrollMemory.set(currentHash, window.scrollY);
+  }
+}, { passive: true });
+
 async function route() {
   const hash = window.location.hash || '#home';
   let viewName = 'home';
@@ -96,8 +107,17 @@ async function route() {
     window.lucide.createIcons();
   }
 
-  // Scroll to top on route change
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Restore scroll position when returning from detail page or revisiting a tab
+  const savedY = scrollMemory.get(hash);
+  if (typeof savedY === 'number' && !hash.startsWith('#detail')) {
+    setTimeout(() => {
+      window.scrollTo({ top: savedY, behavior: 'instant' });
+    }, 20);
+  } else {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  previousRoute = hash;
 }
 
 // Router Event Listeners

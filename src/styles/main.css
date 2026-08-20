@@ -1662,10 +1662,18 @@ button {
 .season-bar {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.75rem;
   overflow-x: auto;
-  padding-bottom: 0.8rem;
-  margin-bottom: 1.8rem;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.season-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .season-btn {
@@ -1677,6 +1685,7 @@ button {
   font-size: 0.92rem;
   color: var(--text-sub);
   white-space: nowrap;
+  flex-shrink: 0;
   transition: var(--transition-fast);
 }
 
@@ -4148,23 +4157,45 @@ button {
     white-space: nowrap !important;
   }
 
+  .mobile-season-picker-rail {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding: 0.15rem 0 !important;
+  }
+
+  .mobile-season-picker-rail::-webkit-scrollbar {
+    display: none !important;
+  }
+
   .mobile-season-picker {
     display: flex !important;
-    gap: 0.35rem !important;
+    gap: 0.45rem !important;
     overflow-x: auto !important;
+    flex-wrap: nowrap !important;
     scrollbar-width: none !important;
     -webkit-overflow-scrolling: touch !important;
-    flex-shrink: 0 !important;
+    width: 100% !important;
   }
+
   .mobile-season-picker::-webkit-scrollbar {
     display: none !important;
   }
 
   .mobile-season-picker .drawer-season-btn {
-    padding: 0.25rem 0.65rem !important;
-    font-size: 0.72rem !important;
-    border-radius: 16px !important;
+    padding: 0.32rem 0.85rem !important;
+    font-size: 0.76rem !important;
+    border-radius: 18px !important;
     white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .mobile-season-picker .drawer-season-btn.active {
+    background: var(--primary) !important;
+    color: #000 !important;
+    font-weight: 700 !important;
   }
 
   /* Horizontal Episode Cards Rail */
