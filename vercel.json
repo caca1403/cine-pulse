@@ -33,10 +33,6 @@
       "destination": "https://www.diziyou.one/$1"
     },
     {
-      "source": "/api/szd/(.*)",
-      "destination": "https://sezonlukdizi.cc/$1"
-    },
-    {
       "source": "/api/dbl/(.*)",
       "destination": "https://dizibal.com/api/$1"
     },
