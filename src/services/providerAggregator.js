@@ -27,6 +27,7 @@ import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
 import { fetchHDFilmizleSources } from './hdfilmizleScraper.js';
+import { fetchFilmMakinesiSources } from './filmmakinesiScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -120,7 +121,8 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
-  if (id.startsWith('snx') || raw.includes('direct') || url.includes('.mkv') || url.includes('sinewix')) return 'Direct 1080p';
+  if (url.includes('filmmakinesi') || raw.includes('filmmakinesi')) return 'FilmMakinesi VIP';
+  if (id.startsWith('snx') || raw.includes('direct') || url.includes('.mkv') || url.includes('.webm') || url.includes('sinewix')) return 'Direct 1080p';
   if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'VidMoly 1080p';
   if (url.includes('sibnet') || raw.includes('sibnet')) return 'Sibnet HD';
   if (url.includes('videosoft') || raw.includes('videosoft')) return 'VideoSoft Fast';
@@ -188,7 +190,8 @@ export async function getStreamingServers({
     antrSub,
     traSub,
     taSub,
-    blgDub
+    blgDub,
+    fmkSub
   ] = await Promise.all([
     isMovie ? withTimeout(fetchHDFilmizleSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })) : Promise.resolve([]),
     isMovie ? withTimeout(fetchHDFilmizleSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })) : Promise.resolve([]),
@@ -207,7 +210,8 @@ export async function getStreamingServers({
     withTimeout(fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
-    withTimeout(fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true }))
+    withTimeout(fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })),
+    withTimeout(fetchFilmMakinesiSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, tmdbId, isDub: false }))
   ]);
 
   const mapDubbedSources = (rawList) => (rawList || [])
@@ -342,7 +346,20 @@ export async function getStreamingServers({
     ...mapSubtitledSources(antrSub),
     ...mapSubtitledSources(traSub),
     ...mapSubtitledSources(taSub),
-    ...mapSubtitledSources(szdSub)
+    ...mapSubtitledSources(szdSub),
+    // 6. FilmMakinesi (bypasses URL filter since it's a dedicated embed provider)
+    ...(fmkSub || []).map(s => ({
+      id: s.id,
+      name: s.name || 'FilmMakinesi VIP',
+      displayName: s.displayName || 'FilmMakinesi VIP',
+      badge: s.badge || '💬 TR Altyazı',
+      category: 'subtitled',
+      isHls: false,
+      isDirectVideo: false,
+      isEmbed: true,
+      streamUrl: s.streamUrl || s.url,
+      getUrl: () => s.streamUrl || s.url
+    }))
   ];
 
   const result = {
