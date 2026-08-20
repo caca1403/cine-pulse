@@ -26,7 +26,6 @@ import { fetchBelgeselSources } from './belgeselScraper.js';
 import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
-import { fetchHDFilmDelisiSources } from './hdfilmdelisiScraper.js';
 import { fetchHDFilmizleSources } from './hdfilmizleScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -92,18 +91,19 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
 export function resolveEngineName(s, fallback = 'Fast Stream') {
   const url = (s.url || s.streamUrl || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
   const raw = (s.displayName || s.name || '').toLowerCase();
+  const id = (s.id || '').toLowerCase();
 
+  if (id.startsWith('snx') || raw.includes('direct') || url.includes('.mkv') || url.includes('sinewix')) return 'Direct 1080p';
   if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'VidMoly 1080p';
   if (url.includes('sibnet') || raw.includes('sibnet')) return 'Sibnet HD';
   if (url.includes('videosoft') || raw.includes('videosoft')) return 'VideoSoft Fast';
   if (url.includes('vidrame') || raw.includes('vidrame')) return 'Vidrame Pro';
-  if (url.includes('eksenload') || raw.includes('eksenload')) return 'EksenLoad VIP';
+  if (url.includes('eksenload') || url.includes('vidload') || raw.includes('eksen')) return 'EksenLoad VIP';
   if (url.includes('vidmody') || raw.includes('vidmody')) return 'VidMody Ultra';
   if (url.includes('closeload') || raw.includes('closeload')) return 'Closeload HD';
   if (url.includes('rapidame') || raw.includes('rapidame')) return 'Rapidame 1080p';
-  if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha')) return 'Alpha Stream';
-  if (url.includes('storage.diziyou') || url.includes('.m3u8') || s.isHls) return 'HLS FastCDN';
-  if (url.includes('.mkv') || url.includes('.mp4') || s.isDirectVideo) return 'Direct 1080p';
+  if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 'Alpha Stream';
+  if (url.includes('storage.diziyou') || id.startsWith('dzy')) return 'HLS FastCDN';
   if (url.includes('smashy') || raw.includes('smashy')) return 'Smashy 1080p';
   if (url.includes('autoembed') || raw.includes('autoembed')) return 'AutoEmbed 4K';
   if (url.includes('multiembed') || raw.includes('multiembed')) return 'MultiEmbed VIP';
@@ -118,7 +118,7 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
     .trim();
 
   if (clean && clean.length > 2) return clean;
-  return s.isDirectVideo || s.isHls ? 'HLS FastCDN' : fallback;
+  return s.isDirectVideo || s.isHls ? 'Direct 1080p' : fallback;
 }
 
 export async function getStreamingServers({
@@ -157,7 +157,6 @@ export async function getStreamingServers({
     dzyDub,
     fexDub,
     fexSub,
-    hfdDub,
     antrSub,
     traSub,
     taSub,
@@ -177,7 +176,6 @@ export async function getStreamingServers({
     !isMovie ? withTimeout(fetchDiziyouSources({ titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })) : Promise.resolve([]),
     isMovie ? withTimeout(fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })) : Promise.resolve([]),
     isMovie ? withTimeout(fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })) : Promise.resolve([]),
-    isMovie ? withTimeout(fetchHDFilmDelisiSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })) : Promise.resolve([]),
     withTimeout(fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
     withTimeout(fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })),
@@ -192,6 +190,7 @@ export async function getStreamingServers({
         !urlStr.includes('liderfilm') &&
         !urlStr.includes('filmmakinesi') &&
         !urlStr.includes('dizipal.bid') &&
+        !urlStr.includes('hdfilmdelisi') &&
         urlStr.length > 8;
     })
     .map(s => {
@@ -215,7 +214,6 @@ export async function getStreamingServers({
     ...mapDubbedSources(blgDub),
     ...mapDubbedSources(dzyDub),
     ...mapDubbedSources(fexDub),
-    ...mapDubbedSources(hfdDub),
     ...mapDubbedSources(snxDub),
     ...mapDubbedSources(dblDub),
     ...mapDubbedSources(dzpDub),

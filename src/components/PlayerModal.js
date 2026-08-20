@@ -255,7 +255,7 @@ export async function openPlayerModal({
         id="video-iframe" 
         src="${finalIframeUrl}" 
         allowfullscreen 
-        referrerpolicy="no-referrer-when-downgrade"
+        referrerpolicy="no-referrer"
         allow="autoplay; encrypted-media; fullscreen; picture-in-picture; accelerometer; gyroscope; clipboard-write; payment">
       </iframe>
     `;
