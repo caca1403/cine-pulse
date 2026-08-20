@@ -95,9 +95,9 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
                 return [
                   {
                     id: `flz_${slug}_${season}_${episode}`,
-                    name: `VIP Hat 4`,
-                    displayName: `VIP Hat 4`,
-                    badge: '⚡ VIP',
+                    name: `Channel Stream 1080p`,
+                    displayName: `Channel Stream 1080p`,
+                    badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
                     category: isDub ? 'dubbed' : 'subtitled',
                     streamUrl: data.src,
                     url: data.src,

@@ -29,6 +29,9 @@ export async function fetchFilmEkseniSources({
 }) {
   if (type !== 'movie') return [];
 
+  const isBrowser = typeof window !== 'undefined';
+  const baseUrl = isBrowser ? '/api/fex' : 'https://filmekseni.vip';
+
   const allTitles = Array.from(new Set([
     title,
     originalTitle,
@@ -42,9 +45,12 @@ export async function fetchFilmEkseniSources({
     if (!slug) continue;
 
     const candidateUrls = [
-      `/api/fex/${slug}-izle/`,
-      `/api/fex/${slug}-izle-hd/`,
-      `/api/fex/${slug}/`
+      `${baseUrl}/${slug}-izle/`,
+      `${baseUrl}/${slug}-izle-hd/`,
+      `${baseUrl}/${slug}/`,
+      `${baseUrl}/${slug}-2024-izle/`,
+      `${baseUrl}/${slug}-2025-izle/`,
+      `${baseUrl}/${slug}-2026-izle/`
     ];
 
     for (const movieUrl of candidateUrls) {
@@ -52,14 +58,13 @@ export async function fetchFilmEkseniSources({
         const res = await fetch(movieUrl, { signal: AbortSignal.timeout(3000) });
         if (!res.ok) continue;
         const html = await res.text();
-        if (!html || html.length < 500) continue;
+        if (!html || html.length < 500 || html.includes('404 Not Found')) continue;
 
         // Check for videoPlayerData JSON
         const vDataMatch = html.match(/videoPlayerData\(([\s\S]*?)\),\s*defaultLang/i) || html.match(/videoPlayerData\(([\s\S]*?)\)/i);
         if (vDataMatch) {
           try {
             const rawJsonStr = vDataMatch[1].trim();
-            // Could be JSON.parse('...') or direct JSON
             let parsedData = null;
             if (rawJsonStr.startsWith("JSON.parse('")) {
               const unescaped = rawJsonStr.slice(12, -2).replace(/\\u0022/g, '"').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
@@ -84,9 +89,11 @@ export async function fetchFilmEkseniSources({
                     } catch (_) {}
                   }
 
+                  const hostName = item.service_name || (playerUrl.includes('eksenload') ? 'EksenLoad VIP' : 'Eksen Player 1080p');
                   sources.push({
                     id: `fex_${item.service_slug || 'vip'}_${item.link}`,
-                    name: item.service_name ? `VIP ${item.service_name}` : 'VIP Hat 6',
+                    name: `${hostName}`,
+                    displayName: `${hostName}`,
                     badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
                     url: playerUrl,
                     isHls: false,
@@ -104,9 +111,11 @@ export async function fetchFilmEkseniSources({
           for (const ifr of iframes) {
             const src = (ifr.match(/src=["']([^"']+)["']/i) || [])[1];
             if (src) {
+              const name = src.includes('vidmoly') ? 'VidMoly 1080p' : 'EksenLoad VIP';
               sources.push({
                 id: `fex_iframe_${slug}_${Math.random().toString(36).substring(2, 6)}`,
-                name: 'VIP Hat 6',
+                name: name,
+                displayName: name,
                 badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
                 url: src.startsWith('//') ? `https:${src}` : src,
                 isHls: false,
@@ -116,11 +125,9 @@ export async function fetchFilmEkseniSources({
           }
         }
 
-        if (sources.length > 0) break;
+        if (sources.length > 0) return sources;
       } catch (_) {}
     }
-
-    if (sources.length > 0) break;
   }
 
   return sources;
