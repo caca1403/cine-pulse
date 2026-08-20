@@ -44,7 +44,7 @@ function cleanTitle(raw) {
     .trim();
 }
 
-function withTimeout(promise, ms = 5500) {
+function withTimeout(promise, ms = 7500) {
   return Promise.race([
     promise.catch(() => []),
     new Promise(resolve => setTimeout(() => resolve([]), ms))
@@ -325,8 +325,10 @@ export async function getStreamingServers({
     totalServers: cleanDubbed.length + cleanSubtitled.length
   };
 
-  // Cache for instant navigation
-  streamServersCache.set(cacheKey, result);
+  // Cache for instant navigation if servers were found
+  if (result.totalServers > 0) {
+    streamServersCache.set(cacheKey, result);
+  }
 
   return result;
 }

@@ -37,7 +37,7 @@ async function performSinewixRequest(endpoint) {
   try {
     const res = await fetch(fullUrl, {
       headers: isBrowser ? {} : SINEWIX_HEADERS,
-      signal: AbortSignal.timeout(2500)
+      signal: AbortSignal.timeout(5000)
     }).catch(() => null);
 
     if (res && res.ok) {
@@ -50,7 +50,7 @@ async function performSinewixRequest(endpoint) {
     const directUrl = `${SINEWIX_API_BASE}${endpoint}`;
     const res = await fetch(directUrl, {
       headers: SINEWIX_HEADERS,
-      signal: AbortSignal.timeout(2500)
+      signal: AbortSignal.timeout(5000)
     }).catch(() => null);
 
     if (res && res.ok) {
