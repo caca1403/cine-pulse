@@ -26,7 +26,7 @@ import { fetchBelgeselSources } from './belgeselScraper.js';
 import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
-import { fetchHDFilmDelisiSources } from './hdfilmDelisiScraper.js';
+import { fetchHDFilmDelisiSources } from './hdfilmdelisiScraper.js';
 import { fetchHDFilmizleSources } from './hdfilmizleScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
