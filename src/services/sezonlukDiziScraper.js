@@ -1,10 +1,8 @@
 /* ==========================================================================
-   SineFlix Pro - Perfect SezonlukDizi Scraper Module
-   Flawlessly extracts VidMoly, Filemoon, Sibnet, Netu, and other active streams.
-   Uses Cloudflare Worker Gateway to eliminate CORS and Cloudflare 403 blocks.
+   CinePulse Studio - Perfect SezonlukDizi Scraper Module
+   Flawlessly extracts VidMoly, Sibnet, Netu, and other active streams.
+   Uses /api/szd Vercel proxy to eliminate CORS.
    ========================================================================== */
-
-const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 function toTurkishSlug(title) {
   if (!title) return '';
@@ -23,6 +21,9 @@ function toTurkishSlug(title) {
 }
 
 export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
+  const isBrowser = typeof window !== 'undefined';
+  const apiBase = isBrowser ? '/api/szd' : 'https://sezonlukdizi.cc';
+
   const allTitles = [...new Set([...titles, seriesTitle, originalTitle])].filter(t => t && typeof t === 'string' && t.trim().length > 1);
   if (allTitles.length === 0) return [];
 
@@ -40,82 +41,103 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
     }
   }
 
-  const baseDomains = ['https://sezonlukdizi.cc', 'https://sezonlukdizi8.com'];
+  for (const slug of candidateSlugs) {
+    try {
+      const pageUrl = `${apiBase}/${slug}/${season}-sezon-${episode}-bolum.html`;
 
-  for (const baseDomain of baseDomains) {
-    for (const slug of candidateSlugs) {
-      try {
-        const pageTarget = `${baseDomain}/${slug}/${season}-sezon-${episode}-bolum.html`;
-        const proxyPageUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(pageTarget)}`;
+      const res = await fetch(pageUrl, {
+        headers: isBrowser ? {} : {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://sezonlukdizi.cc/'
+        },
+        signal: AbortSignal.timeout(4000)
+      }).catch(() => null);
 
-        const res = await fetch(proxyPageUrl).catch(() => null);
-        if (!res || !res.ok) continue;
-        const html = await res.text();
+      if (!res || !res.ok) continue;
+      const html = await res.text();
 
-        const bidMatch = html.match(/data-id=["'](\d+)["']/i) || html.match(/var\s+bid\s*=\s*["']?(\d+)["']?/i) || html.match(/bid\s*=\s*(\d+)/i);
-        const bid = bidMatch ? bidMatch[1] : null;
-        if (!bid) continue;
+      const bidMatch = html.match(/data-id=["'](\d+)["']/i) || html.match(/var\s+bid\s*=\s*["']?(\d+)["']?/i) || html.match(/bid\s*=\s*(\d+)/i);
+      const bid = bidMatch ? bidMatch[1] : null;
+      if (!bid) continue;
 
-        const dilParam = isDub ? '0' : '1';
-        const altTarget = `${baseDomain}/ajax/dataAlternatif22.asp`;
-        const proxyAltUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(altTarget)}`;
+      const dilParam = isDub ? '0' : '1';
+      const altUrl = `${apiBase}/ajax/dataAlternatif22.asp`;
 
-        const altRes = await fetch(proxyAltUrl, {
+      const altRes = await fetch(altUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-Requested-With': 'XMLHttpRequest',
+          ...(isBrowser ? {} : {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://sezonlukdizi.cc/'
+          })
+        },
+        body: `bid=${bid}&dil=${dilParam}`,
+        signal: AbortSignal.timeout(4000)
+      }).catch(() => null);
+
+      if (!altRes || !altRes.ok) continue;
+      const altJson = await altRes.json().catch(() => null);
+      if (!altJson || altJson.status !== 'success' || !Array.isArray(altJson.data) || altJson.data.length === 0) continue;
+
+      const extractedSources = [];
+
+      for (const item of altJson.data) {
+        const embedUrlEndpoint = `${apiBase}/ajax/dataEmbed22.asp`;
+
+        const emRes = await fetch(embedUrlEndpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-          body: `bid=${bid}&dil=${dilParam}`
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(isBrowser ? {} : {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Referer': 'https://sezonlukdizi.cc/'
+            })
+          },
+          body: `id=${item.id}`,
+          signal: AbortSignal.timeout(4000)
         }).catch(() => null);
 
-        if (!altRes || !altRes.ok) continue;
-        const altJson = await altRes.json().catch(() => null);
-        if (!altJson || altJson.status !== 'success' || !Array.isArray(altJson.data) || altJson.data.length === 0) continue;
+        if (!emRes || !emRes.ok) continue;
+        const emText = await emRes.text().catch(() => '');
+        const srcMatch = emText.match(/src=["']([^"']+)["']/i);
+        let iframeUrl = srcMatch ? srcMatch[1] : null;
 
-        const extractedSources = [];
-
-        for (const item of altJson.data) {
-          const embedTarget = `${baseDomain}/ajax/dataEmbed22.asp`;
-          const proxyEmbedUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(embedTarget)}`;
-
-          const emRes = await fetch(proxyEmbedUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-            body: `id=${item.id}`
-          }).catch(() => null);
-
-          if (!emRes || !emRes.ok) continue;
-          const emText = await emRes.text().catch(() => '');
-          const srcMatch = emText.match(/src=["']([^"']+)["']/i);
-          let iframeUrl = srcMatch ? srcMatch[1] : null;
-
-          if (iframeUrl && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
-            // Skip Filemoon as it has iframe domain restrictions
-            if (
-              item.baslik?.toLowerCase().includes('filemoon') ||
-              iframeUrl.includes('bysejikuar') ||
-              iframeUrl.includes('filemoon')
-            ) {
-              continue;
-            }
-
-            if (iframeUrl.startsWith('//')) {
-              iframeUrl = 'https:' + iframeUrl;
-            }
-
-            extractedSources.push({
-              id: `szd_${item.id}`,
-              name: `${item.baslik} Stream (${isDub ? 'Dublaj 1080p' : 'Altyazılı'})`,
-              badge: `⚡ ${item.baslik}`,
-              url: iframeUrl
-            });
+        if (iframeUrl && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
+          if (
+            item.baslik?.toLowerCase().includes('filemoon') ||
+            iframeUrl.includes('bysejikuar') ||
+            iframeUrl.includes('filemoon')
+          ) {
+            continue;
           }
-        }
 
-        if (extractedSources.length > 0) {
-          return extractedSources;
+          if (iframeUrl.startsWith('//')) {
+            iframeUrl = 'https:' + iframeUrl;
+          }
+
+          const serverName = item.baslik === 'VidMoly' ? 'VidMoly 1080p' : `${item.baslik} HD`;
+
+          extractedSources.push({
+            id: `szd_${item.id}`,
+            name: serverName,
+            displayName: serverName,
+            badge: `⚡ ${item.baslik}`,
+            category: isDub ? 'dubbed' : 'subtitled',
+            url: iframeUrl,
+            streamUrl: iframeUrl,
+            getUrl: () => iframeUrl
+          });
         }
-      } catch (err) {
-        console.warn('SezonlukDizi scrape error:', err);
       }
+
+      if (extractedSources.length > 0) {
+        return extractedSources;
+      }
+    } catch (err) {
+      console.warn('[SezonlukDiziScraper] Error:', err);
     }
   }
 
