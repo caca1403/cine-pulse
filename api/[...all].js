@@ -40,6 +40,9 @@ export default async function handler(req, res) {
     customHeaders['Referer'] = 'https://sezonlukdizi.cc/';
     customHeaders['Origin'] = 'https://sezonlukdizi.cc';
     customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+    if (req.method === 'POST') {
+      customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+    }
   } else if (pathname.startsWith('/api/dbl')) {
     const subPath = pathname.replace(/^\/api\/dbl/, '');
     targetUrl = `https://dizibal.com/api${subPath}${search}`;
