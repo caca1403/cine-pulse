@@ -5,7 +5,11 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const urlObj = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
-  let subPath = req.query?.path || urlObj.searchParams.get('path') || urlObj.pathname.replace(/^\/api\/snx/, '');
+  
+  let subPath = req.query?.path || urlObj.searchParams.get('path');
+  if (!subPath) {
+    subPath = urlObj.pathname.replace(/^\/api\/snx/, '');
+  }
   if (!subPath.startsWith('/')) subPath = '/' + subPath;
 
   const targetUrl = `https://ydfvfdizipanel.ru/public/api${subPath}`;
