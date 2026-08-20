@@ -250,12 +250,14 @@ export async function openPlayerModal({
     }
 
     const finalIframeUrl = srv.getUrl() || srv.streamUrl || '';
+    const isEksenLoad = finalIframeUrl.includes('eksenload') || finalIframeUrl.includes('vidload') || (srv.name || '').includes('EksenLoad');
+    const iframeReferrerPolicy = isEksenLoad ? 'no-referrer' : 'origin';
     return `
       <iframe 
         id="video-iframe" 
         src="${finalIframeUrl}" 
         allowfullscreen 
-        referrerpolicy="no-referrer"
+        referrerpolicy="${iframeReferrerPolicy}"
         allow="autoplay; encrypted-media; fullscreen; picture-in-picture; accelerometer; gyroscope; clipboard-write; payment">
       </iframe>
     `;
