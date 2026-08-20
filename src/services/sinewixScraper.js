@@ -146,6 +146,18 @@ export async function fetchSinewixSources({
         continue;
       }
 
+      const isSubtitledVideo = lowerLink.includes('trsub') || lowerLink.includes('.sub.') || lowerLink.includes('altyazi') || (v.lang && v.lang.toLowerCase().includes('sub'));
+
+      if (isDub && isSubtitledVideo) {
+        // Skip subtitled video when requesting dubbed
+        continue;
+      }
+
+      if (!isDub && !isSubtitledVideo && lowerLink.includes('dub')) {
+        // Skip dubbed video when requesting subtitled
+        continue;
+      }
+
       const isDirect = lowerLink.includes('.mp4') || lowerLink.includes('.mkv') || lowerLink.includes('.webm');
       const isHls = lowerLink.includes('.m3u8');
 
@@ -153,8 +165,8 @@ export async function fetchSinewixSources({
         id: `snx_${v.id || Math.random().toString(36).substring(7)}`,
         name: `VIP Hat 1`,
         displayName: `VIP Hat 1`,
-        badge: '⚡ VIP 1080p',
-        category: 'dubbed',
+        badge: isSubtitledVideo ? '💬 TR Altyazı 1080p' : '⚡ VIP 1080p',
+        category: isSubtitledVideo ? 'subtitled' : 'dubbed',
         streamUrl: rawLink,
         url: rawLink,
         isHls: isHls,
