@@ -32,7 +32,7 @@ function isTitleSimilar(target, candidate) {
 
 async function performSinewixRequest(endpoint) {
   const isBrowser = typeof window !== 'undefined';
-  const fullUrl = isBrowser ? `/api/snx${endpoint}` : `${SINEWIX_API_BASE}${endpoint}`;
+  const fullUrl = isBrowser ? `/api/snx?path=${encodeURIComponent(endpoint)}` : `${SINEWIX_API_BASE}${endpoint}`;
 
   try {
     const res = await fetch(fullUrl, {
