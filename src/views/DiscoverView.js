@@ -10,15 +10,26 @@ import {
 } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 
+const discoverCache = {
+  currentType: 'tv',
+  currentGenreId: null,
+  currentSortBy: 'popularity.desc',
+  currentMinRating: 0,
+  currentPage: 1,
+  allItems: [],
+  isExhausted: false
+};
+
 export async function renderDiscoverView(initialType = 'tv') {
-  let currentType = initialType; // 'tv', 'movie', 'anime', 'documentary'
-  let currentGenreId = null;
-  let currentSortBy = 'popularity.desc';
-  let currentMinRating = 0;
-  let currentPage = 1;
-  let allItems = [];
+  if (initialType && initialType !== discoverCache.currentType && discoverCache.allItems.length === 0) {
+    discoverCache.currentType = initialType;
+  }
+
+  let currentType = discoverCache.currentType;
+  let currentGenreId = discoverCache.currentGenreId;
+  let currentSortBy = discoverCache.currentSortBy;
+  let currentMinRating = discoverCache.currentMinRating;
   let isLoading = false;
-  let isExhausted = false;
 
   const tvGenres = [
     { id: null, name: 'Tüm Türler' },
@@ -47,6 +58,10 @@ export async function renderDiscoverView(initialType = 'tv') {
   ];
 
   const getActiveGenres = () => currentType === 'movie' ? movieGenres : tvGenres;
+  const hasCachedItems = discoverCache.allItems.length > 0;
+  const initialCardsHTML = hasCachedItems
+    ? discoverCache.allItems.map(item => renderMediaCard(item)).join('')
+    : '<div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">İçerikler yükleniyor...</div>';
 
   const html = `
     <div class="discover-view" style="padding-top: 6.5rem; padding-bottom: 5rem;">
@@ -59,41 +74,45 @@ export async function renderDiscoverView(initialType = 'tv') {
               <h1 style="font-size: 2.2rem; font-weight: 800; display: flex; align-items: center; gap: 0.75rem; color: #fff;">
                 <i data-lucide="compass" style="color: var(--primary)"></i> Özelleştirilebilir Sinema Filtresi
               </h1>
-              <p style="color: var(--text-sub); margin-top: 0.4rem; font-size: 0.95rem;">
-                Tür, IMDb puanı ve sıralama kriterlerine göre binlerce dizi ve filmi anında filtreleyin.
+              <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.35rem;">
+                Türe, IMDb puanına ve çıkış yılına göre nokta atışı arama yapın
               </p>
             </div>
+          </div>
+        </div>
 
-            <!-- Content Type Switcher (Dizi / Film / Anime / Belgesel) -->
-            <div style="display: flex; background: rgba(0, 0, 0, 0.4); padding: 0.35rem; border-radius: var(--radius-full); border: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.25rem;">
-              <button class="type-switch-btn ${currentType === 'tv' ? 'active' : ''}" id="discover-type-tv" style="padding: 0.6rem 1.2rem; font-weight: 700; font-size: 0.85rem; border-radius: var(--radius-full);">
-                <i data-lucide="tv-2" style="width: 15px; height: 15px;"></i> Diziler
-              </button>
-              <button class="type-switch-btn ${currentType === 'movie' ? 'active' : ''}" id="discover-type-movie" style="padding: 0.6rem 1.2rem; font-weight: 700; font-size: 0.85rem; border-radius: var(--radius-full);">
-                <i data-lucide="clapperboard" style="width: 15px; height: 15px;"></i> Filmler
-              </button>
-              <button class="type-switch-btn ${currentType === 'anime' ? 'active' : ''}" id="discover-type-anime" style="padding: 0.6rem 1.2rem; font-weight: 700; font-size: 0.85rem; border-radius: var(--radius-full);">
-                <i data-lucide="sparkles" style="width: 15px; height: 15px;"></i> Anime
-              </button>
-              <button class="type-switch-btn ${currentType === 'documentary' ? 'active' : ''}" id="discover-type-doc" style="padding: 0.6rem 1.2rem; font-weight: 700; font-size: 0.85rem; border-radius: var(--radius-full);">
-                <i data-lucide="globe" style="width: 15px; height: 15px;"></i> Belgesel
-              </button>
-            </div>
+        <!-- Filter Controls Container -->
+        <div class="discover-controls-wrap glass-panel" style="padding: 1.5rem; border-radius: var(--radius-md); margin-bottom: 2rem; border: 1px solid var(--border-color);">
+          
+          <!-- Type Filter Tabs -->
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+            <button id="discover-type-tv" class="discover-type-tab ${currentType === 'tv' ? 'active' : ''}">
+              <i data-lucide="tv-2" style="width:16px; height:16px;"></i> Diziler
+            </button>
+            <button id="discover-type-movie" class="discover-type-tab ${currentType === 'movie' ? 'active' : ''}">
+              <i data-lucide="clapperboard" style="width:16px; height:16px;"></i> Filmler
+            </button>
+            <button id="discover-type-anime" class="discover-type-tab ${currentType === 'anime' ? 'active' : ''}">
+              <i data-lucide="sparkles" style="width:16px; height:16px;"></i> Anime
+            </button>
+            <button id="discover-type-doc" class="discover-type-tab ${currentType === 'documentary' ? 'active' : ''}">
+              <i data-lucide="globe" style="width:16px; height:16px;"></i> Belgesel
+            </button>
           </div>
 
-          <!-- Advanced Filters Row -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; margin-top: 1.8rem; padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+          <!-- Secondary Filters Row -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; align-items: end;">
             
-            <!-- Sort By Select -->
+            <!-- Sort Filter -->
             <div>
               <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
                 <i data-lucide="arrow-down-up" style="width:12px; height:12px;"></i> Sıralama Ölçütü
               </label>
               <select id="discover-sort-select" class="discover-filter-select">
-                <option value="popularity.desc">🔥 En Popülerler (Trend)</option>
-                <option value="vote_average.desc">⭐ En Yüksek IMDb Puanı</option>
-                <option value="vote_count.desc">👥 En Çok Oylananlar</option>
-                <option value="first_air_date.desc">📅 En Yeniler (Vizyon / Çıkış)</option>
+                <option value="popularity.desc" ${currentSortBy === 'popularity.desc' ? 'selected' : ''}>🔥 En Popülerler (Trend)</option>
+                <option value="vote_average.desc" ${currentSortBy === 'vote_average.desc' ? 'selected' : ''}>⭐ En Yüksek IMDb Puanı</option>
+                <option value="vote_count.desc" ${currentSortBy === 'vote_count.desc' ? 'selected' : ''}>👥 En Çok Oylananlar</option>
+                <option value="first_air_date.desc" ${currentSortBy === 'first_air_date.desc' ? 'selected' : ''}>📅 En Yeniler (Vizyon / Çıkış)</option>
               </select>
             </div>
 
@@ -103,11 +122,11 @@ export async function renderDiscoverView(initialType = 'tv') {
                 <i data-lucide="star" style="width:12px; height:12px;"></i> Minimum IMDb Puanı
               </label>
               <select id="discover-rating-select" class="discover-filter-select">
-                <option value="0">Tümü (Puan Sınırı Yok)</option>
-                <option value="8.0">⭐ 8.0 ve Üzeri (Başyapıtlar)</option>
-                <option value="7.5">⭐ 7.5 ve Üzeri (Çok Yüksek)</option>
-                <option value="7.0">⭐ 7.0 ve Üzeri (Çok İyi)</option>
-                <option value="6.0">⭐ 6.0 ve Üzeri (İyi)</option>
+                <option value="0" ${currentMinRating === 0 ? 'selected' : ''}>Tümü (Puan Sınırı Yok)</option>
+                <option value="8.0" ${currentMinRating === 8.0 ? 'selected' : ''}>⭐ 8.0 ve Üzeri (Başyapıtlar)</option>
+                <option value="7.5" ${currentMinRating === 7.5 ? 'selected' : ''}>⭐ 7.5 ve Üzeri (Çok Yüksek)</option>
+                <option value="7.0" ${currentMinRating === 7.0 ? 'selected' : ''}>⭐ 7.0 ve Üzeri (Çok İyi)</option>
+                <option value="6.0" ${currentMinRating === 6.0 ? 'selected' : ''}>⭐ 6.0 ve Üzeri (İyi)</option>
               </select>
             </div>
           </div>
@@ -120,7 +139,7 @@ export async function renderDiscoverView(initialType = 'tv') {
 
         <!-- Results Grid -->
         <div class="media-grid" id="discover-media-grid">
-          <div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">İçerikler yükleniyor...</div>
+          ${initialCardsHTML}
         </div>
 
         <!-- Scroll Sentinel / Loader -->
@@ -204,9 +223,14 @@ export async function renderDiscoverView(initialType = 'tv') {
             return;
           }
 
-          allItems = [...allItems, ...results];
+          discoverCache.allItems = [...discoverCache.allItems, ...results];
+          discoverCache.currentType = currentType;
+          discoverCache.currentGenreId = currentGenreId;
+          discoverCache.currentSortBy = currentSortBy;
+          discoverCache.currentMinRating = currentMinRating;
+
           const newCardsHTML = results.map(item => renderMediaCard(item)).join('');
-          if (currentPage === 1) {
+          if (discoverCache.currentPage === 1 && !hasCachedItems) {
             grid.innerHTML = newCardsHTML;
           } else {
             grid.insertAdjacentHTML('beforeend', newCardsHTML);
@@ -214,7 +238,7 @@ export async function renderDiscoverView(initialType = 'tv') {
           if (window.lucide) window.lucide.createIcons();
           attachMediaCardEvents(grid);
 
-          currentPage += 1;
+          discoverCache.currentPage += 1;
         } catch (err) {
           console.error('Discover fetch error:', err);
           if (spinner) spinner.style.display = 'none';
@@ -224,16 +248,18 @@ export async function renderDiscoverView(initialType = 'tv') {
       };
 
       const resetAndFetch = () => {
-        currentPage = 1;
-        allItems = [];
-        isExhausted = false;
+        discoverCache.currentPage = 1;
+        discoverCache.allItems = [];
+        discoverCache.isExhausted = false;
         grid.innerHTML = `<div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">Yükleniyor...</div>`;
         fetchContent();
       };
 
       // Initial Render
       renderGenreBar();
-      fetchContent();
+      if (!hasCachedItems) {
+        fetchContent();
+      }
 
       // Infinite scroll observer
       if (sentinel) {

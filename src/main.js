@@ -17,21 +17,37 @@ if ('scrollRestoration' in history) {
 
 const app = document.getElementById('app');
 
+import { railScrollMemory } from './views/HomeView.js';
+
 let previousRoute = '';
 export const scrollMemory = new Map();
 
-export function recordCurrentScroll() {
+export function saveAllScrollState() {
   const currentHash = window.location.hash || '#home';
-  if (!currentHash.startsWith('#detail') && window.scrollY > 0) {
-    scrollMemory.set(currentHash, window.scrollY);
+  if (!currentHash.startsWith('#detail')) {
+    if (window.scrollY > 0) {
+      scrollMemory.set(currentHash, window.scrollY);
+      try { sessionStorage.setItem(`cinepulse_scroll_${currentHash}`, String(window.scrollY)); } catch (_) {}
+    }
+    document.querySelectorAll('.card-rail').forEach(rail => {
+      if (rail.id) {
+        railScrollMemory.set(rail.id, rail.scrollLeft);
+        try { sessionStorage.setItem(`cinepulse_rail_${rail.id}`, String(rail.scrollLeft)); } catch (_) {}
+      }
+    });
   }
+}
+
+export function recordCurrentScroll() {
+  saveAllScrollState();
 }
 
 // Record scroll position before route changes
 window.addEventListener('scroll', () => {
   const currentHash = window.location.hash || '#home';
-  if (!currentHash.startsWith('#detail')) {
+  if (!currentHash.startsWith('#detail') && window.scrollY > 0) {
     scrollMemory.set(currentHash, window.scrollY);
+    try { sessionStorage.setItem(`cinepulse_scroll_${currentHash}`, String(window.scrollY)); } catch (_) {}
   }
 }, { passive: true });
 

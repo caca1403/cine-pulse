@@ -7,6 +7,7 @@
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
 import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime } from '../services/storage.js';
 import { openPlayerModal } from './PlayerModal.js';
+import { saveAllScrollState } from '../main.js';
 
 export function renderMediaCard(item, options = {}) {
   const id = item.id;
@@ -138,13 +139,7 @@ export function attachMediaCardEvents(container) {
           backdropPath,
           currentTime
         });
-      } else {
-        const currentHash = window.location.hash || '#home';
-        if (!currentHash.startsWith('#detail') && window.scrollY > 0) {
-          try {
-            sessionStorage.setItem(`cinepulse_scroll_${currentHash}`, String(window.scrollY));
-          } catch (_) {}
-        }
+        saveAllScrollState();
         window.location.hash = `#detail?type=${type}&id=${id}`;
       }
     });
