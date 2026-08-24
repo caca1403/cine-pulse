@@ -1,16 +1,27 @@
 /* ==========================================================================
    CinePulse Studio - Pure Popular Series / Movies Grid View
    Pure popularity-ordered infinite scrolling view for Series and Movies.
+   With in-memory state preservation (persists loaded items & scroll on return).
    ========================================================================== */
 
 import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 
+// Cache loaded items and pagination per category so returning from detail never resets scroll or items
+const popularListCache = {
+  tv: { allItems: [], currentPage: 1, isExhausted: false },
+  movie: { allItems: [], currentPage: 1, isExhausted: false },
+  anime: { allItems: [], currentPage: 1, isExhausted: false },
+  documentary: { allItems: [], currentPage: 1, isExhausted: false }
+};
+
 export async function renderPopularListView(type = 'tv') {
-  let currentPage = 1;
-  let allItems = [];
+  if (!popularListCache[type]) {
+    popularListCache[type] = { allItems: [], currentPage: 1, isExhausted: false };
+  }
+
+  const cache = popularListCache[type];
   let isLoading = false;
-  let isExhausted = false;
 
   let titleText = 'Tüm Zamanların En Popüler Dizileri';
   let iconName = 'tv-2';
@@ -25,6 +36,12 @@ export async function renderPopularListView(type = 'tv') {
     iconName = 'globe';
   }
 
+  // If cache has items, pre-render them so the page is instantly full-height on navigation back
+  const hasCachedItems = cache.allItems.length > 0;
+  const initialCardsHTML = hasCachedItems
+    ? cache.allItems.map(item => renderMediaCard(item)).join('')
+    : '<div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">İçerikler yükleniyor...</div>';
+
   const html = `
     <div class="popular-list-view" style="padding-top: 6.5rem; padding-bottom: 4rem;">
       <div class="container">
@@ -38,7 +55,7 @@ export async function renderPopularListView(type = 'tv') {
 
         <!-- Media Grid -->
         <div class="media-grid" id="popular-media-grid">
-          <div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">İçerikler yükleniyor...</div>
+          ${initialCardsHTML}
         </div>
 
         <!-- Scroll Sentinel / Loader -->
@@ -58,8 +75,12 @@ export async function renderPopularListView(type = 'tv') {
       const sentinel = container.querySelector('#popular-sentinel');
       const spinner = sentinel ? sentinel.querySelector('.spin-loader') : null;
 
+      if (hasCachedItems) {
+        attachMediaCardEvents(grid);
+      }
+
       const loadMore = async () => {
-        if (isLoading || isExhausted) return;
+        if (isLoading || cache.isExhausted) return;
         isLoading = true;
 
         if (spinner) spinner.style.display = 'block';
@@ -67,24 +88,24 @@ export async function renderPopularListView(type = 'tv') {
         try {
           let newItems = [];
           if (type === 'tv') {
-            newItems = await fetchPopularSeries(currentPage);
+            newItems = await fetchPopularSeries(cache.currentPage);
           } else if (type === 'movie') {
-            newItems = await fetchPopularMovies(currentPage);
+            newItems = await fetchPopularMovies(cache.currentPage);
           } else if (type === 'anime') {
-            newItems = await fetchPopularAnime(currentPage);
+            newItems = await fetchPopularAnime(cache.currentPage);
           } else if (type === 'documentary') {
-            newItems = await fetchPopularDocumentaries(currentPage);
+            newItems = await fetchPopularDocumentaries(cache.currentPage);
           }
           if (spinner) spinner.style.display = 'none';
 
           if (!newItems || newItems.length === 0) {
-            isExhausted = true;
+            cache.isExhausted = true;
             return;
           }
 
-          allItems = [...allItems, ...newItems];
+          cache.allItems = [...cache.allItems, ...newItems];
           const newCardsHTML = newItems.map(item => renderMediaCard(item)).join('');
-          if (currentPage === 1) {
+          if (cache.currentPage === 1 && !hasCachedItems) {
             grid.innerHTML = newCardsHTML;
           } else {
             grid.insertAdjacentHTML('beforeend', newCardsHTML);
@@ -92,7 +113,7 @@ export async function renderPopularListView(type = 'tv') {
           if (window.lucide) window.lucide.createIcons();
           attachMediaCardEvents(grid);
 
-          currentPage += 1;
+          cache.currentPage += 1;
         } catch (err) {
           console.error('Error loading popular media:', err);
           if (spinner) spinner.style.display = 'none';
@@ -101,8 +122,10 @@ export async function renderPopularListView(type = 'tv') {
         }
       };
 
-      // Initial load (Page 1)
-      loadMore();
+      // Only perform initial load if we don't have cached items
+      if (!hasCachedItems) {
+        loadMore();
+      }
 
       // Infinite scroll with IntersectionObserver
       if (sentinel) {

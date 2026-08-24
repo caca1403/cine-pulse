@@ -1,7 +1,7 @@
 /* ==========================================================================
    CinePulse Studio - Home View
    - "Haftanın Öne Çıkanları" spotlight grid at top
-   - Infinite-loading horizontal rails for the rest
+   - Infinite-loading horizontal rails with full horizontal scroll position memory
    ========================================================================== */
 
 import {
@@ -13,11 +13,15 @@ import { renderHeroSlider, attachHeroSliderEvents } from '../components/HeroSlid
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
 
+// Cache home TMDB data & rail state across navigations
+let homeDataCache = null;
+export const railScrollMemory = new Map();
+const railExtraItemsCache = new Map();
+
 /* --------------------------------------------------------------------------
    "Haftanın Öne Çıkanları" spotlight — large feature + mini grid
 -------------------------------------------------------------------------- */
 function renderWeeklySpotlight(tvItems = [], movieItems = []) {
-  // Pick top 7 combined (1 hero + 6 mini)
   const combined = [];
   for (let i = 0; i < Math.max(tvItems.length, movieItems.length); i++) {
     if (tvItems[i])    combined.push({ ...tvItems[i],    media_type: 'tv'    });
@@ -104,11 +108,13 @@ function renderWeeklySpotlight(tvItems = [], movieItems = []) {
 }
 
 /* --------------------------------------------------------------------------
-   Horizontal rail with infinite loading
+   Horizontal rail with infinite loading & extra cached cards
 -------------------------------------------------------------------------- */
 function renderInfiniteRail({ id, icon, title, accent, items }) {
   if (!items || items.length === 0) return '';
-  const cards = items.map(item => renderMediaCard(item)).join('');
+  const extraItems = railExtraItemsCache.get(id) || [];
+  const allRailItems = [...items, ...extraItems];
+  const cards = allRailItems.map(item => renderMediaCard(item)).join('');
   return `
     <section class="rail-section">
       <div class="container">
@@ -138,7 +144,7 @@ function renderContinueWatchingSection(watchHistory) {
     <div class="continue-card-wrapper" data-id="${item.id}" data-season="${item.season || 1}" data-episode="${item.episode || 1}">
       ${renderMediaCard(item)}
       <button class="btn-delete-history" title="Geçmişten Kaldır" aria-label="Kaldır">
-        <i data-lucide="x" style="width:14px;height:14px;"></i>
+        <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
       </button>
     </div>
   `).join('');
@@ -148,14 +154,13 @@ function renderContinueWatchingSection(watchHistory) {
       <div class="container">
         <div class="rail-header">
           <h2 class="rail-title">
-            <span class="rail-icon-pill" style="--rail-color: #38bdf8;">
-              <i data-lucide="play-circle" style="width:15px;height:15px;"></i>
+            <span class="rail-icon-pill" style="--rail-color: var(--primary);">
+              <i data-lucide="history" style="width:15px;height:15px;"></i>
             </span>
-            Kaldığın Yerden Devam Et
-            <span class="rail-count">${watchHistory.length} içerik</span>
+            İzlemeye Devam Et
           </h2>
         </div>
-        <div class="card-rail" id="continue-watching-rail">
+        <div class="card-rail continue-rail" id="continue-watching-rail">
           ${cards}
         </div>
       </div>
@@ -164,28 +169,30 @@ function renderContinueWatchingSection(watchHistory) {
 }
 
 /* --------------------------------------------------------------------------
-   Infinite scroll state per rail
+   Rail state for infinite horizontal scrolling
 -------------------------------------------------------------------------- */
 const railState = {};
 
 function initInfiniteRails(container) {
   const sentinels = container.querySelectorAll('.rail-sentinel');
+  if (sentinels.length === 0) return;
 
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach(async entry => {
+    entries.forEach(async (entry) => {
       if (!entry.isIntersecting) return;
+
       const railId = entry.target.getAttribute('data-rail');
       const state  = railState[railId];
       if (!state || state.loading || state.exhausted) return;
 
       state.loading = true;
-      state.page++;
+      state.page   += 1;
 
-      // Show loading spinner at end of rail
+      // Show spinner before sentinel
       const spinner = document.createElement('div');
-      spinner.className = 'rail-loading-spinner';
-      spinner.innerHTML = '<i data-lucide="loader-2" style="width:22px;height:22px;"></i>';
-      entry.target.parentNode.insertBefore(spinner, entry.target);
+      spinner.className = 'rail-loader';
+      spinner.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:22px;height:22px;color:var(--text-muted);"></i>`;
+      entry.target.before(spinner);
       if (window.lucide) window.lucide.createIcons();
 
       try {
@@ -194,9 +201,12 @@ function initInfiniteRails(container) {
 
         if (!newItems || newItems.length === 0) {
           state.exhausted = true;
-          entry.target.remove();
           return;
         }
+
+        // Cache extra items for this rail
+        const prevExtra = railExtraItemsCache.get(railId) || [];
+        railExtraItemsCache.set(railId, [...prevExtra, ...newItems]);
 
         const rail = document.getElementById(railId);
         if (!rail) return;
@@ -206,9 +216,7 @@ function initInfiniteRails(container) {
           div.innerHTML = renderMediaCard(item);
           const card = div.firstElementChild;
           if (card) {
-            // Insert before sentinel
             rail.insertBefore(card, entry.target);
-            // Attach click
             card.addEventListener('click', () => {
               const id   = card.getAttribute('data-id');
               const type = card.getAttribute('data-type');
@@ -235,23 +243,30 @@ function initInfiniteRails(container) {
    Main render
 -------------------------------------------------------------------------- */
 export async function renderHomeView() {
-  const [
-    trending,
-    trendingTV,
-    trendingMovies,
-    popularTV,
-    popularMovies,
-    topRatedTV,
-    topRatedMovies
-  ] = await Promise.all([
-    fetchTrending('all',   'week', 1),
-    fetchTrending('tv',    'week', 1),
-    fetchTrending('movie', 'week', 1),
-    fetchPopularSeries(1),
-    fetchPopularMovies(1),
-    fetchTopRated('tv',    1),
-    fetchTopRated('movie', 1)
-  ]);
+  let trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies;
+
+  if (homeDataCache) {
+    ({ trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies } = homeDataCache);
+  } else {
+    [
+      trending,
+      trendingTV,
+      trendingMovies,
+      popularTV,
+      popularMovies,
+      topRatedTV,
+      topRatedMovies
+    ] = await Promise.all([
+      fetchTrending('all',   'week', 1),
+      fetchTrending('tv',    'week', 1),
+      fetchTrending('movie', 'week', 1),
+      fetchPopularSeries(1),
+      fetchPopularMovies(1),
+      fetchTopRated('tv',    1),
+      fetchTopRated('movie', 1)
+    ]);
+    homeDataCache = { trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies };
+  }
 
   const watchHistory = getUnifiedContinueWatching();
   const heroHTML = renderHeroSlider(trending);
@@ -310,8 +325,37 @@ export async function renderHomeView() {
       if (trending.length > 0) attachHeroSliderEvents(trending);
       attachMediaCardEvents(container);
 
-      // Wheel → horizontal scroll
+      // Restore and track horizontal scroll position for each rail
       container.querySelectorAll('.card-rail').forEach(rail => {
+        const railId = rail.id;
+
+        // Restore saved horizontal scroll position
+        if (railId) {
+          let savedLeft = railScrollMemory.get(railId);
+          if (typeof savedLeft !== 'number') {
+            try {
+              const stored = sessionStorage.getItem(`cinepulse_rail_${railId}`);
+              if (stored) savedLeft = parseFloat(stored);
+            } catch (_) {}
+          }
+
+          if (typeof savedLeft === 'number' && savedLeft > 0) {
+            rail.scrollLeft = savedLeft;
+            requestAnimationFrame(() => {
+              rail.scrollLeft = savedLeft;
+            });
+          }
+
+          // Continuously record horizontal scroll
+          rail.addEventListener('scroll', () => {
+            railScrollMemory.set(railId, rail.scrollLeft);
+            try {
+              sessionStorage.setItem(`cinepulse_rail_${railId}`, rail.scrollLeft);
+            } catch (_) {}
+          }, { passive: true });
+        }
+
+        // Wheel → horizontal scroll
         rail.addEventListener('wheel', (e) => {
           if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
           e.preventDefault();
