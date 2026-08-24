@@ -139,6 +139,12 @@ export function attachMediaCardEvents(container) {
           currentTime
         });
       } else {
+        const currentHash = window.location.hash || '#home';
+        if (!currentHash.startsWith('#detail') && window.scrollY > 0) {
+          try {
+            sessionStorage.setItem(`cinepulse_scroll_${currentHash}`, String(window.scrollY));
+          } catch (_) {}
+        }
         window.location.hash = `#detail?type=${type}&id=${id}`;
       }
     });

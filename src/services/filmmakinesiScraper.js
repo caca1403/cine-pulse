@@ -1,7 +1,9 @@
 /* ==========================================================================
-   CinePulse Studio - FilmMakinesi & Rapid Direct Scraper Module
-   100% bypasses Cloudflare protections on filmmakinesi.to & rapid.filmmakinesi.to.
-   Extracts direct HLS 1080p master.m3u8 streams with embedded subtitles and dual audio!
+   CinePulse Studio - FilmMakinesi, Closeload & Rapid Direct Scraper Module
+   Bypasses protections on filmmakinesi.to & all subdomains:
+   - rapid.filmmakinesi.to
+   - closeload.filmmakinesi.to & *.closeload.filmmakinesi.to
+   Extracts direct HLS 1080p master streams with dual audio & Turkish tracks!
    Supports both Movies and TV Series (with seasons & episodes).
    ========================================================================== */
 
@@ -57,18 +59,25 @@ function isTitleSimilar(target, candidate, targetYear = null, candidateYear = nu
 async function requestFmkHtml(pathOrUrl) {
   const isFullUrl = pathOrUrl.startsWith('http');
   const targetUrl = isFullUrl ? pathOrUrl : `${FMK_BASE}${pathOrUrl.startsWith('/') ? '' : '/'}${pathOrUrl}`;
-  const isRapid = targetUrl.includes('rapid.filmmakinesi.to');
 
-  // 1. In browser: use local Vercel serverless proxy (/api/fmk or /api/fmk_rapid)
+  // 1. In browser: use local Vercel / Vite proxy endpoints
   if (isBrowser) {
     try {
       let localProxyUrl;
-      if (isRapid) {
-        const sub = targetUrl.replace(/^https:\/\/rapid\.filmmakinesi\.to/, '');
-        localProxyUrl = `/api/fmk_rapid${sub}`;
+      const parsed = new URL(targetUrl);
+      const host = parsed.hostname;
+
+      if (host === 'rapid.filmmakinesi.to') {
+        localProxyUrl = `/api/fmk_rapid${parsed.pathname}${parsed.search}`;
+      } else if (host === 'closeload.filmmakinesi.to') {
+        localProxyUrl = `/api/fmk_close${parsed.pathname}${parsed.search}`;
+      } else if (host.endsWith('.filmmakinesi.to')) {
+        const sub = host.replace(/\.filmmakinesi\.to$/, '');
+        localProxyUrl = `/api/fmk_sub/${sub}${parsed.pathname}${parsed.search}`;
+      } else if (host === 'filmmakinesi.to') {
+        localProxyUrl = `/api/fmk${parsed.pathname}${parsed.search}`;
       } else {
-        const sub = targetUrl.replace(/^https:\/\/filmmakinesi\.to/, '');
-        localProxyUrl = `/api/fmk${sub}`;
+        localProxyUrl = `/api/fmk_proxy?url=${encodeURIComponent(targetUrl)}`;
       }
 
       const res = await fetch(localProxyUrl, {
@@ -84,7 +93,7 @@ async function requestFmkHtml(pathOrUrl) {
     // In Node.js environment: use curl.exe with Chrome headers to bypass CF TLS fingerprinting
     try {
       const { execSync } = await import('child_process');
-      const cmd = `curl.exe -s --max-time 8 -H "Referer: https://filmmakinesi.to/" -H "Origin: https://filmmakinesi.to" -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" -H "Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7" "${targetUrl}"`;
+      const cmd = `curl.exe -s -L --max-time 8 -H "Referer: https://filmmakinesi.to/" -H "Origin: https://filmmakinesi.to" -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" -H "Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7" "${targetUrl}"`;
       const html = execSync(cmd, { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
       if (html && !html.includes('Just a moment')) return html;
     } catch (_) {}
@@ -126,18 +135,48 @@ function unpackRapidStreamUrl(embedHtml) {
           return ${varName};
         `);
         const streamUrl = runner(atob, typeof btoa !== 'undefined' ? btoa : (str) => Buffer.from(str).toString('base64'), String, Math);
-        if (streamUrl && streamUrl.includes('.m3u8')) {
+        if (streamUrl && (streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || streamUrl.startsWith('http'))) {
           return streamUrl;
         }
       }
     }
   } catch (err) {
-    console.warn('[FilmMakinesiScraper] Unpacker error:', err.message);
+    console.warn('[FilmMakinesiScraper] Rapid unpacker error:', err.message);
   }
 
   // Fallback: search for plain m3u8 in html
   const directM3u8 = embedHtml.match(/["'](https?:\/\/[^"']*\.m3u8[^"']*)/i);
   if (directM3u8) return directM3u8[1];
+
+  return null;
+}
+
+function unpackCloseloadStreamUrl(embedHtml) {
+  if (!embedHtml) return null;
+
+  try {
+    const funcMatch = embedHtml.match(/function\s+(dc_[a-zA-Z0-9_]+)\s*\([^\)]*\)\s*\{[\s\S]*?return\s+unmix;\s*\}/);
+    const varMatch = embedHtml.match(/var\s+(s_[a-zA-Z0-9_]+)\s*=\s*(dc_[a-zA-Z0-9_]+)\s*\(\s*(\[[^\]]+\])\s*\);/);
+
+    if (funcMatch && varMatch) {
+      const code = `
+        ${funcMatch[0]}
+        var ${varMatch[1]} = ${varMatch[2]}(${varMatch[3]});
+        return ${varMatch[1]};
+      `;
+      const runner = new Function('atob', 'btoa', 'String', 'Math', code);
+      const streamUrl = runner(atob, typeof btoa !== 'undefined' ? btoa : (str) => Buffer.from(str).toString('base64'), String, Math);
+      if (streamUrl && (streamUrl.includes('.txt') || streamUrl.includes('.m3u8') || streamUrl.startsWith('http'))) {
+        return streamUrl;
+      }
+    }
+  } catch (err) {
+    console.warn('[FilmMakinesiScraper] Closeload unpacker error:', err.message);
+  }
+
+  // Fallback direct match in html
+  const directTxt = embedHtml.match(/["'](https?:\/\/[^"']*\.(?:m3u8|txt)[^"']*)/i);
+  if (directTxt) return directTxt[1];
 
   return null;
 }
@@ -207,7 +246,6 @@ export async function fetchFilmMakinesiSources({
     // Determine target page URL
     let detailPageUrl = targetItem.url;
     if (!isMovie) {
-      // Episode path format: /dizi/slug/sezon-{s}/bolum-{e}/
       const cleanPath = targetItem.url.replace(/\/$/, '');
       detailPageUrl = `${cleanPath}/sezon-${season}/bolum-${episode}/`;
     }
@@ -215,17 +253,17 @@ export async function fetchFilmMakinesiSources({
     const detailHtml = await requestFmkHtml(detailPageUrl);
     if (!detailHtml) return [];
 
-    // Extract embed URLs (rapid, closeload, etc.)
-    const rapidMatch = detailHtml.match(/(?:src|data-src)=["'](https:\/\/rapid\.filmmakinesi\.to\/embed-[a-zA-Z0-9_-]+\/?)["']/i);
-    const closeloadMatch = detailHtml.match(/(?:src|data-src)=["'](https:\/\/(?:closeload|rapidrame)[^"']*embed[^"']*)["']/i);
+    // Extract embed URLs (rapid, closeload, all subdomains)
+    const rapidMatch = detailHtml.match(/(?:src|data-src)=["'](https:\/\/(?:rapid\.filmmakinesi\.to|rapidrame\.com)\/embed-[a-zA-Z0-9_-]+\/?)["']/i);
+    const closeloadMatch = detailHtml.match(/(?:src|data-src)=["'](https:\/\/(?:[a-zA-Z0-9_-]+\.)*(?:closeload|rapidrame)[^"']*embed[^"']*)["']/i);
 
+    // 1. Rapid FastStream
     if (rapidMatch) {
       const rapidEmbedUrl = rapidMatch[1];
       const embedHtml = await requestFmkHtml(rapidEmbedUrl);
 
       if (embedHtml) {
         const masterM3u8 = unpackRapidStreamUrl(embedHtml);
-
         if (masterM3u8) {
           streams.push({
             id: `fmk_rapid_${isDub ? 'dub' : 'sub'}`,
@@ -242,29 +280,48 @@ export async function fetchFilmMakinesiSources({
         }
       }
 
-      // If m3u8 unpack failed or as fallback, add iframe embed
-      if (streams.length === 0) {
-        streams.push({
-          id: `fmk_rapid_embed_${isDub ? 'dub' : 'sub'}`,
-          name: 'Rapid VIP Player',
-          displayName: 'Rapid VIP Player',
-          badge: isDub ? '⚡ FilmMakinesi Dublaj' : '⚡ FilmMakinesi Embed',
-          category: isDub ? 'dubbed' : 'subtitled',
-          isHls: false,
-          isDirectVideo: false,
-          streamUrl: rapidEmbedUrl,
-          url: rapidEmbedUrl,
-          getUrl: () => rapidEmbedUrl
-        });
-      }
+      // Iframe fallback
+      streams.push({
+        id: `fmk_rapid_embed_${isDub ? 'dub' : 'sub'}`,
+        name: 'Rapid VIP Player',
+        displayName: 'Rapid VIP Player',
+        badge: isDub ? '⚡ FilmMakinesi Dublaj' : '⚡ FilmMakinesi Embed',
+        category: isDub ? 'dubbed' : 'subtitled',
+        isHls: false,
+        isDirectVideo: false,
+        streamUrl: rapidEmbedUrl,
+        url: rapidEmbedUrl,
+        getUrl: () => rapidEmbedUrl
+      });
     }
 
+    // 2. Closeload HD Stream
     if (closeloadMatch) {
       const closeEmbedUrl = closeloadMatch[1];
+      const closeEmbedHtml = await requestFmkHtml(closeEmbedUrl);
+
+      if (closeEmbedHtml) {
+        const masterTxt = unpackCloseloadStreamUrl(closeEmbedHtml);
+        if (masterTxt) {
+          streams.push({
+            id: `fmk_closeload_direct_${isDub ? 'dub' : 'sub'}`,
+            name: 'Closeload FastStream 1080p',
+            displayName: 'Closeload FastStream 1080p',
+            badge: isDub ? '⚡ Closeload Dublaj' : '⚡ Closeload 1080p',
+            category: isDub ? 'dubbed' : 'subtitled',
+            isHls: true,
+            isDirectVideo: true,
+            streamUrl: masterTxt,
+            url: masterTxt,
+            getUrl: () => masterTxt
+          });
+        }
+      }
+
       streams.push({
         id: `fmk_closeload_${isDub ? 'dub' : 'sub'}`,
-        name: 'Closeload HD',
-        displayName: 'Closeload HD',
+        name: 'Closeload HD Player',
+        displayName: 'Closeload HD Player',
         badge: isDub ? '⚡ FilmMakinesi Close' : '💬 FilmMakinesi Close',
         category: isDub ? 'dubbed' : 'subtitled',
         isHls: false,

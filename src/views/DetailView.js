@@ -109,6 +109,10 @@ export async function renderDetailView(type = 'tv', id) {
         <div class="detail-backdrop-gradient"></div>
 
         <div class="detail-container">
+          <button class="detail-back-btn" id="btn-detail-back" title="Önceki Sayfaya Geri Dön">
+            <i data-lucide="arrow-left"></i>
+            <span>Geri Dön</span>
+          </button>
           <div class="detail-layout">
             <!-- Poster Card -->
             <div class="detail-poster-col">
@@ -224,6 +228,18 @@ export async function renderDetailView(type = 'tv', id) {
     html,
     init: (container) => {
       if (!container) return;
+
+      const backBtn = container.querySelector('#btn-detail-back');
+      if (backBtn) {
+        backBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (window.history.length > 1) {
+            window.history.back();
+          } else {
+            window.location.hash = '#home';
+          }
+        });
+      }
 
       if (seasonSelectorObj) seasonSelectorObj.init(container);
 
