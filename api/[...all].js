@@ -193,6 +193,11 @@ export default async function handler(req, res) {
     targetUrl = `https://hdfilmdelisi.one${subPath}${search}`;
     customHeaders['Referer'] = 'https://hdfilmdelisi.one/';
     customHeaders['Origin'] = 'https://hdfilmdelisi.one';
+  } else if (pathname.startsWith('/api/dzl')) {
+    const subPath = pathname.replace(/^\/api\/dzl/, '');
+    targetUrl = `https://dizilla.now${subPath}${search}`;
+    customHeaders['Referer'] = 'https://dizilla.now/';
+    customHeaders['Origin'] = 'https://dizilla.now';
   } else if (pathname.startsWith('/api/hdi')) {
     const subPath = pathname.replace(/^\/api\/hdi/, '');
     targetUrl = `https://www.hdfilmizle.vip${subPath}${search}`;

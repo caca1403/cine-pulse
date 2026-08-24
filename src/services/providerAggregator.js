@@ -351,9 +351,7 @@ export async function getStreamingServersProgressive({
     fetchDizimomSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // Universal MultiEmbed VIP & VidLink (100% TMDB Movies & Series with Turkish Audio)
-    fetchMultiEmbedSources({ type, tmdbId, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    // Universal MultiEmbed & VidLink (Subtitled Only)
     fetchMultiEmbedSources({ type, tmdbId, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
