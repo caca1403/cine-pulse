@@ -27,6 +27,7 @@ import { fetchFilmEkseniSources } from './filmekseniScraper.js';
 import { fetchHDFilmizleSources } from './hdfilmizleScraper.js';
 import { fetchDizimomSources } from './dizimomScraper.js';
 import { fetchMultiEmbedSources } from './multiEmbedScraper.js';
+import { fetchDizillaSources } from './dizillaScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -310,6 +311,12 @@ export async function getStreamingServersProgressive({
     !isMovie ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
     !isMovie ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
+
+    // Dizilla (TV & Anime)
+    !isMovie ? fetchDizillaSources({ titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
+    !isMovie ? fetchDizillaSources({ titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
     // Diziyou (TV only)

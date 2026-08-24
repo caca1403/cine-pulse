@@ -66,7 +66,7 @@ export async function openPlayerModal({
         url.includes('smashystream') ||
         url.includes('multiembed') ||
         url.includes('vidmixi') ||
-        url.includes('filmmakinesi') ||
+        url.includes('dizilla') ||
         url.includes('rapidrame') ||
         url.includes('playmix'))
     ) {
