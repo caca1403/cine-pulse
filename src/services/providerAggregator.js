@@ -25,7 +25,7 @@ import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
 import { fetchHDFilmizleSources } from './hdfilmizleScraper.js';
-import { fetchFilmMakinesiSources } from './filmmakinesiScraper.js';
+import { fetchFilmMakinesiSources } from './filmMakinesiScraper.js';
 import { fetchDizimomSources } from './dizimomScraper.js';
 import { fetchHDFilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 
