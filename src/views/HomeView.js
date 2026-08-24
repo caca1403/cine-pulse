@@ -8,6 +8,7 @@ import {
   fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated,
 } from '../services/tmdbApi.js';
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
+import { getUnifiedContinueWatching, removeSeriesFromHistory } from '../services/storage.js';
 import { renderHeroSlider, attachHeroSliderEvents } from '../components/HeroSlider.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
