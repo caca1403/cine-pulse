@@ -25,9 +25,7 @@ import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
 import { fetchHDFilmizleSources } from './hdfilmizleScraper.js';
-import { fetchFilmMakinesiSources } from './filmMakinesiScraper.js';
 import { fetchDizimomSources } from './dizimomScraper.js';
-import { fetchHDFilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -327,12 +325,6 @@ export async function getStreamingServersProgressive({
     fetchHDFilmizleSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchHDFilmizleSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
-    // HDFilmcehennemi (Movie & TV Series)
-    fetchHDFilmcehennemiSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchHDFilmcehennemiSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // FilmEkseni (Movie only)
