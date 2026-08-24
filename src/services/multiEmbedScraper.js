@@ -1,7 +1,7 @@
 /* ==========================================================================
-   CinePulse Studio - Universal MultiEmbed & Direct Multi-Audio Scraper
+   CinePulse Studio - Universal MultiEmbed & Subtitled Embed Scraper
    - Covers 100% of all TMDB Movies & TV Series
-   - Integrated Multi-Audio (Türkçe Dublaj & Türkçe Altyazı)
+   - Subtitled (Altyazılı) ONLY
    - Zero Cloudflare Challenges (100% Uptime & Instant Response)
    ========================================================================== */
 
@@ -10,40 +10,41 @@ export async function fetchMultiEmbedSources({
   tmdbId,
   season = 1,
   episode = 1,
-  isDub = true
+  isDub = false
 }) {
-  if (!tmdbId) return [];
+  // Never return under dubbed tab (subtitles only)
+  if (isDub || !tmdbId) return [];
 
   const isMovie = type === 'movie' || type === 'film';
   const sources = [];
 
   if (isMovie) {
-    // 1. MultiEmbed VIP (Turkish Multi-Audio & Subtitles)
+    // 1. MultiEmbed VIP
     sources.push({
-      name: isDub ? 'MultiEmbed VIP (TR Dublaj)' : 'MultiEmbed VIP (TR Altyazı)',
+      name: 'MultiEmbed VIP (TR Altyazı)',
       server: 'MultiEmbed VIP',
       type: 'embed',
-      isDub,
+      isDub: false,
       quality: '1080p',
       streamUrl: `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
     });
 
-    // 2. VidLink Pro Ultra Player
+    // 2. VidLink Pro
     sources.push({
-      name: isDub ? 'VidLink Pro (Dual Audio)' : 'VidLink Pro Ultra 1080p',
+      name: 'VidLink Pro Ultra 1080p',
       server: 'VidLink Pro',
       type: 'embed',
-      isDub,
+      isDub: false,
       quality: '1080p',
       streamUrl: `https://vidlink.pro/movie/${tmdbId}`
     });
 
     // 3. AutoEmbed Multi-Server
     sources.push({
-      name: isDub ? 'AutoEmbed (Multi-Audio)' : 'AutoEmbed HD',
+      name: 'AutoEmbed HD (Altyazılı)',
       server: 'AutoEmbed',
       type: 'embed',
-      isDub,
+      isDub: false,
       quality: '1080p',
       streamUrl: `https://autoembed.co/movie/tmdb/${tmdbId}`
     });
@@ -60,28 +61,28 @@ export async function fetchMultiEmbedSources({
   } else {
     // TV Series
     sources.push({
-      name: isDub ? 'MultiEmbed VIP (TR Dublaj)' : 'MultiEmbed VIP (TR Altyazı)',
+      name: 'MultiEmbed VIP (TR Altyazı)',
       server: 'MultiEmbed VIP',
       type: 'embed',
-      isDub,
+      isDub: false,
       quality: '1080p',
       streamUrl: `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
     });
 
     sources.push({
-      name: isDub ? 'VidLink Pro (Dual Audio)' : 'VidLink Pro Ultra 1080p',
+      name: 'VidLink Pro Ultra 1080p',
       server: 'VidLink Pro',
       type: 'embed',
-      isDub,
+      isDub: false,
       quality: '1080p',
       streamUrl: `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`
     });
 
     sources.push({
-      name: isDub ? 'AutoEmbed (Multi-Audio)' : 'AutoEmbed HD',
+      name: 'AutoEmbed HD (Altyazılı)',
       server: 'AutoEmbed',
       type: 'embed',
-      isDub,
+      isDub: false,
       quality: '1080p',
       streamUrl: `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`
     });

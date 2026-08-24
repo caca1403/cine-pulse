@@ -2,7 +2,7 @@
    CinePulse Studio - Dizilla.now TV Series Scraper
    - High-Speed Dizilla TV & Anime series provider
    - Zero Cloudflare Challenges
-   - Full Next.js SSR extraction with AES-256-CBC decryptor
+   - Full Next.js SSR extraction with CORS Proxy compatibility
    ========================================================================== */
 
 function slugify(text) {
@@ -43,15 +43,18 @@ export async function fetchDizillaSources({
   ].filter(Boolean);
 
   const slugs = [...new Set(candidates.map(slugify))];
+  const isBrowser = typeof window !== 'undefined';
 
   for (const s of slugs) {
     if (!s) continue;
-    const targetUrl = `https://dizilla.now/${s}-${season}-sezon-${episode}-bolum`;
+    const epPath = `/${s}-${season}-sezon-${episode}-bolum`;
+    const targetUrl = isBrowser ? `/api/dzl${epPath}` : `https://dizilla.now${epPath}`;
+    const directEmbedUrl = `https://dizilla.now${epPath}`;
+
     try {
       const res = await fetch(targetUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Referer': 'https://dizilla.now/'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         },
         signal: AbortSignal.timeout(4000)
       });
@@ -65,13 +68,13 @@ export async function fetchDizillaSources({
             type: 'embed',
             isDub,
             quality: '1080p',
-            streamUrl: targetUrl
+            streamUrl: directEmbedUrl
           });
           break;
         }
       }
     } catch (e) {
-      // Continue to next slug candidate
+      // Continue to next candidate
     }
   }
 
