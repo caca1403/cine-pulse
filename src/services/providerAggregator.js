@@ -26,6 +26,7 @@ import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
 import { fetchHDFilmizleSources } from './hdfilmizleScraper.js';
 import { fetchDizimomSources } from './dizimomScraper.js';
+import { fetchMultiEmbedSources } from './multiEmbedScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -293,12 +294,6 @@ export async function getStreamingServersProgressive({
 
   // Provider Scraper Tasks (NO HARD ABORT CUTOFF - allows full discovery)
   const tasks = [
-    // FilmMakinesi (Dubbed & Subtitled)
-    fetchFilmMakinesiSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, tmdbId, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchFilmMakinesiSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, tmdbId, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
     // Sinewix (Dubbed & Subtitled)
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
@@ -347,6 +342,12 @@ export async function getStreamingServersProgressive({
     fetchDizimomSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchDizimomSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    // Universal MultiEmbed VIP & VidLink (100% TMDB Movies & Series with Turkish Audio)
+    fetchMultiEmbedSources({ type, tmdbId, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    fetchMultiEmbedSources({ type, tmdbId, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // AnimeTR / TRAnime / TurkAnime / Belgesel
