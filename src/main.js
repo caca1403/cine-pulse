@@ -9,6 +9,7 @@ import { renderLibraryView } from './views/LibraryView.js';
 import { renderDiscoverView } from './views/DiscoverView.js';
 import { renderPopularListView } from './views/PopularListView.js';
 import { renderLiveTvView } from './views/LiveTvView.js';
+import { saveAllScrollState, restoreAllScrollState } from './services/scrollManager.js';
 
 // Disable browser default scroll jump on SPA hash changes
 if ('scrollRestoration' in history) {
@@ -17,38 +18,9 @@ if ('scrollRestoration' in history) {
 
 const app = document.getElementById('app');
 
-import { railScrollMemory } from './views/HomeView.js';
-
-let previousRoute = '';
-export const scrollMemory = new Map();
-
-export function saveAllScrollState() {
-  const currentHash = window.location.hash || '#home';
-  if (!currentHash.startsWith('#detail')) {
-    if (window.scrollY > 0) {
-      scrollMemory.set(currentHash, window.scrollY);
-      try { sessionStorage.setItem(`cinepulse_scroll_${currentHash}`, String(window.scrollY)); } catch (_) {}
-    }
-    document.querySelectorAll('.card-rail').forEach(rail => {
-      if (rail.id) {
-        railScrollMemory.set(rail.id, rail.scrollLeft);
-        try { sessionStorage.setItem(`cinepulse_rail_${rail.id}`, String(rail.scrollLeft)); } catch (_) {}
-      }
-    });
-  }
-}
-
-export function recordCurrentScroll() {
-  saveAllScrollState();
-}
-
-// Record scroll position before route changes
+// Record scroll position continuously
 window.addEventListener('scroll', () => {
-  const currentHash = window.location.hash || '#home';
-  if (!currentHash.startsWith('#detail') && window.scrollY > 0) {
-    scrollMemory.set(currentHash, window.scrollY);
-    try { sessionStorage.setItem(`cinepulse_scroll_${currentHash}`, String(window.scrollY)); } catch (_) {}
-  }
+  saveAllScrollState();
 }, { passive: true });
 
 async function route() {
@@ -135,28 +107,8 @@ async function route() {
     window.lucide.createIcons();
   }
 
-  // Restore scroll position when returning from detail page or revisiting a tab
-  let savedY = scrollMemory.get(hash);
-  if (typeof savedY !== 'number') {
-    try {
-      const stored = sessionStorage.getItem(`cinepulse_scroll_${hash}`);
-      if (stored) savedY = parseFloat(stored);
-    } catch (_) {}
-  }
-
-  if (typeof savedY === 'number' && savedY > 0 && !hash.startsWith('#detail')) {
-    const attemptScroll = (count = 0) => {
-      window.scrollTo({ top: savedY, behavior: 'instant' });
-      if (count < 10 && document.body.scrollHeight < savedY + window.innerHeight) {
-        setTimeout(() => attemptScroll(count + 1), 50);
-      }
-    };
-    requestAnimationFrame(() => attemptScroll(0));
-  } else if (hash.startsWith('#detail') || !savedY) {
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }
-
-  previousRoute = hash;
+  // Restore horizontal and vertical scroll positions
+  restoreAllScrollState(hash);
 }
 
 // Router Event Listeners
@@ -171,4 +123,3 @@ const refreshView = () => route();
 window.addEventListener('sineflix_data_changed', refreshView);
 window.addEventListener('dizibol_data_changed', refreshView);
 window.addEventListener('cinepulse_data_changed', refreshView);
-
