@@ -83,9 +83,14 @@ export async function renderPopularListView(type = 'tv') {
           }
 
           allItems = [...allItems, ...newItems];
-          grid.innerHTML = allItems.map(item => renderMediaCard(item)).join('');
+          const newCardsHTML = newItems.map(item => renderMediaCard(item)).join('');
+          if (currentPage === 1) {
+            grid.innerHTML = newCardsHTML;
+          } else {
+            grid.insertAdjacentHTML('beforeend', newCardsHTML);
+          }
           if (window.lucide) window.lucide.createIcons();
-          attachMediaCardEvents(container);
+          attachMediaCardEvents(grid);
 
           currentPage += 1;
         } catch (err) {

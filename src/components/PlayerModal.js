@@ -1059,12 +1059,12 @@ export async function openPlayerModal({
     if (
       srv?.isDirectVideo ||
       srv?.isHls ||
-      (srv?.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
+      (srv?.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.txt') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
     ) {
       const videoEl = document.getElementById('hls-video-player');
       const streamUrl = srv.streamUrl || srv.getUrl();
       if (videoEl && streamUrl) {
-        if (window.Hls && Hls.isSupported() && (streamUrl.includes('.m3u8') || srv.isHls)) {
+        if (window.Hls && Hls.isSupported() && (streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || srv.isHls)) {
           const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
           activeHlsInstance = hls;
           hls.loadSource(streamUrl);

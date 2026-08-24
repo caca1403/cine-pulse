@@ -205,9 +205,14 @@ export async function renderDiscoverView(initialType = 'tv') {
           }
 
           allItems = [...allItems, ...results];
-          grid.innerHTML = allItems.map(item => renderMediaCard(item)).join('');
+          const newCardsHTML = results.map(item => renderMediaCard(item)).join('');
+          if (currentPage === 1) {
+            grid.innerHTML = newCardsHTML;
+          } else {
+            grid.insertAdjacentHTML('beforeend', newCardsHTML);
+          }
           if (window.lucide) window.lucide.createIcons();
-          attachMediaCardEvents(container);
+          attachMediaCardEvents(grid);
 
           currentPage += 1;
         } catch (err) {

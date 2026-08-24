@@ -39,13 +39,32 @@ export default async function handler(req, res) {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
 
-      if (decodedTarget.includes('.m3u8') || contentType.includes('mpegurl') || contentType.includes('application/x-mpegURL')) {
+      if (decodedTarget.includes('.m3u8') || decodedTarget.includes('.txt') || contentType.includes('mpegurl') || contentType.includes('application/x-mpegURL') || contentType.includes('text/plain')) {
         const text = await upstreamRes.text();
         const baseOrigin = new URL(decodedTarget).origin;
 
         const rewritten = text.split('\n').map(line => {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed.startsWith('#')) return line;
+          let currentLine = line;
+          const trimmed = currentLine.trim();
+          if (!trimmed) return line;
+
+          if (trimmed.includes('URI="')) {
+            currentLine = currentLine.replace(/URI="([^"]+)"/g, (m, u) => {
+              let fullU;
+              if (u.startsWith('http')) fullU = u;
+              else if (u.startsWith('/')) fullU = `${baseOrigin}${u}`;
+              else {
+                const urlPath = new URL(decodedTarget).pathname;
+                const lastSlash = urlPath.lastIndexOf('/');
+                const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
+                fullU = `${baseOrigin}${dir}${u}`;
+              }
+              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(ref)}"`;
+            });
+          }
+
+          if (trimmed.startsWith('#')) return currentLine;
+
           let fullLineUrl;
           if (trimmed.startsWith('http')) {
             fullLineUrl = trimmed;
@@ -220,6 +239,22 @@ export default async function handler(req, res) {
   } else if (pathname.startsWith('/api/fmk_close')) {
     const subPath = pathname.replace(/^\/api\/fmk_close/, '');
     targetUrl = `https://closeload.filmmakinesi.to${subPath}${search}`;
+    customHeaders['Referer'] = 'https://filmmakinesi.to/';
+    customHeaders['Origin'] = 'https://filmmakinesi.to';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  } else if (pathname.startsWith('/api/fmk_sub/')) {
+    const subMatch = pathname.match(/^\/api\/fmk_sub\/([a-zA-Z0-9_-]+)(.*)/);
+    const sub = subMatch ? subMatch[1] : '';
+    const subPath = subMatch ? subMatch[2] : '';
+    const host = sub ? `${sub}.filmmakinesi.to` : 'filmmakinesi.to';
+    targetUrl = `https://${host}${subPath}${search}`;
+    customHeaders['Referer'] = 'https://filmmakinesi.to/';
+    customHeaders['Origin'] = 'https://filmmakinesi.to';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  } else if (pathname.startsWith('/api/fmk_proxy')) {
+    const rawTarget = urlObj.searchParams.get('url') || '';
+    if (!rawTarget) return res.status(400).send('Missing url param');
+    targetUrl = decodeURIComponent(rawTarget);
     customHeaders['Referer'] = 'https://filmmakinesi.to/';
     customHeaders['Origin'] = 'https://filmmakinesi.to';
     customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';

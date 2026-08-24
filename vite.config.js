@@ -142,6 +142,36 @@ export default defineConfig({
           'Referer': 'https://www.hdfilmizle.vip/'
         },
         rewrite: (path) => path.replace(/^\/api\/hdi/, '')
+      },
+      '/api/fmk_close': {
+        target: 'https://closeload.filmmakinesi.to',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://filmmakinesi.to/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/fmk_close/, '')
+      },
+      '/api/fmk_rapid': {
+        target: 'https://rapid.filmmakinesi.to',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://filmmakinesi.to/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/fmk_rapid/, '')
+      },
+      '/api/fmk': {
+        target: 'https://filmmakinesi.to',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://filmmakinesi.to/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/fmk/, '')
       }
     }
   },

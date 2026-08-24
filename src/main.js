@@ -10,10 +10,22 @@ import { renderDiscoverView } from './views/DiscoverView.js';
 import { renderPopularListView } from './views/PopularListView.js';
 import { renderLiveTvView } from './views/LiveTvView.js';
 
+// Disable browser default scroll jump on SPA hash changes
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+
 const app = document.getElementById('app');
 
 let previousRoute = '';
-const scrollMemory = new Map();
+export const scrollMemory = new Map();
+
+export function recordCurrentScroll() {
+  const currentHash = window.location.hash || '#home';
+  if (!currentHash.startsWith('#detail') && window.scrollY > 0) {
+    scrollMemory.set(currentHash, window.scrollY);
+  }
+}
 
 // Record scroll position before route changes
 window.addEventListener('scroll', () => {
@@ -108,12 +120,23 @@ async function route() {
   }
 
   // Restore scroll position when returning from detail page or revisiting a tab
-  const savedY = scrollMemory.get(hash);
-  if (typeof savedY === 'number' && !hash.startsWith('#detail')) {
-    setTimeout(() => {
+  let savedY = scrollMemory.get(hash);
+  if (typeof savedY !== 'number') {
+    try {
+      const stored = sessionStorage.getItem(`cinepulse_scroll_${hash}`);
+      if (stored) savedY = parseFloat(stored);
+    } catch (_) {}
+  }
+
+  if (typeof savedY === 'number' && savedY > 0 && !hash.startsWith('#detail')) {
+    const attemptScroll = (count = 0) => {
       window.scrollTo({ top: savedY, behavior: 'instant' });
-    }, 20);
-  } else {
+      if (count < 10 && document.body.scrollHeight < savedY + window.innerHeight) {
+        setTimeout(() => attemptScroll(count + 1), 50);
+      }
+    };
+    requestAnimationFrame(() => attemptScroll(0));
+  } else if (hash.startsWith('#detail') || !savedY) {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
