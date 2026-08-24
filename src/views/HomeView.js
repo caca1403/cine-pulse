@@ -8,15 +8,22 @@ import {
   fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated,
 } from '../services/tmdbApi.js';
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { getUnifiedContinueWatching, removeSeriesFromHistory } from '../services/storage.js';
 import { renderHeroSlider, attachHeroSliderEvents } from '../components/HeroSlider.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
+import { railScrollMemory } from '../services/scrollManager.js';
 
 // Cache home TMDB data & rail state across navigations
 let homeDataCache = null;
-export const railScrollMemory = new Map();
 const railExtraItemsCache = new Map();
+
+// Rail state for infinite horizontal scrolling
+const railState = {
+  'rail-popular-tv':     { page: 1, loading: false, exhausted: false, fetcher: fetchPopularSeries },
+  'rail-popular-movies': { page: 1, loading: false, exhausted: false, fetcher: fetchPopularMovies },
+  'rail-top-tv':         { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('tv', p) },
+  'rail-top-movies':     { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) }
+};
 
 /* --------------------------------------------------------------------------
    "Haftanın Öne Çıkanları" spotlight — large feature + mini grid
@@ -171,8 +178,6 @@ function renderContinueWatchingSection(watchHistory) {
 /* --------------------------------------------------------------------------
    Rail state for infinite horizontal scrolling
 -------------------------------------------------------------------------- */
-const railState = {};
-
 function initInfiniteRails(container) {
   const sentinels = container.querySelectorAll('.rail-sentinel');
   if (sentinels.length === 0) return;
@@ -271,11 +276,12 @@ export async function renderHomeView() {
   const watchHistory = getUnifiedContinueWatching();
   const heroHTML = renderHeroSlider(trending);
 
-  // Register infinite loaders
-  railState['rail-popular-tv']    = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularSeries };
-  railState['rail-popular-movies']= { page: 1, loading: false, exhausted: false, fetcher: fetchPopularMovies };
-  railState['rail-top-tv']        = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('tv', p) };
-  railState['rail-top-movies']    = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) };
+  // Register infinite loaders without resetting page count
+  if (!railState['rail-popular-tv']) railState['rail-popular-tv'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularSeries };
+  if (!railState['rail-popular-movies']) railState['rail-popular-movies'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularMovies };
+  if (!railState['rail-top-tv']) railState['rail-top-tv'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('tv', p) };
+  if (!railState['rail-top-movies']) railState['rail-top-movies'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) };
+  Object.values(railState).forEach(s => { s.loading = false; });
 
   const viewHTML = `
     <div class="home-view">

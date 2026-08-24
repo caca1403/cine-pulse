@@ -7,7 +7,7 @@
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
 import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime } from '../services/storage.js';
 import { openPlayerModal } from './PlayerModal.js';
-import { saveAllScrollState } from '../main.js';
+import { saveAllScrollState } from '../services/scrollManager.js';
 
 export function renderMediaCard(item, options = {}) {
   const id = item.id;
@@ -24,88 +24,84 @@ export function renderMediaCard(item, options = {}) {
   let currentTime = item.currentTime || 0;
   let isCompleted = item.completed || false;
   let isContinue = false;
-  let effectiveDuration = item.duration || (type === 'movie' ? 6600 : 3000);
 
-  if (progressPercent > 0 || item.currentTime > 0 || item.completed) {
+  if (options.isContinueSection || item.currentTime > 0 || item.progressPercent > 0) {
     isContinue = true;
   } else {
-    if (type === 'tv') {
-      const lastWatched = getLastWatchedEpisode(id);
-      if (lastWatched) {
-        progressPercent = lastWatched.progressPercent || 0;
-        season = lastWatched.season || 1;
-        episode = lastWatched.episode || 1;
-        currentTime = lastWatched.currentTime || 0;
-        isCompleted = lastWatched.completed || false;
-        effectiveDuration = lastWatched.duration || 3000;
-        isContinue = true;
-      }
-    } else {
-      const progress = getMediaProgress(id, 1, 1);
-      if (progress) {
-        progressPercent = progress.progressPercent || 0;
-        currentTime = progress.currentTime || 0;
-        isCompleted = progress.completed || false;
-        effectiveDuration = progress.duration || 6600;
-        isContinue = true;
+    const prog = getMediaProgress(id, type);
+    if (prog) {
+      isCompleted = prog.completed || false;
+      if (!isCompleted && prog.duration > 0 && prog.currentTime > 15) {
+        progressPercent = Math.min(100, Math.round((prog.currentTime / prog.duration) * 100));
+        currentTime = prog.currentTime;
+        if (type === 'tv') {
+          season = prog.season || 1;
+          episode = prog.episode || 1;
+        }
       }
     }
   }
 
-  let subtitleText = year;
-  const timeStr = formatSecondsToTime(currentTime);
-
-  if (item.subtitle) {
-    subtitleText = item.subtitle;
-  } else if (isContinue) {
-    if (isCompleted) {
-      subtitleText = `${year} • ✓ İzlendi`;
-    } else if (type === 'tv') {
-      subtitleText = `${year} • S${season} B${episode}`;
-    } else {
-      subtitleText = `${year} • ${timeStr || 'İzleniyor'}`;
-    }
-  }
-
-  const progressBarHTML = progressPercent > 0 ? `
-    <div class="card-progress-bar">
-      <div class="card-progress-fill" style="width: ${progressPercent}%; background: ${isCompleted ? 'var(--accent-green)' : '#f59e0b'};"></div>
-    </div>
-  ` : '';
+  const encodedTitle = encodeURIComponent(title);
+  const encodedPoster = encodeURIComponent(posterPath || '');
+  const encodedBackdrop = encodeURIComponent(item.backdrop_path || item.backdropPath || '');
 
   return `
     <div class="media-card" 
-         data-id="${id}" 
-         data-type="${type}" 
-         data-season="${season}" 
-         data-episode="${episode}" 
-         data-currenttime="${currentTime}"
-         data-title="${encodeURIComponent(title)}"
-         data-poster="${posterPath || ''}"
-         data-backdrop="${item.backdropPath || item.backdrop_path || ''}"
-         data-iscontinue="${isContinue ? 'true' : 'false'}">
+      data-id="${id}" 
+      data-type="${type}" 
+      data-title="${encodedTitle}" 
+      data-poster="${encodedPoster}"
+      data-backdrop="${encodedBackdrop}"
+      data-season="${season}" 
+      data-episode="${episode}" 
+      data-currenttime="${currentTime}"
+      data-iscontinue="${isContinue ? 'true' : 'false'}"
+      tabindex="0"
+      role="button"
+      aria-label="${title}">
+      
       <div class="card-poster-wrapper">
-        <img class="card-poster" src="${posterUrl}" alt="${title}" loading="lazy" onerror="this.onerror=null; this.src='${SINEFLIX_POSTER_FALLBACK}';" />
+        <img 
+          src="${posterUrl}" 
+          alt="${title}" 
+          class="card-poster-img" 
+          loading="lazy" 
+          onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'"
+        />
         
-        <!-- Floating Rating Badge (Top Right) -->
-        <div class="card-rating-badge">
-          <svg class="star-icon" viewBox="0 0 24 24" width="12" height="12" fill="#fbbf24" style="flex-shrink: 0;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
-          <span>${rating}</span>
-        </div>
+        <div class="card-glass-glow"></div>
 
-        <div class="card-overlay">
-          <div class="card-play-btn">
-            <i data-lucide="play" style="fill: currentColor; margin-left: 2px;"></i>
+        <!-- Rating Pill Floating Top Right -->
+        ${rating && rating !== '0.0' ? `
+          <div class="card-rating-pill">
+            <i data-lucide="star" style="width:11px;height:11px;fill:#fbbf24;color:#fbbf24;"></i>
+            <span>${rating}</span>
           </div>
+        ` : ''}
+
+        <!-- Hover Overlay -->
+        <div class="card-hover-overlay">
+          <div class="card-play-btn-circle">
+            <i data-lucide="play" style="fill:#fff;stroke:#fff;width:22px;height:22px;margin-left:3px;"></i>
+          </div>
+          <span class="card-hover-action-text">${isContinue ? 'İzlemeye Devam Et' : 'İzle'}</span>
         </div>
 
-        ${progressBarHTML}
+        <!-- Progress Bar if Continue Watching -->
+        ${progressPercent > 0 && !isCompleted ? `
+          <div class="card-progress-bar-bg">
+            <div class="card-progress-bar-fill" style="width: ${progressPercent}%;"></div>
+          </div>
+        ` : ''}
       </div>
 
       <div class="card-info">
         <h3 class="card-title" title="${title}">${title}</h3>
         <div class="card-meta">
-          <span class="card-year">${subtitleText}</span>
+          <span class="card-type-tag">${type === 'tv' ? 'DİZİ' : 'FİLM'}</span>
+          ${isContinue && type === 'tv' ? `<span class="card-episode-tag">S${season} B${episode}</span>` : ''}
+          ${year ? `<span class="card-year-tag">${year}</span>` : ''}
         </div>
       </div>
     </div>
@@ -139,6 +135,7 @@ export function attachMediaCardEvents(container) {
           backdropPath,
           currentTime
         });
+      } else {
         saveAllScrollState();
         window.location.hash = `#detail?type=${type}&id=${id}`;
       }
