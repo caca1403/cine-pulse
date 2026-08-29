@@ -29,6 +29,12 @@ export function renderNavbar(currentView = 'home') {
         </ul>
 
         <div class="nav-actions">
+          <!-- Mobile Live TV Quick Action Pill -->
+          <a href="#livetv" class="btn-live-shortcut mobile-only ${currentView === 'livetv' ? 'active' : ''}" title="Canlı TV Yayınları">
+            <span class="live-pulse-dot"></span>
+            <span>CANLI</span>
+          </a>
+
           <!-- Desktop Search Box -->
           <div class="search-box desktop-search-box">
             <i data-lucide="search" class="search-icon"></i>
@@ -76,6 +82,10 @@ export function renderNavbar(currentView = 'home') {
         <i data-lucide="film"></i>
         <span>Filmler</span>
       </a>
+      <a href="#livetv" class="dock-item ${currentView === 'livetv' ? 'active' : ''}">
+        <i data-lucide="radio"></i>
+        <span>Canlı TV</span>
+      </a>
       <a href="#discover" class="dock-item ${currentView === 'discover' ? 'active' : ''}">
         <i data-lucide="compass"></i>
         <span>Keşfet</span>
@@ -107,7 +117,6 @@ export function attachNavbarEvents(onNavigate) {
   // Mobile Search Toggle
   if (mobileSearchToggleBtn && mobileSearchRow) {
     mobileSearchToggleBtn.addEventListener('click', () => {
-      mobileDrawer?.classList.add('hidden');
       mobileSearchRow.classList.toggle('hidden');
       if (!mobileSearchRow.classList.contains('hidden')) {
         document.getElementById('mobile-search-input')?.focus();
@@ -165,51 +174,57 @@ function setupSearchInput(inputId, overlayId) {
       }
 
       searchTimeout = setTimeout(async () => {
-        const results = await searchMulti(query);
-        if (results.length === 0) {
-          overlay.innerHTML = `<div style="padding: 1.2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">Aramanızla eşleşen içerik bulunamadı.</div>`;
-        } else {
-          overlay.innerHTML = results.slice(0, 7).map(item => {
-            const title = item.title || item.name || 'İsimsiz';
-            const year = (item.release_date || item.first_air_date || '').substring(0, 4);
-            const poster = getImageUrl(item.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL);
-            const typeText = item.media_type === 'tv' ? 'Dizi' : 'Film';
-            const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
+        try {
+          const data = await searchMulti(query);
+          const results = data.results ? data.results.slice(0, 6) : [];
+
+          if (results.length === 0) {
+            overlay.innerHTML = '<div class="search-no-results">Sonuç bulunamadı</div>';
+            overlay.classList.remove('hidden');
+            return;
+          }
+
+          overlay.innerHTML = results.map(item => {
+            const isTv = item.media_type === 'tv' || !!item.first_air_date;
+            const title = item.title || item.name || 'İsimsiz İçerik';
+            const year = (item.release_date || item.first_air_date || '').slice(0, 4);
+            const poster = getImageUrl(item.poster_path, TMDB_IMAGE_SIZES.poster.small);
+            const typeLabel = isTv ? 'Dizi' : 'Film';
+            const route = isTv ? `#detail/tv/${item.id}` : `#detail/movie/${item.id}`;
 
             return `
-              <div class="search-item" data-id="${item.id}" data-type="${item.media_type}">
-                <img src="${poster}" alt="${title}" loading="lazy" />
+              <a href="${route}" class="search-item">
+                <img src="${poster}" alt="${title}" class="search-item-img" onerror="this.src='https://via.placeholder.com/45x68/1e293b/64748b?text=N/A'" />
                 <div class="search-item-info">
-                  <span class="search-item-title">${title}</span>
-                  <span class="search-item-meta">
-                    <span class="type-pill">${typeText}</span>
+                  <div class="search-item-title">${title}</div>
+                  <div class="search-item-meta">
+                    <span class="search-badge">${typeLabel}</span>
                     <span>${year}</span>
-                    <span class="rating-pill">★ ${rating}</span>
-                  </span>
+                    <span class="search-rating">★ ${(item.vote_average || 0).toFixed(1)}</span>
+                  </div>
                 </div>
-              </div>
+              </a>
             `;
           }).join('');
-        }
-        overlay.classList.remove('hidden');
-        if (window.lucide) window.lucide.createIcons();
 
-        overlay.querySelectorAll('.search-item').forEach(el => {
-          el.addEventListener('click', () => {
-            const id = el.getAttribute('data-id');
-            const type = el.getAttribute('data-type');
-            overlay.classList.add('hidden');
-            input.value = '';
-            const mobileSearchRow = document.getElementById('mobile-search-row');
-            if (mobileSearchRow) mobileSearchRow.classList.add('hidden');
-            window.location.hash = `#detail?type=${type}&id=${id}`;
+          overlay.classList.remove('hidden');
+
+          overlay.querySelectorAll('.search-item').forEach(link => {
+            link.addEventListener('click', () => {
+              overlay.classList.add('hidden');
+              input.value = '';
+              const mobileSearchRow = document.getElementById('mobile-search-row');
+              if (mobileSearchRow) mobileSearchRow.classList.add('hidden');
+            });
           });
-        });
+        } catch (err) {
+          console.error('[Search Overlay Error]', err);
+        }
       }, 250);
     });
 
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('.search-box') && !e.target.closest('.mobile-search-row')) {
+      if (!input.contains(e.target) && !overlay.contains(e.target)) {
         overlay.classList.add('hidden');
       }
     });
