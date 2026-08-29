@@ -89,18 +89,52 @@ async function verifyPageAndExtractStream(targetUrl, expectedTitle) {
       return null;
     }
 
-    // Strictly check for direct m3u8 stream
+    // 1. Direct HLS m3u8 stream check
     const m3u8Match = html.match(/(https?:\/\/[^"'\s\\]+?\.m3u8[^"'\s\\]*)/i);
     const directM3u8 = m3u8Match ? m3u8Match[1].replace(/\\u0026/g, '&') : null;
 
-    if (!directM3u8) {
-      return null;
+    if (directM3u8) {
+      return {
+        streamUrl: directM3u8,
+        isDirectHls: true,
+        type: 'hls'
+      };
     }
 
-    return {
-      streamUrl: directM3u8,
-      isDirectHls: true
-    };
+    // 2. Brightcove Pure Video Player Embed (No site headers, no cookies banner, clean video player only)
+    const videoIdMatch = html.match(/data-video-id=["'](\d+)["']/i) || 
+                         html.match(/videoId:\s*["']?(\d+)["']?/i) || 
+                         html.match(/"video_id":\s*"?(\d+)"?/i) ||
+                         html.match(/"videoId":\s*"?(\d+)"?/i) ||
+                         html.match(/brightcove[_\s]?id["']?:\s*["']?(\d+)["']?/i);
+
+    const accountMatch = html.match(/data-account=["'](\d+)["']/i) || 
+                         html.match(/account:\s*["']?(\d+)["']?/i) ||
+                         html.match(/"account_id":\s*"?(\d+)"?/i);
+
+    const videoId = videoIdMatch ? videoIdMatch[1] : null;
+    const accountId = accountMatch ? accountMatch[1] : (targetUrl.includes('tlctv') ? '5703385908001' : '5703385908001');
+
+    if (videoId) {
+      const cleanPlayerUrl = `https://players.brightcove.net/${accountId}/default_default/index.html?videoId=${videoId}`;
+      return {
+        streamUrl: cleanPlayerUrl,
+        isDirectHls: false,
+        type: 'embed'
+      };
+    }
+
+    // 3. Fallback to clean Daioncdn / DMAX Video Endpoint if matched
+    const mp4Match = html.match(/(https?:\/\/[^"'\s\\]+?\.mp4[^"'\s\\]*)/i);
+    if (mp4Match) {
+      return {
+        streamUrl: mp4Match[1].replace(/\\u0026/g, '&'),
+        isDirectHls: false,
+        type: 'direct'
+      };
+    }
+
+    return null;
   } catch (err) {
     return null;
   }
