@@ -1843,13 +1843,17 @@ img {
 .season-pills-track {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  background: rgba(14, 20, 32, 0.8);
-  padding: 0.3rem;
+  gap: 0.5rem;
+  background: rgba(14, 20, 32, 0.85);
+  padding: 0.35rem 0.5rem;
   border-radius: var(--radius-full);
   border: 1px solid var(--border-color);
   overflow-x: auto;
+  flex-wrap: nowrap;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .season-pills-track::-webkit-scrollbar {
@@ -1857,14 +1861,19 @@ img {
 }
 
 .season-pill {
-  padding: 0.45rem 1rem;
+  padding: 0.5rem 1.15rem;
   border-radius: var(--radius-full);
-  font-size: 0.80rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: #94a3b8;
-  white-space: nowrap;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
   cursor: pointer;
-  transition: all 0.2s ease;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
 }
 
 .season-pill:hover {
@@ -1875,23 +1884,27 @@ img {
 .season-pill.active {
   background: var(--primary-gradient);
   color: #ffffff;
+  border-color: transparent;
   box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
 }
 
 .episodes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.2rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 640px) {
   .episodes-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
   }
 }
 
 .episode-card {
-  background: var(--bg-surface);
+  background: rgba(14, 18, 28, 0.85);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -1899,11 +1912,13 @@ img {
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .episode-card:hover {
-  background: var(--bg-surface-elevated);
-  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(22, 28, 42, 0.95);
+  border-color: rgba(245, 158, 11, 0.45);
   transform: translateY(-3px);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
 }
@@ -1912,7 +1927,7 @@ img {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #000;
+  background: #0b0f19;
   overflow: hidden;
 }
 
@@ -1920,7 +1935,8 @@ img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  display: block;
+  transition: transform 0.35s ease;
 }
 
 .episode-card:hover .episode-thumb-wrap img {
@@ -1930,12 +1946,13 @@ img {
 .episode-play-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
   transition: opacity 0.2s ease;
+  z-index: 2;
 }
 
 .episode-card:hover .episode-play-overlay {
@@ -1946,21 +1963,23 @@ img {
   position: absolute;
   top: 0.5rem;
   left: 0.5rem;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: #fbbf24;
   font-weight: 800;
-  font-size: 0.70rem;
-  padding: 0.2rem 0.5rem;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 6px;
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  z-index: 3;
 }
 
 .episode-info {
-  padding: 0.85rem;
+  padding: 0.95rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.35rem;
   flex: 1;
 }
 
@@ -1972,9 +1991,9 @@ img {
 }
 
 .episode-title {
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   font-weight: 700;
-  color: #fff;
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
