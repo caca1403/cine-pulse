@@ -5,7 +5,7 @@
    ========================================================================== */
 
 import {
-  fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated,
+  fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated, fetchPopularAnime, fetchPopularDocumentaries
 } from '../services/tmdbApi.js';
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
 import { getUnifiedContinueWatching, removeSeriesFromHistory } from '../services/storage.js';
@@ -23,7 +23,9 @@ const railState = {
   'rail-popular-tv':     { page: 1, loading: false, exhausted: false, fetcher: fetchPopularSeries },
   'rail-popular-movies': { page: 1, loading: false, exhausted: false, fetcher: fetchPopularMovies },
   'rail-top-tv':         { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('tv', p) },
-  'rail-top-movies':     { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) }
+  'rail-top-movies':     { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) },
+  'rail-anime':          { page: 1, loading: false, exhausted: false, fetcher: fetchPopularAnime },
+  'rail-documentary':    { page: 1, loading: false, exhausted: false, fetcher: fetchPopularDocumentaries }
 };
 
 /* --------------------------------------------------------------------------
@@ -249,10 +251,10 @@ function initInfiniteRails(container) {
    Main render
 -------------------------------------------------------------------------- */
 export async function renderHomeView() {
-  let trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies;
+  let trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems;
 
   if (homeDataCache) {
-    ({ trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies } = homeDataCache);
+    ({ trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems } = homeDataCache);
   } else {
     [
       trending,
@@ -261,7 +263,9 @@ export async function renderHomeView() {
       popularTV,
       popularMovies,
       topRatedTV,
-      topRatedMovies
+      topRatedMovies,
+      animeItems,
+      docItems
     ] = await Promise.all([
       fetchTrending('all',   'week', 1),
       fetchTrending('tv',    'week', 1),
@@ -269,9 +273,11 @@ export async function renderHomeView() {
       fetchPopularSeries(1),
       fetchPopularMovies(1),
       fetchTopRated('tv',    1),
-      fetchTopRated('movie', 1)
+      fetchTopRated('movie', 1),
+      fetchPopularAnime(1),
+      fetchPopularDocumentaries(1)
     ]);
-    homeDataCache = { trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies };
+    homeDataCache = { trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems };
   }
 
   const watchHistory = getUnifiedContinueWatching();
@@ -282,6 +288,8 @@ export async function renderHomeView() {
   if (!railState['rail-popular-movies']) railState['rail-popular-movies'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularMovies };
   if (!railState['rail-top-tv']) railState['rail-top-tv'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('tv', p) };
   if (!railState['rail-top-movies']) railState['rail-top-movies'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) };
+  if (!railState['rail-anime']) railState['rail-anime'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularAnime };
+  if (!railState['rail-documentary']) railState['rail-documentary'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularDocumentaries };
   Object.values(railState).forEach(s => { s.loading = false; });
 
   const viewHTML = `
@@ -295,7 +303,7 @@ export async function renderHomeView() {
       ${renderInfiniteRail({
         id:    'rail-popular-tv',
         icon:  'tv-2',
-        title: 'Popüler Diziler',
+        title: 'Trend Diziler & Yapımlar',
         accent:'#14b8a6',
         items: popularTV
       })}
@@ -303,26 +311,42 @@ export async function renderHomeView() {
       ${renderInfiniteRail({
         id:    'rail-popular-movies',
         icon:  'clapperboard',
-        title: 'Popüler Filmler',
+        title: 'Vizyondaki Popüler Filmler',
         accent:'#a78bfa',
         items: popularMovies
       })}
 
       ${renderInfiniteRail({
-        id:    'rail-top-tv',
-        icon:  'star',
-        title: 'En Yüksek Puanlı Diziler',
+        id:    'rail-top-movies',
+        icon:  'award',
+        title: '⭐ Sinema Tarihinin Başyapıtları (IMDb 8.5+)',
         accent:'#fbbf24',
-        items: topRatedTV
+        items: topRatedMovies
       })}
 
       ${renderInfiniteRail({
-        id:    'rail-top-movies',
-        icon:  'award',
-        title: 'En Yüksek Puanlı Filmler',
+        id:    'rail-top-tv',
+        icon:  'star',
+        title: 'Kült & En Yüksek Puanlı Diziler',
         accent:'#34d399',
-        items: topRatedMovies
+        items: topRatedTV
       })}
+
+      ${animeItems && animeItems.length > 0 ? renderInfiniteRail({
+        id:    'rail-anime',
+        icon:  'sparkles',
+        title: '🎌 Popüler Anime Evreni (TR Dublaj & Altyazı)',
+        accent:'#ec4899',
+        items: animeItems
+      }) : ''}
+
+      ${docItems && docItems.length > 0 ? renderInfiniteRail({
+        id:    'rail-documentary',
+        icon:  'globe',
+        title: '🌍 İlham Veren Kült Belgeseller',
+        accent:'#38bdf8',
+        items: docItems
+      }) : ''}
     </div>
   `;
 
