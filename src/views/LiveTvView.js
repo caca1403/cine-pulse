@@ -202,45 +202,68 @@ export function renderLiveTvView() {
         showOSD();
 
         // Start HLS
-        if (window.Hls && window.Hls.isSupported()) {
-          const hls = new window.Hls({
-            enableWorker: true,
-            lowLatencyMode: true,
-            backBufferLength: 90,
-            maxBufferLength: 30,
-            maxMaxBufferLength: 60
-          });
-          activeHls = hls;
-          hls.loadSource(channel.streamUrl);
-          hls.attachMedia(videoEl);
+        let triedFallback = false;
+        const targetUrl = channel.streamUrl;
 
-          hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
-            loadingEl.classList.add('hidden');
-            videoEl.play().catch(() => {});
-          });
-
-          hls.on(window.Hls.Events.ERROR, (_, data) => {
-            if (data.fatal) {
-              loadingEl.classList.add('hidden');
-              errorEl.classList.remove('hidden');
-              console.warn('[LiveTV] Fatal HLS error:', data.type, data.details);
-              if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
-                setTimeout(() => hls.startLoad(), 3000);
-              }
+        function startHlsStream(url) {
+          if (window.Hls && window.Hls.isSupported()) {
+            if (activeHls) {
+              activeHls.destroy();
             }
-          });
-        } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-          // Safari native HLS
-          videoEl.src = channel.streamUrl;
-          videoEl.addEventListener('loadedmetadata', () => {
-            loadingEl.classList.add('hidden');
-            videoEl.play().catch(() => {});
-          }, { once: true });
-          videoEl.addEventListener('error', () => {
-            loadingEl.classList.add('hidden');
-            errorEl.classList.remove('hidden');
-          }, { once: true });
+            const hls = new window.Hls({
+              enableWorker: true,
+              lowLatencyMode: true,
+              backBufferLength: 90,
+              maxBufferLength: 30,
+              maxMaxBufferLength: 60
+            });
+            activeHls = hls;
+            hls.loadSource(url);
+            hls.attachMedia(videoEl);
+
+            hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+              loadingEl.classList.add('hidden');
+              errorEl.classList.add('hidden');
+              videoEl.play().catch(() => {});
+            });
+
+            hls.on(window.Hls.Events.ERROR, (_, data) => {
+              if (data.fatal) {
+                console.warn('[LiveTV] Fatal HLS error on:', url, data.type, data.details);
+                if (!triedFallback && channel.fallbackUrl && channel.fallbackUrl !== url) {
+                  triedFallback = true;
+                  console.log('[LiveTV] Trying fallback stream for', channel.name);
+                  startHlsStream(channel.fallbackUrl);
+                } else {
+                  loadingEl.classList.add('hidden');
+                  errorEl.classList.remove('hidden');
+                  if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+                    setTimeout(() => hls.startLoad(), 3000);
+                  }
+                }
+              }
+            });
+          } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+            // Safari native HLS
+            videoEl.src = url;
+            videoEl.addEventListener('loadedmetadata', () => {
+              loadingEl.classList.add('hidden');
+              errorEl.classList.add('hidden');
+              videoEl.play().catch(() => {});
+            }, { once: true });
+            videoEl.addEventListener('error', () => {
+              if (!triedFallback && channel.fallbackUrl && channel.fallbackUrl !== url) {
+                triedFallback = true;
+                startHlsStream(channel.fallbackUrl);
+              } else {
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+              }
+            }, { once: true });
+          }
         }
+
+        startHlsStream(targetUrl);
 
         // Apply mute state
         videoEl.muted = isMuted;
