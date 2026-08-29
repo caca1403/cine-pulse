@@ -532,11 +532,42 @@ export function getUnifiedContinueWatching() {
 }
 
 /* ==========================================================================
-   Favorites & Watchlist Management
+   Favorites & Watchlist Management & Auto-Normalization
    ========================================================================== */
 
+export function normalizeStoredItem(item) {
+  if (!item) return item;
+  let type = item.type;
+  if (!type || type === 'movie') {
+    if (
+      item.first_air_date ||
+      item.media_type === 'tv' ||
+      (item.season && Number(item.season) > 0) ||
+      (item.episode && Number(item.episode) > 0) ||
+      item.number_of_seasons ||
+      item.episodesCount ||
+      (!item.title && item.name)
+    ) {
+      type = 'tv';
+    } else {
+      type = type || 'movie';
+    }
+  }
+  const poster = item.poster_path || item.posterPath || item.poster || '';
+  const backdrop = item.backdrop_path || item.backdropPath || item.backdrop || '';
+  return {
+    ...item,
+    type,
+    poster_path: poster,
+    posterPath: poster,
+    backdrop_path: backdrop,
+    backdropPath: backdrop
+  };
+}
+
 export function getFavorites() {
-  return getLocalItem(STORAGE_KEYS.FAVORITES, []);
+  const favs = getLocalItem(STORAGE_KEYS.FAVORITES, []);
+  return favs.map(normalizeStoredItem);
 }
 
 export function isFavorite(id) {
@@ -553,15 +584,24 @@ export function toggleFavorite(media) {
   if (index >= 0) {
     favs.splice(index, 1);
   } else {
+    let resolvedType = media.type;
+    if (!resolvedType) {
+      resolvedType = (media.first_air_date || media.media_type === 'tv' || media.number_of_seasons || (!media.title && media.name)) ? 'tv' : 'movie';
+    }
+    const poster = media.poster_path || media.posterPath || media.poster || '';
+    const backdrop = media.backdrop_path || media.backdropPath || media.backdrop || '';
+
     favs.unshift({
       id: media.id,
       title: media.title || media.name || 'İsimsiz',
-      poster_path: media.poster_path || media.posterPath,
-      backdrop_path: media.backdrop_path || media.backdropPath,
+      poster_path: poster,
+      posterPath: poster,
+      backdrop_path: backdrop,
+      backdropPath: backdrop,
       vote_average: media.vote_average || media.voteAverage || 8.0,
       release_date: media.release_date || media.first_air_date || '',
       first_air_date: media.first_air_date || '',
-      type: media.type || (media.first_air_date || media.media_type === 'tv' ? 'tv' : 'movie'),
+      type: resolvedType,
       addedAt: Date.now()
     });
     added = true;
@@ -578,8 +618,13 @@ export function removeFavorite(id) {
   return favs;
 }
 
+export function clearFavorites() {
+  setLocalItem(STORAGE_KEYS.FAVORITES, []);
+}
+
 export function getWatchlist() {
-  return getLocalItem(STORAGE_KEYS.WATCHLIST, []);
+  const list = getLocalItem(STORAGE_KEYS.WATCHLIST, []);
+  return list.map(normalizeStoredItem);
 }
 
 export function isWatchlist(id) {
@@ -596,15 +641,24 @@ export function toggleWatchlist(media) {
   if (index >= 0) {
     list.splice(index, 1);
   } else {
+    let resolvedType = media.type;
+    if (!resolvedType) {
+      resolvedType = (media.first_air_date || media.media_type === 'tv' || media.number_of_seasons || (!media.title && media.name)) ? 'tv' : 'movie';
+    }
+    const poster = media.poster_path || media.posterPath || media.poster || '';
+    const backdrop = media.backdrop_path || media.backdropPath || media.backdrop || '';
+
     list.unshift({
       id: media.id,
       title: media.title || media.name || 'İsimsiz',
-      poster_path: media.poster_path || media.posterPath,
-      backdrop_path: media.backdrop_path || media.backdropPath,
+      poster_path: poster,
+      posterPath: poster,
+      backdrop_path: backdrop,
+      backdropPath: backdrop,
       vote_average: media.vote_average || media.voteAverage || 8.0,
       release_date: media.release_date || media.first_air_date || '',
       first_air_date: media.first_air_date || '',
-      type: media.type || (media.first_air_date || media.media_type === 'tv' ? 'tv' : 'movie'),
+      type: resolvedType,
       addedAt: Date.now()
     });
     added = true;
@@ -619,6 +673,14 @@ export function removeWatchlist(id) {
   list = list.filter(item => item.id != id);
   setLocalItem(STORAGE_KEYS.WATCHLIST, list);
   return list;
+}
+
+export function clearWatchlist() {
+  setLocalItem(STORAGE_KEYS.WATCHLIST, []);
+}
+
+export function clearAllWatchHistory() {
+  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, []);
 }
 
 export function removeEpisodeFromHistory(id, season = 1, episode = 1) {

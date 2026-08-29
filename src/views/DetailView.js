@@ -322,7 +322,7 @@ export async function renderDetailView(type = 'tv', id) {
       const favBtn = container.querySelector('#btn-toggle-fav');
       if (favBtn) {
         favBtn.addEventListener('click', () => {
-          const added = toggleFavorite(media);
+          const added = toggleFavorite({ ...media, type: effectiveType });
           showToast(added ? 'Favorilere eklendi!' : 'Favorilerden çıkarıldı.', added ? 'success' : 'info');
           const icon = favBtn.querySelector('i');
           const text = favBtn.querySelector('span');
@@ -337,7 +337,7 @@ export async function renderDetailView(type = 'tv', id) {
       const watchBtn = container.querySelector('#btn-toggle-watchlist');
       if (watchBtn) {
         watchBtn.addEventListener('click', () => {
-          const added = toggleWatchlist(media);
+          const added = toggleWatchlist({ ...media, type: effectiveType });
           showToast(added ? 'İzleme listesine eklendi!' : 'İzleme listesinden çıkarıldı.', added ? 'success' : 'info');
           const icon = watchBtn.querySelector('i');
           const text = watchBtn.querySelector('span');
