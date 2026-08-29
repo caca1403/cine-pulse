@@ -43,66 +43,87 @@ export async function fetchTurkAnimeSources({
 
   for (const slug of candidateSlugs) {
     if (!slug) continue;
-    try {
-      const epUrl = `https://www.turkanime.co/video/${slug}-${episode}-bolum`;
-      const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
+    
+    // Slugs to test based on dub / sub
+    const slugPatterns = isDub ? [
+      `${slug}-turkce-dublaj-${episode}-bolum`,
+      `${slug}-dublaj-${episode}-bolum`,
+      `${slug}-${episode}-bolum-turkce-dublaj`,
+      `${slug}-${episode}-bolum`
+    ] : [
+      `${slug}-${episode}-bolum`,
+      `${slug}-altyazili-${episode}-bolum`
+    ];
 
-      const res = await fetch(proxyUrl, {
-        headers: { 'Accept': 'text/html,application/xhtml+xml' }
-      }).catch(() => null);
+    for (const pattern of slugPatterns) {
+      try {
+        const epUrl = `https://www.turkanime.co/video/${pattern}`;
+        const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
 
-      if (!res || !res.ok) continue;
+        const res = await fetch(proxyUrl, {
+          headers: { 'Accept': 'text/html,application/xhtml+xml' },
+          signal: AbortSignal.timeout(3500)
+        }).catch(() => null);
 
-      const html = await res.text();
-      if (!html || html.length < 1000) continue;
+        if (!res || !res.ok) continue;
 
-      // TurkAnime specific error indicators
-      const lowerHtml = html.toLowerCase();
-      if (
-        lowerHtml.includes('böyle bir video bulunamadı') ||
-        lowerHtml.includes('video bulunamadı') ||
-        lowerHtml.includes('sayfa bulunamadı') ||
-        lowerHtml.includes('hata oluştu') ||
-        lowerHtml.includes('404 not found') ||
-        lowerHtml.includes('içerik silinmiş')
-      ) {
-        continue;
-      }
+        const html = await res.text();
+        if (!html || html.length < 1000) continue;
 
-      // Must contain actual anime video player / fansub selectors
-      const hasRealPlayer = 
-        html.includes('videolar') || 
-        html.includes('fansub') || 
-        html.includes('data-video') || 
-        html.includes('video-player') ||
-        html.includes('player_iframe') ||
-        html.includes('turkanime.co/ajax');
-
-      if (!hasRealPlayer) continue;
-
-      // Extract iframe player if present
-      let playerStreamUrl = epUrl;
-      const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
-      if (iframeMatch && iframeMatch[1] && !iframeMatch[1].includes('google') && !iframeMatch[1].includes('facebook')) {
-        let embedSrc = iframeMatch[1];
-        if (embedSrc.startsWith('//')) embedSrc = `https:${embedSrc}`;
-        playerStreamUrl = embedSrc;
-      }
-
-      return [
-        {
-          id: `ta_${slug}_${episode}`,
-          name: `TürkAnime TV (Bölüm ${episode})`,
-          badge: '🎌 TürkAnime',
-          category: isDub ? 'dubbed' : 'subtitled',
-          isExternalPopout: false,
-          streamUrl: playerStreamUrl,
-          url: playerStreamUrl,
-          getUrl: () => playerStreamUrl
+        // TurkAnime specific error indicators
+        const lowerHtml = html.toLowerCase();
+        if (
+          lowerHtml.includes('böyle bir video bulunamadı') ||
+          lowerHtml.includes('video bulunamadı') ||
+          lowerHtml.includes('sayfa bulunamadı') ||
+          lowerHtml.includes('hata oluştu') ||
+          lowerHtml.includes('404 not found') ||
+          lowerHtml.includes('içerik silinmiş')
+        ) {
+          continue;
         }
-      ];
-    } catch (e) {
-      console.warn('[TurkAnimeScraper] Error:', e.message);
+
+        // For dub requests, if not in a dubbed url pattern, verify page contains dub indicators
+        if (isDub && !pattern.includes('dublaj')) {
+          const hasDubIndicator = lowerHtml.includes('dublaj') || lowerHtml.includes('türkçe dublaj') || lowerHtml.includes('tr dublaj');
+          if (!hasDubIndicator) continue;
+        }
+
+        // Must contain actual anime video player / fansub selectors
+        const hasRealPlayer = 
+          html.includes('videolar') || 
+          html.includes('fansub') || 
+          html.includes('data-video') || 
+          html.includes('video-player') ||
+          html.includes('player_iframe') ||
+          html.includes('turkanime.co/ajax');
+
+        if (!hasRealPlayer) continue;
+
+        // Extract iframe player if present
+        let playerStreamUrl = epUrl;
+        const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+        if (iframeMatch && iframeMatch[1] && !iframeMatch[1].includes('google') && !iframeMatch[1].includes('facebook')) {
+          let embedSrc = iframeMatch[1];
+          if (embedSrc.startsWith('//')) embedSrc = `https:${embedSrc}`;
+          playerStreamUrl = embedSrc;
+        }
+
+        return [
+          {
+            id: `ta_${slug}_${episode}_${isDub ? 'dub' : 'sub'}`,
+            name: `TürkAnime TV - Bölüm ${episode} (${isDub ? 'TR Dublaj' : 'Altyazılı'})`,
+            badge: isDub ? '🎌 Dublaj' : '🎌 TürkAnime',
+            category: isDub ? 'dubbed' : 'subtitled',
+            isExternalPopout: false,
+            streamUrl: playerStreamUrl,
+            url: playerStreamUrl,
+            getUrl: () => playerStreamUrl
+          }
+        ];
+      } catch (e) {
+        // continue next pattern
+      }
     }
   }
 

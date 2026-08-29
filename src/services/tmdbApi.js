@@ -34,9 +34,10 @@ const rawActorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height=
 export const SINEFLIX_ACTOR_FALLBACK = `data:image/svg+xml,${encodeURIComponent(rawActorSvg)}`;
 
 export function getImageUrl(path, size = TMDB_IMAGE_SIZES.POSTER_MEDIUM) {
-  if (!path || path === 'null' || path === 'undefined') return SINEFLIX_POSTER_FALLBACK;
+  if (!path || path === 'null' || path === 'undefined' || path === '') return SINEFLIX_POSTER_FALLBACK;
   if (path.startsWith('http') || path.startsWith('data:')) return path;
-  return `${size}${path}`;
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${size}${cleanPath}`;
 }
 
 const translationCache = {};
@@ -217,7 +218,72 @@ export async function fetchMediaDetails(type = 'tv', id) {
     language: 'tr-TR',
     append_to_response: 'credits,videos,recommendations,similar'
   });
+  if (!res) return null;
+
+  // 1. Overview Fallback & Auto-Translation to Turkish
+  let trOverview = (res.overview || '').trim();
+  if (!trOverview || trOverview.length < 15) {
+    try {
+      const enRes = await tmdbFetch(`/${type}/${id}`, { language: 'en-US' });
+      if (enRes && enRes.overview && enRes.overview.trim().length > 10) {
+        const translated = await translateToTurkish(enRes.overview.trim());
+        if (translated) {
+          res.overview = translated;
+        }
+      }
+    } catch (e) {
+      console.warn('Overview translation fallback error:', e);
+    }
+  }
+
+  // 2. Videos / Trailer Fallback
+  let videosList = res.videos?.results || [];
+  const hasYoutubeTrailer = videosList.some(v => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'));
+  if (!hasYoutubeTrailer) {
+    try {
+      const enVideos = await tmdbFetch(`/${type}/${id}/videos`, { language: 'en-US' });
+      const extraVideos = enVideos?.results || [];
+      if (extraVideos.length > 0) {
+        res.videos = res.videos || {};
+        res.videos.results = [...videosList, ...extraVideos];
+      }
+    } catch (_) {}
+  }
+
   return res;
+}
+
+export async function fetchMediaTrailer(type = 'tv', id) {
+  try {
+    // 1. Try Turkish trailers first
+    let res = await tmdbFetch(`/${type}/${id}/videos`, { language: 'tr-TR' });
+    let videos = res?.results || [];
+    let trailer = videos.find(v => v.site === 'YouTube' && v.type === 'Trailer');
+    if (!trailer) trailer = videos.find(v => v.site === 'YouTube' && v.type === 'Teaser');
+
+    // 2. Fallback to English/Global trailers
+    if (!trailer) {
+      const enRes = await tmdbFetch(`/${type}/${id}/videos`, { language: 'en-US' });
+      const enVideos = enRes?.results || [];
+      trailer = enVideos.find(v => v.site === 'YouTube' && v.type === 'Trailer');
+      if (!trailer) trailer = enVideos.find(v => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip'));
+      if (!trailer && enVideos.length > 0) trailer = enVideos.find(v => v.site === 'YouTube');
+    }
+
+    if (trailer && trailer.key) {
+      return {
+        key: trailer.key,
+        name: trailer.name || 'Resmi Fragman',
+        site: trailer.site,
+        type: trailer.type,
+        embedUrl: `https://www.youtube-nocookie.com/embed/${trailer.key}?autoplay=1&rel=0&modestbranding=1`,
+        watchUrl: `https://www.youtube.com/watch?v=${trailer.key}`
+      };
+    }
+  } catch (err) {
+    console.error('fetchMediaTrailer error:', err);
+  }
+  return null;
 }
 
 export async function fetchSeasonDetails(tvId, seasonNumber = 1) {

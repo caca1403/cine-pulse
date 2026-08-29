@@ -37,15 +37,29 @@ export async function fetchAnimeTrSources({ titles = [], seriesTitle = '', title
 
   for (const slug of candidateSlugs) {
     if (!slug) continue;
-    try {
-      const watchUrl = `https://animetr.co/izle/${slug}/bolum-${episode}`;
-      const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(watchUrl)}`;
+    
+    const patterns = isDub ? [
+      `https://animetr.co/izle/${slug}-turkce-dublaj/bolum-${episode}`,
+      `https://animetr.co/izle/${slug}-dublaj/bolum-${episode}`,
+      `https://animetr.co/izle/${slug}/bolum-${episode}`
+    ] : [
+      `https://animetr.co/izle/${slug}/bolum-${episode}`,
+      `https://animetr.co/izle/${slug}-altyazili/bolum-${episode}`
+    ];
 
-      const res = await fetch(proxyUrl).catch(() => null);
-      if (!res || !res.ok) continue;
+    for (const watchUrl of patterns) {
+      try {
+        const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(watchUrl)}`;
 
-      const html = await res.text();
-      if (html.includes('Sayfa Bulunamadı') || html.includes('404')) continue;
+        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null);
+        if (!res || !res.ok) continue;
+
+        const html = await res.text();
+        if (html.includes('Sayfa Bulunamadı') || html.includes('404')) continue;
+        if (isDub && !watchUrl.includes('dublaj')) {
+          const lower = html.toLowerCase();
+          if (!lower.includes('dublaj') && !lower.includes('türkçe dublaj')) continue;
+        }
 
       const altMatches = [...html.matchAll(/"embed_url":"([^"]+)","provider":"([^"]+)"/gi)];
       const rawIframes = [...html.matchAll(/<iframe[^>]+src="([^"]+)"/gi)].map(m => m[1]);
@@ -106,9 +120,9 @@ export async function fetchAnimeTrSources({ titles = [], seriesTitle = '', title
         if (!uniqueProviders.has(pKey)) {
           uniqueProviders.add(pKey);
           sources.push({
-            id: `antr_${pKey}_${episode}_${sources.length}`,
-            name: `AnimeTR - ${item.provider} (1080p Altyazılı)`,
-            badge: `🎌 ${item.provider}`,
+            id: `antr_${pKey}_${episode}_${isDub ? 'dub' : 'sub'}_${sources.length}`,
+            name: `AnimeTR - ${item.provider} (${isDub ? '1080p TR Dublaj' : '1080p Altyazılı'})`,
+            badge: isDub ? `🎌 Dublaj` : `🎌 ${item.provider}`,
             category: isDub ? 'dubbed' : 'subtitled',
             streamUrl: item.url,
             url: item.url,
@@ -121,9 +135,10 @@ export async function fetchAnimeTrSources({ titles = [], seriesTitle = '', title
         return sources.slice(0, 6); // Top 6 diverse working players
       }
     } catch (e) {
-      console.warn('[AnimeTrScraper] Error:', e.message);
+      // try next url pattern
     }
   }
+}
 
   return [];
 }

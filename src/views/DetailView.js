@@ -5,11 +5,12 @@
    Includes movie runtime, bulk series mark-watched, season selectors, and halfway in-progress states.
    ========================================================================== */
 
-import { fetchMediaDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
+import { fetchMediaDetails, fetchMediaTrailer, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
 import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway } from '../services/storage.js';
 import { renderSeasonSelector } from '../components/SeasonSelector.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { openPlayerModal } from '../components/PlayerModal.js';
+import { openTrailerModal } from '../components/TrailerModal.js';
 import { showToast } from '../components/Toast.js';
 
 function formatMediaRuntime(minutes) {
@@ -165,17 +166,24 @@ export async function renderDetailView(type = 'tv', id) {
 
               <!-- Modern Hero Action Deck -->
               <div class="detail-action-deck">
-                ${effectiveType === 'movie' ? `
-                  <button class="btn-play-primary" id="btn-play-movie">
-                    <i data-lucide="play" style="fill: currentColor; width: 22px; height: 22px;"></i>
-                    <span>${playButtonLabel}</span>
+                <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
+                  ${effectiveType === 'movie' ? `
+                    <button class="btn-play-primary" id="btn-play-movie">
+                      <i data-lucide="play" style="fill: currentColor; width: 22px; height: 22px;"></i>
+                      <span>${playButtonLabel}</span>
+                    </button>
+                  ` : `
+                    <button class="btn-play-primary" id="btn-resume-series">
+                      <i data-lucide="play" style="fill: currentColor; width: 22px; height: 22px;"></i>
+                      <span>${playButtonLabel}</span>
+                    </button>
+                  `}
+
+                  <button class="btn-secondary" id="btn-watch-trailer" style="padding: 0.85rem 1.4rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 700; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; cursor: pointer; transition: all 0.2s ease;">
+                    <i data-lucide="youtube" style="width: 18px; height: 18px;"></i>
+                    <span>Fragman İzle</span>
                   </button>
-                ` : `
-                  <button class="btn-play-primary" id="btn-resume-series">
-                    <i data-lucide="play" style="fill: currentColor; width: 22px; height: 22px;"></i>
-                    <span>${playButtonLabel}</span>
-                  </button>
-                `}
+                </div>
 
                 <!-- Compact Quick Action Tiles Grid -->
                 <div class="detail-action-subgrid">
@@ -285,6 +293,32 @@ export async function renderDetailView(type = 'tv', id) {
         });
       }
 
+      const trailerBtn = container.querySelector('#btn-watch-trailer');
+      if (trailerBtn) {
+        trailerBtn.addEventListener('click', async () => {
+          trailerBtn.disabled = true;
+          const origHtml = trailerBtn.innerHTML;
+          trailerBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:18px;height:18px"></i> <span>Yükleniyor...</span>`;
+          if (window.lucide) window.lucide.createIcons();
+
+          try {
+            const trailer = await fetchMediaTrailer(effectiveType, id);
+            if (trailer) {
+              openTrailerModal({ title, trailerInfo: trailer });
+            } else {
+              showToast('Bu yapım için resmi fragman bulunamadı.', 'info');
+            }
+          } catch (e) {
+            console.error('Trailer error:', e);
+            showToast('Fragman yüklenirken bir hata oluştu.', 'error');
+          } finally {
+            trailerBtn.disabled = false;
+            trailerBtn.innerHTML = origHtml;
+            if (window.lucide) window.lucide.createIcons();
+          }
+        });
+      }
+
       const favBtn = container.querySelector('#btn-toggle-fav');
       if (favBtn) {
         favBtn.addEventListener('click', () => {
@@ -388,6 +422,24 @@ export async function renderDetailView(type = 'tv', id) {
                 }
               }
             });
+
+            const seasonAllBtn = container.querySelector('#btn-mark-season-all');
+            if (seasonAllBtn) {
+              const span = seasonAllBtn.querySelector('span');
+              const icon = seasonAllBtn.querySelector('i');
+              if (span) span.textContent = targetState ? 'Bu Sezon İzlendi' : 'Bu Sezonu İzlendi İşaretle';
+              if (icon) icon.setAttribute('data-lucide', targetState ? 'check-circle-2' : 'check-check');
+              if (targetState) {
+                seasonAllBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+                seasonAllBtn.style.borderColor = '#10b981';
+                seasonAllBtn.style.color = '#10b981';
+              } else {
+                seasonAllBtn.style.background = '';
+                seasonAllBtn.style.borderColor = '';
+                seasonAllBtn.style.color = '';
+              }
+            }
+
             if (window.lucide) window.lucide.createIcons();
           }
         });

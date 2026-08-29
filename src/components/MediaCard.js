@@ -13,7 +13,8 @@ export function renderMediaCard(item, options = {}) {
   const id = item.id;
   const type = item.type || (item.first_air_date || item.media_type === 'tv' ? 'tv' : 'movie');
   const title = item.title || item.name || 'İsimsiz İçerik';
-  const posterPath = item.poster_path || item.posterPath;
+  const posterPath = item.poster_path || item.posterPath || item.poster || '';
+  const backdropPath = item.backdrop_path || item.backdropPath || item.backdrop || '';
   const posterUrl = getImageUrl(posterPath, TMDB_IMAGE_SIZES.POSTER_MEDIUM);
   const rating = item.vote_average ? Number(item.vote_average).toFixed(1) : (item.voteAverage ? Number(item.voteAverage).toFixed(1) : (item.rating ? Number(item.rating).toFixed(1) : '7.8'));
   const year = (item.release_date || item.first_air_date || '').substring(0, 4) || (item.year ? String(item.year) : '2024');

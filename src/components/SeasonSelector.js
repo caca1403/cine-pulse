@@ -54,8 +54,6 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
       let currentActiveSeason = activeSeasonNumber;
       let currentEpCount = initialEpCount;
 
-      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons);
-
       const updateSeasonBtnVisual = () => {
         const seasonAllBtn = container.querySelector('#btn-mark-season-all');
         if (!seasonAllBtn) return;
@@ -76,6 +74,8 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
         if (window.lucide) window.lucide.createIcons();
       };
 
+      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual);
+
       container.querySelectorAll('.season-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.preventDefault();
@@ -93,15 +93,45 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
         seasonAllBtn.addEventListener('click', (e) => {
           e.preventDefault();
           const isWatched = isSeasonFullyWatched(tvId, currentActiveSeason, currentEpCount);
-          markSeasonEpisodesWatched(tvId, currentActiveSeason, currentEpCount, !isWatched, {
+          const targetWatched = !isWatched;
+          markSeasonEpisodesWatched(tvId, currentActiveSeason, currentEpCount, targetWatched, {
             title: seriesTitle,
             posterPath,
             backdropPath,
             type: 'tv'
           });
 
-          showToast(!isWatched ? `${currentActiveSeason}. Sezonun tüm bölümleri izlendi!` : `${currentActiveSeason}. Sezon izlenmedi olarak işaretlendi.`, !isWatched ? 'success' : 'info');
-          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons);
+          showToast(targetWatched ? `${currentActiveSeason}. Sezonun tüm bölümleri izlendi!` : `${currentActiveSeason}. Sezon izlenmedi olarak işaretlendi.`, targetWatched ? 'success' : 'info');
+          
+          // In-place DOM update for all visible episode cards in this season
+          const gridContainer = container.querySelector('#episode-grid-container');
+          if (gridContainer) {
+            gridContainer.querySelectorAll('.episode-card').forEach(card => {
+              const badgeEl = card.querySelector('.badge-watched-status');
+              const btnEl = card.querySelector('.btn-mark-ep-watched');
+              if (badgeEl) {
+                badgeEl.innerHTML = `<i data-lucide="check" style="width:12px; height:12px"></i> İZLENDİ`;
+                badgeEl.style.background = 'var(--accent-green)';
+                badgeEl.style.color = '#fff';
+                badgeEl.style.display = targetWatched ? 'inline-flex' : 'none';
+              }
+              if (btnEl) {
+                if (targetWatched) {
+                  btnEl.classList.add('watched');
+                  btnEl.style.background = '#10b981';
+                  btnEl.style.borderColor = '#10b981';
+                  btnEl.title = 'İzlendi işaretini kaldır';
+                } else {
+                  btnEl.classList.remove('watched');
+                  btnEl.style.background = 'rgba(0,0,0,0.65)';
+                  btnEl.style.borderColor = 'rgba(255,255,255,0.3)';
+                  btnEl.title = 'İzlendi olarak işaretle';
+                }
+              }
+            });
+            if (window.lucide) window.lucide.createIcons();
+          }
+
           updateSeasonBtnVisual();
         });
       }
@@ -109,7 +139,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
   };
 }
 
-async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath = '', backdropPath = '', originalTitle = '', validSeasons = []) {
+async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath = '', backdropPath = '', originalTitle = '', validSeasons = [], onStatusChange = null) {
   const gridContainer = container.querySelector('#episode-grid-container');
   if (!gridContainer) return;
 
@@ -287,6 +317,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
           badgeEl.style.display = isNowCompleted ? 'inline-flex' : 'none';
         }
       }
+      if (typeof onStatusChange === 'function') onStatusChange();
       if (window.lucide) window.lucide.createIcons();
     });
   });

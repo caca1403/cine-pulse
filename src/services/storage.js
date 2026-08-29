@@ -40,11 +40,32 @@ export function getWatchHistory() {
   return history.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
 }
 
+function resolveMediaImages(id, passedPoster, passedBackdrop, history = []) {
+  const anyExisting = history.find(item => item.id == id && (item.posterPath || item.poster_path));
+  let rawPoster = passedPoster || (anyExisting ? (anyExisting.posterPath || anyExisting.poster_path) : '');
+  let rawBackdrop = passedBackdrop || (anyExisting ? (anyExisting.backdropPath || anyExisting.backdrop_path) : '');
+
+  // Normalize leading slash if relative TMDB path
+  let resolvedPoster = rawPoster;
+  if (resolvedPoster && typeof resolvedPoster === 'string' && !resolvedPoster.startsWith('http') && !resolvedPoster.startsWith('data:') && !resolvedPoster.startsWith('/')) {
+    resolvedPoster = `/${resolvedPoster}`;
+  }
+
+  let resolvedBackdrop = rawBackdrop;
+  if (resolvedBackdrop && typeof resolvedBackdrop === 'string' && !resolvedBackdrop.startsWith('http') && !resolvedBackdrop.startsWith('data:') && !resolvedBackdrop.startsWith('/')) {
+    resolvedBackdrop = `/${resolvedBackdrop}`;
+  }
+
+  return { resolvedPoster: resolvedPoster || '', resolvedBackdrop: resolvedBackdrop || '' };
+}
+
 export function saveWatchProgress({
   id,
   title,
   posterPath,
+  poster_path,
   backdropPath,
+  backdrop_path,
   type = 'tv',
   season = 1,
   episode = 1,
@@ -57,9 +78,12 @@ export function saveWatchProgress({
   const history = getWatchHistory();
   const existingIndex = history.findIndex(item => item.id == id && item.season == season && item.episode == episode);
   
-  const anyExisting = history.find(item => item.id == id && (item.posterPath || item.poster_path));
-  const resolvedPoster = posterPath || (anyExisting ? (anyExisting.posterPath || anyExisting.poster_path) : '');
-  const resolvedBackdrop = backdropPath || (anyExisting ? (anyExisting.backdropPath || anyExisting.backdrop_path) : '');
+  const { resolvedPoster, resolvedBackdrop } = resolveMediaImages(
+    id,
+    posterPath || poster_path,
+    backdropPath || backdrop_path,
+    history
+  );
 
   const effectiveDuration = duration > 0 ? duration : (type === 'movie' ? 6600 : 3000);
   const progressPercent = effectiveDuration > 0 ? Math.min(100, Math.round((currentTime / effectiveDuration) * 100)) : 0;
@@ -67,9 +91,11 @@ export function saveWatchProgress({
 
   const record = {
     id,
-    title,
+    title: title || (existingIndex >= 0 ? history[existingIndex].title : 'İçerik'),
     posterPath: resolvedPoster,
+    poster_path: resolvedPoster,
     backdropPath: resolvedBackdrop,
+    backdrop_path: resolvedBackdrop,
     type,
     season: Number(season),
     episode: Number(episode),
@@ -123,11 +149,20 @@ export function markEpisodeWatched(id, season = 1, episode = 1, completed = true
   const isMovie = (mediaData.type === 'movie');
   const duration = mediaData.duration || (isMovie ? 6600 : 3000);
 
+  const { resolvedPoster, resolvedBackdrop } = resolveMediaImages(
+    id,
+    mediaData.posterPath || mediaData.poster_path,
+    mediaData.backdropPath || mediaData.backdrop_path,
+    history
+  );
+
   const record = {
     id,
     title: mediaData.title || (existingIndex >= 0 ? history[existingIndex].title : 'İçerik'),
-    posterPath: mediaData.posterPath || (existingIndex >= 0 ? history[existingIndex].posterPath : ''),
-    backdropPath: mediaData.backdropPath || (existingIndex >= 0 ? history[existingIndex].backdropPath : ''),
+    posterPath: resolvedPoster,
+    poster_path: resolvedPoster,
+    backdropPath: resolvedBackdrop,
+    backdrop_path: resolvedBackdrop,
     type: mediaData.type || (existingIndex >= 0 ? history[existingIndex].type : 'tv'),
     season: Number(season),
     episode: Number(episode),
@@ -156,10 +191,15 @@ export function toggleEpisodeWatched(id, season = 1, episode = 1, mediaData = {}
 export function markAllEpisodesWatched(seriesId, seasonsList = [], completed = true, mediaData = {}) {
   const history = getWatchHistory();
   const title = mediaData.title || 'Dizi';
-  const posterPath = mediaData.posterPath || '';
-  const backdropPath = mediaData.backdropPath || '';
   const type = mediaData.type || 'tv';
   const duration = mediaData.duration || (type === 'movie' ? 6600 : 3000);
+
+  const { resolvedPoster, resolvedBackdrop } = resolveMediaImages(
+    seriesId,
+    mediaData.posterPath || mediaData.poster_path,
+    mediaData.backdropPath || mediaData.backdrop_path,
+    history
+  );
 
   for (const season of seasonsList) {
     const seasonNum = season.season_number;
@@ -170,8 +210,10 @@ export function markAllEpisodesWatched(seriesId, seasonsList = [], completed = t
       const record = {
         id: seriesId,
         title,
-        posterPath,
-        backdropPath,
+        posterPath: resolvedPoster,
+        poster_path: resolvedPoster,
+        backdropPath: resolvedBackdrop,
+        backdrop_path: resolvedBackdrop,
         type,
         season: Number(seasonNum),
         episode: ep,
@@ -194,18 +236,25 @@ export function markAllEpisodesWatched(seriesId, seasonsList = [], completed = t
 export function markSeasonEpisodesWatched(seriesId, seasonNum, episodeCount = 10, completed = true, mediaData = {}) {
   const history = getWatchHistory();
   const title = mediaData.title || 'Dizi';
-  const posterPath = mediaData.posterPath || '';
-  const backdropPath = mediaData.backdropPath || '';
   const type = mediaData.type || 'tv';
   const duration = mediaData.duration || 3000;
+
+  const { resolvedPoster, resolvedBackdrop } = resolveMediaImages(
+    seriesId,
+    mediaData.posterPath || mediaData.poster_path,
+    mediaData.backdropPath || mediaData.backdrop_path,
+    history
+  );
 
   for (let ep = 1; ep <= episodeCount; ep++) {
     const existingIndex = history.findIndex(item => item.id == seriesId && item.season == seasonNum && item.episode == ep);
     const record = {
       id: seriesId,
       title,
-      posterPath,
-      backdropPath,
+      posterPath: resolvedPoster,
+      poster_path: resolvedPoster,
+      backdropPath: resolvedBackdrop,
+      backdrop_path: resolvedBackdrop,
       type,
       season: Number(seasonNum),
       episode: ep,
@@ -262,8 +311,8 @@ export function setMediaHalfway(id, season = 1, episode = 1, currentTime = 1500,
   return saveWatchProgress({
     id,
     title: mediaData.title || 'İçerik',
-    posterPath: mediaData.posterPath || '',
-    backdropPath: mediaData.backdropPath || '',
+    posterPath: mediaData.posterPath || mediaData.poster_path || '',
+    backdropPath: mediaData.backdropPath || mediaData.backdrop_path || '',
     type: mediaData.type || (isMovie ? 'movie' : 'tv'),
     season,
     episode,
@@ -288,7 +337,7 @@ export function formatSecondsToTime(seconds) {
     const remMin = min % 60;
     return `${hrs}sa ${remMin > 0 ? remMin + 'dk' : ''}`;
   }
-  return `${min}:${sec < 10 ? '0' : ''}${sec} dk`;
+  return `${min}:${sec < 10 ? '0' : ''}${sec}`;
 }
 
 export function formatRemainingTime(currentTime, duration) {

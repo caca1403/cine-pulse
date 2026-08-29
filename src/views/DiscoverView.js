@@ -188,10 +188,12 @@ export async function renderDiscoverView(initialType = 'tv') {
       };
 
       const fetchContent = async () => {
-        if (isLoading || isExhausted) return;
+        if (isLoading || discoverCache.isExhausted) return;
         isLoading = true;
 
         if (spinner) spinner.style.display = 'block';
+
+        const pageToFetch = discoverCache.currentPage || 1;
 
         try {
           const effectiveType = (currentType === 'anime' || currentType === 'documentary') ? 'tv' : currentType;
@@ -206,7 +208,7 @@ export async function renderDiscoverView(initialType = 'tv') {
           const results = await fetchDiscoverMedia({
             type: effectiveType,
             genreId: currentGenreId,
-            page: currentPage,
+            page: pageToFetch,
             sortBy: effectiveSort,
             minRating: currentMinRating,
             isAnime,
@@ -216,10 +218,10 @@ export async function renderDiscoverView(initialType = 'tv') {
           if (spinner) spinner.style.display = 'none';
 
           if (!results || results.length === 0) {
-            if (currentPage === 1) {
+            if (pageToFetch === 1) {
               grid.innerHTML = `<div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">Bu filtre kriterlerine uygun içerik bulunamadı.</div>`;
             }
-            isExhausted = true;
+            discoverCache.isExhausted = true;
             return;
           }
 
@@ -230,7 +232,7 @@ export async function renderDiscoverView(initialType = 'tv') {
           discoverCache.currentMinRating = currentMinRating;
 
           const newCardsHTML = results.map(item => renderMediaCard(item)).join('');
-          if (discoverCache.currentPage === 1 && !hasCachedItems) {
+          if (pageToFetch === 1) {
             grid.innerHTML = newCardsHTML;
           } else {
             grid.insertAdjacentHTML('beforeend', newCardsHTML);
@@ -238,7 +240,7 @@ export async function renderDiscoverView(initialType = 'tv') {
           if (window.lucide) window.lucide.createIcons();
           attachMediaCardEvents(grid);
 
-          discoverCache.currentPage += 1;
+          discoverCache.currentPage = pageToFetch + 1;
         } catch (err) {
           console.error('Discover fetch error:', err);
           if (spinner) spinner.style.display = 'none';

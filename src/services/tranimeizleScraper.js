@@ -35,46 +35,61 @@ export async function fetchTrAnimeIzleSources({ titles = [], seriesTitle = '', t
 
   for (const slug of candidateSlugs) {
     if (!slug) continue;
-    try {
-      const epUrl = `https://www.tranimeizle.io/anime/${slug}/${episode}-bolum`;
-      const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
+    
+    const epSlugs = isDub ? [
+      `${slug}-turkce-dublaj/${episode}-bolum`,
+      `${slug}-dublaj/${episode}-bolum`,
+      `${slug}/${episode}-bolum`
+    ] : [
+      `${slug}/${episode}-bolum`
+    ];
 
-      const res = await fetch(proxyUrl).catch(() => null);
-      if (!res || !res.ok) continue;
+    for (const epPath of epSlugs) {
+      try {
+        const epUrl = `https://www.tranimeizle.io/anime/${epPath}`;
+        const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
 
-      const html = await res.text();
-      if (html.includes('Bulunamadı') || html.includes('404')) continue;
+        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null);
+        if (!res || !res.ok) continue;
 
-      const iframes = [...html.matchAll(/<iframe[^>]+src="([^"]+)"/gi)].map(m => m[1]);
-      if (iframes.length > 0) {
-        const directUrl = iframes[0];
+        const html = await res.text();
+        if (html.includes('Bulunamadı') || html.includes('404')) continue;
+        if (isDub && !epPath.includes('dublaj')) {
+          const lower = html.toLowerCase();
+          if (!lower.includes('dublaj') && !lower.includes('türkçe dublaj')) continue;
+        }
+
+        const iframes = [...html.matchAll(/<iframe[^>]+src="([^"]+)"/gi)].map(m => m[1]);
+        if (iframes.length > 0) {
+          const directUrl = iframes[0];
+          return [
+            {
+              id: `tra_${slug}_${episode}_${isDub ? 'dub' : 'sub'}`,
+              name: `TRAnimeİzle (${isDub ? '1080p TR Dublaj' : '1080p Altyazılı'})`,
+              badge: isDub ? '🎌 Dublaj' : '🎌 TRAnime',
+              category: isDub ? 'dubbed' : 'subtitled',
+              streamUrl: directUrl,
+              url: directUrl,
+              getUrl: () => directUrl
+            }
+          ];
+        }
+
         return [
           {
-            id: `tra_${slug}_${episode}`,
-            name: `TRAnimeİzle (1080p Altyazılı)`,
-            badge: '🎌 TRAnime',
+            id: `tra_${slug}_${episode}_${isDub ? 'dub' : 'sub'}`,
+            name: `TRAnimeİzle - Bölüm ${episode} (${isDub ? 'TR Dublaj' : 'Altyazılı'})`,
+            badge: isDub ? '🎌 Dublaj' : '🎌 TRAnime',
             category: isDub ? 'dubbed' : 'subtitled',
-            streamUrl: directUrl,
-            url: directUrl,
-            getUrl: () => directUrl
+            isExternalPopout: true,
+            streamUrl: epUrl,
+            url: epUrl,
+            getUrl: () => epUrl
           }
         ];
+      } catch (e) {
+        // try next pattern
       }
-
-      return [
-        {
-          id: `tra_${slug}_${episode}`,
-          name: `TRAnimeİzle (Bölüm ${episode})`,
-          badge: '🎌 TRAnime',
-          category: isDub ? 'dubbed' : 'subtitled',
-          isExternalPopout: true,
-          streamUrl: epUrl,
-          url: epUrl,
-          getUrl: () => epUrl
-        }
-      ];
-    } catch (e) {
-      console.warn('[TRAnimeIzleScraper] Error:', e.message);
     }
   }
 
