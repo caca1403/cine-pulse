@@ -122,9 +122,10 @@ export async function renderDetailView(type = 'tv', id) {
 
         <div class="detail-container">
           <button class="detail-back-btn" id="btn-detail-back" title="Önceki Sayfaya Geri Dön">
-            <i data-lucide="arrow-left"></i>
+            <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
             <span>Geri Dön</span>
           </button>
+          
           <div class="detail-layout">
             <!-- Poster Card with Subtle Ambient Shadow -->
             <div class="detail-poster-col">
@@ -133,12 +134,13 @@ export async function renderDetailView(type = 'tv', id) {
 
             <!-- Content Details -->
             <div class="detail-info-col">
+              <!-- Frosted Badges Row -->
               <div class="detail-badge-deck">
-                <span class="badge badge-primary">${effectiveType === 'tv' ? 'DİZİ' : 'FİLM'}</span>
-                <span class="badge badge-rating">
-                  <i data-lucide="star" style="width:14px; height:14px; fill: currentColor"></i> ${rating} IMDb
+                <span class="badge badge-type">${effectiveType === 'tv' ? 'DİZİ' : 'FİLM'}</span>
+                <span class="badge badge-imdb">
+                  <i data-lucide="star" style="width:13px; height:13px; fill: currentColor"></i> ${rating} IMDb
                 </span>
-                <span class="badge" style="color: #34d399; border-color: rgba(52, 211, 153, 0.35); background: rgba(52, 211, 153, 0.12);" title="Letterboxd Derecelendirmesi">
+                <span class="badge badge-letterboxd" title="Letterboxd Derecelendirmesi">
                   <span style="letter-spacing: 0.05em; font-weight: 800;">${letterboxdStars}</span> ${starScore}
                 </span>
                 <span class="badge">${year}</span>
@@ -148,22 +150,25 @@ export async function renderDetailView(type = 'tv', id) {
                 ${!media.runtime && media.episode_run_time && media.episode_run_time.length > 0 ? `<span class="badge">${media.episode_run_time[0]} dk / bölüm</span>` : ''}
               </div>
 
+              <!-- Main Title -->
               <h1 class="detail-heading-title">${title}</h1>
-              ${originalTitle && originalTitle !== title ? `<div class="detail-orig-title">${originalTitle}</div>` : ''}
 
-              ${directorName ? `
-                <div class="detail-director-row" style="display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0 0.65rem 0; font-size: 0.88rem; color: #94a3b8;">
-                  <span style="font-weight: 800; font-size: 0.70rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--primary); background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.12rem 0.45rem; border-radius: 4px;">
-                    ${effectiveType === 'tv' ? 'YARATICI' : 'YÖNETMEN'}
+              <!-- Editorial Subtitle (Original Title & Director / Creator) -->
+              <div class="detail-editorial-sub">
+                ${originalTitle && originalTitle !== title ? `<span class="detail-orig-name">${originalTitle}</span>` : ''}
+                ${directorName ? `
+                  <span class="detail-director-pill">
+                    <strong style="color: var(--primary);">${effectiveType === 'tv' ? 'YARATICI' : 'YÖNETMEN'}:</strong> ${directorName}
                   </span>
-                  <span style="color: #ffffff; font-weight: 600;">${directorName}</span>
-                </div>
-              ` : ''}
+                ` : ''}
+              </div>
 
+              <!-- Genres -->
               <div class="detail-genre-row">
                 ${genres.map(g => `<span class="detail-genre-chip">${g.name}</span>`).join('')}
               </div>
 
+              <!-- Storyline -->
               <div class="detail-storyline-wrapper">
                 <p class="detail-storyline truncated" id="detail-storyline-text">${overview}</p>
                 ${overview.length > 120 ? '<button class="btn-storyline-expand" id="btn-expand-storyline"><span>Devamını Oku</span><i data-lucide="chevron-down" style="width:14px;height:14px"></i></button>' : ''}
@@ -193,20 +198,21 @@ export async function renderDetailView(type = 'tv', id) {
 
               <!-- Modern Hero Action Deck -->
               <div class="detail-action-deck">
-                <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
+                <!-- Main Action Row (Play + Trailer) -->
+                <div class="detail-action-main-row">
                   ${effectiveType === 'movie' ? `
                     <button class="btn-play-primary" id="btn-play-movie">
-                      <i data-lucide="play" style="fill: currentColor; width: 22px; height: 22px;"></i>
+                      <i data-lucide="play" style="fill: currentColor; width: 20px; height: 20px;"></i>
                       <span>${playButtonLabel}</span>
                     </button>
                   ` : `
                     <button class="btn-play-primary" id="btn-resume-series">
-                      <i data-lucide="play" style="fill: currentColor; width: 22px; height: 22px;"></i>
+                      <i data-lucide="play" style="fill: currentColor; width: 20px; height: 20px;"></i>
                       <span>${playButtonLabel}</span>
                     </button>
                   `}
 
-                  <button class="btn-secondary" id="btn-watch-trailer" style="padding: 0.85rem 1.4rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 700; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; cursor: pointer; transition: all 0.2s ease;">
+                  <button class="btn-detail-trailer" id="btn-watch-trailer">
                     <i data-lucide="youtube" style="width: 18px; height: 18px;"></i>
                     <span>Fragman İzle</span>
                   </button>
