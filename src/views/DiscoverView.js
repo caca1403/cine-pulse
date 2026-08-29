@@ -33,28 +33,38 @@ export async function renderDiscoverView(initialType = 'tv') {
 
   const tvGenres = [
     { id: null, name: 'Tüm Türler' },
-    { id: GENRE_MAP_TV.ACTION_ADVENTURE, name: 'Aksiyon & Macera' },
-    { id: GENRE_MAP_TV.ANIMATION, name: 'Animasyon & Anime' },
-    { id: GENRE_MAP_TV.COMEDY, name: 'Komedi' },
-    { id: GENRE_MAP_TV.CRIME, name: 'Suç & Polisiye' },
-    { id: GENRE_MAP_TV.DOCUMENTARY, name: 'Belgesel' },
-    { id: GENRE_MAP_TV.DRAMA, name: 'Dram' },
-    { id: GENRE_MAP_TV.SCI_FI_FANTASY, name: 'Bilim Kurgu & Fantastik' },
-    { id: GENRE_MAP_TV.MYSTERY, name: 'Gizem & Gerilim' }
+    { id: GENRE_MAP_TV.MYSTERY, name: '🩸 Korku & Gerilim' },
+    { id: GENRE_MAP_TV.ACTION_ADVENTURE, name: '💥 Aksiyon & Macera' },
+    { id: GENRE_MAP_TV.SCI_FI_FANTASY, name: '🚀 Bilim Kurgu & Fantastik' },
+    { id: GENRE_MAP_TV.DRAMA, name: '🎭 Dram' },
+    { id: GENRE_MAP_TV.COMEDY, name: '😂 Komedi' },
+    { id: GENRE_MAP_TV.CRIME, name: '🕵️ Suç & Polisiye' },
+    { id: GENRE_MAP_TV.ANIMATION, name: '🎌 Animasyon & Anime' },
+    { id: GENRE_MAP_TV.DOCUMENTARY, name: '🌍 Belgesel' },
+    { id: GENRE_MAP_TV.FAMILY, name: '👨‍👩‍👧‍👦 Aile & Gençlik' },
+    { id: GENRE_MAP_TV.WAR_POLITICS, name: '⚔️ Savaş & Politika' },
+    { id: GENRE_MAP_TV.WESTERN, name: '🤠 Western' }
   ];
 
   const movieGenres = [
     { id: null, name: 'Tüm Türler' },
-    { id: GENRE_MAP_MOVIE.ACTION, name: 'Aksiyon' },
-    { id: GENRE_MAP_MOVIE.ADVENTURE, name: 'Macera' },
-    { id: GENRE_MAP_MOVIE.ANIMATION, name: 'Animasyon' },
-    { id: GENRE_MAP_MOVIE.COMEDY, name: 'Komedi' },
-    { id: GENRE_MAP_MOVIE.CRIME, name: 'Suç' },
-    { id: GENRE_MAP_MOVIE.DRAMA, name: 'Dram' },
-    { id: GENRE_MAP_MOVIE.HORROR, name: 'Korku' },
-    { id: GENRE_MAP_MOVIE.SCI_FI, name: 'Bilim Kurgu' },
-    { id: GENRE_MAP_MOVIE.THRILLER, name: 'Gerilim' },
-    { id: GENRE_MAP_MOVIE.ROMANCE, name: 'Romantik' }
+    { id: GENRE_MAP_MOVIE.HORROR, name: '🩸 Korku' },
+    { id: GENRE_MAP_MOVIE.THRILLER, name: '⚡ Gerilim' },
+    { id: GENRE_MAP_MOVIE.ACTION, name: '💥 Aksiyon' },
+    { id: GENRE_MAP_MOVIE.ADVENTURE, name: '🗺️ Macera' },
+    { id: GENRE_MAP_MOVIE.SCI_FI, name: '🚀 Bilim Kurgu' },
+    { id: GENRE_MAP_MOVIE.FANTASY, name: '🧙‍♂️ Fantastik' },
+    { id: GENRE_MAP_MOVIE.DRAMA, name: '🎭 Dram' },
+    { id: GENRE_MAP_MOVIE.COMEDY, name: '😂 Komedi' },
+    { id: GENRE_MAP_MOVIE.CRIME, name: '🕵️ Suç' },
+    { id: GENRE_MAP_MOVIE.ANIMATION, name: '🎌 Animasyon' },
+    { id: GENRE_MAP_MOVIE.MYSTERY, name: '🔍 Gizem' },
+    { id: GENRE_MAP_MOVIE.ROMANCE, name: '💖 Romantik' },
+    { id: GENRE_MAP_MOVIE.DOCUMENTARY, name: '🌍 Belgesel' },
+    { id: GENRE_MAP_MOVIE.HISTORY, name: '🏰 Tarih & Savaş' },
+    { id: GENRE_MAP_MOVIE.FAMILY, name: '👨‍👩‍👧‍👦 Aile' },
+    { id: GENRE_MAP_MOVIE.MUSIC, name: '🎵 Müzikal' },
+    { id: GENRE_MAP_MOVIE.WESTERN, name: '🤠 Western' }
   ];
 
   const getActiveGenres = () => currentType === 'movie' ? movieGenres : tvGenres;
