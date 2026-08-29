@@ -94,8 +94,8 @@ export async function renderDiscoverView(initialType = 'tv') {
         <!-- Filter Controls Container -->
         <div class="discover-controls-wrap glass-panel" style="padding: 1.5rem; border-radius: var(--radius-md); margin-bottom: 2rem; border: 1px solid var(--border-color);">
           
-          <!-- Type Filter Tabs -->
-          <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+          <!-- Type Filter Tabs Segmented Track (Apple TV+ Capsule) -->
+          <div class="discover-segmented-deck">
             <button id="discover-type-tv" class="discover-type-tab ${currentType === 'tv' ? 'active' : ''}">
               <i data-lucide="tv-2" style="width:16px; height:16px;"></i> Diziler
             </button>

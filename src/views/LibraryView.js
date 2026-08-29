@@ -127,44 +127,67 @@ export function renderLibraryView() {
         </div>
 
         <!-- Section Tabs: Devam Et, Tamamlananlar, Favoriler, Listem, Tüm Bölümler -->
-        <div class="season-bar" id="library-tabs" style="margin-bottom: 1.5rem;">
-          <button class="season-btn active" data-tab="continue">İzlemeye Devam Et (<span id="tab-count-continue">${continueHistory.length}</span>)</button>
-          <button class="season-btn" data-tab="completed">Tamamlananlar (<span id="tab-count-completed">${completedHistory.length}</span>)</button>
-          <button class="season-btn" data-tab="favorites">Favorilerim (<span id="tab-count-favorites">${favorites.length}</span>)</button>
-          <button class="season-btn" data-tab="watchlist">İzleme Listesi (<span id="tab-count-watchlist">${watchlist.length}</span>)</button>
-          <button class="season-btn" data-tab="all-episodes">Tüm Bölüm Geçmişi (<span id="tab-count-all-episodes">${allHistory.length}</span>)</button>
+        <div class="library-segmented-nav-track" id="library-tabs">
+          <button class="lib-nav-tab active" data-tab="continue">
+            <i data-lucide="clock"></i>
+            <span>Devam Et</span>
+            <span class="lib-tab-badge" id="tab-count-continue">${continueHistory.length}</span>
+          </button>
+          <button class="lib-nav-tab" data-tab="completed">
+            <i data-lucide="check-circle-2"></i>
+            <span>Tamamlananlar</span>
+            <span class="lib-tab-badge" id="tab-count-completed">${completedHistory.length}</span>
+          </button>
+          <button class="lib-nav-tab" data-tab="favorites">
+            <i data-lucide="heart"></i>
+            <span>Favorilerim</span>
+            <span class="lib-tab-badge" id="tab-count-favorites">${favorites.length}</span>
+          </button>
+          <button class="lib-nav-tab" data-tab="watchlist">
+            <i data-lucide="plus-circle"></i>
+            <span>İzleme Listesi</span>
+            <span class="lib-tab-badge" id="tab-count-watchlist">${watchlist.length}</span>
+          </button>
+          <button class="lib-nav-tab" data-tab="all-episodes">
+            <i data-lucide="list-checks"></i>
+            <span>Bölüm Geçmişi</span>
+            <span class="lib-tab-badge" id="tab-count-all-episodes">${allHistory.length}</span>
+          </button>
         </div>
 
-        <!-- Library Live Controls Bar (Search, Type Filters, Sort & Batch Actions) -->
-        <div class="library-controls-bar">
-          <!-- Search Box -->
-          <div class="library-search-wrapper">
-            <i data-lucide="search" class="library-search-icon"></i>
-            <input type="text" id="lib-search-input" class="library-search-input" placeholder="Kitaplık içinde ara..." autocomplete="off" />
-            <i data-lucide="x" id="lib-search-clear" class="library-search-clear" title="Aramayı temizle"></i>
-          </div>
+        <!-- Library Luxury Toolbar Deck (Search, Type Filters, Sort & Batch Actions) -->
+        <div class="library-toolbar-deck">
+          <div class="library-toolbar-top-row">
+            <!-- Search Pill -->
+            <div class="library-search-wrapper">
+              <i data-lucide="search" class="library-search-icon"></i>
+              <input type="text" id="lib-search-input" class="library-search-input" placeholder="Kitaplıkta ara..." autocomplete="off" />
+              <i data-lucide="x" id="lib-search-clear" class="library-search-clear" title="Temizle"></i>
+            </div>
 
-          <!-- Type Filter Chips -->
-          <div class="library-filter-pills" id="lib-type-filters">
-            <button class="lib-filter-pill active" data-filter="all">Tümü</button>
-            <button class="lib-filter-pill" data-filter="movie">🎬 Filmler</button>
-            <button class="lib-filter-pill" data-filter="tv">📺 Diziler</button>
-            <button class="lib-filter-pill" data-filter="anime">🎌 Animeler</button>
-          </div>
-
-          <!-- Right Sorter & Batch Action -->
-          <div class="library-right-actions">
-            <select id="lib-sort-select" class="library-sort-select" aria-label="Sırala">
-              <option value="recent">Sırala: Son Eklenen</option>
-              <option value="rating-desc">Sırala: En Yüksek IMDb</option>
-              <option value="title-asc">Sırala: İsim (A-Z)</option>
-              <option value="year-desc">Sırala: Yıla Göre (Yeni)</option>
-            </select>
+            <!-- Sort Select Pill -->
+            <div class="library-sort-pill-wrap">
+              <i data-lucide="arrow-down-up" class="library-sort-icon"></i>
+              <select id="lib-sort-select" class="library-sort-select" aria-label="Sırala">
+                <option value="recent">Son Eklenen</option>
+                <option value="rating-desc">En Yüksek IMDb</option>
+                <option value="title-asc">İsim (A-Z)</option>
+                <option value="year-desc">Yıla Göre</option>
+              </select>
+            </div>
 
             <button id="lib-batch-clear-btn" class="btn-lib-clear-batch hidden" title="Bu listedeki tüm kayıtları temizle">
               <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
               <span>Temizle</span>
             </button>
+          </div>
+
+          <!-- Horizontal Smooth Scrollable Filter Segment (Never Wraps!) -->
+          <div class="library-filter-segment-track" id="lib-type-filters">
+            <button class="lib-segment-btn active" data-filter="all">Tümü</button>
+            <button class="lib-segment-btn" data-filter="movie">🎬 Filmler</button>
+            <button class="lib-segment-btn" data-filter="tv">📺 Diziler</button>
+            <button class="lib-segment-btn" data-filter="anime">🎌 Animeler</button>
           </div>
         </div>
 
@@ -326,7 +349,7 @@ export function renderLibraryView() {
       };
 
       // Tab switching handlers
-      const tabs = container.querySelectorAll('#library-tabs .season-btn');
+      const tabs = container.querySelectorAll('#library-tabs .lib-nav-tab');
       tabs.forEach(tab => {
         tab.addEventListener('click', () => {
           tabs.forEach(t => t.classList.remove('active'));
@@ -364,8 +387,8 @@ export function renderLibraryView() {
         });
       }
 
-      // Type Filter Chips handler
-      const filterPills = container.querySelectorAll('#lib-type-filters .lib-filter-pill');
+      // Type Filter Segment handler
+      const filterPills = container.querySelectorAll('#lib-type-filters .lib-segment-btn');
       filterPills.forEach(pill => {
         pill.addEventListener('click', () => {
           filterPills.forEach(p => p.classList.remove('active'));
