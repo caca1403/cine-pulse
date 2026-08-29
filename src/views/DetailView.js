@@ -74,8 +74,19 @@ export async function renderDetailView(type = 'tv', id) {
     playButtonLabel = `Kaldığın Yerden Devam Et (${timeStr})`;
   }
 
-  // Cast list (max 7 actors)
-  const castList = media.credits && media.credits.cast ? media.credits.cast.slice(0, 7) : [];
+  // Director & Creator details (Pentagram / MUBI Editorial Standard)
+  const directors = media.credits?.crew ? media.credits.crew.filter(c => c.job === 'Director').map(d => d.name) : [];
+  const creators = media.created_by ? media.created_by.map(c => c.name) : [];
+  const directorName = directors.length > 0 ? directors.slice(0, 2).join(', ') : (creators.length > 0 ? creators.slice(0, 2).join(', ') : '');
+
+  // Letterboxd 5-Star score calculation
+  const starScore = (parseFloat(rating) / 2).toFixed(1);
+  const starCount = Math.floor(starScore);
+  const hasHalf = (starScore % 1) >= 0.4;
+  const letterboxdStars = '★'.repeat(Math.min(5, starCount)) + (hasHalf && starCount < 5 ? '½' : '');
+
+  // Cast list (max 10 actors)
+  const castList = media.credits && media.credits.cast ? media.credits.cast.slice(0, 10) : [];
 
   let seasonSelectorObj = null;
   if (effectiveType === 'tv' && media.seasons) {
@@ -115,7 +126,7 @@ export async function renderDetailView(type = 'tv', id) {
             <span>Geri Dön</span>
           </button>
           <div class="detail-layout">
-            <!-- Poster Card -->
+            <!-- Poster Card with Subtle Ambient Shadow -->
             <div class="detail-poster-col">
               <img class="detail-poster-img" src="${posterUrl}" alt="${title}" onerror="this.onerror=null; this.src='${SINEFLIX_POSTER_FALLBACK}';" />
             </div>
@@ -123,9 +134,12 @@ export async function renderDetailView(type = 'tv', id) {
             <!-- Content Details -->
             <div class="detail-info-col">
               <div class="detail-badge-deck">
-                <span class="badge badge-primary">${effectiveType === 'tv' ? 'DİZİ / SERİ' : 'FİLM'}</span>
+                <span class="badge badge-primary">${effectiveType === 'tv' ? 'DİZİ' : 'FİLM'}</span>
                 <span class="badge badge-rating">
                   <i data-lucide="star" style="width:14px; height:14px; fill: currentColor"></i> ${rating} IMDb
+                </span>
+                <span class="badge" style="color: #34d399; border-color: rgba(52, 211, 153, 0.35); background: rgba(52, 211, 153, 0.12);" title="Letterboxd Derecelendirmesi">
+                  <span style="letter-spacing: 0.05em; font-weight: 800;">${letterboxdStars}</span> ${starScore}
                 </span>
                 <span class="badge">${year}</span>
                 ${runtimeBadgeHTML}
@@ -137,6 +151,15 @@ export async function renderDetailView(type = 'tv', id) {
               <h1 class="detail-heading-title">${title}</h1>
               ${originalTitle && originalTitle !== title ? `<div class="detail-orig-title">${originalTitle}</div>` : ''}
 
+              ${directorName ? `
+                <div class="detail-director-row" style="display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0 0.65rem 0; font-size: 0.88rem; color: #94a3b8;">
+                  <span style="font-weight: 800; font-size: 0.70rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--primary); background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.12rem 0.45rem; border-radius: 4px;">
+                    ${effectiveType === 'tv' ? 'YARATICI' : 'YÖNETMEN'}
+                  </span>
+                  <span style="color: #ffffff; font-weight: 600;">${directorName}</span>
+                </div>
+              ` : ''}
+
               <div class="detail-genre-row">
                 ${genres.map(g => `<span class="detail-genre-chip">${g.name}</span>`).join('')}
               </div>
@@ -146,17 +169,21 @@ export async function renderDetailView(type = 'tv', id) {
                 ${overview.length > 120 ? '<button class="btn-storyline-expand" id="btn-expand-storyline"><span>Devamını Oku</span><i data-lucide="chevron-down" style="width:14px;height:14px"></i></button>' : ''}
               </div>
 
-              <!-- Oyuncular (Horizontal Smooth Carousel) -->
+              <!-- Oyuncular & Sanatçılar (Letterboxd & Pentagram Style Carousel) -->
               ${castList.length > 0 ? `
                 <div class="detail-cast-block">
-                  <div class="detail-cast-label">Oyuncular</div>
+                  <div class="detail-cast-label">Oyuncular & Ekip</div>
                   <div class="detail-cast-rail">
                     ${castList.map(actor => {
                       const actorPic = actor.profile_path ? getImageUrl(actor.profile_path, TMDB_IMAGE_SIZES.POSTER_SMALL) : SINEFLIX_ACTOR_FALLBACK;
+                      const character = actor.character ? actor.character.split('/')[0].trim() : '';
                       return `
-                        <div class="detail-actor-pill">
+                        <div class="detail-actor-pill" title="${actor.name}${character ? ' (' + character + ')' : ''}">
                           <img src="${actorPic}" alt="${actor.name}" class="detail-actor-avatar" onerror="this.onerror=null; this.src='${SINEFLIX_ACTOR_FALLBACK}';" />
-                          <span class="detail-actor-name">${actor.name}</span>
+                          <div style="display: flex; flex-direction: column; min-width: 0;">
+                            <span class="detail-actor-name">${actor.name}</span>
+                            ${character ? `<span style="font-size: 0.65rem; color: var(--text-muted); line-height: 1; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${character}</span>` : ''}
+                          </div>
                         </div>
                       `;
                     }).join('')}
