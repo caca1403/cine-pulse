@@ -3654,80 +3654,498 @@ img {
 }
 
 /* ==========================================================================
-   Live TV View - Modern Channel Matrix
+   Live TV - Native Television Cinema Experience
    ========================================================================== */
-.live-tv-view {
-  padding: 6.5rem 0 5rem 0;
+.livetv-view {
+  padding: 6.5rem 1.5rem 5rem 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.tv-player-wrap {
+.tv-cinema-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.25rem;
+  min-height: 560px;
+}
+
+/* ── Player Column ── */
+.tv-player-column {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(0, 0, 0, 0.5);
+  background: #000;
+}
+
+.tv-screen {
+  position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
-  border-radius: var(--radius-lg);
   overflow: hidden;
-  margin-bottom: 2rem;
-  border: 1px solid var(--border-light);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
 }
 
-.channel-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+.tv-screen video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  display: block;
+}
+
+/* OSD Channel Banner */
+.tv-osd-banner {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  right: auto;
+  display: flex;
+  align-items: center;
   gap: 1rem;
+  background: rgba(5, 8, 14, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.25rem;
+  z-index: 10;
+  pointer-events: none;
+  max-width: 420px;
 }
 
-.channel-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 1rem;
+.tv-osd-banner.hidden { display: none; }
+.tv-osd-show { animation: tvOsdIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.tv-osd-hide { animation: tvOsdOut 0.4s ease forwards; }
+
+@keyframes tvOsdIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes tvOsdOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(20px); }
+}
+
+.tv-osd-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.tv-osd-info {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0.65rem;
-  cursor: pointer;
-  transition: all 0.22s ease;
+  gap: 0.2rem;
 }
 
-.channel-card:hover {
-  background: var(--bg-surface-elevated);
-  border-color: var(--primary);
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
-}
-
-.channel-card.active {
-  background: rgba(245, 158, 11, 0.18);
-  border-color: var(--primary);
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.35);
-}
-
-.channel-logo-img {
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
-}
-
-.channel-name {
-  font-size: 0.85rem;
-  font-weight: 700;
+.tv-osd-name {
+  font-size: 1.1rem;
+  font-weight: 800;
   color: #fff;
 }
 
-.channel-live-dot {
+.tv-osd-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ef4444;
+  text-transform: uppercase;
+}
+
+.tv-osd-live-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: #ef4444;
-  box-shadow: 0 0 8px #ef4444;
-  animation: pulse 1.5s infinite;
+  box-shadow: 0 0 10px #ef4444;
+  animation: tvPulse 1.3s infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
+.tv-osd-quality {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.tv-osd-chnum {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: var(--font-heading);
+  letter-spacing: -0.05em;
+  margin-left: auto;
+}
+
+/* Loading & Error States */
+.tv-loading, .tv-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 5;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.tv-loading.hidden, .tv-error.hidden { display: none; }
+
+.tv-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(245, 158, 11, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.tv-retry-btn {
+  padding: 0.45rem 1.2rem;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: #000;
+  font-weight: 800;
+  font-size: 0.82rem;
+  border: none;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+/* Controls Bar */
+.tv-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  background: rgba(8, 12, 20, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 0.75rem;
+}
+
+.tv-controls-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.tv-ctrl-logo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.tv-ctrl-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.tv-ctrl-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv-ctrl-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tv-ctrl-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #ef4444;
+  text-transform: uppercase;
+}
+
+.tv-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: tvPulse 1.3s infinite;
+}
+
+@keyframes tvPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.tv-ctrl-quality {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.tv-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tv-ctrl-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.tv-ctrl-btn:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+/* ── Channel Guide Column ── */
+.tv-guide-column {
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 12, 20, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  padding: 0.85rem;
+  gap: 0.65rem;
+  max-height: 640px;
+}
+
+.tv-guide-search {
+  position: relative;
+}
+
+.tv-search-input {
+  width: 100%;
+  padding: 0.55rem 0.85rem 0.55rem 2.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.tv-search-input:focus {
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tv-category-strip {
+  display: flex;
+  gap: 0.3rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 0.25rem;
+}
+.tv-category-strip::-webkit-scrollbar { display: none; }
+
+.tv-cat-pill {
+  padding: 0.32rem 0.7rem;
+  border-radius: var(--radius-full);
+  font-size: 0.70rem;
+  font-weight: 700;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.tv-cat-pill:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tv-cat-pill.active {
+  background: var(--primary-gradient);
+  color: #fff;
+  border-color: transparent;
+}
+
+.tv-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tv-guide-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tv-channel-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+
+.tv-channel-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.tv-channel-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.tv-channel-item.active {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.tv-ch-num {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.25);
+  min-width: 22px;
+  text-align: center;
+  font-family: var(--font-heading);
+}
+
+.tv-channel-item.active .tv-ch-num {
+  color: #fbbf24;
+}
+
+.tv-ch-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.tv-ch-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.tv-ch-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv-channel-item.active .tv-ch-name {
+  color: #fbbf24;
+}
+
+.tv-ch-quality {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.tv-ch-live-indicator {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tv-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+/* ── Mobile Responsive ── */
+@media (max-width: 900px) {
+  .livetv-view {
+    padding: 5.5rem 0.75rem 6rem 0.75rem;
+  }
+  .tv-cinema-layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .tv-guide-column {
+    max-height: 400px;
+  }
+  .tv-osd-banner {
+    bottom: 0.75rem;
+    left: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    max-width: 85%;
+  }
+  .tv-osd-name { font-size: 0.92rem; }
+  .tv-osd-chnum { font-size: 1.4rem; }
+  .tv-osd-logo { width: 32px; height: 32px; }
+  .tv-controls-bar { padding: 0.65rem 0.85rem; }
+  .tv-ctrl-logo { width: 30px; height: 30px; }
+  .tv-ctrl-name { font-size: 0.88rem; }
 }
 
 /* --------------------------------------------------------------------------

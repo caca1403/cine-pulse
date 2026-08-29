@@ -1,115 +1,129 @@
 /* ==========================================================================
-   CinePulse Studio - Live TV Cinema Hub (Canlı TV)
-   Direct HLS video playback & clean full-screen player embeds.
+   CinePulse Studio - Native Television Experience
+   Direct HLS.js m3u8 playback — zero iframes, zero external sites.
+   Real TV channel zapping with OSD overlay & keyboard remote control.
    ========================================================================== */
 
 import { LIVE_TV_CATEGORIES, LIVE_TV_CHANNELS } from '../services/liveTvChannels.js';
+import { showToast } from '../components/Toast.js';
 
 export function renderLiveTvView() {
-  let activeCategory = 'national';
+  let activeCategory = 'all';
   let activeChannel = LIVE_TV_CHANNELS.find(c => c.id === 'ch_trt1') || LIVE_TV_CHANNELS[0];
   let activeHls = null;
   let searchQuery = '';
+  let osdTimeout = null;
+  let isMuted = false;
+
+  function getFilteredChannels() {
+    return LIVE_TV_CHANNELS.filter(ch => {
+      const matchCat = activeCategory === 'all' || ch.category === activeCategory;
+      const matchSearch = !searchQuery || ch.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCat && matchSearch;
+    });
+  }
+
+  function getChannelIndex(ch) {
+    return LIVE_TV_CHANNELS.findIndex(c => c.id === ch.id);
+  }
 
   const html = `
-    <div class="livetv-view container" style="padding-top: 1.5rem; padding-bottom: 3rem;">
-      
-      <!-- Top Title & Stats Banner -->
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <h1 class="section-title" style="font-size: 2rem; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.75rem;">
-            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 12px #ef4444; animation: pulse 1.5s infinite;"></span>
-            <span>Canlı TV Stüdyosu</span>
-          </h1>
-          <p style="color: var(--text-muted); font-size: 0.95rem;">
-            Ulusal kanallar, haber, spor, belgesel ve müzik kanallarını 1080p kesintisiz canlı izleyin.
-          </p>
-        </div>
+    <div class="livetv-view">
 
-        <!-- Live Search Input -->
-        <div style="position: relative; width: 100%; max-width: 320px;">
-          <i data-lucide="search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted);"></i>
-          <input 
-            type="text" 
-            id="livetv-search-input" 
-            placeholder="Kanal ara..." 
-            style="width: 100%; padding: 0.65rem 1rem 0.65rem 2.5rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius-full); color: #fff; font-size: 0.9rem; outline: none;">
-        </div>
-      </div>
+      <!-- TV Cinema Player -->
+      <div class="tv-cinema-layout">
 
-      <!-- Category Filter Pills -->
-      <div class="filter-pill-bar" id="livetv-category-pills" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem;">
-        ${LIVE_TV_CATEGORIES.map(cat => `
-          <button class="filter-pill ${cat.id === activeCategory ? 'active' : ''}" data-category="${cat.id}" style="border-radius: var(--radius-full); padding: 0.5rem 1.2rem; white-space: nowrap; font-size: 0.88rem; font-weight: 600; cursor: pointer;">
-            <i data-lucide="${cat.icon}" style="width: 14px; height: 14px; margin-right: 0.35rem; vertical-align: middle;"></i>
-            <span>${cat.name}</span>
-          </button>
-        `).join('')}
-      </div>
+        <!-- Left: Video Player -->
+        <div class="tv-player-column">
+          <div class="tv-screen" id="tv-screen">
+            <video id="tv-video" autoplay playsinline webkit-playsinline></video>
 
-      <!-- Main Live TV Cinema Layout (Player on Left, Channels on Right) -->
-      <div class="livetv-grid-layout" style="display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; min-height: 580px;">
-        
-        <!-- Left: Cinema Player Screen -->
-        <div class="livetv-player-pane" style="display: flex; flex-direction: column; background: rgba(10, 14, 22, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-xl);">
-          
-          <!-- Video Frame Container -->
-          <div class="livetv-player-screen" id="livetv-player-screen" style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; display: flex; align-items: center; justify-content: center;">
-            <div style="color: var(--text-muted); font-size: 0.95rem;">Yayın yükleniyor...</div>
+            <!-- OSD Channel Banner (fades in/out) -->
+            <div class="tv-osd-banner hidden" id="tv-osd">
+              <div class="tv-osd-left">
+                <img id="tv-osd-logo" class="tv-osd-logo" src="" alt="" />
+                <div class="tv-osd-info">
+                  <div class="tv-osd-name" id="tv-osd-name"></div>
+                  <div class="tv-osd-meta">
+                    <span class="tv-osd-live-dot"></span>
+                    <span>CANLI</span>
+                    <span class="tv-osd-quality" id="tv-osd-quality"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="tv-osd-chnum" id="tv-osd-chnum"></div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div class="tv-loading hidden" id="tv-loading">
+              <div class="tv-loading-spinner"></div>
+              <span>Kanal yükleniyor...</span>
+            </div>
+
+            <!-- Error State -->
+            <div class="tv-error hidden" id="tv-error">
+              <i data-lucide="wifi-off" style="width:32px;height:32px;color:#ef4444;"></i>
+              <span>Yayın akışına bağlanılamadı</span>
+              <button class="tv-retry-btn" id="tv-retry-btn">Tekrar Dene</button>
+            </div>
           </div>
 
-          <!-- Bottom Channel Control Bar -->
-          <div class="livetv-control-bar" style="padding: 1.2rem 1.5rem; background: rgba(15, 23, 42, 0.6); border-top: 1px solid rgba(255, 255, 255, 0.06); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <img id="livetv-active-logo" src="${activeChannel.logo}" alt="${activeChannel.name}" style="width: 48px; height: 48px; object-fit: contain; background: rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 6px; border: 1px solid rgba(255, 255, 255, 0.1);" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1594909122845-11baa439b7bf?w=100&auto=format&fit=crop&q=60';" />
-              <div>
-                <h2 id="livetv-active-title" style="font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0 0 0.2rem 0;">${activeChannel.name}</h2>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                  <span id="livetv-active-badge" class="badge badge-primary" style="font-size: 0.72rem;">${activeChannel.badge}</span>
-                  <span class="badge" style="font-size: 0.72rem; background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3);">
-                    <i data-lucide="activity" style="width: 10px; height: 10px; margin-right: 2px;"></i> CANLI 1080p
-                  </span>
+          <!-- Player Controls Bar -->
+          <div class="tv-controls-bar">
+            <div class="tv-controls-left">
+              <img id="tv-ctrl-logo" class="tv-ctrl-logo" src="${activeChannel.logo}" alt="" onerror="this.style.display='none'" />
+              <div class="tv-ctrl-info">
+                <div class="tv-ctrl-name" id="tv-ctrl-name">${activeChannel.name}</div>
+                <div class="tv-ctrl-badges">
+                  <span class="tv-ctrl-live"><span class="tv-live-dot"></span> CANLI</span>
+                  <span class="tv-ctrl-quality" id="tv-ctrl-quality">${activeChannel.quality}</span>
                 </div>
               </div>
             </div>
-
-            <!-- Popout / External Action -->
-            <div style="display: flex; gap: 0.5rem;">
-              <a id="livetv-popout-btn" href="${activeChannel.streamUrl}" target="_blank" class="btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
-                <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
-                <span>Harici Aç</span>
+            <div class="tv-controls-right">
+              <button class="tv-ctrl-btn" id="tv-btn-mute" title="Sessize Al (M)">
+                <i data-lucide="volume-2" style="width:16px;height:16px;"></i>
+              </button>
+              <button class="tv-ctrl-btn" id="tv-btn-pip" title="Resim İçinde Resim">
+                <i data-lucide="picture-in-picture-2" style="width:16px;height:16px;"></i>
+              </button>
+              <button class="tv-ctrl-btn" id="tv-btn-fullscreen" title="Tam Ekran (F)">
+                <i data-lucide="maximize-2" style="width:16px;height:16px;"></i>
+              </button>
+              <a id="tv-btn-vlc" href="vlc://${activeChannel.streamUrl}" class="tv-ctrl-btn" title="VLC ile Aç">
+                <i data-lucide="external-link" style="width:16px;height:16px;"></i>
               </a>
             </div>
           </div>
-
-          <!-- Dolby / Audio Codec Helper Toolbar -->
-          <div style="padding: 0.75rem 1.5rem; background: rgba(234, 179, 8, 0.05); border-top: 1px solid rgba(234, 179, 8, 0.15); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; font-size: 0.8rem; color: #fef08a;">
-            <div style="display: flex; align-items: center; gap: 0.4rem;">
-              <i data-lucide="volume-2" style="width: 14px; height: 14px; color: #eab308;"></i>
-              <span>Ses alamıyorsanız VLC Player veya harici sekmede açabilirsiniz:</span>
-            </div>
-            <div style="display: flex; gap: 0.4rem;">
-              <a id="livetv-vlc-btn" href="vlc://${activeChannel.streamUrl}" class="btn-primary" style="padding: 0.25rem 0.65rem; font-size: 0.74rem; background: #eab308; color: #000; border: none; border-radius: 4px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-                <i data-lucide="play" style="width: 11px; height: 11px;"></i> VLC
-              </a>
-            </div>
-          </div>
-
         </div>
 
-        <!-- Right: Scrollable Channel Directory -->
-        <div class="livetv-channel-list-pane" style="background: rgba(10, 14, 22, 0.9); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-lg); padding: 1rem; display: flex; flex-direction: column; max-height: 680px;">
-          
-          <div style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
-            <span>Kanallar</span>
-            <span id="livetv-channel-count" style="font-size: 0.78rem; color: var(--text-muted);"></span>
+        <!-- Right: Channel Guide -->
+        <div class="tv-guide-column">
+          <!-- Search -->
+          <div class="tv-guide-search">
+            <i data-lucide="search" style="width:14px;height:14px;color:var(--text-muted);position:absolute;left:0.85rem;top:50%;transform:translateY(-50%);"></i>
+            <input type="text" id="tv-search" class="tv-search-input" placeholder="Kanal ara..." />
           </div>
 
-          <!-- Channel List Scroll Area -->
-          <div id="livetv-channel-scroll" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding-right: 4px;">
+          <!-- Category Pills -->
+          <div class="tv-category-strip" id="tv-category-strip">
+            ${LIVE_TV_CATEGORIES.map(cat => `
+              <button class="tv-cat-pill ${cat.id === activeCategory ? 'active' : ''}" data-cat="${cat.id}">
+                <i data-lucide="${cat.icon}" style="width:12px;height:12px;"></i>
+                <span>${cat.name}</span>
+              </button>
+            `).join('')}
+          </div>
+
+          <!-- Channel Count -->
+          <div class="tv-guide-header">
+            <span class="tv-guide-count" id="tv-guide-count"></span>
+          </div>
+
+          <!-- Channel List -->
+          <div class="tv-channel-list" id="tv-channel-list">
           </div>
         </div>
-
       </div>
 
     </div>
@@ -120,142 +134,278 @@ export function renderLiveTvView() {
     init: (container) => {
       if (!container) return;
 
-      const playerScreen = container.querySelector('#livetv-player-screen');
-      const channelScroll = container.querySelector('#livetv-channel-scroll');
-      const searchInput = container.querySelector('#livetv-search-input');
-      const categoryPills = container.querySelectorAll('.filter-pill');
-      const activeLogo = container.querySelector('#livetv-active-logo');
-      const activeTitle = container.querySelector('#livetv-active-title');
-      const activeBadge = container.querySelector('#livetv-active-badge');
-      const popoutBtn = container.querySelector('#livetv-popout-btn');
-      const vlcBtn = container.querySelector('#livetv-vlc-btn');
-      const countLabel = container.querySelector('#livetv-channel-count');
+      const videoEl = container.querySelector('#tv-video');
+      const screenEl = container.querySelector('#tv-screen');
+      const osdEl = container.querySelector('#tv-osd');
+      const osdLogo = container.querySelector('#tv-osd-logo');
+      const osdName = container.querySelector('#tv-osd-name');
+      const osdQuality = container.querySelector('#tv-osd-quality');
+      const osdChnum = container.querySelector('#tv-osd-chnum');
+      const loadingEl = container.querySelector('#tv-loading');
+      const errorEl = container.querySelector('#tv-error');
+      const retryBtn = container.querySelector('#tv-retry-btn');
+      const ctrlLogo = container.querySelector('#tv-ctrl-logo');
+      const ctrlName = container.querySelector('#tv-ctrl-name');
+      const ctrlQuality = container.querySelector('#tv-ctrl-quality');
+      const channelList = container.querySelector('#tv-channel-list');
+      const searchInput = container.querySelector('#tv-search');
+      const catStrip = container.querySelector('#tv-category-strip');
+      const countLabel = container.querySelector('#tv-guide-count');
+      const muteBtn = container.querySelector('#tv-btn-mute');
+      const pipBtn = container.querySelector('#tv-btn-pip');
+      const fsBtn = container.querySelector('#tv-btn-fullscreen');
+      const vlcBtn = container.querySelector('#tv-btn-vlc');
 
-      function getFilteredChannels() {
-        return LIVE_TV_CHANNELS.filter(ch => {
-          const matchCategory = activeCategory === 'all' || ch.category === activeCategory;
-          const matchSearch = !searchQuery || ch.name.toLowerCase().includes(searchQuery.toLowerCase()) || ch.badge.toLowerCase().includes(searchQuery.toLowerCase());
-          return matchCategory && matchSearch;
-        });
+      // ─── OSD Banner ───
+      function showOSD() {
+        if (osdTimeout) clearTimeout(osdTimeout);
+        const idx = getChannelIndex(activeChannel);
+        osdLogo.src = activeChannel.logo;
+        osdName.textContent = activeChannel.name;
+        osdQuality.textContent = activeChannel.quality;
+        osdChnum.textContent = String(idx + 1).padStart(2, '0');
+        osdEl.classList.remove('hidden');
+        osdEl.classList.add('tv-osd-show');
+
+        osdTimeout = setTimeout(() => {
+          osdEl.classList.remove('tv-osd-show');
+          osdEl.classList.add('tv-osd-hide');
+          setTimeout(() => {
+            osdEl.classList.add('hidden');
+            osdEl.classList.remove('tv-osd-hide');
+          }, 400);
+        }, 4000);
       }
 
-      function loadChannelStream(channel) {
+      // ─── HLS Playback Engine ───
+      function loadChannel(channel) {
         activeChannel = channel;
 
+        // Destroy previous HLS instance
         if (activeHls) {
           activeHls.destroy();
           activeHls = null;
         }
 
-        activeLogo.src = channel.logo;
-        activeTitle.textContent = channel.name;
-        activeBadge.textContent = channel.badge;
-        popoutBtn.href = channel.streamUrl;
+        // Update control bar
+        ctrlLogo.src = channel.logo;
+        ctrlLogo.style.display = '';
+        ctrlName.textContent = channel.name;
+        ctrlQuality.textContent = channel.quality;
         vlcBtn.href = `vlc://${channel.streamUrl}`;
 
-        if (channel.isHls) {
-          playerScreen.innerHTML = `
-            <video 
-              id="livetv-hls-video" 
-              controls 
-              autoplay 
-              style="width: 100%; height: 100%; object-fit: contain; background: #000;">
-            </video>
-          `;
+        // Show loading, hide error
+        loadingEl.classList.remove('hidden');
+        errorEl.classList.add('hidden');
 
-          const videoEl = playerScreen.querySelector('#livetv-hls-video');
-          if (window.Hls && window.Hls.isSupported()) {
-            const hls = new window.Hls({
-              enableWorker: true,
-              lowLatencyMode: true,
-              backBufferLength: 90
-            });
-            activeHls = hls;
-            hls.loadSource(channel.streamUrl);
-            hls.attachMedia(videoEl);
-            hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
-              videoEl.play().catch(() => {});
-            });
-            hls.on(window.Hls.Events.ERROR, (_, data) => {
-              if (data.fatal) {
-                console.warn('[LiveTV Hls Error]', data);
-              }
-            });
-          } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-            videoEl.src = channel.streamUrl;
+        // Show OSD overlay
+        showOSD();
+
+        // Start HLS
+        if (window.Hls && window.Hls.isSupported()) {
+          const hls = new window.Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            backBufferLength: 90,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60
+          });
+          activeHls = hls;
+          hls.loadSource(channel.streamUrl);
+          hls.attachMedia(videoEl);
+
+          hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+            loadingEl.classList.add('hidden');
             videoEl.play().catch(() => {});
-          }
-        } else {
-          playerScreen.innerHTML = `
-            <iframe 
-              src="${channel.streamUrl}" 
-              style="width: 100%; height: 100%; border: none;" 
-              allowfullscreen 
-              referrerpolicy="no-referrer">
-            </iframe>
-          `;
+          });
+
+          hls.on(window.Hls.Events.ERROR, (_, data) => {
+            if (data.fatal) {
+              loadingEl.classList.add('hidden');
+              errorEl.classList.remove('hidden');
+              console.warn('[LiveTV] Fatal HLS error:', data.type, data.details);
+              if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+                setTimeout(() => hls.startLoad(), 3000);
+              }
+            }
+          });
+        } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+          // Safari native HLS
+          videoEl.src = channel.streamUrl;
+          videoEl.addEventListener('loadedmetadata', () => {
+            loadingEl.classList.add('hidden');
+            videoEl.play().catch(() => {});
+          }, { once: true });
+          videoEl.addEventListener('error', () => {
+            loadingEl.classList.add('hidden');
+            errorEl.classList.remove('hidden');
+          }, { once: true });
         }
 
+        // Apply mute state
+        videoEl.muted = isMuted;
+
+        // Re-render channel list to highlight active
         renderChannelList();
         if (window.lucide) window.lucide.createIcons();
       }
 
+      // ─── Channel List Rendering ───
       function renderChannelList() {
         const filtered = getFilteredChannels();
-        countLabel.textContent = `${filtered.length} Kanal`;
+        countLabel.textContent = `${filtered.length} kanal`;
 
         if (filtered.length === 0) {
-          channelScroll.innerHTML = `
-            <div style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
-              Bu kategoride kanal bulunamadı.
+          channelList.innerHTML = `
+            <div class="tv-empty-state">
+              <i data-lucide="radio" style="width:28px;height:28px;color:var(--text-muted);"></i>
+              <span>Kanal bulunamadı</span>
             </div>
           `;
+          if (window.lucide) window.lucide.createIcons();
           return;
         }
 
-        channelScroll.innerHTML = filtered.map(ch => {
+        channelList.innerHTML = filtered.map(ch => {
           const isActive = ch.id === activeChannel.id;
+          const globalIdx = getChannelIndex(ch) + 1;
           return `
-            <button class="livetv-channel-btn ${isActive ? 'active' : ''}" data-id="${ch.id}" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.85rem; border-radius: 10px; background: ${isActive ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.03)'}; border: 1px solid ${isActive ? 'rgba(245, 158, 11, 0.4)' : 'rgba(255, 255, 255, 0.06)'}; text-align: left; cursor: pointer; transition: all 0.2s ease;">
-              <img src="${ch.logo}" alt="${ch.name}" style="width: 32px; height: 32px; object-fit: contain; background: rgba(255,255,255,0.06); border-radius: 6px; padding: 3px; flex-shrink: 0;" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1594909122845-11baa439b7bf?w=80&auto=format&fit=crop&q=60';" />
-              <div style="flex: 1; min-width: 0;">
-                <div style="font-weight: 700; font-size: 0.88rem; color: ${isActive ? '#fbbf24' : '#fff'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${ch.name}</div>
-                <div style="font-size: 0.72rem; color: var(--text-muted);">${ch.badge}</div>
+            <button class="tv-channel-item ${isActive ? 'active' : ''}" data-id="${ch.id}">
+              <span class="tv-ch-num">${String(globalIdx).padStart(2, '0')}</span>
+              <img class="tv-ch-logo" src="${ch.logo}" alt="${ch.name}" onerror="this.style.display='none'" />
+              <div class="tv-ch-info">
+                <span class="tv-ch-name">${ch.name}</span>
+                <span class="tv-ch-quality">${ch.quality}</span>
               </div>
-              <span style="width: 6px; height: 6px; border-radius: 50%; background: ${isActive ? '#34d399' : 'rgba(255,255,255,0.2)'}; box-shadow: ${isActive ? '0 0 8px #34d399' : 'none'};"></span>
+              ${isActive ? '<span class="tv-ch-live-indicator"><span class="tv-live-dot"></span></span>' : ''}
             </button>
           `;
         }).join('');
 
-        channelScroll.querySelectorAll('.livetv-channel-btn').forEach(btn => {
+        // Click handlers
+        channelList.querySelectorAll('.tv-channel-item').forEach(btn => {
           btn.addEventListener('click', () => {
-            const chId = btn.getAttribute('data-id');
-            const target = LIVE_TV_CHANNELS.find(c => c.id === chId);
-            if (target) loadChannelStream(target);
+            const ch = LIVE_TV_CHANNELS.find(c => c.id === btn.dataset.id);
+            if (ch && ch.id !== activeChannel.id) loadChannel(ch);
           });
         });
+
+        // Scroll active into view
+        const activeEl = channelList.querySelector('.tv-channel-item.active');
+        if (activeEl) {
+          setTimeout(() => activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+        }
+
+        if (window.lucide) window.lucide.createIcons();
       }
 
-      // Search Handler
-      searchInput.addEventListener('input', (e) => {
+      // ─── Channel Zapping (Up/Down) ───
+      function zapChannel(direction) {
+        const allChannels = getFilteredChannels();
+        if (allChannels.length === 0) return;
+        const currentIdx = allChannels.findIndex(c => c.id === activeChannel.id);
+        let nextIdx;
+        if (direction === 'up') {
+          nextIdx = currentIdx <= 0 ? allChannels.length - 1 : currentIdx - 1;
+        } else {
+          nextIdx = currentIdx >= allChannels.length - 1 ? 0 : currentIdx + 1;
+        }
+        loadChannel(allChannels[nextIdx]);
+      }
+
+      // ─── Event Handlers ───
+
+      // Search
+      searchInput.addEventListener('input', e => {
         searchQuery = e.target.value.trim();
         renderChannelList();
       });
 
-      // Category Pill Click Handlers
-      categoryPills.forEach(pill => {
+      // Category pills
+      catStrip.querySelectorAll('.tv-cat-pill').forEach(pill => {
         pill.addEventListener('click', () => {
-          categoryPills.forEach(p => p.classList.remove('active'));
+          catStrip.querySelectorAll('.tv-cat-pill').forEach(p => p.classList.remove('active'));
           pill.classList.add('active');
-          activeCategory = pill.getAttribute('data-category');
+          activeCategory = pill.dataset.cat;
           renderChannelList();
         });
       });
 
-      // Initial Load
-      renderChannelList();
-      loadChannelStream(activeChannel);
+      // Retry on error
+      retryBtn.addEventListener('click', () => loadChannel(activeChannel));
 
+      // Mute toggle
+      muteBtn.addEventListener('click', () => {
+        isMuted = !isMuted;
+        videoEl.muted = isMuted;
+        muteBtn.innerHTML = isMuted
+          ? '<i data-lucide="volume-x" style="width:16px;height:16px;"></i>'
+          : '<i data-lucide="volume-2" style="width:16px;height:16px;"></i>';
+        if (window.lucide) window.lucide.createIcons();
+        showToast(isMuted ? 'Ses kapatıldı' : 'Ses açıldı', 'info');
+      });
+
+      // PiP
+      pipBtn.addEventListener('click', async () => {
+        try {
+          if (document.pictureInPictureElement) {
+            await document.exitPictureInPicture();
+          } else if (videoEl.requestPictureInPicture) {
+            await videoEl.requestPictureInPicture();
+          }
+        } catch (e) {
+          showToast('PiP desteklenmiyor', 'error');
+        }
+      });
+
+      // Fullscreen
+      fsBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          screenEl.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      });
+
+      // Keyboard remote
+      function handleKeyboard(e) {
+        // Don't capture if user is typing in search
+        if (document.activeElement === searchInput) return;
+
+        switch (e.key) {
+          case 'ArrowUp':
+            e.preventDefault();
+            zapChannel('up');
+            break;
+          case 'ArrowDown':
+            e.preventDefault();
+            zapChannel('down');
+            break;
+          case 'm':
+          case 'M':
+            muteBtn.click();
+            break;
+          case 'f':
+          case 'F':
+            fsBtn.click();
+            break;
+        }
+      }
+      document.addEventListener('keydown', handleKeyboard);
+
+      // Clean up on navigation
+      const observer = new MutationObserver(() => {
+        if (!document.contains(container)) {
+          if (activeHls) { activeHls.destroy(); activeHls = null; }
+          document.removeEventListener('keydown', handleKeyboard);
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      // ─── Initial Load ───
+      renderChannelList();
+      loadChannel(activeChannel);
       if (window.lucide) window.lucide.createIcons();
     }
   };
