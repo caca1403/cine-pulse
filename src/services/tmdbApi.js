@@ -92,28 +92,11 @@ async function tmdbFetch(endpoint, params = {}) {
 const BLOCKED_NETWORKS = new Set([
   64,   // Discovery Channel
   84,   // TLC
-  4370, // DMAX
-  256,  // Food Network
-  209,  // HGTV
-  91,   // Animal Planet
-  335,  // Investigation Discovery (ID)
-  567,  // Discovery Science
-  414,  // Destination America
-  1024, // American Heroes Channel
-  424,  // DIY Network
-  1870, // MotorTrend
-  2161, // Quest
-  74,   // Bravo
-  68,   // E!
-  47,   // VH1
-  16    // MTV Reality
+  4370  // DMAX
 ]);
 
 const BLOCKED_GENRE_IDS = new Set([
-  10764, // Reality TV (All DMAX / TLC / Lifestyle shows globally)
-  10766, // Soap Opera
-  10767, // Talk Show
-  10763  // News Show
+  10764 // Reality TV
 ]);
 
 const BLOCKED_TITLES = [
