@@ -795,6 +795,23 @@ img {
   box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
 }
 
+.hero-btn-list-icon {
+  width: 48px;
+  height: 48px;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hero-btn-list-icon:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
 /* Apple TV+ Expanding Carousel Dots */
 .hero-dots-wrapper {
   display: flex;
@@ -3434,11 +3451,25 @@ img {
     margin-bottom: 1.2rem;
   }
   .hero-actions {
-    gap: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: nowrap;
   }
-  .btn-primary, .btn-secondary, .hero-btn-trailer {
-    padding: 0.65rem 1.1rem;
+  .hero-btn-play {
+    flex: 1;
+    padding: 0.65rem 1rem;
     font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .hero-btn-trailer {
+    padding: 0.65rem 0.95rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .hero-btn-list-icon {
+    width: 40px;
+    height: 40px;
   }
 
   /* Weekly Spotlight Mobile */

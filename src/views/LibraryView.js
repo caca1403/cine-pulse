@@ -68,16 +68,11 @@ export function renderLibraryView() {
           </div>
 
           <div class="library-action-group">
-            <button id="lib-export-btn" class="btn-secondary" style="padding: 0.52rem 1.1rem; border-radius: var(--radius-full);">
-              <i data-lucide="download" style="width: 15px; height: 15px;"></i> <span>JSON İndir</span>
-            </button>
-            <button id="lib-import-btn" class="btn-secondary" style="padding: 0.52rem 1.1rem; border-radius: var(--radius-full); background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #34d399;">
-              <i data-lucide="upload" style="width: 15px; height: 15px;"></i> <span>JSON Yükle</span>
+            <button id="lib-data-modal-btn" class="btn-secondary" style="padding: 0.48rem 1.1rem; border-radius: var(--radius-full); font-size: 0.84rem; display: inline-flex; align-items: center; gap: 0.45rem;">
+              <i data-lucide="database" style="width: 15px; height: 15px; color: var(--primary);"></i>
+              <span>Veri & Yedek</span>
             </button>
             <input type="file" id="lib-file-input" accept=".json,application/json,text/plain" style="display: none;" />
-            <button id="lib-data-modal-btn" class="btn-secondary" style="padding: 0.52rem 1.1rem; border-radius: var(--radius-full);">
-              <i data-lucide="settings" style="width: 15px; height: 15px;"></i> <span>Veri Yönetimi</span>
-            </button>
           </div>
         </div>
 
@@ -367,10 +362,11 @@ export function renderLibraryView() {
             batchClearBtn.classList.remove('hidden');
             const labelSpan = batchClearBtn.querySelector('span');
             if (labelSpan) {
-              if (currentTab === 'completed') labelSpan.textContent = 'Listeyi Temizle';
-              else if (currentTab === 'continue') labelSpan.textContent = 'Listeyi Temizle';
-              else labelSpan.textContent = 'Geçmişi Temizle';
+              labelSpan.textContent = 'Temizle';
             }
+            if (currentTab === 'completed') batchClearBtn.title = 'Tamamlananlar listesini temizle';
+            else if (currentTab === 'continue') batchClearBtn.title = 'İzlemeye devam et listesini temizle';
+            else batchClearBtn.title = 'Bölüm izleme geçmişini temizle';
           } else {
             batchClearBtn.classList.add('hidden');
           }

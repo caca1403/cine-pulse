@@ -38,16 +38,11 @@ export function renderHeroSlider(items = []) {
       <div class="container">
         <div class="hero-content">
           <div class="hero-badge-row" id="hero-badge-row">
-            <span class="hero-exclusive-pill">
-              <i data-lucide="sparkles" style="width:13px; height:13px;"></i>
-              <span>CINEPULSE SPOTLIGHT</span>
-            </span>
             <span class="badge badge-rating" id="hero-rating-badge">
-              <i data-lucide="star" style="width:13px; height:13px; fill: currentColor"></i> ${rating} IMDb
+              <i data-lucide="star" style="width:12px; height:12px; fill: currentColor"></i> ${rating} IMDb
             </span>
             <span class="badge" id="hero-year-badge">${year}</span>
-            <span class="badge" id="hero-type-badge">${type === 'tv' ? 'DİZİ' : 'FİLM'}</span>
-            <span class="badge badge-quality">4K ULTRA HD</span>
+            <span class="badge badge-type" id="hero-type-badge">${type === 'tv' ? 'DİZİ' : 'FİLM'}</span>
           </div>
 
           <h1 class="hero-title" id="hero-title-text">${title}</h1>
@@ -55,18 +50,17 @@ export function renderHeroSlider(items = []) {
 
           <div class="hero-actions">
             <button class="btn-primary hero-btn-play" id="hero-play-btn" data-id="${id}" data-type="${type}">
-              <i data-lucide="play" style="fill: currentColor; width: 18px; height: 18px;"></i>
+              <i data-lucide="play" style="fill: currentColor; width: 17px; height: 17px;"></i>
               <span>Hemen İzle</span>
             </button>
 
             <button class="btn-secondary hero-btn-trailer" id="hero-trailer-btn" data-id="${id}" data-type="${type}" title="Fragmanı İzle">
-              <i data-lucide="clapperboard" style="width: 17px; height: 17px;"></i>
+              <i data-lucide="clapperboard" style="width: 16px; height: 16px;"></i>
               <span>Fragman</span>
             </button>
 
-            <button class="btn-secondary hero-btn-list" id="hero-list-btn" data-id="${id}" data-type="${type}">
-              <i data-lucide="${inWatchlist ? 'check' : 'plus'}" style="width: 17px; height: 17px;"></i>
-              <span>${inWatchlist ? 'Listemde' : 'Listeme Ekle'}</span>
+            <button class="btn-secondary hero-btn-list-icon" id="hero-list-btn" data-id="${id}" data-type="${type}" title="${inWatchlist ? 'Listemden Çıkar' : 'Listeme Ekle'}">
+              <i data-lucide="${inWatchlist ? 'check' : 'plus'}" style="width: 17px; height: 17px; ${inWatchlist ? 'color: var(--primary);' : ''}"></i>
             </button>
           </div>
 
@@ -130,13 +124,9 @@ export function attachHeroSliderEvents(items = []) {
       const currentItem = slides[currentSlideIndex];
       const added = toggleWatchlist(currentItem);
       showToast(added ? 'İzleme listene eklendi!' : 'İzleme listenden çıkarıldı.', added ? 'success' : 'info');
-      const icon = listBtn.querySelector('i');
-      const text = listBtn.querySelector('span');
-      if (icon && text) {
-        icon.setAttribute('data-lucide', added ? 'check' : 'plus');
-        text.textContent = added ? 'Listemde' : 'Listeme Ekle';
-        if (window.lucide) window.lucide.createIcons();
-      }
+      listBtn.title = added ? 'Listemden Çıkar' : 'Listeme Ekle';
+      listBtn.innerHTML = `<i data-lucide="${added ? 'check' : 'plus'}" style="width: 17px; height: 17px; ${added ? 'color: var(--primary);' : ''}"></i>`;
+      if (window.lucide) window.lucide.createIcons();
     });
   }
 
@@ -197,8 +187,8 @@ function updateHeroSlide(item) {
     listBtn.setAttribute('data-id', item.id);
     listBtn.setAttribute('data-type', type);
     const inList = isWatchlist(item.id);
-    const text = listBtn.querySelector('span');
-    if (text) text.textContent = inList ? 'Listemde' : 'Listeme Ekle';
+    listBtn.title = inList ? 'Listemden Çıkar' : 'Listeme Ekle';
+    listBtn.innerHTML = `<i data-lucide="${inList ? 'check' : 'plus'}" style="width: 17px; height: 17px; ${inList ? 'color: var(--primary);' : ''}"></i>`;
   }
 
   if (window.lucide) window.lucide.createIcons();
