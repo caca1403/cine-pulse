@@ -55,72 +55,72 @@ export function renderLibraryView() {
   const stats = getTotalWatchStats();
 
   const html = `
-    <div class="library-view" style="padding-top: 6rem; padding-bottom: 5rem;">
+    <div class="library-view">
       <div class="container">
         
-        <!-- Header & Action Bar -->
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.8rem; flex-wrap: wrap; gap: 1rem;">
+        <!-- Header & Action Group -->
+        <div class="library-header-row">
           <div>
-            <h1 style="font-size: 2.2rem; display: flex; align-items: center; gap: 0.75rem; font-weight: 800; letter-spacing: -0.02em;">
+            <h1 class="library-header-title">
               <i data-lucide="bookmark" style="color: var(--primary)"></i> Kitaplığım & İstatistikler
             </h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">İzleme geçmişiniz, bitirdikleriniz ve tercihleriniz yerel tarayıcı hafızanızda güvendedir.</p>
+            <p class="library-header-sub">İzleme geçmişiniz, bitirdikleriniz ve tercihleriniz yerel tarayıcı hafızanızda güvendedir.</p>
           </div>
 
-          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-            <button id="lib-export-btn" class="btn-backup" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full);">
-              <i data-lucide="download"></i> JSON İndir (Yedekle)
+          <div class="library-action-group">
+            <button id="lib-export-btn" class="btn-secondary" style="padding: 0.52rem 1.1rem; border-radius: var(--radius-full);">
+              <i data-lucide="download" style="width: 15px; height: 15px;"></i> <span>JSON İndir</span>
             </button>
-            <button id="lib-import-btn" class="btn-secondary" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full); background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #10b981;">
-              <i data-lucide="upload"></i> JSON Yükle (Aktar)
+            <button id="lib-import-btn" class="btn-secondary" style="padding: 0.52rem 1.1rem; border-radius: var(--radius-full); background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #34d399;">
+              <i data-lucide="upload" style="width: 15px; height: 15px;"></i> <span>JSON Yükle</span>
             </button>
             <input type="file" id="lib-file-input" accept=".json,application/json,text/plain" style="display: none;" />
-            <button id="lib-data-modal-btn" class="btn-secondary" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full);">
-              <i data-lucide="settings"></i> Veri Yönetimi
+            <button id="lib-data-modal-btn" class="btn-secondary" style="padding: 0.52rem 1.1rem; border-radius: var(--radius-full);">
+              <i data-lucide="settings" style="width: 15px; height: 15px;"></i> <span>Veri Yönetimi</span>
             </button>
           </div>
         </div>
 
         <!-- User Watch Analytics Stats Row -->
-        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2.2rem;">
+        <div class="stats-grid">
           
-          <div class="stat-card" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.02)); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-lg); padding: 1.2rem 1.4rem; display: flex; align-items: center; gap: 1.1rem; backdrop-filter: blur(10px);">
-            <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center; color: #fbbf24; flex-shrink: 0;">
-              <i data-lucide="clock" style="width: 22px; height: 22px;"></i>
+          <div class="stat-card" style="border-color: rgba(245, 158, 11, 0.25);">
+            <div class="stat-card-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">
+              <i data-lucide="clock"></i>
             </div>
             <div>
-              <div style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: #fbbf24; letter-spacing: 0.05em;">Toplam İzleme Süresi</div>
-              <div id="stat-total-time" style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.15rem;">${stats.formattedTotalTime}</div>
+              <div class="stat-card-label" style="color: #fbbf24;">Toplam İzleme Süresi</div>
+              <div id="stat-total-time" class="stat-card-val">${stats.formattedTotalTime}</div>
             </div>
           </div>
 
-          <div class="stat-card" style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.02)); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: var(--radius-lg); padding: 1.2rem 1.4rem; display: flex; align-items: center; gap: 1.1rem; backdrop-filter: blur(10px);">
-            <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); display: flex; align-items: center; justify-content: center; color: #38bdf8; flex-shrink: 0;">
-              <i data-lucide="tv-2" style="width: 22px; height: 22px;"></i>
+          <div class="stat-card" style="border-color: rgba(56, 189, 248, 0.25);">
+            <div class="stat-card-icon" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+              <i data-lucide="tv-2"></i>
             </div>
             <div>
-              <div style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: #38bdf8; letter-spacing: 0.05em;">İzlenen Bölüm</div>
-              <div id="stat-episodes-count" style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.15rem;">${stats.episodesCount} Bölüm</div>
+              <div class="stat-card-label" style="color: #38bdf8;">İzlenen Bölüm</div>
+              <div id="stat-episodes-count" class="stat-card-val">${stats.episodesCount} Bölüm</div>
             </div>
           </div>
 
-          <div class="stat-card" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(168, 85, 247, 0.02)); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: var(--radius-lg); padding: 1.2rem 1.4rem; display: flex; align-items: center; gap: 1.1rem; backdrop-filter: blur(10px);">
-            <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(168, 85, 247, 0.15); display: flex; align-items: center; justify-content: center; color: #c084fc; flex-shrink: 0;">
-              <i data-lucide="film" style="width: 22px; height: 22px;"></i>
+          <div class="stat-card" style="border-color: rgba(168, 85, 247, 0.25);">
+            <div class="stat-card-icon" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">
+              <i data-lucide="film"></i>
             </div>
             <div>
-              <div style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: #c084fc; letter-spacing: 0.05em;">İzlenen Film</div>
-              <div id="stat-movies-count" style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.15rem;">${stats.moviesCount} Film</div>
+              <div class="stat-card-label" style="color: #c084fc;">İzlenen Film</div>
+              <div id="stat-movies-count" class="stat-card-val">${stats.moviesCount} Film</div>
             </div>
           </div>
 
-          <div class="stat-card" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.02)); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-lg); padding: 1.2rem 1.4rem; display: flex; align-items: center; gap: 1.1rem; backdrop-filter: blur(10px);">
-            <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(239, 68, 68, 0.15); display: flex; align-items: center; justify-content: center; color: #f87171; flex-shrink: 0;">
-              <i data-lucide="heart" style="width: 22px; height: 22px;"></i>
+          <div class="stat-card" style="border-color: rgba(239, 68, 68, 0.25);">
+            <div class="stat-card-icon" style="background: rgba(239, 68, 68, 0.15); color: #f87171;">
+              <i data-lucide="heart"></i>
             </div>
             <div>
-              <div style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: #f87171; letter-spacing: 0.05em;">Favori & Listem</div>
-              <div id="stat-favs-count" style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 0.15rem;">${favorites.length + watchlist.length} Yapım</div>
+              <div class="stat-card-label" style="color: #f87171;">Favori & Listem</div>
+              <div id="stat-favs-count" class="stat-card-val">${favorites.length + watchlist.length} Yapım</div>
             </div>
           </div>
 
@@ -157,14 +157,22 @@ export function renderLibraryView() {
 
         <!-- Library Luxury Toolbar Deck (Search, Type Filters, Sort & Batch Actions) -->
         <div class="library-toolbar-deck">
-          <div class="library-toolbar-top-row">
-            <!-- Search Pill -->
-            <div class="library-search-wrapper">
-              <i data-lucide="search" class="library-search-icon"></i>
-              <input type="text" id="lib-search-input" class="library-search-input" placeholder="Kitaplıkta ara..." autocomplete="off" />
-              <i data-lucide="x" id="lib-search-clear" class="library-search-clear" title="Temizle"></i>
-            </div>
+          <!-- Search Pill -->
+          <div class="library-search-wrapper">
+            <i data-lucide="search" class="library-search-icon"></i>
+            <input type="text" id="lib-search-input" class="library-search-input" placeholder="Kitaplıkta ara..." autocomplete="off" />
+            <i data-lucide="x" id="lib-search-clear" class="library-search-clear" title="Temizle"></i>
+          </div>
 
+          <!-- Horizontal Smooth Scrollable Filter Segment (Never Wraps!) -->
+          <div class="library-filter-segment-track" id="lib-type-filters">
+            <button class="lib-segment-btn active" data-filter="all">Tümü</button>
+            <button class="lib-segment-btn" data-filter="movie">🎬 Filmler</button>
+            <button class="lib-segment-btn" data-filter="tv">📺 Diziler</button>
+            <button class="lib-segment-btn" data-filter="anime">🎌 Animeler</button>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
             <!-- Sort Select Pill -->
             <div class="library-sort-pill-wrap">
               <i data-lucide="arrow-down-up" class="library-sort-icon"></i>
@@ -181,23 +189,21 @@ export function renderLibraryView() {
               <span>Temizle</span>
             </button>
           </div>
-
-          <!-- Horizontal Smooth Scrollable Filter Segment (Never Wraps!) -->
-          <div class="library-filter-segment-track" id="lib-type-filters">
-            <button class="lib-segment-btn active" data-filter="all">Tümü</button>
-            <button class="lib-segment-btn" data-filter="movie">🎬 Filmler</button>
-            <button class="lib-segment-btn" data-filter="tv">📺 Diziler</button>
-            <button class="lib-segment-btn" data-filter="anime">🎌 Animeler</button>
-          </div>
         </div>
 
         <!-- Tab 1: Continue Watching (In-Progress Only) -->
         <div class="tab-content" id="tab-continue">
           ${continueHistory.length === 0 ? `
-            <div class="library-empty-state" style="padding: 4rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.08);">
-              <i data-lucide="clock" style="width: 48px; height: 48px; opacity: 0.4; margin-bottom: 1rem; color: #fbbf24;"></i>
-              <h3 style="color:#fff; font-size:1.15rem;">Yarım kalan içerik yok.</h3>
-              <p style="font-size: 0.9rem; margin-top: 0.5rem;">Dizi veya film izlemeye başladığınızda kaldığınız dakika burada otomatik listelenir.</p>
+            <div class="library-empty-state">
+              <div class="empty-state-icon-wrap">
+                <i data-lucide="clock" style="width: 32px; height: 32px;"></i>
+              </div>
+              <h3 class="empty-state-title">Yarım kalan içerik yok</h3>
+              <p class="empty-state-desc">Dizi veya film izlemeye başladığınızda kaldığınız dakika burada otomatik olarak saklanır.</p>
+              <a href="#discover" class="btn-primary empty-state-action-btn">
+                <i data-lucide="compass" style="width: 16px; height: 16px;"></i>
+                <span>Keşfet'e Göz At</span>
+              </a>
             </div>
           ` : `
             <div class="media-grid" id="grid-continue">
@@ -209,10 +215,16 @@ export function renderLibraryView() {
         <!-- Tab 2: Completed / Finished Watch List -->
         <div class="tab-content hidden" id="tab-completed">
           ${completedHistory.length === 0 ? `
-            <div class="library-empty-state" style="padding: 4rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.08);">
-              <i data-lucide="check-circle-2" style="width: 48px; height: 48px; opacity: 0.4; margin-bottom: 1rem; color: #10b981;"></i>
-              <h3 style="color:#fff; font-size:1.15rem;">Henüz tamamlanmış içerik bulunmuyor.</h3>
-              <p style="font-size: 0.9rem; margin-top: 0.5rem;">İzleyip bitirdiğiniz filmler ve tüm sezonlarını tamamladığınız diziler burada listelenir.</p>
+            <div class="library-empty-state">
+              <div class="empty-state-icon-wrap" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); color: #34d399;">
+                <i data-lucide="check-circle-2" style="width: 32px; height: 32px;"></i>
+              </div>
+              <h3 class="empty-state-title">Henüz tamamlanmış içerik yok</h3>
+              <p class="empty-state-desc">İzleyip bitirdiğiniz filmler ve tüm sezonlarını tamamladığınız diziler burada listelenir.</p>
+              <a href="#movies" class="btn-primary empty-state-action-btn">
+                <i data-lucide="film" style="width: 16px; height: 16px;"></i>
+                <span>Popüler Filmleri İncele</span>
+              </a>
             </div>
           ` : `
             <div class="media-grid" id="grid-completed">
@@ -224,10 +236,16 @@ export function renderLibraryView() {
         <!-- Tab 3: Favorites Grid -->
         <div class="tab-content hidden" id="tab-favorites">
           ${favorites.length === 0 ? `
-            <div class="library-empty-state" style="padding: 4rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.08);">
-              <i data-lucide="heart" style="width: 48px; height: 48px; opacity: 0.4; margin-bottom: 1rem; color: #f87171;"></i>
-              <h3 style="color:#fff; font-size:1.15rem;">Favorilerinize henüz yapım eklemediniz.</h3>
-              <p style="font-size: 0.9rem; margin-top: 0.5rem;">Beğendiğiniz dizi ve filmleri favorilere ekleyerek bu alandan hızlıca erişebilirsiniz.</p>
+            <div class="library-empty-state">
+              <div class="empty-state-icon-wrap" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.3); color: #f87171;">
+                <i data-lucide="heart" style="width: 32px; height: 32px;"></i>
+              </div>
+              <h3 class="empty-state-title">Favorilerinize henüz yapım eklemediniz</h3>
+              <p class="empty-state-desc">Beğendiğiniz dizi ve filmleri detay sayfasından veya kartlardan favorilere ekleyebilirsiniz.</p>
+              <a href="#series" class="btn-primary empty-state-action-btn">
+                <i data-lucide="tv" style="width: 16px; height: 16px;"></i>
+                <span>Trend Dizilere Bak</span>
+              </a>
             </div>
           ` : `
             <div class="media-grid" id="grid-favorites">
@@ -239,10 +257,16 @@ export function renderLibraryView() {
         <!-- Tab 4: Watchlist Grid -->
         <div class="tab-content hidden" id="tab-watchlist">
           ${watchlist.length === 0 ? `
-            <div class="library-empty-state" style="padding: 4rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.08);">
-              <i data-lucide="plus-circle" style="width: 48px; height: 48px; opacity: 0.4; margin-bottom: 1rem; color: #38bdf8;"></i>
-              <h3 style="color:#fff; font-size:1.15rem;">İzleme listeniz boş.</h3>
-              <p style="font-size: 0.9rem; margin-top: 0.5rem;">Daha sonra izlemek istediğiniz içerikleri listenize ekleyebilirsiniz.</p>
+            <div class="library-empty-state">
+              <div class="empty-state-icon-wrap" style="background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.3); color: #38bdf8;">
+                <i data-lucide="plus-circle" style="width: 32px; height: 32px;"></i>
+              </div>
+              <h3 class="empty-state-title">İzleme listeniz henüz boş</h3>
+              <p class="empty-state-desc">Daha sonra izlemek istediğiniz içerikleri listenize kaydedip buradan hızlıca ulaşabilirsiniz.</p>
+              <a href="#discover" class="btn-primary empty-state-action-btn">
+                <i data-lucide="compass" style="width: 16px; height: 16px;"></i>
+                <span>İçerik Keşfet</span>
+              </a>
             </div>
           ` : `
             <div class="media-grid" id="grid-watchlist">
@@ -254,10 +278,16 @@ export function renderLibraryView() {
         <!-- Tab 5: All Episodes Breakdown -->
         <div class="tab-content hidden" id="tab-all-episodes">
           ${allHistory.length === 0 ? `
-            <div class="library-empty-state" style="padding: 4rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed rgba(255,255,255,0.08);">
-              <i data-lucide="list-checks" style="width: 48px; height: 48px; opacity: 0.4; margin-bottom: 1rem; color: #c084fc;"></i>
-              <h3 style="color:#fff; font-size:1.15rem;">Bölüm geçmişi boş.</h3>
-              <p style="font-size: 0.9rem; margin-top: 0.5rem;">Oynatılan veya tek tek işaretlenen tüm bölümler burada saklanır.</p>
+            <div class="library-empty-state">
+              <div class="empty-state-icon-wrap" style="background: rgba(168, 85, 247, 0.12); border-color: rgba(168, 85, 247, 0.3); color: #c084fc;">
+                <i data-lucide="list-checks" style="width: 32px; height: 32px;"></i>
+              </div>
+              <h3 class="empty-state-title">Bölüm geçmişi boş</h3>
+              <p class="empty-state-desc">Oynatılan veya tek tek işaretlenen tüm bölümler burada kaydedilir.</p>
+              <a href="#home" class="btn-primary empty-state-action-btn">
+                <i data-lucide="home" style="width: 16px; height: 16px;"></i>
+                <span>Ana Sayfaya Dön</span>
+              </a>
             </div>
           ` : `
             <div class="media-grid" id="grid-all-episodes">
@@ -265,7 +295,6 @@ export function renderLibraryView() {
             </div>
           `}
         </div>
-
       </div>
     </div>
   `;
