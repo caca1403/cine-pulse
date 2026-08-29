@@ -68,10 +68,10 @@ export async function renderDetailView(type = 'tv', id) {
   let playButtonLabel = effectiveType === 'movie' ? 'Filmi İzle' : '1. Sezon 1. Bölümü İzle';
   if (effectiveType === 'tv' && lastWatchedEp) {
     const timeStr = formatSecondsToTime(lastWatchedEp.currentTime);
-    playButtonLabel = `Kaldığın Yerden Devam Et (S${lastWatchedEp.season} B${lastWatchedEp.episode}${timeStr ? ' • ' + timeStr : ''})`;
+    playButtonLabel = `Devam Et <span class="play-btn-subinfo">S${lastWatchedEp.season} B${lastWatchedEp.episode}${timeStr ? ' • ' + timeStr : ''}</span>`;
   } else if (effectiveType === 'movie' && movieProgress && movieProgress.currentTime > 0) {
     const timeStr = formatSecondsToTime(movieProgress.currentTime);
-    playButtonLabel = `Kaldığın Yerden Devam Et (${timeStr})`;
+    playButtonLabel = `Devam Et <span class="play-btn-subinfo">${timeStr}</span>`;
   }
 
   // Director & Creator details (Pentagram / MUBI Editorial Standard)
