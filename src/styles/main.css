@@ -950,51 +950,58 @@ img {
 /* Status Badges on Poster (Top Left) */
 .card-status-badge {
   position: absolute;
-  top: 0.5rem;
-  left: 0.5rem;
+  top: 0.4rem;
+  left: 0.4rem;
   z-index: 4;
-  padding: 0.2rem 0.45rem;
-  border-radius: 6px;
-  font-size: 0.65rem;
+  padding: 0.16rem 0.42rem;
+  border-radius: 5px;
+  font-size: 0.60rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  max-width: 48%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 .card-status-completed {
-  background: rgba(16, 185, 129, 0.85);
+  background: rgba(16, 185, 129, 0.92);
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .card-status-continue {
-  background: rgba(245, 158, 11, 0.88);
+  background: rgba(245, 158, 11, 0.92);
   color: #000000;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 /* Floating Gold Rating Badge (Top Right) */
 .card-rating-pill {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: 0.4rem;
+  right: 0.4rem;
   z-index: 4;
-  background: rgba(8, 12, 20, 0.82);
+  background: rgba(8, 12, 20, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  padding: 0.18rem 0.45rem;
-  border-radius: 6px;
-  font-size: 0.68rem;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  padding: 0.16rem 0.42rem;
+  border-radius: 5px;
+  font-size: 0.64rem;
   font-weight: 800;
   color: #fbbf24;
   display: inline-flex;
   align-items: center;
-  gap: 0.22rem;
+  gap: 0.2rem;
+  max-width: 48%;
+  box-sizing: border-box;
 }
 
 /* Hover Play Overlay */
