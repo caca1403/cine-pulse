@@ -205,6 +205,34 @@ export function renderLiveTvView() {
         };
         showOSD();
 
+        // Check if channel requires iframe embed player (DMAX, TLC)
+        let iframeEl = screenEl.querySelector('#tv-iframe');
+        if (channel.iframeUrl) {
+          videoEl.style.display = 'none';
+          if (!iframeEl) {
+            iframeEl = document.createElement('iframe');
+            iframeEl.id = 'tv-iframe';
+            iframeEl.style.cssText = 'position: absolute; inset: 0; width: 100%; height: 100%; border: none; background: #000; z-index: 1;';
+            iframeEl.setAttribute('allowfullscreen', 'true');
+            iframeEl.setAttribute('allow', 'autoplay *; encrypted-media *; fullscreen *; picture-in-picture *');
+            screenEl.appendChild(iframeEl);
+          }
+          iframeEl.style.display = 'block';
+          iframeEl.src = channel.iframeUrl;
+          loadingEl.classList.add('hidden');
+          errorEl.classList.add('hidden');
+          renderChannelList();
+          if (window.lucide) window.lucide.createIcons();
+          return;
+        }
+
+        // Native HLS Channel
+        if (iframeEl) {
+          iframeEl.style.display = 'none';
+          iframeEl.src = 'about:blank';
+        }
+        videoEl.style.display = 'block';
+
         // Start HLS
         let triedFallback = false;
         const targetUrl = channel.streamUrl;
