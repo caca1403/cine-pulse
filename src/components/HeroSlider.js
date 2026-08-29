@@ -1,10 +1,12 @@
 /* ==========================================================================
-   SineFlix Pro - Hero Slider Component
-   Featured interactive carousel slider for top trending items with auto-rotator
+   CinePulse Studio - Apple TV+ & Netflix Luxury Hero Spotlight Component
+   Features high-impact full-bleed cinematic ambient backdrop, dynamic metadata,
+   instant trailer player, direct watchlist toggle, and smooth auto-rotator.
    ========================================================================== */
 
-import { getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
+import { getImageUrl, TMDB_IMAGE_SIZES, fetchMediaTrailer } from '../services/tmdbApi.js';
 import { isWatchlist, toggleWatchlist } from '../services/storage.js';
+import { openTrailerModal } from './TrailerModal.js';
 import { showToast } from './Toast.js';
 
 let currentSlideIndex = 0;
@@ -28,15 +30,18 @@ export function renderHeroSlider(items = []) {
 
   return `
     <section class="hero-slider" id="hero-slider-section">
-      <div class="glow-beam glow-beam-red"></div>
-      <div class="glow-beam glow-beam-blue"></div>
+      <div class="hero-ambient-glow"></div>
 
       <div class="hero-backdrop" id="hero-backdrop-img" style="background-image: url('${backdropUrl}')"></div>
+      <div class="hero-overlay-gradient"></div>
       
       <div class="container">
         <div class="hero-content">
           <div class="hero-badge-row" id="hero-badge-row">
-            <span class="badge badge-primary" id="hero-top-badge">TOP ${currentSlideIndex + 1} ÖNE ÇIKAN</span>
+            <span class="hero-exclusive-pill">
+              <i data-lucide="sparkles" style="width:13px; height:13px;"></i>
+              <span>CINEPULSE SPOTLIGHT</span>
+            </span>
             <span class="badge badge-rating" id="hero-rating-badge">
               <i data-lucide="star" style="width:13px; height:13px; fill: currentColor"></i> ${rating} IMDb
             </span>
@@ -54,13 +59,18 @@ export function renderHeroSlider(items = []) {
               <span>Hemen İzle</span>
             </button>
 
+            <button class="btn-secondary hero-btn-trailer" id="hero-trailer-btn" data-id="${id}" data-type="${type}" title="Fragmanı İzle">
+              <i data-lucide="clapperboard" style="width: 17px; height: 17px;"></i>
+              <span>Fragman</span>
+            </button>
+
             <button class="btn-secondary hero-btn-list" id="hero-list-btn" data-id="${id}" data-type="${type}">
-              <i data-lucide="${inWatchlist ? 'check' : 'plus'}" style="width: 18px; height: 18px;"></i>
+              <i data-lucide="${inWatchlist ? 'check' : 'plus'}" style="width: 17px; height: 17px;"></i>
               <span>${inWatchlist ? 'Listemde' : 'Listeme Ekle'}</span>
             </button>
           </div>
 
-          <!-- Carousel Dots (max 10 items) -->
+          <!-- Apple TV+ Pill Carousel Indicators -->
           <div class="hero-dots-wrapper" id="hero-dots-container">
             ${slides.map((_, idx) => `
               <div class="hero-dot ${idx === currentSlideIndex ? 'active' : ''}" data-index="${idx}"></div>
@@ -76,12 +86,42 @@ export function attachHeroSliderEvents(items = []) {
   const slides = items.slice(0, 10);
   const playBtn = document.getElementById('hero-play-btn');
   const listBtn = document.getElementById('hero-list-btn');
+  const trailerBtn = document.getElementById('hero-trailer-btn');
 
   if (playBtn) {
     playBtn.addEventListener('click', () => {
       const id = playBtn.getAttribute('data-id');
       const type = playBtn.getAttribute('data-type');
       window.location.hash = `#detail?type=${type}&id=${id}`;
+    });
+  }
+
+  if (trailerBtn) {
+    trailerBtn.addEventListener('click', async () => {
+      const currentItem = slides[currentSlideIndex];
+      if (!currentItem) return;
+      const type = currentItem.first_air_date || currentItem.media_type === 'tv' ? 'tv' : 'movie';
+      const originalText = trailerBtn.innerHTML;
+      trailerBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:17px;height:17px;"></i> <span>Yükleniyor...</span>`;
+      if (window.lucide) window.lucide.createIcons();
+
+      try {
+        const trailerInfo = await fetchMediaTrailer(type, currentItem.id);
+        if (trailerInfo) {
+          openTrailerModal({
+            title: currentItem.title || currentItem.name,
+            trailerInfo
+          });
+        } else {
+          showToast('Bu yapım için resmi tanıtım fragmanı bulunamadı.', 'info');
+        }
+      } catch (err) {
+        console.error('Hero trailer error:', err);
+        showToast('Fragman yüklenirken hata oluştu.', 'error');
+      } finally {
+        trailerBtn.innerHTML = originalText;
+        if (window.lucide) window.lucide.createIcons();
+      }
     });
   }
 
@@ -109,14 +149,14 @@ export function attachHeroSliderEvents(items = []) {
     });
   });
 
-  // Auto-rotator every 5 seconds for dynamic feel
+  // Auto-rotator every 6 seconds for dynamic feel
   clearInterval(slideInterval);
   slideInterval = setInterval(() => {
     if (slides.length > 0) {
       currentSlideIndex = (currentSlideIndex + 1) % slides.length;
       updateHeroSlide(slides[currentSlideIndex]);
     }
-  }, 5000);
+  }, 6000);
 }
 
 function updateHeroSlide(item) {
@@ -126,8 +166,8 @@ function updateHeroSlide(item) {
   const overviewEl = document.getElementById('hero-overview-text');
   const playBtn = document.getElementById('hero-play-btn');
   const listBtn = document.getElementById('hero-list-btn');
+  const trailerBtn = document.getElementById('hero-trailer-btn');
 
-  const topBadge = document.getElementById('hero-top-badge');
   const ratingBadge = document.getElementById('hero-rating-badge');
   const yearBadge = document.getElementById('hero-year-badge');
   const typeBadge = document.getElementById('hero-type-badge');
@@ -141,14 +181,17 @@ function updateHeroSlide(item) {
   if (titleEl) titleEl.textContent = item.title || item.name;
   if (overviewEl) overviewEl.textContent = item.overview || 'Bu yapım için Türkçe özet henüz eklenmedi.';
 
-  if (topBadge) topBadge.textContent = `TOP ${currentSlideIndex + 1} ÖNE ÇIKAN`;
-  if (ratingBadge) ratingBadge.innerHTML = `<i data-lucide="star" style="width:14px; height:14px; fill: currentColor"></i> ${rating} IMDb`;
+  if (ratingBadge) ratingBadge.innerHTML = `<i data-lucide="star" style="width:13px; height:13px; fill: currentColor"></i> ${rating} IMDb`;
   if (yearBadge) yearBadge.textContent = year || '2024';
   if (typeBadge) typeBadge.textContent = type === 'tv' ? 'DİZİ' : 'FİLM';
 
   if (playBtn) {
     playBtn.setAttribute('data-id', item.id);
     playBtn.setAttribute('data-type', type);
+  }
+  if (trailerBtn) {
+    trailerBtn.setAttribute('data-id', item.id);
+    trailerBtn.setAttribute('data-type', type);
   }
   if (listBtn) {
     listBtn.setAttribute('data-id', item.id);

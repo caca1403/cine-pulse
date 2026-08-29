@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CinePulse Studio - Perfectly Aligned Responsive Glassmorphism Navbar Component
+   CinePulse Studio - Apple TV+ & Netflix Luxury Navbar & Floating Dock
    ========================================================================== */
 
 import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
@@ -16,6 +16,7 @@ export function renderNavbar(currentView = 'home') {
           <span class="brand-name">Cine<span class="brand-highlight">Pulse</span></span>
         </a>
 
+        <!-- Desktop Apple Segmented Navigation Track -->
         <ul class="nav-links desktop-nav-links">
           <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}"><i data-lucide="home"></i><span>Ana Sayfa</span></a></li>
           <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="tv"></i><span>Diziler</span></a></li>
@@ -85,6 +86,30 @@ export function renderNavbar(currentView = 'home') {
         </ul>
       </div>
     </nav>
+
+    <!-- Apple Cupertino Floating Glass Dock (Mobile Native Experience) -->
+    <div class="apple-bottom-dock" id="mobile-bottom-dock">
+      <a href="#home" class="dock-item ${currentView === 'home' ? 'active' : ''}">
+        <i data-lucide="home"></i>
+        <span>Ana Sayfa</span>
+      </a>
+      <a href="#series" class="dock-item ${currentView === 'series' ? 'active' : ''}">
+        <i data-lucide="tv"></i>
+        <span>Diziler</span>
+      </a>
+      <a href="#movies" class="dock-item ${currentView === 'movies' ? 'active' : ''}">
+        <i data-lucide="film"></i>
+        <span>Filmler</span>
+      </a>
+      <a href="#discover" class="dock-item ${currentView === 'discover' ? 'active' : ''}">
+        <i data-lucide="compass"></i>
+        <span>Keşfet</span>
+      </a>
+      <a href="#library" class="dock-item ${currentView === 'library' ? 'active' : ''}">
+        <i data-lucide="bookmark"></i>
+        <span>Listem</span>
+      </a>
+    </div>
   `;
 
   return navbarHTML;
@@ -100,12 +125,12 @@ export function attachNavbarEvents(onNavigate) {
   const mobileSearchCloseBtn = document.getElementById('btn-mobile-search-close');
 
   window.addEventListener('scroll', () => {
-    if (window.scrollY > 30) {
+    if (window.scrollY > 20) {
       navbar?.classList.add('scrolled');
     } else {
       navbar?.classList.remove('scrolled');
     }
-  });
+  }, { passive: true });
 
   // Mobile Menu Drawer Toggle
   if (mobileToggleBtn && mobileDrawer) {
