@@ -199,6 +199,10 @@ export function renderLiveTvView() {
         errorEl.classList.add('hidden');
 
         // Show OSD overlay
+        osdLogo.src = channel.logo;
+        osdLogo.onerror = () => {
+          osdLogo.src = `https://via.placeholder.com/80x80/1e293b/fbbf24?text=${encodeURIComponent(channel.name.slice(0, 3))}`;
+        };
         showOSD();
 
         // Start HLS
@@ -292,10 +296,11 @@ export function renderLiveTvView() {
         channelList.innerHTML = filtered.map(ch => {
           const isActive = ch.id === activeChannel.id;
           const globalIdx = getChannelIndex(ch) + 1;
+          const fallbackPlaceholder = `https://via.placeholder.com/64x64/1e293b/fbbf24?text=${encodeURIComponent(ch.name.slice(0, 3))}`;
           return `
             <button class="tv-channel-item ${isActive ? 'active' : ''}" data-id="${ch.id}">
               <span class="tv-ch-num">${String(globalIdx).padStart(2, '0')}</span>
-              <img class="tv-ch-logo" src="${ch.logo}" alt="${ch.name}" onerror="this.style.display='none'" />
+              <img class="tv-ch-logo" src="${ch.logo}" alt="${ch.name}" onerror="this.onerror=null; this.src='${fallbackPlaceholder}';" loading="lazy" />
               <div class="tv-ch-info">
                 <span class="tv-ch-name">${ch.name}</span>
                 <span class="tv-ch-quality">${ch.quality}</span>
