@@ -30,10 +30,21 @@ async function route() {
 
   if (hash.startsWith('#detail')) {
     viewName = 'detail';
-    const queryStr = hash.split('?')[1] || '';
-    const urlParams = new URLSearchParams(queryStr);
-    params.type = urlParams.get('type') || 'tv';
-    params.id = urlParams.get('id');
+    if (hash.includes('?')) {
+      const queryStr = hash.split('?')[1] || '';
+      const urlParams = new URLSearchParams(queryStr);
+      params.type = urlParams.get('type') || 'tv';
+      params.id = urlParams.get('id');
+    } else if (hash.includes('/')) {
+      const parts = hash.split('/');
+      if (parts.length >= 3) {
+        params.type = parts[1] || 'tv';
+        params.id = parts[2];
+      } else if (parts.length === 2) {
+        params.type = 'tv';
+        params.id = parts[1];
+      }
+    }
   } else if (hash === '#series') {
     viewName = 'series';
   } else if (hash === '#movies') {

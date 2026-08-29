@@ -194,7 +194,7 @@ function setupSearchInput(inputId, overlayId) {
             const year = (item.release_date || item.first_air_date || '').slice(0, 4);
             const poster = getImageUrl(item.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL || TMDB_IMAGE_SIZES.POSTER_MEDIUM);
             const typeLabel = isTv ? 'Dizi' : 'Film';
-            const route = isTv ? `#detail/tv/${item.id}` : `#detail/movie/${item.id}`;
+            const route = `#detail?type=${isTv ? 'tv' : 'movie'}&id=${item.id}`;
 
             return `
               <a href="${route}" class="search-item">
