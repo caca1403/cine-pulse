@@ -173,22 +173,26 @@ function setupSearchInput(inputId, overlayId) {
         return;
       }
 
+      // Show temporary searching indicator
+      overlay.innerHTML = '<div class="search-no-results" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:1rem;color:var(--text-muted);font-size:0.85rem;"><span class="tv-loading-spinner" style="width:16px;height:16px;border-width:2px;"></span> Aranıyor...</div>';
+      overlay.classList.remove('hidden');
+
       searchTimeout = setTimeout(async () => {
         try {
-          const data = await searchMulti(query);
-          const results = data.results ? data.results.slice(0, 6) : [];
+          const rawData = await searchMulti(query);
+          const results = Array.isArray(rawData) ? rawData.slice(0, 8) : (rawData?.results ? rawData.results.slice(0, 8) : []);
 
-          if (results.length === 0) {
+          if (!results || results.length === 0) {
             overlay.innerHTML = '<div class="search-no-results">Sonuç bulunamadı</div>';
             overlay.classList.remove('hidden');
             return;
           }
 
           overlay.innerHTML = results.map(item => {
-            const isTv = item.media_type === 'tv' || !!item.first_air_date;
+            const isTv = item.media_type === 'tv' || !!item.first_air_date || (!item.release_date && !!item.name);
             const title = item.title || item.name || 'İsimsiz İçerik';
             const year = (item.release_date || item.first_air_date || '').slice(0, 4);
-            const poster = getImageUrl(item.poster_path, TMDB_IMAGE_SIZES.poster.small);
+            const poster = getImageUrl(item.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL || TMDB_IMAGE_SIZES.POSTER_MEDIUM);
             const typeLabel = isTv ? 'Dizi' : 'Film';
             const route = isTv ? `#detail/tv/${item.id}` : `#detail/movie/${item.id}`;
 
@@ -199,7 +203,7 @@ function setupSearchInput(inputId, overlayId) {
                   <div class="search-item-title">${title}</div>
                   <div class="search-item-meta">
                     <span class="search-badge">${typeLabel}</span>
-                    <span>${year}</span>
+                    ${year ? `<span>${year}</span>` : ''}
                     <span class="search-rating">★ ${(item.vote_average || 0).toFixed(1)}</span>
                   </div>
                 </div>
@@ -219,13 +223,21 @@ function setupSearchInput(inputId, overlayId) {
           });
         } catch (err) {
           console.error('[Search Overlay Error]', err);
+          overlay.innerHTML = '<div class="search-no-results">Arama sırasında bir hata oluştu</div>';
         }
-      }, 250);
+      }, 200);
     });
 
     document.addEventListener('click', (e) => {
       if (!input.contains(e.target) && !overlay.contains(e.target)) {
         overlay.classList.add('hidden');
+      }
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        overlay.classList.add('hidden');
+        input.blur();
       }
     });
   }
