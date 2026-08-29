@@ -89,6 +89,67 @@ async function tmdbFetch(endpoint, params = {}) {
   return null;
 }
 
+const BLOCKED_TITLES = [
+  'hayalet hikayeleri',
+  'a haunting',
+  'altin pesinde',
+  'gold rush',
+  'olumcul av',
+  'deadliest catch',
+  'hurda avcilari',
+  'salvage hunters',
+  'tamirat tadilat',
+  'wheeler dealers',
+  'agir yasamlar',
+  'my 600-lb life',
+  'evlilige 90 gun',
+  '90 day fiance',
+  'pasta ustalari',
+  'cake boss',
+  'agac ev ustalari',
+  'treehouse masters',
+  'alaska yi kurtarmak',
+  'alaskayi kurtarmak',
+  'alaska: the last frontier',
+  'oto kurtarma kulubu',
+  'fast n loud',
+  'nehir canavarlari',
+  'river monsters',
+  'kupon delileri',
+  'extreme couponing',
+  'temizlik bagimlilari',
+  'obsessive compulsive cleaners',
+  'asiri cimriler',
+  'extreme cheapskates',
+  'restoran kurtarma',
+  'depo savaslari',
+  'storage wars',
+  'gumruk kontrol',
+  'border security'
+];
+
+const BLOCKED_IDS = new Set([3072, 34634, 3126, 45814, 1356, 45598, 61498, 59792, 29849, 23067, 44383, 44372]);
+
+export function isBlockedContent(item) {
+  if (!item) return true;
+  if (item.id && BLOCKED_IDS.has(Number(item.id))) return true;
+
+  // Filter out TV Reality genre (10764), Soap (10766), Talk (10767)
+  const genreIds = item.genre_ids || (Array.isArray(item.genres) ? item.genres.map(g => (typeof g === 'object' ? g.id : g)) : []);
+  if (genreIds.includes(10764) || genreIds.includes(10766) || genreIds.includes(10767)) {
+    return true;
+  }
+
+  const rawTitle = (item.title || item.name || item.original_title || item.original_name || '').toLowerCase()
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c');
+
+  for (const b of BLOCKED_TITLES) {
+    if (rawTitle.includes(b)) return true;
+  }
+
+  return false;
+}
+
 export async function fetchTrending(type = 'all', timeWindow = 'week', page = 1) {
   const [trRes, enRes] = await Promise.all([
     tmdbFetch(`/trending/${type}/${timeWindow}`, { page, language: 'tr-TR' }),
@@ -100,7 +161,7 @@ export async function fetchTrending(type = 'all', timeWindow = 'week', page = 1)
 
   return Promise.all(
     trRes.results
-      .filter(item => item.poster_path || item.backdrop_path)
+      .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
       .map(async (item) => {
         const isTv = item.media_type === 'tv' || !!item.first_air_date;
         const t = isTv ? 'tv' : 'movie';
@@ -134,7 +195,7 @@ export async function fetchPopularSeries(page = 1) {
 
   return Promise.all(
     trRes.results
-      .filter(item => item.poster_path || item.backdrop_path)
+      .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
       .map(async (item) => {
         let overview = (item.overview || '').trim();
         const enOverview = (enMap.get(item.id) || '').trim();
@@ -166,7 +227,7 @@ export async function fetchPopularMovies(page = 1) {
 
   return Promise.all(
     trRes.results
-      .filter(item => item.poster_path || item.backdrop_path)
+      .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
       .map(async (item) => {
         let overview = (item.overview || '').trim();
         const enOverview = (enMap.get(item.id) || '').trim();
@@ -206,7 +267,7 @@ export async function fetchPopularAnime(page = 1) {
 
   return Promise.all(
     combined
-      .filter(item => item.poster_path || item.backdrop_path)
+      .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
       .map(async (item) => {
         let overview = (item.overview || '').trim();
         const enOverview = (enMap.get(item.id) || '').trim();
@@ -244,7 +305,7 @@ export async function fetchPopularDocumentaries(page = 1) {
 
   return Promise.all(
     combined
-      .filter(item => item.poster_path || item.backdrop_path)
+      .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
       .map(async (item) => {
         let overview = (item.overview || '').trim();
         const enOverview = (enMap.get(item.id) || '').trim();
@@ -274,7 +335,7 @@ export async function fetchTopRated(type = 'tv', page = 1) {
 
   return Promise.all(
     trRes.results
-      .filter(item => item.poster_path || item.backdrop_path)
+      .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
       .map(async (item) => {
         let overview = (item.overview || '').trim();
         const enOverview = (enMap.get(item.id) || '').trim();
@@ -329,7 +390,7 @@ export async function fetchDiscoverMedia({
   const items = res?.results || [];
 
   return items
-    .filter(item => item.poster_path || item.backdrop_path)
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => ({
       ...item,
       type: type,
@@ -515,7 +576,11 @@ export async function searchMulti(query, page = 1) {
     }
   }
 
-  return items.filter(item => (item.media_type === 'tv' || item.media_type === 'movie' || (!item.media_type && (item.title || item.name))) && (item.poster_path || item.backdrop_path));
+  return items.filter(item => 
+    (item.media_type === 'tv' || item.media_type === 'movie' || (!item.media_type && (item.title || item.name))) && 
+    (item.poster_path || item.backdrop_path) &&
+    !isBlockedContent(item)
+  );
 }
 
 export const GENRE_MAP_TV = {
