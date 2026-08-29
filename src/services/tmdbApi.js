@@ -90,123 +90,209 @@ async function tmdbFetch(endpoint, params = {}) {
 }
 
 export async function fetchTrending(type = 'all', timeWindow = 'week', page = 1) {
-  const res = await tmdbFetch(`/trending/${type}/${timeWindow}`, { page, language: 'tr-TR' });
-  if (!res || !res.results) return [];
-  return res.results
-    .filter(item => item.poster_path || item.backdrop_path)
-    .map(item => {
-      const isTv = item.media_type === 'tv' || !!item.first_air_date;
-      const t = isTv ? 'tv' : 'movie';
-      const hasOverview = item.overview && item.overview.trim().length > 15;
-      return {
-        ...item,
-        type: t,
-        media_type: t,
-        overview: hasOverview ? item.overview : generateCinematicOverview(item, t)
-      };
-    });
+  const [trRes, enRes] = await Promise.all([
+    tmdbFetch(`/trending/${type}/${timeWindow}`, { page, language: 'tr-TR' }),
+    tmdbFetch(`/trending/${type}/${timeWindow}`, { page, language: 'en-US' })
+  ]);
+  if (!trRes || !trRes.results) return [];
+
+  const enMap = new Map((enRes?.results || []).map(i => [i.id, i.overview]));
+
+  return Promise.all(
+    trRes.results
+      .filter(item => item.poster_path || item.backdrop_path)
+      .map(async (item) => {
+        const isTv = item.media_type === 'tv' || !!item.first_air_date;
+        const t = isTv ? 'tv' : 'movie';
+        let overview = (item.overview || '').trim();
+        const enOverview = (enMap.get(item.id) || '').trim();
+
+        if (!overview || overview.length < 15) {
+          if (enOverview && enOverview.length > 10) {
+            overview = await translateToTurkish(enOverview);
+          }
+        }
+
+        return {
+          ...item,
+          type: t,
+          media_type: t,
+          overview: overview || enOverview || generateCinematicOverview(item, t)
+        };
+      })
+  );
 }
 
 export async function fetchPopularSeries(page = 1) {
-  const res = await tmdbFetch('/discover/tv', {
-    sort_by: 'vote_count.desc',
-    page,
-    language: 'tr-TR'
-  });
-  if (!res || !res.results) return [];
-  return res.results
-    .filter(item => item.poster_path || item.backdrop_path)
-    .map(item => {
-      const hasOverview = item.overview && item.overview.trim().length > 15;
-      return {
-        ...item,
-        type: 'tv',
-        media_type: 'tv',
-        overview: hasOverview ? item.overview : generateCinematicOverview(item, 'tv')
-      };
-    });
+  const [trRes, enRes] = await Promise.all([
+    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'tr-TR' }),
+    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'en-US' })
+  ]);
+  if (!trRes || !trRes.results) return [];
+
+  const enMap = new Map((enRes?.results || []).map(i => [i.id, i.overview]));
+
+  return Promise.all(
+    trRes.results
+      .filter(item => item.poster_path || item.backdrop_path)
+      .map(async (item) => {
+        let overview = (item.overview || '').trim();
+        const enOverview = (enMap.get(item.id) || '').trim();
+
+        if (!overview || overview.length < 15) {
+          if (enOverview && enOverview.length > 10) {
+            overview = await translateToTurkish(enOverview);
+          }
+        }
+
+        return {
+          ...item,
+          type: 'tv',
+          media_type: 'tv',
+          overview: overview || enOverview || generateCinematicOverview(item, 'tv')
+        };
+      })
+  );
 }
 
 export async function fetchPopularMovies(page = 1) {
-  const res = await tmdbFetch('/discover/movie', {
-    sort_by: 'vote_count.desc',
-    page,
-    language: 'tr-TR'
-  });
-  if (!res || !res.results) return [];
-  return res.results
-    .filter(item => item.poster_path || item.backdrop_path)
-    .map(item => {
-      const hasOverview = item.overview && item.overview.trim().length > 15;
-      return {
-        ...item,
-        type: 'movie',
-        media_type: 'movie',
-        overview: hasOverview ? item.overview : generateCinematicOverview(item, 'movie')
-      };
-    });
+  const [trRes, enRes] = await Promise.all([
+    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'tr-TR' }),
+    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'en-US' })
+  ]);
+  if (!trRes || !trRes.results) return [];
+
+  const enMap = new Map((enRes?.results || []).map(i => [i.id, i.overview]));
+
+  return Promise.all(
+    trRes.results
+      .filter(item => item.poster_path || item.backdrop_path)
+      .map(async (item) => {
+        let overview = (item.overview || '').trim();
+        const enOverview = (enMap.get(item.id) || '').trim();
+
+        if (!overview || overview.length < 15) {
+          if (enOverview && enOverview.length > 10) {
+            overview = await translateToTurkish(enOverview);
+          }
+        }
+
+        return {
+          ...item,
+          type: 'movie',
+          media_type: 'movie',
+          overview: overview || enOverview || generateCinematicOverview(item, 'movie')
+        };
+      })
+  );
 }
 
 export async function fetchPopularAnime(page = 1) {
-  const [tvRes, movieRes] = await Promise.all([
-    tmdbFetch('/discover/tv', {
-      sort_by: 'vote_count.desc',
-      page,
-      language: 'tr-TR',
-      with_genres: '16',
-      with_original_language: 'ja'
-    }),
-    tmdbFetch('/discover/movie', {
-      sort_by: 'vote_count.desc',
-      page,
-      language: 'tr-TR',
-      with_genres: '16',
-      with_original_language: 'ja'
-    })
+  const [tvRes, movieRes, enTvRes, enMovieRes] = await Promise.all([
+    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'tr-TR', with_genres: '16', with_original_language: 'ja' }),
+    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'tr-TR', with_genres: '16', with_original_language: 'ja' }),
+    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'en-US', with_genres: '16', with_original_language: 'ja' }),
+    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'en-US', with_genres: '16', with_original_language: 'ja' })
   ]);
 
-  const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv', overview: (item.overview && item.overview.trim().length > 15) ? item.overview : generateCinematicOverview(item, 'tv') }));
-  const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie', overview: (item.overview && item.overview.trim().length > 15) ? item.overview : generateCinematicOverview(item, 'movie') }));
+  const enMap = new Map([
+    ...(enTvRes?.results || []).map(i => [i.id, i.overview]),
+    ...(enMovieRes?.results || []).map(i => [i.id, i.overview])
+  ]);
+
+  const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv' }));
+  const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
   const combined = [...tvItems, ...movieItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
-  return combined.filter(item => item.poster_path || item.backdrop_path);
+
+  return Promise.all(
+    combined
+      .filter(item => item.poster_path || item.backdrop_path)
+      .map(async (item) => {
+        let overview = (item.overview || '').trim();
+        const enOverview = (enMap.get(item.id) || '').trim();
+
+        if (!overview || overview.length < 15) {
+          if (enOverview && enOverview.length > 10) {
+            overview = await translateToTurkish(enOverview);
+          }
+        }
+
+        return {
+          ...item,
+          overview: overview || enOverview || generateCinematicOverview(item, item.type)
+        };
+      })
+  );
 }
 
 export async function fetchPopularDocumentaries(page = 1) {
-  const [tvRes, movieRes] = await Promise.all([
-    tmdbFetch('/discover/tv', {
-      sort_by: 'vote_count.desc',
-      page,
-      language: 'tr-TR',
-      with_genres: '99'
-    }),
-    tmdbFetch('/discover/movie', {
-      sort_by: 'vote_count.desc',
-      page,
-      language: 'tr-TR',
-      with_genres: '99'
-    })
+  const [tvRes, movieRes, enTvRes, enMovieRes] = await Promise.all([
+    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'tr-TR', with_genres: '99' }),
+    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'tr-TR', with_genres: '99' }),
+    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'en-US', with_genres: '99' }),
+    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'en-US', with_genres: '99' })
   ]);
 
-  const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv', overview: (item.overview && item.overview.trim().length > 15) ? item.overview : generateCinematicOverview(item, 'tv') }));
-  const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie', overview: (item.overview && item.overview.trim().length > 15) ? item.overview : generateCinematicOverview(item, 'movie') }));
+  const enMap = new Map([
+    ...(enTvRes?.results || []).map(i => [i.id, i.overview]),
+    ...(enMovieRes?.results || []).map(i => [i.id, i.overview])
+  ]);
+
+  const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv' }));
+  const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
   const combined = [...tvItems, ...movieItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
-  return combined.filter(item => item.poster_path || item.backdrop_path);
+
+  return Promise.all(
+    combined
+      .filter(item => item.poster_path || item.backdrop_path)
+      .map(async (item) => {
+        let overview = (item.overview || '').trim();
+        const enOverview = (enMap.get(item.id) || '').trim();
+
+        if (!overview || overview.length < 15) {
+          if (enOverview && enOverview.length > 10) {
+            overview = await translateToTurkish(enOverview);
+          }
+        }
+
+        return {
+          ...item,
+          overview: overview || enOverview || generateCinematicOverview(item, item.type)
+        };
+      })
+  );
 }
 
 export async function fetchTopRated(type = 'tv', page = 1) {
-  const res = await tmdbFetch(`/${type}/top_rated`, { page, language: 'tr-TR' });
-  if (!res || !res.results) return [];
-  return res.results
-    .filter(item => item.poster_path || item.backdrop_path)
-    .map(item => {
-      const hasOverview = item.overview && item.overview.trim().length > 15;
-      return {
-        ...item,
-        type,
-        media_type: type,
-        overview: hasOverview ? item.overview : generateCinematicOverview(item, type)
-      };
-    });
+  const [trRes, enRes] = await Promise.all([
+    tmdbFetch(`/${type}/top_rated`, { page, language: 'tr-TR' }),
+    tmdbFetch(`/${type}/top_rated`, { page, language: 'en-US' })
+  ]);
+  if (!trRes || !trRes.results) return [];
+
+  const enMap = new Map((enRes?.results || []).map(i => [i.id, i.overview]));
+
+  return Promise.all(
+    trRes.results
+      .filter(item => item.poster_path || item.backdrop_path)
+      .map(async (item) => {
+        let overview = (item.overview || '').trim();
+        const enOverview = (enMap.get(item.id) || '').trim();
+
+        if (!overview || overview.length < 15) {
+          if (enOverview && enOverview.length > 10) {
+            overview = await translateToTurkish(enOverview);
+          }
+        }
+
+        return {
+          ...item,
+          type,
+          media_type: type,
+          overview: overview || enOverview || generateCinematicOverview(item, type)
+        };
+      })
+  );
 }
 
 export async function fetchDiscoverMedia({
