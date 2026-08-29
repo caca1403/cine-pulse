@@ -89,6 +89,33 @@ async function tmdbFetch(endpoint, params = {}) {
   return null;
 }
 
+const BLOCKED_NETWORKS = new Set([
+  64,   // Discovery Channel
+  84,   // TLC
+  4370, // DMAX
+  256,  // Food Network
+  209,  // HGTV
+  91,   // Animal Planet
+  335,  // Investigation Discovery (ID)
+  567,  // Discovery Science
+  414,  // Destination America
+  1024, // American Heroes Channel
+  424,  // DIY Network
+  1870, // MotorTrend
+  2161, // Quest
+  74,   // Bravo
+  68,   // E!
+  47,   // VH1
+  16    // MTV Reality
+]);
+
+const BLOCKED_GENRE_IDS = new Set([
+  10764, // Reality TV (All DMAX / TLC / Lifestyle shows globally)
+  10766, // Soap Opera
+  10767, // Talk Show
+  10763  // News Show
+]);
+
 const BLOCKED_TITLES = [
   'hayalet hikayeleri',
   'a haunting',
@@ -125,7 +152,12 @@ const BLOCKED_TITLES = [
   'depo savaslari',
   'storage wars',
   'gumruk kontrol',
-  'border security'
+  'border security',
+  'nasil yapilir',
+  'how it\'s made',
+  'how its made',
+  'dmax',
+  'tlc'
 ];
 
 const BLOCKED_IDS = new Set([3072, 34634, 3126, 45814, 1356, 45598, 61498, 59792, 29849, 23067, 44383, 44372]);
@@ -134,12 +166,19 @@ export function isBlockedContent(item) {
   if (!item) return true;
   if (item.id && BLOCKED_IDS.has(Number(item.id))) return true;
 
-  // Filter out TV Reality genre (10764), Soap (10766), Talk (10767)
+  // 1. Filter out by TMDB Genre (Reality 10764, Soap 10766, Talk 10767, News 10763)
   const genreIds = item.genre_ids || (Array.isArray(item.genres) ? item.genres.map(g => (typeof g === 'object' ? g.id : g)) : []);
-  if (genreIds.includes(10764) || genreIds.includes(10766) || genreIds.includes(10767)) {
+  if (genreIds.some(id => BLOCKED_GENRE_IDS.has(Number(id)))) {
     return true;
   }
 
+  // 2. Filter out by Network (Discovery, TLC, DMAX, HGTV, Food Network, Animal Planet)
+  const networks = item.networks || [];
+  if (Array.isArray(networks) && networks.some(n => BLOCKED_NETWORKS.has(Number(n.id || n)))) {
+    return true;
+  }
+
+  // 3. Filter out by Title keywords
   const rawTitle = (item.title || item.name || item.original_title || item.original_name || '').toLowerCase()
     .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c');
 
