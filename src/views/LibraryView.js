@@ -367,9 +367,9 @@ export function renderLibraryView() {
             batchClearBtn.classList.remove('hidden');
             const labelSpan = batchClearBtn.querySelector('span');
             if (labelSpan) {
-              if (currentTab === 'completed') labelSpan.textContent = 'Tamamlananları Temizle';
-              else if (currentTab === 'continue') labelSpan.textContent = 'Devam Listesini Temizle';
-              else labelSpan.textContent = 'Tüm Geçmişi Temizle';
+              if (currentTab === 'completed') labelSpan.textContent = 'Listeyi Temizle';
+              else if (currentTab === 'continue') labelSpan.textContent = 'Listeyi Temizle';
+              else labelSpan.textContent = 'Geçmişi Temizle';
             }
           } else {
             batchClearBtn.classList.add('hidden');
