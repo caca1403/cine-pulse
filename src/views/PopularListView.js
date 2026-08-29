@@ -43,14 +43,17 @@ export async function renderPopularListView(type = 'tv') {
     : '<div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">İçerikler yükleniyor...</div>';
 
   const html = `
-    <div class="popular-list-view" style="padding-top: 6.5rem; padding-bottom: 4rem;">
+    <div class="popular-list-view">
       <div class="container">
         <!-- Header -->
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.2rem;">
-          <h1 style="font-size: 2.2rem; display: flex; align-items: center; gap: 0.75rem; color: #fff;">
-            <i data-lucide="${iconName}" style="color: var(--primary)"></i> ${titleText}
+        <div class="popular-list-header">
+          <h1 class="popular-list-title">
+            <span class="rail-icon-pill" style="--rail-color: #f59e0b; width: 32px; height: 32px; flex-shrink: 0;">
+              <i data-lucide="${iconName}" style="width: 17px; height: 17px;"></i>
+            </span>
+            <span>${titleText}</span>
           </h1>
-          <span style="color: var(--text-muted); font-size: 0.9rem;" id="popular-count-label">Tüm zamanların oy sayısına ve genel popülerliğine göre listeleniyor</span>
+          <p class="popular-list-sub" id="popular-count-label">Tüm zamanların oy sayısına ve genel popülerliğine göre listeleniyor</p>
         </div>
 
         <!-- Media Grid -->
