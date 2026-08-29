@@ -709,7 +709,7 @@ export async function openPlayerModal({
                 ${durationText ? `<span>${durationText}</span>` : ''}
                 ${airDate ? `<span>• ${airDate}</span>` : ''}
               </div>
-              <p class="ep-card-overview">${ep.overview || 'Bu bölüm için özet mevcut değil.'}</p>
+              <p class="ep-card-overview">${(ep.overview && ep.overview.trim().length > 5) ? ep.overview : `${epNum}. Bölüm — Olayların giderek tırmandığı ve karakterlerin kaderini belirleyecek önemli gelişmelerin yaşandığı soluksuz bir bölüm.`}</p>
             </div>
           </div>
         `;

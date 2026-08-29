@@ -5,7 +5,7 @@
    Includes movie runtime, bulk series mark-watched, season selectors, and halfway in-progress states.
    ========================================================================== */
 
-import { fetchMediaDetails, fetchMediaTrailer, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
+import { fetchMediaDetails, fetchMediaTrailer, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK, generateCinematicOverview } from '../services/tmdbApi.js';
 import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway } from '../services/storage.js';
 import { renderSeasonSelector } from '../components/SeasonSelector.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
@@ -49,7 +49,7 @@ export async function renderDetailView(type = 'tv', id) {
   const posterUrl = getImageUrl(media.poster_path, TMDB_IMAGE_SIZES.POSTER_MEDIUM);
   const rating = media.vote_average ? media.vote_average.toFixed(1) : '8.5';
   const year = (media.first_air_date || media.release_date || '').substring(0, 4);
-  const overview = media.overview || 'Bu yapım için henüz Türkçe özet bulunmuyor.';
+  const overview = (media.overview && media.overview.trim().length > 15) ? media.overview : generateCinematicOverview(media, effectiveType);
   const genres = media.genres || [];
   const movieDurationSec = media.runtime ? (media.runtime * 60) : 6600;
 
