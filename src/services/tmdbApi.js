@@ -310,8 +310,27 @@ export async function fetchSeasonDetails(tvId, seasonNumber = 1) {
 }
 
 export async function searchMulti(query, page = 1) {
-  const res = await tmdbFetch('/search/multi', { query, page, language: 'tr-TR' });
-  return res && res.results ? res.results.filter(item => (item.media_type === 'tv' || item.media_type === 'movie') && (item.poster_path || item.backdrop_path)) : [];
+  if (!query || !query.trim()) return [];
+  const cleanQuery = query.trim();
+
+  // 1. Search in Turkish
+  const trRes = await tmdbFetch('/search/multi', { query: cleanQuery, page, language: 'tr-TR', include_adult: false });
+  let items = trRes && trRes.results ? trRes.results : [];
+
+  // 2. If results are few (< 5), query English to catch foreign titles
+  if (items.length < 5) {
+    const enRes = await tmdbFetch('/search/multi', { query: cleanQuery, page, language: 'en-US', include_adult: false });
+    if (enRes && enRes.results) {
+      const existingIds = new Set(items.map(i => i.id));
+      for (const item of enRes.results) {
+        if (!existingIds.has(item.id)) {
+          items.push(item);
+        }
+      }
+    }
+  }
+
+  return items.filter(item => (item.media_type === 'tv' || item.media_type === 'movie' || (!item.media_type && (item.title || item.name))) && (item.poster_path || item.backdrop_path));
 }
 
 export const GENRE_MAP_TV = {
