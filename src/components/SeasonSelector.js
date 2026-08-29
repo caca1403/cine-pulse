@@ -19,29 +19,36 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
   const isInitialSeasonWatched = isSeasonFullyWatched(tvId, activeSeasonNumber, initialEpCount);
 
   const html = `
-    <div class="season-container">
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 1rem;">
-        <h2 class="section-title" style="margin-bottom: 0;">
-          <i data-lucide="layers"></i> Sezonlar ve Bölümler
-        </h2>
+    <div class="season-selector-wrapper">
+      <div class="season-selector-header">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <span class="rail-icon-pill" style="--rail-color: #f59e0b; width: 28px; height: 28px;">
+            <i data-lucide="layers" style="width: 15px; height: 15px;"></i>
+          </span>
+          <h2 class="season-selector-title" style="margin: 0;">Sezonlar ve Bölümler</h2>
+        </div>
 
         <!-- Bulk Mark Current Season Watched Button -->
-        <button id="btn-mark-season-all" class="btn-secondary" style="padding: 0.45rem 1.1rem; font-size: 0.85rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; ${isInitialSeasonWatched ? 'background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981;' : ''}">
-          <i data-lucide="${isInitialSeasonWatched ? 'check-circle-2' : 'check-check'}" style="width: 15px; height: 15px;"></i>
+        <button id="btn-mark-season-all" class="btn-secondary" style="padding: 0.45rem 1.1rem; font-size: 0.82rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer; ${isInitialSeasonWatched ? 'background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981;' : ''}">
+          <i data-lucide="${isInitialSeasonWatched ? 'check-circle-2' : 'check-check'}" style="width: 14px; height: 14px;"></i>
           <span>${isInitialSeasonWatched ? 'Bu Sezon İzlendi' : 'Bu Sezonu İzlendi İşaretle'}</span>
         </button>
       </div>
 
-      <div class="season-bar" id="season-tabs-bar" style="margin-bottom: 1.5rem;">
+      <!-- Luxury Segmented Season Pills Track -->
+      <div class="season-pills-track" id="season-tabs-bar" style="margin-bottom: 1.5rem;">
         ${validSeasons.map(season => `
-          <button class="season-btn ${season.season_number === activeSeasonNumber ? 'active' : ''}" data-season="${season.season_number}" data-ep-count="${season.episode_count || 10}">
-            ${season.name || `${season.season_number}. Sezon`} (${season.episode_count} Bölüm)
+          <button class="season-pill ${season.season_number === activeSeasonNumber ? 'active' : ''}" data-season="${season.season_number}" data-ep-count="${season.episode_count || 10}">
+            ${season.name || `${season.season_number}. Sezon`} <span style="opacity: 0.75; font-size: 0.72rem; margin-left: 0.2rem;">(${season.episode_count} Bölüm)</span>
           </button>
         `).join('')}
       </div>
 
-      <div class="episode-grid" id="episode-grid-container">
-        <div style="padding: 2rem; text-align: center; color: var(--text-muted);">Bölümler yükleniyor...</div>
+      <div class="episodes-grid" id="episode-grid-container">
+        <div style="padding: 3rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">
+          <i data-lucide="loader-2" class="spin-loader" style="width: 24px; height: 24px; margin-bottom: 0.5rem;"></i>
+          <div>Bölümler yükleniyor...</div>
+        </div>
       </div>
     </div>
   `;
@@ -76,10 +83,10 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
 
       loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual);
 
-      container.querySelectorAll('.season-btn').forEach(btn => {
+      container.querySelectorAll('.season-pill').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.preventDefault();
-          container.querySelectorAll('.season-btn').forEach(b => b.classList.remove('active'));
+          container.querySelectorAll('.season-pill').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           currentActiveSeason = parseInt(btn.getAttribute('data-season'), 10);
           currentEpCount = parseInt(btn.getAttribute('data-ep-count'), 10) || 10;
@@ -143,11 +150,12 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
   const gridContainer = container.querySelector('#episode-grid-container');
   if (!gridContainer) return;
 
-  gridContainer.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">${seasonNum}. Sezon bölümleri getiriliyor...</div>`;
+  gridContainer.innerHTML = `<div style="padding: 3rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;"><i data-lucide="loader-2" class="spin-loader" style="width: 24px; height: 24px; margin-bottom: 0.5rem;"></i><div>${seasonNum}. Sezon bölümleri getiriliyor...</div></div>`;
+  if (window.lucide) window.lucide.createIcons();
 
   const seasonData = await fetchSeasonDetails(tvId, seasonNum);
   if (!seasonData || !seasonData.episodes || seasonData.episodes.length === 0) {
-    gridContainer.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">Bu sezon için bölüm verisi bulunamadı.</div>`;
+    gridContainer.innerHTML = `<div style="padding: 3rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">Bu sezon için bölüm verisi bulunamadı.</div>`;
     return;
   }
 
@@ -165,9 +173,10 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
       }
     }
 
-    const isLongText = rawOverview.length > 85;
+    const isLongText = rawOverview.length > 90;
     const stillUrl = getImageUrl(ep.still_path, TMDB_IMAGE_SIZES.STILL_MEDIUM);
     const airDate = ep.air_date || '';
+    const runtime = ep.runtime ? `${ep.runtime} dk` : '';
 
     const progress = getMediaProgress(tvId, seasonNum, epNum);
     const progressPercent = progress ? progress.progressPercent : 0;
@@ -183,31 +192,37 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
     let badgeStatusHTML = '';
     if (isCompleted) {
       badgeStatusHTML = `
-        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green);">
-          <i data-lucide="check" style="width:12px; height:12px"></i> İZLENDİ
+        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green); z-index: 4;">
+          <i data-lucide="check" style="width:11px; height:11px"></i> İZLENDİ
         </span>
       `;
     } else if (isHalfway) {
       badgeStatusHTML = `
-        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: rgba(245, 158, 11, 0.9); color: #000; font-weight: 700;">
-          <i data-lucide="clock" style="width:12px; height:12px"></i> YARIDA
+        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: rgba(245, 158, 11, 0.95); color: #000; font-weight: 800; z-index: 4;">
+          <i data-lucide="clock" style="width:11px; height:11px"></i> YARIDA
         </span>
       `;
     } else {
       badgeStatusHTML = `
-        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green); display: none;">
-          <i data-lucide="check" style="width:12px; height:12px"></i> İZLENDİ
+        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green); display: none; z-index: 4;">
+          <i data-lucide="check" style="width:11px; height:11px"></i> İZLENDİ
         </span>
       `;
     }
 
     return `
       <div class="episode-card" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" data-title="${epTitle}">
-        <div class="episode-thumb-wrapper">
-          <img class="episode-thumb" src="${stillUrl}" alt="${epTitle}" loading="lazy" onerror="this.onerror=null; this.src='${SINEFLIX_POSTER_FALLBACK}';" />
-          <span class="episode-number-badge">${seasonNum}x${epNum < 10 ? '0' + epNum : epNum}</span>
+        <div class="episode-thumb-wrap">
+          <img src="${stillUrl}" alt="${epTitle}" loading="lazy" onerror="this.onerror=null; this.src='${SINEFLIX_POSTER_FALLBACK}';" />
+          <span class="episode-number-chip">${seasonNum}x${epNum < 10 ? '0' + epNum : epNum}</span>
           ${badgeStatusHTML}
           
+          <div class="episode-play-overlay">
+            <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-gradient); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
+              <i data-lucide="play" style="width: 20px; height: 20px; fill: #fff; color: #fff; margin-left: 2px;"></i>
+            </div>
+          </div>
+
           <!-- Top Right Action Controls: Mark Watched & Halfway -->
           <div style="position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.35rem; z-index: 5;">
             <button class="btn-mark-ep-halfway" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" title="Yarıda Bırakıldı (20. dk)" style="width: 28px; height: 28px; border-radius: 50%; background: ${isHalfway ? '#f59e0b' : 'rgba(0,0,0,0.65)'}; border: 1px solid ${isHalfway ? '#f59e0b' : 'rgba(255,255,255,0.3)'}; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
@@ -223,23 +238,29 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
         </div>
 
         <div class="episode-info">
-          <div class="episode-title">${epNum}. ${epTitle}</div>
+          <div class="episode-header-row">
+            <span class="episode-title" title="${epTitle}">${epNum}. ${epTitle}</span>
+            <span class="episode-duration">${runtime || airDate}</span>
+          </div>
           
           <div class="episode-overview-container">
             <div class="episode-overview ${isLongText ? 'truncated' : ''}" data-full="${rawOverview}">
               ${rawOverview}
             </div>
             ${isLongText ? `
-              <button class="btn-toggle-overview" style="color: var(--primary); font-weight: 700; font-size: 0.82rem; margin-top: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+              <button class="btn-toggle-overview" style="color: var(--primary); font-weight: 700; font-size: 0.78rem; margin-top: 0.25rem; display: inline-flex; align-items: center; gap: 0.2rem; cursor: pointer; background: none; border: none; padding: 0;">
                 <span>Devamını Oku</span>
-                <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+                <i data-lucide="chevron-down" style="width: 12px; height: 12px;"></i>
               </button>
             ` : ''}
           </div>
 
-          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: auto; padding-top: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: auto; padding-top: 0.45rem; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.06);">
             <span>${airDate}</span>
-            <span class="btn-play-episode-trigger" style="color: var(--primary); font-weight: 700; cursor: pointer;">Hemen İzle ▶</span>
+            <span class="btn-play-episode-trigger" style="color: var(--primary); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
+              <span>Oynat</span>
+              <i data-lucide="play" style="width: 11px; height: 11px; fill: currentColor;"></i>
+            </span>
           </div>
         </div>
       </div>
@@ -394,7 +415,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
 
     card.addEventListener('click', playEpisode);
     
-    const thumbWrapper = card.querySelector('.episode-thumb-wrapper');
+    const thumbWrapper = card.querySelector('.episode-thumb-wrap');
     if (thumbWrapper) thumbWrapper.addEventListener('click', playEpisode);
 
     const playTrigger = card.querySelector('.btn-play-episode-trigger');

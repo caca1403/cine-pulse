@@ -174,11 +174,21 @@ export async function renderDetailView(type = 'tv', id) {
                 ${overview.length > 120 ? '<button class="btn-storyline-expand" id="btn-expand-storyline"><span>Devamını Oku</span><i data-lucide="chevron-down" style="width:14px;height:14px"></i></button>' : ''}
               </div>
 
-              <!-- Oyuncular & Sanatçılar (Letterboxd & Pentagram Style Carousel) -->
+              <!-- Oyuncular & Sanatçılar (Letterboxd & Pentagram Style Carousel with PC Mouse Scroll & Nav Buttons) -->
               ${castList.length > 0 ? `
                 <div class="detail-cast-block">
-                  <div class="detail-cast-label">Oyuncular & Ekip</div>
-                  <div class="detail-cast-rail">
+                  <div class="detail-cast-header">
+                    <span class="detail-cast-label">Oyuncular & Ekip</span>
+                    <div class="detail-cast-nav-arrows">
+                      <button class="cast-nav-btn" id="btn-cast-prev" title="Önceki Oyuncular" aria-label="Geri">
+                        <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
+                      </button>
+                      <button class="cast-nav-btn" id="btn-cast-next" title="Sonraki Oyuncular" aria-label="İleri">
+                        <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="detail-cast-rail" id="detail-cast-rail">
                     ${castList.map(actor => {
                       const actorPic = actor.profile_path ? getImageUrl(actor.profile_path, TMDB_IMAGE_SIZES.POSTER_SMALL) : SINEFLIX_ACTOR_FALLBACK;
                       const character = actor.character ? actor.character.split('/')[0].trim() : '';
@@ -524,6 +534,62 @@ export async function renderDetailView(type = 'tv', id) {
           const icon = expandBtn.querySelector('i');
           if (span) span.textContent = isExpanded ? 'Devamını Oku' : 'Daralt';
           if (icon) icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+      }
+
+      // Cast rail PC mouse wheel, drag-to-scroll, and navigation arrows
+      const castRail = container.querySelector('#detail-cast-rail');
+      const castPrev = container.querySelector('#btn-cast-prev');
+      const castNext = container.querySelector('#btn-cast-next');
+
+      if (castRail) {
+        if (castPrev) {
+          castPrev.addEventListener('click', (e) => {
+            e.preventDefault();
+            castRail.scrollBy({ left: -280, behavior: 'smooth' });
+          });
+        }
+        if (castNext) {
+          castNext.addEventListener('click', (e) => {
+            e.preventDefault();
+            castRail.scrollBy({ left: 280, behavior: 'smooth' });
+          });
+        }
+
+        // Horizontal scrolling on mouse wheel (PC)
+        castRail.addEventListener('wheel', (e) => {
+          if (e.deltaY !== 0) {
+            e.preventDefault();
+            castRail.scrollLeft += e.deltaY;
+          }
+        }, { passive: false });
+
+        // Mouse drag-to-scroll (PC)
+        let isDown = false;
+        let startX = 0;
+        let scrollLeft = 0;
+
+        castRail.addEventListener('mousedown', (e) => {
+          isDown = true;
+          castRail.classList.add('dragging');
+          startX = e.pageX - castRail.offsetLeft;
+          scrollLeft = castRail.scrollLeft;
+        });
+
+        const stopDrag = () => {
+          isDown = false;
+          castRail.classList.remove('dragging');
+        };
+
+        castRail.addEventListener('mouseleave', stopDrag);
+        castRail.addEventListener('mouseup', stopDrag);
+
+        castRail.addEventListener('mousemove', (e) => {
+          if (!isDown) return;
+          e.preventDefault();
+          const x = e.pageX - castRail.offsetLeft;
+          const walk = (x - startX) * 1.5;
+          castRail.scrollLeft = scrollLeft - walk;
         });
       }
 

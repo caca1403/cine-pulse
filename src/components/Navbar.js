@@ -46,11 +46,6 @@ export function renderNavbar(currentView = 'home') {
           <button id="btn-open-backup" class="btn-action-icon" title="Yedekleme & Veri Yönetimi">
             <i data-lucide="hard-drive-download"></i>
           </button>
-
-          <!-- Mobile Hamburger Toggle -->
-          <button id="btn-mobile-menu-toggle" class="btn-action-icon mobile-only" aria-label="Menüyü Aç">
-            <i data-lucide="menu" id="icon-mobile-menu"></i>
-          </button>
         </div>
       </div>
 
@@ -64,26 +59,6 @@ export function renderNavbar(currentView = 'home') {
           </button>
         </div>
         <div id="mobile-search-overlay" class="search-results-overlay glass-panel hidden"></div>
-      </div>
-
-      <!-- Mobile Navigation Drawer -->
-      <div id="mobile-menu-drawer" class="mobile-menu-drawer glass-panel hidden">
-        <div class="mobile-menu-header">
-          <span class="mobile-menu-title">CinePulse Menü</span>
-          <button id="btn-mobile-menu-close" class="btn-icon">
-            <i data-lucide="x"></i>
-          </button>
-        </div>
-        <ul class="mobile-nav-links">
-          <li><a href="#home" class="mobile-nav-link ${currentView === 'home' ? 'active' : ''}"><i data-lucide="home"></i><span>Ana Sayfa</span></a></li>
-          <li><a href="#series" class="mobile-nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="tv"></i><span>Diziler</span></a></li>
-          <li><a href="#movies" class="mobile-nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="film"></i><span>Filmler</span></a></li>
-          <li><a href="#anime" class="mobile-nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="sparkles"></i><span>Anime</span></a></li>
-          <li><a href="#documentary" class="mobile-nav-link ${currentView === 'documentary' ? 'active' : ''}"><i data-lucide="globe"></i><span>Belgesel</span></a></li>
-          <li><a href="#livetv" class="mobile-nav-link ${currentView === 'livetv' ? 'active' : ''}"><i data-lucide="radio"></i><span>Canlı TV</span></a></li>
-          <li><a href="#discover" class="mobile-nav-link ${currentView === 'discover' ? 'active' : ''}"><i data-lucide="compass"></i><span>Keşfet</span></a></li>
-          <li><a href="#library" class="mobile-nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="bookmark"></i><span>Listem & Geçmiş</span></a></li>
-        </ul>
       </div>
     </nav>
 
@@ -117,9 +92,6 @@ export function renderNavbar(currentView = 'home') {
 
 export function attachNavbarEvents(onNavigate) {
   const navbar = document.getElementById('main-navbar');
-  const mobileDrawer = document.getElementById('mobile-menu-drawer');
-  const mobileToggleBtn = document.getElementById('btn-mobile-menu-toggle');
-  const mobileCloseBtn = document.getElementById('btn-mobile-menu-close');
   const mobileSearchRow = document.getElementById('mobile-search-row');
   const mobileSearchToggleBtn = document.getElementById('btn-mobile-search-toggle');
   const mobileSearchCloseBtn = document.getElementById('btn-mobile-search-close');
@@ -131,21 +103,6 @@ export function attachNavbarEvents(onNavigate) {
       navbar?.classList.remove('scrolled');
     }
   }, { passive: true });
-
-  // Mobile Menu Drawer Toggle
-  if (mobileToggleBtn && mobileDrawer) {
-    mobileToggleBtn.addEventListener('click', () => {
-      mobileSearchRow?.classList.add('hidden');
-      mobileDrawer.classList.toggle('hidden');
-      if (window.lucide) window.lucide.createIcons();
-    });
-  }
-
-  if (mobileCloseBtn && mobileDrawer) {
-    mobileCloseBtn.addEventListener('click', () => {
-      mobileDrawer.classList.add('hidden');
-    });
-  }
 
   // Mobile Search Toggle
   if (mobileSearchToggleBtn && mobileSearchRow) {
@@ -164,13 +121,6 @@ export function attachNavbarEvents(onNavigate) {
       mobileSearchRow.classList.add('hidden');
     });
   }
-
-  // Close drawer on link click
-  mobileDrawer?.querySelectorAll('a').forEach(link => {
-    link.addEventListener('click', () => {
-      mobileDrawer.classList.add('hidden');
-    });
-  });
 
   const backupBtn = document.getElementById('btn-open-backup');
   if (backupBtn) {
