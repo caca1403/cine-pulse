@@ -1388,6 +1388,58 @@ img {
   color: var(--text-muted);
 }
 
+/* Continue Watching & Library Delete Glass Action Button */
+.continue-card-wrapper {
+  position: relative;
+  display: block;
+}
+
+.btn-delete-history {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 25;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  background: rgba(10, 15, 25, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+}
+
+.btn-delete-history svg, .btn-delete-history i {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  transition: transform 0.2s ease;
+}
+
+.btn-delete-history:hover {
+  background: #ef4444;
+  border-color: #f87171;
+  color: #ffffff;
+  transform: scale(1.12);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.7);
+}
+
+.btn-delete-history:hover svg, .btn-delete-history:hover i {
+  transform: scale(1.1);
+}
+
+.btn-delete-history:active {
+  transform: scale(0.92);
+}
+
 .spotlight-mini-type {
   background: rgba(255, 255, 255, 0.08);
   padding: 0.05rem 0.3rem;
