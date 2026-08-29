@@ -89,18 +89,17 @@ async function verifyPageAndExtractStream(targetUrl, expectedTitle) {
       return null;
     }
 
-    // Strictly check for active video player tag or Brightcove video ID
-    const hasBrightcove = /data-video-id=["']\d+["']/i.test(html) || /videoId:\s*["']?\d+["']?/i.test(html);
+    // Strictly check for direct m3u8 stream
     const m3u8Match = html.match(/(https?:\/\/[^"'\s\\]+?\.m3u8[^"'\s\\]*)/i);
     const directM3u8 = m3u8Match ? m3u8Match[1].replace(/\\u0026/g, '&') : null;
 
-    if (!hasBrightcove && !directM3u8 && !html.includes('class="vjs-tech"')) {
+    if (!directM3u8) {
       return null;
     }
 
     return {
-      streamUrl: directM3u8 || targetUrl,
-      isDirectHls: !!directM3u8
+      streamUrl: directM3u8,
+      isDirectHls: true
     };
   } catch (err) {
     return null;
