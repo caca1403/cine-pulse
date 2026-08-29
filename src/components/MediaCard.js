@@ -108,9 +108,6 @@ export function renderMediaCard(item, options = {}) {
           alt="${title}" 
           class="card-poster-img" 
           loading="lazy" 
-          decoding="async"
-          crossorigin="anonymous"
-          referrerpolicy="no-referrer"
           onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'"
         />
         
