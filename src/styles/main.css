@@ -3776,19 +3776,24 @@ img {
 }
 
 /* ==========================================================================
-   Live TV - Native Television Cinema Experience
+   Live TV - Native Television Cinema Experience (Fully Responsive)
    ========================================================================== */
 .livetv-view {
-  padding: 6.5rem 1.5rem 5rem 1.5rem;
+  padding: 6rem 1.5rem 5rem 1.5rem;
   max-width: 1400px;
   margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .tv-cinema-layout {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 340px;
   gap: 1.25rem;
-  min-height: 560px;
+  align-items: start;
+  min-height: 540px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ── Player Column ── */
@@ -3800,6 +3805,9 @@ img {
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(0, 0, 0, 0.5);
   background: #000;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .tv-screen {
@@ -3821,21 +3829,22 @@ img {
 /* OSD Channel Banner */
 .tv-osd-banner {
   position: absolute;
-  bottom: 1.5rem;
-  left: 1.5rem;
+  bottom: 1.25rem;
+  left: 1.25rem;
   right: auto;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.85rem;
   background: rgba(5, 8, 14, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--radius-md);
-  padding: 0.85rem 1.25rem;
+  padding: 0.75rem 1.1rem;
   z-index: 10;
   pointer-events: none;
-  max-width: 420px;
+  max-width: 400px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
 }
 
 .tv-osd-banner.hidden { display: none; }
@@ -3843,17 +3852,17 @@ img {
 .tv-osd-hide { animation: tvOsdOut 0.4s ease forwards; }
 
 @keyframes tvOsdIn {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes tvOsdOut {
   from { opacity: 1; transform: translateY(0); }
-  to   { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 0; transform: translateY(16px); }
 }
 
 .tv-osd-logo {
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   object-fit: contain;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 8px;
@@ -3864,28 +3873,32 @@ img {
 .tv-osd-info {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.15rem;
+  min-width: 0;
 }
 
 .tv-osd-name {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tv-osd-meta {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  font-size: 0.72rem;
+  gap: 0.4rem;
+  font-size: 0.70rem;
   font-weight: 700;
   color: #ef4444;
   text-transform: uppercase;
 }
 
 .tv-osd-live-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #ef4444;
   box-shadow: 0 0 10px #ef4444;
@@ -3898,12 +3911,13 @@ img {
 }
 
 .tv-osd-chnum {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 900;
   color: rgba(255, 255, 255, 0.25);
   font-family: var(--font-heading);
   letter-spacing: -0.05em;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* Loading & Error States */
@@ -3915,11 +3929,13 @@ img {
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.88);
   z-index: 5;
   color: var(--text-muted);
   font-size: 0.88rem;
   font-weight: 600;
+  padding: 1rem;
+  text-align: center;
 }
 .tv-loading.hidden, .tv-error.hidden { display: none; }
 
@@ -3941,7 +3957,11 @@ img {
   font-size: 0.82rem;
   border: none;
   cursor: pointer;
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
+  transition: transform 0.18s ease;
+}
+.tv-retry-btn:hover {
+  transform: scale(1.04);
 }
 
 /* Controls Bar */
@@ -3949,27 +3969,28 @@ img {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.85rem 1.25rem;
+  padding: 0.75rem 1.15rem;
   background: rgba(8, 12, 20, 0.98);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  gap: 0.75rem;
+  gap: 0.65rem;
+  box-sizing: border-box;
 }
 
 .tv-controls-left {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.75rem;
   min-width: 0;
   flex: 1;
 }
 
 .tv-ctrl-logo {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 8px;
-  padding: 4px;
+  padding: 3px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
@@ -3977,12 +3998,12 @@ img {
 .tv-ctrl-info {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.1rem;
   min-width: 0;
 }
 
 .tv-ctrl-name {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   color: #fff;
   white-space: nowrap;
@@ -3993,14 +4014,14 @@ img {
 .tv-ctrl-badges {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .tv-ctrl-live {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.68rem;
+  gap: 0.25rem;
+  font-size: 0.66rem;
   font-weight: 800;
   color: #ef4444;
   text-transform: uppercase;
@@ -4021,11 +4042,11 @@ img {
 }
 
 .tv-ctrl-quality {
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 700;
   color: #10b981;
   background: rgba(16, 185, 129, 0.12);
-  padding: 0.1rem 0.4rem;
+  padding: 0.08rem 0.35rem;
   border-radius: 3px;
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
@@ -4033,12 +4054,13 @@ img {
 .tv-controls-right {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
+  flex-shrink: 0;
 }
 
 .tv-ctrl-btn {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -4049,6 +4071,7 @@ img {
   cursor: pointer;
   transition: all 0.2s ease;
   text-decoration: none;
+  flex-shrink: 0;
 }
 
 .tv-ctrl-btn:hover {
@@ -4067,10 +4090,13 @@ img {
   padding: 0.85rem;
   gap: 0.65rem;
   max-height: 640px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .tv-guide-search {
   position: relative;
+  width: 100%;
 }
 
 .tv-search-input {
@@ -4098,6 +4124,8 @@ img {
   overflow-x: auto;
   scrollbar-width: none;
   padding-bottom: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+  flex-wrap: nowrap;
 }
 .tv-category-strip::-webkit-scrollbar { display: none; }
 
@@ -4151,6 +4179,7 @@ img {
   gap: 0.35rem;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.08) transparent;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tv-channel-item {
@@ -4165,6 +4194,7 @@ img {
   transition: all 0.18s ease;
   text-align: left;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .tv-channel-item:hover {
@@ -4184,6 +4214,7 @@ img {
   min-width: 22px;
   text-align: center;
   font-family: var(--font-heading);
+  flex-shrink: 0;
 }
 
 .tv-channel-item.active .tv-ch-num {
@@ -4244,30 +4275,123 @@ img {
   font-size: 0.82rem;
 }
 
-/* ── Mobile Responsive ── */
-@media (max-width: 900px) {
+/* ── Tablet Responsive (max-width: 1024px) ── */
+@media (max-width: 1024px) {
   .livetv-view {
-    padding: 5.5rem 0.75rem 6rem 0.75rem;
+    padding: 5.5rem 1rem 6rem 1rem;
   }
   .tv-cinema-layout {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 1.25rem;
   }
   .tv-guide-column {
-    max-height: 400px;
+    max-height: 520px;
+  }
+  .tv-channel-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.45rem;
+    max-height: 420px;
+  }
+}
+
+/* ── Mobile Responsive (max-width: 768px) ── */
+@media (max-width: 768px) {
+  .livetv-view {
+    padding: 4.8rem 0.65rem 6.5rem 0.65rem;
+  }
+  .tv-cinema-layout {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+  .tv-player-column {
+    border-radius: var(--radius-md);
+  }
+  .tv-guide-column {
+    padding: 0.75rem;
+    border-radius: var(--radius-md);
+    max-height: 480px;
+  }
+  .tv-channel-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+    max-height: 380px;
+  }
+  .tv-channel-item {
+    padding: 0.45rem 0.55rem;
+    gap: 0.45rem;
+  }
+  .tv-ch-logo {
+    width: 24px;
+    height: 24px;
+  }
+  .tv-ch-name {
+    font-size: 0.78rem;
+  }
+  .tv-ch-num {
+    font-size: 0.68rem;
+    min-width: 18px;
   }
   .tv-osd-banner {
-    bottom: 0.75rem;
-    left: 0.75rem;
-    padding: 0.6rem 0.85rem;
-    max-width: 85%;
+    bottom: 0.65rem;
+    left: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    max-width: calc(100% - 1.3rem);
+    gap: 0.65rem;
   }
-  .tv-osd-name { font-size: 0.92rem; }
-  .tv-osd-chnum { font-size: 1.4rem; }
-  .tv-osd-logo { width: 32px; height: 32px; }
-  .tv-controls-bar { padding: 0.65rem 0.85rem; }
+  .tv-osd-name { font-size: 0.90rem; }
+  .tv-osd-chnum { font-size: 1.3rem; }
+  .tv-osd-logo { width: 30px; height: 30px; }
+  .tv-controls-bar {
+    padding: 0.6rem 0.75rem;
+    gap: 0.45rem;
+  }
   .tv-ctrl-logo { width: 30px; height: 30px; }
-  .tv-ctrl-name { font-size: 0.88rem; }
+  .tv-ctrl-name { font-size: 0.86rem; }
+  .tv-ctrl-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .tv-ctrl-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* ── Small Mobile Phones (max-width: 480px) ── */
+@media (max-width: 480px) {
+  .livetv-view {
+    padding: 4.5rem 0.4rem 6.5rem 0.4rem;
+  }
+  .tv-channel-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+    max-height: 350px;
+  }
+  .tv-channel-item {
+    padding: 0.4rem 0.45rem;
+  }
+  .tv-ch-name {
+    font-size: 0.74rem;
+  }
+  .tv-controls-bar {
+    padding: 0.5rem 0.6rem;
+  }
+  .tv-ctrl-name {
+    font-size: 0.82rem;
+  }
+  .tv-controls-right {
+    gap: 0.25rem;
+  }
+  .tv-ctrl-btn {
+    width: 28px;
+    height: 28px;
+  }
+  .tv-ctrl-btn svg {
+    width: 13px;
+    height: 13px;
+  }
 }
 
 /* --------------------------------------------------------------------------
