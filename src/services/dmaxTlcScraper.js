@@ -101,30 +101,7 @@ async function verifyPageAndExtractStream(targetUrl, expectedTitle) {
       };
     }
 
-    // 2. Brightcove Pure Video Player Embed (No site headers, no cookies banner, clean video player only)
-    const videoIdMatch = html.match(/data-video-id=["'](\d+)["']/i) || 
-                         html.match(/videoId:\s*["']?(\d+)["']?/i) || 
-                         html.match(/"video_id":\s*"?(\d+)"?/i) ||
-                         html.match(/"videoId":\s*"?(\d+)"?/i) ||
-                         html.match(/brightcove[_\s]?id["']?:\s*["']?(\d+)["']?/i);
-
-    const accountMatch = html.match(/data-account=["'](\d+)["']/i) || 
-                         html.match(/account:\s*["']?(\d+)["']?/i) ||
-                         html.match(/"account_id":\s*"?(\d+)"?/i);
-
-    const videoId = videoIdMatch ? videoIdMatch[1] : null;
-    const accountId = accountMatch ? accountMatch[1] : (targetUrl.includes('tlctv') ? '5703385908001' : '5703385908001');
-
-    if (videoId) {
-      const cleanPlayerUrl = `https://players.brightcove.net/${accountId}/default_default/index.html?videoId=${videoId}`;
-      return {
-        streamUrl: cleanPlayerUrl,
-        isDirectHls: false,
-        type: 'embed'
-      };
-    }
-
-    // 3. Fallback to clean Daioncdn / DMAX Video Endpoint if matched
+    // 2. Direct MP4 stream check
     const mp4Match = html.match(/(https?:\/\/[^"'\s\\]+?\.mp4[^"'\s\\]*)/i);
     if (mp4Match) {
       return {
@@ -134,6 +111,7 @@ async function verifyPageAndExtractStream(targetUrl, expectedTitle) {
       };
     }
 
+    // Do NOT return unauthenticated Brightcove player URLs as they throw VIDEO_CLOUD_ERR_VIDEO_NOT_FOUND
     return null;
   } catch (err) {
     return null;
