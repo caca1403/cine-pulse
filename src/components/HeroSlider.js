@@ -4,7 +4,7 @@
    instant trailer player, direct watchlist toggle, and smooth auto-rotator.
    ========================================================================== */
 
-import { getImageUrl, TMDB_IMAGE_SIZES, fetchMediaTrailer } from '../services/tmdbApi.js';
+import { getImageUrl, TMDB_IMAGE_SIZES, fetchMediaTrailer, generateCinematicOverview } from '../services/tmdbApi.js';
 import { isWatchlist, toggleWatchlist } from '../services/storage.js';
 import { openTrailerModal } from './TrailerModal.js';
 import { showToast } from './Toast.js';
@@ -21,7 +21,7 @@ export function renderHeroSlider(items = []) {
   const id = featured.id;
   const type = featured.first_air_date || featured.media_type === 'tv' ? 'tv' : 'movie';
   const title = featured.title || featured.name || 'Öne Çıkan Yapım';
-  const overview = featured.overview || 'Bu yapım için henüz Türkçe özet eklenmedi.';
+  const overview = (featured.overview && featured.overview.trim().length > 15) ? featured.overview : generateCinematicOverview(featured, type);
   const backdropUrl = getImageUrl(featured.backdrop_path, TMDB_IMAGE_SIZES.BACKDROP_ORIGINAL);
   const rating = featured.vote_average ? featured.vote_average.toFixed(1) : '8.8';
   const year = (featured.first_air_date || featured.release_date || '').substring(0, 4);

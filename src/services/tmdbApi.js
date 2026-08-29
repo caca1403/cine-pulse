@@ -213,10 +213,62 @@ export async function fetchByGenre(type = 'tv', genreId, page = 1, sortBy = 'pop
   return fetchDiscoverMedia({ type, genreId, page, sortBy });
 }
 
+export function generateCinematicOverview(media, type = 'tv') {
+  if (!media) return 'Sürükleyici atmosferi ve zengin hikaye örgüsüyle izleyicileri ekran başına kilitleyen etkileyici bir yapım.';
+
+  const title = media.title || media.name || 'Bu yapım';
+  const isTv = type === 'tv' || media.media_type === 'tv' || !!media.first_air_date || (media.seasons && media.seasons.length > 0) || !!media.number_of_seasons;
+  const kind = isTv ? 'dizi' : 'film';
+
+  // 1. Genres
+  let genreNames = [];
+  if (Array.isArray(media.genres) && media.genres.length > 0) {
+    genreNames = media.genres.map(g => (typeof g === 'string' ? g : g.name)).filter(Boolean);
+  }
+  const genreText = genreNames.length > 0 ? genreNames.slice(0, 3).join(', ') : (isTv ? 'Dram ve Gerilim' : 'Sinema');
+
+  // 2. Year
+  const rawDate = media.release_date || media.first_air_date || (media.year ? String(media.year) : '');
+  const yearText = rawDate ? ` ${rawDate.slice(0, 4)} yılında izleyiciyle buluşan ve` : '';
+
+  // 3. Rating
+  const rating = Number(media.vote_average || media.rating || 0);
+  const ratingText = rating > 0
+    ? `IMDb'de ${rating.toFixed(1)}/10 gibi başarılı bir puana sahip olan`
+    : 'Eleştirmenler ve izleyiciler tarafından büyük beğeni toplayan';
+
+  // 4. Cast / Actors
+  let castText = '';
+  const castList = media.credits?.cast || [];
+  if (castList.length > 0) {
+    const topActors = castList.slice(0, 3).map(a => a.name).filter(Boolean).join(', ');
+    if (topActors) {
+      castText = ` Başrollerinde ${topActors} gibi başarılı isimlerin yer aldığı`;
+    }
+  }
+
+  // 5. Creator / Director
+  let directorText = '';
+  const directors = media.credits?.crew?.filter(c => c.job === 'Director').map(d => d.name) || [];
+  const creators = media.created_by?.map(c => c.name) || [];
+  const keyPerson = directors[0] || creators[0];
+  if (keyPerson) {
+    directorText = ` ${keyPerson} imzalı`;
+  }
+
+  // 6. Tagline
+  let taglineText = '';
+  if (media.tagline && media.tagline.trim().length > 6) {
+    taglineText = ` "${media.tagline.trim()}" temasıyla dikkat çeken yapım,`;
+  }
+
+  return `${title}, ${genreText} türünde öne çıkan${yearText}${directorText}${castText} etkileyici bir ${kind} deneyimi sunuyor.${taglineText} ${ratingText} yapım, beklenmedik ters köşeleri, derin karakter gelişimleri ve soluksuz temposuyla izleyenlere unutulmaz anlar vadediyor.`;
+}
+
 export async function fetchMediaDetails(type = 'tv', id) {
   const res = await tmdbFetch(`/${type}/${id}`, {
-    language: 'tr-TR',
-    append_to_response: 'credits,videos,recommendations,similar'
+    append_to_response: 'credits,similar,recommendations,videos',
+    language: 'tr-TR'
   });
   if (!res) return null;
 
@@ -227,13 +279,18 @@ export async function fetchMediaDetails(type = 'tv', id) {
       const enRes = await tmdbFetch(`/${type}/${id}`, { language: 'en-US' });
       if (enRes && enRes.overview && enRes.overview.trim().length > 10) {
         const translated = await translateToTurkish(enRes.overview.trim());
-        if (translated) {
+        if (translated && translated.length > 15) {
           res.overview = translated;
         }
       }
     } catch (e) {
       console.warn('Overview translation fallback error:', e);
     }
+  }
+
+  // If overview is still missing or short, dynamically generate a rich cinematic synopsis!
+  if (!res.overview || res.overview.trim().length < 15) {
+    res.overview = generateCinematicOverview(res, type);
   }
 
   // 2. Videos / Trailer Fallback
