@@ -91,7 +91,20 @@ async function tmdbFetch(endpoint, params = {}) {
 
 export async function fetchTrending(type = 'all', timeWindow = 'week', page = 1) {
   const res = await tmdbFetch(`/trending/${type}/${timeWindow}`, { page, language: 'tr-TR' });
-  return res && res.results ? res.results.filter(item => item.poster_path || item.backdrop_path) : [];
+  if (!res || !res.results) return [];
+  return res.results
+    .filter(item => item.poster_path || item.backdrop_path)
+    .map(item => {
+      const isTv = item.media_type === 'tv' || !!item.first_air_date;
+      const t = isTv ? 'tv' : 'movie';
+      const hasOverview = item.overview && item.overview.trim().length > 15;
+      return {
+        ...item,
+        type: t,
+        media_type: t,
+        overview: hasOverview ? item.overview : generateCinematicOverview(item, t)
+      };
+    });
 }
 
 export async function fetchPopularSeries(page = 1) {
@@ -100,9 +113,18 @@ export async function fetchPopularSeries(page = 1) {
     page,
     language: 'tr-TR'
   });
-  return res && res.results
-    ? res.results.filter(item => item.poster_path || item.backdrop_path).map(item => ({ ...item, type: 'tv', media_type: 'tv' }))
-    : [];
+  if (!res || !res.results) return [];
+  return res.results
+    .filter(item => item.poster_path || item.backdrop_path)
+    .map(item => {
+      const hasOverview = item.overview && item.overview.trim().length > 15;
+      return {
+        ...item,
+        type: 'tv',
+        media_type: 'tv',
+        overview: hasOverview ? item.overview : generateCinematicOverview(item, 'tv')
+      };
+    });
 }
 
 export async function fetchPopularMovies(page = 1) {
@@ -111,9 +133,18 @@ export async function fetchPopularMovies(page = 1) {
     page,
     language: 'tr-TR'
   });
-  return res && res.results
-    ? res.results.filter(item => item.poster_path || item.backdrop_path).map(item => ({ ...item, type: 'movie', media_type: 'movie' }))
-    : [];
+  if (!res || !res.results) return [];
+  return res.results
+    .filter(item => item.poster_path || item.backdrop_path)
+    .map(item => {
+      const hasOverview = item.overview && item.overview.trim().length > 15;
+      return {
+        ...item,
+        type: 'movie',
+        media_type: 'movie',
+        overview: hasOverview ? item.overview : generateCinematicOverview(item, 'movie')
+      };
+    });
 }
 
 export async function fetchPopularAnime(page = 1) {
@@ -134,8 +165,8 @@ export async function fetchPopularAnime(page = 1) {
     })
   ]);
 
-  const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv' }));
-  const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
+  const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv', overview: (item.overview && item.overview.trim().length > 15) ? item.overview : generateCinematicOverview(item, 'tv') }));
+  const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie', overview: (item.overview && item.overview.trim().length > 15) ? item.overview : generateCinematicOverview(item, 'movie') }));
   const combined = [...tvItems, ...movieItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
   return combined.filter(item => item.poster_path || item.backdrop_path);
 }
@@ -156,15 +187,26 @@ export async function fetchPopularDocumentaries(page = 1) {
     })
   ]);
 
-  const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv' }));
-  const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
+  const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv', overview: (item.overview && item.overview.trim().length > 15) ? item.overview : generateCinematicOverview(item, 'tv') }));
+  const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie', overview: (item.overview && item.overview.trim().length > 15) ? item.overview : generateCinematicOverview(item, 'movie') }));
   const combined = [...tvItems, ...movieItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
   return combined.filter(item => item.poster_path || item.backdrop_path);
 }
 
 export async function fetchTopRated(type = 'tv', page = 1) {
   const res = await tmdbFetch(`/${type}/top_rated`, { page, language: 'tr-TR' });
-  return res && res.results ? res.results.filter(item => item.poster_path || item.backdrop_path) : [];
+  if (!res || !res.results) return [];
+  return res.results
+    .filter(item => item.poster_path || item.backdrop_path)
+    .map(item => {
+      const hasOverview = item.overview && item.overview.trim().length > 15;
+      return {
+        ...item,
+        type,
+        media_type: type,
+        overview: hasOverview ? item.overview : generateCinematicOverview(item, type)
+      };
+    });
 }
 
 export async function fetchDiscoverMedia({

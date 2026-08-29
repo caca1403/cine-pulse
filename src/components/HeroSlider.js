@@ -169,7 +169,10 @@ function updateHeroSlide(item) {
 
   if (backdropEl) backdropEl.style.backgroundImage = `url('${backdropUrl}')`;
   if (titleEl) titleEl.textContent = item.title || item.name;
-  if (overviewEl) overviewEl.textContent = item.overview || 'Bu yapım için Türkçe özet henüz eklenmedi.';
+  const slideOverview = (item.overview && item.overview.trim().length > 15)
+    ? item.overview
+    : generateCinematicOverview(item, type);
+  if (overviewEl) overviewEl.textContent = slideOverview;
 
   if (ratingBadge) ratingBadge.innerHTML = `<i data-lucide="star" style="width:13px; height:13px; fill: currentColor"></i> ${rating} IMDb`;
   if (yearBadge) yearBadge.textContent = year || '2024';
