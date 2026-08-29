@@ -226,21 +226,37 @@ export async function fetchPopularAnime(page = 1) {
 }
 
 export async function fetchPopularDocumentaries(page = 1) {
-  const [tvRes, movieRes, enTvRes, enMovieRes] = await Promise.all([
-    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'tr-TR', with_genres: '99' }),
-    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'tr-TR', with_genres: '99' }),
-    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'en-US', with_genres: '99' }),
-    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'en-US', with_genres: '99' })
+  const [dmaxTvRes, tlcTvRes, docMovieRes, enDmaxTvRes, enTlcTvRes, enDocMovieRes] = await Promise.all([
+    // Discovery (DMAX) network: 64, NatGeo: 43, History: 65, Animal Planet: 91
+    tmdbFetch('/discover/tv', { sort_by: 'popularity.desc', page, language: 'tr-TR', with_networks: '64|43|65|91' }),
+    // TLC network: 84
+    tmdbFetch('/discover/tv', { sort_by: 'popularity.desc', page, language: 'tr-TR', with_networks: '84' }),
+    // Top documentary movies
+    tmdbFetch('/discover/movie', { sort_by: 'popularity.desc', page, language: 'tr-TR', with_genres: '99' }),
+    // English counterparts for authentic plot translation
+    tmdbFetch('/discover/tv', { sort_by: 'popularity.desc', page, language: 'en-US', with_networks: '64|43|65|91' }),
+    tmdbFetch('/discover/tv', { sort_by: 'popularity.desc', page, language: 'en-US', with_networks: '84' }),
+    tmdbFetch('/discover/movie', { sort_by: 'popularity.desc', page, language: 'en-US', with_genres: '99' })
   ]);
 
   const enMap = new Map([
-    ...(enTvRes?.results || []).map(i => [i.id, i.overview]),
-    ...(enMovieRes?.results || []).map(i => [i.id, i.overview])
+    ...(enDmaxTvRes?.results || []).map(i => [i.id, i.overview]),
+    ...(enTlcTvRes?.results || []).map(i => [i.id, i.overview]),
+    ...(enDocMovieRes?.results || []).map(i => [i.id, i.overview])
   ]);
 
-  const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv' }));
-  const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
-  const combined = [...tvItems, ...movieItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+  const dmaxItems = (dmaxTvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv' }));
+  const tlcItems = (tlcTvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv' }));
+  const movieItems = (docMovieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
+  
+  // Interleave DMAX, TLC and Movie documentaries
+  const combined = [];
+  const maxLen = Math.max(dmaxItems.length, tlcItems.length, movieItems.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (dmaxItems[i]) combined.push(dmaxItems[i]);
+    if (tlcItems[i]) combined.push(tlcItems[i]);
+    if (movieItems[i]) combined.push(movieItems[i]);
+  }
 
   return Promise.all(
     combined
