@@ -83,6 +83,70 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
 
       loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual);
 
+      // Instant Real-Time Synchronization with Watch History & Player without page refresh
+      const onDataChanged = () => {
+        const gridContainer = container.querySelector('#episode-grid-container');
+        if (gridContainer) {
+          gridContainer.querySelectorAll('.episode-card').forEach(card => {
+            const epSeason = parseInt(card.getAttribute('data-season'), 10);
+            const epNum = parseInt(card.getAttribute('data-episode'), 10);
+            const progress = getMediaProgress(tvId, epSeason, epNum);
+            const progressPercent = progress ? progress.progressPercent : 0;
+            const isCompleted = progress ? (progress.completed || progressPercent >= 90) : false;
+            const isHalfway = progress && !isCompleted && progress.currentTime > 0;
+
+            const badgeEl = card.querySelector('.badge-watched-status');
+            const btnEl = card.querySelector('.btn-mark-ep-watched');
+            const fillEl = card.querySelector('.card-progress-fill');
+            const halfwayBtn = card.querySelector('.btn-mark-ep-halfway');
+
+            if (badgeEl) {
+              if (isCompleted) {
+                badgeEl.innerHTML = `<i data-lucide="check" style="width:11px; height:11px"></i> İZLENDİ`;
+                badgeEl.style.background = 'var(--accent-green)';
+                badgeEl.style.color = '#fff';
+                badgeEl.style.display = 'inline-flex';
+              } else if (isHalfway) {
+                badgeEl.innerHTML = `<i data-lucide="clock" style="width:11px; height:11px"></i> YARIDA`;
+                badgeEl.style.background = 'rgba(245, 158, 11, 0.95)';
+                badgeEl.style.color = '#000';
+                badgeEl.style.display = 'inline-flex';
+              } else {
+                badgeEl.style.display = 'none';
+              }
+            }
+
+            if (btnEl) {
+              if (isCompleted) {
+                btnEl.classList.add('watched');
+                btnEl.style.background = '#10b981';
+                btnEl.style.borderColor = '#10b981';
+                btnEl.title = 'İzlendi işaretini kaldır';
+              } else {
+                btnEl.classList.remove('watched');
+                btnEl.style.background = 'rgba(0,0,0,0.65)';
+                btnEl.style.borderColor = 'rgba(255,255,255,0.3)';
+                btnEl.title = 'İzlendi olarak işaretle';
+              }
+            }
+
+            if (halfwayBtn) {
+              halfwayBtn.style.background = isHalfway ? '#f59e0b' : 'rgba(0,0,0,0.65)';
+              halfwayBtn.style.borderColor = isHalfway ? '#f59e0b' : 'rgba(255,255,255,0.3)';
+            }
+
+            if (fillEl) {
+              fillEl.style.width = `${progressPercent}%`;
+              fillEl.style.background = isCompleted ? 'var(--accent-green)' : '#fbbf24';
+            }
+          });
+          if (window.lucide) window.lucide.createIcons();
+        }
+        updateSeasonBtnVisual();
+      };
+
+      window.addEventListener('sineflix_data_changed', onDataChanged);
+
       container.querySelectorAll('.season-pill').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.preventDefault();
@@ -90,7 +154,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
           btn.classList.add('active');
           currentActiveSeason = parseInt(btn.getAttribute('data-season'), 10);
           currentEpCount = parseInt(btn.getAttribute('data-ep-count'), 10) || 10;
-          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons);
+          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual);
           updateSeasonBtnVisual();
         });
       });
@@ -153,9 +217,27 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
   gridContainer.innerHTML = `<div style="padding: 3rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;"><i data-lucide="loader-2" class="spin-loader" style="width: 24px; height: 24px; margin-bottom: 0.5rem;"></i><div>${seasonNum}. Sezon bölümleri getiriliyor...</div></div>`;
   if (window.lucide) window.lucide.createIcons();
 
-  const seasonData = await fetchSeasonDetails(tvId, seasonNum);
+  let seasonData = null;
+  try {
+    seasonData = await fetchSeasonDetails(tvId, seasonNum);
+  } catch (err) {
+    console.error('Error fetching season details:', err);
+  }
+
   if (!seasonData || !seasonData.episodes || seasonData.episodes.length === 0) {
-    gridContainer.innerHTML = `<div style="padding: 3rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">Bu sezon için bölüm verisi bulunamadı.</div>`;
+    gridContainer.innerHTML = `
+      <div style="padding: 3rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">
+        <p style="margin-bottom: 0.75rem;">Bu sezon için bölüm verisi getirilemedi.</p>
+        <button id="btn-retry-season-episodes" class="btn-secondary" style="padding: 0.45rem 1rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+          <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+          <span>Tekrar Dene</span>
+        </button>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+    container.querySelector('#btn-retry-season-episodes')?.addEventListener('click', () => {
+      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath, backdropPath, originalTitle, validSeasons, onStatusChange);
+    });
     return;
   }
 

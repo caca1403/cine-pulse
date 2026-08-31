@@ -488,6 +488,51 @@ export async function renderDetailView(type = 'tv', id) {
         });
       }
 
+      // Real-time synchronization on Detail View without page refresh
+      const onDetailDataChanged = () => {
+        const isMovieWatched = effectiveType === 'movie' ? isMediaWatched(id, 1, 1) : false;
+        const isSeriesAllWatched = effectiveType === 'tv' ? isEntireSeriesWatched(id, media.seasons || []) : false;
+        const isWatched = effectiveType === 'movie' ? isMovieWatched : isSeriesAllWatched;
+
+        if (watchedDetailBtn) {
+          if (isWatched) {
+            watchedDetailBtn.classList.add('btn-watched-active');
+          } else {
+            watchedDetailBtn.classList.remove('btn-watched-active');
+          }
+          const label = effectiveType === 'movie'
+            ? (isWatched ? 'Film İzlendi' : 'İzlendi Olarak İşaretle')
+            : (isWatched ? 'Tüm Sezonlar İzlendi' : 'Tümünü İzlendi İşaretle');
+
+          watchedDetailBtn.innerHTML = `
+            <i data-lucide="${isWatched ? 'check-circle-2' : 'check'}"></i>
+            <span>${label}</span>
+          `;
+        }
+
+        const playMovieBtn = container.querySelector('#btn-play-movie');
+        if (playMovieBtn && effectiveType === 'movie') {
+          const mp = getMediaProgress(id, 1, 1);
+          if (mp && mp.currentTime > 0 && !mp.completed) {
+            const timeStr = formatSecondsToTime(mp.currentTime);
+            playMovieBtn.innerHTML = `<i data-lucide="play" style="fill:currentColor"></i> <span>Devam Et <span class="play-btn-subinfo">${timeStr}</span></span>`;
+          }
+        }
+
+        const resumeBtn = container.querySelector('#btn-resume-series');
+        if (resumeBtn && effectiveType === 'tv') {
+          const lastWatched = getLastWatchedEpisode(id);
+          if (lastWatched) {
+            const timeStr = formatSecondsToTime(lastWatched.currentTime);
+            resumeBtn.innerHTML = `<i data-lucide="play" style="fill:currentColor"></i> <span>Devam Et <span class="play-btn-subinfo">S${lastWatched.season} B${lastWatched.episode}${timeStr ? ' • ' + timeStr : ''}</span></span>`;
+          }
+        }
+
+        if (window.lucide) window.lucide.createIcons();
+      };
+
+      window.addEventListener('sineflix_data_changed', onDetailDataChanged);
+
       // Halfway in-progress button handler
       const halfwayBtn = container.querySelector('#btn-mark-halfway-detail');
       if (halfwayBtn) {
