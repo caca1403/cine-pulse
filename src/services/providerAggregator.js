@@ -323,12 +323,6 @@ export async function getStreamingServersProgressive({
     !isMovie ? fetchDiziyouSources({ titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
 
-    // HDFilmizle (Movie & TV Series)
-    fetchHDFilmizleSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchHDFilmizleSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
     // FilmEkseni (Movie only)
     isMovie ? fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
