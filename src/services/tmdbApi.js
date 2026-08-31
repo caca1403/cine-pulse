@@ -224,7 +224,14 @@ export async function fetchTrending(type = 'all', timeWindow = 'week', page = 1)
 }
 
 export async function fetchPopularSeries(page = 1) {
-  const trRes = await tmdbFetch('/tv/popular', { page, language: 'tr-TR' });
+  // All-time most popular and acclaimed series (Game of Thrones, Breaking Bad, Stranger Things, Lucifer, etc.)
+  const trRes = await tmdbFetch('/discover/tv', {
+    sort_by: 'vote_count.desc',
+    page,
+    language: 'tr-TR',
+    'vote_count.gte': 300,
+    without_genres: '16' // anime is handled in anime section
+  });
   if (!trRes || !trRes.results) return [];
 
   return trRes.results
@@ -241,7 +248,13 @@ export async function fetchPopularSeries(page = 1) {
 }
 
 export async function fetchPopularMovies(page = 1) {
-  const trRes = await tmdbFetch('/movie/popular', { page, language: 'tr-TR' });
+  // All-time most popular movies (Inception, Interstellar, The Dark Knight, Avatar, Avengers, Titanic, etc.)
+  const trRes = await tmdbFetch('/discover/movie', {
+    sort_by: 'vote_count.desc',
+    page,
+    language: 'tr-TR',
+    'vote_count.gte': 500
+  });
   if (!trRes || !trRes.results) return [];
 
   return trRes.results
