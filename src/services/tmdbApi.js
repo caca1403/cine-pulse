@@ -99,7 +99,7 @@ async function tmdbFetch(endpoint, params = {}) {
         }
       }
 
-      const response = await fetch(url.toString(), { signal: AbortSignal.timeout(3000) });
+      const response = await fetch(url.toString(), { signal: AbortSignal.timeout(6000) });
       if (response.ok) {
         const data = await response.json();
         tmdbApiCache.set(cacheKey, data);
