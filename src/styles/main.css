@@ -2866,20 +2866,46 @@ img {
   box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
 }
 
-/* VIP Server Strip */
+/* VIP Server Strip with Fluid Scroll & Touch Drag */
 .server-toolbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1.25rem;
+  gap: 0.55rem;
+  padding: 0.70rem 1.25rem;
   background: rgba(8, 11, 18, 0.96);
   border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
-  scrollbar-width: none;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
   flex-shrink: 0;
   z-index: 24;
+  cursor: grab;
+  user-select: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 158, 11, 0.3) transparent;
 }
-.server-toolbar::-webkit-scrollbar { display: none; }
+
+.server-toolbar:active {
+  cursor: grabbing;
+}
+
+.server-toolbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.server-toolbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.server-toolbar::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.3);
+  border-radius: 4px;
+}
+
+.server-toolbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.6);
+}
 
 .server-btn,
 .server-pill {
