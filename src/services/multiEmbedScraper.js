@@ -1,6 +1,5 @@
 /* ==========================================================================
-   CinePulse Studio - Videasy Ultra Scraper (Universal TMDB Embed)
-   Supports OpenSubtitles Turkish Subtitle integration for all Movies & Series
+   CinePulse Studio - Universal Embed Scraper
    ========================================================================== */
 
 export async function fetchMultiEmbedSources({
@@ -10,24 +9,5 @@ export async function fetchMultiEmbedSources({
   episode = 1,
   isDub = false
 }) {
-  if (!tmdbId) return [];
-
-  const isMovie = type === 'movie';
-  const embedUrl = isMovie
-    ? `https://player.videasy.to/movie/${tmdbId}`
-    : `https://player.videasy.to/tv/${tmdbId}/${season}/${episode}`;
-
-  return [
-    {
-      id: `vds_${tmdbId}_${isMovie ? 'm' : `s${season}e${episode}`}`,
-      name: 'Videasy Ultra 1080p',
-      displayName: 'Videasy Ultra 1080p',
-      badge: '💬 TR Altyazı (OpenSubs)',
-      category: 'subtitled',
-      url: embedUrl,
-      streamUrl: embedUrl,
-      isDirectVideo: false,
-      getUrl: () => embedUrl
-    }
-  ];
+  return [];
 }
