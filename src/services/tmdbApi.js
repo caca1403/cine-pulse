@@ -265,20 +265,23 @@ export function hasNonLatinCharacters(text) {
 }
 
 export async function fetchPopularAnime(page = 1) {
+  // All-time most popular anime (Attack on Titan, Death Note, Demon Slayer, Naruto, One Piece, etc.)
   const [trRes, enRes] = await Promise.all([
     tmdbFetch('/discover/tv', {
-      sort_by: 'popularity.desc',
+      sort_by: 'vote_count.desc',
       page,
       language: 'tr-TR',
       with_genres: '16',
-      with_original_language: 'ja'
+      with_original_language: 'ja',
+      'vote_count.gte': '150'
     }),
     tmdbFetch('/discover/tv', {
-      sort_by: 'popularity.desc',
+      sort_by: 'vote_count.desc',
       page,
       language: 'en-US',
       with_genres: '16',
-      with_original_language: 'ja'
+      with_original_language: 'ja',
+      'vote_count.gte': '150'
     })
   ]);
   if (!trRes || !trRes.results) return [];
@@ -556,30 +559,55 @@ export async function fetchSeasonDetails(tvId, seasonNumber = 1) {
 
 export async function searchMulti(query, page = 1) {
   if (!query || !query.trim()) return [];
-  const cleanQuery = query.trim();
+  const cleanQuery = query.trim().toLowerCase();
 
-  // 1. Search in Turkish
-  const trRes = await tmdbFetch('/search/multi', { query: cleanQuery, page, language: 'tr-TR', include_adult: false });
-  let items = trRes && trRes.results ? trRes.results : [];
+  // 1. Parallel search in Turkish and English to catch multi-language queries (e.g. "Demon Slayer" or "İblis Keser")
+  const [trRes, enRes, tvRes] = await Promise.all([
+    tmdbFetch('/search/multi', { query: cleanQuery, page, language: 'tr-TR', include_adult: false }),
+    tmdbFetch('/search/multi', { query: cleanQuery, page, language: 'en-US', include_adult: false }),
+    tmdbFetch('/search/tv', { query: cleanQuery, page, language: 'tr-TR', include_adult: false })
+  ]);
 
-  // 2. If results are few (< 5), query English to catch foreign titles
-  if (items.length < 5) {
-    const enRes = await tmdbFetch('/search/multi', { query: cleanQuery, page, language: 'en-US', include_adult: false });
-    if (enRes && enRes.results) {
-      const existingIds = new Set(items.map(i => i.id));
-      for (const item of enRes.results) {
-        if (!existingIds.has(item.id)) {
-          items.push(item);
-        }
+  const itemsMap = new Map();
+
+  const addItems = (list) => {
+    if (!Array.isArray(list)) return;
+    for (const item of list) {
+      if (!item || !item.id) continue;
+      if (!item.poster_path && !item.backdrop_path) continue;
+      if (isBlockedContent(item)) continue;
+      if (!itemsMap.has(item.id)) {
+        const isTv = item.media_type === 'tv' || !!item.first_air_date || (item.name && !item.title);
+        itemsMap.set(item.id, {
+          ...item,
+          type: isTv ? 'tv' : 'movie',
+          media_type: isTv ? 'tv' : 'movie'
+        });
       }
     }
-  }
+  };
 
-  return items.filter(item => 
-    (item.media_type === 'tv' || item.media_type === 'movie' || (!item.media_type && (item.title || item.name))) && 
-    (item.poster_path || item.backdrop_path) &&
-    !isBlockedContent(item)
-  );
+  addItems(trRes?.results);
+  addItems(enRes?.results);
+  addItems(tvRes?.results);
+
+  const allResults = Array.from(itemsMap.values());
+
+  // Smart relevance & popularity sorting
+  allResults.sort((a, b) => {
+    const titleA = (a.title || a.name || a.original_title || a.original_name || '').toLowerCase();
+    const titleB = (b.title || b.name || b.original_title || b.original_name || '').toLowerCase();
+
+    const exactA = titleA === cleanQuery ? 100 : (titleA.startsWith(cleanQuery) ? 50 : 0);
+    const exactB = titleB === cleanQuery ? 100 : (titleB.startsWith(cleanQuery) ? 50 : 0);
+
+    const scoreA = exactA + Math.min(100, (a.vote_count || 0) / 50) + (a.popularity || 0) * 0.5;
+    const scoreB = exactB + Math.min(100, (b.vote_count || 0) / 50) + (b.popularity || 0) * 0.5;
+
+    return scoreB - scoreA;
+  });
+
+  return allResults;
 }
 
 export const GENRE_MAP_TV = {
