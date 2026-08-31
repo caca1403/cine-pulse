@@ -183,7 +183,11 @@ export function renderLibraryView() {
             <button id="lib-batch-clear-btn" class="btn-lib-clear-batch hidden" title="Bu listedeki tüm kayıtları temizle">
               <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
               <span>Temizle</span>
-          <!-- Tab 1: Continue Watching (In-Progress Only) -->
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab 1: Continue Watching (In-Progress Only) -->
         <div class="tab-content" id="tab-continue"></div>
 
         <!-- Tab 2: Completed / Finished Watch List -->
