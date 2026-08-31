@@ -124,9 +124,9 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 'Alpha Stream';
   if (url.includes('storage.diziyou') || id.startsWith('dzy')) return 'HLS FastCDN';
   if (url.includes('smashy') || raw.includes('smashy')) return 'Smashy 1080p';
-  if (url.includes('autoembed') || raw.includes('autoembed')) return 'AutoEmbed 4K';
   if (url.includes('multiembed') || raw.includes('multiembed')) return 'MultiEmbed VIP';
-  if (url.includes('vidsrc') || raw.includes('vidsrc')) return 'VidSrc Pro';
+  if (url.includes('vidlink') || raw.includes('vidlink')) return 'VidLink Pro';
+  if (url.includes('vidbinge') || raw.includes('vidbinge')) return 'VidBinge Fast';
   if (raw.includes('channel') || url.includes('filmizlech')) return 'Channel Stream 1080p';
   if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) {
     if (url.includes('tau-video') || raw.includes('tau')) return 'AX Tau 1080p';
@@ -174,7 +174,7 @@ function isValidStream(s) {
   const urlStr = (s.url || s.streamUrl || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
   if (!urlStr || urlStr.length < 10) return false;
 
-  // Block dead, refusing or malicious redirect domains
+  // Block dead, refusing, sandbox-blocked or malicious redirect domains
   const blockedDomains = [
     'recaptcha',
     'media.cm',
@@ -185,7 +185,13 @@ function isValidStream(s) {
     'filemoon',
     'liderfilm',
     'dizipal.bid',
-    'hdfilmdelisi'
+    'hdfilmdelisi',
+    '2embed',
+    'embed.su',
+    'vidsrc.cc',
+    'vidsrc.icu',
+    'vidsrc.me',
+    'autoembed.cc'
   ];
 
   for (const b of blockedDomains) {
@@ -209,16 +215,14 @@ function getStreamPriorityScore(s) {
   if (url.includes('sibnet') || raw.includes('sibnet')) return 6;
   if (url.includes('vidmoly') || raw.includes('vidmoly')) return 7;
   if (id.startsWith('hdi_') || id.startsWith('flm_') || id.startsWith('szn_') || id.startsWith('dzm_')) return 8;
+  // TR Anime sources
+  if (id.startsWith('ta_') || raw.includes('tr anime') || raw.includes('turkanime')) return 9;
 
-  // Fallback Generic Foreign Embeds (Put at the end)
+  // Fallback Global Embeds (Working only)
   if (url.includes('smashy') || raw.includes('smashy')) return 20;
-  if (url.includes('autoembed') || raw.includes('autoembed')) return 21;
-  if (url.includes('multiembed') || raw.includes('multiembed')) return 22;
-  if (url.includes('vidsrc') || raw.includes('vidsrc')) return 23;
-  if (url.includes('embed.su') || raw.includes('embedsu')) return 24;
-  if (url.includes('vidlink') || raw.includes('vidlink')) return 25;
-  if (url.includes('vidbinge') || raw.includes('vidbinge')) return 26;
-  if (url.includes('2embed') || raw.includes('2embed')) return 27;
+  if (url.includes('multiembed') || raw.includes('multiembed')) return 21;
+  if (url.includes('vidlink') || raw.includes('vidlink')) return 22;
+  if (url.includes('vidbinge') || raw.includes('vidbinge')) return 23;
 
   return 15;
 }
