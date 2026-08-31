@@ -17,6 +17,7 @@ import { fetchSezonlukDiziEpisodeSources } from './sezonlukDiziScraper.js';
 import { fetchDizipalSources } from './dizipalScraper.js';
 import { fetchSinewixSources } from './sinewixScraper.js';
 import { fetchFilmizlechSources } from './filmizlechScraper.js';
+import { fetchAnimecixSources } from './animecixScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
 import { fetchTurkAnimeSources } from './turkanimeScraper.js';
@@ -129,9 +130,15 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (url.includes('multiembed') || raw.includes('multiembed')) return 'MultiEmbed VIP';
   if (url.includes('vidsrc') || raw.includes('vidsrc')) return 'VidSrc Pro';
   if (raw.includes('channel') || url.includes('filmizlech')) return 'Channel Stream 1080p';
-  if (url.includes('hdplayersystem') || url.includes('hdmomplayer') || id.startsWith('dzm') || raw.includes('dizimom')) return 'DiziMOM HD';
+  if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) {
+    if (url.includes('tau-video') || raw.includes('tau')) return 'AnimeciX Tau Video 1080p';
+    if (url.includes('sibnet') || raw.includes('sibnet')) return 'AnimeciX Sibnet HD';
+    if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'AnimeciX VidMoly 1080p';
+    if (url.includes('dood') || raw.includes('dood')) return 'AnimeciX Doodstream';
+    return 'AnimeciX VIP 1080p';
+  }
   if (raw.includes('belgesel')) return 'Belgesel TR';
-  if (raw.includes('tranime') || raw.includes('turkanime') || raw.includes('animetr')) return 'Anime VIP';
+  if (raw.includes('tranime') || raw.includes('turkanime') || raw.includes('animetr')) return 'AnimeTR HD';
 
   let clean = (s.displayName || s.name || '')
     .replace(/sinewix|dizibal|dizipal|dizimom|filmizlech|sezonlukdizi|filmekseni|hdfilmdelisi|hdfilmizle|hdfilmcehennemi|diziyou|vip\s*hat\s*\d*/gi, '')
@@ -346,6 +353,12 @@ export async function getStreamingServersProgressive({
 
     // Universal MultiEmbed & VidLink (Subtitled Only)
     fetchMultiEmbedSources({ type, tmdbId, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    // AnimeciX VIP (Fast Tau Video 1080p, Sibnet & Multi-Source Anime)
+    fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // AnimeTR / TRAnime / TurkAnime (Both Dubbed & Subtitled)
