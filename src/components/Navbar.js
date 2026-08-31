@@ -82,9 +82,9 @@ export function renderNavbar(currentView = 'home') {
         <i data-lucide="film"></i>
         <span>Filmler</span>
       </a>
-      <a href="#livetv" class="dock-item ${currentView === 'livetv' ? 'active' : ''}">
-        <i data-lucide="radio"></i>
-        <span>Canlı TV</span>
+      <a href="#anime" class="dock-item ${currentView === 'anime' ? 'active' : ''}">
+        <i data-lucide="sparkles"></i>
+        <span>Anime</span>
       </a>
       <a href="#discover" class="dock-item ${currentView === 'discover' ? 'active' : ''}">
         <i data-lucide="compass"></i>
