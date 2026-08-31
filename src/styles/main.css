@@ -3036,8 +3036,14 @@ img {
 
 /* Mobile: Full Screen Modal & Clean Episodes Scroll */
 @media (max-width: 768px) {
-  .modal-backdrop {
+  #player-modal.modal-backdrop {
     padding: 0 !important;
+  }
+  .modal-backdrop:not(#player-modal) {
+    padding: 0.75rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow-y: auto !important;
   }
   .player-modal-content {
     width: 100vw !important;
@@ -4750,6 +4756,8 @@ img {
 .data-modal-content {
   width: 100%;
   max-width: 680px;
+  max-height: 90vh;
+  max-height: 92dvh;
   background: #080c14;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
@@ -4757,6 +4765,9 @@ img {
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95);
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 10;
+  margin: auto;
 }
 
 .data-modal-header {
@@ -4764,8 +4775,12 @@ img {
   align-items: center;
   justify-content: space-between;
   padding: 1.1rem 1.4rem;
-  background: rgba(14, 20, 32, 0.96);
+  background: rgba(14, 20, 32, 0.98);
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .data-modal-title {
@@ -4775,6 +4790,29 @@ img {
   font-size: 1.15rem;
   font-weight: 800;
   color: #fff;
+  min-width: 0;
+}
+
+.btn-modal-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-modal-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+  transform: scale(1.05);
 }
 
 .data-modal-body {
@@ -4782,11 +4820,38 @@ img {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+  max-height: calc(92dvh - 130px);
 }
 
 @media (max-width: 640px) {
+  .data-modal-content {
+    width: 95vw !important;
+    max-height: 92dvh !important;
+    margin: auto !important;
+  }
+  .data-modal-header {
+    padding: 0.85rem 1rem !important;
+  }
+  .data-modal-title {
+    font-size: 0.95rem !important;
+  }
   .data-modal-body {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
+    padding: 1rem !important;
+    gap: 1rem !important;
+    max-height: calc(92dvh - 120px) !important;
+  }
+  .data-modal-footer {
+    padding: 0.75rem 1rem !important;
+    flex-wrap: wrap !important;
+    gap: 0.75rem !important;
+  }
+  .data-modal-footer button {
+    width: 100% !important;
+    justify-content: center !important;
   }
 }
 
@@ -4837,8 +4902,12 @@ img {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.4rem;
-  background: rgba(14, 20, 32, 0.96);
+  background: rgba(14, 20, 32, 0.98);
   border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
 }
 
 /* --------------------------------------------------------------------------

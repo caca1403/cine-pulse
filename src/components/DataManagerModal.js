@@ -16,11 +16,11 @@ export function openDataManagerModal() {
     <div class="data-modal-content">
       <div class="data-modal-header">
         <h2 class="data-modal-title">
-          <i data-lucide="hard-drive" style="color: var(--secondary); flex-shrink: 0;"></i>
-          <span>Yerel Önbellek & Cihazlar Arası Aktarım</span>
+          <i data-lucide="hard-drive" style="color: var(--secondary); flex-shrink: 0; width: 20px; height: 20px;"></i>
+          <span>Yerel Önbellek & Yedek</span>
         </h2>
-        <button id="data-close-btn" class="btn-icon" title="Kapat">
-          <i data-lucide="x"></i>
+        <button id="data-close-btn" class="btn-modal-close" title="Kapat (ESC)" aria-label="Kapat">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
         </button>
       </div>
 
@@ -90,18 +90,34 @@ export function openDataManagerModal() {
   `;
 
   modalContainer.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
   if (window.lucide) window.lucide.createIcons();
 
   const closeBtn = document.getElementById('data-close-btn');
   const closeFooterBtn = document.getElementById('data-close-footer-btn');
 
+  let activeEscListener = null;
   const closeModal = () => {
     modalContainer.classList.add('hidden');
     modalContainer.innerHTML = '';
+    document.body.style.overflow = '';
+    if (activeEscListener) {
+      window.removeEventListener('keydown', activeEscListener);
+      activeEscListener = null;
+    }
   };
 
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (closeFooterBtn) closeFooterBtn.addEventListener('click', closeModal);
+
+  modalContainer.onclick = (e) => {
+    if (e.target === modalContainer) closeModal();
+  };
+
+  activeEscListener = (e) => {
+    if (e.key === 'Escape') closeModal();
+  };
+  window.addEventListener('keydown', activeEscListener);
 
   const exportBtn = document.getElementById('btn-export-json');
   if (exportBtn) {
