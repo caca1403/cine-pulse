@@ -69,28 +69,32 @@ function getProgressMap() {
   return _progressMapCache;
 }
 
+function cleanImagePath(p) {
+  if (!p || typeof p !== 'string') return '';
+  let clean = p.replace(/^(undefined|null|\/undefined|\/null)$/i, '');
+  if (!clean || clean.startsWith('data:') || clean.startsWith('http')) return clean;
+
+  try {
+    while (clean.includes('%')) {
+      const decoded = decodeURIComponent(clean);
+      if (decoded === clean) break;
+      clean = decoded;
+    }
+  } catch (e) {}
+
+  clean = clean.replace(/^\/+/, '/');
+  if (!clean.startsWith('/')) clean = `/${clean}`;
+  if (clean === '/' || clean === '/null' || clean === '/undefined') return '';
+  return clean;
+}
+
 function resolveMediaImages(id, passedPoster, passedBackdrop, history = []) {
   const anyExisting = history.find(item => item.id == id && (item.posterPath || item.poster_path));
   let rawPoster = passedPoster || (anyExisting ? (anyExisting.posterPath || anyExisting.poster_path) : '');
   let rawBackdrop = passedBackdrop || (anyExisting ? (anyExisting.backdropPath || anyExisting.backdrop_path) : '');
 
-  if (rawPoster && typeof rawPoster === 'string') {
-    rawPoster = rawPoster.replace(/^(undefined|null|\/undefined|\/null)$/i, '');
-  }
-  if (rawBackdrop && typeof rawBackdrop === 'string') {
-    rawBackdrop = rawBackdrop.replace(/^(undefined|null|\/undefined|\/null)$/i, '');
-  }
-
-  // Normalize leading slash if relative TMDB path
-  let resolvedPoster = rawPoster;
-  if (resolvedPoster && typeof resolvedPoster === 'string' && !resolvedPoster.startsWith('http') && !resolvedPoster.startsWith('data:') && !resolvedPoster.startsWith('/')) {
-    resolvedPoster = `/${resolvedPoster}`;
-  }
-
-  let resolvedBackdrop = rawBackdrop;
-  if (resolvedBackdrop && typeof resolvedBackdrop === 'string' && !resolvedBackdrop.startsWith('http') && !resolvedBackdrop.startsWith('data:') && !resolvedBackdrop.startsWith('/')) {
-    resolvedBackdrop = `/${resolvedBackdrop}`;
-  }
+  const resolvedPoster = cleanImagePath(rawPoster);
+  const resolvedBackdrop = cleanImagePath(rawBackdrop);
 
   return { resolvedPoster: resolvedPoster || '', resolvedBackdrop: resolvedBackdrop || '' };
 }
@@ -594,8 +598,8 @@ export function normalizeStoredItem(item) {
       type = type || 'movie';
     }
   }
-  const poster = item.poster_path || item.posterPath || item.poster || '';
-  const backdrop = item.backdrop_path || item.backdropPath || item.backdrop || '';
+  const poster = cleanImagePath(item.poster_path || item.posterPath || item.poster || '');
+  const backdrop = cleanImagePath(item.backdrop_path || item.backdropPath || item.backdrop || '');
   return {
     ...item,
     type,

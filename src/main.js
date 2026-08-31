@@ -2,7 +2,6 @@
    DiziBol Pro - Main Application Router & Entry Point
    ========================================================================== */
 
-import { inject } from '@vercel/analytics';
 import { renderNavbar, attachNavbarEvents } from './components/Navbar.js';
 import { renderHomeView } from './views/HomeView.js';
 import { renderDetailView } from './views/DetailView.js';
@@ -11,9 +10,6 @@ import { renderDiscoverView } from './views/DiscoverView.js';
 import { renderPopularListView } from './views/PopularListView.js';
 import { renderLiveTvView } from './views/LiveTvView.js';
 import { saveAllScrollState, restoreAllScrollState } from './services/scrollManager.js';
-
-// Initialize Vercel Web Analytics
-inject();
 
 // Disable browser default scroll jump on SPA hash changes
 if ('scrollRestoration' in history) {

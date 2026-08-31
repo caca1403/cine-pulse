@@ -36,8 +36,27 @@ export const SINEFLIX_ACTOR_FALLBACK = `data:image/svg+xml,${encodeURIComponent(
 export function getImageUrl(path, size = TMDB_IMAGE_SIZES.POSTER_MEDIUM) {
   if (!path || path === 'null' || path === 'undefined' || path === '') return SINEFLIX_POSTER_FALLBACK;
   if (path.startsWith('http') || path.startsWith('data:')) return path;
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${size}${cleanPath}`;
+
+  // Fully decode any nested URI encoding (e.g. /%2F%252F...acYXu4KaDj1NIkMgObnhe4C4a0T.jpg)
+  let clean = path;
+  try {
+    while (clean.includes('%')) {
+      const decoded = decodeURIComponent(clean);
+      if (decoded === clean) break;
+      clean = decoded;
+    }
+  } catch (e) {
+    // If malformed URI, fallback
+  }
+
+  // Remove multiple leading slashes
+  clean = clean.replace(/^\/+/, '/');
+  if (!clean.startsWith('/')) clean = `/${clean}`;
+
+  // If path somehow ended up without a filename or invalid
+  if (clean === '/' || clean === '/null' || clean === '/undefined') return SINEFLIX_POSTER_FALLBACK;
+
+  return `${size}${clean}`;
 }
 
 const translationCache = {};

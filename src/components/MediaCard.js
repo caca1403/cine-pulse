@@ -133,7 +133,7 @@ export function renderMediaCard(item, options = {}) {
 
         <!-- Rating Pill Floating Top Right -->
         ${rating ? `
-          <div class="card-rating-badge">
+          <div class="card-rating-pill">
             <i data-lucide="star" style="width:11px;height:11px;fill:#f59e0b;stroke:#f59e0b;"></i>
             <span>${rating}</span>
           </div>
@@ -141,14 +141,15 @@ export function renderMediaCard(item, options = {}) {
 
         <!-- Hover Quick Play Overlay -->
         <div class="card-hover-overlay">
-          <div class="card-play-btn">
-            <i data-lucide="${isContinue ? 'play' : 'play'}" style="width:20px;height:20px;fill:currentColor;margin-left:2px;"></i>
+          <div class="card-play-btn-circle">
+            <i data-lucide="play" style="width:20px;height:20px;fill:currentColor;margin-left:2px;"></i>
           </div>
+          <span class="card-hover-action-text">${isContinue ? 'İzlemeye Devam Et' : 'İncele & Oynat'}</span>
         </div>
 
         <!-- Progress Bar at bottom if watch in progress -->
         ${progressPercent > 0 && !isCompleted ? `
-          <div class="card-progress-bar-container">
+          <div class="card-progress-bar-bg">
             <div class="card-progress-bar-fill" style="width: ${progressPercent}%;"></div>
           </div>
         ` : ''}
