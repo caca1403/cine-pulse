@@ -199,109 +199,77 @@ export async function fetchTrending(type = 'all', timeWindow = 'week', page = 1)
 }
 
 export async function fetchPopularSeries(page = 1) {
-  const [trRes, enRes] = await Promise.all([
-    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'tr-TR' }),
-    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'en-US' })
-  ]);
+  const trRes = await tmdbFetch('/tv/popular', { page, language: 'tr-TR' });
   if (!trRes || !trRes.results) return [];
-
-  const enMap = new Map((enRes?.results || []).map(i => [i.id, i.overview]));
 
   return trRes.results
     .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => {
       const overview = (item.overview || '').trim();
-      const enOverview = (enMap.get(item.id) || '').trim();
-
       return {
         ...item,
         type: 'tv',
         media_type: 'tv',
-        overview: overview || enOverview || generateCinematicOverview(item, 'tv')
+        overview: overview || generateCinematicOverview(item, 'tv')
       };
     });
 }
 
 export async function fetchPopularMovies(page = 1) {
-  const [trRes, enRes] = await Promise.all([
-    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'tr-TR' }),
-    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'en-US' })
-  ]);
+  const trRes = await tmdbFetch('/movie/popular', { page, language: 'tr-TR' });
   if (!trRes || !trRes.results) return [];
-
-  const enMap = new Map((enRes?.results || []).map(i => [i.id, i.overview]));
 
   return trRes.results
     .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => {
       const overview = (item.overview || '').trim();
-      const enOverview = (enMap.get(item.id) || '').trim();
-
       return {
         ...item,
         type: 'movie',
         media_type: 'movie',
-        overview: overview || enOverview || generateCinematicOverview(item, 'movie')
+        overview: overview || generateCinematicOverview(item, 'movie')
       };
     });
 }
 
 export async function fetchPopularAnime(page = 1) {
-  const [tvRes, movieRes, enTvRes, enMovieRes] = await Promise.all([
-    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'tr-TR', with_genres: '16', with_original_language: 'ja' }),
-    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'tr-TR', with_genres: '16', with_original_language: 'ja' }),
-    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'en-US', with_genres: '16', with_original_language: 'ja' }),
-    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'en-US', with_genres: '16', with_original_language: 'ja' })
-  ]);
-
-  const enMap = new Map([
-    ...(enTvRes?.results || []).map(i => [i.id, i.overview]),
-    ...(enMovieRes?.results || []).map(i => [i.id, i.overview])
+  const [tvRes, movieRes] = await Promise.all([
+    tmdbFetch('/discover/tv', { sort_by: 'popularity.desc', page, language: 'tr-TR', with_genres: '16', with_original_language: 'ja' }),
+    tmdbFetch('/discover/movie', { sort_by: 'popularity.desc', page, language: 'tr-TR', with_genres: '16', with_original_language: 'ja' })
   ]);
 
   const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv' }));
   const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
-  const combined = [...tvItems, ...movieItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+  const combined = [...tvItems, ...movieItems].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
 
   return combined
     .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => {
       const overview = (item.overview || '').trim();
-      const enOverview = (enMap.get(item.id) || '').trim();
-
       return {
         ...item,
-        overview: overview || enOverview || generateCinematicOverview(item, item.type)
+        overview: overview || generateCinematicOverview(item, item.type)
       };
     });
 }
 
 export async function fetchPopularDocumentaries(page = 1) {
-  const [tvRes, movieRes, enTvRes, enMovieRes] = await Promise.all([
-    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'tr-TR', with_genres: '99' }),
-    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'tr-TR', with_genres: '99' }),
-    tmdbFetch('/discover/tv', { sort_by: 'vote_count.desc', page, language: 'en-US', with_genres: '99' }),
-    tmdbFetch('/discover/movie', { sort_by: 'vote_count.desc', page, language: 'en-US', with_genres: '99' })
-  ]);
-
-  const enMap = new Map([
-    ...(enTvRes?.results || []).map(i => [i.id, i.overview]),
-    ...(enMovieRes?.results || []).map(i => [i.id, i.overview])
+  const [tvRes, movieRes] = await Promise.all([
+    tmdbFetch('/discover/tv', { sort_by: 'popularity.desc', page, language: 'tr-TR', with_genres: '99' }),
+    tmdbFetch('/discover/movie', { sort_by: 'popularity.desc', page, language: 'tr-TR', with_genres: '99' })
   ]);
 
   const tvItems = (tvRes?.results || []).map(item => ({ ...item, type: 'tv', media_type: 'tv' }));
   const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
-  const combined = [...tvItems, ...movieItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+  const combined = [...tvItems, ...movieItems].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
 
   return combined
     .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => {
       const overview = (item.overview || '').trim();
-      const enOverview = (enMap.get(item.id) || '').trim();
-
       return {
         ...item,
-        overview: overview || enOverview || generateCinematicOverview(item, item.type)
+        overview: overview || generateCinematicOverview(item, item.type)
       };
     });
 }
