@@ -57,7 +57,7 @@ export async function fetchTurkAnimeSources({
 
     for (const pattern of slugPatterns) {
       try {
-        const epUrl = `https://www.turkanime.co/video/${pattern}`;
+        const epUrl = `https://www.turkanime.tv/video/${pattern}`;
         const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
 
         const res = await fetch(proxyUrl, {
@@ -96,7 +96,7 @@ export async function fetchTurkAnimeSources({
           html.includes('data-video') || 
           html.includes('video-player') ||
           html.includes('player_iframe') ||
-          html.includes('turkanime.co/ajax');
+          html.includes('turkanime.tv/ajax');
 
         if (!hasRealPlayer) continue;
 
@@ -112,8 +112,8 @@ export async function fetchTurkAnimeSources({
         return [
           {
             id: `ta_${slug}_${episode}_${isDub ? 'dub' : 'sub'}`,
-            name: `TürkAnime TV - Bölüm ${episode} (${isDub ? 'TR Dublaj' : 'Altyazılı'})`,
-            badge: isDub ? '🎌 Dublaj' : '🎌 TürkAnime',
+            name: `TR Anime - Bölüm ${episode} (${isDub ? 'TR Dublaj' : 'Altyazılı'})`,
+            badge: isDub ? '🎌 Dublaj' : '🎌 TR Anime',
             category: isDub ? 'dubbed' : 'subtitled',
             isExternalPopout: false,
             streamUrl: playerStreamUrl,
