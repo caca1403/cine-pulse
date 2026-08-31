@@ -43,17 +43,18 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
 
   if (candidateSlugs.length === 0) return [];
 
-  const baseDomains = ['https://filmizlech.com'];
+  const baseDomains = ['https://filmizlech.org', 'https://filmizlech.com'];
 
   for (const baseDomain of baseDomains) {
     for (const slug of candidateSlugs) {
       const targetUrls = isMovie
         ? [
+            `${baseDomain}/film/${slug}-izle-1/`,
+            `${baseDomain}/film/${slug}-izle/`,
+            `${baseDomain}/film/${slug}/`,
             `${baseDomain}/${slug}-izle/`,
             `${baseDomain}/${slug}-izle-1/`,
-            `${baseDomain}/${slug}/`,
-            `${baseDomain}/film/${slug}-izle/`,
-            `${baseDomain}/film/${slug}/`
+            `${baseDomain}/${slug}/`
           ]
         : [
             `${baseDomain}/dizi/${slug}/sezon-${season}/bolum-${episode}/`,
@@ -63,7 +64,7 @@ export async function fetchFilmizlechSources({ type = 'tv', seriesTitle = '', ti
       for (const targetUrl of targetUrls) {
         try {
           const proxyTargetUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
-          const pageRes = await fetch(proxyTargetUrl, { signal: AbortSignal.timeout(2200) }).catch(() => null);
+          const pageRes = await fetch(proxyTargetUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null);
           if (!pageRes || !pageRes.ok) continue;
 
           const html = await pageRes.text().catch(() => '');

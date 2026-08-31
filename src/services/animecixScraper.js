@@ -62,8 +62,18 @@ export async function fetchAnimecixSources({
 
       for (const item of data.results) {
         if (item && item.id && !seenAnimeIds.has(item.id)) {
-          seenAnimeIds.add(item.id);
-          foundAnimeMatches.push(item);
+          const itemTitle = normalizeTitle(item.name || item.name_english || item.name_romanji || item.original_title || '');
+          const queryNorm = cleanQ;
+          
+          // Strict check: Either exact match, or high word overlap
+          const isMatch = itemTitle === queryNorm || 
+            itemTitle.includes(queryNorm) || 
+            queryNorm.includes(itemTitle);
+
+          if (isMatch) {
+            seenAnimeIds.add(item.id);
+            foundAnimeMatches.push(item);
+          }
         }
       }
 

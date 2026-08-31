@@ -85,17 +85,34 @@ export async function fetchHDFilmizleSources({
 
   const uniqueUrls = [...new Set(candidateUrls)];
 
+  const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+
   const htmlResults = await Promise.all(
     uniqueUrls.map(async (targetUrl) => {
       try {
-        const res = await fetch(targetUrl, {
-          signal: AbortSignal.timeout(4500),
+        // 1. Try Cloudflare Worker proxy first
+        const directUrl = targetUrl.startsWith('http') ? targetUrl : `https://www.hdfilmizle.vip${targetUrl.replace(/^\/api\/hdi/, '')}`;
+        const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(directUrl)}`;
+        
+        let res = await fetch(proxyUrl, {
+          signal: AbortSignal.timeout(4000),
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Referer': 'https://www.hdfilmizle.vip/'
           }
-        });
-        if (!res.ok) return null;
+        }).catch(() => null);
+
+        if (!res || !res.ok) {
+          res = await fetch(targetUrl, {
+            signal: AbortSignal.timeout(4000),
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Referer': 'https://www.hdfilmizle.vip/'
+            }
+          }).catch(() => null);
+        }
+
+        if (!res || !res.ok) return null;
         const html = await res.text();
         if (!html || html.length < 500 || html.includes('404 Not Found')) return null;
         return { targetUrl, html };
