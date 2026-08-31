@@ -120,6 +120,7 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (id.startsWith('dzp_') || raw.includes('dizipal')) return 'DP Stream 1080p';
   if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 'Alpha Stream';
   if (url.includes('storage.diziyou') || id.startsWith('dzy')) return 'HLS FastCDN';
+  if (url.includes('videasy') || id.startsWith('vds_') || raw.includes('videasy')) return 'Videasy Ultra 1080p';
   if (url.includes('smashy') || raw.includes('smashy')) return 'Smashy 1080p';
   if (url.includes('multiembed') || raw.includes('multiembed')) return 'MultiEmbed VIP';
   if (url.includes('vidlink') || raw.includes('vidlink')) return 'VidLink Pro';

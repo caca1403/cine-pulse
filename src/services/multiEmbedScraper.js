@@ -1,7 +1,6 @@
 /* ==========================================================================
-   CinePulse Studio - MultiEmbed Scraper
-   Fetches stable, long-running MultiEmbed (multiembed.mov) 1080p stream
-   Supports Turkish Subtitles & Multi-Audio
+   CinePulse Studio - Videasy Ultra Scraper (Universal TMDB Embed)
+   Supports OpenSubtitles Turkish Subtitle integration for all Movies & Series
    ========================================================================== */
 
 export async function fetchMultiEmbedSources({
@@ -15,16 +14,16 @@ export async function fetchMultiEmbedSources({
 
   const isMovie = type === 'movie';
   const embedUrl = isMovie
-    ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
-    : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`;
+    ? `https://player.videasy.net/movie/${tmdbId}`
+    : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`;
 
   return [
     {
-      id: `me_${tmdbId}_${isMovie ? 'm' : `s${season}e${episode}`}`,
-      name: 'MultiEmbed VIP',
-      displayName: 'MultiEmbed VIP',
-      badge: isDub ? '💬 TR Dublaj/Altyazı' : '💬 TR Altyazılı',
-      category: isDub ? 'dubbed' : 'subtitled',
+      id: `vds_${tmdbId}_${isMovie ? 'm' : `s${season}e${episode}`}`,
+      name: 'Videasy Ultra 1080p',
+      displayName: 'Videasy Ultra 1080p',
+      badge: '💬 TR Altyazı (OpenSubs)',
+      category: 'subtitled',
       url: embedUrl,
       streamUrl: embedUrl,
       isDirectVideo: false,
