@@ -94,8 +94,8 @@ export async function fetchDizipalSources({
             return [
               {
                 id: `dzp_${slug}_${season}_${episode}_${isDub ? 'dub' : 'sub'}`,
-                name: `DiziPal VIP 1080p`,
-                displayName: `DiziPal VIP 1080p`,
+                name: `DP Stream 1080p`,
+                displayName: `DP Stream 1080p`,
                 badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
                 url: playableUrl,
                 streamUrl: playableUrl,
