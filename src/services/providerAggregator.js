@@ -24,6 +24,7 @@ import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
 import { fetchHDFilmizleSources } from './hdfilmizleScraper.js';
+import { fetchDiziboxSources } from './diziboxScraper.js';
 import { fetchMultiEmbedSources } from './multiEmbedScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -120,6 +121,7 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (url.includes('eksenload') || url.includes('vidload') || raw.includes('eksen')) return 'EksenLoad VIP';
   if (url.includes('vidmody') || raw.includes('vidmody')) return 'VidMody Ultra';
   if (id.startsWith('dzp_') || raw.includes('dizipal')) return 'DP Stream 1080p';
+  if (id.startsWith('dzb_') || raw.includes('dizibox')) return 'DB Stream 1080p';
   if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 'Alpha Stream';
   if (url.includes('storage.diziyou') || id.startsWith('dzy')) return 'HLS FastCDN';
   if (url.includes('smashy') || raw.includes('smashy')) return 'Smashy 1080p';
@@ -347,6 +349,12 @@ export async function getStreamingServersProgressive({
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    // DiziBox (TV Series Only - Dubbed & Subtitled)
+    !isMovie ? fetchDiziboxSources({ titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
+    !isMovie ? fetchDiziboxSources({ titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
     // Universal MultiEmbed & VidLink (Subtitled Only)
     fetchMultiEmbedSources({ type, tmdbId, season, episode, isDub: false })
