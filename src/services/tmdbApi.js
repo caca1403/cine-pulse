@@ -20,9 +20,9 @@ function rotateApiKey() {
 }
 
 export const TMDB_IMAGE_SIZES = {
-  POSTER_SMALL: 'https://image.tmdb.org/t/p/w342',
-  POSTER_MEDIUM: 'https://image.tmdb.org/t/p/w500',
-  BACKDROP_LARGE: 'https://image.tmdb.org/t/p/w1280',
+  POSTER_SMALL: 'https://image.tmdb.org/t/p/w185',
+  POSTER_MEDIUM: 'https://image.tmdb.org/t/p/w342', // Crisp Retina & 6x lighter than w500
+  BACKDROP_LARGE: 'https://image.tmdb.org/t/p/w780',
   BACKDROP_ORIGINAL: 'https://image.tmdb.org/t/p/original',
   STILL_MEDIUM: 'https://image.tmdb.org/t/p/w300'
 };
@@ -62,7 +62,13 @@ export async function translateToTurkish(text) {
   return text;
 }
 
+const tmdbApiCache = new Map();
 async function tmdbFetch(endpoint, params = {}) {
+  const cacheKey = `${endpoint}_${JSON.stringify(params)}`;
+  if (tmdbApiCache.has(cacheKey)) {
+    return tmdbApiCache.get(cacheKey);
+  }
+
   for (let attempt = 0; attempt < API_KEYS.length; attempt++) {
     try {
       const url = new URL(`${API_BASE_URL}${endpoint}`);
@@ -74,15 +80,15 @@ async function tmdbFetch(endpoint, params = {}) {
         }
       }
 
-      const response = await fetch(url.toString(), { signal: AbortSignal.timeout(5000) });
+      const response = await fetch(url.toString(), { signal: AbortSignal.timeout(3000) });
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        tmdbApiCache.set(cacheKey, data);
+        return data;
       } else {
-        console.warn(`TMDB key ${getActiveApiKey()} failed (${response.status}). Rotating key...`);
         rotateApiKey();
       }
     } catch (err) {
-      console.error(`Fetch error for ${endpoint}:`, err);
       rotateApiKey();
     }
   }
