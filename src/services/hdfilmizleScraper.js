@@ -148,7 +148,8 @@ export async function fetchHDFilmizleSources({
           }
 
           if (playerUrl) {
-            const name = part.name || (playerUrl.includes('vidrame') ? 'Vidrame' : (playerUrl.includes('closeload') ? 'Closeload' : 'HDFilmizle VIP'));
+            if (playerUrl.includes('vidrame')) continue;
+            const name = part.name || (playerUrl.includes('closeload') ? 'Closeload' : 'HDFilmizle VIP');
             const isHls = playerUrl.includes('.m3u8') || playerUrl.includes('.txt');
             sources.push({
               id: `hdi_${part.id || Math.random().toString(36).substring(2, 6)}`,

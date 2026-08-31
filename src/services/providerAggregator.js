@@ -185,6 +185,7 @@ function isValidStream(s) {
     'liderfilm',
     'dizipal.bid',
     'hdfilmdelisi',
+    'vidrame',
     '2embed',
     'embed.su',
     'vidsrc.cc',
