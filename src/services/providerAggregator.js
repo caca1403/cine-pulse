@@ -22,7 +22,7 @@ import { fetchBelgeselSources } from './belgeselScraper.js';
 import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
-import { fetchMultiEmbedSources } from './multiEmbedScraper.js';
+import { fetchFilmkovasiSources } from './multiEmbedScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -336,11 +336,11 @@ export async function getStreamingServersProgressive({
     fetchDizipalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // Universal MultiEmbed VIP (Subtitled & Multi-Language)
-    fetchMultiEmbedSources({ type, tmdbId, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchMultiEmbedSources({ type, tmdbId, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+    // FilmKovasi VIP (Movie only - VidMoly, Doodstream, StreamTape)
+    isMovie ? fetchFilmkovasiSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
+    isMovie ? fetchFilmkovasiSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
     // AX VIP (Fast Tau Video 1080p, Sibnet, VidMoly & Multi-Source Anime)
     fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
