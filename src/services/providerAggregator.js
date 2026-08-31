@@ -348,12 +348,6 @@ export async function getStreamingServersProgressive({
     fetchDizipalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // FilmKovasi VIP (Movie only - VidMoly, Doodstream, StreamTape)
-    isMovie ? fetchFilmkovasiSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
-    isMovie ? fetchFilmkovasiSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
-
     // AX VIP (Fast Tau Video 1080p, Sibnet, VidMoly & Multi-Source Anime)
     fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
