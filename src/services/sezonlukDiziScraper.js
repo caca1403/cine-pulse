@@ -134,8 +134,10 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
         if (iframeUrl && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
           if (
             item.baslik?.toLowerCase().includes('filemoon') ||
+            item.baslik?.toLowerCase().includes('videosoft') ||
             iframeUrl.includes('bysejikuar') ||
-            iframeUrl.includes('filemoon')
+            iframeUrl.includes('filemoon') ||
+            iframeUrl.includes('videoseyred')
           ) {
             continue;
           }
