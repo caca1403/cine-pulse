@@ -131,11 +131,11 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (url.includes('vidsrc') || raw.includes('vidsrc')) return 'VidSrc Pro';
   if (raw.includes('channel') || url.includes('filmizlech')) return 'Channel Stream 1080p';
   if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) {
-    if (url.includes('tau-video') || raw.includes('tau')) return 'AnimeciX Tau Video 1080p';
-    if (url.includes('sibnet') || raw.includes('sibnet')) return 'AnimeciX Sibnet HD';
-    if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'AnimeciX VidMoly 1080p';
-    if (url.includes('dood') || raw.includes('dood')) return 'AnimeciX Doodstream';
-    return 'AnimeciX VIP 1080p';
+    if (url.includes('tau-video') || raw.includes('tau')) return 'AX Tau 1080p';
+    if (url.includes('sibnet') || raw.includes('sibnet')) return 'AX Sibnet HD';
+    if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'AX VidMoly 1080p';
+    if (url.includes('dood') || raw.includes('dood')) return 'AX Doodstream';
+    return 'AX VIP 1080p';
   }
   if (raw.includes('belgesel')) return 'Belgesel TR';
   if (raw.includes('tranime') || raw.includes('turkanime') || raw.includes('animetr')) return 'AnimeTR HD';

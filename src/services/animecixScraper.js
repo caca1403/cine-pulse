@@ -95,7 +95,8 @@ export async function fetchAnimecixSources({
         if (seenUrls.has(streamUrl) || streamUrl.length < 5) continue;
         seenUrls.add(streamUrl);
 
-        const providerName = v.name || 'AnimeciX';
+        const rawProvider = v.name || 'VIP';
+        const providerName = rawProvider.replace(/animecix/gi, 'AX');
         const fansubInfo = v.extra ? ` • ${v.extra}` : '';
         const isDubbedVideo = (providerName + ' ' + (v.extra || '')).toLowerCase().includes('dublaj');
 
@@ -103,7 +104,7 @@ export async function fetchAnimecixSources({
 
         matchedList.push({
           id: `acx_${anime.id}_${v.id || sources.length}_${isDub ? 'dub' : 'sub'}`,
-          name: `AnimeciX - ${providerName} (${isDub ? '1080p TR Dublaj' : '1080p Altyazılı'})${fansubInfo}`,
+          name: `AX - ${providerName} (${isDub ? '1080p TR Dublaj' : '1080p Altyazılı'})${fansubInfo}`,
           badge: isDub ? '🎌 Dublaj' : `🎌 ${providerName}`,
           category: isDub ? 'dubbed' : 'subtitled',
           providerName,
