@@ -47,12 +47,13 @@ function renderLibraryCard(item, tabType) {
 }
 
 export function renderLibraryView() {
-  const continueHistory = getContinueWatchingList();
-  const completedHistory = getCompletedWatchList();
   const allHistory = getWatchHistory();
   const favorites = getFavorites();
   const watchlist = getWatchlist();
   const stats = getTotalWatchStats();
+
+  const countContinue = getContinueWatchingList().length;
+  const countCompleted = getCompletedWatchList().length;
 
   const html = `
     <div class="library-view">
@@ -126,12 +127,12 @@ export function renderLibraryView() {
           <button class="lib-nav-tab active" data-tab="continue">
             <i data-lucide="clock"></i>
             <span>Devam Et</span>
-            <span class="lib-tab-badge" id="tab-count-continue">${continueHistory.length}</span>
+            <span class="lib-tab-badge" id="tab-count-continue">${countContinue}</span>
           </button>
           <button class="lib-nav-tab" data-tab="completed">
             <i data-lucide="check-circle-2"></i>
             <span>Tamamlananlar</span>
-            <span class="lib-tab-badge" id="tab-count-completed">${completedHistory.length}</span>
+            <span class="lib-tab-badge" id="tab-count-completed">${countCompleted}</span>
           </button>
           <button class="lib-nav-tab" data-tab="favorites">
             <i data-lucide="heart"></i>
@@ -182,114 +183,20 @@ export function renderLibraryView() {
             <button id="lib-batch-clear-btn" class="btn-lib-clear-batch hidden" title="Bu listedeki tüm kayıtları temizle">
               <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
               <span>Temizle</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Tab 1: Continue Watching (In-Progress Only) -->
-        <div class="tab-content" id="tab-continue">
-          ${continueHistory.length === 0 ? `
-            <div class="library-empty-state">
-              <div class="empty-state-icon-wrap">
-                <i data-lucide="clock" style="width: 32px; height: 32px;"></i>
-              </div>
-              <h3 class="empty-state-title">Yarım kalan içerik yok</h3>
-              <p class="empty-state-desc">Dizi veya film izlemeye başladığınızda kaldığınız dakika burada otomatik olarak saklanır.</p>
-              <a href="#discover" class="btn-primary empty-state-action-btn">
-                <i data-lucide="compass" style="width: 16px; height: 16px;"></i>
-                <span>Keşfet'e Göz At</span>
-              </a>
-            </div>
-          ` : `
-            <div class="media-grid" id="grid-continue">
-              ${continueHistory.map(item => renderLibraryCard(item, 'continue')).join('')}
-            </div>
-          `}
-        </div>
+          <!-- Tab 1: Continue Watching (In-Progress Only) -->
+        <div class="tab-content" id="tab-continue"></div>
 
         <!-- Tab 2: Completed / Finished Watch List -->
-        <div class="tab-content hidden" id="tab-completed">
-          ${completedHistory.length === 0 ? `
-            <div class="library-empty-state">
-              <div class="empty-state-icon-wrap" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); color: #34d399;">
-                <i data-lucide="check-circle-2" style="width: 32px; height: 32px;"></i>
-              </div>
-              <h3 class="empty-state-title">Henüz tamamlanmış içerik yok</h3>
-              <p class="empty-state-desc">İzleyip bitirdiğiniz filmler ve tüm sezonlarını tamamladığınız diziler burada listelenir.</p>
-              <a href="#movies" class="btn-primary empty-state-action-btn">
-                <i data-lucide="film" style="width: 16px; height: 16px;"></i>
-                <span>Popüler Filmleri İncele</span>
-              </a>
-            </div>
-          ` : `
-            <div class="media-grid" id="grid-completed">
-              ${completedHistory.map(item => renderLibraryCard(item, 'completed')).join('')}
-            </div>
-          `}
-        </div>
+        <div class="tab-content hidden" id="tab-completed"></div>
 
         <!-- Tab 3: Favorites Grid -->
-        <div class="tab-content hidden" id="tab-favorites">
-          ${favorites.length === 0 ? `
-            <div class="library-empty-state">
-              <div class="empty-state-icon-wrap" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.3); color: #f87171;">
-                <i data-lucide="heart" style="width: 32px; height: 32px;"></i>
-              </div>
-              <h3 class="empty-state-title">Favorilerinize henüz yapım eklemediniz</h3>
-              <p class="empty-state-desc">Beğendiğiniz dizi ve filmleri detay sayfasından veya kartlardan favorilere ekleyebilirsiniz.</p>
-              <a href="#series" class="btn-primary empty-state-action-btn">
-                <i data-lucide="tv" style="width: 16px; height: 16px;"></i>
-                <span>Trend Dizilere Bak</span>
-              </a>
-            </div>
-          ` : `
-            <div class="media-grid" id="grid-favorites">
-              ${favorites.map(item => renderLibraryCard(item, 'favorites')).join('')}
-            </div>
-          `}
-        </div>
+        <div class="tab-content hidden" id="tab-favorites"></div>
 
         <!-- Tab 4: Watchlist Grid -->
-        <div class="tab-content hidden" id="tab-watchlist">
-          ${watchlist.length === 0 ? `
-            <div class="library-empty-state">
-              <div class="empty-state-icon-wrap" style="background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.3); color: #38bdf8;">
-                <i data-lucide="plus-circle" style="width: 32px; height: 32px;"></i>
-              </div>
-              <h3 class="empty-state-title">İzleme listeniz henüz boş</h3>
-              <p class="empty-state-desc">Daha sonra izlemek istediğiniz içerikleri listenize kaydedip buradan hızlıca ulaşabilirsiniz.</p>
-              <a href="#discover" class="btn-primary empty-state-action-btn">
-                <i data-lucide="compass" style="width: 16px; height: 16px;"></i>
-                <span>İçerik Keşfet</span>
-              </a>
-            </div>
-          ` : `
-            <div class="media-grid" id="grid-watchlist">
-              ${watchlist.map(item => renderLibraryCard(item, 'watchlist')).join('')}
-            </div>
-          `}
-        </div>
+        <div class="tab-content hidden" id="tab-watchlist"></div>
 
         <!-- Tab 5: All Episodes Breakdown -->
-        <div class="tab-content hidden" id="tab-all-episodes">
-          ${allHistory.length === 0 ? `
-            <div class="library-empty-state">
-              <div class="empty-state-icon-wrap" style="background: rgba(168, 85, 247, 0.12); border-color: rgba(168, 85, 247, 0.3); color: #c084fc;">
-                <i data-lucide="list-checks" style="width: 32px; height: 32px;"></i>
-              </div>
-              <h3 class="empty-state-title">Bölüm geçmişi boş</h3>
-              <p class="empty-state-desc">Oynatılan veya tek tek işaretlenen tüm bölümler burada kaydedilir.</p>
-              <a href="#home" class="btn-primary empty-state-action-btn">
-                <i data-lucide="home" style="width: 16px; height: 16px;"></i>
-                <span>Ana Sayfaya Dön</span>
-              </a>
-            </div>
-          ` : `
-            <div class="media-grid" id="grid-all-episodes">
-              ${allHistory.map(item => renderLibraryCard(item, 'all-episodes')).join('')}
-            </div>
-          `}
-        </div>
+        <div class="tab-content hidden" id="tab-all-episodes"></div>
       </div>
     </div>
   `;
@@ -309,52 +216,159 @@ export function renderLibraryView() {
       const sortSelect = container.querySelector('#lib-sort-select');
       const batchClearBtn = container.querySelector('#lib-batch-clear-btn');
 
-      // Filter and Sort Engine for Active Tab
-      const applyFilterAndSort = () => {
+      // Tab data provider
+      const getTabData = (tab) => {
+        if (tab === 'continue') return getContinueWatchingList();
+        if (tab === 'completed') return getCompletedWatchList();
+        if (tab === 'favorites') return getFavorites();
+        if (tab === 'watchlist') return getWatchlist();
+        if (tab === 'all-episodes') return getWatchHistory();
+        return [];
+      };
+
+      const getEmptyState = (tab) => {
+        if (tab === 'continue') {
+          return `
+            <div class="library-empty-state">
+              <div class="empty-state-icon-wrap">
+                <i data-lucide="clock" style="width: 32px; height: 32px;"></i>
+              </div>
+              <h3 class="empty-state-title">Yarım kalan içerik yok</h3>
+              <p class="empty-state-desc">Dizi veya film izlemeye başladığınızda kaldığınız dakika burada otomatik olarak saklanır.</p>
+              <a href="#discover" class="btn-primary empty-state-action-btn">
+                <i data-lucide="compass" style="width: 16px; height: 16px;"></i>
+                <span>Keşfet'e Göz At</span>
+              </a>
+            </div>
+          `;
+        } else if (tab === 'completed') {
+          return `
+            <div class="library-empty-state">
+              <div class="empty-state-icon-wrap" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); color: #34d399;">
+                <i data-lucide="check-circle-2" style="width: 32px; height: 32px;"></i>
+              </div>
+              <h3 class="empty-state-title">Henüz tamamlanmış içerik yok</h3>
+              <p class="empty-state-desc">İzleyip bitirdiğiniz filmler ve tüm sezonlarını tamamladığınız diziler burada listelenir.</p>
+              <a href="#movies" class="btn-primary empty-state-action-btn">
+                <i data-lucide="film" style="width: 16px; height: 16px;"></i>
+                <span>Popüler Filmleri İncele</span>
+              </a>
+            </div>
+          `;
+        } else if (tab === 'favorites') {
+          return `
+            <div class="library-empty-state">
+              <div class="empty-state-icon-wrap" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.3); color: #f87171;">
+                <i data-lucide="heart" style="width: 32px; height: 32px;"></i>
+              </div>
+              <h3 class="empty-state-title">Favorilerinize henüz yapım eklemediniz</h3>
+              <p class="empty-state-desc">Beğendiğiniz dizi ve filmleri detay sayfasından veya kartlardan favorilere ekleyebilirsiniz.</p>
+              <a href="#series" class="btn-primary empty-state-action-btn">
+                <i data-lucide="tv" style="width: 16px; height: 16px;"></i>
+                <span>Trend Dizilere Bak</span>
+              </a>
+            </div>
+          `;
+        } else if (tab === 'watchlist') {
+          return `
+            <div class="library-empty-state">
+              <div class="empty-state-icon-wrap" style="background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.3); color: #38bdf8;">
+                <i data-lucide="plus-circle" style="width: 32px; height: 32px;"></i>
+              </div>
+              <h3 class="empty-state-title">İzleme listeniz henüz boş</h3>
+              <p class="empty-state-desc">Daha sonra izlemek istediğiniz içerikleri listenize kaydedip buradan hızlıca ulaşabilirsiniz.</p>
+              <a href="#discover" class="btn-primary empty-state-action-btn">
+                <i data-lucide="compass" style="width: 16px; height: 16px;"></i>
+                <span>İçerik Keşfet</span>
+              </a>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="library-empty-state">
+              <div class="empty-state-icon-wrap" style="background: rgba(168, 85, 247, 0.12); border-color: rgba(168, 85, 247, 0.3); color: #c084fc;">
+                <i data-lucide="list-checks" style="width: 32px; height: 32px;"></i>
+              </div>
+              <h3 class="empty-state-title">Bölüm geçmişi boş</h3>
+              <p class="empty-state-desc">Oynatılan veya tek tek işaretlenen tüm bölümler burada kaydedilir.</p>
+              <a href="#home" class="btn-primary empty-state-action-btn">
+                <i data-lucide="home" style="width: 16px; height: 16px;"></i>
+                <span>Ana Sayfaya Dön</span>
+              </a>
+            </div>
+          `;
+        }
+      };
+
+      // Render Active Tab Content with pagination/batching
+      let tabLimit = 36;
+
+      const renderActiveTabContent = () => {
         const activeContent = container.querySelector(`#tab-${currentTab}`);
         if (!activeContent) return;
 
-        const grid = activeContent.querySelector('.media-grid');
-        if (!grid) return;
+        let rawItems = getTabData(currentTab);
 
-        const cards = Array.from(grid.querySelectorAll('.library-card-item'));
-        let visibleCount = 0;
-
-        cards.forEach(card => {
-          const title = decodeURIComponent(card.getAttribute('data-title') || '').toLowerCase();
-          const type = card.getAttribute('data-type') || 'movie';
-
+        // Filter items in memory (fast and instantaneous)
+        let filtered = rawItems.filter(item => {
+          const title = (item.title || item.name || '').toLowerCase();
+          const type = determineMediaType(item);
           const matchesSearch = !searchQuery || title.includes(searchQuery.toLowerCase());
           const matchesType = currentTypeFilter === 'all' || type === currentTypeFilter;
-
-          if (matchesSearch && matchesType) {
-            card.style.display = '';
-            visibleCount++;
-          } else {
-            card.style.display = 'none';
-          }
+          return matchesSearch && matchesType;
         });
 
-        // Sort visible cards inside the DOM
-        const visibleCards = cards.filter(c => c.style.display !== 'none');
-        visibleCards.sort((a, b) => {
-          if (currentSort === 'rating-desc') {
-            const rA = parseFloat(a.getAttribute('data-rating') || '0');
-            const rB = parseFloat(b.getAttribute('data-rating') || '0');
+        // Sort items in memory
+        if (currentSort === 'rating-desc') {
+          filtered.sort((a, b) => {
+            const rA = parseFloat(a.vote_average || a.voteAverage || a.rating || 0);
+            const rB = parseFloat(b.vote_average || b.voteAverage || b.rating || 0);
             return rB - rA;
-          } else if (currentSort === 'title-asc') {
-            const tA = decodeURIComponent(a.getAttribute('data-title') || '');
-            const tB = decodeURIComponent(b.getAttribute('data-title') || '');
+          });
+        } else if (currentSort === 'title-asc') {
+          filtered.sort((a, b) => {
+            const tA = (a.title || a.name || '');
+            const tB = (b.title || b.name || '');
             return tA.localeCompare(tB, 'tr');
-          } else if (currentSort === 'year-desc') {
-            const yA = parseInt(a.getAttribute('data-year') || '0', 10);
-            const yB = parseInt(b.getAttribute('data-year') || '0', 10);
+          });
+        } else if (currentSort === 'year-desc') {
+          filtered.sort((a, b) => {
+            const yA = parseInt((a.release_date || a.first_air_date || a.year || '0').substring(0, 4), 10);
+            const yB = parseInt((b.release_date || b.first_air_date || b.year || '0').substring(0, 4), 10);
             return yB - yA;
-          }
-          return 0; // Default recent order
-        });
+          });
+        }
 
-        visibleCards.forEach(card => grid.appendChild(card));
+        if (filtered.length === 0) {
+          activeContent.innerHTML = getEmptyState(currentTab);
+        } else {
+          const visibleChunk = filtered.slice(0, tabLimit);
+          const hasMore = filtered.length > tabLimit;
+
+          activeContent.innerHTML = `
+            <div class="media-grid" id="grid-${currentTab}">
+              ${visibleChunk.map(item => renderLibraryCard(item, currentTab)).join('')}
+            </div>
+            ${hasMore ? `
+              <div style="text-align: center; margin: 2rem 0 1rem;">
+                <button id="btn-lib-load-more" class="btn-secondary" style="padding: 0.6rem 1.8rem; border-radius: var(--radius-full); font-size: 0.88rem;">
+                  <span>Daha Fazla Göster (${filtered.length - tabLimit} içerik daha)</span>
+                </button>
+              </div>
+            ` : ''}
+          `;
+
+          const loadMoreBtn = activeContent.querySelector('#btn-lib-load-more');
+          if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', () => {
+              tabLimit += 36;
+              renderActiveTabContent();
+            });
+          }
+
+          // Re-bind delete buttons inside this rendered tab
+          bindDeleteButtons(activeContent);
+        }
 
         // Update Batch Clear button visibility
         if (batchClearBtn) {
@@ -371,23 +385,110 @@ export function renderLibraryView() {
             batchClearBtn.classList.add('hidden');
           }
         }
+
+        if (window.lucide) window.lucide.createIcons();
+      };
+
+      // Filter and Sort Engine for Active Tab
+      const applyFilterAndSort = () => {
+        tabLimit = 36;
+        renderActiveTabContent();
       };
 
       // Tab switching handlers
       const tabs = container.querySelectorAll('#library-tabs .lib-nav-tab');
       tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
+        tab.addEventListener('click', (e) => {
+          e.preventDefault();
+          const targetTab = tab.getAttribute('data-tab');
+          if (currentTab === targetTab) return;
+
           tabs.forEach(t => t.classList.remove('active'));
           tab.classList.add('active');
 
-          currentTab = tab.getAttribute('data-tab');
+          currentTab = targetTab;
           container.querySelectorAll('.tab-content').forEach(tc => tc.classList.add('hidden'));
           const activeContent = container.querySelector(`#tab-${currentTab}`);
           if (activeContent) activeContent.classList.remove('hidden');
 
-          applyFilterAndSort();
+          tabLimit = 36;
+          renderActiveTabContent();
         });
       });
+
+      // Helper to bind delete buttons per rendered tab
+      const bindDeleteButtons = (scopeEl) => {
+        if (!scopeEl) return;
+        scopeEl.querySelectorAll('.btn-lib-delete').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const wrapper = btn.closest('.library-card-item');
+            if (!wrapper) return;
+
+            const id = wrapper.getAttribute('data-id');
+            const season = parseInt(wrapper.getAttribute('data-season') || '1', 10);
+            const episode = parseInt(wrapper.getAttribute('data-episode') || '1', 10);
+            const tab = wrapper.getAttribute('data-tab');
+            const title = decodeURIComponent(wrapper.getAttribute('data-title') || 'İçerik');
+
+            let confirmMsg = `"${title}" kaydını silmek istediğinize emin misiniz?`;
+            if (tab === 'all-episodes') {
+              confirmMsg = `"${title}" (Sezon ${season}, Bölüm ${episode}) izleme geçmişinizden silinsin mi?`;
+            } else if (tab === 'continue') {
+              confirmMsg = `"${title}" devam et listesinden kaldırılsın mı?`;
+            } else if (tab === 'completed') {
+              confirmMsg = `"${title}" tamamlananlar geçmişinden silinsin mi?`;
+            } else if (tab === 'favorites') {
+              confirmMsg = `"${title}" favorilerinizden kaldırılsın mı?`;
+            } else if (tab === 'watchlist') {
+              confirmMsg = `"${title}" izleme listenizden kaldırılsın mı?`;
+            }
+
+            if (window.confirm(confirmMsg)) {
+              if (tab === 'all-episodes') {
+                removeEpisodeFromHistory(id, season, episode);
+              } else if (tab === 'continue' || tab === 'completed') {
+                removeSeriesFromHistory(id);
+              } else if (tab === 'favorites') {
+                removeFavorite(id);
+              } else if (tab === 'watchlist') {
+                removeWatchlist(id);
+              }
+
+              showToast('✓ Kayıt başarıyla silindi.', 'success');
+
+              wrapper.style.transition = 'all 0.28s ease-out';
+              wrapper.style.transform = 'scale(0.85)';
+              wrapper.style.opacity = '0';
+              setTimeout(() => {
+                wrapper.remove();
+
+                // Refresh stats & tab counts dynamically
+                const updatedStats = getTotalWatchStats();
+                const elTime = container.querySelector('#stat-total-time');
+                const elEp = container.querySelector('#stat-episodes-count');
+                const elMov = container.querySelector('#stat-movies-count');
+                const elFav = container.querySelector('#stat-favs-count');
+                if (elTime) elTime.textContent = updatedStats.formattedTotalTime;
+                if (elEp) elEp.textContent = `${updatedStats.episodesCount} Bölüm`;
+                if (elMov) elMov.textContent = `${updatedStats.moviesCount} Film`;
+                if (elFav) elFav.textContent = `${getFavorites().length + getWatchlist().length} Yapım`;
+
+                const cCont = container.querySelector('#tab-count-continue');
+                const cComp = container.querySelector('#tab-count-completed');
+                const cFav = container.querySelector('#tab-count-favorites');
+                const cWatch = container.querySelector('#tab-count-watchlist');
+                const cAll = container.querySelector('#tab-count-all-episodes');
+                if (cCont) cCont.textContent = getContinueWatchingList().length;
+                if (cComp) cComp.textContent = getCompletedWatchList().length;
+                if (cFav) cFav.textContent = getFavorites().length;
+                if (cWatch) cWatch.textContent = getWatchlist().length;
+                if (cAll) cAll.textContent = getWatchHistory().length;
+              }, 300);
+            }
+          });
+        });
+      };
 
       // Search input handler
       if (searchInput) {
@@ -465,18 +566,14 @@ export function renderLibraryView() {
             if (elMov) elMov.textContent = `${updatedStats.moviesCount} Film`;
             if (elFav) elFav.textContent = `${getFavorites().length + getWatchlist().length} Yapım`;
 
-            const activeContent = container.querySelector(`#tab-${currentTab}`);
-            if (activeContent) {
-              const grid = activeContent.querySelector('.media-grid');
-              if (grid) grid.innerHTML = '';
-            }
-
             const cCont = container.querySelector('#tab-count-continue');
             const cComp = container.querySelector('#tab-count-completed');
             const cAll = container.querySelector('#tab-count-all-episodes');
             if (cCont) cCont.textContent = getContinueWatchingList().length;
             if (cComp) cComp.textContent = getCompletedWatchList().length;
             if (cAll) cAll.textContent = getWatchHistory().length;
+
+            renderActiveTabContent();
           }
         });
       }
@@ -500,6 +597,7 @@ export function renderLibraryView() {
               const res = importDataFromJSON(event.target.result, 'merge');
               if (res.success) {
                 showToast(`✓ Yedek başarıyla yüklendi! (${res.countHistory} izleme, ${res.countFavs} favori aktarıldı)`, 'success');
+                renderActiveTabContent();
               } else {
                 showToast(`Yükleme hatası: ${res.message || res.error}`, 'error');
               }
@@ -516,77 +614,8 @@ export function renderLibraryView() {
         dataModalBtn.addEventListener('click', () => openDataManagerModal());
       }
 
-      // Safe Item & Episode Deletion with Confirmation
-      container.querySelectorAll('.btn-lib-delete').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const wrapper = btn.closest('.library-card-item');
-          if (!wrapper) return;
-
-          const id = wrapper.getAttribute('data-id');
-          const season = parseInt(wrapper.getAttribute('data-season') || '1', 10);
-          const episode = parseInt(wrapper.getAttribute('data-episode') || '1', 10);
-          const tab = wrapper.getAttribute('data-tab');
-          const title = decodeURIComponent(wrapper.getAttribute('data-title') || 'İçerik');
-
-          let confirmMsg = `"${title}" kaydını silmek istediğinize emin misiniz?`;
-          if (tab === 'all-episodes') {
-            confirmMsg = `"${title}" (Sezon ${season}, Bölüm ${episode}) izleme geçmişinizden silinsin mi?`;
-          } else if (tab === 'continue') {
-            confirmMsg = `"${title}" devam et listesinden kaldırılsın mı?`;
-          } else if (tab === 'completed') {
-            confirmMsg = `"${title}" tamamlananlar geçmişinden silinsin mi?`;
-          } else if (tab === 'favorites') {
-            confirmMsg = `"${title}" favorilerinizden kaldırılsın mı?`;
-          } else if (tab === 'watchlist') {
-            confirmMsg = `"${title}" izleme listenizden kaldırılsın mı?`;
-          }
-
-          if (window.confirm(confirmMsg)) {
-            if (tab === 'all-episodes') {
-              removeEpisodeFromHistory(id, season, episode);
-            } else if (tab === 'continue' || tab === 'completed') {
-              removeSeriesFromHistory(id);
-            } else if (tab === 'favorites') {
-              removeFavorite(id);
-            } else if (tab === 'watchlist') {
-              removeWatchlist(id);
-            }
-
-            showToast('✓ Kayıt başarıyla silindi.', 'success');
-
-            wrapper.style.transition = 'all 0.28s ease-out';
-            wrapper.style.transform = 'scale(0.85)';
-            wrapper.style.opacity = '0';
-            setTimeout(() => {
-              wrapper.remove();
-
-              // Refresh stats & tab counts dynamically
-              const updatedStats = getTotalWatchStats();
-              const elTime = container.querySelector('#stat-total-time');
-              const elEp = container.querySelector('#stat-episodes-count');
-              const elMov = container.querySelector('#stat-movies-count');
-              const elFav = container.querySelector('#stat-favs-count');
-              if (elTime) elTime.textContent = updatedStats.formattedTotalTime;
-              if (elEp) elEp.textContent = `${updatedStats.episodesCount} Bölüm`;
-              if (elMov) elMov.textContent = `${updatedStats.moviesCount} Film`;
-              if (elFav) elFav.textContent = `${getFavorites().length + getWatchlist().length} Yapım`;
-
-              const cCont = container.querySelector('#tab-count-continue');
-              const cComp = container.querySelector('#tab-count-completed');
-              const cFav = container.querySelector('#tab-count-favorites');
-              const cWatch = container.querySelector('#tab-count-watchlist');
-              const cAll = container.querySelector('#tab-count-all-episodes');
-              if (cCont) cCont.textContent = getContinueWatchingList().length;
-              if (cComp) cComp.textContent = getCompletedWatchList().length;
-              if (cFav) cFav.textContent = getFavorites().length;
-              if (cWatch) cWatch.textContent = getWatchlist().length;
-              if (cAll) cAll.textContent = getWatchHistory().length;
-            }, 300);
-          }
-        });
-      });
-
+      // Initial active tab render
+      renderActiveTabContent();
       attachMediaCardEvents(container);
       if (window.lucide) window.lucide.createIcons();
     }

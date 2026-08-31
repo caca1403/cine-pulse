@@ -11,6 +11,18 @@ const STORAGE_KEYS = {
   USER_SETTINGS: 'sineflix_user_settings_v1'
 };
 
+let _watchHistoryCache = null;
+let _progressMapCache = null;
+let _favoritesCache = null;
+let _watchlistCache = null;
+
+function clearStorageCache() {
+  _watchHistoryCache = null;
+  _progressMapCache = null;
+  _favoritesCache = null;
+  _watchlistCache = null;
+}
+
 function getLocalItem(key, defaultValue = []) {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return defaultValue;
@@ -25,6 +37,7 @@ function setLocalItem(key, value) {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return;
     localStorage.setItem(key, JSON.stringify(value));
+    clearStorageCache();
     window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { key, value } }));
   } catch (err) {
     console.error(`Error saving ${key} to localStorage:`, err);
@@ -36,14 +49,37 @@ function setLocalItem(key, value) {
    ========================================================================== */
 
 export function getWatchHistory() {
+  if (_watchHistoryCache) return _watchHistoryCache;
   const history = getLocalItem(STORAGE_KEYS.WATCH_HISTORY, []);
-  return history.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+  _watchHistoryCache = history.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+  return _watchHistoryCache;
+}
+
+function getProgressMap() {
+  if (_progressMapCache) return _progressMapCache;
+  const history = getWatchHistory();
+  _progressMapCache = new Map();
+  for (let i = 0; i < history.length; i++) {
+    const item = history[i];
+    const key = `${item.id}_${item.season || 1}_${item.episode || 1}`;
+    if (!_progressMapCache.has(key)) {
+      _progressMapCache.set(key, item);
+    }
+  }
+  return _progressMapCache;
 }
 
 function resolveMediaImages(id, passedPoster, passedBackdrop, history = []) {
   const anyExisting = history.find(item => item.id == id && (item.posterPath || item.poster_path));
   let rawPoster = passedPoster || (anyExisting ? (anyExisting.posterPath || anyExisting.poster_path) : '');
   let rawBackdrop = passedBackdrop || (anyExisting ? (anyExisting.backdropPath || anyExisting.backdrop_path) : '');
+
+  if (rawPoster && typeof rawPoster === 'string') {
+    rawPoster = rawPoster.replace(/^(undefined|null|\/undefined|\/null)$/i, '');
+  }
+  if (rawBackdrop && typeof rawBackdrop === 'string') {
+    rawBackdrop = rawBackdrop.replace(/^(undefined|null|\/undefined|\/null)$/i, '');
+  }
 
   // Normalize leading slash if relative TMDB path
   let resolvedPoster = rawPoster;
@@ -134,8 +170,8 @@ export function clearCompletedHistory() {
 }
 
 export function getMediaProgress(id, season = 1, episode = 1) {
-  const history = getWatchHistory();
-  return history.find(item => item.id == id && item.season == season && item.episode == episode) || null;
+  const map = getProgressMap();
+  return map.get(`${id}_${season}_${episode}`) || null;
 }
 
 export function isMediaWatched(id, season = 1, episode = 1) {
@@ -447,7 +483,8 @@ export function getContinueWatchingList() {
       }
 
       let targetEp = 1;
-      while (watchedEpNumbers.has(targetEp)) {
+      const maxPossibleEp = records.length + 50;
+      while (watchedEpNumbers.has(targetEp) && targetEp <= maxPossibleEp) {
         targetEp++;
       }
 

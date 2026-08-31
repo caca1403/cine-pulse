@@ -86,15 +86,20 @@ export async function openPlayerModal({
     .replace(/\s*\(\d{4}\).*/, '')
     .trim();
 
-  // Async fetch seasons metadata if TV show lacks them
-  if (type === 'tv' && tmdbId && currentSeasonsList.length === 0) {
-    fetch(`https://api.themoviedb.org/3/tv/${tmdbId}?api_key=${TMDB_API_KEY}&language=tr-TR`)
+  // Async fetch TMDB metadata (seasons, missing poster/backdrop)
+  if (tmdbId) {
+    const tmdbEndpoint = type === 'tv' ? `https://api.themoviedb.org/3/tv/${tmdbId}` : `https://api.themoviedb.org/3/movie/${tmdbId}`;
+    fetch(`${tmdbEndpoint}?api_key=${TMDB_API_KEY}&language=tr-TR`)
       .then(res => res.json())
       .then(data => {
-        if (data && data.seasons) {
-          currentSeasonsList = data.seasons.filter(s => s.season_number > 0);
-          updateNavButtons();
-          if (isDrawerOpen) renderDrawerContent();
+        if (data) {
+          if (!posterPath && data.poster_path) posterPath = data.poster_path;
+          if (!backdropPath && data.backdrop_path) backdropPath = data.backdrop_path;
+          if (type === 'tv' && data.seasons && currentSeasonsList.length === 0) {
+            currentSeasonsList = data.seasons.filter(s => s.season_number > 0);
+            updateNavButtons();
+            if (isDrawerOpen) renderDrawerContent();
+          }
         }
       })
       .catch(() => {});
