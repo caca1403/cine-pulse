@@ -115,25 +115,43 @@ export async function renderPopularListView(type = 'tv') {
         showLoading();
 
         try {
-          let newItems = [];
-          if (type === 'tv') {
-            newItems = await fetchPopularSeries(cache.currentPage);
-          } else if (type === 'movie') {
-            newItems = await fetchPopularMovies(cache.currentPage);
-          } else if (type === 'anime') {
-            newItems = await fetchPopularAnime(cache.currentPage);
-          } else if (type === 'documentary') {
-            newItems = await fetchPopularDocumentaries(cache.currentPage);
-          }
+          const p1 = cache.currentPage;
+          const p2 = cache.currentPage + 1;
+
+          let fetcher = fetchPopularSeries;
+          if (type === 'movie') fetcher = fetchPopularMovies;
+          else if (type === 'anime') fetcher = fetchPopularAnime;
+          else if (type === 'documentary') fetcher = fetchPopularDocumentaries;
+
+          const [batch1, batch2] = await Promise.all([
+            fetcher(p1),
+            fetcher(p2)
+          ]);
+
+          const newItems = [...(batch1 || []), ...(batch2 || [])];
 
           if (!newItems || newItems.length === 0) {
-            cache.isExhausted = true;
+            if (cache.currentPage >= 500) {
+              cache.isExhausted = true;
+            } else {
+              cache.currentPage += 2;
+            }
             hideLoading();
             return;
           }
 
-          cache.allItems = [...cache.allItems, ...newItems];
-          const newCardsHTML = newItems.map(item => renderMediaCard(item)).join('');
+          // Deduplicate by ID
+          const seenIds = new Set(cache.allItems.map(i => i.id));
+          const uniqueNewItems = [];
+          for (const item of newItems) {
+            if (item && item.id && !seenIds.has(item.id)) {
+              seenIds.add(item.id);
+              uniqueNewItems.push(item);
+            }
+          }
+
+          cache.allItems = [...cache.allItems, ...uniqueNewItems];
+          const newCardsHTML = uniqueNewItems.map(item => renderMediaCard(item)).join('');
           
           const placeholder = grid.querySelector('.popular-loading-placeholder');
           if (placeholder) {
@@ -145,15 +163,15 @@ export async function renderPopularListView(type = 'tv') {
           if (window.lucide) window.lucide.createIcons();
           attachMediaCardEvents(grid);
 
-          cache.currentPage += 1;
+          cache.currentPage += 2;
           hideLoading();
 
-          // If content doesn't fill the screen yet (e.g. big monitor), load page 2 automatically
+          // Auto prefill if viewport still has room
           setTimeout(() => {
-            if (document.documentElement.scrollHeight <= window.innerHeight + 500 && !cache.isExhausted && !isLoading) {
+            if (document.documentElement.scrollHeight <= window.innerHeight + 600 && !cache.isExhausted && !isLoading) {
               loadMore();
             }
-          }, 150);
+          }, 100);
         } catch (err) {
           console.error('Error loading popular media:', err);
           hideLoading();
