@@ -111,12 +111,12 @@ export async function renderPopularListView(type = 'tv') {
           const newItems = results.flat().filter(Boolean);
 
           if (newItems.length === 0) {
-            if (cache.nextPage >= 500) {
-              cache.isExhausted = true;
-            } else {
-              cache.nextPage += 2;
-            }
+            cache.isExhausted = true;
             updateSentinelUI();
+            const placeholder = grid.querySelector('.popular-loading-placeholder');
+            if (placeholder && cache.allItems.length === 0) {
+              grid.innerHTML = '<div style="grid-column: 1/-1; padding: 4rem 1rem; text-align: center; color: var(--text-muted);"><p>İçerikler yüklenirken bir sorun oluştu. Lütfen sayfayı yenileyin.</p></div>';
+            }
             return;
           }
 
@@ -128,6 +128,12 @@ export async function renderPopularListView(type = 'tv') {
               seenIds.add(item.id);
               uniqueItems.push(item);
             }
+          }
+
+          if (uniqueItems.length === 0 && newItems.length > 0) {
+            cache.isExhausted = true;
+            updateSentinelUI();
+            return;
           }
 
           cache.allItems = [...cache.allItems, ...uniqueItems];
