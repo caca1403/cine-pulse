@@ -119,7 +119,7 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (url.includes('vidrame') || raw.includes('vidrame')) return 'Vidrame Pro';
   if (url.includes('eksenload') || url.includes('vidload') || raw.includes('eksen')) return 'EksenLoad VIP';
   if (url.includes('vidmody') || raw.includes('vidmody')) return 'VidMody Ultra';
-  if (id.startsWith('dzp_') || raw.includes('dizipal')) return 'DiziPal VIP 1080p';
+  if (id.startsWith('dzp_') || raw.includes('dizipal')) return 'DP Stream 1080p';
   if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 'Alpha Stream';
   if (url.includes('storage.diziyou') || id.startsWith('dzy')) return 'HLS FastCDN';
   if (url.includes('smashy') || raw.includes('smashy')) return 'Smashy 1080p';
