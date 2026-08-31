@@ -47,7 +47,7 @@ export async function translateToTurkish(text) {
 
   try {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=tr&dt=t&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(1200) });
     if (res.ok) {
       const data = await res.json();
       if (data && data[0]) {
@@ -57,7 +57,7 @@ export async function translateToTurkish(text) {
       }
     }
   } catch (err) {
-    console.error('Translation error:', err);
+    // Fail gracefully without blocking UI
   }
   return text;
 }
@@ -74,7 +74,7 @@ async function tmdbFetch(endpoint, params = {}) {
         }
       }
 
-      const response = await fetch(url.toString());
+      const response = await fetch(url.toString(), { signal: AbortSignal.timeout(5000) });
       if (response.ok) {
         return await response.json();
       } else {
@@ -181,29 +181,21 @@ export async function fetchTrending(type = 'all', timeWindow = 'week', page = 1)
 
   const enMap = new Map((enRes?.results || []).map(i => [i.id, i.overview]));
 
-  return Promise.all(
-    trRes.results
-      .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
-      .map(async (item) => {
-        const isTv = item.media_type === 'tv' || !!item.first_air_date;
-        const t = isTv ? 'tv' : 'movie';
-        let overview = (item.overview || '').trim();
-        const enOverview = (enMap.get(item.id) || '').trim();
+  return trRes.results
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => {
+      const isTv = item.media_type === 'tv' || !!item.first_air_date;
+      const t = isTv ? 'tv' : 'movie';
+      const overview = (item.overview || '').trim();
+      const enOverview = (enMap.get(item.id) || '').trim();
 
-        if (!overview || overview.length < 15) {
-          if (enOverview && enOverview.length > 10) {
-            overview = await translateToTurkish(enOverview);
-          }
-        }
-
-        return {
-          ...item,
-          type: t,
-          media_type: t,
-          overview: overview || enOverview || generateCinematicOverview(item, t)
-        };
-      })
-  );
+      return {
+        ...item,
+        type: t,
+        media_type: t,
+        overview: overview || enOverview || generateCinematicOverview(item, t)
+      };
+    });
 }
 
 export async function fetchPopularSeries(page = 1) {
@@ -215,27 +207,19 @@ export async function fetchPopularSeries(page = 1) {
 
   const enMap = new Map((enRes?.results || []).map(i => [i.id, i.overview]));
 
-  return Promise.all(
-    trRes.results
-      .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
-      .map(async (item) => {
-        let overview = (item.overview || '').trim();
-        const enOverview = (enMap.get(item.id) || '').trim();
+  return trRes.results
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => {
+      const overview = (item.overview || '').trim();
+      const enOverview = (enMap.get(item.id) || '').trim();
 
-        if (!overview || overview.length < 15) {
-          if (enOverview && enOverview.length > 10) {
-            overview = await translateToTurkish(enOverview);
-          }
-        }
-
-        return {
-          ...item,
-          type: 'tv',
-          media_type: 'tv',
-          overview: overview || enOverview || generateCinematicOverview(item, 'tv')
-        };
-      })
-  );
+      return {
+        ...item,
+        type: 'tv',
+        media_type: 'tv',
+        overview: overview || enOverview || generateCinematicOverview(item, 'tv')
+      };
+    });
 }
 
 export async function fetchPopularMovies(page = 1) {
@@ -247,27 +231,19 @@ export async function fetchPopularMovies(page = 1) {
 
   const enMap = new Map((enRes?.results || []).map(i => [i.id, i.overview]));
 
-  return Promise.all(
-    trRes.results
-      .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
-      .map(async (item) => {
-        let overview = (item.overview || '').trim();
-        const enOverview = (enMap.get(item.id) || '').trim();
+  return trRes.results
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => {
+      const overview = (item.overview || '').trim();
+      const enOverview = (enMap.get(item.id) || '').trim();
 
-        if (!overview || overview.length < 15) {
-          if (enOverview && enOverview.length > 10) {
-            overview = await translateToTurkish(enOverview);
-          }
-        }
-
-        return {
-          ...item,
-          type: 'movie',
-          media_type: 'movie',
-          overview: overview || enOverview || generateCinematicOverview(item, 'movie')
-        };
-      })
-  );
+      return {
+        ...item,
+        type: 'movie',
+        media_type: 'movie',
+        overview: overview || enOverview || generateCinematicOverview(item, 'movie')
+      };
+    });
 }
 
 export async function fetchPopularAnime(page = 1) {
@@ -287,25 +263,17 @@ export async function fetchPopularAnime(page = 1) {
   const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
   const combined = [...tvItems, ...movieItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
 
-  return Promise.all(
-    combined
-      .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
-      .map(async (item) => {
-        let overview = (item.overview || '').trim();
-        const enOverview = (enMap.get(item.id) || '').trim();
+  return combined
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => {
+      const overview = (item.overview || '').trim();
+      const enOverview = (enMap.get(item.id) || '').trim();
 
-        if (!overview || overview.length < 15) {
-          if (enOverview && enOverview.length > 10) {
-            overview = await translateToTurkish(enOverview);
-          }
-        }
-
-        return {
-          ...item,
-          overview: overview || enOverview || generateCinematicOverview(item, item.type)
-        };
-      })
-  );
+      return {
+        ...item,
+        overview: overview || enOverview || generateCinematicOverview(item, item.type)
+      };
+    });
 }
 
 export async function fetchPopularDocumentaries(page = 1) {
@@ -325,25 +293,17 @@ export async function fetchPopularDocumentaries(page = 1) {
   const movieItems = (movieRes?.results || []).map(item => ({ ...item, type: 'movie', media_type: 'movie' }));
   const combined = [...tvItems, ...movieItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
 
-  return Promise.all(
-    combined
-      .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
-      .map(async (item) => {
-        let overview = (item.overview || '').trim();
-        const enOverview = (enMap.get(item.id) || '').trim();
+  return combined
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => {
+      const overview = (item.overview || '').trim();
+      const enOverview = (enMap.get(item.id) || '').trim();
 
-        if (!overview || overview.length < 15) {
-          if (enOverview && enOverview.length > 10) {
-            overview = await translateToTurkish(enOverview);
-          }
-        }
-
-        return {
-          ...item,
-          overview: overview || enOverview || generateCinematicOverview(item, item.type)
-        };
-      })
-  );
+      return {
+        ...item,
+        overview: overview || enOverview || generateCinematicOverview(item, item.type)
+      };
+    });
 }
 
 export async function fetchTopRated(type = 'tv', page = 1) {
