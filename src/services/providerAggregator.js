@@ -18,8 +18,6 @@ import { fetchDizipalSources } from './dizipalScraper.js';
 import { fetchSinewixSources } from './sinewixScraper.js';
 import { fetchFilmizlechSources } from './filmizlechScraper.js';
 import { fetchAnimecixSources } from './animecixScraper.js';
-import { fetchAnimeTrSources } from './animeTrScraper.js';
-import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
 import { fetchTurkAnimeSources } from './turkanimeScraper.js';
 import { fetchBelgeselSources } from './belgeselScraper.js';
 import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
@@ -354,23 +352,13 @@ export async function getStreamingServersProgressive({
     fetchMultiEmbedSources({ type, tmdbId, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // AnimeciX VIP (Fast Tau Video 1080p, Sibnet & Multi-Source Anime)
+    // AX VIP (Fast Tau Video 1080p, Sibnet, VidMoly & Multi-Source Anime)
     fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // AnimeTR / TRAnime / TurkAnime (Both Dubbed & Subtitled)
-    fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
-    fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchTrAnimeIzleSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
+    // TR Anime (Backup / Alternative)
     fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
