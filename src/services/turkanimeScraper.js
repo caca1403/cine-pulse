@@ -62,7 +62,7 @@ export async function fetchTurkAnimeSources({
 
         const res = await fetch(proxyUrl, {
           headers: { 'Accept': 'text/html,application/xhtml+xml' },
-          signal: AbortSignal.timeout(3500)
+          signal: AbortSignal.timeout(4500)
         }).catch(() => null);
 
         if (!res || !res.ok) continue;
@@ -76,7 +76,6 @@ export async function fetchTurkAnimeSources({
           lowerHtml.includes('böyle bir video bulunamadı') ||
           lowerHtml.includes('video bulunamadı') ||
           lowerHtml.includes('sayfa bulunamadı') ||
-          lowerHtml.includes('hata oluştu') ||
           lowerHtml.includes('404 not found') ||
           lowerHtml.includes('içerik silinmiş')
         ) {
@@ -89,17 +88,6 @@ export async function fetchTurkAnimeSources({
           if (!hasDubIndicator) continue;
         }
 
-        // Must contain actual anime video player / fansub selectors
-        const hasRealPlayer = 
-          html.includes('videolar') || 
-          html.includes('fansub') || 
-          html.includes('data-video') || 
-          html.includes('video-player') ||
-          html.includes('player_iframe') ||
-          html.includes('turkanime.tv/ajax');
-
-        if (!hasRealPlayer) continue;
-
         // Extract iframe player if present
         let playerStreamUrl = epUrl;
         const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
@@ -109,10 +97,16 @@ export async function fetchTurkAnimeSources({
           playerStreamUrl = embedSrc;
         }
 
+        let srvName = `TR Anime - Bölüm ${episode} (${isDub ? 'TR Dublaj' : 'Altyazılı'})`;
+        if (playerStreamUrl.includes('vidmoly')) srvName = `TR Anime (VidMoly 1080p)`;
+        else if (playerStreamUrl.includes('sibnet')) srvName = `TR Anime (Sibnet HD)`;
+        else if (playerStreamUrl.includes('dood')) srvName = `TR Anime (Doodstream)`;
+
         return [
           {
             id: `ta_${slug}_${episode}_${isDub ? 'dub' : 'sub'}`,
-            name: `TR Anime - Bölüm ${episode} (${isDub ? 'TR Dublaj' : 'Altyazılı'})`,
+            name: srvName,
+            displayName: srvName,
             badge: isDub ? '🎌 Dublaj' : '🎌 TR Anime',
             category: isDub ? 'dubbed' : 'subtitled',
             isExternalPopout: false,
