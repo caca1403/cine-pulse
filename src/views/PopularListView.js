@@ -1,50 +1,49 @@
 /* ==========================================================================
-   CinePulse Studio - Ultra-Smooth Infinite Scrolling View
-   High-performance 80-item background pre-fetching engine for Series, Movies and Anime.
-   With in-memory state preservation and zero-latency infinite scrolling.
+   CinePulse Studio - Ultra-Fast Infinite Scrolling View
+   Progressive 3-page parallel fetching with instant first-paint rendering.
    ========================================================================== */
 
 import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 
-// Global cache per category with pre-buffered items
-const popularListCache = {
-  tv: { allItems: [], nextPage: 1, isExhausted: false },
-  movie: { allItems: [], nextPage: 1, isExhausted: false },
-  anime: { allItems: [], nextPage: 1, isExhausted: false },
-  documentary: { allItems: [], nextPage: 1, isExhausted: false }
-};
+// In-memory cache per category — resets on each fresh view render
+const popularListCache = {};
+
+function getCache(type) {
+  if (!popularListCache[type] || popularListCache[type].stale) {
+    popularListCache[type] = { allItems: [], seenIds: new Set(), nextPage: 1, isExhausted: false, stale: false };
+  }
+  return popularListCache[type];
+}
+
+function getFetcher(type) {
+  switch (type) {
+    case 'movie': return fetchPopularMovies;
+    case 'anime': return fetchPopularAnime;
+    case 'documentary': return fetchPopularDocumentaries;
+    default: return fetchPopularSeries;
+  }
+}
 
 export async function renderPopularListView(type = 'tv') {
-  if (!popularListCache[type]) {
-    popularListCache[type] = { allItems: [], nextPage: 1, isExhausted: false };
+  // Mark old cache as stale so it gets reset
+  if (popularListCache[type]) {
+    popularListCache[type].stale = true;
   }
 
-  const cache = popularListCache[type];
-  let isFetching = false;
+  const cache = getCache(type);
 
-  let titleText = 'Tüm Zamanların En Popüler Dizileri';
-  let iconName = 'tv-2';
-  if (type === 'movie') {
-    titleText = 'Tüm Zamanların En Popüler Filmleri';
-    iconName = 'clapperboard';
-  } else if (type === 'anime') {
-    titleText = 'Tüm Zamanların En Popüler Animeleri';
-    iconName = 'sparkles';
-  } else if (type === 'documentary') {
-    titleText = 'Tüm Zamanların En Çok İzlenen Belgeselleri';
-    iconName = 'globe';
-  }
-
-  const hasCachedItems = cache.allItems.length > 0;
-  const initialCardsHTML = hasCachedItems
-    ? cache.allItems.map(item => renderMediaCard(item)).join('')
-    : '<div class="popular-loading-placeholder" style="grid-column: 1/-1; padding: 5rem 2rem; text-align: center; color: var(--text-muted);"><div class="spin-loader" style="width: 36px; height: 36px; border: 3px solid rgba(245,158,11,0.2); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.25rem;"></div><p style="font-size: 1.05rem;">Popüler içerikler hazırlanıyor...</p></div>';
+  const titleMap = {
+    tv: ['Tüm Zamanların En Popüler Dizileri', 'tv-2'],
+    movie: ['Tüm Zamanların En Popüler Filmleri', 'clapperboard'],
+    anime: ['Tüm Zamanların En Popüler Animeleri', 'sparkles'],
+    documentary: ['Tüm Zamanların En Çok İzlenen Belgeselleri', 'globe']
+  };
+  const [titleText, iconName] = titleMap[type] || titleMap.tv;
 
   const html = `
     <div class="popular-list-view">
       <div class="container">
-        <!-- Header -->
         <div class="popular-list-header">
           <h1 class="popular-list-title">
             <span class="rail-icon-pill" style="--rail-color: #f59e0b; width: 32px; height: 32px; flex-shrink: 0;">
@@ -55,14 +54,14 @@ export async function renderPopularListView(type = 'tv') {
           <p class="popular-list-sub" id="popular-count-label">Tüm zamanların popülerliğine göre akıcı olarak listeleniyor</p>
         </div>
 
-        <!-- Media Grid -->
         <div class="media-grid" id="popular-media-grid">
-          ${initialCardsHTML}
+          <div class="popular-loading-placeholder" style="grid-column: 1/-1; padding: 3rem 2rem; text-align: center; color: var(--text-muted);">
+            <div class="spin-loader" style="width: 36px; height: 36px; border: 3px solid rgba(245,158,11,0.2); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.25rem;"></div>
+            <p style="font-size: 1.05rem;">Popüler içerikler hazırlanıyor...</p>
+          </div>
         </div>
 
-        <!-- Smooth Scroll Sentinel / Prefetch Trigger -->
-        <div id="popular-sentinel" style="min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 2rem 0 5rem; color: var(--text-muted);">
-        </div>
+        <div id="popular-sentinel" style="min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 2rem 0 5rem; color: var(--text-muted);"></div>
       </div>
     </div>
   `;
@@ -74,10 +73,13 @@ export async function renderPopularListView(type = 'tv') {
 
       const grid = container.querySelector('#popular-media-grid');
       const sentinel = container.querySelector('#popular-sentinel');
+      if (!grid) return;
 
       attachMediaCardEvents(grid);
+      let isFetching = false;
+      const fetcher = getFetcher(type);
 
-      const updateSentinelUI = () => {
+      const updateSentinel = () => {
         if (!sentinel) return;
         if (cache.isExhausted) {
           sentinel.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">Tüm popüler içerikler listelendi.</p>`;
@@ -91,112 +93,110 @@ export async function renderPopularListView(type = 'tv') {
         }
       };
 
-      // Fast 2-page batch fetcher (40 items per burst)
-      const fetchNextBatch = async () => {
+      // Append items to grid immediately as they arrive
+      const appendItems = (items) => {
+        if (!items || items.length === 0) return;
+
+        const unique = [];
+        for (const item of items) {
+          if (item && item.id && !cache.seenIds.has(item.id)) {
+            cache.seenIds.add(item.id);
+            unique.push(item);
+          }
+        }
+        if (unique.length === 0) return;
+
+        cache.allItems.push(...unique);
+
+        const newHTML = unique.map(item => renderMediaCard(item)).join('');
+        const placeholder = grid.querySelector('.popular-loading-placeholder');
+        if (placeholder) {
+          grid.innerHTML = newHTML;
+        } else {
+          grid.insertAdjacentHTML('beforeend', newHTML);
+        }
+        attachMediaCardEvents(grid);
+        if (window.lucide) window.lucide.createIcons();
+      };
+
+      // Progressive parallel fetch: fires all 3 pages simultaneously,
+      // renders each page's results AS SOON as they arrive (no waiting for all 3)
+      const fetchBatch = async (pageCount = 3) => {
         if (isFetching || cache.isExhausted) return;
         isFetching = true;
-        updateSentinelUI();
+        updateSentinel();
 
         try {
-          const startP = cache.nextPage;
-          let fetcher = fetchPopularSeries;
-          if (type === 'movie') fetcher = fetchPopularMovies;
-          else if (type === 'anime') fetcher = fetchPopularAnime;
-          else if (type === 'documentary') fetcher = fetchPopularDocumentaries;
+          const startPage = cache.nextPage;
+          const pages = Array.from({ length: pageCount }, (_, i) => startPage + i);
+          cache.nextPage += pageCount;
 
-          // Fetch 2 pages in parallel (40 items)
-          const pagesToFetch = [startP, startP + 1];
-          const results = await Promise.all(pagesToFetch.map(p => fetcher(p).catch(() => [])));
+          let totalNew = 0;
 
-          const newItems = results.flat().filter(Boolean);
+          // Fire all page fetches simultaneously, render each as it resolves
+          const promises = pages.map(p =>
+            fetcher(p)
+              .then(items => {
+                if (items && items.length > 0) {
+                  totalNew += items.length;
+                  appendItems(items);
+                }
+                return items;
+              })
+              .catch(() => [])
+          );
 
-          if (newItems.length === 0) {
+          const results = await Promise.all(promises);
+          const allItems = results.flat().filter(Boolean);
+
+          // Only mark exhausted if TMDB returned zero results across ALL pages
+          if (allItems.length === 0) {
             cache.isExhausted = true;
-            updateSentinelUI();
-            const placeholder = grid.querySelector('.popular-loading-placeholder');
-            if (placeholder && cache.allItems.length === 0) {
-              grid.innerHTML = '<div style="grid-column: 1/-1; padding: 4rem 1rem; text-align: center; color: var(--text-muted);"><p>İçerikler yüklenirken bir sorun oluştu. Lütfen sayfayı yenileyin.</p></div>';
+          }
+
+          updateSentinel();
+
+          // If screen still has room, auto-fetch more
+          requestAnimationFrame(() => {
+            if (!cache.isExhausted && document.documentElement.scrollHeight <= window.innerHeight + 600) {
+              isFetching = false;
+              fetchBatch(2);
+              return;
             }
-            return;
-          }
-
-          // Deduplicate by ID
-          const seenIds = new Set(cache.allItems.map(i => i.id));
-          const uniqueItems = [];
-          for (const item of newItems) {
-            if (item && item.id && !seenIds.has(item.id)) {
-              seenIds.add(item.id);
-              uniqueItems.push(item);
-            }
-          }
-
-          if (uniqueItems.length === 0 && newItems.length > 0) {
-            cache.isExhausted = true;
-            updateSentinelUI();
-            return;
-          }
-
-          cache.allItems = [...cache.allItems, ...uniqueItems];
-          cache.nextPage += 2;
-
-          const newCardsHTML = uniqueItems.map(item => renderMediaCard(item)).join('');
-          const placeholder = grid.querySelector('.popular-loading-placeholder');
-
-          if (placeholder) {
-            grid.innerHTML = newCardsHTML;
-          } else {
-            grid.insertAdjacentHTML('beforeend', newCardsHTML);
-          }
-
-          if (window.lucide) window.lucide.createIcons();
-
-          // Auto trigger next pre-fetch if screen still has room
-          setTimeout(() => {
-            if (document.documentElement.scrollHeight <= window.innerHeight + 800 && !cache.isExhausted && !isFetching) {
-              fetchNextBatch();
-            }
-          }, 50);
+          });
         } catch (err) {
           console.error('Error fetching popular batch:', err);
         } finally {
           isFetching = false;
-          updateSentinelUI();
+          updateSentinel();
         }
       };
 
-      // Perform initial batch load if cache is empty
-      if (!hasCachedItems) {
-        fetchNextBatch();
-      } else {
-        updateSentinelUI();
-      }
+      // Initial load: fetch 3 pages in parallel (60 items)
+      fetchBatch(3);
 
-      // 1. High-range IntersectionObserver (triggers 1500px in advance for zero-wait scrolling)
-      let observer = null;
+      // IntersectionObserver for infinite scroll
       if (sentinel && 'IntersectionObserver' in window) {
-        observer = new IntersectionObserver((entries) => {
-          if (entries[0].isIntersecting) {
-            fetchNextBatch();
+        const observer = new IntersectionObserver((entries) => {
+          if (entries[0].isIntersecting && !isFetching && !cache.isExhausted) {
+            fetchBatch(2);
           }
         }, { rootMargin: '0px 0px 1500px 0px' });
-
         observer.observe(sentinel);
       }
 
-      // 2. High-performance Window Scroll Listener (pre-fetches 1200px before bottom)
-      const handleWindowScroll = () => {
+      // Scroll-based pre-fetch fallback
+      const handleScroll = () => {
         if (isFetching || cache.isExhausted) return;
-        const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-        const windowHeight = window.innerHeight;
-        const docHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-
-        if (scrollY + windowHeight >= docHeight - 1200) {
-          fetchNextBatch();
+        const scrollY = window.scrollY || 0;
+        const windowH = window.innerHeight;
+        const docH = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+        if (scrollY + windowH >= docH - 1200) {
+          fetchBatch(2);
         }
       };
 
-      window.addEventListener('scroll', handleWindowScroll, { passive: true });
-      window.addEventListener('touchmove', handleWindowScroll, { passive: true });
+      window.addEventListener('scroll', handleScroll, { passive: true });
     }
   };
 }
