@@ -71,7 +71,17 @@ export async function fetchAnimeTrSources({ titles = [], seriesTitle = '', title
       for (const m of altMatches) {
         const url = m[1].replace(/\\/g, '');
         const provider = m[2] || 'AnimeTR';
-        if (url && !seenUrls.has(url) && !url.includes('recaptcha') && !url.includes('filemoon') && !url.includes('bysejikuar')) {
+        if (
+          url &&
+          !seenUrls.has(url) &&
+          !url.includes('recaptcha') &&
+          !url.includes('filemoon') &&
+          !url.includes('bysejikuar') &&
+          !url.includes('media.cm') &&
+          !url.includes('vidoza') &&
+          !url.includes('voe') &&
+          !url.includes('cloudvideo')
+        ) {
           seenUrls.add(url);
           rawList.push({ provider, url });
         }
@@ -79,15 +89,22 @@ export async function fetchAnimeTrSources({ titles = [], seriesTitle = '', title
 
       // 2. Direct iframes fallback
       for (const ifr of rawIframes) {
-        if (ifr && !seenUrls.has(ifr) && !ifr.includes('recaptcha') && !ifr.includes('filemoon') && !ifr.includes('bysejikuar')) {
+        if (
+          ifr &&
+          !seenUrls.has(ifr) &&
+          !ifr.includes('recaptcha') &&
+          !ifr.includes('filemoon') &&
+          !ifr.includes('bysejikuar') &&
+          !ifr.includes('media.cm') &&
+          !ifr.includes('vidoza') &&
+          !ifr.includes('voe') &&
+          !ifr.includes('cloudvideo')
+        ) {
           seenUrls.add(ifr);
           let label = 'Player';
           if (ifr.includes('vidmoly')) label = 'Vidmoly';
           else if (ifr.includes('ok.ru')) label = 'OK.ru';
-          else if (ifr.includes('vidoza')) label = 'Vidoza';
           else if (ifr.includes('sibnet')) label = 'Sibnet';
-          else if (ifr.includes('voe')) label = 'VOE';
-          else if (ifr.includes('cloudvideo')) label = 'CloudVideo';
           else if (ifr.includes('drive.google')) label = 'Google Drive';
 
           rawList.push({ provider: label, url: ifr });
