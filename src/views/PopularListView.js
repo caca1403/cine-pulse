@@ -40,7 +40,7 @@ export async function renderPopularListView(type = 'tv') {
   const hasCachedItems = cache.allItems.length > 0;
   const initialCardsHTML = hasCachedItems
     ? cache.allItems.map(item => renderMediaCard(item)).join('')
-    : '<div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">İçerikler yükleniyor...</div>';
+    : '<div class="popular-loading-placeholder" style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);"><div class="spin-loader" style="width: 32px; height: 32px; border: 3px solid rgba(245,158,11,0.2); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem;"></div><p>İçerikler yükleniyor...</p></div>';
 
   const html = `
     <div class="popular-list-view">
@@ -61,9 +61,8 @@ export async function renderPopularListView(type = 'tv') {
           ${initialCardsHTML}
         </div>
 
-        <!-- Scroll Sentinel / Loader -->
-        <div id="popular-sentinel" style="height: 60px; display: flex; align-items: center; justify-content: center; margin-top: 2rem; color: var(--text-muted);">
-          <i data-lucide="loader-2" class="spin-loader" style="width: 28px; height: 28px; display: none;"></i>
+        <!-- Scroll Sentinel / Loader Container -->
+        <div id="popular-sentinel" style="min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 2.5rem 0 4rem; color: var(--text-muted);">
         </div>
       </div>
     </div>
@@ -76,17 +75,44 @@ export async function renderPopularListView(type = 'tv') {
 
       const grid = container.querySelector('#popular-media-grid');
       const sentinel = container.querySelector('#popular-sentinel');
-      const spinner = sentinel ? sentinel.querySelector('.spin-loader') : null;
+
+      const showLoading = () => {
+        if (!sentinel) return;
+        sentinel.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-secondary); font-size: 0.95rem;">
+            <div class="spin-loader" style="width: 24px; height: 24px; border: 3px solid rgba(245,158,11,0.2); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+            <span>Daha fazla içerik yükleniyor...</span>
+          </div>
+        `;
+      };
+
+      const hideLoading = () => {
+        if (!sentinel) return;
+        if (cache.isExhausted) {
+          sentinel.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">Tüm popüler içerikler listelendi.</p>`;
+        } else {
+          sentinel.innerHTML = `
+            <button id="btn-manual-load-more" class="btn-secondary" style="padding: 0.6rem 1.5rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; font-weight: 600; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text-primary);">
+              <i data-lucide="arrow-down" style="width: 15px; height: 15px; color: #f59e0b;"></i>
+              <span>Daha Fazla Yükle</span>
+            </button>
+          `;
+          if (window.lucide) window.lucide.createIcons();
+          sentinel.querySelector('#btn-manual-load-more')?.addEventListener('click', () => {
+            loadMore();
+          });
+        }
+      };
 
       if (hasCachedItems) {
         attachMediaCardEvents(grid);
+        hideLoading();
       }
 
       const loadMore = async () => {
         if (isLoading || cache.isExhausted) return;
         isLoading = true;
-
-        if (spinner) spinner.style.display = 'block';
+        showLoading();
 
         try {
           let newItems = [];
@@ -99,34 +125,38 @@ export async function renderPopularListView(type = 'tv') {
           } else if (type === 'documentary') {
             newItems = await fetchPopularDocumentaries(cache.currentPage);
           }
-          if (spinner) spinner.style.display = 'none';
 
           if (!newItems || newItems.length === 0) {
             cache.isExhausted = true;
+            hideLoading();
             return;
           }
 
           cache.allItems = [...cache.allItems, ...newItems];
           const newCardsHTML = newItems.map(item => renderMediaCard(item)).join('');
-          if (cache.currentPage === 1 && !hasCachedItems) {
+          
+          const placeholder = grid.querySelector('.popular-loading-placeholder');
+          if (placeholder) {
             grid.innerHTML = newCardsHTML;
           } else {
             grid.insertAdjacentHTML('beforeend', newCardsHTML);
           }
+
           if (window.lucide) window.lucide.createIcons();
           attachMediaCardEvents(grid);
 
           cache.currentPage += 1;
+          hideLoading();
 
-          // If content doesn't fill the screen yet, load one more page automatically
+          // If content doesn't fill the screen yet (e.g. big monitor), load page 2 automatically
           setTimeout(() => {
-            if (document.documentElement.scrollHeight <= window.innerHeight + 400 && !cache.isExhausted && !isLoading) {
+            if (document.documentElement.scrollHeight <= window.innerHeight + 500 && !cache.isExhausted && !isLoading) {
               loadMore();
             }
-          }, 200);
+          }, 150);
         } catch (err) {
           console.error('Error loading popular media:', err);
-          if (spinner) spinner.style.display = 'none';
+          hideLoading();
           if (cache.currentPage === 1 && (!cache.allItems || cache.allItems.length === 0)) {
             grid.innerHTML = `
               <div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">
@@ -147,31 +177,31 @@ export async function renderPopularListView(type = 'tv') {
         }
       };
 
-      // Only perform initial load if we don't have cached items
+      // Perform initial load if cache is empty
       if (!hasCachedItems) {
         loadMore();
       }
 
-      // 1. IntersectionObserver for seamless loading when sentinel enters viewport
+      // 1. IntersectionObserver for smooth auto-loading on scroll
       let observer = null;
       if (sentinel && 'IntersectionObserver' in window) {
         observer = new IntersectionObserver((entries) => {
           if (entries[0].isIntersecting) {
             loadMore();
           }
-        }, { rootMargin: '0px 0px 600px 0px' });
+        }, { rootMargin: '0px 0px 800px 0px' });
 
         observer.observe(sentinel);
       }
 
-      // 2. High-performance scroll listener fallback for all mobile & desktop browsers
+      // 2. Window Scroll event fallback
       const handleWindowScroll = () => {
         if (isLoading || cache.isExhausted) return;
         const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
         const windowHeight = window.innerHeight;
         const docHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
 
-        if (scrollY + windowHeight >= docHeight - 700) {
+        if (scrollY + windowHeight >= docHeight - 800) {
           loadMore();
         }
       };
