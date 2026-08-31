@@ -137,8 +137,14 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
     if (url.includes('dood') || raw.includes('dood')) return 'AX Doodstream';
     return 'AX VIP 1080p';
   }
+  if (id.startsWith('ta_') || raw.includes('turkanime') || raw.includes('tr anime')) {
+    if (url.includes('vidmoly')) return 'TR Anime (VidMoly 1080p)';
+    if (url.includes('sibnet')) return 'TR Anime (Sibnet HD)';
+    if (url.includes('dood')) return 'TR Anime (Doodstream)';
+    return 'TR Anime HD (Ek Kaynak)';
+  }
+  if (raw.includes('tranime') || raw.includes('animetr')) return 'AnimeTR HD';
   if (raw.includes('belgesel')) return 'Belgesel TR';
-  if (raw.includes('tranime') || raw.includes('turkanime') || raw.includes('animetr')) return 'AnimeTR HD';
 
   let clean = (s.displayName || s.name || '')
     .replace(/sinewix|dizibal|dizipal|dizimom|filmizlech|sezonlukdizi|filmekseni|hdfilmdelisi|hdfilmizle|hdfilmcehennemi|diziyou|vip\s*hat\s*\d*/gi, '')
