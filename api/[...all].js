@@ -167,12 +167,6 @@ export default async function handler(req, res) {
   } else if (pathname.startsWith('/api/dzp')) {
     const subPath = pathname.replace(/^\/api\/dzp/, '');
     targetUrl = `https://dizipal.bid${subPath}${search}`;
-    customHeaders['Referer'] = 'https://dizipal.bid/';
-  } else if (pathname.startsWith('/api/dzb')) {
-    const subPath = pathname.replace(/^\/api\/dzb/, '');
-    targetUrl = `https://www.dizibox.live${subPath}${search}`;
-    customHeaders['Referer'] = 'https://www.dizibox.live/';
-    customHeaders['Origin'] = 'https://www.dizibox.live';
   } else if (pathname.startsWith('/api/flz')) {
     const subPath = pathname.replace(/^\/api\/flz/, '');
     targetUrl = `https://filmizlech.com${subPath}${search}`;
