@@ -572,6 +572,42 @@ export function getCompletedWatchList() {
   return completedList;
 }
 
+export function getGroupedWatchHistory() {
+  const history = getWatchHistory();
+  const seriesMap = new Map();
+
+  for (const item of history) {
+    const id = item.id;
+    if (!seriesMap.has(id)) {
+      seriesMap.set(id, []);
+    }
+    seriesMap.get(id).push(item);
+  }
+
+  const grouped = [];
+  for (const [id, records] of seriesMap.entries()) {
+    records.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+    const latest = records[0];
+    const type = latest.type || 'tv';
+
+    if (type === 'movie') {
+      grouped.push({
+        ...latest,
+        subtitle: latest.completed ? '✓ İzlendi' : (latest.progressPercent > 0 ? `%${latest.progressPercent} İzlendi` : '')
+      });
+    } else {
+      const watchedCount = records.filter(r => r.completed || r.progressPercent >= 85).length;
+      grouped.push({
+        ...latest,
+        subtitle: watchedCount > 0 ? `${watchedCount} Bölüm İzlendi` : `S${latest.season || 1} B${latest.episode || 1}`
+      });
+    }
+  }
+
+  grouped.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+  return grouped;
+}
+
 export function getUnifiedContinueWatching() {
   return getContinueWatchingList();
 }

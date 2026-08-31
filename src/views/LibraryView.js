@@ -8,6 +8,7 @@
 
 import {
   getWatchHistory,
+  getGroupedWatchHistory,
   getContinueWatchingList,
   getCompletedWatchList,
   getFavorites,
@@ -48,6 +49,7 @@ function renderLibraryCard(item, tabType) {
 
 export function renderLibraryView() {
   const allHistory = getWatchHistory();
+  const groupedHistory = getGroupedWatchHistory();
   const favorites = getFavorites();
   const watchlist = getWatchlist();
   const stats = getTotalWatchStats();
@@ -145,9 +147,9 @@ export function renderLibraryView() {
             <span class="lib-tab-badge" id="tab-count-watchlist">${watchlist.length}</span>
           </button>
           <button class="lib-nav-tab" data-tab="all-episodes">
-            <i data-lucide="list-checks"></i>
-            <span>Bölüm Geçmişi</span>
-            <span class="lib-tab-badge" id="tab-count-all-episodes">${allHistory.length}</span>
+            <i data-lucide="history"></i>
+            <span>İzleme Geçmişi</span>
+            <span class="lib-tab-badge" id="tab-count-all-episodes">${groupedHistory.length}</span>
           </button>
         </div>
 
@@ -226,7 +228,7 @@ export function renderLibraryView() {
         if (tab === 'completed') return getCompletedWatchList();
         if (tab === 'favorites') return getFavorites();
         if (tab === 'watchlist') return getWatchlist();
-        if (tab === 'all-episodes') return getWatchHistory();
+        if (tab === 'all-episodes') return getGroupedWatchHistory();
         return [];
       };
 
