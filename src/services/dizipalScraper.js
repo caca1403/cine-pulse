@@ -93,9 +93,9 @@ export async function fetchDizipalSources({
             const playableUrl = iframeUrl.replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd');
             return [
               {
-                id: `dzp_${slug}_${season}_${episode}`,
-                name: `Alpha Stream 1080p`,
-                displayName: `Alpha Stream 1080p`,
+                id: `dzp_${slug}_${season}_${episode}_${isDub ? 'dub' : 'sub'}`,
+                name: `DiziPal VIP 1080p`,
+                displayName: `DiziPal VIP 1080p`,
                 badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
                 url: playableUrl,
                 streamUrl: playableUrl,
