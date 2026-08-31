@@ -182,6 +182,10 @@ export function markEpisodeWatched(id, season = 1, episode = 1, completed = true
   setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
 }
 
+export function markMediaWatched(id, completed = true, mediaData = {}) {
+  markEpisodeWatched(id, 1, 1, completed, { ...mediaData, type: mediaData.type || 'movie' });
+}
+
 export function toggleEpisodeWatched(id, season = 1, episode = 1, mediaData = {}) {
   const isCurrentlyWatched = isMediaWatched(id, season, episode);
   markEpisodeWatched(id, season, episode, !isCurrentlyWatched, mediaData);

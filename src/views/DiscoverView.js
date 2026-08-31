@@ -254,6 +254,21 @@ export async function renderDiscoverView(initialType = 'tv') {
         } catch (err) {
           console.error('Discover fetch error:', err);
           if (spinner) spinner.style.display = 'none';
+          if (pageToFetch === 1 && (!discoverCache.allItems || discoverCache.allItems.length === 0)) {
+            grid.innerHTML = `
+              <div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">
+                <p style="margin-bottom: 0.75rem;">İçerikler getirilirken bir sorun oluştu.</p>
+                <button id="btn-retry-discover" class="btn-secondary" style="padding: 0.5rem 1.2rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+                  <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                  <span>Tekrar Dene</span>
+                </button>
+              </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
+            grid.querySelector('#btn-retry-discover')?.addEventListener('click', () => {
+              resetAndFetch();
+            });
+          }
         } finally {
           isLoading = false;
         }

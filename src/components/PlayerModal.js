@@ -20,7 +20,8 @@ import {
   formatSecondsToTime,
   isMediaWatched,
   toggleEpisodeWatched,
-  markEpisodeWatched
+  markEpisodeWatched,
+  markMediaWatched
 } from '../services/storage.js';
 import { showToast } from './Toast.js';
 
@@ -48,32 +49,16 @@ export async function openPlayerModal({
   const modalContainer = document.getElementById('player-modal');
   if (!modalContainer) return;
 
-  // Intercept Pop-Up Gambling Ads in Parent Window
+  // Intercept Pop-Up & Gambling Ads in Parent Window
   if (!originalWindowOpen) originalWindowOpen = window.open;
   window.open = function (url, target, features) {
-    if (
-      url &&
-      (url.includes('vidmoly') ||
-        url.includes('setplay') ||
-        url.includes('fastplay') ||
-        url.includes('filemoon') ||
-        url.includes('bysejikuar') ||
-        url.includes('sibnet') ||
-        url.includes('hqq') ||
-        url.includes('ag2m4') ||
-        url.includes('autoembed') ||
-        url.includes('vidlink') ||
-        url.includes('smashystream') ||
-        url.includes('multiembed') ||
-        url.includes('vidmixi') ||
-        url.includes('dizilla') ||
-        url.includes('rapidrame') ||
-        url.includes('playmix'))
-    ) {
-      return originalWindowOpen.call(window, url, target, features);
+    if (typeof url === 'string') {
+      const allowed = ['vlc://', 'api.themoviedb.org', 'image.tmdb.org'];
+      if (allowed.some(a => url.startsWith(a))) {
+        return originalWindowOpen.call(window, url, target, features);
+      }
     }
-    console.warn('CinePulse Anti-Ad Shield: Blocked gambling pop-up redirect ->', url);
-    showToast('Bahis/Reklam yönlendirmesi engellendi.', 'info');
+    console.warn('CinePulse Anti-Ad Shield: Engellendi ->', url);
     return {
       closed: false,
       focus: () => {},
@@ -154,20 +139,19 @@ export async function openPlayerModal({
       `;
     }
 
-    if (currentCategory === 'dubbed' && (!activeServers || activeServers.length === 0)) {
+    if (!activeServers || activeServers.length === 0) {
+      if (currentCategory === 'dubbed') {
+        return `
+          <div class="server-pill-alert">
+            <span class="server-status-dot dot-amber"></span>
+            <span>Bu içerikte Türkçe Dublaj akışı bulunamadı. Altyazılı sekmesine geçebilirsiniz.</span>
+          </div>
+        `;
+      }
       return `
         <div class="server-pill-alert">
-          <span class="server-status-dot dot-amber"></span>
-          <span>Bu içerikte henüz Türkçe Dublaj akışı bulunamadı. Altyazılı sekmesine geçebilirsiniz.</span>
-        </div>
-      `;
-    }
-
-    if (!activeServers || activeServers.length === 0) {
-      return `
-        <div class="server-pill-loading">
-          <span class="server-pulse-dot"></span>
-          <span>Yayın hatları taranıyor...</span>
+          <span class="server-status-dot dot-red"></span>
+          <span>Aktif yayın hattı bulunamadı.</span>
         </div>
       `;
     }
@@ -207,25 +191,39 @@ export async function openPlayerModal({
           <p>
             "${cleanSeriesName}" yapımı için resmi veya aktif Türkçe Dublaj akışı bulunamadı. Türkçe Altyazılı yüksek kaliteli (1080p / 4K) kaynaklardan hemen izleyebilirsiniz.
           </p>
-          <button id="btn-switch-subtitled-fallback" class="btn-primary btn-switch-category-fallback">
-            <i data-lucide="repeat" style="width: 16px; height: 16px;"></i>
-            <span>💬 Türkçe Altyazılı Sunucuları Aç (${categorizedServers.subtitled?.length || 0} Hat Aktif)</span>
-          </button>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
+            <button id="btn-switch-subtitled-fallback" class="btn-primary btn-switch-category-fallback">
+              <i data-lucide="repeat" style="width: 16px; height: 16px;"></i>
+              <span>💬 Türkçe Altyazılı Sunucuları Aç (${categorizedServers.subtitled?.length || 0} Hat Aktif)</span>
+            </button>
+            <button id="btn-retry-discovery" class="btn-secondary" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem;">
+              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+              <span>Yeniden Tara</span>
+            </button>
+          </div>
         </div>
       `;
     }
 
     if (!activeServers || activeServers.length === 0) {
       return `
-        <div class="player-loading-overlay">
-          <div class="player-loader-core">
-            <div class="player-loader-spinner"></div>
-            <i data-lucide="play" class="player-loader-icon"></i>
+        <div class="player-not-found-container">
+          <div class="not-found-icon-wrap">
+            <i data-lucide="video-off" style="width: 38px; height: 38px; color: #ef4444;"></i>
           </div>
-          <div class="player-loader-text">
-            <h3>${cleanSeriesName}</h3>
-            <p class="player-loader-sub">${type === 'tv' ? `Sezon ${currentSeason} • Bölüm ${currentEpisode}` : '4K Ultra HD Film Yayını'} Başlatılıyor...</p>
-            <p class="player-loader-hint">Yüksek hızlı Türkiye & Küresel CDN hatları taranıyor, video sinyali çözümleniyor.</p>
+          <h3>Aktif Yayın Kaynağı Bulunamadı</h3>
+          <p>
+            "${cleanSeriesName}" içeriği için seçili sunucularda anlık sinyal alınamadı.
+          </p>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
+            <button id="btn-retry-discovery" class="btn-primary" style="padding: 0.55rem 1.2rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem;">
+              <i data-lucide="refresh-cw" style="width: 15px; height: 15px;"></i>
+              <span>Tekrar Tara</span>
+            </button>
+            <button id="btn-switch-subtitled-fallback" class="btn-secondary" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem;">
+              <i data-lucide="repeat" style="width: 14px; height: 14px;"></i>
+              <span>${currentCategory === 'dubbed' ? '💬 Altyazılıya Geç' : '🇹🇷 Dublaja Geç'}</span>
+            </button>
           </div>
         </div>
       `;
@@ -242,10 +240,16 @@ export async function openPlayerModal({
           <p>
             "${cleanSeriesName}" içeriği seçili kategorideki aktif depolarda yer almamaktadır.
           </p>
-          <button id="btn-switch-subtitled-fallback" class="btn-primary btn-switch-category-fallback">
-            <i data-lucide="repeat" style="width: 16px; height: 16px;"></i>
-            <span>${currentCategory === 'dubbed' ? '💬 Türkçe Altyazılı VidAPI & VIP Sunuculara Geç' : '🇹🇷 Türkçe Dublaj Sunucularına Geç'}</span>
-          </button>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
+            <button id="btn-switch-subtitled-fallback" class="btn-primary btn-switch-category-fallback">
+              <i data-lucide="repeat" style="width: 16px; height: 16px;"></i>
+              <span>${currentCategory === 'dubbed' ? '💬 Türkçe Altyazılı VidAPI & VIP Sunuculara Geç' : '🇹🇷 Türkçe Dublaj Sunucularına Geç'}</span>
+            </button>
+            <button id="btn-retry-discovery" class="btn-secondary" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem;">
+              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+              <span>Yeniden Tara</span>
+            </button>
+          </div>
         </div>
       `;
     }
@@ -295,6 +299,7 @@ export async function openPlayerModal({
         webkitallowfullscreen="true"
         mozallowfullscreen="true"
         referrerpolicy="${iframeReferrerPolicy}"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock"
         allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *; payment *; screen-wake-lock *; web-share *">
       </iframe>
     `;
@@ -1056,6 +1061,13 @@ export async function openPlayerModal({
       });
     }
 
+    const retryBtn = document.getElementById('btn-retry-discovery');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => {
+        startServerDiscovery();
+      });
+    }
+
     if (
       srv?.isDirectVideo ||
       srv?.isHls ||
@@ -1211,6 +1223,32 @@ export async function openPlayerModal({
           showToast(`🇹🇷 Türkçe Dublaj yayını bulundu: ${newStream.displayName}`, 'success');
         }
 
+        if (isComplete) {
+          if (countdownTimer) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+          }
+          isSearching = false;
+
+          // If in Dubbed mode and no dubbed stream, auto-switch to subtitled if available
+          if (currentCategory === 'dubbed' && (!dubbed || dubbed.length === 0) && subtitled && subtitled.length > 0 && !hasPlayerStartedPlaying) {
+            showToast('💬 Türkçe Dublaj bulunamadı. Türkçe Altyazılı sunuculara geçildi.', 'info');
+            currentCategory = 'subtitled';
+            const tabDub = document.getElementById('tab-dubbed');
+            const tabSub = document.getElementById('tab-subtitled');
+            if (tabDub && tabSub) {
+              tabDub.classList.remove('active');
+              tabSub.classList.add('active');
+            }
+            activeServers = subtitled;
+            currentServerIndex = 0;
+            hasPlayerStartedPlaying = true;
+            updateServerPillsEvents();
+            updatePlayerContainer();
+            return;
+          }
+        }
+
         // If in Dubbed mode and first Dubbed stream just arrived:
         if (currentCategory === 'dubbed' && dubbed.length > 0 && !hasPlayerStartedPlaying) {
           hasPlayerStartedPlaying = true;
@@ -1229,6 +1267,8 @@ export async function openPlayerModal({
             isSearching = false;
             currentServerIndex = 0;
             updatePlayerContainer();
+          } else if (isComplete && activeServers.length === 0) {
+            updatePlayerContainer();
           }
         }
       }
@@ -1243,6 +1283,20 @@ export async function openPlayerModal({
   clearInterval(activeProgressInterval);
   activeProgressInterval = setInterval(() => {
     simulatedCurrentTime += 5;
+    const progressPercent = estimatedDuration > 0 ? Math.round((simulatedCurrentTime / estimatedDuration) * 100) : 0;
+    if (progressPercent >= 90 && !isWatched) {
+      isWatched = true;
+      [document.getElementById('btn-toggle-watched-player'), document.getElementById('btn-toggle-watched-mobile')].forEach(btn => {
+        if (!btn) return;
+        const span = btn.querySelector('span');
+        const icon = btn.querySelector('i');
+        if (span) span.textContent = 'İzlendi';
+        if (icon) icon.setAttribute('data-lucide', 'check-circle-2');
+        btn.classList.add('watched-active');
+      });
+      if (type === 'tv') renderDrawerContent();
+      if (window.lucide) window.lucide.createIcons();
+    }
     saveWatchProgress({
       id: tmdbId,
       title: cleanSeriesName,
@@ -1252,7 +1306,8 @@ export async function openPlayerModal({
       season: currentSeason,
       episode: currentEpisode,
       currentTime: simulatedCurrentTime,
-      duration: estimatedDuration
+      duration: estimatedDuration,
+      completed: isWatched
     });
   }, 5000);
 
@@ -1294,18 +1349,18 @@ export async function openPlayerModal({
     initialTime = newRecord ? newRecord.currentTime : 0;
     isWatched = isMediaWatched(tmdbId, currentSeason, currentEpisode);
 
-    const toggleWatchedPlayerBtn = document.getElementById('btn-toggle-watched-player');
-    if (toggleWatchedPlayerBtn) {
-      const span = toggleWatchedPlayerBtn.querySelector('span');
-      const icon = toggleWatchedPlayerBtn.querySelector('i');
+    [document.getElementById('btn-toggle-watched-player'), document.getElementById('btn-toggle-watched-mobile')].forEach(btn => {
+      if (!btn) return;
+      const span = btn.querySelector('span');
+      const icon = btn.querySelector('i');
       if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Yap';
       if (icon) icon.setAttribute('data-lucide', isWatched ? 'check-circle-2' : 'check');
       if (isWatched) {
-        toggleWatchedPlayerBtn.classList.add('watched-active');
+        btn.classList.add('watched-active');
       } else {
-        toggleWatchedPlayerBtn.classList.remove('watched-active');
+        btn.classList.remove('watched-active');
       }
-    }
+    });
 
     updateNavButtons();
     if (type === 'tv') renderDrawerContent();
@@ -1317,6 +1372,20 @@ export async function openPlayerModal({
     clearInterval(activeProgressInterval);
     activeProgressInterval = setInterval(() => {
       simulatedCurrentTime += 5;
+      const progressPercent = estimatedDuration > 0 ? Math.round((simulatedCurrentTime / estimatedDuration) * 100) : 0;
+      if (progressPercent >= 90 && !isWatched) {
+        isWatched = true;
+        [document.getElementById('btn-toggle-watched-player'), document.getElementById('btn-toggle-watched-mobile')].forEach(btn => {
+          if (!btn) return;
+          const span = btn.querySelector('span');
+          const icon = btn.querySelector('i');
+          if (span) span.textContent = 'İzlendi';
+          if (icon) icon.setAttribute('data-lucide', 'check-circle-2');
+          btn.classList.add('watched-active');
+        });
+        if (type === 'tv') renderDrawerContent();
+        if (window.lucide) window.lucide.createIcons();
+      }
       saveWatchProgress({
         id: tmdbId,
         title: cleanSeriesName,
@@ -1326,7 +1395,8 @@ export async function openPlayerModal({
         season: currentSeason,
         episode: currentEpisode,
         currentTime: simulatedCurrentTime,
-        duration: estimatedDuration
+        duration: estimatedDuration,
+        completed: isWatched
       });
     }, 5000);
 
@@ -1457,51 +1527,4 @@ export async function openPlayerModal({
   };
 
   document.addEventListener('keydown', handleKeydown);
-
-  // Watched Toggle Inside Player
-  const toggleWatchedBtn = document.getElementById('btn-toggle-watched-player');
-  if (toggleWatchedBtn) {
-    toggleWatchedBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const updated = toggleEpisodeWatched(tmdbId, currentSeason, currentEpisode, {
-        title: cleanSeriesName,
-        posterPath,
-        backdropPath,
-        type,
-        duration: estimatedDuration
-      });
-
-      if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Yap';
-      if (icon) icon.setAttribute('data-lucide', isWatched ? 'check-circle-2' : 'check');
-      if (isWatched) {
-        toggleWatchedBtn.classList.add('watched-active');
-        showToast(`✓ S${currentSeason} B${currentEpisode} izlendi olarak kaydedildi!`, 'success');
-      } else {
-        toggleWatchedBtn.classList.remove('watched-active');
-        showToast(`S${currentSeason} B${currentEpisode} izleme listesine geri alındı.`, 'info');
-      }
-      if (window.lucide) window.lucide.createIcons();
-    });
-  }
-
-  // Halfway Marker Inside Player
-  const halfwayBtn = document.getElementById('btn-halfway-player');
-  if (halfwayBtn) {
-    halfwayBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      saveWatchProgress({
-        id: tmdbId,
-        title: cleanSeriesName,
-        posterPath,
-        backdropPath,
-        type,
-        season: currentSeason,
-        episode: currentEpisode,
-        currentTime: 1200,
-        duration: estimatedDuration,
-        completed: false
-      });
-      showToast(`⏳ S${currentSeason} B${currentEpisode} 20. dakikada yarıda bırakıldı!`, 'info');
-    });
-  }
 }
