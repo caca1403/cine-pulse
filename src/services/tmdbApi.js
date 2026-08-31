@@ -273,7 +273,7 @@ export async function fetchPopularAnime(page = 1) {
       language: 'tr-TR',
       with_genres: '16',
       with_original_language: 'ja',
-      'vote_count.gte': '150'
+      'vote_count.gte': 50
     }),
     tmdbFetch('/discover/tv', {
       sort_by: 'vote_count.desc',
@@ -281,7 +281,7 @@ export async function fetchPopularAnime(page = 1) {
       language: 'en-US',
       with_genres: '16',
       with_original_language: 'ja',
-      'vote_count.gte': '150'
+      'vote_count.gte': 50
     })
   ]);
   if (!trRes || !trRes.results) return [];
