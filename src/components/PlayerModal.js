@@ -304,7 +304,6 @@ export async function openPlayerModal({
         webkitallowfullscreen="true"
         mozallowfullscreen="true"
         referrerpolicy="${iframeReferrerPolicy}"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock"
         allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *; payment *; screen-wake-lock *; web-share *">
       </iframe>
     `;
