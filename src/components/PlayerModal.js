@@ -1020,6 +1020,42 @@ export async function openPlayerModal({
     if (!toolbar) return;
     toolbar.innerHTML = renderServerPills();
 
+    // Enable Horizontal Mouse Wheel Scroll & Touch Drag Support
+    if (!toolbar.dataset.scrollAttached) {
+      toolbar.dataset.scrollAttached = 'true';
+      
+      toolbar.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+          e.preventDefault();
+          toolbar.scrollLeft += e.deltaY * 1.5;
+        }
+      }, { passive: false });
+
+      // Mouse drag-to-scroll
+      let isDown = false;
+      let startX;
+      let scrollLeft;
+
+      toolbar.addEventListener('mousedown', (e) => {
+        isDown = true;
+        startX = e.pageX - toolbar.offsetLeft;
+        scrollLeft = toolbar.scrollLeft;
+      });
+      toolbar.addEventListener('mouseleave', () => {
+        isDown = false;
+      });
+      toolbar.addEventListener('mouseup', () => {
+        isDown = false;
+      });
+      toolbar.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - toolbar.offsetLeft;
+        const walk = (x - startX) * 2;
+        toolbar.scrollLeft = scrollLeft - walk;
+      });
+    }
+
     toolbar.querySelectorAll('.server-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -1029,6 +1065,9 @@ export async function openPlayerModal({
         currentServerIndex = idx;
         toolbar.querySelectorAll('.server-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+
+        // Scroll active button into view smoothly
+        btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 
         updatePlayerContainer();
       });
