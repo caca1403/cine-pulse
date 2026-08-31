@@ -76,7 +76,7 @@ export async function fetchAnimecixSources({
   const sources = [];
   const seenUrls = new Set();
 
-  // Try matching titles in priority order
+  // Collect matching videos from top matched titles
   for (const anime of foundAnimeMatches.slice(0, 4)) {
     try {
       const epUrl = `https://animecix.net/secure/episode-videos?titleId=${anime.id}&season=${season}&episode=${episode}`;
@@ -88,6 +88,7 @@ export async function fetchAnimecixSources({
       const videos = await epRes.json();
       if (!Array.isArray(videos) || videos.length === 0) continue;
 
+      const matchedList = [];
       for (const v of videos) {
         if (!v || !v.url || typeof v.url !== 'string') continue;
         const streamUrl = v.url.trim();
@@ -100,18 +101,35 @@ export async function fetchAnimecixSources({
 
         if (isDub && !isDubbedVideo) continue;
 
-        sources.push({
+        matchedList.push({
           id: `acx_${anime.id}_${v.id || sources.length}_${isDub ? 'dub' : 'sub'}`,
           name: `AnimeciX - ${providerName} (${isDub ? '1080p TR Dublaj' : '1080p Altyazılı'})${fansubInfo}`,
           badge: isDub ? '🎌 Dublaj' : `🎌 ${providerName}`,
           category: isDub ? 'dubbed' : 'subtitled',
+          providerName,
           streamUrl: streamUrl,
           url: streamUrl,
           getUrl: () => streamUrl
         });
       }
 
-      if (sources.length > 0) break; // Successfully got sources for this anime
+      // Priority sort: Tau Video > Sibnet > VidMoly > Doodstream
+      matchedList.sort((a, b) => {
+        const getP = (item) => {
+          const s = (item.providerName + ' ' + item.streamUrl).toLowerCase();
+          if (s.includes('tau')) return 1;
+          if (s.includes('sibnet')) return 2;
+          if (s.includes('vidmoly')) return 3;
+          if (s.includes('ok.ru')) return 4;
+          if (s.includes('mail.ru')) return 5;
+          if (s.includes('dood')) return 6;
+          return 7;
+        };
+        return getP(a) - getP(b);
+      });
+
+      sources.push(...matchedList);
+      if (sources.length >= 6) break;
     } catch (_) {}
   }
 
