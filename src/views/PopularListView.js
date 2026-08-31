@@ -117,6 +117,13 @@ export async function renderPopularListView(type = 'tv') {
           attachMediaCardEvents(grid);
 
           cache.currentPage += 1;
+
+          // If content doesn't fill the screen yet, load one more page automatically
+          setTimeout(() => {
+            if (document.documentElement.scrollHeight <= window.innerHeight + 400 && !cache.isExhausted && !isLoading) {
+              loadMore();
+            }
+          }, 200);
         } catch (err) {
           console.error('Error loading popular media:', err);
           if (spinner) spinner.style.display = 'none';
@@ -145,16 +152,32 @@ export async function renderPopularListView(type = 'tv') {
         loadMore();
       }
 
-      // Infinite scroll with IntersectionObserver
-      if (sentinel) {
-        const observer = new IntersectionObserver((entries) => {
+      // 1. IntersectionObserver for seamless loading when sentinel enters viewport
+      let observer = null;
+      if (sentinel && 'IntersectionObserver' in window) {
+        observer = new IntersectionObserver((entries) => {
           if (entries[0].isIntersecting) {
             loadMore();
           }
-        }, { rootMargin: '0px 0px 400px 0px' });
+        }, { rootMargin: '0px 0px 600px 0px' });
 
         observer.observe(sentinel);
       }
+
+      // 2. High-performance scroll listener fallback for all mobile & desktop browsers
+      const handleWindowScroll = () => {
+        if (isLoading || cache.isExhausted) return;
+        const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+        const windowHeight = window.innerHeight;
+        const docHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+
+        if (scrollY + windowHeight >= docHeight - 700) {
+          loadMore();
+        }
+      };
+
+      window.addEventListener('scroll', handleWindowScroll, { passive: true });
+      window.addEventListener('touchmove', handleWindowScroll, { passive: true });
     }
   };
 }

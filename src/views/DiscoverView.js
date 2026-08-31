@@ -251,6 +251,13 @@ export async function renderDiscoverView(initialType = 'tv') {
           attachMediaCardEvents(grid);
 
           discoverCache.currentPage = pageToFetch + 1;
+
+          // Auto-fill if initial page doesn't cause overflow
+          setTimeout(() => {
+            if (document.documentElement.scrollHeight <= window.innerHeight + 400 && !discoverCache.isExhausted && !isLoading) {
+              fetchContent();
+            }
+          }, 200);
         } catch (err) {
           console.error('Discover fetch error:', err);
           if (spinner) spinner.style.display = 'none';
@@ -288,15 +295,30 @@ export async function renderDiscoverView(initialType = 'tv') {
         fetchContent();
       }
 
-      // Infinite scroll observer
-      if (sentinel) {
+      // 1. Infinite scroll observer
+      if (sentinel && 'IntersectionObserver' in window) {
         const observer = new IntersectionObserver((entries) => {
           if (entries[0].isIntersecting) {
             fetchContent();
           }
-        }, { rootMargin: '0px 0px 400px 0px' });
+        }, { rootMargin: '0px 0px 600px 0px' });
         observer.observe(sentinel);
       }
+
+      // 2. High-performance scroll listener fallback for all mobile & desktop browsers
+      const handleWindowScroll = () => {
+        if (isLoading || discoverCache.isExhausted) return;
+        const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+        const windowHeight = window.innerHeight;
+        const docHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+
+        if (scrollY + windowHeight >= docHeight - 700) {
+          fetchContent();
+        }
+      };
+
+      window.addEventListener('scroll', handleWindowScroll, { passive: true });
+      window.addEventListener('touchmove', handleWindowScroll, { passive: true });
 
       // Filter listeners
       const setType = (newType) => {

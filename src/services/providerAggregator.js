@@ -168,17 +168,60 @@ function formatStreamItem(s, category, fallbackName) {
 
 function isValidStream(s) {
   const urlStr = (s.url || s.streamUrl || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
-  return urlStr &&
-    !urlStr.includes('recaptcha') &&
-    !urlStr.includes('liderfilm') &&
-    !urlStr.includes('dizipal.bid') &&
-    !urlStr.includes('hdfilmdelisi') &&
-    urlStr.length > 8;
+  if (!urlStr || urlStr.length < 10) return false;
+
+  // Block dead, refusing or malicious redirect domains
+  const blockedDomains = [
+    'recaptcha',
+    'media.cm',
+    'cloudvideo.tv',
+    'vidoza.net',
+    'voe.sx',
+    'bysejikuar',
+    'filemoon',
+    'liderfilm',
+    'dizipal.bid',
+    'hdfilmdelisi'
+  ];
+
+  for (const b of blockedDomains) {
+    if (urlStr.includes(b)) return false;
+  }
+
+  return true;
+}
+
+function getStreamPriorityScore(s) {
+  const url = (s.url || s.streamUrl || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
+  const raw = (s.displayName || s.name || '').toLowerCase();
+  const id = (s.id || '').toLowerCase();
+
+  // Priority 1: High-Speed Direct & Native Turkish / AnimeciX streams
+  if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 1;
+  if (id.startsWith('snx') || raw.includes('direct') || url.includes('.mkv') || url.includes('.mp4') || url.includes('.webm')) return 2;
+  if (url.includes('storage.diziyou') || id.startsWith('dzy') || raw.includes('fastcdn')) return 3;
+  if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 4;
+  if (url.includes('rapidrame') || url.includes('closeload') || url.includes('filmmakinesi')) return 5;
+  if (url.includes('sibnet') || raw.includes('sibnet')) return 6;
+  if (url.includes('vidmoly') || raw.includes('vidmoly')) return 7;
+  if (id.startsWith('hdi_') || id.startsWith('flm_') || id.startsWith('szn_') || id.startsWith('dzm_')) return 8;
+
+  // Fallback Generic Foreign Embeds (Put at the end)
+  if (url.includes('smashy') || raw.includes('smashy')) return 20;
+  if (url.includes('autoembed') || raw.includes('autoembed')) return 21;
+  if (url.includes('multiembed') || raw.includes('multiembed')) return 22;
+  if (url.includes('vidsrc') || raw.includes('vidsrc')) return 23;
+  if (url.includes('embed.su') || raw.includes('embedsu')) return 24;
+  if (url.includes('vidlink') || raw.includes('vidlink')) return 25;
+  if (url.includes('vidbinge') || raw.includes('vidbinge')) return 26;
+  if (url.includes('2embed') || raw.includes('2embed')) return 27;
+
+  return 15;
 }
 
 /**
  * Progressive live streaming source aggregator.
- * Immediately returns baseline embeds, and streams live sources as they are discovered.
+ * Discovers Turkish & VIP sources with prioritized local ordering and fallback embeds.
  */
 export async function getStreamingServersProgressive({
   type = 'movie',
@@ -204,62 +247,10 @@ export async function getStreamingServersProgressive({
   const { candidateTitles, detectedYear } = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle);
   const targetYear = year || detectedYear;
 
-  // Baseline instant Subtitled Embeds
-  const initialSubtitled = [
-    {
-      id: 'sub_smashystream',
-      name: 'Smashy 1080p',
-      displayName: 'Smashy 1080p',
-      badge: '⚡ Smashy',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}`
-        : `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}&season=${season}&episode=${episode}`
-    },
-    {
-      id: 'sub_autoembed',
-      name: 'AutoEmbed 4K',
-      displayName: 'AutoEmbed 4K',
-      badge: '⚡ AutoEmbed',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://player.autoembed.co/embed/movie/${tmdbId}`
-        : `https://player.autoembed.co/embed/tv/${tmdbId}/${season}/${episode}`
-    },
-    {
-      id: 'sub_multiembed',
-      name: 'MultiEmbed VIP',
-      displayName: 'MultiEmbed VIP',
-      badge: '⚡ MultiEmbed',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
-        : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`
-    },
-    {
-      id: 'sub_vidsrcme',
-      name: 'VidSrc Pro',
-      displayName: 'VidSrc Pro',
-      badge: '⚡ VidSrc',
-      category: 'subtitled',
-      getUrl: () => isMovie
-        ? `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`
-        : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&sea=${season}&epi=${episode}`
-    }
-  ];
-
   let currentDubbed = [];
-  let currentSubtitled = [...initialSubtitled];
+  let currentSubtitled = [];
   const seenDubUrls = new Set();
-  const seenSubUrls = new Set(initialSubtitled.map(s => s.getUrl()));
-
-  // Send initial fast embeds immediately
-  onUpdate({
-    dubbed: [...currentDubbed],
-    subtitled: [...currentSubtitled],
-    totalServers: currentDubbed.length + currentSubtitled.length,
-    isComplete: false
-  });
+  const seenSubUrls = new Set();
 
   const addStreams = (rawList, category) => {
     if (!Array.isArray(rawList) || rawList.length === 0) return [];
@@ -268,18 +259,20 @@ export async function getStreamingServersProgressive({
 
     for (const raw of valid) {
       const formatted = formatStreamItem(raw, category, category === 'dubbed' ? 'VIP 1080p' : 'VIP Altyazılı');
-      const urlKey = (formatted.streamUrl || formatted.url || formatted.getUrl() || '').trim().toLowerCase();
+      const urlKey = (formatted.streamUrl || formatted.url || (typeof formatted.getUrl === 'function' ? formatted.getUrl() : '') || '').trim().toLowerCase();
 
       if (category === 'dubbed') {
         if (!seenDubUrls.has(urlKey)) {
           seenDubUrls.add(urlKey);
           currentDubbed.push(formatted);
+          currentDubbed.sort((a, b) => getStreamPriorityScore(a) - getStreamPriorityScore(b));
           added.push(formatted);
         }
       } else {
         if (!seenSubUrls.has(urlKey)) {
           seenSubUrls.add(urlKey);
           currentSubtitled.push(formatted);
+          currentSubtitled.sort((a, b) => getStreamPriorityScore(a) - getStreamPriorityScore(b));
           added.push(formatted);
         }
       }
