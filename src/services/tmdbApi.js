@@ -238,24 +238,51 @@ export async function fetchPopularMovies(page = 1) {
     });
 }
 
-export async function fetchPopularAnime(page = 1) {
-  const tvRes = await tmdbFetch('/discover/tv', {
-    sort_by: 'popularity.desc',
-    page,
-    language: 'tr-TR',
-    with_genres: '16',
-    with_original_language: 'ja'
-  });
-  if (!tvRes || !tvRes.results) return [];
+export function hasNonLatinCharacters(text) {
+  if (!text) return false;
+  // Detects Japanese, Chinese, Korean, Arabic, Cyrillic, Thai, etc.
+  const nonLatinRegex = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff\u0600-\u06ff\u0400-\u04ff\u0e00-\u0e7f]/;
+  return nonLatinRegex.test(text);
+}
 
-  return tvRes.results
+export async function fetchPopularAnime(page = 1) {
+  const [trRes, enRes] = await Promise.all([
+    tmdbFetch('/discover/tv', {
+      sort_by: 'popularity.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '16',
+      with_original_language: 'ja'
+    }),
+    tmdbFetch('/discover/tv', {
+      sort_by: 'popularity.desc',
+      page,
+      language: 'en-US',
+      with_genres: '16',
+      with_original_language: 'ja'
+    })
+  ]);
+  if (!trRes || !trRes.results) return [];
+
+  const enMap = new Map((enRes?.results || []).map(i => [i.id, i.name || i.title]));
+
+  return trRes.results
     .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
-    .map(item => ({
-      ...item,
-      type: 'tv',
-      media_type: 'tv',
-      overview: item.overview || generateCinematicOverview(item, 'tv')
-    }));
+    .map(item => {
+      let displayName = item.name || item.title || '';
+      // If Turkish name is Japanese/Kanji or non-Latin, use the clean English/Romaji name
+      if (!displayName || hasNonLatinCharacters(displayName)) {
+        displayName = enMap.get(item.id) || item.original_name || item.original_title || displayName;
+      }
+      return {
+        ...item,
+        name: displayName,
+        title: displayName,
+        type: 'tv',
+        media_type: 'tv',
+        overview: item.overview || generateCinematicOverview(item, 'tv')
+      };
+    });
 }
 
 export async function fetchPopularDocumentaries(page = 1) {

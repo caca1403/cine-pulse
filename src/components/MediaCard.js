@@ -4,7 +4,7 @@
    clean typography, smart type detection, and smooth responsive hover animations.
    ========================================================================== */
 
-import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
+import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK, hasNonLatinCharacters } from '../services/tmdbApi.js';
 import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime } from '../services/storage.js';
 import { openPlayerModal } from './PlayerModal.js';
 import { saveAllScrollState } from '../services/scrollManager.js';
@@ -32,7 +32,11 @@ export function determineMediaType(item) {
 export function renderMediaCard(item, options = {}) {
   const id = item.id;
   const type = determineMediaType(item);
-  const title = item.title || item.name || 'İsimsiz İçerik';
+  let rawTitle = item.title || item.name || '';
+  if (!rawTitle || hasNonLatinCharacters(rawTitle)) {
+    rawTitle = item.title_en || item.name_en || item.original_name || item.original_title || rawTitle || 'İsimsiz İçerik';
+  }
+  const title = rawTitle;
   const posterPath = item.poster_path || item.posterPath || item.poster || '';
   const backdropPath = item.backdrop_path || item.backdropPath || item.backdrop || '';
   const posterUrl = getImageUrl(posterPath, TMDB_IMAGE_SIZES.POSTER_MEDIUM);
