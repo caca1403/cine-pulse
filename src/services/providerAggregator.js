@@ -24,7 +24,6 @@ import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
 import { fetchHDFilmizleSources } from './hdfilmizleScraper.js';
-import { fetchDizimomSources } from './dizimomScraper.js';
 import { fetchMultiEmbedSources } from './multiEmbedScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -120,7 +119,7 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (url.includes('vidrame') || raw.includes('vidrame')) return 'Vidrame Pro';
   if (url.includes('eksenload') || url.includes('vidload') || raw.includes('eksen')) return 'EksenLoad VIP';
   if (url.includes('vidmody') || raw.includes('vidmody')) return 'VidMody Ultra';
-  if (url.includes('rapidame') || raw.includes('rapidame')) return 'Rapidame 1080p';
+  if (id.startsWith('dzp_') || raw.includes('dizipal')) return 'DiziPal VIP 1080p';
   if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 'Alpha Stream';
   if (url.includes('storage.diziyou') || id.startsWith('dzy')) return 'HLS FastCDN';
   if (url.includes('smashy') || raw.includes('smashy')) return 'Smashy 1080p';
@@ -210,11 +209,12 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 1;
   if (id.startsWith('snx') || raw.includes('direct') || url.includes('.mkv') || url.includes('.mp4') || url.includes('.webm')) return 2;
   if (url.includes('storage.diziyou') || id.startsWith('dzy') || raw.includes('fastcdn')) return 3;
+  if (id.startsWith('dzp_') || raw.includes('dizipal')) return 4;
   if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 4;
   if (url.includes('rapidrame') || url.includes('closeload') || url.includes('filmmakinesi')) return 5;
   if (url.includes('sibnet') || raw.includes('sibnet')) return 6;
   if (url.includes('vidmoly') || raw.includes('vidmoly')) return 7;
-  if (id.startsWith('hdi_') || id.startsWith('flm_') || id.startsWith('szn_') || id.startsWith('dzm_')) return 8;
+  if (id.startsWith('hdi_') || id.startsWith('flm_') || id.startsWith('szn_')) return 8;
   // TR Anime sources
   if (id.startsWith('ta_') || raw.includes('tr anime') || raw.includes('turkanime')) return 9;
 
@@ -336,20 +336,16 @@ export async function getStreamingServersProgressive({
     isMovie ? fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
-    // Dizipal (Dubbed)
+    // Dizipal (Dubbed & Subtitled)
     fetchDizipalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    fetchDizipalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // Filmizlech (Dubbed & Subtitled)
     fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
-    // DiziMOM (Dubbed & Subtitled)
-    fetchDizimomSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchDizimomSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // Universal MultiEmbed & VidLink (Subtitled Only)
