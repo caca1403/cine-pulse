@@ -14,8 +14,8 @@ export async function fetchMultiEmbedSources({
 
   const isMovie = type === 'movie';
   const embedUrl = isMovie
-    ? `https://player.videasy.net/movie/${tmdbId}`
-    : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`;
+    ? `https://player.videasy.to/movie/${tmdbId}`
+    : `https://player.videasy.to/tv/${tmdbId}/${season}/${episode}`;
 
   return [
     {
