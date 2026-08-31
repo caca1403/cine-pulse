@@ -152,7 +152,7 @@ function renderContinueWatchingSection(watchHistory) {
   if (!watchHistory || watchHistory.length === 0) return '';
   const cards = watchHistory.map(item => `
     <div class="continue-card-wrapper" data-id="${item.id}" data-season="${item.season || 1}" data-episode="${item.episode || 1}">
-      ${renderMediaCard(item)}
+      ${renderMediaCard(item, { isContinueSection: true })}
       <button class="btn-delete-history" title="Geçmişten Kaldır" aria-label="Kaldır">
         <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
       </button>
