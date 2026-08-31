@@ -91,7 +91,7 @@ export async function renderPopularListView(type = 'tv') {
         }
       };
 
-      // Aggressive 4-page batch fetcher (80 items per burst)
+      // Fast 2-page batch fetcher (40 items per burst)
       const fetchNextBatch = async () => {
         if (isFetching || cache.isExhausted) return;
         isFetching = true;
@@ -104,8 +104,8 @@ export async function renderPopularListView(type = 'tv') {
           else if (type === 'anime') fetcher = fetchPopularAnime;
           else if (type === 'documentary') fetcher = fetchPopularDocumentaries;
 
-          // Fetch 4 pages in parallel (80 items!)
-          const pagesToFetch = [startP, startP + 1, startP + 2, startP + 3];
+          // Fetch 2 pages in parallel (40 items)
+          const pagesToFetch = [startP, startP + 1];
           const results = await Promise.all(pagesToFetch.map(p => fetcher(p).catch(() => [])));
 
           const newItems = results.flat().filter(Boolean);
@@ -114,7 +114,7 @@ export async function renderPopularListView(type = 'tv') {
             if (cache.nextPage >= 500) {
               cache.isExhausted = true;
             } else {
-              cache.nextPage += 4;
+              cache.nextPage += 2;
             }
             updateSentinelUI();
             return;
@@ -131,7 +131,7 @@ export async function renderPopularListView(type = 'tv') {
           }
 
           cache.allItems = [...cache.allItems, ...uniqueItems];
-          cache.nextPage += 4;
+          cache.nextPage += 2;
 
           const newCardsHTML = uniqueItems.map(item => renderMediaCard(item)).join('');
           const placeholder = grid.querySelector('.popular-loading-placeholder');
@@ -146,10 +146,10 @@ export async function renderPopularListView(type = 'tv') {
 
           // Auto trigger next pre-fetch if screen still has room
           setTimeout(() => {
-            if (document.documentElement.scrollHeight <= window.innerHeight + 1000 && !cache.isExhausted && !isFetching) {
+            if (document.documentElement.scrollHeight <= window.innerHeight + 800 && !cache.isExhausted && !isFetching) {
               fetchNextBatch();
             }
-          }, 60);
+          }, 50);
         } catch (err) {
           console.error('Error fetching popular batch:', err);
         } finally {
