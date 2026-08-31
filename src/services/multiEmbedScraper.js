@@ -64,14 +64,25 @@ export async function fetchFilmkovasiSources({
     for (const m of iframeMatches) {
       let src = m[1].replace(/\\/g, '');
       if (src.startsWith('//')) src = `https:${src}`;
-      if (seenUrls.has(src) || src.includes('recaptcha') || src.includes('vidsrc')) continue;
+      if (seenUrls.has(src)) continue;
+
+      // Only allow verified clean video hosts: VidMoly, Doodstream, StreamTape, UpStream
+      const isVidmoly = src.includes('vidmoly');
+      const isDood = src.includes('dood') || src.includes('ds2play');
+      const isStreamtape = src.includes('streamtape');
+      const isUpstream = src.includes('upstream');
+
+      if (!isVidmoly && !isDood && !isStreamtape && !isUpstream) {
+        continue;
+      }
+
       seenUrls.add(src);
 
-      let serverName = 'FilmKovası VIP';
-      if (src.includes('vidmoly')) serverName = 'VidMoly 1080p';
-      else if (src.includes('dood')) serverName = 'DoodStream HD';
-      else if (src.includes('streamtape')) serverName = 'StreamTape HD';
-      else if (src.includes('upstream')) serverName = 'UpStream HD';
+      let serverName = 'FK Stream HD';
+      if (isVidmoly) serverName = 'VidMoly 1080p';
+      else if (isDood) serverName = 'DoodStream HD';
+      else if (isStreamtape) serverName = 'StreamTape HD';
+      else if (isUpstream) serverName = 'UpStream HD';
 
       sources.push({
         id: `fkv_${post.id}_${sources.length}`,
