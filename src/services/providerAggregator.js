@@ -16,14 +16,12 @@ import { fetchDiziBalSources } from './diziBalScraper.js';
 import { fetchSezonlukDiziEpisodeSources } from './sezonlukDiziScraper.js';
 import { fetchDizipalSources } from './dizipalScraper.js';
 import { fetchSinewixSources } from './sinewixScraper.js';
-import { fetchFilmizlechSources } from './filmizlechScraper.js';
 import { fetchAnimecixSources } from './animecixScraper.js';
 import { fetchTurkAnimeSources } from './turkanimeScraper.js';
 import { fetchBelgeselSources } from './belgeselScraper.js';
 import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
-import { fetchHDFilmizleSources } from './hdfilmizleScraper.js';
 import { fetchMultiEmbedSources } from './multiEmbedScraper.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -341,12 +339,6 @@ export async function getStreamingServersProgressive({
     fetchDizipalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchDizipalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
-    // Filmizlech (Dubbed & Subtitled)
-    fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // Universal MultiEmbed VIP (Subtitled & Multi-Language)

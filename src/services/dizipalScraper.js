@@ -20,6 +20,8 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+
 export async function fetchDizipalSources({
   type = 'tv',
   titles = [],
@@ -32,7 +34,7 @@ export async function fetchDizipalSources({
 }) {
   const targetTitle = seriesTitle || title;
   const isBrowser = typeof window !== 'undefined';
-  const baseUrl = isBrowser ? '/api/dzp' : 'https://dizipal.bid';
+  const baseDomain = 'https://dizipal.bid';
 
   const candidateTitles = Array.from(new Set([
     targetTitle,
@@ -59,27 +61,29 @@ export async function fetchDizipalSources({
   for (const slug of candidateSlugs) {
     const candidateUrls = isMovie
       ? [
-          `${baseUrl}/${slug}/`,
-          `${baseUrl}/${slug}-izle/`,
-          `${baseUrl}/film/${slug}/`,
-          `${baseUrl}/film/${slug}-izle/`
+          `${baseDomain}/${slug}/`,
+          `${baseDomain}/${slug}-izle/`,
+          `${baseDomain}/film/${slug}/`,
+          `${baseDomain}/film/${slug}-izle/`
         ]
       : [
-          `${baseUrl}/bolum/${slug}-${season}-sezon-${episode}-bolum-izle/`,
-          `${baseUrl}/bolum/${slug}-${season}-sezon-${episode}-bolum/`,
-          `${baseUrl}/dizi/${slug}/${season}-sezon-${episode}-bolum/`
+          `${baseDomain}/bolum/${slug}-${season}-sezon-${episode}-bolum-izle/`,
+          `${baseDomain}/bolum/${slug}-${season}-sezon-${episode}-bolum/`,
+          `${baseDomain}/dizi/${slug}/${season}-sezon-${episode}-bolum/`
         ];
 
     for (const epUrl of candidateUrls) {
       try {
-        const res = await fetch(epUrl, { signal: AbortSignal.timeout(2500) }).catch(() => null);
+        const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
+        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null);
         if (!res || !res.ok) continue;
         const html = await res.text();
         if (!html || html.length < 500 || html.includes('404 Not Found')) continue;
 
         const iframeMatch =
-          html.match(/<iframe[^>]+src=["']([^"']+)["']/i) ||
-          html.match(/src=["'](https?:\/\/[^"']*(?:ag2m4|vidsrc|liderfilm|embed|player)[^"']*)["']/i);
+          html.match(/<iframe[^>]*\s+src=["']([^"']+)["']/i) ||
+          html.match(/src=["'](https?:\/\/[^"']*(?:ag2m4|agcdn|vidsrc|liderfilm|embed|player)[^"']*)["']/i) ||
+          html.match(/src=["']([^"']*(?:embed|ag2m4|agcdn)[^"']*)["']/i);
 
         let iframeUrl = iframeMatch ? iframeMatch[1] : null;
 
