@@ -147,12 +147,13 @@ export async function fetchSinewixSources({
 
     if (searchItems.length === 0) return [];
 
-    // Filter candidate items by requested type (movie vs tv)
+    // Filter candidate items by requested type (movie vs tv/anime)
     const filteredSearchItems = searchItems.filter(it => {
       if (isMovie) {
         return it.type === 'movie' || it.type === 'film';
       } else {
-        return it.type === 'serie' || it.type === 'series' || it.type === 'tv';
+        // Sinewix returns type='anime' for anime content, which is tv-type in our system
+        return it.type === 'serie' || it.type === 'series' || it.type === 'tv' || it.type === 'anime';
       }
     });
 
@@ -169,11 +170,22 @@ export async function fetchSinewixSources({
     }
 
     const itemId = targetItem.id;
+    const isAnime = targetItem.type === 'anime';
     let videoList = [];
 
     if (isMovie) {
       const movieData = await performSinewixRequest(`/media/detail/${itemId}/${SINEWIX_TOKEN}`);
       videoList = movieData?.videos || [];
+    } else if (isAnime) {
+      // Anime uses a separate /animes/show/ endpoint with anime_season_id / anime_episode_id
+      const animeData = await performSinewixRequest(`/animes/show/${itemId}/${SINEWIX_TOKEN}`);
+      if (animeData?.seasons && Array.isArray(animeData.seasons)) {
+        const seasonMatch = animeData.seasons.find(s => s.season_number === Number(season)) || animeData.seasons[0];
+        if (seasonMatch?.episodes && Array.isArray(seasonMatch.episodes)) {
+          const epMatch = seasonMatch.episodes.find(e => e.episode_number === Number(episode)) || seasonMatch.episodes[0];
+          videoList = epMatch ? epMatch.videos || [] : [];
+        }
+      }
     } else {
       const seriesData = await performSinewixRequest(`/series/show/${itemId}/${SINEWIX_TOKEN}`);
       if (seriesData?.seasons && Array.isArray(seriesData.seasons)) {
