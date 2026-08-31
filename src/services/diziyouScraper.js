@@ -33,9 +33,6 @@ export async function fetchDiziyouSources({
   const isBrowser = typeof window !== 'undefined';
   const baseUrl = isBrowser ? '/api/dzy' : 'https://www.diziyou.one';
 
-  const isMovie = (type === 'movie');
-  const baseDomains = ['https://www.diziyo.so', 'https://www.diziyou.one'];
-
   const allTitles = Array.from(new Set([
     seriesTitle,
     title,
@@ -44,44 +41,27 @@ export async function fetchDiziyouSources({
   ])).filter(Boolean);
 
   const candidateUrls = [];
-  for (const baseDomain of baseDomains) {
-    for (const t of allTitles) {
-      const slug = slugify(t);
-      if (!slug) continue;
+  for (const t of allTitles) {
+    const slug = slugify(t);
+    if (!slug) continue;
 
-      if (isMovie) {
-        candidateUrls.push(
-          `${baseDomain}/film/${slug}-izle/`,
-          `${baseDomain}/film/${slug}/`,
-          `${baseDomain}/${slug}-izle/`,
-          `${baseDomain}/${slug}/`
-        );
-      } else {
-        candidateUrls.push(
-          `${baseDomain}/dizi/${slug}-izle/sezon-${season}/bolum-${episode}/`,
-          `${baseDomain}/dizi/${slug}/sezon-${season}/bolum-${episode}/`,
-          `${baseDomain}/${slug}-${season}-sezon-${episode}-bolum/`,
-          `${baseDomain}/${slug}-${season}-sezon-${episode}-bolum-izle/`
-        );
-      }
-    }
+    candidateUrls.push(
+      `${baseUrl}/${slug}-${season}-sezon-${episode}-bolum/`,
+      `${baseUrl}/${slug}-${season}-sezon-${episode}-bolum-izle/`,
+      `${baseUrl}/dizi/${slug}-${season}-sezon-${episode}-bolum/`,
+      `${baseUrl}/dizi/${slug}-${season}-sezon-${episode}-bolum-izle/`
+    );
   }
 
   if (candidateUrls.length === 0) return [];
 
   const uniqueUrls = [...new Set(candidateUrls)];
 
-  const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
-
   const htmlResults = await Promise.all(
     uniqueUrls.map(async (epUrl) => {
       try {
-        const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`;
-        let res = await fetch(proxyUrl, { signal: AbortSignal.timeout(4000) }).catch(() => null);
-        if (!res || !res.ok) {
-          res = await fetch(epUrl, { signal: AbortSignal.timeout(4000) }).catch(() => null);
-        }
-        if (!res || !res.ok) return null;
+        const res = await fetch(epUrl, { signal: AbortSignal.timeout(5000) });
+        if (!res.ok) return null;
         const html = await res.text();
         if (!html || html.length < 500) return null;
         return { epUrl, html };

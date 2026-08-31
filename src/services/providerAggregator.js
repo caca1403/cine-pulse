@@ -349,7 +349,9 @@ export async function getStreamingServersProgressive({
     fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // Universal MultiEmbed & VidLink (Subtitled Only)
+    // Universal MultiEmbed VIP (Subtitled & Multi-Language)
+    fetchMultiEmbedSources({ type, tmdbId, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchMultiEmbedSources({ type, tmdbId, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
