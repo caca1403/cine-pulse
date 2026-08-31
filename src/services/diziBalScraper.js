@@ -64,9 +64,36 @@ function isTitleMatch(targetTitle, candidateObj, targetYear = null) {
   });
 }
 
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+
+async function performDiziBalRequest(endpoint) {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const targetUrl = `https://dizibal.com/api${cleanEndpoint}`;
+
+  // 1. Try Cloudflare Worker proxy first (bypasses CORS & 301 redirects)
+  try {
+    const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
+    const res = await fetch(workerUrl, { signal: AbortSignal.timeout(4500) }).catch(() => null);
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data) return data;
+    }
+  } catch (_) {}
+
+  // 2. Try Vercel Serverless /api/dbl proxy
+  try {
+    const vercelProxyUrl = `/api/dbl${cleanEndpoint}`;
+    const res = await fetch(vercelProxyUrl, { signal: AbortSignal.timeout(4500) }).catch(() => null);
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data) return data;
+    }
+  } catch (_) {}
+
+  return null;
+}
+
 export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesTitle = '', title = '', originalTitle = '', year = null, season = 1, episode = 1, isDub = true }) {
-  const isBrowser = typeof window !== 'undefined';
-  const apiBase = isBrowser ? '/api/dbl' : 'https://dizibal.com/api';
   const isMovie = type === 'movie';
 
   const candidateQueries = [...new Set([
@@ -84,13 +111,7 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
 
     try {
       if (isMovie) {
-        const searchRes = await fetch(`${apiBase}/movies?search=${encodeURIComponent(cleanQuery)}`, {
-          headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(5000)
-        }).catch(() => null);
-
-        if (!searchRes || !searchRes.ok) continue;
-        const searchJson = await searchRes.json().catch(() => null);
+        const searchJson = await performDiziBalRequest(`/movies?search=${encodeURIComponent(cleanQuery)}`);
         const moviesList = searchJson?.data || [];
         if (moviesList.length === 0) continue;
 
@@ -105,14 +126,7 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         }
 
         const targetSlug = targetMovie.slug;
-
-        const detailRes = await fetch(`${apiBase}/movies/${targetSlug}`, {
-          headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(5000)
-        }).catch(() => null);
-
-        if (!detailRes || !detailRes.ok) continue;
-        const detailJson = await detailRes.json().catch(() => null);
+        const detailJson = await performDiziBalRequest(`/movies/${targetSlug}`);
         const movieData = detailJson?.data;
         if (!movieData) continue;
 
@@ -135,13 +149,7 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
           ];
         }
       } else {
-        const searchRes = await fetch(`${apiBase}/series?search=${encodeURIComponent(cleanQuery)}`, {
-          headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(5000)
-        }).catch(() => null);
-
-        if (!searchRes || !searchRes.ok) continue;
-        const searchJson = await searchRes.json().catch(() => null);
+        const searchJson = await performDiziBalRequest(`/series?search=${encodeURIComponent(cleanQuery)}`);
         const seriesList = searchJson?.data || [];
         if (seriesList.length === 0) continue;
 
@@ -155,14 +163,7 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         }
 
         const seriesSlug = targetSeries.slug;
-
-        const seasonRes = await fetch(`${apiBase}/series/${seriesSlug}/seasons/${season}`, {
-          headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(5000)
-        }).catch(() => null);
-
-        if (!seasonRes || !seasonRes.ok) continue;
-        const seasonJson = await seasonRes.json().catch(() => null);
+        const seasonJson = await performDiziBalRequest(`/series/${seriesSlug}/seasons/${season}`);
         const episodes = seasonJson?.data?.episodes || [];
 
         const targetEp = episodes.find(e => e.episode_number === parseInt(episode, 10));
