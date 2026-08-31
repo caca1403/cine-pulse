@@ -108,6 +108,7 @@ export function renderMediaCard(item, options = {}) {
           alt="${title}" 
           class="card-poster-img" 
           loading="lazy" 
+          decoding="async"
           onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'"
         />
         
@@ -128,23 +129,22 @@ export function renderMediaCard(item, options = {}) {
 
         <!-- Rating Pill Floating Top Right -->
         ${rating ? `
-          <div class="card-rating-pill">
-            <i data-lucide="star" style="width:11px;height:11px;fill:#fbbf24;color:#fbbf24;"></i>
+          <div class="card-rating-badge">
+            <i data-lucide="star" style="width:11px;height:11px;fill:#f59e0b;stroke:#f59e0b;"></i>
             <span>${rating}</span>
           </div>
         ` : ''}
 
-        <!-- Hover Overlay -->
+        <!-- Hover Quick Play Overlay -->
         <div class="card-hover-overlay">
-          <div class="card-play-btn-circle">
-            <i data-lucide="play" style="fill:#fff;stroke:#fff;width:20px;height:20px;margin-left:2px;"></i>
+          <div class="card-play-btn">
+            <i data-lucide="${isContinue ? 'play' : 'play'}" style="width:20px;height:20px;fill:currentColor;margin-left:2px;"></i>
           </div>
-          <span class="card-hover-action-text">${isContinue ? 'Kaldığın Yerden İzle' : 'Detay ve İzle'}</span>
         </div>
 
-        <!-- Progress Bar if Continue Watching -->
+        <!-- Progress Bar at bottom if watch in progress -->
         ${progressPercent > 0 && !isCompleted ? `
-          <div class="card-progress-bar-bg">
+          <div class="card-progress-bar-container">
             <div class="card-progress-bar-fill" style="width: ${progressPercent}%;"></div>
           </div>
         ` : ''}
@@ -163,40 +163,43 @@ export function renderMediaCard(item, options = {}) {
 }
 
 export function attachMediaCardEvents(container) {
-  if (!container) return;
-  container.querySelectorAll('.media-card').forEach(card => {
-    card.addEventListener('click', (e) => {
-      // Don't trigger card navigation if delete button or other child button clicked
-      if (e.target.closest('.btn-lib-delete') || e.target.closest('.btn-delete-history')) {
-        return;
-      }
-      e.preventDefault();
-      const id = card.getAttribute('data-id');
-      const type = card.getAttribute('data-type');
-      const season = parseInt(card.getAttribute('data-season') || '1', 10);
-      const episode = parseInt(card.getAttribute('data-episode') || '1', 10);
-      const currentTime = parseFloat(card.getAttribute('data-currenttime') || '0');
-      const title = decodeURIComponent(card.getAttribute('data-title') || '');
-      const posterPath = card.getAttribute('data-poster') || '';
-      const backdropPath = card.getAttribute('data-backdrop') || '';
-      const isContinue = card.getAttribute('data-iscontinue') === 'true';
+  if (!container || container._hasMediaEventsDelegated) return;
+  container._hasMediaEventsDelegated = true;
 
-      if (isContinue && (card.closest('#continue-watching-rail') || card.closest('.continue-card-wrapper') || currentTime > 0)) {
-        openPlayerModal({
-          type,
-          tmdbId: id,
-          title: type === 'tv' ? `${title} - S${season}E${episode}` : title,
-          seriesTitle: title,
-          season,
-          episode,
-          posterPath,
-          backdropPath,
-          currentTime
-        });
-      } else {
-        saveAllScrollState();
-        window.location.hash = `#detail?type=${type}&id=${id}`;
-      }
-    });
+  container.addEventListener('click', (e) => {
+    // Don't trigger card navigation if delete button or other child button clicked
+    if (e.target.closest('.btn-lib-delete') || e.target.closest('.btn-delete-history')) {
+      return;
+    }
+    const card = e.target.closest('.media-card');
+    if (!card) return;
+
+    e.preventDefault();
+    const id = card.getAttribute('data-id');
+    const type = card.getAttribute('data-type');
+    const season = parseInt(card.getAttribute('data-season') || '1', 10);
+    const episode = parseInt(card.getAttribute('data-episode') || '1', 10);
+    const currentTime = parseFloat(card.getAttribute('data-currenttime') || '0');
+    const title = decodeURIComponent(card.getAttribute('data-title') || '');
+    const posterPath = card.getAttribute('data-poster') || '';
+    const backdropPath = card.getAttribute('data-backdrop') || '';
+    const isContinue = card.getAttribute('data-iscontinue') === 'true';
+
+    if (isContinue && (card.closest('#continue-watching-rail') || card.closest('.continue-card-wrapper') || currentTime > 0)) {
+      openPlayerModal({
+        type,
+        tmdbId: id,
+        title: type === 'tv' ? `${title} - S${season}E${episode}` : title,
+        seriesTitle: title,
+        season,
+        episode,
+        posterPath,
+        backdropPath,
+        currentTime
+      });
+    } else {
+      saveAllScrollState();
+      window.location.hash = `#detail?type=${type}&id=${id}`;
+    }
   });
 }

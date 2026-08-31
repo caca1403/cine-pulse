@@ -1,27 +1,27 @@
 /* ==========================================================================
-   CinePulse Studio - Pure Popular Series / Movies Grid View
-   Pure popularity-ordered infinite scrolling view for Series and Movies.
-   With in-memory state preservation (persists loaded items & scroll on return).
+   CinePulse Studio - Ultra-Smooth Infinite Scrolling View
+   High-performance 80-item background pre-fetching engine for Series, Movies and Anime.
+   With in-memory state preservation and zero-latency infinite scrolling.
    ========================================================================== */
 
 import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 
-// Cache loaded items and pagination per category so returning from detail never resets scroll or items
+// Global cache per category with pre-buffered items
 const popularListCache = {
-  tv: { allItems: [], currentPage: 1, isExhausted: false },
-  movie: { allItems: [], currentPage: 1, isExhausted: false },
-  anime: { allItems: [], currentPage: 1, isExhausted: false },
-  documentary: { allItems: [], currentPage: 1, isExhausted: false }
+  tv: { allItems: [], nextPage: 1, isExhausted: false },
+  movie: { allItems: [], nextPage: 1, isExhausted: false },
+  anime: { allItems: [], nextPage: 1, isExhausted: false },
+  documentary: { allItems: [], nextPage: 1, isExhausted: false }
 };
 
 export async function renderPopularListView(type = 'tv') {
   if (!popularListCache[type]) {
-    popularListCache[type] = { allItems: [], currentPage: 1, isExhausted: false };
+    popularListCache[type] = { allItems: [], nextPage: 1, isExhausted: false };
   }
 
   const cache = popularListCache[type];
-  let isLoading = false;
+  let isFetching = false;
 
   let titleText = 'Tüm Zamanların En Popüler Dizileri';
   let iconName = 'tv-2';
@@ -36,11 +36,10 @@ export async function renderPopularListView(type = 'tv') {
     iconName = 'globe';
   }
 
-  // If cache has items, pre-render them so the page is instantly full-height on navigation back
   const hasCachedItems = cache.allItems.length > 0;
   const initialCardsHTML = hasCachedItems
     ? cache.allItems.map(item => renderMediaCard(item)).join('')
-    : '<div class="popular-loading-placeholder" style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);"><div class="spin-loader" style="width: 32px; height: 32px; border: 3px solid rgba(245,158,11,0.2); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem;"></div><p>İçerikler yükleniyor...</p></div>';
+    : '<div class="popular-loading-placeholder" style="grid-column: 1/-1; padding: 5rem 2rem; text-align: center; color: var(--text-muted);"><div class="spin-loader" style="width: 36px; height: 36px; border: 3px solid rgba(245,158,11,0.2); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.25rem;"></div><p style="font-size: 1.05rem;">Popüler içerikler hazırlanıyor...</p></div>';
 
   const html = `
     <div class="popular-list-view">
@@ -53,7 +52,7 @@ export async function renderPopularListView(type = 'tv') {
             </span>
             <span>${titleText}</span>
           </h1>
-          <p class="popular-list-sub" id="popular-count-label">Tüm zamanların oy sayısına ve genel popülerliğine göre listeleniyor</p>
+          <p class="popular-list-sub" id="popular-count-label">Tüm zamanların popülerliğine göre akıcı olarak listeleniyor</p>
         </div>
 
         <!-- Media Grid -->
@@ -61,8 +60,8 @@ export async function renderPopularListView(type = 'tv') {
           ${initialCardsHTML}
         </div>
 
-        <!-- Scroll Sentinel / Loader Container -->
-        <div id="popular-sentinel" style="min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 2.5rem 0 4rem; color: var(--text-muted);">
+        <!-- Smooth Scroll Sentinel / Prefetch Trigger -->
+        <div id="popular-sentinel" style="min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 2rem 0 5rem; color: var(--text-muted);">
         </div>
       </div>
     </div>
@@ -76,84 +75,67 @@ export async function renderPopularListView(type = 'tv') {
       const grid = container.querySelector('#popular-media-grid');
       const sentinel = container.querySelector('#popular-sentinel');
 
-      const showLoading = () => {
-        if (!sentinel) return;
-        sentinel.innerHTML = `
-          <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-secondary); font-size: 0.95rem;">
-            <div class="spin-loader" style="width: 24px; height: 24px; border: 3px solid rgba(245,158,11,0.2); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-            <span>Daha fazla içerik yükleniyor...</span>
-          </div>
-        `;
-      };
+      attachMediaCardEvents(grid);
 
-      const hideLoading = () => {
+      const updateSentinelUI = () => {
         if (!sentinel) return;
         if (cache.isExhausted) {
           sentinel.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">Tüm popüler içerikler listelendi.</p>`;
         } else {
           sentinel.innerHTML = `
-            <button id="btn-manual-load-more" class="btn-secondary" style="padding: 0.6rem 1.5rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; font-weight: 600; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text-primary);">
-              <i data-lucide="arrow-down" style="width: 15px; height: 15px; color: #f59e0b;"></i>
-              <span>Daha Fazla Yükle</span>
-            </button>
+            <div style="display: flex; align-items: center; gap: 0.6rem; color: var(--text-muted); font-size: 0.9rem;">
+              <div class="spin-loader" style="width: 20px; height: 20px; border: 2px solid rgba(245,158,11,0.25); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+              <span>Daha fazla içerik akıyor...</span>
+            </div>
           `;
-          if (window.lucide) window.lucide.createIcons();
-          sentinel.querySelector('#btn-manual-load-more')?.addEventListener('click', () => {
-            loadMore();
-          });
         }
       };
 
-      if (hasCachedItems) {
-        attachMediaCardEvents(grid);
-        hideLoading();
-      }
-
-      const loadMore = async () => {
-        if (isLoading || cache.isExhausted) return;
-        isLoading = true;
-        showLoading();
+      // Aggressive 4-page batch fetcher (80 items per burst)
+      const fetchNextBatch = async () => {
+        if (isFetching || cache.isExhausted) return;
+        isFetching = true;
+        updateSentinelUI();
 
         try {
-          const p1 = cache.currentPage;
-          const p2 = cache.currentPage + 1;
-
+          const startP = cache.nextPage;
           let fetcher = fetchPopularSeries;
           if (type === 'movie') fetcher = fetchPopularMovies;
           else if (type === 'anime') fetcher = fetchPopularAnime;
           else if (type === 'documentary') fetcher = fetchPopularDocumentaries;
 
-          const [batch1, batch2] = await Promise.all([
-            fetcher(p1),
-            fetcher(p2)
-          ]);
+          // Fetch 4 pages in parallel (80 items!)
+          const pagesToFetch = [startP, startP + 1, startP + 2, startP + 3];
+          const results = await Promise.all(pagesToFetch.map(p => fetcher(p).catch(() => [])));
 
-          const newItems = [...(batch1 || []), ...(batch2 || [])];
+          const newItems = results.flat().filter(Boolean);
 
-          if (!newItems || newItems.length === 0) {
-            if (cache.currentPage >= 500) {
+          if (newItems.length === 0) {
+            if (cache.nextPage >= 500) {
               cache.isExhausted = true;
             } else {
-              cache.currentPage += 2;
+              cache.nextPage += 4;
             }
-            hideLoading();
+            updateSentinelUI();
             return;
           }
 
           // Deduplicate by ID
           const seenIds = new Set(cache.allItems.map(i => i.id));
-          const uniqueNewItems = [];
+          const uniqueItems = [];
           for (const item of newItems) {
             if (item && item.id && !seenIds.has(item.id)) {
               seenIds.add(item.id);
-              uniqueNewItems.push(item);
+              uniqueItems.push(item);
             }
           }
 
-          cache.allItems = [...cache.allItems, ...uniqueNewItems];
-          const newCardsHTML = uniqueNewItems.map(item => renderMediaCard(item)).join('');
-          
+          cache.allItems = [...cache.allItems, ...uniqueItems];
+          cache.nextPage += 4;
+
+          const newCardsHTML = uniqueItems.map(item => renderMediaCard(item)).join('');
           const placeholder = grid.querySelector('.popular-loading-placeholder');
+
           if (placeholder) {
             grid.innerHTML = newCardsHTML;
           } else {
@@ -161,66 +143,49 @@ export async function renderPopularListView(type = 'tv') {
           }
 
           if (window.lucide) window.lucide.createIcons();
-          attachMediaCardEvents(grid);
 
-          cache.currentPage += 2;
-          hideLoading();
-
-          // Auto prefill if viewport still has room
+          // Auto trigger next pre-fetch if screen still has room
           setTimeout(() => {
-            if (document.documentElement.scrollHeight <= window.innerHeight + 600 && !cache.isExhausted && !isLoading) {
-              loadMore();
+            if (document.documentElement.scrollHeight <= window.innerHeight + 1000 && !cache.isExhausted && !isFetching) {
+              fetchNextBatch();
             }
-          }, 100);
+          }, 60);
         } catch (err) {
-          console.error('Error loading popular media:', err);
-          hideLoading();
-          if (cache.currentPage === 1 && (!cache.allItems || cache.allItems.length === 0)) {
-            grid.innerHTML = `
-              <div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">
-                <p style="margin-bottom: 0.75rem;">İçerikler yüklenirken bir sorun oluştu.</p>
-                <button id="btn-retry-popular" class="btn-secondary" style="padding: 0.5rem 1.2rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
-                  <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
-                  <span>Tekrar Dene</span>
-                </button>
-              </div>
-            `;
-            if (window.lucide) window.lucide.createIcons();
-            grid.querySelector('#btn-retry-popular')?.addEventListener('click', () => {
-              loadMore();
-            });
-          }
+          console.error('Error fetching popular batch:', err);
         } finally {
-          isLoading = false;
+          isFetching = false;
+          updateSentinelUI();
         }
       };
 
-      // Perform initial load if cache is empty
+      // Perform initial batch load if cache is empty
       if (!hasCachedItems) {
-        loadMore();
+        fetchNextBatch();
+      } else {
+        updateSentinelUI();
       }
 
-      // 1. IntersectionObserver for smooth auto-loading on scroll
+      // 1. High-range IntersectionObserver (triggers 1500px in advance for zero-wait scrolling)
       let observer = null;
       if (sentinel && 'IntersectionObserver' in window) {
         observer = new IntersectionObserver((entries) => {
           if (entries[0].isIntersecting) {
-            loadMore();
+            fetchNextBatch();
           }
-        }, { rootMargin: '0px 0px 800px 0px' });
+        }, { rootMargin: '0px 0px 1500px 0px' });
 
         observer.observe(sentinel);
       }
 
-      // 2. Window Scroll event fallback
+      // 2. High-performance Window Scroll Listener (pre-fetches 1200px before bottom)
       const handleWindowScroll = () => {
-        if (isLoading || cache.isExhausted) return;
+        if (isFetching || cache.isExhausted) return;
         const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
         const windowHeight = window.innerHeight;
         const docHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
 
-        if (scrollY + windowHeight >= docHeight - 800) {
-          loadMore();
+        if (scrollY + windowHeight >= docHeight - 1200) {
+          fetchNextBatch();
         }
       };
 
