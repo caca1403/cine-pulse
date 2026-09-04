@@ -1,8 +1,4 @@
-/* ==========================================================================
-   CinePulse Studio - Perfect SezonlukDizi Scraper Module
-   Flawlessly extracts VidMoly, Sibnet, Netu, and other active streams.
-   Uses Cloudflare Worker Gateway (wild-credit-e1ae.cagatayca07.workers.dev) with Vercel fallback.
-   ========================================================================== */
+import { extractVidmolyStream } from './streamExtractors.js';
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
@@ -146,7 +142,19 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
             iframeUrl = 'https:' + iframeUrl;
           }
 
-          const serverName = item.baslik === 'VidMoly' ? 'VidMoly 1080p' : `${item.baslik} HD`;
+          const isVidmoly = item.baslik === 'VidMoly' || iframeUrl.includes('vidmoly');
+          let direct = null;
+          if (isVidmoly) {
+            try {
+              direct = await extractVidmolyStream(iframeUrl);
+            } catch (_) {}
+          }
+
+          const isDirect = !!(direct && direct.url);
+          const finalUrl = direct?.url || iframeUrl;
+          const serverName = isVidmoly
+            ? (isDirect ? 'VidMoly Direct 1080p' : 'VidMoly 1080p')
+            : `${item.baslik} HD`;
 
           extractedSources.push({
             id: `szd_${item.id}`,
@@ -154,9 +162,11 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
             displayName: serverName,
             badge: `⚡ ${item.baslik}`,
             category: isDub ? 'dubbed' : 'subtitled',
-            url: iframeUrl,
-            streamUrl: iframeUrl,
-            getUrl: () => iframeUrl
+            url: finalUrl,
+            streamUrl: finalUrl,
+            isHls: isDirect || finalUrl.includes('.m3u8'),
+            isDirectVideo: isDirect,
+            getUrl: () => finalUrl
           });
         }
       }

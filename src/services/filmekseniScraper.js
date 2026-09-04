@@ -1,8 +1,4 @@
-/* ==========================================================================
-   FilmEkseni Scraper (FilmEkseni.vip)
-   High-quality Turkish Dubbed & Subtitled Movies & VIP Players
-   Parallel Candidate URL resolution for ultra-fast response (<500ms)
-   ========================================================================== */
+import { extractVidmolyStream } from './streamExtractors.js';
 
 function slugify(text) {
   if (!text) return '';
@@ -141,18 +137,32 @@ export async function fetchFilmEkseniSources({
       for (const ifr of iframes) {
         const src = (ifr.match(/src=["']([^"']+)["']/i) || [])[1];
         if (src) {
-          const name = src.includes('vidmoly') ? 'VidMoly 1080p' : 'EksenLoad VIP';
+          const isVidmoly = src.includes('vidmoly');
           const fullSrc = src.startsWith('//') ? `https:${src}` : src;
+
+          let direct = null;
+          if (isVidmoly) {
+            try {
+              direct = await extractVidmolyStream(fullSrc);
+            } catch (_) {}
+          }
+
+          const isDirect = !!(direct && direct.url);
+          const finalUrl = direct?.url || fullSrc;
+          const name = isVidmoly
+            ? (isDirect ? 'VidMoly Direct 1080p' : 'VidMoly 1080p')
+            : 'EksenLoad VIP';
+
           sources.push({
             id: `fex_iframe_${Math.random().toString(36).substring(2, 6)}`,
             name: name,
             displayName: name,
             badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-            url: fullSrc,
-            streamUrl: fullSrc,
-            isHls: false,
-            isDirectVideo: false,
-            getUrl: () => fullSrc
+            url: finalUrl,
+            streamUrl: finalUrl,
+            isHls: isDirect || finalUrl.includes('.m3u8'),
+            isDirectVideo: isDirect,
+            getUrl: () => finalUrl
           });
         }
       }
