@@ -12,9 +12,7 @@
    - Belgesel & DMAX / TLC
    ========================================================================== */
 
-import { fetchDiziBalSources } from './diziBalScraper.js';
 import { fetchSezonlukDiziEpisodeSources } from './sezonlukDiziScraper.js';
-import { fetchDizipalSources } from './dizipalScraper.js';
 import { fetchSinewixSources } from './sinewixScraper.js';
 import { fetchAnimecixSources } from './animecixScraper.js';
 import { fetchTurkAnimeSources } from './turkanimeScraper.js';
@@ -23,7 +21,6 @@ import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
 import { fetchFilmkovasiSources } from './multiEmbedScraper.js';
-import { fetchFilmizlechSources } from './filmizlechScraper.js';
 import { fetchAyfilmSources } from './ayfilmScraper.js';
 import { resolveDirectStream } from './streamExtractors.js';
 
@@ -213,7 +210,12 @@ function isValidStream(s) {
     'vidsrc.cc',
     'vidsrc.icu',
     'vidsrc.me',
-    'autoembed.cc'
+    'autoembed.cc',
+    'play.liderfilm',
+    'liderfilm',
+    'ag2m4.cfd',
+    'agcdn',
+    'cdn77.services'
   ];
 
   for (const b of blockedDomains) {
@@ -228,27 +230,25 @@ function getStreamPriorityScore(s) {
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
-  // Priority 1: High-Speed Direct & Native Turkish / AnimeciX streams (No Ads)
-  if (s.isDirectVideo || s.isHls || url.includes('.m3u8') || url.includes('.mp4')) {
+  // Priority 1: High-Speed Direct Streams (Zero ads, native HTML5 player)
+  if (s.isDirectVideo || s.isHls || url.includes('.m3u8') || url.includes('.mp4') || url.includes('.mkv')) {
+    if (id.startsWith('snx') || raw.includes('sinewix') || raw.includes('direct')) return 1;
+    if (url.includes('storage.diziyou') || id.startsWith('dzy') || raw.includes('fastcdn')) return 1;
     if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 1;
-    if (id.startsWith('snx') || raw.includes('sinewix')) return 1;
-    if (url.includes('ag2m4') || url.includes('agcdn') || id.startsWith('dbl') || id.startsWith('dzp_')) return 2;
-    if (url.includes('vidmoly') || raw.includes('vidmoly')) return 2;
-    if (url.includes('storage.diziyou') || id.startsWith('dzy')) return 3;
-    return 3;
+    return 2;
   }
 
-  if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 4;
-  if (id.startsWith('snx') || raw.includes('direct') || url.includes('.mkv') || url.includes('.mp4') || url.includes('.webm')) return 4;
-  if (url.includes('storage.diziyou') || id.startsWith('dzy') || raw.includes('fastcdn')) return 5;
-  if (id.startsWith('dzp_') || raw.includes('dizipal')) return 6;
-  if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 6;
-  if (url.includes('rapidrame') || url.includes('closeload') || url.includes('filmmakinesi')) return 7;
-  if (url.includes('sibnet') || raw.includes('sibnet')) return 8;
-  if (url.includes('vidmoly') || raw.includes('vidmoly')) return 9;
-  if (id.startsWith('hdi_') || id.startsWith('flm_') || id.startsWith('ayf_') || id.startsWith('szn_')) return 8;
+  // Priority 2: Fast Clean Embeds
+  if (url.includes('sibnet') || raw.includes('sibnet')) return 2;
+  if (url.includes('vidmoly') || raw.includes('vidmoly')) return 3;
+  if (url.includes('eksenload') || raw.includes('eksenload') || id.startsWith('ayf_') || raw.includes('ayfilm') || url.includes('vidmoxy')) return 3;
+  if (id.startsWith('acx_') || raw.includes('animecix')) return 4;
+  if (url.includes('netu') || raw.includes('netu')) return 4;
+  if (url.includes('rapidrame') || url.includes('closeload') || url.includes('filmmakinesi')) return 5;
+  if (id.startsWith('szd_') || id.startsWith('szn_')) return 4;
+
   // TR Anime sources
-  if (id.startsWith('ta_') || raw.includes('tr anime') || raw.includes('turkanime')) return 11;
+  if (id.startsWith('ta_') || raw.includes('tr anime') || raw.includes('turkanime')) return 10;
 
   // Fallback Global Embeds (Working only)
   if (url.includes('smashy') || raw.includes('smashy')) return 20;
@@ -332,41 +332,35 @@ export async function getStreamingServersProgressive({
     return added;
   };
 
-  // Provider Scraper Tasks (NO HARD ABORT CUTOFF - allows full discovery)
+  // Provider Scraper Tasks (High reliability, fast clean streams)
   const tasks = [
-    // Sinewix (Dubbed & Subtitled)
+    // Sinewix (Dubbed & Subtitled - Direct 1080p, Zero Ads)
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // DiziBal (Dubbed & Subtitled)
-    fetchDiziBalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchDiziBalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
-    // SezonlukDizi (TV only)
+    // SezonlukDizi (TV only - Sibnet HD, VidMoly, Netu)
     !isMovie ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
     !isMovie ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
-    // Diziyou (TV only)
+    // Diziyou (TV only - Fast HLS CDN)
     !isMovie ? fetchDiziyouSources({ titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
 
-    // FilmEkseni (Movie only)
+    // FilmEkseni (Movie only - EksenLoad VIP, VidMoly)
     isMovie ? fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
     isMovie ? fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
-    // Dizipal (Dubbed & Subtitled)
-    fetchDizipalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchDizipalSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+    // FilmKovası (Movies - Multi-Server)
+    isMovie ? fetchFilmkovasiSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
+    isMovie ? fetchFilmkovasiSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
     // AX VIP (Fast Tau Video 1080p, Sibnet, VidMoly & Multi-Source Anime)
     fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
@@ -380,18 +374,13 @@ export async function getStreamingServersProgressive({
     fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // Filmizlech (Movies & TV Series - Dubbed & Subtitled)
-    fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
     // AyFilm (Movies - Dubbed & Subtitled)
     isMovie ? fetchAyfilmSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
     isMovie ? fetchAyfilmSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
+    // Documentaries
     fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => [])
   ];
