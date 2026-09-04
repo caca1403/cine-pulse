@@ -158,6 +158,7 @@ export function renderMediaCard(item, options = {}) {
   const encodedTitle = encodeURIComponent(title);
   const encodedPoster = encodeURIComponent(posterPath || '');
   const encodedBackdrop = encodeURIComponent(backdropPath || '');
+  const type = effectivePlayerType;
 
   return `
     <div class="media-card" 
