@@ -461,6 +461,15 @@ export function getTotalWatchStats() {
   };
 }
 
+const KNOWN_ANIME_KEYWORDS = [
+  'anime', 'kimetsu', 'yaiba', 'iblis keser', 'demon slayer', 'naruto', 'boruto', 'shingeki', 'titan',
+  'jujutsu', 'kaisen', 'one piece', 'death note', 'bleach', 'dragon ball', 'hunter x hunter', 'chainsaw man',
+  'tokyo ghoul', 'my hero academia', 'boku no hero', 'fullmetal', 'alchemist', 'sword art online', 'solo leveling',
+  'black clover', 'vinland saga', 'spy x family', 'cyberpunk: edgerunners', 'haikyuu', 'one punch', 'berserk',
+  'mob psycho', 'overlord', 'evangelion', 'cowboy bebop', 'code geass', 'frieren', 'dr. stone', 'blue lock',
+  'steins;gate', 'jojo', 'kaiju no. 8', 'gintama', 'fairy tail', 'violet evergarden', 'hell\'s paradise'
+];
+
 function isAnimeRecord(item) {
   if (!item) return false;
   if (item.type === 'anime' || item.media_type === 'anime' || item.isAnime) return true;
@@ -468,6 +477,7 @@ function isAnimeRecord(item) {
   const hasAnimation = genreIds.some(id => Number(id) === 16);
   const isJapanese = item.original_language === 'ja' || (Array.isArray(item.origin_country) && item.origin_country.includes('JP'));
   if (hasAnimation && isJapanese) return true;
+  if (hasAnimation && (item.origin_country?.includes('JP') || item.original_language === 'ja')) return true;
   if (Array.isArray(item.genres)) {
     const genreNames = item.genres.map(g => (typeof g === 'object' ? g.name : String(g))).filter(Boolean);
     if (genreNames.some(n => /anime/i.test(n))) return true;
@@ -475,8 +485,10 @@ function isAnimeRecord(item) {
   if (typeof item.id === 'string' && (item.id.startsWith('ta_') || item.id.startsWith('acx_') || item.id.startsWith('tra_'))) {
     return true;
   }
-  const rawTitle = (item.title || item.name || '').toLowerCase();
-  if (rawTitle.includes('anime')) return true;
+  const rawTitle = (item.title || item.name || item.original_title || item.original_name || '').toLowerCase();
+  for (const kw of KNOWN_ANIME_KEYWORDS) {
+    if (rawTitle.includes(kw)) return true;
+  }
   return false;
 }
 

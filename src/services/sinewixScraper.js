@@ -229,7 +229,7 @@ export async function fetchSinewixSources({
       const isDirect = lowerLink.includes('.mp4') || lowerLink.includes('.mkv') || lowerLink.includes('.webm');
       const isHls = lowerLink.includes('.m3u8');
 
-      const serverTitle = isDirect ? 'Direct 1080p Stream' : 'Sinewix VIP 1080p';
+      const serverTitle = isDirect ? 'SWX Direct 1080p' : 'SWX VIP 1080p';
       streams.push({
         id: `snx_${v.id || Math.random().toString(36).substring(7)}`,
         name: serverTitle,
