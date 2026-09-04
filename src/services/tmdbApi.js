@@ -2,6 +2,8 @@
    CinePulse Studio - TMDB API Metadata Service
    ========================================================================== */
 
+import { registerAnimeId } from './storage.js';
+
 const API_BASE_URL = 'https://api.themoviedb.org/3';
 
 const API_KEYS = [
@@ -309,12 +311,15 @@ export async function fetchPopularAnime(page = 1) {
       if (!displayName || hasNonLatinCharacters(displayName)) {
         displayName = enMap.get(item.id) || item.original_name || item.original_title || displayName;
       }
+      if (item.id) registerAnimeId(item.id);
       return {
         ...item,
         name: displayName,
         title: displayName,
-        type: 'tv',
-        media_type: 'tv',
+        type: 'anime',
+        media_type: 'anime',
+        isAnime: true,
+        isSeries: true,
         overview: item.overview || generateCinematicOverview(item, 'tv')
       };
     });
@@ -406,11 +411,16 @@ export async function fetchDiscoverMedia({
 
   return items
     .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
-    .map(item => ({
-      ...item,
-      type: type,
-      media_type: type
-    }));
+    .map(item => {
+      if (isAnime && item.id) registerAnimeId(item.id);
+      return {
+        ...item,
+        type: isAnime ? 'anime' : type,
+        media_type: isAnime ? 'anime' : type,
+        isAnime: isAnime,
+        isSeries: type === 'tv'
+      };
+    });
 }
 
 export async function fetchByGenre(type = 'tv', genreId, page = 1, sortBy = 'popularity.desc') {
@@ -475,6 +485,12 @@ export async function fetchMediaDetails(type = 'tv', id) {
     language: 'tr-TR'
   });
   if (!res) return null;
+
+  const isAnimeMedia = (res.original_language === 'ja' || (Array.isArray(res.origin_country) && res.origin_country.includes('JP'))) &&
+    Array.isArray(res.genres) && res.genres.some(g => g.id === 16 || /anim/i.test(g.name));
+  if (isAnimeMedia && res.id) {
+    registerAnimeId(res.id);
+  }
 
   // 1. Overview Fallback & Auto-Translation to Turkish
   let trOverview = (res.overview || '').trim();

@@ -8,8 +8,40 @@ const STORAGE_KEYS = {
   WATCH_HISTORY: 'sineflix_watch_history_v1',
   FAVORITES: 'sineflix_favorites_v1',
   WATCHLIST: 'sineflix_watchlist_v1',
-  USER_SETTINGS: 'sineflix_user_settings_v1'
+  USER_SETTINGS: 'sineflix_user_settings_v1',
+  ANIME_IDS: 'sineflix_anime_ids_v1'
 };
+
+export function getRegisteredAnimeIds() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return new Set();
+    const raw = localStorage.getItem(STORAGE_KEYS.ANIME_IDS);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
+  } catch (_) {
+    return new Set();
+  }
+}
+
+export function registerAnimeId(id) {
+  if (!id) return;
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    const set = getRegisteredAnimeIds();
+    const strId = String(id);
+    if (!set.has(strId)) {
+      set.add(strId);
+      localStorage.setItem(STORAGE_KEYS.ANIME_IDS, JSON.stringify(Array.from(set)));
+    }
+  } catch (_) {}
+}
+
+export function isRegisteredAnimeId(id) {
+  if (!id) return false;
+  return getRegisteredAnimeIds().has(String(id));
+}
+
 
 let _watchHistoryCache = null;
 let _progressMapCache = null;
@@ -44,6 +76,101 @@ function setLocalItem(key, value) {
   }
 }
 
+export const KNOWN_ANIME_KEYWORDS = [
+  'anime', 'kimetsu', 'yaiba', 'iblis keser', 'demon slayer', 'naruto', 'boruto', 'shingeki', 'titan',
+  'titana saldırı', 'jujutsu', 'kaisen', 'one piece', 'death note', 'bleach', 'dragon ball', 'hunter x hunter',
+  'chainsaw man', 'tokyo ghoul', 'my hero academia', 'boku no hero', 'kahramanlık akademim', 'fullmetal',
+  'alchemist', 'simyacı', 'sword art online', 'solo leveling', 'black clover', 'vinland saga', 'spy x family',
+  'cyberpunk: edgerunners', 'haikyuu', 'one punch', 'berserk', 'mob psycho', 'overlord', 'evangelion',
+  'cowboy bebop', 'code geass', 'frieren', 'dr. stone', 'blue lock', 'steins;gate', 'jojo', 'kaiju no. 8',
+  'gintama', 'fairy tail', 'violet evergarden', 'hell\'s paradise', 'jigokuraku', 'dandadan', 'wind breaker',
+  'mushoku tensei', 're:zero', 'delicious in dungeon', 'dungeon meshi', 'mashle', 'baki', 'hajime no ippo',
+  'slamdunk', 'slam dunk', 'kuroko', 'initial d', 'great teacher onizuka', 'monster', 'dororo', 'fire force',
+  'soul eater', 'noragami', 'erased', 'parasyte', 'psycho-pass', 'fate/zero', 'fate/stay', 'made in abyss',
+  'your lie in april', 'shigatsu wa kimi', 'anohana', 'toradora', 'clannad', 'classroom of the elite',
+  'elite sınıfı', 'no game no life', 'konosuba', 'slime datta ken', 'shield hero', 'kalkan kahramanı',
+  'goblin slayer', 'akame ga kill', 'kill la kill', 'gurren lagann', 'darling in the franxx', 'promised neverland',
+  'seven deadly sins', 'nanatsu no taizai', 'yedi ölümcül günah', 'tokyo revengers', 'blue exorcist',
+  'ao no exorcist', 'd.gray-man', 'inuyasha', 'yu yu hakusho', 'sailor moon', 'pokemon', 'digimon',
+  'yu-gi-oh', 'beyblade', 'captain tsubasa', 'tsubasa', 'record of ragnarok', 'shuumatsu no valkyrie',
+  'golden kamuy', 'dorohedoro', 'pluto', 'trigun', 'hellsing', 'elfen lied', 'rurouni kenshin', 'samurai champloo',
+  'fruits basket', 'horimiya', 'my dress-up darling', 'komi can\'t communicate', 'rent-a-girlfriend',
+  'kaguya-sama', 'lycoris recoil', 'zom 100', 'undead unluck', 'dead mount death play', 'seraph of the end',
+  'owari no seraph', 'bungo stray dogs', 'bungou stray dogs', 'assassination classroom', 'suikast sınıfı',
+  'black butler', 'kuroshitsuji', 'spirited away', 'ruhların kaçışı', 'howl\'s moving castle', 'yürüyen şato',
+  'my neighbor totoro', 'komşum totoro', 'princess mononoke', 'prenses mononoke', 'your name', 'kimi no na wa',
+  'senin adın', 'weathering with you', 'suzume', 'a silent voice', 'sessizliğin sesi', 'koe no katachi',
+  'akira', 'shangri-la frontier', 'oshi no ko', 'the eminence in shadow', 'bocchi the rock'
+];
+
+export function hasJapaneseCharacters(text) {
+  if (!text) return false;
+  return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(text);
+}
+
+export function isAnimeRecord(item) {
+  if (!item) return false;
+  if (item.isAnime === true || item.type === 'anime' || item.media_type === 'anime') return true;
+  if (item.id && isRegisteredAnimeId(item.id)) return true;
+
+  const genreIds = item.genre_ids || (Array.isArray(item.genres) ? item.genres.map(g => (typeof g === 'object' ? g.id : g)) : []);
+  const hasAnimation = genreIds.some(id => Number(id) === 16);
+  const isJapanese = item.original_language === 'ja' || (Array.isArray(item.origin_country) && item.origin_country.includes('JP'));
+
+  // 1. Animation genre + Japanese origin or language
+  if (hasAnimation && isJapanese) {
+    if (item.id) registerAnimeId(item.id);
+    return true;
+  }
+  if (hasAnimation && (item.origin_country?.includes('JP') || item.original_language === 'ja')) {
+    if (item.id) registerAnimeId(item.id);
+    return true;
+  }
+
+  // 2. Japanese original language with animation or Japanese script
+  if (item.original_language === 'ja' && (hasAnimation || hasJapaneseCharacters(item.original_name || item.original_title || item.title || item.name))) {
+    if (item.id) registerAnimeId(item.id);
+    return true;
+  }
+
+  // 3. Explicit anime genre name
+  if (Array.isArray(item.genres)) {
+    const genreNames = item.genres.map(g => (typeof g === 'object' ? g.name : String(g))).filter(Boolean);
+    if (genreNames.some(n => /anime/i.test(n))) {
+      if (item.id) registerAnimeId(item.id);
+      return true;
+    }
+  }
+
+  // 4. Scraper IDs
+  if (typeof item.id === 'string' && (item.id.startsWith('ta_') || item.id.startsWith('acx_') || item.id.startsWith('tra_'))) {
+    registerAnimeId(item.id);
+    return true;
+  }
+
+  // 5. Known keywords
+  const rawTitle = (item.title || item.name || item.original_title || item.original_name || '').toLowerCase();
+  for (const kw of KNOWN_ANIME_KEYWORDS) {
+    if (rawTitle.includes(kw)) {
+      if (item.id) registerAnimeId(item.id);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function isMovieRecord(item) {
+  if (!item) return true;
+  if (item.isSeries === true) return false;
+  if (item.type === 'tv' || item.media_type === 'tv') return false;
+  if (item.type === 'movie' || item.media_type === 'movie') return true;
+  if (item.first_air_date || item.number_of_seasons || item.episodesCount || (Array.isArray(item.seasons) && item.seasons.length > 0)) return false;
+  if (item.season > 1 || item.episode > 1) return false;
+  if (item.release_date && !item.first_air_date) return true;
+  return false;
+}
+
 /* ==========================================================================
    Watch History & Progress Management
    ========================================================================== */
@@ -51,9 +178,79 @@ function setLocalItem(key, value) {
 export function getWatchHistory() {
   if (_watchHistoryCache) return _watchHistoryCache;
   const history = getLocalItem(STORAGE_KEYS.WATCH_HISTORY, []);
+  let hasChanges = false;
+  for (let i = 0; i < history.length; i++) {
+    const item = history[i];
+    const isAnime = Boolean(item.isAnime || item.type === 'anime' || isRegisteredAnimeId(item.id) || isAnimeRecord(item));
+    if (isAnime && (!item.isAnime || item.type !== 'anime')) {
+      item.isAnime = true;
+      item.type = 'anime';
+      registerAnimeId(item.id);
+      hasChanges = true;
+    }
+    if (item.isSeries === undefined) {
+      if (item.type === 'tv' || item.season > 1 || item.episode > 1 || item.first_air_date || item.number_of_seasons || item.episodesCount) {
+        item.isSeries = true;
+        hasChanges = true;
+      }
+    }
+  }
+  if (hasChanges) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(STORAGE_KEYS.WATCH_HISTORY, JSON.stringify(history));
+      }
+    } catch (_) {}
+  }
   _watchHistoryCache = history.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
   return _watchHistoryCache;
 }
+
+export async function syncHistoryAnimeStatus() {
+  const history = getWatchHistory();
+  let hasChanges = false;
+  const tmdbKey = '4e44d9029b1270a757cddc766a1bcb63';
+
+  for (let i = 0; i < history.length; i++) {
+    const item = history[i];
+    if (item.isAnime || item.type === 'anime') {
+      if (item.id) registerAnimeId(item.id);
+      continue;
+    }
+
+    if (isRegisteredAnimeId(item.id) || isAnimeRecord(item)) {
+      item.isAnime = true;
+      item.type = 'anime';
+      registerAnimeId(item.id);
+      hasChanges = true;
+      continue;
+    }
+
+    if (item.id && !isNaN(Number(item.id))) {
+      try {
+        const res = await fetch(`https://api.themoviedb.org/3/tv/${item.id}?api_key=${tmdbKey}&language=tr-TR`);
+        if (res.ok) {
+          const data = await res.json();
+          const isJp = data.original_language === 'ja' || (Array.isArray(data.origin_country) && data.origin_country.includes('JP'));
+          const hasAnim = Array.isArray(data.genres) && data.genres.some(g => g.id === 16 || /anim/i.test(g.name));
+          if (isJp && hasAnim) {
+            item.isAnime = true;
+            item.type = 'anime';
+            item.isSeries = true;
+            item.original_language = 'ja';
+            registerAnimeId(item.id);
+            hasChanges = true;
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  if (hasChanges) {
+    setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
+  }
+}
+
 
 function getProgressMap() {
   if (_progressMapCache) return _progressMapCache;
@@ -107,11 +304,17 @@ export function saveWatchProgress({
   backdropPath,
   backdrop_path,
   type,
+  isAnime = false,
+  isSeries = false,
   season = 1,
   episode = 1,
   currentTime = 0,
   duration = 0,
   completed = false,
+  genres = [],
+  genre_ids = [],
+  original_language = '',
+  origin_country = [],
   ...rest
 }) {
   if (!id) return;
@@ -120,19 +323,36 @@ export function saveWatchProgress({
   const existingIndex = history.findIndex(item => item.id == id && item.season == season && item.episode == episode);
   const anyExisting = history.find(item => item.id == id);
   
-  // Resolve type safely: if type is passed, use it; otherwise fallback to existing record, or infer
-  let resolvedType = type;
-  if (!resolvedType) {
-    if (existingIndex >= 0 && history[existingIndex].type) {
-      resolvedType = history[existingIndex].type;
-    } else if (anyExisting && anyExisting.type) {
-      resolvedType = anyExisting.type;
-    } else if (rest.first_air_date || rest.number_of_seasons || rest.episodesCount) {
-      resolvedType = 'tv';
-    } else {
-      resolvedType = 'movie';
-    }
+  // 1. Resolve Anime Status
+  const isAnAnime = Boolean(
+    isAnime ||
+    type === 'anime' ||
+    isRegisteredAnimeId(id) ||
+    (existingIndex >= 0 && (history[existingIndex].isAnime || history[existingIndex].type === 'anime')) ||
+    (anyExisting && (anyExisting.isAnime || anyExisting.type === 'anime')) ||
+    isAnimeRecord({ id, title, type, genres, genre_ids, original_language, origin_country, ...rest })
+  );
+
+  if (isAnAnime) {
+    registerAnimeId(id);
   }
+
+  // 2. Resolve Series vs Movie Status
+  const hasSeriesProps = Boolean(
+    isSeries ||
+    type === 'tv' ||
+    rest.first_air_date ||
+    rest.number_of_seasons ||
+    rest.episodesCount ||
+    (Array.isArray(rest.seasons) && rest.seasons.length > 0) ||
+    season > 1 ||
+    episode > 1 ||
+    (existingIndex >= 0 && (history[existingIndex].isSeries || history[existingIndex].type === 'tv' || history[existingIndex].season > 1 || history[existingIndex].episode > 1)) ||
+    (anyExisting && (anyExisting.isSeries || anyExisting.type === 'tv' || anyExisting.season > 1 || anyExisting.episode > 1))
+  );
+
+  // 3. Resolve Stored Type: 'anime' takes top precedence, then 'tv' or 'movie'
+  let resolvedType = isAnAnime ? 'anime' : (hasSeriesProps ? 'tv' : 'movie');
 
   const { resolvedPoster, resolvedBackdrop } = resolveMediaImages(
     id,
@@ -154,6 +374,12 @@ export function saveWatchProgress({
     backdropPath: resolvedBackdrop,
     backdrop_path: resolvedBackdrop,
     type: resolvedType,
+    isAnime: isAnAnime,
+    isSeries: hasSeriesProps,
+    genres: (genres && genres.length > 0) ? genres : (existingIndex >= 0 ? history[existingIndex].genres : (anyExisting ? anyExisting.genres : [])),
+    genre_ids: (genre_ids && genre_ids.length > 0) ? genre_ids : (existingIndex >= 0 ? history[existingIndex].genre_ids : (anyExisting ? anyExisting.genre_ids : [])),
+    original_language: original_language || (existingIndex >= 0 ? history[existingIndex].original_language : (anyExisting ? anyExisting.original_language : '')),
+    origin_country: (origin_country && origin_country.length > 0) ? origin_country : (existingIndex >= 0 ? history[existingIndex].origin_country : (anyExisting ? anyExisting.origin_country : [])),
     season: Number(season),
     episode: Number(episode),
     currentTime: Math.round(currentTime),
@@ -203,7 +429,19 @@ export function isMediaWatched(id, season = 1, episode = 1) {
 export function markEpisodeWatched(id, season = 1, episode = 1, completed = true, mediaData = {}) {
   const history = getWatchHistory();
   const existingIndex = history.findIndex(item => item.id == id && item.season == season && item.episode == episode);
-  const isMovie = (mediaData.type === 'movie');
+  const anyExisting = history.find(item => item.id == id);
+
+  const isAnAnime = Boolean(
+    mediaData.isAnime ||
+    mediaData.type === 'anime' ||
+    isRegisteredAnimeId(id) ||
+    (existingIndex >= 0 && (history[existingIndex].isAnime || history[existingIndex].type === 'anime')) ||
+    (anyExisting && (anyExisting.isAnime || anyExisting.type === 'anime')) ||
+    isAnimeRecord({ id, title: mediaData.title, ...mediaData })
+  );
+  if (isAnAnime) registerAnimeId(id);
+
+  const isMovie = (mediaData.type === 'movie' && !isAnAnime);
   const duration = mediaData.duration || (isMovie ? 6600 : 3000);
 
   const { resolvedPoster, resolvedBackdrop } = resolveMediaImages(
@@ -220,7 +458,9 @@ export function markEpisodeWatched(id, season = 1, episode = 1, completed = true
     poster_path: resolvedPoster,
     backdropPath: resolvedBackdrop,
     backdrop_path: resolvedBackdrop,
-    type: mediaData.type || (existingIndex >= 0 ? history[existingIndex].type : 'tv'),
+    type: isAnAnime ? 'anime' : (isMovie ? 'movie' : 'tv'),
+    isAnime: isAnAnime,
+    isSeries: !isMovie,
     season: Number(season),
     episode: Number(episode),
     currentTime: completed ? duration : 0,
@@ -252,8 +492,16 @@ export function toggleEpisodeWatched(id, season = 1, episode = 1, mediaData = {}
 export function markAllEpisodesWatched(seriesId, seasonsList = [], completed = true, mediaData = {}) {
   const history = getWatchHistory();
   const title = mediaData.title || 'Dizi';
-  const type = mediaData.type || 'tv';
-  const duration = mediaData.duration || (type === 'movie' ? 6600 : 3000);
+  const isAnAnime = Boolean(
+    mediaData.isAnime ||
+    mediaData.type === 'anime' ||
+    isRegisteredAnimeId(seriesId) ||
+    isAnimeRecord({ id: seriesId, title })
+  );
+  if (isAnAnime) registerAnimeId(seriesId);
+
+  const type = isAnAnime ? 'anime' : 'tv';
+  const duration = mediaData.duration || 3000;
 
   const { resolvedPoster, resolvedBackdrop } = resolveMediaImages(
     seriesId,
@@ -276,6 +524,8 @@ export function markAllEpisodesWatched(seriesId, seasonsList = [], completed = t
         backdropPath: resolvedBackdrop,
         backdrop_path: resolvedBackdrop,
         type,
+        isAnime: isAnAnime,
+        isSeries: true,
         season: Number(seasonNum),
         episode: ep,
         currentTime: completed ? duration : 0,
@@ -297,7 +547,15 @@ export function markAllEpisodesWatched(seriesId, seasonsList = [], completed = t
 export function markSeasonEpisodesWatched(seriesId, seasonNum, episodeCount = 10, completed = true, mediaData = {}) {
   const history = getWatchHistory();
   const title = mediaData.title || 'Dizi';
-  const type = mediaData.type || 'tv';
+  const isAnAnime = Boolean(
+    mediaData.isAnime ||
+    mediaData.type === 'anime' ||
+    isRegisteredAnimeId(seriesId) ||
+    isAnimeRecord({ id: seriesId, title })
+  );
+  if (isAnAnime) registerAnimeId(seriesId);
+
+  const type = isAnAnime ? 'anime' : 'tv';
   const duration = mediaData.duration || 3000;
 
   const { resolvedPoster, resolvedBackdrop } = resolveMediaImages(
@@ -317,6 +575,8 @@ export function markSeasonEpisodesWatched(seriesId, seasonNum, episodeCount = 10
       backdropPath: resolvedBackdrop,
       backdrop_path: resolvedBackdrop,
       type,
+      isAnime: isAnAnime,
+      isSeries: true,
       season: Number(seasonNum),
       episode: ep,
       currentTime: completed ? duration : 0,
@@ -365,7 +625,15 @@ export function isSeasonFullyWatched(seriesId, seasonNum, episodeCount = 10) {
 }
 
 export function setMediaHalfway(id, season = 1, episode = 1, currentTime = 1500, mediaData = {}) {
-  const isMovie = (mediaData.type === 'movie');
+  const isAnAnime = Boolean(
+    mediaData.isAnime ||
+    mediaData.type === 'anime' ||
+    isRegisteredAnimeId(id) ||
+    isAnimeRecord({ id, title: mediaData.title, ...mediaData })
+  );
+  if (isAnAnime) registerAnimeId(id);
+
+  const isMovie = (mediaData.type === 'movie' && !isAnAnime);
   const duration = mediaData.duration || (isMovie ? 6600 : 3000);
   const time = currentTime || Math.round(duration * 0.5);
 
@@ -374,7 +642,9 @@ export function setMediaHalfway(id, season = 1, episode = 1, currentTime = 1500,
     title: mediaData.title || 'İçerik',
     posterPath: mediaData.posterPath || mediaData.poster_path || '',
     backdropPath: mediaData.backdropPath || mediaData.backdrop_path || '',
-    type: mediaData.type || (isMovie ? 'movie' : 'tv'),
+    type: isAnAnime ? 'anime' : (isMovie ? 'movie' : 'tv'),
+    isAnime: isAnAnime,
+    isSeries: !isMovie,
     season,
     episode,
     currentTime: time,
@@ -382,6 +652,7 @@ export function setMediaHalfway(id, season = 1, episode = 1, currentTime = 1500,
     completed: false
   });
 }
+
 
 export function getLastWatchedEpisode(seriesId) {
   const history = getWatchHistory();
@@ -461,66 +732,7 @@ export function getTotalWatchStats() {
   };
 }
 
-const KNOWN_ANIME_KEYWORDS = [
-  'anime', 'kimetsu', 'yaiba', 'iblis keser', 'demon slayer', 'naruto', 'boruto', 'shingeki', 'titan',
-  'jujutsu', 'kaisen', 'one piece', 'death note', 'bleach', 'dragon ball', 'hunter x hunter', 'chainsaw man',
-  'tokyo ghoul', 'my hero academia', 'boku no hero', 'fullmetal', 'alchemist', 'sword art online', 'solo leveling',
-  'black clover', 'vinland saga', 'spy x family', 'cyberpunk: edgerunners', 'haikyuu', 'one punch', 'berserk',
-  'mob psycho', 'overlord', 'evangelion', 'cowboy bebop', 'code geass', 'frieren', 'dr. stone', 'blue lock',
-  'steins;gate', 'jojo', 'kaiju no. 8', 'gintama', 'fairy tail', 'violet evergarden', 'hell\'s paradise'
-];
 
-function hasJapaneseCharacters(text) {
-  if (!text) return false;
-  // Detects Hiragana, Katakana, and CJK Ideographs common to Japanese titles
-  return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(text);
-}
-
-function isAnimeRecord(item) {
-  if (!item) return false;
-  if (item.type === 'anime' || item.media_type === 'anime' || item.isAnime) return true;
-
-  const genreIds = item.genre_ids || (Array.isArray(item.genres) ? item.genres.map(g => (typeof g === 'object' ? g.id : g)) : []);
-  const hasAnimation = genreIds.some(id => Number(id) === 16);
-  const isJapanese = item.original_language === 'ja' || (Array.isArray(item.origin_country) && item.origin_country.includes('JP'));
-
-  // 1. Animation genre + Japanese origin or language
-  if (hasAnimation && isJapanese) return true;
-  if (hasAnimation && (item.origin_country?.includes('JP') || item.original_language === 'ja')) return true;
-
-  // 2. Japanese original language with animation or Japanese script
-  if (item.original_language === 'ja' && (hasAnimation || hasJapaneseCharacters(item.original_name || item.original_title || item.title || item.name))) {
-    return true;
-  }
-
-  // 3. Explicit anime genre name
-  if (Array.isArray(item.genres)) {
-    const genreNames = item.genres.map(g => (typeof g === 'object' ? g.name : String(g))).filter(Boolean);
-    if (genreNames.some(n => /anime/i.test(n))) return true;
-  }
-
-  // 4. Scraper IDs
-  if (typeof item.id === 'string' && (item.id.startsWith('ta_') || item.id.startsWith('acx_') || item.id.startsWith('tra_'))) {
-    return true;
-  }
-
-  // 5. Known keywords
-  const rawTitle = (item.title || item.name || item.original_title || item.original_name || '').toLowerCase();
-  for (const kw of KNOWN_ANIME_KEYWORDS) {
-    if (rawTitle.includes(kw)) return true;
-  }
-
-  return false;
-}
-
-function isMovieRecord(item) {
-  if (!item) return true;
-  if (item.type === 'movie' || item.media_type === 'movie') return true;
-  if (item.type === 'tv' || item.media_type === 'tv') return false;
-  if (item.first_air_date || item.number_of_seasons || item.episodesCount || (Array.isArray(item.seasons) && item.seasons.length > 0)) return false;
-  if (item.release_date && !item.first_air_date) return true;
-  return false;
-}
 
 export function getContinueWatchingList() {
   const history = getWatchHistory();
@@ -539,7 +751,8 @@ export function getContinueWatchingList() {
   for (const [id, records] of seriesMap.entries()) {
     records.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
     const firstRecord = records[0];
-    const isAnime = isAnimeRecord(firstRecord);
+    const isAnime = Boolean(firstRecord.isAnime || firstRecord.type === 'anime' || isRegisteredAnimeId(firstRecord.id) || isAnimeRecord(firstRecord));
+    if (isAnime) registerAnimeId(firstRecord.id);
     const isMovie = isMovieRecord(firstRecord);
 
     if (isMovie) {
@@ -555,6 +768,8 @@ export function getContinueWatchingList() {
         inProgressList.push({
           ...firstRecord,
           type: isAnime ? 'anime' : 'movie',
+          isAnime: isAnime,
+          isSeries: false,
           subtitle: `${prefix}Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)} • ${remStr}`
         });
       }
@@ -601,6 +816,8 @@ export function getContinueWatchingList() {
       inProgressList.push({
         ...firstRecord,
         type: isAnime ? 'anime' : 'tv',
+        isAnime: isAnime,
+        isSeries: true,
         season: currentActiveSeason,
         episode: isCurrentEpHalfway ? targetEp : (watchedEpNumbers.size > 0 ? targetEp : firstRecord.episode || 1),
         currentTime: isCurrentEpHalfway ? currentEpTime : (watchedEpNumbers.size > 0 ? 0 : firstRecord.currentTime),
@@ -630,7 +847,8 @@ export function getCompletedWatchList() {
   for (const [id, records] of seriesMap.entries()) {
     records.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
     const firstRecord = records[0];
-    const isAnime = isAnimeRecord(firstRecord);
+    const isAnime = Boolean(firstRecord.isAnime || firstRecord.type === 'anime' || isRegisteredAnimeId(firstRecord.id) || isAnimeRecord(firstRecord));
+    if (isAnime) registerAnimeId(firstRecord.id);
     const isMovie = isMovieRecord(firstRecord);
 
     if (isMovie) {
@@ -639,6 +857,8 @@ export function getCompletedWatchList() {
         completedList.push({
           ...firstRecord,
           type: isAnime ? 'anime' : 'movie',
+          isAnime: isAnime,
+          isSeries: false,
           completed: true,
           subtitle: isAnime ? '✓ Anime Filmi İzlendi' : '✓ Film İzlendi'
         });
@@ -649,6 +869,8 @@ export function getCompletedWatchList() {
         completedList.push({
           ...firstRecord,
           type: isAnime ? 'anime' : 'tv',
+          isAnime: isAnime,
+          isSeries: true,
           completed: true,
           subtitle: isAnime ? `✓ ${records.length} Bölüm Anime İzlendi` : `✓ ${records.length} Bölüm İzlendi`
         });
@@ -676,7 +898,8 @@ export function getGroupedWatchHistory() {
   for (const [id, records] of seriesMap.entries()) {
     records.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
     const latest = records[0];
-    const isAnime = isAnimeRecord(latest);
+    const isAnime = Boolean(latest.isAnime || latest.type === 'anime' || isRegisteredAnimeId(latest.id) || isAnimeRecord(latest));
+    if (isAnime) registerAnimeId(latest.id);
     const isMovie = isMovieRecord(latest);
     const resolvedType = isAnime ? 'anime' : (isMovie ? 'movie' : 'tv');
 
@@ -685,6 +908,8 @@ export function getGroupedWatchHistory() {
       grouped.push({
         ...latest,
         type: resolvedType,
+        isAnime: isAnime,
+        isSeries: false,
         subtitle: latest.completed ? `✓ ${badgePrefix}İzlendi` : (latest.progressPercent > 0 ? `${badgePrefix}%${latest.progressPercent} İzlendi` : badgePrefix.replace(' • ', ''))
       });
     } else {
@@ -693,6 +918,8 @@ export function getGroupedWatchHistory() {
       grouped.push({
         ...latest,
         type: resolvedType,
+        isAnime: isAnime,
+        isSeries: true,
         subtitle: watchedCount > 0 ? `${badgePrefix}${watchedCount} Bölüm İzlendi` : `${badgePrefix}S${latest.season || 1} B${latest.episode || 1}`
       });
     }
@@ -713,11 +940,14 @@ export function getUnifiedContinueWatching() {
 export function normalizeStoredItem(item) {
   if (!item) return item;
   let type = item.type;
+  const isAnime = Boolean(item.isAnime || item.type === 'anime' || isRegisteredAnimeId(item.id) || isAnimeRecord(item));
   
-  if (isAnimeRecord(item)) {
+  if (isAnime) {
     type = 'anime';
+    if (item.id) registerAnimeId(item.id);
   } else if (!type || type === 'movie') {
     if (
+      item.isSeries ||
       item.first_air_date ||
       item.media_type === 'tv' ||
       item.number_of_seasons ||
@@ -729,11 +959,20 @@ export function normalizeStoredItem(item) {
       type = type || 'movie';
     }
   }
+
+  const isSeries = Boolean(
+    item.isSeries !== undefined
+      ? item.isSeries
+      : (type === 'tv' || item.first_air_date || item.number_of_seasons || item.episodesCount || (item.season && item.season > 1) || (item.episode && item.episode > 1))
+  );
+
   const poster = cleanImagePath(item.poster_path || item.posterPath || item.poster || '');
   const backdrop = cleanImagePath(item.backdrop_path || item.backdropPath || item.backdrop || '');
   return {
     ...item,
     type,
+    isAnime,
+    isSeries,
     poster_path: poster,
     posterPath: poster,
     backdrop_path: backdrop,
@@ -743,6 +982,22 @@ export function normalizeStoredItem(item) {
 
 export function getFavorites() {
   const favs = getLocalItem(STORAGE_KEYS.FAVORITES, []);
+  let hasChanges = false;
+  for (const item of favs) {
+    if (!item.isAnime && (isRegisteredAnimeId(item.id) || isAnimeRecord(item))) {
+      item.isAnime = true;
+      item.type = 'anime';
+      registerAnimeId(item.id);
+      hasChanges = true;
+    }
+  }
+  if (hasChanges) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favs));
+      }
+    } catch (_) {}
+  }
   return favs.map(normalizeStoredItem);
 }
 
@@ -760,10 +1015,16 @@ export function toggleFavorite(media) {
   if (index >= 0) {
     favs.splice(index, 1);
   } else {
-    let resolvedType = media.type;
-    if (isAnimeRecord(media)) {
-      resolvedType = 'anime';
-    } else if (!resolvedType) {
+    const isAnAnime = Boolean(
+      media.isAnime ||
+      media.type === 'anime' ||
+      isRegisteredAnimeId(media.id) ||
+      isAnimeRecord(media)
+    );
+    if (isAnAnime) registerAnimeId(media.id);
+
+    let resolvedType = isAnAnime ? 'anime' : media.type;
+    if (!resolvedType) {
       resolvedType = (media.first_air_date || media.media_type === 'tv' || media.number_of_seasons || (!media.title && media.name)) ? 'tv' : 'movie';
     }
     const poster = media.poster_path || media.posterPath || media.poster || '';
@@ -783,7 +1044,7 @@ export function toggleFavorite(media) {
       genres: media.genres || [],
       original_language: media.original_language || '',
       origin_country: media.origin_country || [],
-      isAnime: isAnimeRecord(media),
+      isAnime: isAnAnime,
       type: resolvedType,
       addedAt: Date.now()
     });
@@ -807,6 +1068,22 @@ export function clearFavorites() {
 
 export function getWatchlist() {
   const list = getLocalItem(STORAGE_KEYS.WATCHLIST, []);
+  let hasChanges = false;
+  for (const item of list) {
+    if (!item.isAnime && (isRegisteredAnimeId(item.id) || isAnimeRecord(item))) {
+      item.isAnime = true;
+      item.type = 'anime';
+      registerAnimeId(item.id);
+      hasChanges = true;
+    }
+  }
+  if (hasChanges) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(STORAGE_KEYS.WATCHLIST, JSON.stringify(list));
+      }
+    } catch (_) {}
+  }
   return list.map(normalizeStoredItem);
 }
 
@@ -824,10 +1101,16 @@ export function toggleWatchlist(media) {
   if (index >= 0) {
     list.splice(index, 1);
   } else {
-    let resolvedType = media.type;
-    if (isAnimeRecord(media)) {
-      resolvedType = 'anime';
-    } else if (!resolvedType) {
+    const isAnAnime = Boolean(
+      media.isAnime ||
+      media.type === 'anime' ||
+      isRegisteredAnimeId(media.id) ||
+      isAnimeRecord(media)
+    );
+    if (isAnAnime) registerAnimeId(media.id);
+
+    let resolvedType = isAnAnime ? 'anime' : media.type;
+    if (!resolvedType) {
       resolvedType = (media.first_air_date || media.media_type === 'tv' || media.number_of_seasons || (!media.title && media.name)) ? 'tv' : 'movie';
     }
     const poster = media.poster_path || media.posterPath || media.poster || '';
@@ -847,7 +1130,7 @@ export function toggleWatchlist(media) {
       genres: media.genres || [],
       original_language: media.original_language || '',
       origin_country: media.origin_country || [],
-      isAnime: isAnimeRecord(media),
+      isAnime: isAnAnime,
       type: resolvedType,
       addedAt: Date.now()
     });
@@ -857,6 +1140,7 @@ export function toggleWatchlist(media) {
   setLocalItem(STORAGE_KEYS.WATCHLIST, list);
   return added;
 }
+
 
 export function removeWatchlist(id) {
   let list = getWatchlist();

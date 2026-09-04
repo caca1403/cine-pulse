@@ -6,7 +6,7 @@
    ========================================================================== */
 
 import { fetchMediaDetails, fetchMediaTrailer, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK, generateCinematicOverview } from '../services/tmdbApi.js';
-import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway } from '../services/storage.js';
+import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway, registerAnimeId, isRegisteredAnimeId } from '../services/storage.js';
 import { renderSeasonSelector } from '../components/SeasonSelector.js';
 import { renderMediaCard, attachMediaCardEvents, isAnimeItem } from '../components/MediaCard.js';
 import { openPlayerModal } from '../components/PlayerModal.js';
@@ -23,10 +23,12 @@ function formatMediaRuntime(minutes) {
   return `${minutes} dk`;
 }
 
-export async function renderDetailView(type = 'tv', id) {
-  // Normalize type: Anime/Doc series are 'tv', Anime/Doc films are 'movie'
-  let normalizedType = (type === 'movie') ? 'movie' : 'tv';
+export async function renderDetailView(typeOrObj = 'tv', maybeId) {
+  const type = (typeof typeOrObj === 'object' && typeOrObj !== null) ? (typeOrObj.type || 'tv') : (typeOrObj || 'tv');
+  const id = (typeof typeOrObj === 'object' && typeOrObj !== null) ? typeOrObj.id : maybeId;
+  let normalizedType = (type === 'series' || type === 'tv' || type === 'anime') ? 'tv' : ((type === 'movie') ? 'movie' : 'tv');
   let media = await fetchMediaDetails(normalizedType, id);
+
   if (!media) {
     // If not found with initial type, try the alternative type
     normalizedType = normalizedType === 'tv' ? 'movie' : 'tv';
@@ -42,7 +44,8 @@ export async function renderDetailView(type = 'tv', id) {
 
   const isSeries = !!(media.seasons && media.seasons.length > 0) || normalizedType === 'tv';
   const effectiveType = isSeries ? 'tv' : 'movie';
-  const isAnime = isAnimeItem(media) || type === 'anime' || normalizedType === 'anime';
+  const isAnime = isAnimeItem(media) || type === 'anime' || normalizedType === 'anime' || isRegisteredAnimeId(id);
+  if (isAnime) registerAnimeId(id);
 
   const title = media.title || media.name || 'Detay';
   const originalTitle = media.original_title || media.original_name || '';
@@ -98,7 +101,8 @@ export async function renderDetailView(type = 'tv', id) {
       seriesOverview: overview,
       seasons: media.seasons,
       posterPath: media.poster_path,
-      backdropPath: media.backdrop_path
+      backdropPath: media.backdrop_path,
+      isAnime
     });
   }
 
@@ -304,7 +308,8 @@ export async function renderDetailView(type = 'tv', id) {
         playMovieBtn.addEventListener('click', () => {
           const progress = getMediaProgress(id, 1, 1);
           openPlayerModal({
-            type: 'movie',
+            type: isAnime ? 'anime' : 'movie',
+            isAnime,
             tmdbId: id,
             title: title,
             seriesTitle: title,
@@ -326,7 +331,8 @@ export async function renderDetailView(type = 'tv', id) {
           const currentTime = lastWatched ? lastWatched.currentTime : 0;
 
           openPlayerModal({
-            type: 'tv',
+            type: isAnime ? 'anime' : 'tv',
+            isAnime,
             tmdbId: id,
             title: `${title} - S${seasonNum}E${episodeNum}`,
             seriesTitle: title,
@@ -432,7 +438,8 @@ export async function renderDetailView(type = 'tv', id) {
               title: title,
               posterPath: media.poster_path,
               backdropPath: media.backdrop_path,
-              type: 'tv'
+              type: isAnime ? 'anime' : 'tv',
+              isAnime
             });
 
             showToast(targetState ? '✓ Dizinin tüm bölümleri izlendi olarak işaretlendi!' : 'Tüm bölümler izlenmedi yapıldı.', targetState ? 'success' : 'info');
@@ -550,7 +557,8 @@ export async function renderDetailView(type = 'tv', id) {
               title: title,
               posterPath: media.poster_path,
               backdropPath: media.backdrop_path,
-              type: 'movie',
+              type: isAnime ? 'anime' : 'movie',
+              isAnime,
               duration: movieDurationSec
             });
             showToast(`⏳ Film ${timeStr} dakikasında yarıda bırakıldı olarak işaretlendi!`, 'info');
@@ -563,7 +571,8 @@ export async function renderDetailView(type = 'tv', id) {
               title: title,
               posterPath: media.poster_path,
               backdropPath: media.backdrop_path,
-              type: 'tv',
+              type: isAnime ? 'anime' : 'tv',
+              isAnime,
               duration: 3000
             });
             showToast(`⏳ S${seasonNum} B${epNum} 20. dakikada yarıda bırakıldı olarak işaretlendi!`, 'info');

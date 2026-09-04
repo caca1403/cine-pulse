@@ -5,17 +5,12 @@
    ========================================================================== */
 
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK, hasNonLatinCharacters } from '../services/tmdbApi.js';
-import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime } from '../services/storage.js';
+import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime, isRegisteredAnimeId, registerAnimeId, KNOWN_ANIME_KEYWORDS as STORAGE_ANIME_KEYWORDS } from '../services/storage.js';
 import { openPlayerModal } from './PlayerModal.js';
 import { saveAllScrollState } from '../services/scrollManager.js';
 
-const KNOWN_ANIME_KEYWORDS = [
-  'anime', 'kimetsu', 'yaiba', 'iblis keser', 'demon slayer', 'naruto', 'boruto', 'shingeki', 'titan',
-  'jujutsu', 'kaisen', 'one piece', 'death note', 'bleach', 'dragon ball', 'hunter x hunter', 'chainsaw man',
-  'tokyo ghoul', 'my hero academia', 'boku no hero', 'fullmetal', 'alchemist', 'sword art online', 'solo leveling',
-  'black clover', 'vinland saga', 'spy x family', 'cyberpunk: edgerunners', 'haikyuu', 'one punch', 'berserk',
-  'mob psycho', 'overlord', 'evangelion', 'cowboy bebop', 'code geass', 'frieren', 'dr. stone', 'blue lock',
-  'steins;gate', 'jojo', 'kaiju no. 8', 'gintama', 'fairy tail', 'violet evergarden', 'hell\'s paradise'
+const KNOWN_ANIME_KEYWORDS = STORAGE_ANIME_KEYWORDS || [
+  'anime', 'kimetsu', 'yaiba', 'iblis keser', 'demon slayer', 'naruto', 'boruto', 'shingeki', 'titan'
 ];
 
 function hasJapaneseCharacters(text) {
@@ -25,40 +20,56 @@ function hasJapaneseCharacters(text) {
 
 export function isAnimeItem(item) {
   if (!item) return false;
-  if (item.type === 'anime' || item.media_type === 'anime' || item.isAnime) return true;
+  if (item.isAnime === true || item.type === 'anime' || item.media_type === 'anime') return true;
+  if (item.id && isRegisteredAnimeId(item.id)) return true;
 
   const genreIds = item.genre_ids || (Array.isArray(item.genres) ? item.genres.map(g => (typeof g === 'object' ? g.id : g)) : []);
   const hasAnimationGenre = genreIds.some(id => Number(id) === 16);
   const isJapanese = item.original_language === 'ja' || (Array.isArray(item.origin_country) && item.origin_country.includes('JP'));
 
   // 1. Animation genre + Japanese origin or language
-  if (hasAnimationGenre && isJapanese) return true;
-  if (hasAnimationGenre && (item.origin_country?.includes('JP') || item.original_language === 'ja')) return true;
+  if (hasAnimationGenre && isJapanese) {
+    if (item.id) registerAnimeId(item.id);
+    return true;
+  }
+  if (hasAnimationGenre && (item.origin_country?.includes('JP') || item.original_language === 'ja')) {
+    if (item.id) registerAnimeId(item.id);
+    return true;
+  }
 
   // 2. Japanese original language with animation or Japanese script
   if (item.original_language === 'ja' && (hasAnimationGenre || hasJapaneseCharacters(item.original_name || item.original_title || item.title || item.name))) {
+    if (item.id) registerAnimeId(item.id);
     return true;
   }
 
   // 3. Explicit anime genre name
   if (Array.isArray(item.genres)) {
     const genreNames = item.genres.map(g => (typeof g === 'object' ? g.name : String(g))).filter(Boolean);
-    if (genreNames.some(n => /anime/i.test(n))) return true;
+    if (genreNames.some(n => /anime/i.test(n))) {
+      if (item.id) registerAnimeId(item.id);
+      return true;
+    }
   }
 
   // 4. Scraper IDs
   if (typeof item.id === 'string' && (item.id.startsWith('ta_') || item.id.startsWith('acx_') || item.id.startsWith('tra_'))) {
+    registerAnimeId(item.id);
     return true;
   }
 
   // 5. Known keywords
   const rawTitle = (item.title || item.name || item.original_title || item.original_name || '').toLowerCase();
   for (const kw of KNOWN_ANIME_KEYWORDS) {
-    if (rawTitle.includes(kw)) return true;
+    if (rawTitle.includes(kw)) {
+      if (item.id) registerAnimeId(item.id);
+      return true;
+    }
   }
 
   return false;
 }
+
 
 export function isSeriesItem(item) {
   if (!item) return false;
@@ -83,7 +94,7 @@ export function determineMediaType(item) {
   if (!item) return 'movie';
 
   // 1. Anime Detection
-  if (isAnimeItem(item)) {
+  if (item.isAnime || item.type === 'anime' || isAnimeItem(item) || (item.id && isRegisteredAnimeId(item.id))) {
     return 'anime';
   }
 
@@ -117,8 +128,8 @@ export function determineMediaType(item) {
 export function renderMediaCard(item, options = {}) {
   const id = item.id;
   const mediaType = determineMediaType(item);
-  const isAnime = isAnimeItem(item) || mediaType === 'anime';
-  const isSeries = isSeriesItem(item);
+  const isAnime = Boolean(item.isAnime || mediaType === 'anime' || isAnimeItem(item) || (item.id && isRegisteredAnimeId(item.id)));
+  const isSeries = Boolean(item.isSeries !== undefined ? item.isSeries : isSeriesItem(item));
   const effectivePlayerType = isSeries ? 'tv' : 'movie';
 
   let rawTitle = item.title || item.name || '';
@@ -168,7 +179,7 @@ export function renderMediaCard(item, options = {}) {
   let detailedTypeLabel = 'Film';
 
   if (isAnime) {
-    typeLabel = 'ANİME';
+    typeLabel = isSeries ? 'ANİME DİZİSİ' : 'ANİME FİLMİ';
     typeClass = 'type-anime';
     detailedTypeLabel = isSeries ? 'Anime Dizisi' : 'Anime Filmi';
   } else if (mediaType === 'tv' || isSeries) {
@@ -190,6 +201,7 @@ export function renderMediaCard(item, options = {}) {
     <div class="media-card" 
       data-id="${id}" 
       data-type="${type}" 
+      data-isanime="${isAnime ? 'true' : 'false'}"
       data-title="${encodedTitle}" 
       data-poster="${encodedPoster}"
       data-backdrop="${encodedBackdrop}"
@@ -219,7 +231,7 @@ export function renderMediaCard(item, options = {}) {
             <i data-lucide="check" style="width:10px;height:10px;stroke-width:3;"></i>
             <span>İZLENDİ</span>
           </div>
-        ` : (isContinue && type === 'tv' ? `
+        ` : (isContinue && isSeries ? `
           <div class="card-status-badge card-status-continue" title="Kaldığın Bölüm">
             <i data-lucide="clock" style="width:10px;height:10px;"></i>
             <span>S${season} B${episode}</span>
@@ -254,7 +266,7 @@ export function renderMediaCard(item, options = {}) {
         <h3 class="card-title" title="${title}">${title}</h3>
         <div class="card-meta">
           <span class="card-type-tag ${typeClass}">${typeLabel}</span>
-          ${isContinue && type === 'tv' ? `<span class="card-episode-tag">S${season} B${episode}</span>` : ''}
+          ${isSeries && (isAnime || mediaType === 'tv') && season ? `<span class="card-episode-tag">S${season} B${episode}</span>` : ''}
           ${year ? `<span class="card-year-tag">${year}</span>` : ''}
         </div>
       </div>
@@ -277,6 +289,7 @@ export function attachMediaCardEvents(container) {
     e.preventDefault();
     const id = card.getAttribute('data-id');
     const type = card.getAttribute('data-type');
+    const isAnime = card.getAttribute('data-isanime') === 'true' || type === 'anime' || isRegisteredAnimeId(id);
     const season = parseInt(card.getAttribute('data-season') || '1', 10);
     const episode = parseInt(card.getAttribute('data-episode') || '1', 10);
     const currentTime = parseFloat(card.getAttribute('data-currenttime') || '0');
@@ -287,9 +300,10 @@ export function attachMediaCardEvents(container) {
 
     if (isContinue && (card.closest('#continue-watching-rail') || card.closest('.continue-card-wrapper') || currentTime > 0)) {
       openPlayerModal({
-        type,
+        type: isAnime ? 'anime' : type,
+        isAnime,
         tmdbId: id,
-        title: type === 'tv' ? `${title} - S${season}E${episode}` : title,
+        title: (type === 'tv' || isAnime) ? `${title} - S${season}E${episode}` : title,
         seriesTitle: title,
         season,
         episode,
@@ -299,7 +313,8 @@ export function attachMediaCardEvents(container) {
       });
     } else {
       saveAllScrollState();
-      window.location.hash = `#detail?type=${type}&id=${id}`;
+      window.location.hash = `#detail?type=${isAnime ? 'anime' : type}&id=${id}`;
     }
   });
 }
+

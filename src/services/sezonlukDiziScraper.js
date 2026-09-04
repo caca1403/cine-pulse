@@ -1,5 +1,3 @@
-import { extractVidmolyStream } from './streamExtractors.js';
-
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 function toTurkishSlug(title) {
@@ -143,18 +141,8 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
           }
 
           const isVidmoly = item.baslik === 'VidMoly' || iframeUrl.includes('vidmoly');
-          let direct = null;
-          if (isVidmoly) {
-            try {
-              direct = await extractVidmolyStream(iframeUrl);
-            } catch (_) {}
-          }
-
-          const isDirect = !!(direct && direct.url);
-          const finalUrl = direct?.url || iframeUrl;
-          const serverName = isVidmoly
-            ? (isDirect ? 'VidMoly Direct 1080p' : 'VidMoly 1080p')
-            : `${item.baslik} HD`;
+          const finalUrl = iframeUrl;
+          const serverName = isVidmoly ? 'VidMoly 1080p' : `${item.baslik} HD`;
 
           extractedSources.push({
             id: `szd_${item.id}`,
@@ -164,8 +152,8 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
             category: isDub ? 'dubbed' : 'subtitled',
             url: finalUrl,
             streamUrl: finalUrl,
-            isHls: isDirect || finalUrl.includes('.m3u8'),
-            isDirectVideo: isDirect,
+            isHls: false,
+            isDirectVideo: false,
             getUrl: () => finalUrl
           });
         }
