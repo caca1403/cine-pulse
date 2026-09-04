@@ -8,7 +8,7 @@
 import { fetchMediaDetails, fetchMediaTrailer, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK, generateCinematicOverview } from '../services/tmdbApi.js';
 import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway } from '../services/storage.js';
 import { renderSeasonSelector } from '../components/SeasonSelector.js';
-import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
+import { renderMediaCard, attachMediaCardEvents, isAnimeItem } from '../components/MediaCard.js';
 import { openPlayerModal } from '../components/PlayerModal.js';
 import { openTrailerModal } from '../components/TrailerModal.js';
 import { showToast } from '../components/Toast.js';
@@ -42,6 +42,7 @@ export async function renderDetailView(type = 'tv', id) {
 
   const isSeries = !!(media.seasons && media.seasons.length > 0) || normalizedType === 'tv';
   const effectiveType = isSeries ? 'tv' : 'movie';
+  const isAnime = isAnimeItem(media) || type === 'anime' || normalizedType === 'anime';
 
   const title = media.title || media.name || 'Detay';
   const originalTitle = media.original_title || media.original_name || '';
@@ -114,6 +115,10 @@ export async function renderDetailView(type = 'tv', id) {
     </span>
   ` : '';
 
+  const heroTypeLabel = isAnime
+    ? (isSeries ? 'ANİME DİZİSİ' : 'ANİME FİLMİ')
+    : (effectiveType === 'tv' ? 'DİZİ' : 'FİLM');
+
   const html = `
     <div class="detail-view">
       <div class="detail-hero-banner">
@@ -136,7 +141,7 @@ export async function renderDetailView(type = 'tv', id) {
             <div class="detail-info-col">
               <!-- Frosted Badges Row -->
               <div class="detail-badge-deck">
-                <span class="badge badge-type">${effectiveType === 'tv' ? 'DİZİ' : 'FİLM'}</span>
+                <span class="badge badge-type">${heroTypeLabel}</span>
                 <span class="badge badge-imdb">
                   <i data-lucide="star" style="width:13px; height:13px; fill: currentColor"></i> ${rating} IMDb
                 </span>

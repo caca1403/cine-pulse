@@ -106,18 +106,34 @@ export function saveWatchProgress({
   poster_path,
   backdropPath,
   backdrop_path,
-  type = 'tv',
+  type,
   season = 1,
   episode = 1,
   currentTime = 0,
   duration = 0,
-  completed = false
+  completed = false,
+  ...rest
 }) {
   if (!id) return;
 
   const history = getWatchHistory();
   const existingIndex = history.findIndex(item => item.id == id && item.season == season && item.episode == episode);
+  const anyExisting = history.find(item => item.id == id);
   
+  // Resolve type safely: if type is passed, use it; otherwise fallback to existing record, or infer
+  let resolvedType = type;
+  if (!resolvedType) {
+    if (existingIndex >= 0 && history[existingIndex].type) {
+      resolvedType = history[existingIndex].type;
+    } else if (anyExisting && anyExisting.type) {
+      resolvedType = anyExisting.type;
+    } else if (rest.first_air_date || rest.number_of_seasons || rest.episodesCount) {
+      resolvedType = 'tv';
+    } else {
+      resolvedType = 'movie';
+    }
+  }
+
   const { resolvedPoster, resolvedBackdrop } = resolveMediaImages(
     id,
     posterPath || poster_path,
@@ -125,18 +141,19 @@ export function saveWatchProgress({
     history
   );
 
-  const effectiveDuration = duration > 0 ? duration : (type === 'movie' ? 6600 : 3000);
+  const effectiveDuration = duration > 0 ? duration : (resolvedType === 'movie' ? 6600 : 3000);
   const progressPercent = effectiveDuration > 0 ? Math.min(100, Math.round((currentTime / effectiveDuration) * 100)) : 0;
   const isCompleted = completed || progressPercent >= 90;
 
   const record = {
+    ...rest,
     id,
-    title: title || (existingIndex >= 0 ? history[existingIndex].title : 'İçerik'),
+    title: title || (existingIndex >= 0 ? history[existingIndex].title : (anyExisting ? anyExisting.title : 'İçerik')),
     posterPath: resolvedPoster,
     poster_path: resolvedPoster,
     backdropPath: resolvedBackdrop,
     backdrop_path: resolvedBackdrop,
-    type,
+    type: resolvedType,
     season: Number(season),
     episode: Number(episode),
     currentTime: Math.round(currentTime),
@@ -444,6 +461,34 @@ export function getTotalWatchStats() {
   };
 }
 
+function isAnimeRecord(item) {
+  if (!item) return false;
+  if (item.type === 'anime' || item.media_type === 'anime' || item.isAnime) return true;
+  const genreIds = item.genre_ids || (Array.isArray(item.genres) ? item.genres.map(g => (typeof g === 'object' ? g.id : g)) : []);
+  const hasAnimation = genreIds.some(id => Number(id) === 16);
+  const isJapanese = item.original_language === 'ja' || (Array.isArray(item.origin_country) && item.origin_country.includes('JP'));
+  if (hasAnimation && isJapanese) return true;
+  if (Array.isArray(item.genres)) {
+    const genreNames = item.genres.map(g => (typeof g === 'object' ? g.name : String(g))).filter(Boolean);
+    if (genreNames.some(n => /anime/i.test(n))) return true;
+  }
+  if (typeof item.id === 'string' && (item.id.startsWith('ta_') || item.id.startsWith('acx_') || item.id.startsWith('tra_'))) {
+    return true;
+  }
+  const rawTitle = (item.title || item.name || '').toLowerCase();
+  if (rawTitle.includes('anime')) return true;
+  return false;
+}
+
+function isMovieRecord(item) {
+  if (!item) return true;
+  if (item.type === 'movie' || item.media_type === 'movie') return true;
+  if (item.first_air_date || item.number_of_seasons || item.episodesCount || (Array.isArray(item.seasons) && item.seasons.length > 0)) return false;
+  if (item.type === 'tv' || item.media_type === 'tv') return false;
+  if (item.release_date && !item.first_air_date) return true;
+  return false;
+}
+
 export function getContinueWatchingList() {
   const history = getWatchHistory();
   const seriesMap = new Map();
@@ -461,8 +506,10 @@ export function getContinueWatchingList() {
   for (const [id, records] of seriesMap.entries()) {
     records.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
     const firstRecord = records[0];
+    const isAnime = isAnimeRecord(firstRecord);
+    const isMovie = isMovieRecord(firstRecord);
 
-    if (firstRecord.type === 'movie') {
+    if (isMovie) {
       const isCompleted = firstRecord.completed || firstRecord.progressPercent >= 90;
       // Exclude completed movies from Continue Watching!
       if (isCompleted) continue;
@@ -470,10 +517,12 @@ export function getContinueWatchingList() {
       if (firstRecord.currentTime > 0) {
         const duration = firstRecord.duration || 6600;
         const remStr = formatRemainingTime(firstRecord.currentTime, duration);
+        const prefix = isAnime ? 'Anime Filmi • ' : '';
 
         inProgressList.push({
           ...firstRecord,
-          subtitle: `Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)} • ${remStr}`
+          type: isAnime ? 'anime' : 'movie',
+          subtitle: `${prefix}Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)} • ${remStr}`
         });
       }
     } else {
@@ -504,19 +553,21 @@ export function getContinueWatchingList() {
         continue;
       }
 
+      const prefix = isAnime ? 'Anime Dizisi • ' : '';
       let subtitle = '';
       if (isCurrentEpHalfway) {
-        subtitle = `S${currentActiveSeason} B${targetEp} • Kaldığın: ${formatSecondsToTime(currentEpTime)} • ${remStr}`;
+        subtitle = `${prefix}S${currentActiveSeason} B${targetEp} • Kaldığın: ${formatSecondsToTime(currentEpTime)} • ${remStr}`;
       } else if (watchedEpNumbers.size > 0) {
-        subtitle = `S${currentActiveSeason} B${targetEp} • Sıradaki Bölüm`;
+        subtitle = `${prefix}S${currentActiveSeason} B${targetEp} • Sıradaki Bölüm`;
       } else if (firstRecord.currentTime > 0) {
-        subtitle = `S${currentActiveSeason} B${firstRecord.episode || 1} • Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)}`;
+        subtitle = `${prefix}S${currentActiveSeason} B${firstRecord.episode || 1} • Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)}`;
       } else {
         continue;
       }
 
       inProgressList.push({
         ...firstRecord,
+        type: isAnime ? 'anime' : 'tv',
         season: currentActiveSeason,
         episode: isCurrentEpHalfway ? targetEp : (watchedEpNumbers.size > 0 ? targetEp : firstRecord.episode || 1),
         currentTime: isCurrentEpHalfway ? currentEpTime : (watchedEpNumbers.size > 0 ? 0 : firstRecord.currentTime),
@@ -546,14 +597,17 @@ export function getCompletedWatchList() {
   for (const [id, records] of seriesMap.entries()) {
     records.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
     const firstRecord = records[0];
+    const isAnime = isAnimeRecord(firstRecord);
+    const isMovie = isMovieRecord(firstRecord);
 
-    if (firstRecord.type === 'movie') {
+    if (isMovie) {
       const isCompleted = firstRecord.completed || firstRecord.progressPercent >= 90;
       if (isCompleted) {
         completedList.push({
           ...firstRecord,
+          type: isAnime ? 'anime' : 'movie',
           completed: true,
-          subtitle: '✓ Film İzlendi'
+          subtitle: isAnime ? '✓ Anime Filmi İzlendi' : '✓ Film İzlendi'
         });
       }
     } else {
@@ -561,8 +615,9 @@ export function getCompletedWatchList() {
       if (allCompleted && records.length > 0) {
         completedList.push({
           ...firstRecord,
+          type: isAnime ? 'anime' : 'tv',
           completed: true,
-          subtitle: `✓ ${records.length} Bölüm İzlendi`
+          subtitle: isAnime ? `✓ ${records.length} Bölüm Anime İzlendi` : `✓ ${records.length} Bölüm İzlendi`
         });
       }
     }
@@ -588,18 +643,24 @@ export function getGroupedWatchHistory() {
   for (const [id, records] of seriesMap.entries()) {
     records.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
     const latest = records[0];
-    const type = latest.type || 'tv';
+    const isAnime = isAnimeRecord(latest);
+    const isMovie = isMovieRecord(latest);
+    const resolvedType = isAnime ? 'anime' : (isMovie ? 'movie' : 'tv');
 
-    if (type === 'movie') {
+    if (isMovie) {
+      const badgePrefix = isAnime ? 'Anime Filmi • ' : '';
       grouped.push({
         ...latest,
-        subtitle: latest.completed ? '✓ İzlendi' : (latest.progressPercent > 0 ? `%${latest.progressPercent} İzlendi` : '')
+        type: resolvedType,
+        subtitle: latest.completed ? `✓ ${badgePrefix}İzlendi` : (latest.progressPercent > 0 ? `${badgePrefix}%${latest.progressPercent} İzlendi` : badgePrefix.replace(' • ', ''))
       });
     } else {
       const watchedCount = records.filter(r => r.completed || r.progressPercent >= 85).length;
+      const badgePrefix = isAnime ? 'Anime Dizisi • ' : '';
       grouped.push({
         ...latest,
-        subtitle: watchedCount > 0 ? `${watchedCount} Bölüm İzlendi` : `S${latest.season || 1} B${latest.episode || 1}`
+        type: resolvedType,
+        subtitle: watchedCount > 0 ? `${badgePrefix}${watchedCount} Bölüm İzlendi` : `${badgePrefix}S${latest.season || 1} B${latest.episode || 1}`
       });
     }
   }
@@ -619,12 +680,13 @@ export function getUnifiedContinueWatching() {
 export function normalizeStoredItem(item) {
   if (!item) return item;
   let type = item.type;
-  if (!type || type === 'movie') {
+  
+  if (isAnimeRecord(item)) {
+    type = 'anime';
+  } else if (!type || type === 'movie') {
     if (
       item.first_air_date ||
       item.media_type === 'tv' ||
-      (item.season && Number(item.season) > 0) ||
-      (item.episode && Number(item.episode) > 0) ||
       item.number_of_seasons ||
       item.episodesCount ||
       (!item.title && item.name)
