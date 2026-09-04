@@ -18,6 +18,11 @@ const KNOWN_ANIME_KEYWORDS = [
   'steins;gate', 'jojo', 'kaiju no. 8', 'gintama', 'fairy tail', 'violet evergarden', 'hell\'s paradise'
 ];
 
+function hasJapaneseCharacters(text) {
+  if (!text) return false;
+  return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(text);
+}
+
 export function isAnimeItem(item) {
   if (!item) return false;
   if (item.type === 'anime' || item.media_type === 'anime' || item.isAnime) return true;
@@ -26,18 +31,27 @@ export function isAnimeItem(item) {
   const hasAnimationGenre = genreIds.some(id => Number(id) === 16);
   const isJapanese = item.original_language === 'ja' || (Array.isArray(item.origin_country) && item.origin_country.includes('JP'));
 
+  // 1. Animation genre + Japanese origin or language
   if (hasAnimationGenre && isJapanese) return true;
   if (hasAnimationGenre && (item.origin_country?.includes('JP') || item.original_language === 'ja')) return true;
 
+  // 2. Japanese original language with animation or Japanese script
+  if (item.original_language === 'ja' && (hasAnimationGenre || hasJapaneseCharacters(item.original_name || item.original_title || item.title || item.name))) {
+    return true;
+  }
+
+  // 3. Explicit anime genre name
   if (Array.isArray(item.genres)) {
     const genreNames = item.genres.map(g => (typeof g === 'object' ? g.name : String(g))).filter(Boolean);
     if (genreNames.some(n => /anime/i.test(n))) return true;
   }
 
+  // 4. Scraper IDs
   if (typeof item.id === 'string' && (item.id.startsWith('ta_') || item.id.startsWith('acx_') || item.id.startsWith('tra_'))) {
     return true;
   }
 
+  // 5. Known keywords
   const rawTitle = (item.title || item.name || item.original_title || item.original_name || '').toLowerCase();
   for (const kw of KNOWN_ANIME_KEYWORDS) {
     if (rawTitle.includes(kw)) return true;
