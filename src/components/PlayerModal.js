@@ -327,8 +327,9 @@ export async function openPlayerModal({
 
     const finalIframeUrl = srv.getUrl() || srv.streamUrl || '';
     const isVidmoly = finalIframeUrl.includes('vidmoly');
-    const isEksenLoad = finalIframeUrl.includes('eksenload') || finalIframeUrl.includes('vidload') || (srv.name || '').includes('EksenLoad');
-    const iframeReferrerPolicy = isEksenLoad ? 'no-referrer' : 'origin';
+    // All third-party video hosts (DP / Alpha Stream, EksenLoad, VidMoly, Rapid) block playback if the parent Vercel referer is leaked.
+    // referrerpolicy="no-referrer" prevents hotlink detection and allows DP's player to authenticate stream URLs.
+    const iframeReferrerPolicy = 'no-referrer';
     // Sandboxing should ONLY be used for VidMoly to suppress annoying popups.
     // Sandboxing breaks Alpha Stream / DP, EksenLoad, and other embeds by causing infinite loading spinner after preroll ads!
     const sandboxAttr = isVidmoly ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"' : '';
