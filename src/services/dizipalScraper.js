@@ -1,4 +1,3 @@
-import { extractAlphaStream } from './streamExtractors.js';
 
 function toTurkishSlug(title) {
   if (!title) return '';
@@ -93,26 +92,18 @@ export async function fetchDizipalSources({
           if (!iframeUrl.includes('jquery') && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
             const playableUrl = iframeUrl.replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd');
 
-            let direct = null;
-            try {
-              direct = await extractAlphaStream(playableUrl);
-            } catch (_) {}
-
-            const isDirect = !!(direct && direct.url);
-            const finalUrl = direct?.url || playableUrl;
-
             return [
               {
                 id: `dzp_${slug}_${season}_${episode}_${isDub ? 'dub' : 'sub'}`,
                 name: `DP Stream 1080p`,
-                displayName: isDirect ? `DP Stream Direct 1080p` : `DP Stream 1080p`,
+                displayName: `DP Stream 1080p`,
                 badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-                url: finalUrl,
-                streamUrl: finalUrl,
-                isHls: isDirect || finalUrl.includes('.m3u8'),
-                isDirectVideo: isDirect,
-                getUrl: () => finalUrl,
-                subtitles: direct?.subtitles || []
+                url: playableUrl,
+                streamUrl: playableUrl,
+                originalEmbedUrl: playableUrl,
+                isHls: false,
+                isDirectVideo: false,
+                getUrl: () => playableUrl
               }
             ];
           }

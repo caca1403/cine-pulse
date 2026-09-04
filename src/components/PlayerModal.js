@@ -326,13 +326,17 @@ export async function openPlayerModal({
     }
 
     const finalIframeUrl = srv.getUrl() || srv.streamUrl || '';
+    const isVidmoly = finalIframeUrl.includes('vidmoly');
     const isEksenLoad = finalIframeUrl.includes('eksenload') || finalIframeUrl.includes('vidload') || (srv.name || '').includes('EksenLoad');
     const iframeReferrerPolicy = isEksenLoad ? 'no-referrer' : 'origin';
+    // Sandboxing should ONLY be used for VidMoly to suppress annoying popups.
+    // Sandboxing breaks Alpha Stream / DP, EksenLoad, and other embeds by causing infinite loading spinner after preroll ads!
+    const sandboxAttr = isVidmoly ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"' : '';
     return `
       <iframe 
         id="video-iframe" 
         src="${finalIframeUrl}" 
-        sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+        ${sandboxAttr}
         allowfullscreen="true"
         webkitallowfullscreen="true"
         mozallowfullscreen="true"
@@ -1202,11 +1206,18 @@ export async function openPlayerModal({
             if (initialTime > 0) videoEl.currentTime = initialTime;
             videoEl.play().catch(() => {});
           });
+          let networkErrorCount = 0;
           hls.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal) {
               switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
-                  hls.startLoad();
+                  networkErrorCount++;
+                  if (networkErrorCount > 2) {
+                    hls.destroy();
+                    fallbackToIframe();
+                  } else {
+                    hls.startLoad();
+                  }
                   break;
                 case Hls.ErrorTypes.MEDIA_ERROR:
                   hls.recoverMediaError();

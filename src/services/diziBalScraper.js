@@ -1,4 +1,3 @@
-import { extractAlphaStream } from './streamExtractors.js';
 
 function normalizeText(text) {
   if (!text) return '';
@@ -131,26 +130,18 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         if (srcId) {
           const embedUrl = (movieData.streamUrl ? movieData.streamUrl.replace(/play\.liderfilm\.[a-z]+/i, 'x.ag2m4.cfd') : null) || `https://x.ag2m4.cfd/embed-${srcId}.html`;
 
-          let direct = null;
-          try {
-            direct = await extractAlphaStream(embedUrl);
-          } catch (_) {}
-
-          const isDirect = !!(direct && direct.url);
-          const finalUrl = direct?.url || embedUrl;
-
           return [
             {
               id: `dbl_${movieData.slug || 'movie'}`,
               name: `Alpha Stream 1080p`,
-              displayName: isDirect ? `Alpha Stream Direct 1080p` : `Alpha Stream 1080p`,
+              displayName: `Alpha Stream 1080p`,
               badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-              isHls: isDirect,
-              isDirectVideo: isDirect,
-              getUrl: () => finalUrl,
-              streamUrl: finalUrl,
-              url: finalUrl,
-              subtitles: direct?.subtitles || []
+              isHls: false,
+              isDirectVideo: false,
+              originalEmbedUrl: embedUrl,
+              getUrl: () => embedUrl,
+              streamUrl: embedUrl,
+              url: embedUrl
             }
           ];
         }
@@ -177,26 +168,18 @@ export async function fetchDiziBalSources({ titles = [], type = 'movie', seriesT
         if (targetEp && targetEp.src) {
           const embedUrl = `https://x.ag2m4.cfd/embed-${targetEp.src}.html`;
 
-          let direct = null;
-          try {
-            direct = await extractAlphaStream(embedUrl);
-          } catch (_) {}
-
-          const isDirect = !!(direct && direct.url);
-          const finalUrl = direct?.url || embedUrl;
-
           return [
             {
               id: `dbl_${seriesSlug}_s${season}_e${episode}`,
               name: `Alpha Stream 1080p`,
-              displayName: isDirect ? `Alpha Stream Direct 1080p` : `Alpha Stream 1080p`,
+              displayName: `Alpha Stream 1080p`,
               badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-              isHls: isDirect,
-              isDirectVideo: isDirect,
-              getUrl: () => finalUrl,
-              streamUrl: finalUrl,
-              url: finalUrl,
-              subtitles: direct?.subtitles || []
+              isHls: false,
+              isDirectVideo: false,
+              originalEmbedUrl: embedUrl,
+              getUrl: () => embedUrl,
+              streamUrl: embedUrl,
+              url: embedUrl
             }
           ];
         }
