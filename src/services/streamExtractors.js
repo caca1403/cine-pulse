@@ -180,6 +180,7 @@ export async function resolveDirectStream(streamObj) {
         ...streamObj,
         isHls: true,
         isDirectVideo: true,
+        originalEmbedUrl: rawUrl,
         streamUrl: direct.url,
         url: direct.url,
         getUrl: () => direct.url
@@ -196,6 +197,7 @@ export async function resolveDirectStream(streamObj) {
         ...streamObj,
         isHls: true,
         isDirectVideo: true,
+        originalEmbedUrl: rawUrl,
         streamUrl: direct.url,
         url: direct.url,
         subtitles: direct.subtitles,

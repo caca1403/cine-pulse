@@ -1151,8 +1151,24 @@ export async function openPlayerModal({
       const videoEl = document.getElementById('hls-video-player');
       const streamUrl = srv.streamUrl || srv.getUrl();
       if (videoEl && streamUrl) {
-        if (window.Hls && Hls.isSupported() && (streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || srv.isHls)) {
-          const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+        const isHlsStream = streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || srv.isHls;
+
+        const fallbackToIframe = () => {
+          if (srv.originalEmbedUrl || (srv.url && !srv.url.includes('.m3u8'))) {
+            srv.isDirectVideo = false;
+            srv.isHls = false;
+            srv.streamUrl = srv.originalEmbedUrl || srv.url;
+            updatePlayerContainer();
+          }
+        };
+
+        if (isHlsStream && window.Hls && Hls.isSupported()) {
+          const hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60
+          });
           activeHlsInstance = hls;
           hls.loadSource(streamUrl);
           hls.attachMedia(videoEl);
@@ -1171,14 +1187,28 @@ export async function openPlayerModal({
                   break;
                 default:
                   hls.destroy();
+                  fallbackToIframe();
                   break;
               }
             }
+          });
+        } else if (isHlsStream && videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+          // iOS Safari Native HLS Engine
+          videoEl.src = streamUrl;
+          videoEl.addEventListener('loadedmetadata', () => {
+            if (initialTime > 0) videoEl.currentTime = initialTime;
+            videoEl.play().catch(() => {});
+          });
+          videoEl.addEventListener('error', () => {
+            fallbackToIframe();
           });
         } else {
           videoEl.src = streamUrl;
           if (initialTime > 0) videoEl.currentTime = initialTime;
           videoEl.play().catch(() => {});
+          videoEl.addEventListener('error', () => {
+            fallbackToIframe();
+          });
         }
       }
     }
