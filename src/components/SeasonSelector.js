@@ -10,7 +10,7 @@ import { getMediaProgress, isMediaWatched, toggleEpisodeWatched, markSeasonEpiso
 import { openPlayerModal } from './PlayerModal.js';
 import { showToast } from './Toast.js';
 
-export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = '', seriesOverview = '', seasons = [], posterPath = '', backdropPath = '' }) {
+export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = '', seriesOverview = '', seasons = [], posterPath = '', backdropPath = '', isAnime = false }) {
   const validSeasons = seasons.filter(s => s.season_number > 0);
   if (validSeasons.length === 0 && seasons.length > 0) validSeasons.push(seasons[0]);
 
@@ -81,7 +81,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
         if (window.lucide) window.lucide.createIcons();
       };
 
-      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual);
+      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual, isAnime);
 
       // Instant Real-Time Synchronization with Watch History & Player without page refresh
       const onDataChanged = () => {
@@ -154,7 +154,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
           btn.classList.add('active');
           currentActiveSeason = parseInt(btn.getAttribute('data-season'), 10);
           currentEpCount = parseInt(btn.getAttribute('data-ep-count'), 10) || 10;
-          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual);
+          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual, isAnime);
           updateSeasonBtnVisual();
         });
       });
@@ -169,7 +169,8 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
             title: seriesTitle,
             posterPath,
             backdropPath,
-            type: 'tv'
+            type: isAnime ? 'anime' : 'tv',
+            isAnime
           });
 
           showToast(targetWatched ? `${currentActiveSeason}. Sezonun tüm bölümleri izlendi!` : `${currentActiveSeason}. Sezon izlenmedi olarak işaretlendi.`, targetWatched ? 'success' : 'info');
@@ -210,7 +211,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
   };
 }
 
-async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath = '', backdropPath = '', originalTitle = '', validSeasons = [], onStatusChange = null) {
+async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath = '', backdropPath = '', originalTitle = '', validSeasons = [], onStatusChange = null, isAnime = false) {
   const gridContainer = container.querySelector('#episode-grid-container');
   if (!gridContainer) return;
 
@@ -391,7 +392,8 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
         title: seriesTitle,
         posterPath,
         backdropPath,
-        type: 'tv'
+        type: isAnime ? 'anime' : 'tv',
+        isAnime
       });
 
       const isNowCompleted = updated.completed;
@@ -439,7 +441,8 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
         title: seriesTitle,
         posterPath,
         backdropPath,
-        type: 'tv',
+        type: isAnime ? 'anime' : 'tv',
+        isAnime,
         duration: 2700
       });
 
@@ -480,7 +483,8 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
       const startTime = historyRecord ? historyRecord.currentTime : 0;
 
       openPlayerModal({
-        type: 'tv',
+        type: isAnime ? 'anime' : 'tv',
+        isAnime,
         tmdbId: tvId,
         title: `${seriesTitle} - S${season}E${episode}: ${epTitle}`,
         seriesTitle,

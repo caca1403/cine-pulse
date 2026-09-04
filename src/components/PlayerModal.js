@@ -22,7 +22,10 @@ import {
   isMediaWatched,
   toggleEpisodeWatched,
   markEpisodeWatched,
-  markMediaWatched
+  markMediaWatched,
+  registerAnimeId,
+  isRegisteredAnimeId,
+  isAnimeRecord
 } from '../services/storage.js';
 import { showToast } from './Toast.js';
 
@@ -34,6 +37,7 @@ let activeHlsInstance = null;
 
 export async function openPlayerModal({
   type = 'tv',
+  isAnime = false,
   tmdbId,
   title = '',
   seriesTitle = '',
@@ -78,6 +82,18 @@ export async function openPlayerModal({
   let isDrawerOpen = false;
   let isShortcutsOpen = false;
 
+  let effectiveIsAnime = Boolean(
+    isAnime ||
+    type === 'anime' ||
+    (tmdbId && isRegisteredAnimeId(tmdbId)) ||
+    isAnimeRecord({ id: tmdbId, title, seriesTitle, originalTitle })
+  );
+  if (effectiveIsAnime && tmdbId) {
+    registerAnimeId(tmdbId);
+  }
+
+  const isSeries = type === 'tv' || (type !== 'movie' && (Boolean(season) || Boolean(episode) || (Array.isArray(seasonsList) && seasonsList.length > 0) || currentSeason > 0));
+
   const rawSeries = seriesTitle || title || '';
   const cleanSeriesName = rawSeries
     .replace(/\s*-\s*S\d+E\d+.*$/i, '')
@@ -87,16 +103,22 @@ export async function openPlayerModal({
     .replace(/\s*\(\d{4}\).*/, '')
     .trim();
 
-  // Async fetch TMDB metadata (seasons, missing poster/backdrop)
+  // Async fetch TMDB metadata (seasons, missing poster/backdrop, anime check)
   if (tmdbId) {
-    const tmdbEndpoint = type === 'tv' ? `https://api.themoviedb.org/3/tv/${tmdbId}` : `https://api.themoviedb.org/3/movie/${tmdbId}`;
+    const tmdbEndpoint = (!isSeries && type === 'movie') ? `https://api.themoviedb.org/3/movie/${tmdbId}` : `https://api.themoviedb.org/3/tv/${tmdbId}`;
     fetch(`${tmdbEndpoint}?api_key=${TMDB_API_KEY}&language=tr-TR`)
       .then(res => res.json())
       .then(data => {
         if (data) {
           if (!posterPath && data.poster_path) posterPath = data.poster_path;
           if (!backdropPath && data.backdrop_path) backdropPath = data.backdrop_path;
-          if (type === 'tv' && data.seasons && currentSeasonsList.length === 0) {
+          const isJp = data.original_language === 'ja' || (Array.isArray(data.origin_country) && data.origin_country.includes('JP'));
+          const hasAnim = Array.isArray(data.genres) && data.genres.some(g => g.id === 16 || /anim/i.test(g.name));
+          if (isJp && hasAnim) {
+            effectiveIsAnime = true;
+            registerAnimeId(tmdbId);
+          }
+          if (isSeries && data.seasons && currentSeasonsList.length === 0) {
             currentSeasonsList = data.seasons.filter(s => s.season_number > 0);
             updateNavButtons();
             if (isDrawerOpen) renderDrawerContent();
@@ -130,7 +152,7 @@ export async function openPlayerModal({
   }
 
   function getDisplayTitle() {
-    return type === 'tv'
+    return isSeries
       ? `${cleanSeriesName} • S${currentSeason} B${currentEpisode}`
       : cleanSeriesName;
   }
@@ -180,7 +202,7 @@ export async function openPlayerModal({
           </div>
           <div class="player-loader-text">
             <h3>${cleanSeriesName}</h3>
-            <p class="player-loader-sub">${type === 'tv' ? `Sezon ${currentSeason} • Bölüm ${currentEpisode}` : '4K Ultra HD Film Yayını'} Başlatılıyor...</p>
+            <p class="player-loader-sub">${isSeries ? `Sezon ${currentSeason} • Bölüm ${currentEpisode}` : '4K Ultra HD Film Yayını'} Başlatılıyor...</p>
             <p class="player-loader-hint">Türkiye ve küresel CDN hatları taranıyor... <span class="player-countdown-badge"><span class="server-pulse-dot"></span> Canlı Tarama: ${countdownSeconds}s</span></p>
           </div>
         </div>
@@ -310,6 +332,7 @@ export async function openPlayerModal({
       <iframe 
         id="video-iframe" 
         src="${finalIframeUrl}" 
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
         allowfullscreen="true"
         webkitallowfullscreen="true"
         mozallowfullscreen="true"
@@ -320,7 +343,7 @@ export async function openPlayerModal({
   }
 
   function renderFooterNavButtonsHTML() {
-    if (type !== 'tv') return '';
+    if (!isSeries) return '';
 
     const currentSeasonEpCount = getSeasonEpisodeCount(currentSeason);
     const hasNextSeason = currentSeasonsList.some(s => s.season_number === currentSeason + 1);
@@ -487,7 +510,7 @@ export async function openPlayerModal({
         </div>
 
         <!-- Mobile Always-Open Horizontal Episodes & Season Selector (Middle Rail) -->
-        ${type === 'tv' ? `
+        ${isSeries ? `
           <div class="mobile-episodes-section" id="mobile-episodes-section">
             <div class="mobile-episodes-header">
               <div class="mobile-episodes-title">
@@ -512,7 +535,7 @@ export async function openPlayerModal({
         ` : ''}
 
         <!-- Desktop Netflix-Style In-Player Episode Selector Drawer (Desktop Only) -->
-        ${type === 'tv' ? `
+        ${isSeries ? `
           <div class="in-player-drawer hidden" id="player-episode-drawer">
             <div class="drawer-header">
               <div class="drawer-header-left">
@@ -797,8 +820,8 @@ export async function openPlayerModal({
     if (window.lucide) window.lucide.createIcons();
   }
 
-  // Trigger initial drawer & mobile episode rail rendering for TV
-  if (type === 'tv') {
+  // Trigger initial drawer & mobile episode rail rendering for TV & Anime series
+  if (isSeries) {
     renderDrawerContent();
   }
   async function renderQuickEpisodesRail() {
@@ -946,7 +969,8 @@ export async function openPlayerModal({
           title: cleanSeriesName,
           posterPath,
           backdropPath,
-          type,
+          type: effectiveIsAnime ? 'anime' : (isSeries ? 'tv' : 'movie'),
+          isAnime: effectiveIsAnime,
           duration: estimatedDuration
         });
         const action = nextEpBtn.getAttribute('data-action');
@@ -963,12 +987,13 @@ export async function openPlayerModal({
 
   const handleToggleWatched = () => {
     isWatched = !isWatched;
-    if (type === 'tv') {
+    if (isSeries) {
       markEpisodeWatched(tmdbId, currentSeason, currentEpisode, isWatched, {
         title: cleanSeriesName,
         posterPath,
         backdropPath,
-        type,
+        type: effectiveIsAnime ? 'anime' : 'tv',
+        isAnime: effectiveIsAnime,
         duration: estimatedDuration
       });
     } else {
@@ -976,7 +1001,8 @@ export async function openPlayerModal({
         title: cleanSeriesName,
         posterPath,
         backdropPath,
-        type,
+        type: effectiveIsAnime ? 'anime' : 'movie',
+        isAnime: effectiveIsAnime,
         duration: estimatedDuration
       });
     }
@@ -995,7 +1021,7 @@ export async function openPlayerModal({
     });
 
     showToast(isWatched ? '✓ İzlendi olarak işaretlendi.' : 'İzlendi işareti kaldırıldı.', 'success');
-    if (type === 'tv') renderDrawerContent();
+    if (isSeries) renderDrawerContent();
     if (window.lucide) window.lucide.createIcons();
   };
 
@@ -1005,7 +1031,9 @@ export async function openPlayerModal({
       title: cleanSeriesName,
       posterPath,
       backdropPath,
-      type,
+      type: effectiveIsAnime ? 'anime' : (isSeries ? 'tv' : 'movie'),
+      isAnime: effectiveIsAnime,
+      isSeries: isSeries,
       season: currentSeason,
       episode: currentEpisode,
       currentTime: 1200,
@@ -1466,7 +1494,7 @@ export async function openPlayerModal({
     });
 
     updateNavButtons();
-    if (type === 'tv') renderDrawerContent();
+    if (isSeries) renderDrawerContent();
 
     simulatedCurrentTime = initialTime;
     isSwitchingEpisode = false;
@@ -1486,7 +1514,7 @@ export async function openPlayerModal({
           if (icon) icon.setAttribute('data-lucide', 'check-circle-2');
           btn.classList.add('watched-active');
         });
-        if (type === 'tv') renderDrawerContent();
+        if (isSeries) renderDrawerContent();
         if (window.lucide) window.lucide.createIcons();
       }
       saveWatchProgress({
@@ -1494,7 +1522,9 @@ export async function openPlayerModal({
         title: cleanSeriesName,
         posterPath,
         backdropPath,
-        type,
+        type: effectiveIsAnime ? 'anime' : (isSeries ? 'tv' : 'movie'),
+        isAnime: effectiveIsAnime,
+        isSeries: isSeries,
         season: currentSeason,
         episode: currentEpisode,
         currentTime: simulatedCurrentTime,
@@ -1549,6 +1579,10 @@ export async function openPlayerModal({
       activeHlsInstance.destroy();
       activeHlsInstance = null;
     }
+    if (originalWindowOpen) {
+      window.open = originalWindowOpen;
+      originalWindowOpen = null;
+    }
     const iframe = document.getElementById('video-iframe');
     if (iframe) iframe.src = 'about:blank';
     modalContainer.classList.add('hidden');
@@ -1587,7 +1621,7 @@ export async function openPlayerModal({
         document.exitFullscreen().catch(() => {});
       }
     } else if (e.key === 'e' || e.key === 'E' || e.key === 'b' || e.key === 'B') {
-      if (type === 'tv') {
+      if (isSeries) {
         e.preventDefault();
         toggleDrawer();
       }

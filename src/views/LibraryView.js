@@ -21,7 +21,8 @@ import {
   removeFavorite,
   removeWatchlist,
   clearCompletedHistory,
-  clearAllWatchHistory
+  clearAllWatchHistory,
+  syncHistoryAnimeStatus
 } from '../services/storage.js';
 import { renderMediaCard, attachMediaCardEvents, determineMediaType } from '../components/MediaCard.js';
 import { openDataManagerModal } from '../components/DataManagerModal.js';
@@ -624,6 +625,16 @@ export function renderLibraryView() {
       renderActiveTabContent();
       attachMediaCardEvents(container);
       if (window.lucide) window.lucide.createIcons();
+
+      // Background Anime Enrichment: automatically resolves any anime stored as TV series
+      syncHistoryAnimeStatus().then(() => {
+        renderActiveTabContent();
+      }).catch(() => {});
+
+      const onStorageChanged = () => {
+        renderActiveTabContent();
+      };
+      window.addEventListener('sineflix_data_changed', onStorageChanged);
     }
   };
 }

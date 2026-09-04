@@ -1,5 +1,3 @@
-import { extractVidmolyStream } from './streamExtractors.js';
-
 function slugify(text) {
   if (!text) return '';
   return text
@@ -139,19 +137,8 @@ export async function fetchFilmEkseniSources({
         if (src) {
           const isVidmoly = src.includes('vidmoly');
           const fullSrc = src.startsWith('//') ? `https:${src}` : src;
-
-          let direct = null;
-          if (isVidmoly) {
-            try {
-              direct = await extractVidmolyStream(fullSrc);
-            } catch (_) {}
-          }
-
-          const isDirect = !!(direct && direct.url);
-          const finalUrl = direct?.url || fullSrc;
-          const name = isVidmoly
-            ? (isDirect ? 'VidMoly Direct 1080p' : 'VidMoly 1080p')
-            : 'EksenLoad VIP';
+          const finalUrl = fullSrc;
+          const name = isVidmoly ? 'VidMoly 1080p' : 'EksenLoad VIP';
 
           sources.push({
             id: `fex_iframe_${Math.random().toString(36).substring(2, 6)}`,
@@ -160,8 +147,8 @@ export async function fetchFilmEkseniSources({
             badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
             url: finalUrl,
             streamUrl: finalUrl,
-            isHls: isDirect || finalUrl.includes('.m3u8'),
-            isDirectVideo: isDirect,
+            isHls: false,
+            isDirectVideo: false,
             getUrl: () => finalUrl
           });
         }
