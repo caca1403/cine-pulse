@@ -14,6 +14,7 @@
    ========================================================================== */
 
 import { getStreamingServers, getStreamingServersProgressive } from '../services/providerAggregator.js';
+import { resolveDirectStream } from '../services/streamExtractors.js';
 import {
   saveWatchProgress,
   getMediaProgress,
@@ -278,6 +279,14 @@ export async function openPlayerModal({
           </button>
         </div>
       `;
+
+      let tracksHTML = '';
+      if (Array.isArray(srv.subtitles) && srv.subtitles.length > 0) {
+        tracksHTML = srv.subtitles.map((sub, idx) => `
+          <track kind="subtitles" label="${sub.label || 'Altyazı'}" src="${sub.src}" srclang="${(sub.label || '').toLowerCase().includes('türk') ? 'tr' : 'en'}" ${idx === 0 ? 'default' : ''}>
+        `).join('');
+      }
+
       return `
         <div class="direct-video-wrapper">
           <video 
@@ -287,6 +296,7 @@ export async function openPlayerModal({
             playsinline
             webkit-playsinline
             preload="auto">
+            ${tracksHTML}
           </video>
           ${floatingAudioTip}
         </div>
@@ -303,6 +313,7 @@ export async function openPlayerModal({
         allowfullscreen="true"
         webkitallowfullscreen="true"
         mozallowfullscreen="true"
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
         referrerpolicy="${iframeReferrerPolicy}"
         allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *; payment *; screen-wake-lock *; web-share *">
       </iframe>
@@ -1073,7 +1084,7 @@ export async function openPlayerModal({
     });
   }
 
-  function updatePlayerContainer() {
+  async function updatePlayerContainer() {
     const wrapper = document.getElementById('player-iframe-wrapper');
     if (!wrapper) return;
 
@@ -1082,10 +1093,31 @@ export async function openPlayerModal({
       activeHlsInstance = null;
     }
 
+    let srv = activeServers[currentServerIndex];
+
+    // On-the-fly Direct HLS resolution for VidMoly and Alpha Stream embeds
+    if (srv && !srv.isDirectVideo && !srv.isHls) {
+      const rawUrl = (srv.url || srv.streamUrl || '').toLowerCase();
+      if (
+        rawUrl.includes('vidmoly') ||
+        rawUrl.includes('ag2m4') ||
+        rawUrl.includes('agcdn') ||
+        rawUrl.includes('liderfilm') ||
+        (srv.id && srv.id.startsWith('dbl'))
+      ) {
+        try {
+          const direct = await resolveDirectStream(srv);
+          if (direct && (direct.isDirectVideo || direct.isHls)) {
+            srv = direct;
+            activeServers[currentServerIndex] = direct;
+          }
+        } catch (_) {}
+      }
+    }
+
     wrapper.innerHTML = renderPlayerContent();
     if (window.lucide) window.lucide.createIcons();
 
-    const srv = activeServers[currentServerIndex];
     const popoutBtn = document.getElementById('player-popout-btn');
     if (popoutBtn) {
       popoutBtn.href = srv?.streamUrl || srv?.getUrl() || '#';

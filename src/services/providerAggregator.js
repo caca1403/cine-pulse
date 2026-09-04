@@ -23,6 +23,7 @@ import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
 import { fetchFilmkovasiSources } from './multiEmbedScraper.js';
+import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -107,12 +108,20 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
+  if (s.isDirectVideo || s.isHls) {
+    if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'VidMoly Direct 1080p';
+    if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 'Alpha Stream Direct 1080p';
+    if (id.startsWith('dzp_') || raw.includes('dizipal')) return 'DP Direct 1080p';
+    if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 'AX Tau Direct 1080p';
+    if (id.startsWith('snx') || raw.includes('direct') || url.includes('.mkv') || url.includes('.mp4')) return 'Sinewix Direct 1080p';
+  }
+
   if (url.includes('rapidrame') || url.includes('rapid') || raw.includes('rapid')) return 'Rapid FastStream 1080p';
   if (url.includes('closeload') || raw.includes('closeload')) return 'Closeload HD';
   if (url.includes('filmmakinesi') || raw.includes('filmmakinesi')) return 'FilmMakinesi VIP';
   if (id.startsWith('snx') || raw.includes('direct') || url.includes('.mkv') || url.includes('.webm') || url.includes('sinewix')) return 'Direct 1080p';
   if (id.startsWith('szd_')) {
-    if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'SZ VidMoly 1080p';
+    if (url.includes('vidmoly') || raw.includes('vidmoly')) return s.isDirectVideo ? 'SZ VidMoly Direct 1080p' : 'SZ VidMoly 1080p';
     if (url.includes('sibnet') || raw.includes('sibnet')) return 'SZ Sibnet HD';
     if (url.includes('netu') || raw.includes('netu')) return 'SZ Netu HD';
   }
@@ -123,14 +132,14 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
     if (url.includes('upstream')) return 'FK UpStream HD';
     return 'FK FilmKovası VIP';
   }
-  if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'VidMoly 1080p';
+  if (url.includes('vidmoly') || raw.includes('vidmoly')) return s.isDirectVideo ? 'VidMoly Direct 1080p' : 'VidMoly 1080p';
   if (url.includes('sibnet') || raw.includes('sibnet')) return 'Sibnet HD';
   if (url.includes('videosoft') || raw.includes('videosoft')) return 'VideoSoft Fast';
   if (url.includes('vidrame') || raw.includes('vidrame')) return 'Vidrame Pro';
   if (url.includes('eksenload') || url.includes('vidload') || raw.includes('eksen')) return 'EksenLoad VIP';
   if (url.includes('vidmody') || raw.includes('vidmody')) return 'VidMody Ultra';
-  if (id.startsWith('dzp_') || raw.includes('dizipal')) return 'DP Stream 1080p';
-  if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 'Alpha Stream';
+  if (id.startsWith('dzp_') || raw.includes('dizipal')) return s.isDirectVideo ? 'DP Direct 1080p' : 'DP Stream 1080p';
+  if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return s.isDirectVideo ? 'Alpha Stream Direct 1080p' : 'Alpha Stream';
   if (url.includes('storage.diziyou') || id.startsWith('dzy')) return 'HLS FastCDN';
   if (url.includes('videasy') || id.startsWith('vds_') || raw.includes('videasy')) return 'Videasy Ultra 1080p';
   if (url.includes('smashy') || raw.includes('smashy')) return 'Smashy 1080p';
@@ -141,12 +150,12 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) {
     if (url.includes('tau-video') || raw.includes('tau')) return 'AX Tau 1080p';
     if (url.includes('sibnet') || raw.includes('sibnet')) return 'AX Sibnet HD';
-    if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'AX VidMoly 1080p';
+    if (url.includes('vidmoly') || raw.includes('vidmoly')) return s.isDirectVideo ? 'AX VidMoly Direct 1080p' : 'AX VidMoly 1080p';
     if (url.includes('dood') || raw.includes('dood')) return 'AX Doodstream';
     return 'AX VIP 1080p';
   }
   if (id.startsWith('ta_') || raw.includes('turkanime') || raw.includes('tr anime')) {
-    if (url.includes('vidmoly')) return 'TR Anime (VidMoly 1080p)';
+    if (url.includes('vidmoly')) return s.isDirectVideo ? 'TR Anime (VidMoly Direct 1080p)' : 'TR Anime (VidMoly 1080p)';
     if (url.includes('sibnet')) return 'TR Anime (Sibnet HD)';
     if (url.includes('dood')) return 'TR Anime (Doodstream)';
     return 'TR Anime HD (Ek Kaynak)';
@@ -172,10 +181,11 @@ function formatStreamItem(s, category, fallbackName) {
     displayName: engineName,
     badge: badge,
     category: category,
-    isHls: s.isHls,
-    isDirectVideo: s.isDirectVideo,
+    isHls: s.isHls || (s.streamUrl || s.url || '').includes('.m3u8'),
+    isDirectVideo: s.isDirectVideo || false,
     streamUrl: s.streamUrl || s.url,
     url: s.streamUrl || s.url,
+    subtitles: s.subtitles || [],
     getUrl: () => s.streamUrl || s.url
   };
 }
@@ -217,18 +227,27 @@ function getStreamPriorityScore(s) {
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
-  // Priority 1: High-Speed Direct & Native Turkish / AnimeciX streams
-  if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 1;
-  if (id.startsWith('snx') || raw.includes('direct') || url.includes('.mkv') || url.includes('.mp4') || url.includes('.webm')) return 2;
-  if (url.includes('storage.diziyou') || id.startsWith('dzy') || raw.includes('fastcdn')) return 3;
-  if (id.startsWith('dzp_') || raw.includes('dizipal')) return 4;
-  if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 4;
-  if (url.includes('rapidrame') || url.includes('closeload') || url.includes('filmmakinesi')) return 5;
-  if (url.includes('sibnet') || raw.includes('sibnet')) return 6;
-  if (url.includes('vidmoly') || raw.includes('vidmoly')) return 7;
-  if (id.startsWith('hdi_') || id.startsWith('flm_') || id.startsWith('szn_')) return 8;
+  // Priority 1: High-Speed Direct & Native Turkish / AnimeciX streams (No Ads)
+  if (s.isDirectVideo || s.isHls || url.includes('.m3u8') || url.includes('.mp4')) {
+    if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 1;
+    if (id.startsWith('snx') || raw.includes('sinewix')) return 1;
+    if (url.includes('ag2m4') || url.includes('agcdn') || id.startsWith('dbl') || id.startsWith('dzp_')) return 2;
+    if (url.includes('vidmoly') || raw.includes('vidmoly')) return 2;
+    if (url.includes('storage.diziyou') || id.startsWith('dzy')) return 3;
+    return 3;
+  }
+
+  if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 4;
+  if (id.startsWith('snx') || raw.includes('direct') || url.includes('.mkv') || url.includes('.mp4') || url.includes('.webm')) return 4;
+  if (url.includes('storage.diziyou') || id.startsWith('dzy') || raw.includes('fastcdn')) return 5;
+  if (id.startsWith('dzp_') || raw.includes('dizipal')) return 6;
+  if (url.includes('ag2m4') || url.includes('agcdn') || raw.includes('alpha') || id.startsWith('dbl')) return 6;
+  if (url.includes('rapidrame') || url.includes('closeload') || url.includes('filmmakinesi')) return 7;
+  if (url.includes('sibnet') || raw.includes('sibnet')) return 8;
+  if (url.includes('vidmoly') || raw.includes('vidmoly')) return 9;
+  if (id.startsWith('hdi_') || id.startsWith('flm_') || id.startsWith('szn_')) return 10;
   // TR Anime sources
-  if (id.startsWith('ta_') || raw.includes('tr anime') || raw.includes('turkanime')) return 9;
+  if (id.startsWith('ta_') || raw.includes('tr anime') || raw.includes('turkanime')) return 11;
 
   // Fallback Global Embeds (Working only)
   if (url.includes('smashy') || raw.includes('smashy')) return 20;
