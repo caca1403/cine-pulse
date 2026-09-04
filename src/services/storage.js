@@ -728,7 +728,9 @@ export function toggleFavorite(media) {
     favs.splice(index, 1);
   } else {
     let resolvedType = media.type;
-    if (!resolvedType) {
+    if (isAnimeRecord(media)) {
+      resolvedType = 'anime';
+    } else if (!resolvedType) {
       resolvedType = (media.first_air_date || media.media_type === 'tv' || media.number_of_seasons || (!media.title && media.name)) ? 'tv' : 'movie';
     }
     const poster = media.poster_path || media.posterPath || media.poster || '';
@@ -744,6 +746,11 @@ export function toggleFavorite(media) {
       vote_average: media.vote_average || media.voteAverage || 8.0,
       release_date: media.release_date || media.first_air_date || '',
       first_air_date: media.first_air_date || '',
+      genre_ids: media.genre_ids || (Array.isArray(media.genres) ? media.genres.map(g => (typeof g === 'object' ? g.id : g)) : []),
+      genres: media.genres || [],
+      original_language: media.original_language || '',
+      origin_country: media.origin_country || [],
+      isAnime: isAnimeRecord(media),
       type: resolvedType,
       addedAt: Date.now()
     });
@@ -785,7 +792,9 @@ export function toggleWatchlist(media) {
     list.splice(index, 1);
   } else {
     let resolvedType = media.type;
-    if (!resolvedType) {
+    if (isAnimeRecord(media)) {
+      resolvedType = 'anime';
+    } else if (!resolvedType) {
       resolvedType = (media.first_air_date || media.media_type === 'tv' || media.number_of_seasons || (!media.title && media.name)) ? 'tv' : 'movie';
     }
     const poster = media.poster_path || media.posterPath || media.poster || '';
@@ -801,6 +810,11 @@ export function toggleWatchlist(media) {
       vote_average: media.vote_average || media.voteAverage || 8.0,
       release_date: media.release_date || media.first_air_date || '',
       first_air_date: media.first_air_date || '',
+      genre_ids: media.genre_ids || (Array.isArray(media.genres) ? media.genres.map(g => (typeof g === 'object' ? g.id : g)) : []),
+      genres: media.genres || [],
+      original_language: media.original_language || '',
+      origin_country: media.origin_country || [],
+      isAnime: isAnimeRecord(media),
       type: resolvedType,
       addedAt: Date.now()
     });
