@@ -23,6 +23,8 @@ import { fetchDmaxTlcSources } from './dmaxTlcScraper.js';
 import { fetchDiziyouSources } from './diziyouScraper.js';
 import { fetchFilmEkseniSources } from './filmekseniScraper.js';
 import { fetchFilmkovasiSources } from './multiEmbedScraper.js';
+import { fetchFilmizlechSources } from './filmizlechScraper.js';
+import { fetchAyfilmSources } from './ayfilmScraper.js';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -145,6 +147,8 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (url.includes('multiembed') || raw.includes('multiembed')) return 'MultiEmbed VIP';
   if (url.includes('vidlink') || raw.includes('vidlink')) return 'VidLink Pro';
   if (url.includes('vidbinge') || raw.includes('vidbinge')) return 'VidBinge Fast';
+  if (id.startsWith('flm_') || raw.includes('filmizlech')) return 'FLM VIP 1080p';
+  if (id.startsWith('ayf_') || raw.includes('ayfilm')) return 'AyFilm VIP 1080p';
   if (raw.includes('channel') || url.includes('filmizlech')) return 'Channel Stream 1080p';
   if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) {
     if (url.includes('tau-video') || raw.includes('tau')) return 'AX Tau 1080p';
@@ -242,7 +246,7 @@ function getStreamPriorityScore(s) {
   if (url.includes('rapidrame') || url.includes('closeload') || url.includes('filmmakinesi')) return 7;
   if (url.includes('sibnet') || raw.includes('sibnet')) return 8;
   if (url.includes('vidmoly') || raw.includes('vidmoly')) return 9;
-  if (id.startsWith('hdi_') || id.startsWith('flm_') || id.startsWith('szn_')) return 10;
+  if (id.startsWith('hdi_') || id.startsWith('flm_') || id.startsWith('ayf_') || id.startsWith('szn_')) return 8;
   // TR Anime sources
   if (id.startsWith('ta_') || raw.includes('tr anime') || raw.includes('turkanime')) return 11;
 
@@ -375,6 +379,18 @@ export async function getStreamingServersProgressive({
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    // Filmizlech (Movies & TV Series - Dubbed & Subtitled)
+    fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    fetchFilmizlechSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    // AyFilm (Movies - Dubbed & Subtitled)
+    isMovie ? fetchAyfilmSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
+    isMovie ? fetchAyfilmSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
     fetchBelgeselSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => [])
