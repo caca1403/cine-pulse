@@ -9,29 +9,92 @@ import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRem
 import { openPlayerModal } from './PlayerModal.js';
 import { saveAllScrollState } from '../services/scrollManager.js';
 
-export function determineMediaType(item) {
-  if (!item) return 'movie';
-  if (item.type === 'tv' || item.type === 'anime' || item.type === 'documentary') {
-    return item.type;
+export function isAnimeItem(item) {
+  if (!item) return false;
+  if (item.type === 'anime' || item.media_type === 'anime' || item.isAnime) return true;
+
+  const genreIds = item.genre_ids || (Array.isArray(item.genres) ? item.genres.map(g => (typeof g === 'object' ? g.id : g)) : []);
+  const hasAnimationGenre = genreIds.some(id => Number(id) === 16);
+  const isJapanese = item.original_language === 'ja' || (Array.isArray(item.origin_country) && item.origin_country.includes('JP'));
+
+  if (hasAnimationGenre && isJapanese) return true;
+
+  if (Array.isArray(item.genres)) {
+    const genreNames = item.genres.map(g => (typeof g === 'object' ? g.name : String(g))).filter(Boolean);
+    if (genreNames.some(n => /anime/i.test(n))) return true;
   }
-  // Smart detection if type wasn't explicitly saved
+
+  if (typeof item.id === 'string' && (item.id.startsWith('ta_') || item.id.startsWith('acx_') || item.id.startsWith('tra_'))) {
+    return true;
+  }
+
+  const rawTitle = (item.title || item.name || item.original_title || item.original_name || '').toLowerCase();
+  if (rawTitle.includes('anime')) return true;
+
+  return false;
+}
+
+export function isSeriesItem(item) {
+  if (!item) return false;
   if (
     item.first_air_date ||
-    item.media_type === 'tv' ||
-    (item.season && Number(item.season) > 0) ||
-    (item.episode && Number(item.episode) > 0) ||
     item.number_of_seasons ||
     item.episodesCount ||
-    (!item.title && item.name)
+    (Array.isArray(item.seasons) && item.seasons.length > 0)
   ) {
+    return true;
+  }
+  if (item.type === 'tv' || item.media_type === 'tv') {
+    return true;
+  }
+  if (item.type === 'movie' || item.media_type === 'movie' || (item.release_date && !item.first_air_date)) {
+    return false;
+  }
+  return false;
+}
+
+export function determineMediaType(item) {
+  if (!item) return 'movie';
+
+  // 1. Anime Detection
+  if (isAnimeItem(item)) {
+    return 'anime';
+  }
+
+  // 2. Documentary Detection
+  if (item.type === 'documentary' || item.media_type === 'documentary') {
+    return 'documentary';
+  }
+  const genreIds = item.genre_ids || (Array.isArray(item.genres) ? item.genres.map(g => (typeof g === 'object' ? g.id : g)) : []);
+  if (genreIds.some(id => Number(id) === 99)) {
+    return 'documentary';
+  }
+
+  // 3. Explicit Movie Check (Do NOT misclassify movies with progress timestamps)
+  if (item.type === 'movie' || item.media_type === 'movie') {
+    return 'movie';
+  }
+
+  // 4. Explicit TV Check
+  if (item.type === 'tv' || item.media_type === 'tv') {
     return 'tv';
   }
+
+  // 5. Smart Inference
+  if (isSeriesItem(item)) {
+    return 'tv';
+  }
+
   return 'movie';
 }
 
 export function renderMediaCard(item, options = {}) {
   const id = item.id;
-  const type = determineMediaType(item);
+  const mediaType = determineMediaType(item);
+  const isAnime = isAnimeItem(item) || mediaType === 'anime';
+  const isSeries = isSeriesItem(item);
+  const effectivePlayerType = isSeries ? 'tv' : 'movie';
+
   let rawTitle = item.title || item.name || '';
   if (!rawTitle || hasNonLatinCharacters(rawTitle)) {
     rawTitle = item.title_en || item.name_en || item.original_name || item.original_title || rawTitle || 'İsimsiz İçerik';
@@ -65,7 +128,7 @@ export function renderMediaCard(item, options = {}) {
       if (!isCompleted && prog.duration > 0 && prog.currentTime > 15) {
         progressPercent = Math.min(100, Math.round((prog.currentTime / prog.duration) * 100));
         currentTime = prog.currentTime;
-        if (type === 'tv') {
+        if (isSeries) {
           season = prog.season || 1;
           episode = prog.episode || 1;
         }
@@ -76,15 +139,20 @@ export function renderMediaCard(item, options = {}) {
   // Type Tag Labels & Styles
   let typeLabel = 'FİLM';
   let typeClass = 'type-movie';
-  if (type === 'tv') {
-    typeLabel = 'DİZİ';
-    typeClass = 'type-tv';
-  } else if (type === 'anime') {
+  let detailedTypeLabel = 'Film';
+
+  if (isAnime) {
     typeLabel = 'ANİME';
     typeClass = 'type-anime';
-  } else if (type === 'documentary') {
+    detailedTypeLabel = isSeries ? 'Anime Dizisi' : 'Anime Filmi';
+  } else if (mediaType === 'tv' || isSeries) {
+    typeLabel = 'DİZİ';
+    typeClass = 'type-tv';
+    detailedTypeLabel = 'Dizi';
+  } else if (mediaType === 'documentary') {
     typeLabel = 'BELGESEL';
     typeClass = 'type-doc';
+    detailedTypeLabel = 'Belgesel';
   }
 
   const encodedTitle = encodeURIComponent(title);
