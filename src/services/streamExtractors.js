@@ -165,30 +165,13 @@ export async function extractAlphaStream(embedUrl) {
 }
 
 /**
- * Universal resolver: checks if a URL is VidMoly or AlphaStream and extracts direct stream.
+ * Universal resolver: checks if a URL is AlphaStream and extracts direct stream.
  */
 export async function resolveDirectStream(streamObj) {
   if (!streamObj) return null;
   const url = (streamObj.url || streamObj.streamUrl || (typeof streamObj.getUrl === 'function' ? streamObj.getUrl() : '') || '').toLowerCase();
 
-  // 1. VidMoly
-  if (url.includes('vidmoly')) {
-    const rawUrl = streamObj.url || streamObj.streamUrl || streamObj.getUrl();
-    const direct = await extractVidmolyStream(rawUrl);
-    if (direct && direct.url) {
-      return {
-        ...streamObj,
-        isHls: true,
-        isDirectVideo: true,
-        originalEmbedUrl: rawUrl,
-        streamUrl: direct.url,
-        url: direct.url,
-        getUrl: () => direct.url
-      };
-    }
-  }
-
-  // 2. Alpha Stream (ag2m4 / agcdn / liderfilm)
+  // Alpha Stream (ag2m4 / agcdn / liderfilm)
   if (url.includes('ag2m4') || url.includes('agcdn') || url.includes('liderfilm') || (streamObj.id && streamObj.id.startsWith('dbl'))) {
     const rawUrl = streamObj.url || streamObj.streamUrl || streamObj.getUrl();
     const direct = await extractAlphaStream(rawUrl);

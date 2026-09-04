@@ -313,7 +313,6 @@ export async function openPlayerModal({
         allowfullscreen="true"
         webkitallowfullscreen="true"
         mozallowfullscreen="true"
-        sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
         referrerpolicy="${iframeReferrerPolicy}"
         allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *; payment *; screen-wake-lock *; web-share *">
       </iframe>
@@ -1095,11 +1094,10 @@ export async function openPlayerModal({
 
     let srv = activeServers[currentServerIndex];
 
-    // On-the-fly Direct HLS resolution for VidMoly and Alpha Stream embeds
+    // On-the-fly Direct HLS resolution for Alpha Stream embeds
     if (srv && !srv.isDirectVideo && !srv.isHls) {
       const rawUrl = (srv.url || srv.streamUrl || '').toLowerCase();
       if (
-        rawUrl.includes('vidmoly') ||
         rawUrl.includes('ag2m4') ||
         rawUrl.includes('agcdn') ||
         rawUrl.includes('liderfilm') ||

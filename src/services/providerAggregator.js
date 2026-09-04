@@ -202,8 +202,6 @@ function isValidStream(s) {
     'voe.sx',
     'bysejikuar',
     'filemoon',
-    'liderfilm',
-    'dizipal.bid',
     'hdfilmdelisi',
     'vidrame',
     '2embed',
