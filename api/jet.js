@@ -1,16 +1,23 @@
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
+export const config = {
+  runtime: 'edge'
+};
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+export default async function handler(request) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': '*'
+      }
+    });
   }
 
   try {
-    const urlObj = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
+    const urlObj = new URL(request.url);
 
-    let subPath = req.query?.path || urlObj.searchParams.get('path');
+    let subPath = urlObj.searchParams.get('path');
     if (!subPath) {
       subPath = urlObj.pathname.replace(/^\/api\/jet\/?/, '');
     }
@@ -23,38 +30,50 @@ export default async function handler(req, res) {
 
     const targetUrl = `https://jetfilmizle.now${subPath}${queryString}`;
 
-    const customHeaders = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Referer': 'https://jetfilmizle.now/',
-      'Origin': 'https://jetfilmizle.now',
-      'X-Requested-With': 'XMLHttpRequest'
-    };
+    const headers = new Headers();
+    headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+    headers.set('Referer', 'https://jetfilmizle.now/');
+    headers.set('Origin', 'https://jetfilmizle.now');
+    headers.set('X-Requested-With', 'XMLHttpRequest');
 
-    let body = undefined;
-    if (req.method === 'POST') {
-      customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
-      if (Buffer.isBuffer(req.body)) {
-        body = req.body.toString('utf-8');
-      } else if (typeof req.body === 'object' && req.body !== null) {
-        body = new URLSearchParams(req.body).toString();
-      } else {
-        body = req.body;
-      }
+    let body = null;
+    if (request.method === 'POST') {
+      headers.set('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+      body = await request.text();
     }
 
-    const upstreamRes = await fetch(targetUrl, {
-      method: req.method,
-      headers: customHeaders,
-      body: body
+    let upstreamRes = await fetch(targetUrl, {
+      method: request.method,
+      headers,
+      body
+    }).catch(() => null);
+
+    // Fallback to Cloudflare Worker Gateway if blocked on GET
+    if ((!upstreamRes || upstreamRes.status === 403) && request.method === 'GET') {
+      upstreamRes = await fetch(`https://wild-credit-e1ae.cagatayca07.workers.dev?url=${encodeURIComponent(targetUrl)}`).catch(() => null);
+    }
+
+    if (!upstreamRes) {
+      return new Response(JSON.stringify({ error: 'Upstream fetch failed' }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    const responseHeaders = new Headers();
+    responseHeaders.set('Access-Control-Allow-Origin', '*');
+    responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    responseHeaders.set('Access-Control-Allow-Headers', '*');
+    responseHeaders.set('Content-Type', upstreamRes.headers.get('content-type') || 'text/html; charset=utf-8');
+
+    return new Response(upstreamRes.body, {
+      status: upstreamRes.status,
+      headers: responseHeaders
     });
-
-    const contentType = upstreamRes.headers.get('content-type') || 'text/html; charset=utf-8';
-    res.setHeader('Content-Type', contentType);
-
-    const buffer = await upstreamRes.arrayBuffer();
-    return res.status(upstreamRes.status).send(Buffer.from(buffer));
   } catch (err) {
-    console.error('Jet Proxy Error:', err);
-    return res.status(500).json({ error: err.message });
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    });
   }
 }
