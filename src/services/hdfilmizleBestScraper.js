@@ -21,6 +21,29 @@ function normalizeTitle(str) {
 }
 
 async function fetchSafe(targetUrl, options = {}) {
+  const isBrowser = typeof window !== 'undefined';
+  const customRef = options.headers?.['Referer'] || options.headers?.['referer'] || '';
+  const refQuery = customRef ? `&ref=${encodeURIComponent(customRef)}` : '';
+  const proxyUrl = isBrowser
+    ? `/api/proxy?url=${encodeURIComponent(targetUrl)}${refQuery}`
+    : `http://localhost:4000/proxy?url=${encodeURIComponent(targetUrl)}${refQuery}`;
+
+  const safeHeaders = { ...(options.headers || {}) };
+  if (customRef) {
+    safeHeaders['X-Proxy-Referer'] = customRef;
+  }
+
+  // 1. Try local proxy first (bypasses browser CORS restrictions)
+  try {
+    const res = await fetch(proxyUrl, {
+      ...options,
+      headers: safeHeaders,
+      signal: AbortSignal.timeout(options.timeout || 4500)
+    }).catch(() => null);
+    if (res && res.ok) return res;
+  } catch (_) {}
+
+  // 2. Direct fetch (for Node.js environments)
   try {
     const res = await fetch(targetUrl, {
       ...options,
@@ -83,8 +106,13 @@ export async function fetchHdfBestMovieSources({
     const normQ = normalizeTitle(query);
     const matched = searchResults.find(r => {
       const normR = normalizeTitle(r.title);
-      return normR === normQ || normR.includes(normQ) || normQ.includes(normR);
-    }) || searchResults[0];
+      const normSlug = normalizeTitle(r.slug);
+      return normR === normQ || normSlug === normQ;
+    }) || searchResults.find(r => {
+      const normR = normalizeTitle(r.title);
+      const normSlug = normalizeTitle(r.slug);
+      return normR.includes(normQ) || normSlug.includes(normQ);
+    });
 
     if (matched) {
       try {

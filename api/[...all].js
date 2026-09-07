@@ -82,7 +82,12 @@ export default async function handler(req, res) {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
         return res.status(upstreamRes.status).send(rewritten);
       } else {
-        res.setHeader('Content-Type', contentType || 'video/mp2t');
+        // HDFilmizle disguises .ts segments as .png to bypass firewalls
+        let finalContentType = contentType;
+        if (decodedTarget.includes('/video/') || decodedTarget.includes('/tur/') || decodedTarget.includes('/eng/') || decodedTarget.includes('.png') || decodedTarget.includes('.ts')) {
+          finalContentType = 'video/mp2t';
+        }
+        res.setHeader('Content-Type', finalContentType || 'video/mp2t');
         const buf = await upstreamRes.arrayBuffer();
         return res.status(upstreamRes.status).send(Buffer.from(buf));
       }
@@ -166,7 +171,7 @@ export default async function handler(req, res) {
     customHeaders['Referer'] = 'https://dizibal.com/';
   } else if (pathname.startsWith('/api/dzp')) {
     const subPath = pathname.replace(/^\/api\/dzp/, '');
-    targetUrl = `https://dizipal.bid${subPath}${search}`;
+    targetUrl = `https://dizipal1229.com${subPath}${search}`;
   } else if (pathname.startsWith('/api/flz')) {
     const subPath = pathname.replace(/^\/api\/flz/, '');
     targetUrl = `https://filmizlech.com${subPath}${search}`;
@@ -278,6 +283,79 @@ export default async function handler(req, res) {
     customHeaders['Referer'] = 'https://filmmakinesi.to/';
     customHeaders['Origin'] = 'https://filmmakinesi.to';
     customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  } else if (pathname.startsWith('/api/proxy')) {
+    const rawTarget = urlObj.searchParams.get('url') || '';
+    if (!rawTarget) return res.status(400).send('Missing url param');
+    targetUrl = decodeURIComponent(rawTarget);
+
+    let targetOrigin = '';
+    try { targetOrigin = new URL(targetUrl).origin + '/'; } catch (_) {}
+
+    const ref = urlObj.searchParams.get('ref') || req.headers['x-proxy-referer'] || req.headers['referer'] || targetOrigin;
+    if (ref) customHeaders['Referer'] = decodeURIComponent(ref);
+    if (targetOrigin) customHeaders['Origin'] = new URL(targetUrl).origin;
+
+    customHeaders['User-Agent'] = req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    if (req.headers['x-hdf-nonce']) customHeaders['X-HDF-Nonce'] = req.headers['x-hdf-nonce'];
+    if (req.headers['x-requested-with']) customHeaders['X-Requested-With'] = req.headers['x-requested-with'];
+  } else if (pathname.startsWith('/api/subtitles')) {
+    // WebVTT Subtitle Proxy & OpenSubtitles resolver for Vercel
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+
+    const imdbId = urlObj.searchParams.get('imdbId');
+    const directUrl = urlObj.searchParams.get('url');
+    const season = urlObj.searchParams.get('season');
+    const episode = urlObj.searchParams.get('episode');
+
+    let downloadUrl = directUrl;
+
+    if (!downloadUrl && imdbId) {
+      try {
+        const cleanImdb = imdbId.replace(/^tt/, '');
+        let osUrl = `https://rest.opensubtitles.org/search/imdbid-${cleanImdb}/sublanguageid-tur`;
+        if (season && episode) {
+          osUrl += `/season-${season}/episode-${episode}`;
+        }
+        const osRes = await fetch(osUrl, {
+          headers: { 'User-Agent': 'TemporaryUserAgent', 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(4000)
+        });
+        if (osRes.ok) {
+          const items = await osRes.json();
+          if (Array.isArray(items) && items.length > 0) {
+            downloadUrl = items[0].SubDownloadLink;
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!downloadUrl) {
+      return res.status(200).send('WEBVTT\n\n');
+    }
+
+    try {
+      const zlib = await import('zlib');
+      const subRes = await fetch(downloadUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(5000)
+      });
+      const arrayBuf = await subRes.arrayBuffer();
+      let rawBuffer = Buffer.from(arrayBuf);
+      if (rawBuffer.length > 2 && rawBuffer[0] === 0x1f && rawBuffer[1] === 0x8b) {
+        try {
+          rawBuffer = zlib.gunzipSync(rawBuffer);
+        } catch (_) {}
+      }
+      let text = rawBuffer.toString('utf-8');
+      if (!text.startsWith('WEBVTT')) {
+        text = 'WEBVTT\n\n' + text.replace(/(\d\d:\d\d:\d\d),(\d\d\d)/g, '$1.$2');
+      }
+      return res.status(200).send(text);
+    } catch (_) {
+      return res.status(200).send('WEBVTT\n\n');
+    }
   } else {
     return res.status(404).json({ error: 'Not found' });
   }

@@ -192,7 +192,9 @@ export function renderMediaCard(item, options = {}) {
     detailedTypeLabel = 'Belgesel';
   }
 
+  const originalTitle = item.original_title || item.original_name || '';
   const encodedTitle = encodeURIComponent(title);
+  const encodedOrigTitle = encodeURIComponent(originalTitle);
   const encodedPoster = encodeURIComponent(posterPath || '');
   const encodedBackdrop = encodeURIComponent(backdropPath || '');
   const type = effectivePlayerType;
@@ -203,6 +205,7 @@ export function renderMediaCard(item, options = {}) {
       data-type="${type}" 
       data-isanime="${isAnime ? 'true' : 'false'}"
       data-title="${encodedTitle}" 
+      data-originaltitle="${encodedOrigTitle}"
       data-poster="${encodedPoster}"
       data-backdrop="${encodedBackdrop}"
       data-season="${season}" 
@@ -294,6 +297,7 @@ export function attachMediaCardEvents(container) {
     const episode = parseInt(card.getAttribute('data-episode') || '1', 10);
     const currentTime = parseFloat(card.getAttribute('data-currenttime') || '0');
     const title = decodeURIComponent(card.getAttribute('data-title') || '');
+    const originalTitle = decodeURIComponent(card.getAttribute('data-originaltitle') || '');
     const posterPath = card.getAttribute('data-poster') || '';
     const backdropPath = card.getAttribute('data-backdrop') || '';
     const isContinue = card.getAttribute('data-iscontinue') === 'true';
@@ -305,6 +309,7 @@ export function attachMediaCardEvents(container) {
         tmdbId: id,
         title: (type === 'tv' || isAnime) ? `${title} - S${season}E${episode}` : title,
         seriesTitle: title,
+        originalTitle: originalTitle || title,
         season,
         episode,
         posterPath,

@@ -3528,6 +3528,354 @@ img {
   background: #000;
 }
 
+/* Dual-Audio Hybrid Player Bar */
+.dual-audio-bar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 9999px;
+  padding: 5px 14px 5px 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(245, 158, 11, 0.15);
+  animation: fadeIn 0.3s ease;
+}
+
+.dual-audio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fbbf24;
+  letter-spacing: 0.02em;
+}
+
+.dual-audio-toggle {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 3px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dual-audio-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 11px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.dual-audio-btn:hover {
+  color: #fff;
+}
+
+.dual-audio-btn.active {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.5);
+}
+
+.dual-audio-source-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  padding-left: 8px;
+}
+
+/* Subtitle Control Bar */
+.subtitle-control-bar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 9999px;
+  padding: 5px 12px 5px 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(59, 130, 246, 0.15);
+  animation: fadeIn 0.3s ease;
+}
+
+.sub-control-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #60a5fa;
+  letter-spacing: 0.02em;
+}
+
+.sub-toggle-group {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 3px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sub-toggle-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sub-toggle-btn:hover {
+  color: #fff;
+}
+
+.sub-toggle-btn.active {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.5);
+}
+
+/* Luxury Netflix-Style Subtitle Cues */
+video::cue {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  color: #ffffff !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 1.15rem !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.8) !important;
+  padding: 0.2rem 0.6rem !important;
+  border-radius: 4px !important;
+}
+
+@media (max-width: 768px) {
+  .subtitle-control-bar {
+    top: 8px !important;
+    left: 8px !important;
+    padding: 3px 8px !important;
+    gap: 4px !important;
+  }
+  .sub-toggle-btn {
+    padding: 3px 7px !important;
+    font-size: 0.68rem !important;
+  }
+  .dual-audio-bar {
+    top: 8px !important;
+    right: 8px !important;
+    padding: 3px 8px !important;
+    gap: 4px !important;
+  }
+  .dual-audio-btn {
+    padding: 3px 7px !important;
+    font-size: 0.68rem !important;
+  }
+  .dual-audio-source-name {
+    display: none !important;
+  }
+}
+
+/* Torrent / P2P Streaming Hub */
+.torrent-hub-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  background: radial-gradient(circle at center, rgba(30, 41, 59, 0.7) 0%, rgba(10, 15, 30, 0.95) 100%);
+  padding: 1.5rem;
+}
+
+.torrent-hub-card {
+  max-width: 620px;
+  width: 100%;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 20px;
+  padding: 1.75rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(245, 158, 11, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.torrent-hub-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.torrent-hub-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.torrent-hub-info {
+  flex: 1;
+}
+
+.torrent-hub-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.torrent-tag-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tag-p2p {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.tag-quality {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.tag-yts {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.tag-seeds {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+}
+
+.torrent-hub-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 0.35rem;
+  line-height: 1.3;
+}
+
+.torrent-hub-subtitle {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.torrent-hub-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.btn-torrent-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  border: none;
+}
+
+.btn-torrent-primary {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000 !important;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+}
+
+.btn-torrent-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+}
+
+.btn-torrent-vlc {
+  background: rgba(255, 107, 0, 0.15);
+  color: #ff8c38 !important;
+  border: 1px solid rgba(255, 107, 0, 0.4);
+}
+
+.btn-torrent-vlc:hover {
+  background: rgba(255, 107, 0, 0.25);
+  transform: translateY(-2px);
+}
+
+.btn-torrent-copy {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.btn-torrent-copy:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.torrent-hub-tip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.76rem;
+  color: #93c5fd;
+  line-height: 1.4;
+}
+
 /* Server Pill Loading Animation */
 .server-pill-loading {
   display: flex;

@@ -1,28 +1,37 @@
 /* ==========================================================================
    CinePulse Studio - Dizipal Scraper (Movies & Series Engine)
    Direct 1080p HLS Streams & Multi-Language Subtitles from Dizipal
-   Bypasses preroll ads and extracts native master.m3u8 streams
+   Bypasses preroll ads and extracts native master.m3u8 streams.
+   Includes Dynamic Domain Resolver (auto-detects dizipal1227, 1228, 1229, etc.)
    ========================================================================== */
 
 import { extractAlphaStream } from './streamExtractors.js';
 
-const BASE_URL = 'https://dizipal1227.com';
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+const KNOWN_START_NUM = 1227;
 
-function normalizeTitle(str) {
-  if (!str) return '';
-  return str
-    .toLowerCase()
-    .trim()
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ı/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c')
-    .replace(/[^a-z0-9]/g, '');
-}
+let cachedBaseUrl = 'https://dizipal1229.com';
+let lastResolvedTime = Date.now();
 
-async function fetchSafe(targetUrl, options = {}) {
+/**
+ * Robust fetch that uses CF Worker Proxy or direct fetch to eliminate CORS
+ */
+async function fetchWithProxy(targetUrl, options = {}) {
+  const isBrowser = typeof window !== 'undefined';
+  const localProxyUrl = isBrowser
+    ? `/api/proxy?url=${encodeURIComponent(targetUrl)}`
+    : `http://localhost:4000/proxy?url=${encodeURIComponent(targetUrl)}`;
+
+  // 1. Try local MediaServer proxy (instant, zero CORS, zero connection reset)
+  try {
+    const res = await fetch(localProxyUrl, {
+      ...options,
+      signal: AbortSignal.timeout(options.timeout || 3500)
+    }).catch(() => null);
+    if (res && res.ok) return res;
+  } catch (_) {}
+
+  // 2. Direct fetch (Node.js or non-restricted requests)
   try {
     const res = await fetch(targetUrl, {
       ...options,
@@ -31,13 +40,83 @@ async function fetchSafe(targetUrl, options = {}) {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         ...(options.headers || {})
       },
-      signal: AbortSignal.timeout(options.timeout || 4500)
+      signal: AbortSignal.timeout(options.timeout || 3500)
     }).catch(() => null);
+    if (res && res.ok) return res;
+  } catch (_) {}
 
+  // 3. Fallback to Cloudflare Worker proxy
+  try {
+    const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
+    const res = await fetch(workerUrl, {
+      ...options,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        ...(options.headers || {})
+      },
+      signal: AbortSignal.timeout(options.timeout || 4000)
+    }).catch(() => null);
     if (res && res.ok) return res;
   } catch (_) {}
 
   return null;
+}
+
+/**
+ * Dynamically resolves the current active Dizipal domain (handles 1227, 1228, 1229, 1230...)
+ */
+export async function getActiveDizipalDomain(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && cachedBaseUrl && (now - lastResolvedTime < 30 * 60 * 1000)) {
+    return cachedBaseUrl;
+  }
+
+  // Check localStorage if available
+  if (typeof window !== 'undefined' && window.localStorage && !forceRefresh) {
+    const stored = window.localStorage.getItem('cp_dizipal_domain');
+    if (stored && stored.startsWith('http')) {
+      cachedBaseUrl = stored;
+      lastResolvedTime = now;
+      return cachedBaseUrl;
+    }
+  }
+
+  // Probing candidate domains around known numbers
+  const candidates = [
+    'https://dizipal1229.com',
+    'https://dizipal1227.com',
+    'https://dizipal1230.com',
+    'https://dizipal1228.com',
+    'https://dizipal1231.com',
+    'https://dizipal1232.com',
+    'https://dizipal1233.com',
+    'https://dizipal1234.com',
+    'https://dizipal1235.com'
+  ];
+
+  for (const domain of candidates) {
+    try {
+      const testRes = await fetchWithProxy(`${domain}/ara?q=a`, { timeout: 3000 });
+      if (testRes && testRes.ok) {
+        const text = await testRes.text().catch(() => '');
+        if (text && (text.includes('dizi') || text.includes('film') || text.includes('dizipal'))) {
+          cachedBaseUrl = domain;
+          lastResolvedTime = now;
+          if (typeof window !== 'undefined' && window.localStorage) {
+            try { window.localStorage.setItem('cp_dizipal_domain', domain); } catch (_) {}
+          }
+          console.log(`[DizipalScraper] ✅ Active Dizipal domain verified: ${domain}`);
+          return domain;
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Fallback if probes fail
+  const fallback = 'https://dizipal1229.com';
+  cachedBaseUrl = fallback;
+  return fallback;
 }
 
 /**
@@ -47,18 +126,22 @@ export async function searchDizipal(query) {
   if (!query || typeof query !== 'string' || query.trim().length < 2) return [];
 
   try {
-    const searchUrl = `${BASE_URL}/ara?q=${encodeURIComponent(query.trim())}`;
-    const res = await fetchSafe(searchUrl);
+    const baseUrl = await getActiveDizipalDomain();
+    const searchUrl = `${baseUrl}/ara?q=${encodeURIComponent(query.trim())}`;
+    const res = await fetchWithProxy(searchUrl, { timeout: 5000 });
     if (!res) return [];
 
     const html = await res.text();
-    const links = [...html.matchAll(/href=["'](https:\/\/dizipal1227\.com\/(film|dizi)\/([^"']+))["']/gi)];
+    // Match any link: relative /film/slug or absolute https://dizipalXXXX.com/film/slug
+    const links = [...html.matchAll(/href=["']((?:https?:\/\/[^/]+)?\/(film|dizi)\/([^"'?#]+))["']/gi)];
     const results = [];
 
     for (const match of links) {
-      const fullUrl = match[1];
+      const rawUrl = match[1];
       const type = match[2]; // 'film' or 'dizi'
       const slug = match[3];
+
+      const fullUrl = rawUrl.startsWith('http') ? rawUrl : `${baseUrl}${rawUrl}`;
 
       if (!results.some(r => r.url === fullUrl)) {
         results.push({
@@ -94,7 +177,7 @@ export async function fetchDizipalMovieSources({
 
     if (movieMatch) {
       try {
-        const pageRes = await fetchSafe(movieMatch.url);
+        const pageRes = await fetchWithProxy(movieMatch.url, { timeout: 5000 });
         if (!pageRes) continue;
 
         const html = await pageRes.text();
@@ -104,6 +187,7 @@ export async function fetchDizipalMovieSources({
         const embedUrl = embedMatch[1];
         const direct = await extractAlphaStream(embedUrl);
         if (direct && direct.url) {
+          const proxiedStreamUrl = `/api/hls_proxy?url=${encodeURIComponent(direct.url)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
           return [
             {
               id: `dzp_mov_${movieMatch.slug}_${isDub ? 'dub' : 'sub'}`,
@@ -111,15 +195,35 @@ export async function fetchDizipalMovieSources({
               displayName: 'Dizipal Direct 1080p',
               badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
               source: 'Dizipal',
-              url: direct.url,
-              streamUrl: direct.url,
+              url: proxiedStreamUrl,
+              streamUrl: proxiedStreamUrl,
+              originalEmbedUrl: embedUrl,
               quality: '1080p',
               isHls: true,
               isDirectVideo: true,
               type: 'hls',
               subtitles: direct.subtitles || [],
               isDub,
-              getUrl: () => direct.url
+              getUrl: () => proxiedStreamUrl
+            }
+          ];
+        } else if (embedUrl) {
+          return [
+            {
+              id: `dzp_mov_${movieMatch.slug}_${isDub ? 'dub' : 'sub'}`,
+              name: 'Dizipal Direct 1080p',
+              displayName: 'Dizipal Direct 1080p',
+              badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
+              source: 'Dizipal',
+              url: embedUrl,
+              streamUrl: embedUrl,
+              originalEmbedUrl: embedUrl,
+              quality: '1080p',
+              isHls: false,
+              isDirectVideo: false,
+              type: 'embed',
+              isDub,
+              getUrl: () => embedUrl
             }
           ];
         }
@@ -152,7 +256,7 @@ export async function fetchDizipalEpisodeSources({
       try {
         // Construct standard episode URL format
         const episodeUrl = `${seriesMatch.url}/sezon-${season}/bolum-${episode}`;
-        const pageRes = await fetchSafe(episodeUrl);
+        const pageRes = await fetchWithProxy(episodeUrl, { timeout: 5000 });
         if (!pageRes) continue;
 
         const html = await pageRes.text();
@@ -162,6 +266,7 @@ export async function fetchDizipalEpisodeSources({
         const embedUrl = embedMatch[1];
         const direct = await extractAlphaStream(embedUrl);
         if (direct && direct.url) {
+          const proxiedStreamUrl = `/api/hls_proxy?url=${encodeURIComponent(direct.url)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
           return [
             {
               id: `dzp_tv_${seriesMatch.slug}_s${season}_e${episode}_${isDub ? 'dub' : 'sub'}`,
@@ -169,15 +274,35 @@ export async function fetchDizipalEpisodeSources({
               displayName: `Dizipal 1080p (S${season}B${episode})`,
               badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
               source: 'Dizipal',
-              url: direct.url,
-              streamUrl: direct.url,
+              url: proxiedStreamUrl,
+              streamUrl: proxiedStreamUrl,
+              originalEmbedUrl: embedUrl,
               quality: '1080p',
               isHls: true,
               isDirectVideo: true,
               type: 'hls',
               subtitles: direct.subtitles || [],
               isDub,
-              getUrl: () => direct.url
+              getUrl: () => proxiedStreamUrl
+            }
+          ];
+        } else if (embedUrl) {
+          return [
+            {
+              id: `dzp_tv_${seriesMatch.slug}_s${season}_e${episode}_${isDub ? 'dub' : 'sub'}`,
+              name: `Dizipal 1080p (S${season}B${episode})`,
+              displayName: `Dizipal 1080p (S${season}B${episode})`,
+              badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
+              source: 'Dizipal',
+              url: embedUrl,
+              streamUrl: embedUrl,
+              originalEmbedUrl: embedUrl,
+              quality: '1080p',
+              isHls: false,
+              isDirectVideo: false,
+              type: 'embed',
+              isDub,
+              getUrl: () => embedUrl
             }
           ];
         }

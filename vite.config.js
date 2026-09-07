@@ -6,6 +6,24 @@ export default defineConfig({
     port: 3000,
     host: true,
     proxy: {
+      '/api/subtitles': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/subtitles/, '/subtitles')
+      },
+      '/api/proxy': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/proxy/, '/proxy')
+      },
+      '/api/hls_proxy': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/hls_proxy/, '/hls_proxy')
+      },
       '/api/szd': {
         target: 'https://sezonlukdizi.cc',
         changeOrigin: true,
