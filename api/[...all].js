@@ -202,6 +202,22 @@ export default async function handler(req, res) {
     targetUrl = `https://www.hdfilmizle.vip${subPath}${search}`;
     customHeaders['Referer'] = 'https://www.hdfilmizle.vip/';
     customHeaders['Origin'] = 'https://www.hdfilmizle.vip';
+  } else if (pathname.startsWith('/api/jet')) {
+    const subPath = pathname.replace(/^\/api\/jet/, '');
+    const cleanSub = subPath.startsWith('/') ? subPath : (subPath ? '/' + subPath : '');
+    targetUrl = `https://jetfilmizle.now${cleanSub}${search}`;
+    customHeaders['Referer'] = 'https://jetfilmizle.now/';
+    customHeaders['Origin'] = 'https://jetfilmizle.now';
+    customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+    if (req.method === 'POST') {
+      customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+    }
+  } else if (pathname.startsWith('/api/ddz')) {
+    const subPath = pathname.replace(/^\/api\/ddz/, '');
+    const cleanSub = subPath.startsWith('/') ? subPath : (subPath ? '/' + subPath : '');
+    targetUrl = `https://dramadizilerim.com${cleanSub}${search}`;
+    customHeaders['Referer'] = 'https://dramadizilerim.com/';
+    customHeaders['Origin'] = 'https://dramadizilerim.com';
   } else if (pathname.startsWith('/api/fmk_rapid')) {
     const subPath = pathname.replace(/^\/api\/fmk_rapid/, '');
     targetUrl = `https://rapid.filmmakinesi.to${subPath}${search}`;
@@ -272,7 +288,9 @@ export default async function handler(req, res) {
       if (req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
         customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
       }
-      if (typeof req.body === 'object') {
+      if (Buffer.isBuffer(req.body)) {
+        body = req.body.toString('utf-8');
+      } else if (typeof req.body === 'object' && req.body !== null) {
         body = new URLSearchParams(req.body).toString();
       } else {
         body = req.body;

@@ -2,9 +2,11 @@
    CinePulse Studio - JetFilm / JetFilmizle Scraper
    Direct Turkish Dubbed & Subtitled Movies & Series Provider
    Supports VIP, VidMoly, VideoPark, OK.ru, Titan players.
+   Fully compatible with Browser (via Vercel proxy) & Node.js.
    ========================================================================== */
 
 const BASE_URL = 'https://jetfilmizle.now';
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 function normalizeStr(str) {
   if (!str) return '';
@@ -35,6 +37,66 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
+async function fetchSafe(targetUrl, options = {}) {
+  const isBrowser = typeof window !== 'undefined';
+
+  // 1. In browser, try Vercel internal proxy (/api/jet/...) to avoid CORS completely
+  if (isBrowser) {
+    try {
+      const u = new URL(targetUrl);
+      const proxyUrl = `/api/jet${u.pathname}${u.search}`;
+      const res = await fetch(proxyUrl, {
+        ...options,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          ...(options.headers || {})
+        },
+        signal: AbortSignal.timeout(options.timeout || 4500)
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        return res;
+      }
+    } catch (_) {}
+  }
+
+  // 2. Try CF Worker proxy (for GET requests)
+  if (!options.method || options.method === 'GET') {
+    try {
+      const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
+      const res = await fetch(workerUrl, {
+        ...options,
+        signal: AbortSignal.timeout(options.timeout || 4500)
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        return res;
+      }
+    } catch (_) {}
+  }
+
+  // 3. Direct fetch (Node.js or direct server requests)
+  try {
+    const res = await fetch(targetUrl, {
+      ...options,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Referer': BASE_URL,
+        'Origin': BASE_URL,
+        ...(options.headers || {})
+      },
+      signal: AbortSignal.timeout(options.timeout || 4500)
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      return res;
+    }
+  } catch (_) {}
+
+  return null;
+}
+
 /**
  * Searches JetFilmizle for movies or series
  */
@@ -47,15 +109,14 @@ export async function searchJetFilm(query, isSeries = false) {
     : `${BASE_URL}/arama?q=${encodeURIComponent(cleanQ)}`;
 
   try {
-    const res = await fetch(searchUrl, {
+    const res = await fetchSafe(searchUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
       },
-      signal: AbortSignal.timeout(4500)
+      timeout: 4500
     });
 
-    if (!res.ok) return [];
+    if (!res) return [];
     const html = await res.text();
 
     const results = [];
@@ -110,7 +171,7 @@ export async function fetchJetFilmSources({
 
   // Search candidate titles
   for (const t of allTitles) {
-    const searchResults = await searchJetFilm(t);
+    const searchResults = await searchJetFilm(t, false);
     const movies = searchResults.filter(r => !r.isSeries);
     if (movies.length > 0) {
       const normT = normalizeStr(t);
@@ -129,14 +190,13 @@ export async function fetchJetFilmSources({
   if (!matchedMovieUrl) return [];
 
   try {
-    const res = await fetch(matchedMovieUrl, {
+    const res = await fetchSafe(matchedMovieUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': BASE_URL
       },
-      signal: AbortSignal.timeout(4500)
+      timeout: 4500
     });
-    if (!res.ok) return [];
+    if (!res) return [];
 
     const html = await res.text();
     const filmIdMatch = html.match(/name=["']film_id["'][^>]*value=["'](\d+)["']/i) || html.match(/value=["'](\d+)["'][^>]*name=["']film_id["']/i);
@@ -152,20 +212,19 @@ export async function fetchJetFilmSources({
     // Probe up to 4 sources (Vip, OPlay, OkRu, Moly)
     for (let i = 0; i < 4; i++) {
       sourcePromises.push(
-        fetch(postUrl, {
+        fetchSafe(postUrl, {
           method: 'POST',
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
             'X-Requested-With': 'XMLHttpRequest',
             'Referer': matchedMovieUrl,
             'Origin': BASE_URL
           },
           body: `film_id=${filmId}&source_index=${i}&player_type=${playerType}`,
-          signal: AbortSignal.timeout(4000)
+          timeout: 4000
         })
         .then(async pRes => {
-          if (!pRes.ok) return null;
+          if (!pRes) return null;
           const pText = await pRes.text();
           const iframeMatch = pText.match(/<iframe[^>]+src=['"]([^'"]+)['"]/i);
           if (!iframeMatch) return null;
@@ -173,14 +232,24 @@ export async function fetchJetFilmSources({
           let streamUrl = iframeMatch[1];
           if (streamUrl.startsWith('//')) streamUrl = 'https:' + streamUrl;
 
+          // Filter out trailers / placeholder youtube embeds
+          if (streamUrl.includes('youtube') || streamUrl.includes('youtu.be') || streamUrl.includes('trailer')) return null;
+
           const isVidmoly = streamUrl.includes('vidmoly');
           const isOkru = streamUrl.includes('ok.ru');
+          const isTitan = streamUrl.includes('titan');
 
-          const name = isVidmoly ? 'Jet VidMoly 1080p' : (isOkru ? 'Jet OK.ru HD' : `Jet VIP Server ${i + 1}`);
+          const name = isVidmoly 
+            ? 'JetFilmizle (VidMoly 1080p)' 
+            : (isOkru 
+                ? 'JetFilmizle (OK.ru HD)' 
+                : (isTitan ? `JetFilmizle (Titan VIP ${i + 1})` : `JetFilmizle VIP ${i + 1}`));
 
           return {
+            id: `jet_${filmId}_${i}`,
             name,
-            source: 'JetFilm',
+            displayName: name,
+            source: 'JetFilmizle',
             url: streamUrl,
             quality: '1080p',
             type: 'iframe',
@@ -226,12 +295,11 @@ export async function fetchJetFilmEpisodeSources({
     for (const c of candidateSlugs) {
       try {
         const directUrl = `${BASE_URL}/dizi/${c}`;
-        const headCheck = await fetch(directUrl, {
+        const headCheck = await fetchSafe(directUrl, {
           method: 'HEAD',
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-          signal: AbortSignal.timeout(2000)
-        }).catch(() => null);
-        if (headCheck && headCheck.ok) {
+          timeout: 2000
+        });
+        if (headCheck) {
           matchedDiziUrl = directUrl;
           break;
         }
@@ -249,7 +317,7 @@ export async function fetchJetFilmEpisodeSources({
         const normT = normalizeStr(t);
         const match = dizis.find(d => {
           const normD = normalizeStr(d.title);
-          return normD === normT || normD.includes(normT) || normT.includes(normD);
+          return normD === normT || normD.includes(normT) || normD.includes(normD);
         }) || dizis[0];
 
         if (match) {
@@ -263,14 +331,13 @@ export async function fetchJetFilmEpisodeSources({
   if (!matchedDiziUrl) return [];
 
   try {
-    const res = await fetch(matchedDiziUrl, {
+    const res = await fetchSafe(matchedDiziUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': BASE_URL
       },
-      signal: AbortSignal.timeout(4500)
+      timeout: 4500
     });
-    if (!res.ok) return [];
+    if (!res) return [];
 
     const html = await res.text();
     const filmIdMatch = html.match(/name=["']film_id["'][^>]*value=["'](\d+)["']/i) || html.match(/value=["'](\d+)["'][^>]*name=["']film_id["']/i);
@@ -284,23 +351,21 @@ export async function fetchJetFilmEpisodeSources({
     const epBtnMatch = html.match(new RegExp(`data-source-index=["'](\\d+)["'][^>]*data-season=["']${season}["'][^>]*data-episode=["']${episode}["']`, 'i')) ||
                        html.match(new RegExp(`data-season=["']${season}["'][^>]*data-episode=["']${episode}["'][^>]*data-source-index=["'](\\d+)["']`, 'i'));
 
-    // If matching button found, use its source_index, else default to (episode - 1)
     const sourceIndex = epBtnMatch ? epBtnMatch[1] : (episode - 1);
 
-    const pRes = await fetch(postUrl, {
+    const pRes = await fetchSafe(postUrl, {
       method: 'POST',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'X-Requested-With': 'XMLHttpRequest',
         'Referer': matchedDiziUrl,
         'Origin': BASE_URL
       },
       body: `film_id=${filmId}&source_index=${sourceIndex}&player_type=${playerType}`,
-      signal: AbortSignal.timeout(4500)
+      timeout: 4500
     });
 
-    if (!pRes.ok) return [];
+    if (!pRes) return [];
     const pText = await pRes.text();
     const iframeMatch = pText.match(/<iframe[^>]+src=['"]([^'"]+)['"]/i);
     if (!iframeMatch) return [];
@@ -308,9 +373,23 @@ export async function fetchJetFilmEpisodeSources({
     let streamUrl = iframeMatch[1];
     if (streamUrl.startsWith('//')) streamUrl = 'https:' + streamUrl;
 
+    if (streamUrl.includes('youtube') || streamUrl.includes('youtu.be') || streamUrl.includes('trailer')) return [];
+
+    const isVidmoly = streamUrl.includes('vidmoly');
+    const isOkru = streamUrl.includes('ok.ru');
+    const isTitan = streamUrl.includes('titan');
+
+    const epName = isVidmoly 
+      ? `JetFilmizle Dizi (VidMoly S${season}B${episode})` 
+      : (isOkru 
+          ? `JetFilmizle Dizi (OK.ru S${season}B${episode})` 
+          : (isTitan ? `JetFilmizle Dizi (Titan S${season}B${episode})` : `JetFilmizle Dizi (VIP S${season}B${episode})`));
+
     return [{
-      name: `Jet Series VIP S${season}E${episode}`,
-      source: 'JetFilm',
+      id: `jet_series_${filmId}_s${season}_e${episode}`,
+      name: epName,
+      displayName: epName,
+      source: 'JetFilmizle',
       url: streamUrl,
       quality: '1080p',
       type: 'iframe',
