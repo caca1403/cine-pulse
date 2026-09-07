@@ -25,6 +25,7 @@ import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
 import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
 import { fetchDizipalMovieSources, fetchDizipalEpisodeSources } from './dizipalScraper.js';
+import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -126,6 +127,9 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   }
   if (id.startsWith('dzp_') || (s.source && s.source.toLowerCase().includes('dizipal')) || raw.includes('dizipal')) {
     return s.displayName || s.name || 'Dizipal 1080p';
+  }
+  if (id.startsWith('hdfb_') || (s.source && s.source.toLowerCase().includes('hdfilmizle')) || raw.includes('hdf ')) {
+    return s.displayName || s.name || 'HDF 1080p';
   }
   if (id.startsWith('jet_') || (s.source && s.source.toLowerCase().includes('jet')) || raw.includes('jetfilm') || raw.includes('jet film') || raw.startsWith('jet ')) {
     if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'Jet VidMoly 1080p';
@@ -399,6 +403,12 @@ export async function getStreamingServersProgressive({
     !isMovie ? fetchDizipalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
     !isMovie ? fetchDizipalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
+
+    // HDFilmizle.best (Movies - Direct Master HLS 1080p with Multi-Audio & Subtitles)
+    isMovie ? fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
+    isMovie ? fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
     // Documentaries
