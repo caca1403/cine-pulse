@@ -28,8 +28,11 @@ export async function fetchDiziyouSources({
   originalTitle = '',
   season = 1,
   episode = 1,
-  isDub = true
+  isDub = false
 }) {
+  // Diziyou episodes are English audio with Turkish subtitles (.vtt embedded)
+  if (isDub) return [];
+
   const isBrowser = typeof window !== 'undefined';
   const baseUrl = isBrowser ? '/api/dzy' : 'https://www.diziyou.one';
 
