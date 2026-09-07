@@ -141,19 +141,19 @@ export async function fetchYtsOfficialSources({
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const magnetUrl = `magnet:?xt=urn:btih:${hit.hash}&dn=${encodeURIComponent(hit.title || query)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz`;
 
-      // Official YTS web player engine from en.yts-official.com (vidsrcBase)
+      // Official YTS web player engine from en.yts-official.com
       const ytsWebEmbedUrl = tmdbId 
-        ? (isMovie ? `https://vidsrc.mov/embed/movie/${tmdbId}` : `https://vidsrc.mov/embed/tv/${tmdbId}/${season}/${episode}`)
+        ? (isMovie ? `https://autoembed.co/movie/tmdb/${tmdbId}` : `https://autoembed.co/tv/tmdb/${tmdbId}/${season}/${episode}`)
         : null;
 
-      const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : (ytsWebEmbedUrl || magnetUrl);
+      const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : magnetUrl;
       const sourceLabel = isYts ? 'YTS (YIFY)' : (hit.source || 'YTS P2P');
 
       const displayName = isYts
         ? `⚡ YTS Direct ${quality} (MP4)`
         : `⚡ Torrent Direct ${quality} (${isMp4 ? 'MP4' : 'MKV'})`;
 
-      const badge = isYts ? '⚡ YTS 1080p (MP4)' : `⚡ Torrent ${quality}`;
+      const badge = isYts ? `⚡ YTS ${quality}` : `⚡ Torrent ${quality}`;
 
       streams.push({
         id: `cp_global_yts_${hit.hash.substring(0, 10)}`,
@@ -164,6 +164,7 @@ export async function fetchYtsOfficialSources({
         url: streamUrl,
         streamUrl: streamUrl,
         magnetUrl: magnetUrl,
+        embedUrl: ytsWebEmbedUrl,
         infoHash: hit.hash,
         isTorrent: true,
         quality: quality,
@@ -179,22 +180,22 @@ export async function fetchYtsOfficialSources({
       });
     }
 
-    // Sort: YTS first, then by seeds, then quality
+    // Sort: YTS first, then by quality (1080p, 4K, 720p), then seeds
     streams.sort((a, b) => {
       if (a.isYts && !b.isYts) return -1;
       if (!a.isYts && b.isYts) return 1;
       return (b.seeds || 0) - (a.seeds || 0);
     });
 
-    // Deduplicate by hash and limit to top 4 highest peer streams
+    // Deduplicate by hash and keep top 3 distinct releases (1080p, 4K, 720p)
     const unique = [];
     const seenHashes = new Set();
     for (const s of streams) {
-      if (!seenHashes.has(s.streamUrl)) {
-        seenHashes.add(s.streamUrl);
+      if (!seenHashes.has(s.infoHash)) {
+        seenHashes.add(s.infoHash);
         unique.push(s);
       }
-      if (unique.length >= 4) break;
+      if (unique.length >= 3) break;
     }
 
     return unique;
