@@ -27,6 +27,7 @@ import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
 import { fetchDizipalMovieSources, fetchDizipalEpisodeSources } from './dizipalScraper.js';
 import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchCinepulseCloudSources } from './cinepulseCloudService.js';
+import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -353,6 +354,10 @@ export async function getStreamingServersProgressive({
     fetchCinepulseCloudSources({ tmdbId, title: targetTitle, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
+    // CinePulse Global Autonomous Stream Engine (P2P/Torrentio VIP 1080p)
+    fetchGlobalAutonomousSources({ type, tmdbId, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
     // Sinewix (Dubbed & Subtitled - Direct 1080p, Zero Ads)
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
@@ -367,12 +372,6 @@ export async function getStreamingServersProgressive({
 
     // Diziyou (TV only - Fast HLS CDN, Turkish Subtitled)
     !isMovie ? fetchDiziyouSources({ titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
-
-    // DramaDizilerim (TV only - Turkish Dubbed & Subtitled Short Dramas / Mini Diziler)
-    !isMovie ? fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
-    !isMovie ? fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
     // FilmEkseni (Movie only - EksenLoad VIP, VidMoly)
