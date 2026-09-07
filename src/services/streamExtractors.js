@@ -7,7 +7,21 @@
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 async function fetchWithProxy(targetUrl, options = {}) {
-  // 1. Try direct fetch first
+  const isBrowser = typeof window !== 'undefined';
+  const localProxyUrl = isBrowser
+    ? `/api/proxy?url=${encodeURIComponent(targetUrl)}`
+    : `http://localhost:4000/proxy?url=${encodeURIComponent(targetUrl)}`;
+
+  // 1. Try local proxy first (instant, bypasses browser CORS)
+  try {
+    const res = await fetch(localProxyUrl, {
+      ...options,
+      signal: AbortSignal.timeout(options.timeout || 3500)
+    }).catch(() => null);
+    if (res && res.ok) return res;
+  } catch (_) {}
+
+  // 2. Try direct fetch (for Node.js)
   try {
     const res = await fetch(targetUrl, {
       ...options,
@@ -16,7 +30,7 @@ async function fetchWithProxy(targetUrl, options = {}) {
     if (res && res.ok) return res;
   } catch (_) {}
 
-  // 2. Try CF Worker proxy
+  // 3. Try CF Worker proxy fallback
   try {
     const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
     const res = await fetch(workerUrl, {

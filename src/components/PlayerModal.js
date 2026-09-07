@@ -34,6 +34,7 @@ const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 let activeProgressInterval = null;
 let originalWindowOpen = null;
 let activeHlsInstance = null;
+let activeAudioHlsInstance = null;
 
 export async function openPlayerModal({
   type = 'tv',
@@ -192,6 +193,131 @@ export async function openPlayerModal({
     `).join('');
   }
 
+  function resolveEffectiveSubtitles(srv) {
+    if (Array.isArray(srv?.subtitles) && srv.subtitles.length > 0) {
+      return srv.subtitles;
+    }
+    const pool = [...(activeServers || []), ...(categorizedServers?.subtitled || []), ...(categorizedServers?.dubbed || [])];
+    const found = pool.find(s => Array.isArray(s.subtitles) && s.subtitles.length > 0);
+    if (found && Array.isArray(found.subtitles) && found.subtitles.length > 0) {
+      return found.subtitles;
+    }
+    const subUrl = (type === 'movie')
+      ? `/api/subtitles?imdbId=${tmdbId}`
+      : `/api/subtitles?imdbId=${tmdbId}&season=${currentSeason}&episode=${currentEpisode}`;
+    return [{ label: 'Türkçe', src: subUrl }];
+  }
+
+  function attachSubtitleControls(videoEl, srv) {
+    const subBar = document.getElementById('subtitle-control-bar');
+    if (!subBar || !videoEl) return;
+
+    const subs = resolveEffectiveSubtitles(srv);
+    let activeSubIdx = (currentCategory === 'subtitled' && subs.length > 0) ? 0 : -1;
+
+    const updateTracksState = (targetIdx) => {
+      activeSubIdx = targetIdx;
+      const textTracks = videoEl.textTracks;
+      for (let i = 0; i < textTracks.length; i++) {
+        if (i === targetIdx) {
+          textTracks[i].mode = 'showing';
+        } else {
+          textTracks[i].mode = 'disabled';
+        }
+      }
+      subBar.querySelectorAll('.sub-toggle-btn').forEach(btn => {
+        const bIdx = parseInt(btn.getAttribute('data-sub-idx'), 10);
+        if (bIdx === targetIdx) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    };
+
+    subBar.querySelectorAll('.sub-toggle-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        const idx = parseInt(btn.getAttribute('data-sub-idx'), 10);
+        updateTracksState(idx);
+        if (idx === -1) {
+          showToast('Altyazı kapatıldı.', 'info');
+        } else {
+          const label = subs[idx]?.label || 'Altyazı';
+          showToast(`💬 ${label} açıldı.`, 'success');
+        }
+      };
+    });
+
+    const initSubtitles = () => {
+      if (activeSubIdx >= 0 && videoEl.textTracks.length > activeSubIdx) {
+        updateTracksState(activeSubIdx);
+      }
+    };
+    if (videoEl.readyState >= 1) {
+      initSubtitles();
+    } else {
+      videoEl.addEventListener('loadedmetadata', initSubtitles, { once: true });
+      videoEl.addEventListener('canplay', initSubtitles, { once: true });
+    }
+  }
+
+  function syncSubtitlesToActivePlayer() {
+    const videoEl = document.getElementById('hls-video-player');
+    const subBar = document.getElementById('subtitle-control-bar');
+    if (!videoEl || !subBar) return;
+
+    const srv = activeServers[currentServerIndex];
+    if (!srv) return;
+
+    const subs = resolveEffectiveSubtitles(srv);
+    if (!subs || subs.length === 0) return;
+
+    // Check if tracks are already mounted
+    if (videoEl.querySelectorAll('track').length === 0) {
+      subs.forEach((sub, idx) => {
+        let safeSrc = sub.src;
+        if (safeSrc && safeSrc.startsWith('http')) {
+          safeSrc = `/api/proxy?url=${encodeURIComponent(safeSrc)}`;
+        }
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = sub.label || 'Altyazı';
+        track.src = safeSrc;
+        track.srclang = (sub.label || '').toLowerCase().includes('türk') ? 'tr' : 'en';
+        if (currentCategory === 'subtitled' && idx === 0) track.default = true;
+        videoEl.appendChild(track);
+      });
+    }
+
+    const defaultSubIndex = (currentCategory === 'subtitled' && subs.length > 0) ? 0 : -1;
+    const subButtons = subs.map((sub, idx) => {
+      const isTr = (sub.label || '').toLowerCase().includes('türk') || (sub.label || '').toLowerCase().includes('tr');
+      const flag = isTr ? '🇹🇷' : '🌐';
+      return `
+        <button class="sub-toggle-btn ${idx === defaultSubIndex ? 'active' : ''}" data-sub-idx="${idx}" title="${sub.label || 'Altyazı'}">
+          <span>${flag} ${sub.label || 'Altyazı'}</span>
+        </button>
+      `;
+    }).join('');
+
+    subBar.innerHTML = `
+      <div class="sub-control-label">
+        <i data-lucide="subtitles" style="width: 14px; height: 14px; color: #60a5fa;"></i>
+        <span>Altyazı:</span>
+      </div>
+      <div class="sub-toggle-group">
+        ${subButtons}
+        <button class="sub-toggle-btn ${defaultSubIndex === -1 ? 'active' : ''}" data-sub-idx="-1" title="Altyazıyı Kapat">
+          <span>❌ Kapalı</span>
+        </button>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+
+    attachSubtitleControls(videoEl, srv);
+  }
+
   function renderPlayerContent() {
     if (isSearching && (!activeServers || activeServers.length === 0)) {
       return `
@@ -282,13 +408,86 @@ export async function openPlayerModal({
       `;
     }
 
+    const isTorrentStream = Boolean(srv.isTorrent || (srv.id && (srv.id.startsWith('cp_global_torrent') || srv.id.startsWith('cp_global_yts') || srv.id.startsWith('yts_'))) || (srv.streamUrl && srv.streamUrl.startsWith('magnet:')));
+
+    if (isTorrentStream) {
+      const magnetLink = srv.magnetUrl || srv.streamUrl || '';
+      return `
+        <div class="torrent-hub-stage">
+          <div class="torrent-hub-card">
+            <div class="torrent-hub-header">
+              <div class="torrent-hub-icon-wrap">
+                <i data-lucide="zap" style="width: 30px; height: 30px; color: #f59e0b;"></i>
+              </div>
+              <div class="torrent-hub-info">
+                <div class="torrent-hub-tags">
+                  <span class="torrent-tag-pill tag-p2p">⚡ P2P BitTorrent</span>
+                  <span class="torrent-tag-pill tag-quality">${srv.quality || '1080p'}</span>
+                  ${srv.isYts ? '<span class="torrent-tag-pill tag-yts">YTS YIFY MP4</span>' : ''}
+                  ${srv.seeds ? `<span class="torrent-tag-pill tag-seeds">👤 ${srv.seeds} Seed</span>` : ''}
+                </div>
+                <h2 class="torrent-hub-name">${srv.displayName || srv.name}</h2>
+                <p class="torrent-hub-subtitle">Bu kaynak Vercel üzerinde yüksek hızlı P2P protokolü ile sağlanır. VLC, Stremio, qBittorrent veya mobil oynatıcı ile anında yüksek bitrate ve Türkçe altyazı ile izleyin.</p>
+              </div>
+            </div>
+
+            <div class="torrent-hub-actions">
+              <a href="${magnetLink}" class="btn-torrent-action btn-torrent-primary" id="btn-open-magnet-client" title="Cihazındaki Torrent/Stremio İstemcisiyle Başlat">
+                <i data-lucide="play" style="width: 17px; height: 17px; fill: currentColor;"></i>
+                <span>⚡ Torrent / Magnet ile Başlat</span>
+              </a>
+
+              <a href="vlc://${magnetLink}" class="btn-torrent-action btn-torrent-vlc" id="btn-open-vlc-client" title="VLC Media Player ile Aç">
+                <i data-lucide="play-circle" style="width: 17px; height: 17px;"></i>
+                <span>🎬 VLC ile Aç</span>
+              </a>
+
+              <button class="btn-torrent-action btn-torrent-copy" id="btn-copy-torrent-magnet" data-magnet="${magnetLink}" title="Magnet Linkini Kopyala">
+                <i data-lucide="copy" style="width: 17px; height: 17px;"></i>
+                <span>📋 Magnet Kopyala</span>
+              </button>
+            </div>
+
+            <div class="torrent-hub-tip">
+              <i data-lucide="info" style="width: 15px; height: 15px; color: #60a5fa; flex-shrink: 0;"></i>
+              <span>İpucu: Eğer tarayıcıda doğrudan izlemek istiyorsanız üstteki sunucu çubuğundan <strong>Dizipal 1080p</strong> veya <strong>VIP 1080p</strong> sunucularını seçebilirsiniz.</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     if (
       srv.isDirectVideo ||
       srv.isHls ||
       (srv.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
     ) {
       const streamUrl = srv.streamUrl || srv.getUrl();
-      const floatingAudioTip = `
+
+      // Dual-Audio Toggle Bar (shown when hybrid dubbed audio is available and separate from main video)
+      const isSameStream = srv.dubbedAudioUrl && (streamUrl === srv.dubbedAudioUrl);
+      const hasDubbedAudio = srv.dubbedAudioUrl && srv.dubbedAudioUrl.length > 5 && !isSameStream;
+      const dualAudioBarHTML = hasDubbedAudio ? `
+        <div class="dual-audio-bar" id="dual-audio-bar">
+          <div class="dual-audio-label">
+            <i data-lucide="headphones" style="width: 14px; height: 14px; color: #f59e0b;"></i>
+            <span>Ses Kaynağı:</span>
+          </div>
+          <div class="dual-audio-toggle">
+            <button id="btn-audio-original" class="dual-audio-btn active" title="Orijinal Ses">
+              <span>🇬🇧 Orijinal</span>
+            </button>
+            <button id="btn-audio-dubbed" class="dual-audio-btn" title="Türkçe Dublaj Sesi">
+              <span>🇹🇷 TR Dublaj</span>
+            </button>
+          </div>
+          <span class="dual-audio-source-name" title="${srv.dubbedAudioName || ''}">
+            Ses: ${srv.dubbedAudioName || 'TR Dublaj'}
+          </span>
+        </div>
+      ` : '';
+
+      const floatingAudioTip = !hasDubbedAudio ? `
         <div class="floating-audio-chip" id="floating-audio-chip">
           <div class="audio-chip-content">
             <i data-lucide="volume-2" style="width: 13px; height: 13px; color: #f59e0b;"></i>
@@ -300,26 +499,76 @@ export async function openPlayerModal({
             <i data-lucide="x" style="width: 12px; height: 12px;"></i>
           </button>
         </div>
+      ` : '';
+
+      // Resolve effective subtitles (check current srv, then fallback to any available subtitles in active servers)
+      const effectiveSubtitles = resolveEffectiveSubtitles(srv);
+
+      // Default active subtitle index: if in 'subtitled' mode, default to 0 (Turkish); if in 'dubbed', default to -1 (off)
+      const defaultSubIndex = (currentCategory === 'subtitled' && effectiveSubtitles.length > 0) ? 0 : -1;
+
+      // Subtitle Control Bar HTML - ALWAYS rendered for Direct Video (Torrents, Sinewix, FastCDN, Dizipal)
+      const subButtons = effectiveSubtitles.map((sub, idx) => {
+        const isTr = (sub.label || '').toLowerCase().includes('türk') || (sub.label || '').toLowerCase().includes('tr');
+        const flag = isTr ? '🇹🇷' : '🌐';
+        return `
+          <button class="sub-toggle-btn ${idx === defaultSubIndex ? 'active' : ''}" data-sub-idx="${idx}" title="${sub.label || 'Altyazı'}">
+            <span>${flag} ${sub.label || 'Altyazı'}</span>
+          </button>
+        `;
+      }).join('');
+
+      const subtitleControlBarHTML = `
+        <div class="subtitle-control-bar" id="subtitle-control-bar">
+          <div class="sub-control-label">
+            <i data-lucide="subtitles" style="width: 14px; height: 14px; color: #60a5fa;"></i>
+            <span>Altyazı:</span>
+          </div>
+          <div class="sub-toggle-group">
+            ${subButtons}
+            <button class="sub-toggle-btn ${defaultSubIndex === -1 ? 'active' : ''}" data-sub-idx="-1" title="Altyazıyı Kapat">
+              <span>❌ Kapalı</span>
+            </button>
+          </div>
+        </div>
       `;
 
-      let tracksHTML = '';
-      if (Array.isArray(srv.subtitles) && srv.subtitles.length > 0) {
-        tracksHTML = srv.subtitles.map((sub, idx) => `
-          <track kind="subtitles" label="${sub.label || 'Altyazı'}" src="${sub.src}" srclang="${(sub.label || '').toLowerCase().includes('türk') ? 'tr' : 'en'}" ${idx === 0 ? 'default' : ''}>
-        `).join('');
-      }
+      const tracksHTML = effectiveSubtitles.map((sub, idx) => {
+        let safeSrc = sub.src;
+        if (safeSrc && safeSrc.startsWith('http')) {
+          safeSrc = `/api/proxy?url=${encodeURIComponent(safeSrc)}`;
+        }
+        const isTr = (sub.label || '').toLowerCase().includes('türk') || (sub.label || '').toLowerCase().includes('tr');
+        return `
+          <track 
+            kind="subtitles" 
+            label="${sub.label || 'Altyazı'}" 
+            src="${safeSrc}" 
+            srclang="${isTr ? 'tr' : 'en'}" 
+            ${idx === defaultSubIndex ? 'default' : ''}>
+        `;
+      }).join('');
+
+      // Hidden dubbed audio element for dual-audio sync (offscreen, not display:none to allow playback)
+      const dubbedAudioHTML = hasDubbedAudio ? `
+        <video id="dubbed-audio-source" style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none;" preload="auto"></video>
+      ` : '';
 
       return `
         <div class="direct-video-wrapper">
+          ${dualAudioBarHTML}
+          ${subtitleControlBarHTML}
           <video 
             id="hls-video-player" 
             controls 
             autoplay 
             playsinline
             webkit-playsinline
+            crossorigin="anonymous"
             preload="auto">
             ${tracksHTML}
           </video>
+          ${dubbedAudioHTML}
           ${floatingAudioTip}
         </div>
       `;
@@ -1154,6 +1403,21 @@ export async function openPlayerModal({
       popoutBtn.href = srv?.streamUrl || srv?.getUrl() || '#';
     }
 
+    const copyMagnetBtn = document.getElementById('btn-copy-torrent-magnet');
+    if (copyMagnetBtn) {
+      copyMagnetBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const mag = copyMagnetBtn.getAttribute('data-magnet');
+        if (mag) {
+          navigator.clipboard.writeText(mag).then(() => {
+            showToast('✓ Magnet linki kopyalandı! (Torrent / VLC uygulamanızda açabilirsiniz)', 'success');
+          }).catch(() => {
+            prompt('Magnet Link:', mag);
+          });
+        }
+      });
+    }
+
     const fallbackBtn = document.getElementById('btn-switch-subtitled-fallback');
     if (fallbackBtn) {
       fallbackBtn.addEventListener('click', () => {
@@ -1179,17 +1443,37 @@ export async function openPlayerModal({
       srv?.isHls ||
       (srv?.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.txt') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
     ) {
+      if (activeHlsInstance) {
+        try { activeHlsInstance.destroy(); } catch (_) {}
+        activeHlsInstance = null;
+      }
+      if (activeAudioHlsInstance) {
+        try { activeAudioHlsInstance.destroy(); } catch (_) {}
+        activeAudioHlsInstance = null;
+      }
+
       const videoEl = document.getElementById('hls-video-player');
       const streamUrl = srv.streamUrl || srv.getUrl();
       if (videoEl && streamUrl) {
         const isHlsStream = streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || srv.isHls;
 
         const fallbackToIframe = () => {
-          if (srv.originalEmbedUrl || (srv.url && !srv.url.includes('.m3u8'))) {
+          if (srv._fallbackAttempted) return;
+          srv._fallbackAttempted = true;
+
+          if (srv.originalEmbedUrl) {
             srv.isDirectVideo = false;
             srv.isHls = false;
-            srv.streamUrl = srv.originalEmbedUrl || srv.url;
+            srv.streamUrl = srv.originalEmbedUrl;
+            srv.url = srv.originalEmbedUrl;
             updatePlayerContainer();
+          } else if (activeServers && activeServers.length > currentServerIndex + 1) {
+            showToast(`⚡ ${srv.displayName || srv.name || 'Sunucu'} yanıt vermedi, sonraki sunucuya geçiliyor...`, 'info');
+            currentServerIndex++;
+            updateServerPillsEvents();
+            updatePlayerContainer();
+          } else {
+            showToast('❌ Bu içerik için alternatif çalışan sunucu bulunamadı.', 'error');
           }
         };
 
@@ -1242,12 +1526,177 @@ export async function openPlayerModal({
           });
         } else {
           videoEl.src = streamUrl;
-          if (initialTime > 0) videoEl.currentTime = initialTime;
-          videoEl.play().catch(() => {});
+
+          // 4-second watchdog timer to eliminate dead/stalled stream freezes
+          let directStreamWatchdog = setTimeout(() => {
+            if (videoEl.readyState < 2) {
+              console.warn('[PlayerModal] Direct video stream stalled. Auto-failing over...');
+              fallbackToIframe();
+            }
+          }, 4000);
+
+          const clearDirectWatchdog = () => {
+            if (directStreamWatchdog) {
+              clearTimeout(directStreamWatchdog);
+              directStreamWatchdog = null;
+            }
+          };
+
+          videoEl.addEventListener('loadeddata', clearDirectWatchdog, { once: true });
+          videoEl.addEventListener('canplay', clearDirectWatchdog, { once: true });
+          videoEl.addEventListener('playing', clearDirectWatchdog, { once: true });
+
+          videoEl.addEventListener('loadedmetadata', () => {
+            if (initialTime > 0 && initialTime < (videoEl.duration || 99999)) {
+              videoEl.currentTime = initialTime;
+            }
+            videoEl.play().catch(() => {});
+          });
           videoEl.addEventListener('error', () => {
+            clearDirectWatchdog();
             fallbackToIframe();
           });
         }
+
+        // ============ Dual-Audio Synchronization Engine ============
+        const dubbedAudioEl = document.getElementById('dubbed-audio-source');
+        const btnOriginal = document.getElementById('btn-audio-original');
+        const btnDubbed = document.getElementById('btn-audio-dubbed');
+
+        if (dubbedAudioEl && srv.dubbedAudioUrl) {
+          let currentAudioTrack = 'dubbed';
+          const dubbedUrl = srv.dubbedAudioUrl;
+          const isAudioHls = dubbedUrl.includes('.m3u8') || srv.dubbedAudioIsHls;
+
+          if (isAudioHls && window.Hls && Hls.isSupported()) {
+            const audioHls = new Hls({
+              enableWorker: true,
+              lowLatencyMode: true
+            });
+            activeAudioHlsInstance = audioHls;
+            audioHls.loadSource(dubbedUrl);
+            audioHls.attachMedia(dubbedAudioEl);
+          } else {
+            dubbedAudioEl.src = dubbedUrl;
+          }
+
+          const setAudioTrack = (track, silent = false) => {
+            currentAudioTrack = track;
+            if (track === 'dubbed') {
+              if (btnDubbed) btnDubbed.classList.add('active');
+              if (btnOriginal) btnOriginal.classList.remove('active');
+
+              // If the main video itself is already the dubbed stream, just unmute videoEl!
+              if (!dubbedAudioEl || (srv.streamUrl === srv.dubbedAudioUrl)) {
+                videoEl.muted = false;
+                if (!silent) showToast('🇹🇷 Türkçe Dublaj sesi aktif.', 'success');
+                return;
+              }
+
+              videoEl.muted = true;
+              dubbedAudioEl.muted = false;
+              dubbedAudioEl.volume = videoEl.volume;
+              if (videoEl.currentTime > 0 && Math.abs(dubbedAudioEl.currentTime - videoEl.currentTime) > 0.3) {
+                try { dubbedAudioEl.currentTime = videoEl.currentTime; } catch (_) {}
+              }
+              if (!videoEl.paused) {
+                dubbedAudioEl.play().catch(() => {
+                  // Fallback: if dubbed audio play failed/blocked, unmute videoEl so sound is never lost
+                  videoEl.muted = false;
+                });
+              }
+              if (!silent) showToast('🇹🇷 Türkçe Dublaj sesi aktif edildi.', 'success');
+            } else {
+              if (btnOriginal) btnOriginal.classList.add('active');
+              if (btnDubbed) btnDubbed.classList.remove('active');
+              videoEl.muted = false;
+              if (dubbedAudioEl) {
+                dubbedAudioEl.muted = true;
+                try { dubbedAudioEl.pause(); } catch (_) {}
+              }
+              if (!silent) showToast('🇬🇧 Orijinal ses aktif edildi.', 'info');
+            }
+          };
+
+          if (btnOriginal) {
+            btnOriginal.onclick = () => setAudioTrack('original');
+          }
+          if (btnDubbed) {
+            btnDubbed.onclick = () => setAudioTrack('dubbed');
+          }
+
+          // Initial track setting without spamming toast
+          setAudioTrack('dubbed', true);
+
+          videoEl.addEventListener('canplay', () => {
+            if (currentAudioTrack === 'dubbed') {
+              if (Math.abs(dubbedAudioEl.currentTime - videoEl.currentTime) > 0.3) {
+                try { dubbedAudioEl.currentTime = videoEl.currentTime; } catch (_) {}
+              }
+              if (!videoEl.paused) dubbedAudioEl.play().catch(() => {});
+            }
+          }, { once: true });
+
+          videoEl.addEventListener('play', () => {
+            if (currentAudioTrack === 'dubbed') {
+              dubbedAudioEl.currentTime = videoEl.currentTime;
+              dubbedAudioEl.play().catch(() => {});
+            }
+          });
+
+          videoEl.addEventListener('pause', () => {
+            if (currentAudioTrack === 'dubbed') {
+              dubbedAudioEl.pause();
+            }
+          });
+
+          videoEl.addEventListener('seeking', () => {
+            if (currentAudioTrack === 'dubbed') {
+              dubbedAudioEl.currentTime = videoEl.currentTime;
+            }
+          });
+
+          videoEl.addEventListener('seeked', () => {
+            if (currentAudioTrack === 'dubbed') {
+              dubbedAudioEl.currentTime = videoEl.currentTime;
+              if (!videoEl.paused) dubbedAudioEl.play().catch(() => {});
+            }
+          });
+
+          videoEl.addEventListener('waiting', () => {
+            if (currentAudioTrack === 'dubbed') {
+              dubbedAudioEl.pause();
+            }
+          });
+
+          videoEl.addEventListener('playing', () => {
+            if (currentAudioTrack === 'dubbed') {
+              if (Math.abs(dubbedAudioEl.currentTime - videoEl.currentTime) > 0.25) {
+                dubbedAudioEl.currentTime = videoEl.currentTime;
+              }
+              dubbedAudioEl.play().catch(() => {});
+            }
+          });
+
+          videoEl.addEventListener('volumechange', () => {
+            if (currentAudioTrack === 'dubbed') {
+              dubbedAudioEl.volume = videoEl.volume;
+              dubbedAudioEl.muted = videoEl.muted;
+            }
+          });
+
+          videoEl.addEventListener('timeupdate', () => {
+            if (currentAudioTrack === 'dubbed' && !videoEl.paused) {
+              const diff = Math.abs(dubbedAudioEl.currentTime - videoEl.currentTime);
+              if (diff > 0.3) {
+                dubbedAudioEl.currentTime = videoEl.currentTime;
+              }
+            }
+          });
+        }
+
+        // ============ Subtitle Control Engine for Torrent, Sinewix & Direct Streams ============
+        attachSubtitleControls(videoEl, srv);
       }
     }
   }
@@ -1419,9 +1868,10 @@ export async function openPlayerModal({
           return;
         }
 
-        // 3. Keep pills updated as more servers arrive
+        // 3. Keep pills and subtitles updated as more servers arrive
         activeServers = categorizedServers[currentCategory] || [];
         updateServerPillsEvents();
+        syncSubtitlesToActivePlayer();
 
         if (isComplete && activeServers.length === 0) {
           if (currentCategory === 'dubbed' && subtitled.length > 0 && !hasPlayerStartedPlaying) {
@@ -1612,8 +2062,12 @@ export async function openPlayerModal({
   const closeModal = () => {
     clearInterval(activeProgressInterval);
     if (activeHlsInstance) {
-      activeHlsInstance.destroy();
+      try { activeHlsInstance.destroy(); } catch (_) {}
       activeHlsInstance = null;
+    }
+    if (activeAudioHlsInstance) {
+      try { activeAudioHlsInstance.destroy(); } catch (_) {}
+      activeAudioHlsInstance = null;
     }
     if (originalWindowOpen) {
       window.open = originalWindowOpen;
