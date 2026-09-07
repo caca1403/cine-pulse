@@ -456,26 +456,6 @@ export async function openPlayerModal({
               allow="autoplay; encrypted-media; picture-in-picture; fullscreen">
             </iframe>
           </div>
-
-          <div class="torrent-player-overlay-bar">
-            <div class="torrent-player-stream-info">
-              <span class="pulse-live-dot"></span>
-              <span class="torrent-stream-name">${srv.displayName || srv.name}</span>
-              <span class="torrent-p2p-badge">⚡ Canlı YTS Yayını</span>
-            </div>
-            <div class="torrent-player-quick-tools">
-              ${magnetLink ? `
-                <a href="vlc://${magnetLink}" class="btn-torrent-overlay-tool" title="VLC Player ile Aç">
-                  <i data-lucide="play-circle" style="width: 14px; height: 14px;"></i>
-                  <span>VLC</span>
-                </a>
-                <button class="btn-torrent-overlay-tool" id="btn-copy-torrent-magnet" data-magnet="${magnetLink}" title="Magnet Linkini Kopyala">
-                  <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
-                  <span>Magnet</span>
-                </button>
-              ` : ''}
-            </div>
-          </div>
         </div>
       `;
     }
@@ -1436,20 +1416,7 @@ export async function openPlayerModal({
       popoutBtn.href = srv?.streamUrl || srv?.getUrl() || '#';
     }
 
-    const copyMagnetBtn = document.getElementById('btn-copy-torrent-magnet');
-    if (copyMagnetBtn) {
-      copyMagnetBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const mag = copyMagnetBtn.getAttribute('data-magnet');
-        if (mag) {
-          navigator.clipboard.writeText(mag).then(() => {
-            showToast('✓ Magnet linki kopyalandı! (Torrent / VLC uygulamanızda açabilirsiniz)', 'success');
-          }).catch(() => {
-            prompt('Magnet Link:', mag);
-          });
-        }
-      });
-    }
+
 
 
 
