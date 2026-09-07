@@ -136,7 +136,7 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
 
       const magnetUrl = `magnet:?xt=urn:btih:${stream.infoHash}&dn=${encodeURIComponent(fullTitle)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz`;
       const ytsWebEmbedUrl = tmdbId 
-        ? (isMovie ? `https://2embed.skin/embed/${tmdbId}` : `https://2embed.skin/embed/tv/${tmdbId}-${season}-${episode}`)
+        ? (isMovie ? `https://vidsrc.mov/embed/movie/${tmdbId}` : `https://vidsrc.mov/embed/tv/${tmdbId}/${season}/${episode}`)
         : null;
       const finalStreamUrl = serverAvailable ? `${MEDIA_SERVER_BASE}/torrent/${stream.infoHash}` : (ytsWebEmbedUrl || magnetUrl);
 
