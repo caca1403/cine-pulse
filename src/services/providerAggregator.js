@@ -26,6 +26,7 @@ import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
 import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
 import { fetchDizipalMovieSources, fetchDizipalEpisodeSources } from './dizipalScraper.js';
 import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
+import { fetchCinepulseCloudSources } from './cinepulseCloudService.js';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -124,6 +125,9 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
     if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'SZ VidMoly 1080p';
     if (url.includes('sibnet') || raw.includes('sibnet')) return 'SZ Sibnet HD';
     if (url.includes('netu') || raw.includes('netu')) return 'SZ Netu HD';
+  }
+  if (id.startsWith('cp_vip_') || raw.includes('cinepulse vip') || raw.includes('cinepulse cloud')) {
+    return s.displayName || s.name || 'CinePulse VIP 1080p';
   }
   if (id.startsWith('dzp_') || (s.source && s.source.toLowerCase().includes('dizipal')) || raw.includes('dizipal')) {
     return s.displayName || s.name || 'Dizipal 1080p';
@@ -235,6 +239,9 @@ function getStreamPriorityScore(s) {
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
+  // Priority 0: CinePulse Own VIP Cloud Server (Highest Priority)
+  if (id.startsWith('cp_vip_') || raw.includes('cinepulse vip') || s.priority === 0) return 0;
+
   // Priority 1: High-Speed Direct Streams (Zero ads, native HTML5 player)
   if (s.isDirectVideo || s.isHls || url.includes('.m3u8') || url.includes('.mp4') || url.includes('.mkv')) {
     if (id.startsWith('snx') || raw.includes('sinewix') || raw.includes('direct')) return 1;
@@ -340,6 +347,12 @@ export async function getStreamingServersProgressive({
 
   // Provider Scraper Tasks (High reliability, fast clean streams)
   const tasks = [
+    // CinePulse Own VIP Cloud Server (Highest Priority - Custom Hosted Content)
+    fetchCinepulseCloudSources({ tmdbId, title: targetTitle, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    fetchCinepulseCloudSources({ tmdbId, title: targetTitle, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
     // Sinewix (Dubbed & Subtitled - Direct 1080p, Zero Ads)
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
