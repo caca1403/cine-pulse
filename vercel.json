@@ -73,6 +73,22 @@
       "destination": "/api/snx?path=$1"
     },
     {
+      "source": "/api/jet",
+      "destination": "/api/jet"
+    },
+    {
+      "source": "/api/jet/(.*)",
+      "destination": "/api/jet?path=$1"
+    },
+    {
+      "source": "/api/ddz",
+      "destination": "/api/ddz"
+    },
+    {
+      "source": "/api/ddz/(.*)",
+      "destination": "/api/ddz?path=$1"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
