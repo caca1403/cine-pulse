@@ -140,14 +140,15 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
         : null;
       const finalStreamUrl = serverAvailable ? `${MEDIA_SERVER_BASE}/torrent/${stream.infoHash}` : (ytsWebEmbedUrl || magnetUrl);
 
+      const sizeStr = sizeMatch ? sizeMatch[0] : '';
       let displayName = isYts
-        ? `⚡ YTS Direct ${qualityLabel} (MP4)`
+        ? `⚡ YTS ${qualityLabel} (${sizeStr || 'MP4'})`
         : isMp4
-          ? `⚡ Torrent Direct ${qualityLabel} (MP4)`
-          : `⚡ Torrent Direct ${qualityLabel}`;
+          ? `⚡ Torrent ${qualityLabel} (${sizeStr || 'MP4'})`
+          : `⚡ Torrent ${qualityLabel} (${sizeStr || 'MKV'})`;
 
       let badge = isYts
-        ? '⚡ YTS 1080p (MP4)'
+        ? `⚡ YTS ${qualityLabel}`
         : `⚡ Torrent ${qualityLabel}`;
 
       results.push({
@@ -219,20 +220,17 @@ export async function fetchGlobalAutonomousSources({
     const ytsList = (ytsResults.status === 'fulfilled' && Array.isArray(ytsResults.value)) ? ytsResults.value : [];
     const tioList = (torrentioResults.status === 'fulfilled' && Array.isArray(torrentioResults.value)) ? torrentioResults.value : [];
 
-    // 2. Merge and deduplicate by infoHash and quality (max 4 clean distinct streams)
+    // 2. Merge all distinct releases from YTS and Torrentio by unique hash (up to 10 releases)
     const merged = [];
     const seenHashes = new Set();
-    const seenQualities = new Set();
 
     for (const s of [...ytsList, ...tioList]) {
       const hash = s.infoHash || s.streamUrl || s.url;
-      const qKey = `${s.source || 'torrent'}_${s.quality || '1080p'}`;
-      if (hash && !seenHashes.has(hash) && !seenQualities.has(qKey)) {
+      if (hash && !seenHashes.has(hash)) {
         seenHashes.add(hash);
-        seenQualities.add(qKey);
         merged.push(s);
       }
-      if (merged.length >= 4) break;
+      if (merged.length >= 10) break;
     }
 
     // 4. For Subtitled mode: attach Turkish subtitle URL to every stream
