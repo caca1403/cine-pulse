@@ -124,12 +124,12 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
     if (url.includes('sibnet') || raw.includes('sibnet')) return 'SZ Sibnet HD';
     if (url.includes('netu') || raw.includes('netu')) return 'SZ Netu HD';
   }
-  if (id.startsWith('jet_') || (s.source && s.source.toLowerCase().includes('jet')) || raw.includes('jetfilm') || raw.includes('jet film')) {
-    if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'JetFilmizle (VidMoly 1080p)';
-    if (url.includes('ok.ru') || raw.includes('ok.ru')) return 'JetFilmizle (OK.ru HD)';
-    if (url.includes('titan') || raw.includes('titan')) return 'JetFilmizle (Titan VIP)';
-    if (raw.includes('dizi') || raw.includes('series')) return s.displayName || s.name || 'JetFilmizle Dizi VIP';
-    return s.displayName || s.name || 'JetFilmizle VIP';
+  if (id.startsWith('jet_') || (s.source && s.source.toLowerCase().includes('jet')) || raw.includes('jetfilm') || raw.includes('jet film') || raw.startsWith('jet ')) {
+    if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'Jet VidMoly 1080p';
+    if (url.includes('ok.ru') || raw.includes('ok.ru')) return 'Jet OK.ru HD';
+    if (url.includes('titan') || raw.includes('titan')) return 'Jet Titan VIP';
+    if (raw.includes('dizi') || raw.includes('series') || raw.includes('s1')) return s.displayName || s.name || 'Jet Dizi VIP';
+    return s.displayName || s.name || 'Jet VIP';
   }
   if (id.startsWith('ddz_') || (s.source && s.source.toLowerCase().includes('drama')) || raw.includes('dramadizilerim') || raw.includes('kısa dizi')) {
     return s.displayName || s.name || 'DramaDizilerim Kısa Dizi';

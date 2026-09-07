@@ -240,16 +240,16 @@ export async function fetchJetFilmSources({
           const isTitan = streamUrl.includes('titan');
 
           const name = isVidmoly 
-            ? 'JetFilmizle (VidMoly 1080p)' 
+            ? 'Jet VidMoly 1080p' 
             : (isOkru 
-                ? 'JetFilmizle (OK.ru HD)' 
-                : (isTitan ? `JetFilmizle (Titan VIP ${i + 1})` : `JetFilmizle VIP ${i + 1}`));
+                ? 'Jet OK.ru HD' 
+                : (isTitan ? `Jet Titan VIP ${i + 1}` : `Jet VIP ${i + 1}`));
 
           return {
             id: `jet_${filmId}_${i}`,
             name,
             displayName: name,
-            source: 'JetFilmizle',
+            source: 'Jet',
             url: streamUrl,
             quality: '1080p',
             type: 'iframe',
@@ -380,16 +380,16 @@ export async function fetchJetFilmEpisodeSources({
     const isTitan = streamUrl.includes('titan');
 
     const epName = isVidmoly 
-      ? `JetFilmizle Dizi (VidMoly S${season}B${episode})` 
+      ? `Jet VidMoly (S${season}B${episode})` 
       : (isOkru 
-          ? `JetFilmizle Dizi (OK.ru S${season}B${episode})` 
-          : (isTitan ? `JetFilmizle Dizi (Titan S${season}B${episode})` : `JetFilmizle Dizi (VIP S${season}B${episode})`));
+          ? `Jet OK.ru (S${season}B${episode})` 
+          : (isTitan ? `Jet Titan VIP (S${season}B${episode})` : `Jet VIP (S${season}B${episode})`));
 
     return [{
       id: `jet_series_${filmId}_s${season}_e${episode}`,
       name: epName,
       displayName: epName,
-      source: 'JetFilmizle',
+      source: 'Jet',
       url: streamUrl,
       quality: '1080p',
       type: 'iframe',
