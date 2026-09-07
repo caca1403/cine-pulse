@@ -275,7 +275,7 @@ function getStreamPriorityScore(s) {
   const id = (s.id || '').toLowerCase();
 
   // Deprioritize unplayable or dead .mkv streams
-  if (url.includes('.mkv')) return 16;
+  if (url.includes('.mkv') || s.isMkv) return 16;
 
   // Priority 0: Dizipal Direct 1080p HLS (Highest Reliability, Instant 0ms playback)
   if (id.startsWith('dzp_') || raw.includes('dizipal')) {
@@ -292,8 +292,8 @@ function getStreamPriorityScore(s) {
     return 2;
   }
 
-  // Priority 3: High-Speed Direct Streams (HLS FastCDN, Tau)
-  if (s.isDirectVideo || s.isHls || url.includes('.m3u8') || url.includes('.mp4')) {
+  // Priority 3: High-Speed Direct Streams (HLS FastCDN, Tau, MP4)
+  if ((s.isDirectVideo || s.isHls || url.includes('.m3u8') || url.includes('.mp4')) && !s.isMkv && !url.includes('.mkv')) {
     if (url.includes('storage.diziyou') || id.startsWith('dzy') || raw.includes('fastcdn')) return 3;
     if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 3;
     return 4;

@@ -1463,14 +1463,15 @@ export async function openPlayerModal({
           if (srv._fallbackAttempted) return;
           srv._fallbackAttempted = true;
 
-          if (srv.originalEmbedUrl) {
+          const isInvalidEmbed = !srv.originalEmbedUrl || srv.originalEmbedUrl.includes('.mkv') || srv.originalEmbedUrl === srv.streamUrl;
+          if (!isInvalidEmbed) {
             srv.isDirectVideo = false;
             srv.isHls = false;
             srv.streamUrl = srv.originalEmbedUrl;
             srv.url = srv.originalEmbedUrl;
             updatePlayerContainer();
           } else if (activeServers && activeServers.length > currentServerIndex + 1) {
-            showToast(`⚡ ${srv.displayName || srv.name || 'Sunucu'} yanıt vermedi, sonraki sunucuya geçiliyor...`, 'info');
+            showToast(`⚡ ${srv.displayName || srv.name || 'Sunucu'} açılamadı, çalışan alternatife geçiliyor...`, 'info');
             currentServerIndex++;
             updateServerPillsEvents();
             updatePlayerContainer();
