@@ -125,6 +125,11 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
       const isYts = titleLower.includes('yts') || titleLower.includes('yify');
       const isMp4 = titleLower.includes('.mp4') || isYts;
 
+      const isTrDub = isTurkishDubbed(fullTitle);
+      if (isDub && !isTrDub) {
+        continue;
+      }
+
       // Skip low quality or camrips
       if (!is4K && !is1080 && !is720 && !titleLower.includes('bluray') && !titleLower.includes('web-dl') && !titleLower.includes('webrip')) {
         continue;
@@ -138,18 +143,22 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
       const ytsWebEmbedUrl = tmdbId 
         ? (isMovie ? `https://vidsrc.mov/embed/movie/${tmdbId}` : `https://vidsrc.mov/embed/tv/${tmdbId}/${season}/${episode}`)
         : null;
-      const finalStreamUrl = serverAvailable ? `${MEDIA_SERVER_BASE}/torrent/${stream.infoHash}` : (ytsWebEmbedUrl || magnetUrl);
+      const finalStreamUrl = serverAvailable 
+        ? `${MEDIA_SERVER_BASE}/torrent/${stream.infoHash}` 
+        : (isTrDub ? magnetUrl : (ytsWebEmbedUrl || magnetUrl));
 
       const sizeStr = sizeMatch ? sizeMatch[0] : '';
-      let displayName = isYts
-        ? `⚡ YTS ${qualityLabel} (${sizeStr || 'MP4'})`
-        : isMp4
-          ? `⚡ Torrent ${qualityLabel} (${sizeStr || 'MP4'})`
-          : `⚡ Torrent ${qualityLabel} (${sizeStr || 'MKV'})`;
+      let displayName = isTrDub
+        ? `🇹🇷 DUAL ${qualityLabel} (${sizeStr || 'MKV'})`
+        : (isYts
+            ? `⚡ YTS ${qualityLabel} (${sizeStr || 'MP4'})`
+            : isMp4
+              ? `⚡ Torrent ${qualityLabel} (${sizeStr || 'MP4'})`
+              : `⚡ Torrent ${qualityLabel} (${sizeStr || 'MKV'})`);
 
-      let badge = isYts
-        ? `⚡ YTS ${qualityLabel}`
-        : `⚡ Torrent ${qualityLabel}`;
+      let badge = isTrDub
+        ? `🇹🇷 TR Dublaj`
+        : (isYts ? `⚡ YTS ${qualityLabel}` : `⚡ Torrent ${qualityLabel}`);
 
       results.push({
         id: `cp_global_torrent_${stream.infoHash.substring(0, 10)}`,
@@ -205,13 +214,21 @@ export async function fetchGlobalAutonomousSources({
   episode = 1,
   isDub = false
 }) {
-  // Dubbed tab must NEVER contain torrents or hybrid sources as per user mandate
-  if (isDub || !tmdbId) return [];
+  if (!tmdbId) return [];
 
   try {
     const imdbId = await fetchImdbId(type, tmdbId);
 
-    // 1. Fetch from YTS Official (en.yts-official.com) and Torrentio in parallel
+    // If dubbed mode: ONLY fetch genuine Turkish / DUAL torrents
+    if (isDub) {
+      const dubbedTorrents = await fetchTorrentSources({ type, tmdbId, season, episode, isDub: true, imdbId });
+      return dubbedTorrents.map(s => ({
+        ...s,
+        category: 'dubbed'
+      }));
+    }
+
+    // 1. Subtitled mode: Fetch from YTS Official (en.yts-official.com) and Torrentio in parallel
     const [ytsResults, torrentioResults] = await Promise.allSettled([
       fetchYtsOfficialSources({ type, tmdbId, title, originalTitle, year, season, episode, imdbId, isDub: false }),
       fetchTorrentSources({ type, tmdbId, season, episode, isDub: false, imdbId })

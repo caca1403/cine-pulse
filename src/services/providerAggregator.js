@@ -340,6 +340,18 @@ export async function getStreamingServersProgressive({
   const targetTitle = cleanTitle(seriesTitle || title);
   const cacheKey = `${type}_${tmdbId || targetTitle}_s${season}_e${episode}`;
 
+  if (!streamServersCache.has(cacheKey)) {
+    try {
+      const sess = sessionStorage.getItem(`cp_streams_${cacheKey}`);
+      if (sess) {
+        const parsed = JSON.parse(sess);
+        if (parsed && (parsed.dubbed?.length || parsed.subtitled?.length)) {
+          streamServersCache.set(cacheKey, parsed);
+        }
+      }
+    } catch (_) {}
+  }
+
   if (streamServersCache.has(cacheKey)) {
     const cached = streamServersCache.get(cacheKey);
     onUpdate({ ...cached, isComplete: true });
@@ -425,7 +437,10 @@ export async function getStreamingServersProgressive({
     fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // Dubbed Sources: Turkish Streaming Providers (Fast-Path)
+    // Dubbed Sources: Autonomous DUAL Torrents & Turkish Fast-Path Streaming Providers
+    fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+
     // 1. Dizipal (Movies & Series - Direct AlphaStream HLS 1080p)
     isMovie 
       ? fetchDizipalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
@@ -511,11 +526,15 @@ export async function getStreamingServersProgressive({
     }
   }
 
-  // Ensure Dubbed tab contains STRICTLY genuine Turkish audio sources (NO torrents, NO fake hybrids!)
+  // Ensure Dubbed tab contains STRICTLY genuine Turkish audio sources
   currentDubbed = currentDubbed.filter(s => {
     const id = (s.id || '').toLowerCase();
     const nm = (s.displayName || s.name || '').toLowerCase();
     const u = (s.streamUrl || s.url || '').toLowerCase();
+    // Allow direct active DUAL/TR streams
+    if (s.isDirectVideo && (nm.includes('dual') || nm.includes('dublaj'))) {
+      return true;
+    }
     return !id.startsWith('cp_global_vidsrc') && 
            !id.startsWith('cp_global_torrent') &&
            !id.startsWith('yts_off_') &&
@@ -564,6 +583,9 @@ export async function getStreamingServersProgressive({
 
   if (finalResult.totalServers > 0) {
     streamServersCache.set(cacheKey, finalResult);
+    try {
+      sessionStorage.setItem(`cp_streams_${cacheKey}`, JSON.stringify(finalResult));
+    } catch (_) {}
   }
 
   onUpdate({
