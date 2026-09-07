@@ -209,8 +209,7 @@ export async function openPlayerModal({
   }
 
   function attachSubtitleControls(videoEl, srv) {
-    const subBar = document.getElementById('subtitle-control-bar');
-    if (!subBar || !videoEl) return;
+    if (!videoEl) return;
 
     const subs = resolveEffectiveSubtitles(srv);
     let activeSubIdx = (currentCategory === 'subtitled' && subs.length > 0) ? 0 : -1;
@@ -225,29 +224,77 @@ export async function openPlayerModal({
           textTracks[i].mode = 'disabled';
         }
       }
-      subBar.querySelectorAll('.sub-toggle-btn').forEach(btn => {
-        const bIdx = parseInt(btn.getAttribute('data-sub-idx'), 10);
-        if (bIdx === targetIdx) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
+
+      const container = document.getElementById('player-sub-menu-container');
+      if (container) {
+        container.querySelectorAll('.player-sub-item').forEach(btn => {
+          const bIdx = parseInt(btn.getAttribute('data-sub-idx'), 10);
+          if (bIdx === targetIdx) {
+            btn.classList.add('active');
+            if (!btn.querySelector('.sub-check-icon')) {
+              const check = document.createElement('i');
+              check.setAttribute('data-lucide', 'check');
+              check.className = 'sub-check-icon';
+              check.style.width = '14px';
+              check.style.height = '14px';
+              btn.appendChild(check);
+              if (window.lucide) window.lucide.createIcons();
+            }
+          } else {
+            btn.classList.remove('active');
+            btn.querySelector('.sub-check-icon')?.remove();
+          }
+        });
+
+        const trigger = document.getElementById('btn-player-sub-trigger');
+        const labelText = document.getElementById('player-sub-label-text');
+        if (trigger && labelText) {
+          if (targetIdx === -1) {
+            trigger.classList.remove('active');
+            labelText.textContent = 'Altyazı (Kapalı)';
+          } else {
+            trigger.classList.add('active');
+            labelText.textContent = subs[targetIdx]?.label || 'TR Altyazı';
+          }
         }
-      });
+      }
     };
 
-    subBar.querySelectorAll('.sub-toggle-btn').forEach(btn => {
-      btn.onclick = (e) => {
-        e.preventDefault();
-        const idx = parseInt(btn.getAttribute('data-sub-idx'), 10);
-        updateTracksState(idx);
-        if (idx === -1) {
-          showToast('Altyazı kapatıldı.', 'info');
-        } else {
-          const label = subs[idx]?.label || 'Altyazı';
-          showToast(`💬 ${label} açıldı.`, 'success');
-        }
-      };
-    });
+    const container = document.getElementById('player-sub-menu-container');
+    if (container) {
+      const trigger = document.getElementById('btn-player-sub-trigger');
+      const popover = document.getElementById('player-sub-popover');
+
+      if (trigger && popover) {
+        trigger.onclick = (e) => {
+          e.stopPropagation();
+          popover.classList.toggle('hidden');
+        };
+
+        const closePopover = (e) => {
+          if (!container.contains(e.target)) {
+            popover.classList.add('hidden');
+          }
+        };
+        document.removeEventListener('click', closePopover);
+        document.addEventListener('click', closePopover);
+      }
+
+      container.querySelectorAll('.player-sub-item').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const idx = parseInt(btn.getAttribute('data-sub-idx'), 10);
+          updateTracksState(idx);
+          popover?.classList.add('hidden');
+          if (idx === -1) {
+            showToast('Altyazı kapatıldı.', 'info');
+          } else {
+            const label = subs[idx]?.label || 'Altyazı';
+            showToast(`💬 ${label} seçildi.`, 'success');
+          }
+        };
+      });
+    }
 
     const initSubtitles = () => {
       if (activeSubIdx >= 0 && videoEl.textTracks.length > activeSubIdx) {
@@ -264,8 +311,7 @@ export async function openPlayerModal({
 
   function syncSubtitlesToActivePlayer() {
     const videoEl = document.getElementById('hls-video-player');
-    const subBar = document.getElementById('subtitle-control-bar');
-    if (!videoEl || !subBar) return;
+    if (!videoEl) return;
 
     const srv = activeServers[currentServerIndex];
     if (!srv) return;
@@ -289,31 +335,6 @@ export async function openPlayerModal({
         videoEl.appendChild(track);
       });
     }
-
-    const defaultSubIndex = (currentCategory === 'subtitled' && subs.length > 0) ? 0 : -1;
-    const subButtons = subs.map((sub, idx) => {
-      const isTr = (sub.label || '').toLowerCase().includes('türk') || (sub.label || '').toLowerCase().includes('tr');
-      const flag = isTr ? '🇹🇷' : '🌐';
-      return `
-        <button class="sub-toggle-btn ${idx === defaultSubIndex ? 'active' : ''}" data-sub-idx="${idx}" title="${sub.label || 'Altyazı'}">
-          <span>${flag} ${sub.label || 'Altyazı'}</span>
-        </button>
-      `;
-    }).join('');
-
-    subBar.innerHTML = `
-      <div class="sub-control-label">
-        <i data-lucide="subtitles" style="width: 14px; height: 14px; color: #60a5fa;"></i>
-        <span>Altyazı:</span>
-      </div>
-      <div class="sub-toggle-group">
-        ${subButtons}
-        <button class="sub-toggle-btn ${defaultSubIndex === -1 ? 'active' : ''}" data-sub-idx="-1" title="Altyazıyı Kapat">
-          <span>❌ Kapalı</span>
-        </button>
-      </div>
-    `;
-    if (window.lucide) window.lucide.createIcons();
 
     attachSubtitleControls(videoEl, srv);
   }
@@ -413,44 +434,38 @@ export async function openPlayerModal({
     if (isTorrentStream) {
       const magnetLink = srv.magnetUrl || srv.streamUrl || '';
       return `
-        <div class="torrent-hub-stage">
-          <div class="torrent-hub-card">
-            <div class="torrent-hub-header">
-              <div class="torrent-hub-icon-wrap">
-                <i data-lucide="zap" style="width: 30px; height: 30px; color: #f59e0b;"></i>
-              </div>
-              <div class="torrent-hub-info">
-                <div class="torrent-hub-tags">
-                  <span class="torrent-tag-pill tag-p2p">⚡ P2P BitTorrent</span>
-                  <span class="torrent-tag-pill tag-quality">${srv.quality || '1080p'}</span>
-                  ${srv.isYts ? '<span class="torrent-tag-pill tag-yts">YTS YIFY MP4</span>' : ''}
-                  ${srv.seeds ? `<span class="torrent-tag-pill tag-seeds">👤 ${srv.seeds} Seed</span>` : ''}
+        <div class="direct-video-wrapper torrent-video-wrapper">
+          <div id="torrent-webtor-container" class="torrent-webtor-box">
+            <div id="torrent-player-target" class="torrent-player-inner">
+              <div class="player-loading-overlay">
+                <div class="player-loader-core">
+                  <div class="player-loader-spinner"></div>
+                  <i data-lucide="zap" class="player-loader-icon" style="color: #f59e0b;"></i>
                 </div>
-                <h2 class="torrent-hub-name">${srv.displayName || srv.name}</h2>
-                <p class="torrent-hub-subtitle">Bu kaynak Vercel üzerinde yüksek hızlı P2P protokolü ile sağlanır. VLC, Stremio, qBittorrent veya mobil oynatıcı ile anında yüksek bitrate ve Türkçe altyazı ile izleyin.</p>
+                <div class="player-loader-text">
+                  <h3>${srv.displayName || 'YTS Direct 1080p'}</h3>
+                  <p class="player-loader-sub">P2P Doğrudan Web Oynatıcısı Başlatılıyor...</p>
+                  <p class="player-loader-hint">Tarayıcı içi yüksek hızlı BitTorrent akışı kuruluyor...</p>
+                </div>
               </div>
             </div>
+          </div>
 
-            <div class="torrent-hub-actions">
-              <a href="${magnetLink}" class="btn-torrent-action btn-torrent-primary" id="btn-open-magnet-client" title="Cihazındaki Torrent/Stremio İstemcisiyle Başlat">
-                <i data-lucide="play" style="width: 17px; height: 17px; fill: currentColor;"></i>
-                <span>⚡ Torrent / Magnet ile Başlat</span>
-              </a>
-
-              <a href="vlc://${magnetLink}" class="btn-torrent-action btn-torrent-vlc" id="btn-open-vlc-client" title="VLC Media Player ile Aç">
-                <i data-lucide="play-circle" style="width: 17px; height: 17px;"></i>
-                <span>🎬 VLC ile Aç</span>
-              </a>
-
-              <button class="btn-torrent-action btn-torrent-copy" id="btn-copy-torrent-magnet" data-magnet="${magnetLink}" title="Magnet Linkini Kopyala">
-                <i data-lucide="copy" style="width: 17px; height: 17px;"></i>
-                <span>📋 Magnet Kopyala</span>
-              </button>
+          <div class="torrent-player-overlay-bar">
+            <div class="torrent-player-stream-info">
+              <span class="pulse-live-dot"></span>
+              <span class="torrent-stream-name">${srv.displayName || srv.name}</span>
+              <span class="torrent-p2p-badge">⚡ Canlı Web Akışı</span>
             </div>
-
-            <div class="torrent-hub-tip">
-              <i data-lucide="info" style="width: 15px; height: 15px; color: #60a5fa; flex-shrink: 0;"></i>
-              <span>İpucu: Eğer tarayıcıda doğrudan izlemek istiyorsanız üstteki sunucu çubuğundan <strong>Dizipal 1080p</strong> veya <strong>VIP 1080p</strong> sunucularını seçebilirsiniz.</span>
+            <div class="torrent-player-quick-tools">
+              <a href="vlc://${magnetLink}" class="btn-torrent-overlay-tool" title="VLC Player ile Aç">
+                <i data-lucide="play-circle" style="width: 14px; height: 14px;"></i>
+                <span>VLC</span>
+              </a>
+              <button class="btn-torrent-overlay-tool" id="btn-copy-torrent-magnet" data-magnet="${magnetLink}" title="Magnet Linkini Kopyala">
+                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                <span>Magnet</span>
+              </button>
             </div>
           </div>
         </div>
@@ -507,31 +522,41 @@ export async function openPlayerModal({
       // Default active subtitle index: if in 'subtitled' mode, default to 0 (Turkish); if in 'dubbed', default to -1 (off)
       const defaultSubIndex = (currentCategory === 'subtitled' && effectiveSubtitles.length > 0) ? 0 : -1;
 
-      // Subtitle Control Bar HTML - ALWAYS rendered for Direct Video (Torrents, Sinewix, FastCDN, Dizipal)
-      const subButtons = effectiveSubtitles.map((sub, idx) => {
+      // In-Player CC / Subtitle Menu Component (Internal, like volume controls, NOT obscuring the video)
+      const subOptionsHTML = effectiveSubtitles.map((sub, idx) => {
         const isTr = (sub.label || '').toLowerCase().includes('türk') || (sub.label || '').toLowerCase().includes('tr');
         const flag = isTr ? '🇹🇷' : '🌐';
         return `
-          <button class="sub-toggle-btn ${idx === defaultSubIndex ? 'active' : ''}" data-sub-idx="${idx}" title="${sub.label || 'Altyazı'}">
-            <span>${flag} ${sub.label || 'Altyazı'}</span>
+          <button class="player-sub-item ${idx === defaultSubIndex ? 'active' : ''}" data-sub-idx="${idx}">
+            <span class="sub-item-flag">${flag}</span>
+            <span class="sub-item-title">${sub.label || 'Altyazı'}</span>
+            ${idx === defaultSubIndex ? '<i data-lucide="check" class="sub-check-icon" style="width: 14px; height: 14px;"></i>' : ''}
           </button>
         `;
       }).join('');
 
-      const subtitleControlBarHTML = `
-        <div class="subtitle-control-bar" id="subtitle-control-bar">
-          <div class="sub-control-label">
-            <i data-lucide="subtitles" style="width: 14px; height: 14px; color: #60a5fa;"></i>
-            <span>Altyazı:</span>
-          </div>
-          <div class="sub-toggle-group">
-            ${subButtons}
-            <button class="sub-toggle-btn ${defaultSubIndex === -1 ? 'active' : ''}" data-sub-idx="-1" title="Altyazıyı Kapat">
-              <span>❌ Kapalı</span>
-            </button>
+      const playerSubMenuHTML = effectiveSubtitles.length > 0 ? `
+        <div class="player-sub-menu-container" id="player-sub-menu-container">
+          <button class="btn-player-sub-trigger ${defaultSubIndex >= 0 ? 'active' : ''}" id="btn-player-sub-trigger" title="Altyazı Ayarları (CC)">
+            <i data-lucide="subtitles" style="width: 15px; height: 15px;"></i>
+            <span id="player-sub-label-text">${defaultSubIndex >= 0 ? (effectiveSubtitles[defaultSubIndex]?.label || 'TR Altyazı') : 'Altyazı'}</span>
+          </button>
+          <div class="player-sub-popover hidden" id="player-sub-popover">
+            <div class="player-sub-popover-title">
+              <i data-lucide="subtitles" style="width: 14px; height: 14px; color: #60a5fa;"></i>
+              <span>Altyazı Menüsü</span>
+            </div>
+            <div class="player-sub-list-scroll">
+              <button class="player-sub-item ${defaultSubIndex === -1 ? 'active' : ''}" data-sub-idx="-1">
+                <span class="sub-item-flag">❌</span>
+                <span class="sub-item-title">Kapalı</span>
+                ${defaultSubIndex === -1 ? '<i data-lucide="check" class="sub-check-icon" style="width: 14px; height: 14px;"></i>' : ''}
+              </button>
+              ${subOptionsHTML}
+            </div>
           </div>
         </div>
-      `;
+      ` : '';
 
       const tracksHTML = effectiveSubtitles.map((sub, idx) => {
         let safeSrc = sub.src;
@@ -557,7 +582,6 @@ export async function openPlayerModal({
       return `
         <div class="direct-video-wrapper">
           ${dualAudioBarHTML}
-          ${subtitleControlBarHTML}
           <video 
             id="hls-video-player" 
             controls 
@@ -568,6 +592,7 @@ export async function openPlayerModal({
             preload="auto">
             ${tracksHTML}
           </video>
+          ${playerSubMenuHTML}
           ${dubbedAudioHTML}
           ${floatingAudioTip}
         </div>
@@ -1416,6 +1441,55 @@ export async function openPlayerModal({
           });
         }
       });
+    }
+
+    const isTorrentStream = Boolean(srv?.isTorrent || (srv?.id && (srv.id.startsWith('cp_global_torrent') || srv.id.startsWith('cp_global_yts') || srv.id.startsWith('yts_'))) || (srv?.streamUrl && srv.streamUrl.startsWith('magnet:')));
+
+    if (isTorrentStream) {
+      const magnetLink = srv?.magnetUrl || srv?.streamUrl || '';
+      const effectiveSubtitles = resolveEffectiveSubtitles(srv);
+
+      const mountWebtor = () => {
+        const target = document.getElementById('torrent-player-target');
+        if (!target) return;
+        target.innerHTML = '';
+
+        window.webtor = window.webtor || [];
+        window.webtor.push({
+          id: 'torrent-player-target',
+          magnet: magnetLink,
+          width: '100%',
+          height: '100%',
+          poster: backdropPath || posterPath || '',
+          features: {
+            p2p: true,
+            subtitles: true
+          },
+          subtitles: effectiveSubtitles.map(s => {
+            let safeSrc = s.src;
+            if (safeSrc && safeSrc.startsWith('http')) {
+              safeSrc = `/api/proxy?url=${encodeURIComponent(safeSrc)}`;
+            }
+            return {
+              label: s.label || 'Türkçe',
+              srclang: (s.label || '').toLowerCase().includes('türk') ? 'tr' : 'en',
+              src: safeSrc,
+              default: true
+            };
+          })
+        });
+      };
+
+      if (window.webtor) {
+        mountWebtor();
+      } else {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@webtor/embed-sdk-js/dist/index.min.js';
+        script.charset = 'utf-8';
+        script.async = true;
+        script.onload = mountWebtor;
+        document.head.appendChild(script);
+      }
     }
 
     const fallbackBtn = document.getElementById('btn-switch-subtitled-fallback');

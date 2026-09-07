@@ -3602,69 +3602,231 @@ img {
   padding-left: 8px;
 }
 
-/* Subtitle Control Bar */
-.subtitle-control-bar {
+/* In-Player Subtitle CC Dropdown Menu (Internal, like volume control) */
+.player-sub-menu-container {
   position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 50;
+  bottom: 56px;
+  right: 18px;
+  z-index: 45;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.btn-player-sub-trigger {
   background: rgba(15, 23, 42, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  border-radius: 9999px;
-  padding: 5px 12px 5px 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(59, 130, 246, 0.15);
-  animation: fadeIn 0.3s ease;
-}
-
-.sub-control-label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #60a5fa;
-  letter-spacing: 0.02em;
-}
-
-.sub-toggle-group {
-  display: flex;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 3px;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.sub-toggle-btn {
-  border: none;
-  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   color: #94a3b8;
   font-size: 0.75rem;
   font-weight: 700;
-  padding: 4px 10px;
+  padding: 6px 14px;
   border-radius: 9999px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  user-select: none;
 }
 
-.sub-toggle-btn:hover {
-  color: #fff;
+.btn-player-sub-trigger:hover,
+.btn-player-sub-trigger.active {
+  background: rgba(30, 41, 59, 0.95);
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.5);
 }
 
-.sub-toggle-btn.active {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: #fff;
+.btn-player-sub-trigger.active {
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.4);
+}
+
+.player-sub-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 230px;
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 20px rgba(59, 130, 246, 0.2);
+  padding: 8px;
+  animation: fadeIn 0.2s ease;
+  z-index: 50;
+}
+
+.player-sub-popover-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
   font-weight: 800;
-  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.5);
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 8px 8px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 4px;
+}
+
+.player-sub-list-scroll {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.player-sub-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.player-sub-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.player-sub-item.active {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  font-weight: 700;
+}
+
+.sub-item-flag {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.sub-item-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sub-check-icon {
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+/* Webtor In-Browser Live Torrent Video Player */
+.torrent-video-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.torrent-webtor-box {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+}
+
+.torrent-webtor-box iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: none;
+}
+
+.torrent-player-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.torrent-player-overlay-bar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.torrent-player-stream-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+}
+
+.torrent-p2p-badge {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  font-weight: 800;
+  font-size: 0.65rem;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.torrent-player-quick-tools {
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.btn-torrent-overlay-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+.btn-torrent-overlay-tool:hover {
+  background: rgba(30, 41, 59, 0.95);
+  color: #fff;
+  border-color: rgba(96, 165, 250, 0.4);
 }
 
 /* Luxury Netflix-Style Subtitle Cues */
@@ -3681,15 +3843,12 @@ video::cue {
 }
 
 @media (max-width: 768px) {
-  .subtitle-control-bar {
-    top: 8px !important;
-    left: 8px !important;
-    padding: 3px 8px !important;
-    gap: 4px !important;
+  .player-sub-menu-container {
+    bottom: 50px !important;
+    right: 12px !important;
   }
-  .sub-toggle-btn {
-    padding: 3px 7px !important;
-    font-size: 0.68rem !important;
+  .player-sub-popover {
+    width: 200px !important;
   }
   .dual-audio-bar {
     top: 8px !important;
