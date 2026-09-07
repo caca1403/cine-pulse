@@ -437,8 +437,8 @@ export async function openPlayerModal({
         ? srv.streamUrl
         : (tmdbId 
             ? (type === 'movie' 
-                ? `https://autoembed.co/movie/tmdb/${tmdbId}` 
-                : `https://autoembed.co/tv/tmdb/${tmdbId}/${currentSeason}/${currentEpisode}`)
+                ? `https://2embed.skin/embed/${tmdbId}` 
+                : `https://2embed.skin/embed/tv/${tmdbId}-${currentSeason}-${currentEpisode}`)
             : '');
 
       return `
@@ -2107,8 +2107,28 @@ export async function openPlayerModal({
       window.open = originalWindowOpen;
       originalWindowOpen = null;
     }
-    const iframe = document.getElementById('video-iframe');
-    if (iframe) iframe.src = 'about:blank';
+
+    // Stop and mute all video & audio elements inside modal immediately
+    try {
+      const mediaElements = modalContainer.querySelectorAll('video, audio');
+      mediaElements.forEach(m => {
+        try {
+          m.pause();
+          m.removeAttribute('src');
+          m.load();
+        } catch (_) {}
+      });
+    } catch (_) {}
+
+    // Clean up iframes
+    const iframes = modalContainer.querySelectorAll('iframe');
+    iframes.forEach(f => {
+      try {
+        f.src = 'about:blank';
+        f.remove();
+      } catch (_) {}
+    });
+
     modalContainer.classList.add('hidden');
     modalContainer.innerHTML = '';
     document.body.style.overflow = '';
