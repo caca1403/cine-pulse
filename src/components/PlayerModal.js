@@ -433,26 +433,27 @@ export async function openPlayerModal({
 
     if (isTorrentStream) {
       const magnetLink = srv.magnetUrl || (srv.streamUrl?.startsWith('magnet:') ? srv.streamUrl : '');
-      const finalEmbedUrl = (srv.streamUrl && srv.streamUrl.startsWith('http') && !srv.streamUrl.includes(':4000/torrent/'))
-        ? srv.streamUrl
-        : (tmdbId 
-            ? (type === 'movie' 
-                ? `https://2embed.skin/embed/${tmdbId}` 
-                : `https://2embed.skin/embed/tv/${tmdbId}-${currentSeason}-${currentEpisode}`)
-            : '');
+      const finalEmbedUrl = (srv.embedUrl && srv.embedUrl.startsWith('http'))
+        ? srv.embedUrl
+        : ((srv.streamUrl && srv.streamUrl.startsWith('http') && !srv.streamUrl.includes(':4000/torrent/'))
+            ? srv.streamUrl
+            : (tmdbId 
+                ? (type === 'movie' 
+                    ? `https://vidsrc.mov/embed/movie/${tmdbId}` 
+                    : `https://vidsrc.mov/embed/tv/${tmdbId}/${currentSeason}/${currentEpisode}`)
+                : ''));
 
       return `
         <div class="direct-video-wrapper torrent-video-wrapper">
-          <div class="torrent-webtor-box">
+          <div class="torrent-webtor-box" style="position:relative;width:100%;height:100%;overflow:hidden">
             <iframe 
               id="video-iframe" 
               src="${finalEmbedUrl}" 
+              style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"
               allowfullscreen="true"
               webkitallowfullscreen="true"
               mozallowfullscreen="true"
-              referrerpolicy="no-referrer"
-              sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
-              allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *">
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen">
             </iframe>
           </div>
 

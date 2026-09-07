@@ -95,23 +95,27 @@ export async function getActiveDizipalDomain(forceRefresh = false) {
     'https://dizipal1235.com'
   ];
 
-  for (const domain of candidates) {
-    try {
-      const testRes = await fetchWithProxy(`${domain}/ara?q=a`, { timeout: 3000 });
-      if (testRes && testRes.ok) {
-        const text = await testRes.text().catch(() => '');
-        if (text && (text.includes('dizi') || text.includes('film') || text.includes('dizipal'))) {
-          cachedBaseUrl = domain;
-          lastResolvedTime = now;
-          if (typeof window !== 'undefined' && window.localStorage) {
-            try { window.localStorage.setItem('cp_dizipal_domain', domain); } catch (_) {}
-          }
-          console.log(`[DizipalScraper] ✅ Active Dizipal domain verified: ${domain}`);
-          return domain;
-        }
+  const checkDomain = async (domain) => {
+    const testRes = await fetchWithProxy(`${domain}/ara?q=a`, { timeout: 2500 });
+    if (testRes && testRes.ok) {
+      const text = await testRes.text().catch(() => '');
+      if (text && (text.includes('dizi') || text.includes('film') || text.includes('dizipal'))) {
+        return domain;
       }
-    } catch (_) {}
-  }
+    }
+    throw new Error('No match');
+  };
+
+  try {
+    const verified = await Promise.any(candidates.map(checkDomain));
+    cachedBaseUrl = verified;
+    lastResolvedTime = now;
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try { window.localStorage.setItem('cp_dizipal_domain', verified); } catch (_) {}
+    }
+    console.log(`[DizipalScraper] ✅ Active Dizipal domain verified: ${verified}`);
+    return verified;
+  } catch (_) {}
 
   // Fallback if probes fail
   const fallback = 'https://dizipal1229.com';

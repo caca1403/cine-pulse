@@ -58,6 +58,16 @@ export function renderLibraryView() {
   const countContinue = getContinueWatchingList().length;
   const countCompleted = getCompletedWatchList().length;
 
+  let savedActiveTab = 'continue';
+  if (typeof window !== 'undefined' && window.sessionStorage) {
+    try {
+      const stored = window.sessionStorage.getItem('cp_lib_active_tab');
+      if (stored && ['continue', 'completed', 'favorites', 'watchlist', 'all-episodes'].includes(stored)) {
+        savedActiveTab = stored;
+      }
+    } catch (_) {}
+  }
+
   const html = `
     <div class="library-view">
       <div class="container">
@@ -88,28 +98,28 @@ export function renderLibraryView() {
               <i data-lucide="clock"></i>
             </div>
             <div>
-              <div class="stat-card-label" style="color: #fbbf24;">Toplam İzleme Süresi</div>
-              <div id="stat-total-time" class="stat-card-val">${stats.formattedTotalTime}</div>
+              <div class="stat-card-label" style="color: #fbbf24;">Toplam İzleme</div>
+              <div id="stat-total-watch" class="stat-card-val">${stats.formattedTotal}</div>
             </div>
           </div>
 
-          <div class="stat-card" style="border-color: rgba(56, 189, 248, 0.25);">
-            <div class="stat-card-icon" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
-              <i data-lucide="tv-2"></i>
+          <div class="stat-card" style="border-color: rgba(59, 130, 246, 0.25);">
+            <div class="stat-card-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">
+              <i data-lucide="tv"></i>
             </div>
             <div>
-              <div class="stat-card-label" style="color: #38bdf8;">İzlenen Bölüm</div>
-              <div id="stat-episodes-count" class="stat-card-val">${stats.episodesCount} Bölüm</div>
+              <div class="stat-card-label" style="color: #60a5fa;">İzlenen Bölüm</div>
+              <div id="stat-eps-count" class="stat-card-val">${stats.totalEpisodes} Bölüm</div>
             </div>
           </div>
 
-          <div class="stat-card" style="border-color: rgba(168, 85, 247, 0.25);">
-            <div class="stat-card-icon" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">
+          <div class="stat-card" style="border-color: rgba(16, 185, 129, 0.25);">
+            <div class="stat-card-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">
               <i data-lucide="film"></i>
             </div>
             <div>
-              <div class="stat-card-label" style="color: #c084fc;">İzlenen Film</div>
-              <div id="stat-movies-count" class="stat-card-val">${stats.moviesCount} Film</div>
+              <div class="stat-card-label" style="color: #34d399;">İzlenen Film</div>
+              <div id="stat-movies-count" class="stat-card-val">${stats.totalMovies} Film</div>
             </div>
           </div>
 
@@ -127,27 +137,27 @@ export function renderLibraryView() {
 
         <!-- Section Tabs: Devam Et, Tamamlananlar, Favoriler, Listem, Tüm Bölümler -->
         <div class="library-segmented-nav-track" id="library-tabs">
-          <button class="lib-nav-tab active" data-tab="continue">
+          <button class="lib-nav-tab ${savedActiveTab === 'continue' ? 'active' : ''}" data-tab="continue">
             <i data-lucide="clock"></i>
             <span>Devam Et</span>
             <span class="lib-tab-badge" id="tab-count-continue">${countContinue}</span>
           </button>
-          <button class="lib-nav-tab" data-tab="completed">
+          <button class="lib-nav-tab ${savedActiveTab === 'completed' ? 'active' : ''}" data-tab="completed">
             <i data-lucide="check-circle-2"></i>
             <span>Tamamlananlar</span>
             <span class="lib-tab-badge" id="tab-count-completed">${countCompleted}</span>
           </button>
-          <button class="lib-nav-tab" data-tab="favorites">
+          <button class="lib-nav-tab ${savedActiveTab === 'favorites' ? 'active' : ''}" data-tab="favorites">
             <i data-lucide="heart"></i>
             <span>Favorilerim</span>
             <span class="lib-tab-badge" id="tab-count-favorites">${favorites.length}</span>
           </button>
-          <button class="lib-nav-tab" data-tab="watchlist">
+          <button class="lib-nav-tab ${savedActiveTab === 'watchlist' ? 'active' : ''}" data-tab="watchlist">
             <i data-lucide="plus-circle"></i>
             <span>İzleme Listesi</span>
             <span class="lib-tab-badge" id="tab-count-watchlist">${watchlist.length}</span>
           </button>
-          <button class="lib-nav-tab" data-tab="all-episodes">
+          <button class="lib-nav-tab ${savedActiveTab === 'all-episodes' ? 'active' : ''}" data-tab="all-episodes">
             <i data-lucide="history"></i>
             <span>İzleme Geçmişi</span>
             <span class="lib-tab-badge" id="tab-count-all-episodes">${groupedHistory.length}</span>
@@ -191,19 +201,19 @@ export function renderLibraryView() {
         </div>
 
         <!-- Tab 1: Continue Watching (In-Progress Only) -->
-        <div class="tab-content" id="tab-continue"></div>
+        <div class="tab-content ${savedActiveTab === 'continue' ? '' : 'hidden'}" id="tab-continue"></div>
 
         <!-- Tab 2: Completed / Finished Watch List -->
-        <div class="tab-content hidden" id="tab-completed"></div>
+        <div class="tab-content ${savedActiveTab === 'completed' ? '' : 'hidden'}" id="tab-completed"></div>
 
         <!-- Tab 3: Favorites Grid -->
-        <div class="tab-content hidden" id="tab-favorites"></div>
+        <div class="tab-content ${savedActiveTab === 'favorites' ? '' : 'hidden'}" id="tab-favorites"></div>
 
         <!-- Tab 4: Watchlist Grid -->
-        <div class="tab-content hidden" id="tab-watchlist"></div>
+        <div class="tab-content ${savedActiveTab === 'watchlist' ? '' : 'hidden'}" id="tab-watchlist"></div>
 
         <!-- Tab 5: All Episodes Breakdown -->
-        <div class="tab-content hidden" id="tab-all-episodes"></div>
+        <div class="tab-content ${savedActiveTab === 'all-episodes' ? '' : 'hidden'}" id="tab-all-episodes"></div>
       </div>
     </div>
   `;
@@ -213,7 +223,7 @@ export function renderLibraryView() {
     init: (container) => {
       if (!container) return;
 
-      let currentTab = 'continue';
+      let currentTab = savedActiveTab;
       let currentTypeFilter = 'all';
       let currentSort = 'recent';
       let searchQuery = '';
@@ -414,6 +424,9 @@ export function renderLibraryView() {
           tab.classList.add('active');
 
           currentTab = targetTab;
+          if (typeof window !== 'undefined' && window.sessionStorage) {
+            try { window.sessionStorage.setItem('cp_lib_active_tab', targetTab); } catch (_) {}
+          }
           container.querySelectorAll('.tab-content').forEach(tc => tc.classList.add('hidden'));
           const activeContent = container.querySelector(`#tab-${currentTab}`);
           if (activeContent) activeContent.classList.remove('hidden');
