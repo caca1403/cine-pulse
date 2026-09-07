@@ -150,8 +150,8 @@ export async function fetchYtsOfficialSources({
       const sourceLabel = isYts ? 'YTS (YIFY)' : (hit.source || 'YTS P2P');
 
       const displayName = isYts
-        ? `⚡ YTS Direct ${quality} (MP4)`
-        : `⚡ Torrent Direct ${quality} (${isMp4 ? 'MP4' : 'MKV'})`;
+        ? `⚡ YTS ${quality} (${hit.title?.includes('2160p') ? '4K' : quality} • S:${hit.seeds || 0})`
+        : `⚡ Torrent ${quality} (${isMp4 ? 'MP4' : 'MKV'} • S:${hit.seeds || 0})`;
 
       const badge = isYts ? `⚡ YTS ${quality}` : `⚡ Torrent ${quality}`;
 
@@ -187,7 +187,7 @@ export async function fetchYtsOfficialSources({
       return (b.seeds || 0) - (a.seeds || 0);
     });
 
-    // Deduplicate by hash and keep top 3 distinct releases (1080p, 4K, 720p)
+    // Deduplicate by hash and keep up to 8 top distinct releases
     const unique = [];
     const seenHashes = new Set();
     for (const s of streams) {
@@ -195,7 +195,7 @@ export async function fetchYtsOfficialSources({
         seenHashes.add(s.infoHash);
         unique.push(s);
       }
-      if (unique.length >= 3) break;
+      if (unique.length >= 8) break;
     }
 
     return unique;
