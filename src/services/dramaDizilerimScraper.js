@@ -37,7 +37,23 @@ function normalizeStr(str) {
 }
 
 async function fetchSafe(url, options = {}) {
-  // 1. Direct fetch with timeout
+  const isBrowser = typeof window !== 'undefined';
+
+  // 1. In browser, use /api/ddz proxy to avoid CORS
+  if (isBrowser) {
+    try {
+      const u = new URL(url);
+      const proxyUrl = `/api/ddz${u.pathname}${u.search}`;
+      const res = await fetch(proxyUrl, {
+        ...options,
+        signal: AbortSignal.timeout(options.timeout || 4500)
+      }).catch(() => null);
+
+      if (res && res.ok) return res;
+    } catch (_) {}
+  }
+
+  // 2. Direct fetch with timeout (Node.js or direct)
   try {
     const res = await fetch(url, {
       ...options,
@@ -45,18 +61,18 @@ async function fetchSafe(url, options = {}) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         ...(options.headers || {})
       },
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(options.timeout || 5000)
     }).catch(() => null);
 
     if (res && res.ok) return res;
   } catch (_) {}
 
-  // 2. CF Worker proxy fallback
+  // 3. CF Worker proxy fallback
   try {
     const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(url)}`;
     const res = await fetch(workerUrl, {
       ...options,
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(options.timeout || 5000)
     }).catch(() => null);
 
     if (res && res.ok) return res;

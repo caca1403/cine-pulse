@@ -124,6 +124,16 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
     if (url.includes('sibnet') || raw.includes('sibnet')) return 'SZ Sibnet HD';
     if (url.includes('netu') || raw.includes('netu')) return 'SZ Netu HD';
   }
+  if (id.startsWith('jet_') || (s.source && s.source.toLowerCase().includes('jet')) || raw.includes('jetfilm') || raw.includes('jet film')) {
+    if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'JetFilmizle (VidMoly 1080p)';
+    if (url.includes('ok.ru') || raw.includes('ok.ru')) return 'JetFilmizle (OK.ru HD)';
+    if (url.includes('titan') || raw.includes('titan')) return 'JetFilmizle (Titan VIP)';
+    if (raw.includes('dizi') || raw.includes('series')) return s.displayName || s.name || 'JetFilmizle Dizi VIP';
+    return s.displayName || s.name || 'JetFilmizle VIP';
+  }
+  if (id.startsWith('ddz_') || (s.source && s.source.toLowerCase().includes('drama')) || raw.includes('dramadizilerim') || raw.includes('kısa dizi')) {
+    return s.displayName || s.name || 'DramaDizilerim Kısa Dizi';
+  }
   if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'VidMoly 1080p';
   if (url.includes('sibnet') || raw.includes('sibnet')) return 'Sibnet HD';
   if (url.includes('eksenload') || url.includes('vidload') || raw.includes('eksen')) return 'EksenLoad VIP';
@@ -227,6 +237,7 @@ function getStreamPriorityScore(s) {
   }
 
   // Priority 2: Fast Clean Embeds
+  if (id.startsWith('jet_') || (s.source && s.source.toLowerCase().includes('jet')) || raw.includes('jetfilm')) return 2;
   if (url.includes('sibnet') || raw.includes('sibnet')) return 2;
   if (url.includes('vidmoly') || raw.includes('vidmoly')) return 3;
   if (url.includes('eksenload') || raw.includes('eksenload') || id.startsWith('ayf_') || raw.includes('ayfilm') || url.includes('vidmoxy')) return 3;
