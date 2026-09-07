@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node server/mediaServer.js",
+    "tunnel": "npx localtunnel --port 4000"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

@@ -1317,7 +1317,30 @@ export async function openPlayerModal({
       countdownSeconds--;
       updateCountdownDisplay();
 
-      // When 10s countdown finishes:
+      // Quick fallback: If 3s passed and no dubbed but subtitled exists, start immediately!
+      if (currentCategory === 'dubbed' && !hasPlayerStartedPlaying && categorizedServers.subtitled?.length > 0 && countdownSeconds <= 7) {
+        if (!categorizedServers.dubbed || categorizedServers.dubbed.length === 0) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+          isSearching = false;
+          showToast('💬 Türkçe Dublaj beklenmeden Türkçe Altyazılı oynatıcı anında başlatıldı.', 'info');
+          currentCategory = 'subtitled';
+          const tabDub = document.getElementById('tab-dubbed');
+          const tabSub = document.getElementById('tab-subtitled');
+          if (tabDub && tabSub) {
+            tabDub.classList.remove('active');
+            tabSub.classList.add('active');
+          }
+          activeServers = categorizedServers['subtitled'] || [];
+          currentServerIndex = 0;
+          hasPlayerStartedPlaying = true;
+          updateServerPillsEvents();
+          updatePlayerContainer();
+          return;
+        }
+      }
+
+      // When countdown finishes:
       if (countdownSeconds <= 0) {
         clearInterval(countdownTimer);
         countdownTimer = null;
@@ -1366,16 +1389,42 @@ export async function openPlayerModal({
           showToast(`🇹🇷 Türkçe Dublaj yayını bulundu: ${newStream.displayName}`, 'success');
         }
 
-        if (isComplete) {
+        // 1. INSTANT PLAY: If Dubbed stream arrives and we are on Dubbed, launch immediately!
+        if (currentCategory === 'dubbed' && dubbed.length > 0 && !hasPlayerStartedPlaying) {
           if (countdownTimer) {
             clearInterval(countdownTimer);
             countdownTimer = null;
           }
+          hasPlayerStartedPlaying = true;
           isSearching = false;
+          activeServers = dubbed;
+          currentServerIndex = 0;
+          updateServerPillsEvents();
+          updatePlayerContainer();
+          return;
+        }
 
-          // If in Dubbed mode and no dubbed stream, auto-switch to subtitled if available
-          if (currentCategory === 'dubbed' && (!dubbed || dubbed.length === 0) && subtitled && subtitled.length > 0 && !hasPlayerStartedPlaying) {
-            showToast('💬 Türkçe Dublaj bulunamadı. Türkçe Altyazılı sunuculara geçildi.', 'info');
+        // 2. If user is in subtitled mode and subtitled stream arrives, launch immediately!
+        if (currentCategory === 'subtitled' && subtitled.length > 0 && !hasPlayerStartedPlaying) {
+          if (countdownTimer) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+          }
+          hasPlayerStartedPlaying = true;
+          isSearching = false;
+          activeServers = subtitled;
+          currentServerIndex = 0;
+          updateServerPillsEvents();
+          updatePlayerContainer();
+          return;
+        }
+
+        // 3. Keep pills updated as more servers arrive
+        activeServers = categorizedServers[currentCategory] || [];
+        updateServerPillsEvents();
+
+        if (isComplete && activeServers.length === 0) {
+          if (currentCategory === 'dubbed' && subtitled.length > 0 && !hasPlayerStartedPlaying) {
             currentCategory = 'subtitled';
             const tabDub = document.getElementById('tab-dubbed');
             const tabSub = document.getElementById('tab-subtitled');
@@ -1386,33 +1435,8 @@ export async function openPlayerModal({
             activeServers = subtitled;
             currentServerIndex = 0;
             hasPlayerStartedPlaying = true;
-            updateServerPillsEvents();
-            updatePlayerContainer();
-            return;
           }
-        }
-
-        // If in Dubbed mode and first Dubbed stream just arrived:
-        if (currentCategory === 'dubbed' && dubbed.length > 0 && !hasPlayerStartedPlaying) {
-          hasPlayerStartedPlaying = true;
-          isSearching = false;
-          activeServers = dubbed;
-          currentServerIndex = 0;
-          updateServerPillsEvents();
           updatePlayerContainer();
-        } else {
-          activeServers = categorizedServers[currentCategory] || [];
-          updateServerPillsEvents();
-
-          // If in subtitled mode and player not started yet:
-          if (!hasPlayerStartedPlaying && activeServers.length > 0 && currentCategory === 'subtitled') {
-            hasPlayerStartedPlaying = true;
-            isSearching = false;
-            currentServerIndex = 0;
-            updatePlayerContainer();
-          } else if (isComplete && activeServers.length === 0) {
-            updatePlayerContainer();
-          }
         }
       }
     });
