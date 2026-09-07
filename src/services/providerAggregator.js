@@ -381,16 +381,7 @@ export async function getStreamingServersProgressive({
           added.push(formatted);
         }
       } else {
-        // User mandate: Subtitled tab must ONLY contain Torrent and YTS sources! (Anime exempt)
-        const isAnimeItem = (type === 'anime');
-        const isTorrentOrYts = Boolean(
-          formatted.isTorrent ||
-          (formatted.id && (formatted.id.startsWith('cp_global_') || formatted.id.startsWith('yts_'))) ||
-          (urlKey && urlKey.startsWith('magnet:'))
-        );
-        if (!isAnimeItem && !isTorrentOrYts) {
-          continue;
-        }
+        // Subtitled tab allows Torrent & YTS sources as well as subtitled releases from Dizipal, SezonlukDizi, Sinewix, etc.
         if (!seenSubUrls.has(urlKey)) {
           seenSubUrls.add(urlKey);
           currentSubtitled.push(formatted);
@@ -441,16 +432,24 @@ export async function getStreamingServersProgressive({
     // Dizipal (Movies & Series - Direct AlphaStream HLS 1080p, Zero Ads)
     isMovie ? fetchDizipalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
+    isMovie ? fetchDizipalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
     !isMovie ? fetchDizipalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
+    !isMovie ? fetchDizipalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
-    // Sinewix (Dubbed - Direct 1080p)
+    // Sinewix (Dubbed & Subtitled - Direct 1080p)
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // SezonlukDizi (TV only - Dubbed)
+    // SezonlukDizi (TV only - Dubbed & Subtitled)
     !isMovie ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
+    !isMovie ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
     // FilmEkseni (Movie only - Dubbed)
     isMovie ? fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })
