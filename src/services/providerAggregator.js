@@ -24,7 +24,7 @@ import { fetchAyfilmSources } from './ayfilmScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
 import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
-import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
+import { fetchDizipalMovieSources, fetchDizipalEpisodeSources } from './dizipalScraper.js';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -123,6 +123,9 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
     if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'SZ VidMoly 1080p';
     if (url.includes('sibnet') || raw.includes('sibnet')) return 'SZ Sibnet HD';
     if (url.includes('netu') || raw.includes('netu')) return 'SZ Netu HD';
+  }
+  if (id.startsWith('dzp_') || (s.source && s.source.toLowerCase().includes('dizipal')) || raw.includes('dizipal')) {
+    return s.displayName || s.name || 'Dizipal 1080p';
   }
   if (id.startsWith('jet_') || (s.source && s.source.toLowerCase().includes('jet')) || raw.includes('jetfilm') || raw.includes('jet film') || raw.startsWith('jet ')) {
     if (url.includes('vidmoly') || raw.includes('vidmoly')) return 'Jet VidMoly 1080p';
@@ -388,17 +391,14 @@ export async function getStreamingServersProgressive({
     // AyFilm (Movies - Dubbed & Subtitled)
     isMovie ? fetchAyfilmSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
-    isMovie ? fetchAyfilmSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
-
-    // JetFilm (Movies & Series - VIP, VidMoly, VideoPark, Titan, OK.ru)
-    isMovie ? fetchJetFilmSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })
+    // Dizipal (Movies & Series - Direct AlphaStream HLS 1080p, Zero Ads)
+    isMovie ? fetchDizipalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
-    isMovie ? fetchJetFilmSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })
+    isMovie ? fetchDizipalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
-    !isMovie ? fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
+    !isMovie ? fetchDizipalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []) : Promise.resolve([]),
-    !isMovie ? fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
+    !isMovie ? fetchDizipalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []) : Promise.resolve([]),
 
     // Documentaries
