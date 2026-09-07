@@ -437,8 +437,8 @@ export async function openPlayerModal({
         ? srv.streamUrl
         : (tmdbId 
             ? (type === 'movie' 
-                ? `https://vidsrc.mov/embed/movie/${tmdbId}` 
-                : `https://vidsrc.mov/embed/tv/${tmdbId}/${currentSeason}/${currentEpisode}`)
+                ? `https://autoembed.co/movie/tmdb/${tmdbId}` 
+                : `https://autoembed.co/tv/tmdb/${tmdbId}/${currentSeason}/${currentEpisode}`)
             : '');
 
       return `
@@ -451,6 +451,7 @@ export async function openPlayerModal({
               webkitallowfullscreen="true"
               mozallowfullscreen="true"
               referrerpolicy="no-referrer"
+              sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
               allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *">
             </iframe>
           </div>
