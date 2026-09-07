@@ -40,7 +40,22 @@ function toTurkishSlug(title) {
 async function fetchSafe(targetUrl, options = {}) {
   const isBrowser = typeof window !== 'undefined';
 
-  // 1. In browser, try Vercel internal proxy (/api/jet/...) to avoid CORS completely
+  // 1. Try CF Worker gateway first for GET requests (guaranteed 200 OK, bypasses Cloudflare)
+  if (!options.method || options.method === 'GET') {
+    try {
+      const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
+      const res = await fetch(workerUrl, {
+        ...options,
+        signal: AbortSignal.timeout(options.timeout || 4500)
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        return res;
+      }
+    } catch (_) {}
+  }
+
+  // 2. In browser, try Vercel internal proxy (/api/jet/...) for POST and fallback
   if (isBrowser) {
     try {
       const u = new URL(targetUrl);
@@ -51,21 +66,6 @@ async function fetchSafe(targetUrl, options = {}) {
           'X-Requested-With': 'XMLHttpRequest',
           ...(options.headers || {})
         },
-        signal: AbortSignal.timeout(options.timeout || 4500)
-      }).catch(() => null);
-
-      if (res && res.ok) {
-        return res;
-      }
-    } catch (_) {}
-  }
-
-  // 2. Try CF Worker proxy (for GET requests)
-  if (!options.method || options.method === 'GET') {
-    try {
-      const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
-      const res = await fetch(workerUrl, {
-        ...options,
         signal: AbortSignal.timeout(options.timeout || 4500)
       }).catch(() => null);
 
