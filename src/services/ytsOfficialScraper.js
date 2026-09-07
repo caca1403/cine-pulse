@@ -15,6 +15,14 @@ function normalizeTitle(t) {
     .trim();
 }
 
+function formatSize(bytes) {
+  if (!bytes || bytes <= 0) return '';
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb >= 1) return `${gb.toFixed(1)} GB`;
+  const mb = bytes / (1024 * 1024);
+  return `${Math.round(mb)} MB`;
+}
+
 /**
  * Robust fetch for YTS Official API with multi-proxy fallback
  */
@@ -149,11 +157,18 @@ export async function fetchYtsOfficialSources({
       const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : magnetUrl;
       const sourceLabel = isYts ? 'YTS (YIFY)' : (hit.source || 'YTS P2P');
 
-      const displayName = isYts
-        ? `⚡ YTS ${quality} (${hit.title?.includes('2160p') ? '4K' : quality} • S:${hit.seeds || 0})`
-        : `⚡ Torrent ${quality} (${isMp4 ? 'MP4' : 'MKV'} • S:${hit.seeds || 0})`;
+      const sizeStr = formatSize(hit.bytes);
+      const sizePart = sizeStr ? `${sizeStr} • ` : '';
 
-      const badge = isYts ? `⚡ YTS ${quality}` : `⚡ Torrent ${quality}`;
+      const displayName = isYts
+        ? (is4K 
+            ? `⚡ YTS 4K UHD (${sizePart}S:${hit.seeds || 0})` 
+            : `⚡ YTS ${quality} (${sizePart}S:${hit.seeds || 0})`)
+        : (is4K 
+            ? `⚡ Torrent 4K UHD (${sizePart}S:${hit.seeds || 0})` 
+            : `⚡ Torrent ${quality} (${sizePart || (isMp4 ? 'MP4 • ' : 'MKV • ')}S:${hit.seeds || 0})`);
+
+      const badge = is4K ? '⚡ 4K UHD' : `⚡ ${quality}`;
 
       streams.push({
         id: `cp_global_yts_${hit.hash.substring(0, 10)}`,
