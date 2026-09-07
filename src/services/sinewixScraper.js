@@ -226,26 +226,28 @@ export async function fetchSinewixSources({
         continue;
       }
 
-      const isDirect = lowerLink.includes('.mp4') || lowerLink.includes('.mkv') || lowerLink.includes('.webm');
+      const isMkv = lowerLink.includes('.mkv');
+      const isDirect = (lowerLink.includes('.mp4') || lowerLink.includes('.webm')) && !isMkv;
       const isHls = lowerLink.includes('.m3u8');
 
       // Use Cloudflare VOD worker proxy to provide Range requests and CORS headers (*), so Chrome can play smoothly
-      const proxiedLink = (isDirect && rawLink.startsWith('http'))
+      const proxiedLink = ((isDirect || isMkv) && rawLink.startsWith('http'))
         ? `https://wild-credit-e1ae.cagatayca07.workers.dev?url=${encodeURIComponent(rawLink)}`
         : rawLink;
 
-      const serverTitle = isDirect ? 'SWX Direct 1080p' : 'SWX VIP 1080p';
+      const serverTitle = isDirect ? 'SWX Direct 1080p' : (isMkv ? 'SWX MKV 1080p' : 'SWX VIP 1080p');
       streams.push({
         id: `snx_${v.id || Math.random().toString(36).substring(7)}`,
         name: serverTitle,
         displayName: serverTitle,
-        badge: isSubtitledVideo ? '💬 TR Altyazı 1080p' : '⚡ VIP 1080p',
+        badge: isSubtitledVideo ? '💬 TR Altyazı 1080p' : (isMkv ? '⚡ SWX MKV' : '⚡ VIP 1080p'),
         category: isSubtitledVideo ? 'subtitled' : 'dubbed',
         streamUrl: proxiedLink,
         url: proxiedLink,
         originalEmbedUrl: rawLink,
         isHls: isHls,
         isDirectVideo: isDirect,
+        isMkv: isMkv,
         getUrl: () => proxiedLink
       });
     }
