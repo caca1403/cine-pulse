@@ -67,6 +67,7 @@ async function fetchYtsApi(endpoint) {
  */
 export async function fetchYtsOfficialSources({
   type = 'movie',
+  tmdbId = null,
   title = '',
   originalTitle = '',
   year = null,
@@ -139,7 +140,13 @@ export async function fetchYtsOfficialSources({
 
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const magnetUrl = `magnet:?xt=urn:btih:${hit.hash}&dn=${encodeURIComponent(hit.title || query)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz`;
-      const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : magnetUrl;
+
+      // Official YTS web player engine from en.yts-official.com (vidsrcBase)
+      const ytsWebEmbedUrl = tmdbId 
+        ? (isMovie ? `https://vidsrc.mov/embed/movie/${tmdbId}` : `https://vidsrc.mov/embed/tv/${tmdbId}/${season}/${episode}`)
+        : null;
+
+      const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : (ytsWebEmbedUrl || magnetUrl);
       const sourceLabel = isYts ? 'YTS (YIFY)' : (hit.source || 'YTS P2P');
 
       const displayName = isYts

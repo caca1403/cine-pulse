@@ -432,40 +432,46 @@ export async function openPlayerModal({
     const isTorrentStream = Boolean(srv.isTorrent || (srv.id && (srv.id.startsWith('cp_global_torrent') || srv.id.startsWith('cp_global_yts') || srv.id.startsWith('yts_'))) || (srv.streamUrl && srv.streamUrl.startsWith('magnet:')));
 
     if (isTorrentStream) {
-      const magnetLink = srv.magnetUrl || srv.streamUrl || '';
+      const magnetLink = srv.magnetUrl || (srv.streamUrl?.startsWith('magnet:') ? srv.streamUrl : '');
+      const finalEmbedUrl = (srv.streamUrl && srv.streamUrl.startsWith('http') && !srv.streamUrl.includes(':4000/torrent/'))
+        ? srv.streamUrl
+        : (tmdbId 
+            ? (type === 'movie' 
+                ? `https://vidsrc.mov/embed/movie/${tmdbId}` 
+                : `https://vidsrc.mov/embed/tv/${tmdbId}/${currentSeason}/${currentEpisode}`)
+            : '');
+
       return `
         <div class="direct-video-wrapper torrent-video-wrapper">
-          <div id="torrent-webtor-container" class="torrent-webtor-box">
-            <div id="torrent-player-target" class="torrent-player-inner">
-              <div class="player-loading-overlay">
-                <div class="player-loader-core">
-                  <div class="player-loader-spinner"></div>
-                  <i data-lucide="zap" class="player-loader-icon" style="color: #f59e0b;"></i>
-                </div>
-                <div class="player-loader-text">
-                  <h3>${srv.displayName || 'YTS Direct 1080p'}</h3>
-                  <p class="player-loader-sub">P2P Doğrudan Web Oynatıcısı Başlatılıyor...</p>
-                  <p class="player-loader-hint">Tarayıcı içi yüksek hızlı BitTorrent akışı kuruluyor...</p>
-                </div>
-              </div>
-            </div>
+          <div class="torrent-webtor-box">
+            <iframe 
+              id="video-iframe" 
+              src="${finalEmbedUrl}" 
+              allowfullscreen="true"
+              webkitallowfullscreen="true"
+              mozallowfullscreen="true"
+              referrerpolicy="no-referrer"
+              allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *">
+            </iframe>
           </div>
 
           <div class="torrent-player-overlay-bar">
             <div class="torrent-player-stream-info">
               <span class="pulse-live-dot"></span>
               <span class="torrent-stream-name">${srv.displayName || srv.name}</span>
-              <span class="torrent-p2p-badge">⚡ Canlı Web Akışı</span>
+              <span class="torrent-p2p-badge">⚡ Canlı YTS Yayını</span>
             </div>
             <div class="torrent-player-quick-tools">
-              <a href="vlc://${magnetLink}" class="btn-torrent-overlay-tool" title="VLC Player ile Aç">
-                <i data-lucide="play-circle" style="width: 14px; height: 14px;"></i>
-                <span>VLC</span>
-              </a>
-              <button class="btn-torrent-overlay-tool" id="btn-copy-torrent-magnet" data-magnet="${magnetLink}" title="Magnet Linkini Kopyala">
-                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
-                <span>Magnet</span>
-              </button>
+              ${magnetLink ? `
+                <a href="vlc://${magnetLink}" class="btn-torrent-overlay-tool" title="VLC Player ile Aç">
+                  <i data-lucide="play-circle" style="width: 14px; height: 14px;"></i>
+                  <span>VLC</span>
+                </a>
+                <button class="btn-torrent-overlay-tool" id="btn-copy-torrent-magnet" data-magnet="${magnetLink}" title="Magnet Linkini Kopyala">
+                  <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                  <span>Magnet</span>
+                </button>
+              ` : ''}
             </div>
           </div>
         </div>
@@ -1443,54 +1449,7 @@ export async function openPlayerModal({
       });
     }
 
-    const isTorrentStream = Boolean(srv?.isTorrent || (srv?.id && (srv.id.startsWith('cp_global_torrent') || srv.id.startsWith('cp_global_yts') || srv.id.startsWith('yts_'))) || (srv?.streamUrl && srv.streamUrl.startsWith('magnet:')));
 
-    if (isTorrentStream) {
-      const magnetLink = srv?.magnetUrl || srv?.streamUrl || '';
-      const effectiveSubtitles = resolveEffectiveSubtitles(srv);
-
-      const mountWebtor = () => {
-        const target = document.getElementById('torrent-player-target');
-        if (!target) return;
-        target.innerHTML = '';
-
-        window.webtor = window.webtor || [];
-        window.webtor.push({
-          id: 'torrent-player-target',
-          magnet: magnetLink,
-          width: '100%',
-          height: '100%',
-          poster: backdropPath || posterPath || '',
-          features: {
-            p2p: true,
-            subtitles: true
-          },
-          subtitles: effectiveSubtitles.map(s => {
-            let safeSrc = s.src;
-            if (safeSrc && safeSrc.startsWith('http')) {
-              safeSrc = `/api/proxy?url=${encodeURIComponent(safeSrc)}`;
-            }
-            return {
-              label: s.label || 'Türkçe',
-              srclang: (s.label || '').toLowerCase().includes('türk') ? 'tr' : 'en',
-              src: safeSrc,
-              default: true
-            };
-          })
-        });
-      };
-
-      if (window.webtor) {
-        mountWebtor();
-      } else {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@webtor/embed-sdk-js/dist/index.min.js';
-        script.charset = 'utf-8';
-        script.async = true;
-        script.onload = mountWebtor;
-        document.head.appendChild(script);
-      }
-    }
 
     const fallbackBtn = document.getElementById('btn-switch-subtitled-fallback');
     if (fallbackBtn) {

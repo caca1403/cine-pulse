@@ -135,7 +135,10 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
       if (sizeMatch && parseFloat(sizeMatch[1]) > 14) continue;
 
       const magnetUrl = `magnet:?xt=urn:btih:${stream.infoHash}&dn=${encodeURIComponent(fullTitle)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz`;
-      const finalStreamUrl = serverAvailable ? `${MEDIA_SERVER_BASE}/torrent/${stream.infoHash}` : magnetUrl;
+      const ytsWebEmbedUrl = tmdbId 
+        ? (isMovie ? `https://vidsrc.mov/embed/movie/${tmdbId}` : `https://vidsrc.mov/embed/tv/${tmdbId}/${season}/${episode}`)
+        : null;
+      const finalStreamUrl = serverAvailable ? `${MEDIA_SERVER_BASE}/torrent/${stream.infoHash}` : (ytsWebEmbedUrl || magnetUrl);
 
       let displayName = isYts
         ? `⚡ YTS Direct ${qualityLabel} (MP4)`
@@ -180,13 +183,12 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
     });
 
     return results.slice(0, 4);
-  } catch (err) {
-    console.warn('[GlobalStreamEngine] Torrent fetch error:', err.message);
+  } catch (_) {
     return [];
   }
 }
 
-// ============ MAIN EXPORT ============
+// ============ MASTER AUTONOMOUS DISCOVERY ============
 
 /**
  * Resolves autonomous global streams from YTS Official (en.yts-official.com) and Torrentio.
@@ -210,7 +212,7 @@ export async function fetchGlobalAutonomousSources({
 
     // 1. Fetch from YTS Official (en.yts-official.com) and Torrentio in parallel
     const [ytsResults, torrentioResults] = await Promise.allSettled([
-      fetchYtsOfficialSources({ type, title, originalTitle, year, season, episode, imdbId, isDub: false }),
+      fetchYtsOfficialSources({ type, tmdbId, title, originalTitle, year, season, episode, imdbId, isDub: false }),
       fetchTorrentSources({ type, tmdbId, season, episode, isDub: false, imdbId })
     ]);
 
