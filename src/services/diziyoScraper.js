@@ -207,7 +207,7 @@ export async function fetchDiziyoEpisodeSources({ titles = [], seriesTitle, orig
     if (!slug) continue;
     const testUrl = `https://www.diziyo.so/dizi/${slug}/sezon-${sNum}/bolum-${epNum}/`;
     try {
-      const res = await fetchDiziyo(testUrl, { timeout: 3000 });
+      const res = await fetchDiziyo(testUrl, { timeout: 5000 });
       if (res && res.ok) {
         targetEpUrl = testUrl;
         break;
@@ -234,7 +234,7 @@ export async function fetchDiziyoEpisodeSources({ titles = [], seriesTitle, orig
   if (!targetEpUrl) return [];
 
   try {
-    const epRes = await fetchDiziyo(targetEpUrl, { timeout: 4000 });
+    const epRes = await fetchDiziyo(targetEpUrl, { timeout: 6000 });
     if (!epRes) return [];
     const html = await epRes.text().catch(() => '');
     if (!html) return [];

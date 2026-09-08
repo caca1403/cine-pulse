@@ -3065,10 +3065,9 @@ img {
 
 .dizisol-meta-top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 2rem;
-  flex-wrap: wrap;
+  gap: 1.5rem;
 }
 
 .dizisol-meta-left {
@@ -3133,7 +3132,17 @@ img {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Desktop action-icon-btn: pill shape with text + icon */
+.action-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
 }
 
 .btn-dizisol-action {
@@ -3446,15 +3455,8 @@ img {
   transition: transform 0.1s ease-out;
 }
 
-.action-icon-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 50% !important;
-  padding: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
+/* .action-icon-btn desktop: use btn-dizisol-action base styles (pill shape with text) */
+/* Mobile-only circular icon style is defined in @media (max-width: 768px) below */
 
 .action-pill-btn {
   height: 38px;

@@ -520,6 +520,7 @@ export async function openPlayerModal({
               allowfullscreen="true"
               webkitallowfullscreen="true"
               mozallowfullscreen="true"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-fullscreen"
               allow="autoplay; encrypted-media; picture-in-picture; fullscreen">
             </iframe>
           </div>
@@ -822,7 +823,7 @@ export async function openPlayerModal({
             </button>
             <button id="btn-toggle-list" class="btn-dizisol-action action-pill-btn ${isWatched ? 'watched-active' : ''}" title="Listeme Ekle / İzlendi">
               <i data-lucide="${isWatched ? 'check-circle-2' : 'plus'}" style="width:15px;height:15px"></i>
-              <span id="list-action-label">${isWatched ? 'İzlendi' : '+ Listeme Ekle'}</span>
+              <span id="list-action-label">${isWatched ? 'İzlendi' : 'Listeme Ekle'}</span>
             </button>
           </div>
         </div>
@@ -1456,12 +1457,12 @@ export async function openPlayerModal({
           let hasStartedPlaying = false;
           let hlsWatchdog = setTimeout(() => {
             if (!hasStartedPlaying && videoEl.currentTime === 0) {
-              console.warn('[PlayerModal] HLS playback stalled (>4.5s). Auto-failover triggered.');
+              console.warn('[PlayerModal] HLS playback stalled (>15s). Auto-failover triggered.');
               try { hls.destroy(); } catch (_) {}
               activeHlsInstance = null;
               triggerAutoFailover('Yayın zaman aşımı (Başlatılamadı)');
             }
-          }, 4500);
+          }, 15000);
 
           const clearHlsWatchdog = () => {
             hasStartedPlaying = true;
@@ -1547,13 +1548,13 @@ export async function openPlayerModal({
         } else {
           videoEl.src = streamUrl;
 
-          // 4.5-second watchdog timer to eliminate dead/stalled stream freezes
+          // 12-second watchdog timer to eliminate dead/stalled stream freezes
           let directStreamWatchdog = setTimeout(() => {
             if (videoEl.readyState < 2) {
               console.warn('[PlayerModal] Direct video stream stalled. Auto-failing over...');
               triggerAutoFailover('Yayın zaman aşımı (Veri alınamadı)');
             }
-          }, 4500);
+          }, 12000);
 
           const clearDirectWatchdog = () => {
             if (directStreamWatchdog) {

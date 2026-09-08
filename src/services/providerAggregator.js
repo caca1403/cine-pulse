@@ -645,10 +645,10 @@ export async function getStreamingServersProgressive({
       : Promise.resolve([])
   ];
 
-  // Race tasks against a 6.0-second cap so UI never hangs while giving all scrapers time to resolve
+  // Race tasks against a 9.0-second cap so UI never hangs while giving all scrapers time to resolve
   await Promise.race([
     Promise.allSettled(tasks),
-    new Promise(resolve => setTimeout(resolve, 6000))
+    new Promise(resolve => setTimeout(resolve, 9000))
   ]);
 
   // Share available Turkish subtitles (e.g. from Dizipal / OpenSubtitles) across subtitled sources

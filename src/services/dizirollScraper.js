@@ -87,7 +87,7 @@ export async function fetchDizirollEpisodeSources({ titles = [], seriesTitle, or
     const epUrl = `https://diziroll.club/dizi/${slug}/sezon-${sNum}/bolum-${epNum}`;
 
     try {
-      const res = await fetchDiziroll(epUrl, { timeout: 3500 });
+      const res = await fetchDiziroll(epUrl, { timeout: 6000 });
       if (!res || !res.ok) continue;
 
       const html = await res.text().catch(() => '');
