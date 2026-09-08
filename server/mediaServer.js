@@ -360,6 +360,62 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ============ Live TV Dynamic Stream Resolver (DMAX, TLC) ============
+  if (reqUrl.pathname === '/live_tv_stream' || reqUrl.pathname === '/api/live_tv_stream') {
+    const channel = (reqUrl.searchParams.get('channel') || '').toLowerCase();
+    try {
+      let pageUrl = '';
+      let refUrl = '';
+      if (channel === 'dmax') {
+        pageUrl = 'https://www.dmax.com.tr/canli-izle';
+        refUrl = 'https://www.dmax.com.tr/';
+      } else if (channel === 'tlc') {
+        pageUrl = 'https://www.tlctv.com.tr/canli-izle';
+        refUrl = 'https://www.tlctv.com.tr/';
+      } else {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unsupported channel' }));
+        return;
+      }
+
+      const now = Date.now();
+      if (globalThis._liveTvCache && globalThis._liveTvCache[channel] && globalThis._liveTvCache[channel].exp > now) {
+        res.writeHead(302, { 'Location': globalThis._liveTvCache[channel].url });
+        res.end();
+        return;
+      }
+
+      const pageRes = await fetch(pageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        }
+      });
+      const html = await pageRes.text();
+      const m = html.match(/daionUrl\s*:\s*['"]([^'"]+)['"]/);
+      if (!m || !m[1]) {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to extract live stream URL' }));
+        return;
+      }
+      const daionUrl = m[1];
+      const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(daionUrl)}&ref=${encodeURIComponent(refUrl)}`;
+
+      if (!globalThis._liveTvCache) globalThis._liveTvCache = {};
+      globalThis._liveTvCache[channel] = {
+        url: proxiedUrl,
+        exp: now + 5 * 60 * 1000
+      };
+
+      res.writeHead(302, { 'Location': proxiedUrl });
+      res.end();
+      return;
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+      return;
+    }
+  }
+
   // ============ HLS Proxy Endpoint (Bypasses Referer & Origin Blocks) ============
   if (reqUrl.pathname === '/hls_proxy' || reqUrl.pathname === '/api/hls_proxy') {
     const rawTarget = reqUrl.searchParams.get('url') || '';
