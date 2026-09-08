@@ -1762,7 +1762,7 @@ export async function openPlayerModal({
 
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
     if (countdownTimer) clearInterval(countdownTimer);
-    countdownSeconds = 4;
+    countdownSeconds = 12;
     isSearching = true;
     hasPlayerStartedPlaying = false;
     categorizedServers = { dubbed: [], subtitled: [] };
@@ -1787,36 +1787,13 @@ export async function openPlayerModal({
       countdownSeconds--;
       updateCountdownDisplay();
 
-      // Quick fallback: If 2s passed and no dubbed exists but subtitled is ready, start immediately!
-      if (currentCategory === 'dubbed' && !hasPlayerStartedPlaying && categorizedServers.subtitled?.length > 0 && countdownSeconds <= 2) {
-        if (!categorizedServers.dubbed || categorizedServers.dubbed.length === 0) {
-          clearInterval(countdownTimer);
-          countdownTimer = null;
-          isSearching = false;
-          showToast('💬 Türkçe Dublaj beklenmeden Türkçe Altyazılı oynatıcı anında başlatıldı.', 'info');
-          currentCategory = 'subtitled';
-          const tabDub = document.getElementById('tab-dubbed');
-          const tabSub = document.getElementById('tab-subtitled');
-          if (tabDub && tabSub) {
-            tabDub.classList.remove('active');
-            tabSub.classList.add('active');
-          }
-          activeServers = categorizedServers['subtitled'] || [];
-          currentServerIndex = 0;
-          hasPlayerStartedPlaying = true;
-          updateServerPillsEvents();
-          updatePlayerContainer();
-          return;
-        }
-      }
-
-      // When countdown finishes:
+      // When full countdown finishes and all scrapers have run:
       if (countdownSeconds <= 0) {
         clearInterval(countdownTimer);
         countdownTimer = null;
         isSearching = false;
 
-        // If user is on Dubbed and NO dubbed source was found, automatically redirect to Subtitled
+        // If user is on Dubbed and NO dubbed source was found, then redirect to Subtitled
         if (currentCategory === 'dubbed' && (!categorizedServers.dubbed || categorizedServers.dubbed.length === 0)) {
           if (categorizedServers.subtitled && categorizedServers.subtitled.length > 0) {
             showToast('💬 Türkçe Dublaj bulunamadı. Türkçe Altyazılı sunuculara yönlendirildiniz.', 'info');
@@ -1836,6 +1813,9 @@ export async function openPlayerModal({
             updateServerPillsEvents();
             updatePlayerContainer();
           }
+        } else {
+          updateServerPillsEvents();
+          updatePlayerContainer();
         }
       }
     }, 1000);
