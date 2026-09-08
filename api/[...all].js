@@ -27,11 +27,16 @@ export default async function handler(req, res) {
 
     try {
       const decodedTarget = decodeURIComponent(rawTarget);
+      let targetOrigin = 'https://hdplayersystem.com';
+      try {
+        if (ref) targetOrigin = new URL(ref).origin;
+      } catch (_) {}
+
       const upstreamRes = await fetch(decodedTarget, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           'Referer': ref,
-          'Origin': 'https://hdplayersystem.com'
+          'Origin': targetOrigin
         }
       });
 
@@ -39,7 +44,16 @@ export default async function handler(req, res) {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
 
-      if (decodedTarget.includes('.m3u8') || decodedTarget.includes('.txt') || contentType.includes('mpegurl') || contentType.includes('application/x-mpegURL') || contentType.includes('text/plain')) {
+      if (
+        decodedTarget.includes('.m3u8') || 
+        decodedTarget.includes('.txt') || 
+        decodedTarget.includes('/play') ||
+        decodedTarget.includes('m3u8') ||
+        decodedTarget.includes('dizisol') ||
+        contentType.includes('mpegurl') || 
+        contentType.includes('application/x-mpegURL') || 
+        contentType.includes('text/plain')
+      ) {
         const text = await upstreamRes.text();
         const baseOrigin = new URL(decodedTarget).origin;
 
@@ -82,9 +96,17 @@ export default async function handler(req, res) {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
         return res.status(upstreamRes.status).send(rewritten);
       } else {
-        // HDFilmizle disguises .ts segments as .png to bypass firewalls
+        // HDFilmizle and Dizisol ts segments
         let finalContentType = contentType;
-        if (decodedTarget.includes('/video/') || decodedTarget.includes('/tur/') || decodedTarget.includes('/eng/') || decodedTarget.includes('.png') || decodedTarget.includes('.ts')) {
+        if (
+          decodedTarget.includes('/video/') || 
+          decodedTarget.includes('/tur/') || 
+          decodedTarget.includes('/eng/') || 
+          decodedTarget.includes('.png') || 
+          decodedTarget.includes('.ts') ||
+          decodedTarget.includes('/ts') ||
+          decodedTarget.includes('ts?')
+        ) {
           finalContentType = 'video/mp2t';
         }
         res.setHeader('Content-Type', finalContentType || 'video/mp2t');
@@ -296,19 +318,24 @@ export default async function handler(req, res) {
     customHeaders['Referer'] = 'https://filmmakinesi.to/';
     customHeaders['Origin'] = 'https://filmmakinesi.to';
   } else if (pathname.startsWith('/api/dzs')) {
-    const subPath = pathname.replace(/^\/api\/dzs/, '');
-    targetUrl = `https://dizisol.com/api${subPath}${search}`;
+    const pathParam = urlObj.searchParams.get('path');
+    const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : pathname.replace(/^\/api\/dzs/, '');
+    const cleanSearch = search ? search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+    targetUrl = `https://dizisol.com/api${subPath}${cleanSearch}`;
     customHeaders['Referer'] = 'https://dizisol.com/';
     customHeaders['Origin'] = 'https://dizisol.com';
     customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
   } else if (pathname.startsWith('/api/ybd')) {
-    const subPath = pathname.replace(/^\/api\/ybd/, '');
-    targetUrl = `https://yabancidizi.news${subPath}${search}`;
+    const pathParam = urlObj.searchParams.get('path');
+    const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : pathname.replace(/^\/api\/ybd/, '');
+    const cleanSearch = search ? search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+    targetUrl = `https://yabancidizi.news${subPath}${cleanSearch}`;
     customHeaders['Referer'] = 'https://yabancidizi.news/';
     customHeaders['Origin'] = 'https://yabancidizi.news';
     customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-    if (req.method === 'POST') {
+    if (req.method === 'POST' || req.headers['x-requested-with'] || pathname.includes('/search') || cleanSearch.includes('qr=')) {
       customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+      customHeaders['Accept'] = 'application/json, text/javascript, */*; q=0.01';
     }
   } else if (pathname.startsWith('/api/proxy')) {
     const rawTarget = urlObj.searchParams.get('url') || '';
