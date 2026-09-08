@@ -458,8 +458,19 @@ export async function getStreamingServersProgressive({
     return hydrated;
   }
 
-  const { candidateTitles, detectedYear } = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle);
-  const targetYear = year || detectedYear;
+  const candidateTitles = resolveCandidateTitlesSync(targetTitle, originalTitle);
+  const targetYear = year;
+
+  // Background non-blocking TMDB candidate title enrichment
+  if (tmdbId) {
+    resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle).then(({ candidateTitles: extraTitles }) => {
+      if (Array.isArray(extraTitles)) {
+        for (const t of extraTitles) {
+          if (!candidateTitles.includes(t)) candidateTitles.push(t);
+        }
+      }
+    }).catch(() => {});
+  }
 
   let currentDubbed = [];
   let currentSubtitled = [];
@@ -696,10 +707,10 @@ export async function getStreamingServersProgressive({
       : Promise.resolve([])
   ];
 
-  // Race tasks against a 9.0-second cap so UI never hangs while giving all scrapers time to resolve
+  // Race tasks against a 4.5-second cap so UI never hangs while giving all fast scrapers time to resolve
   await Promise.race([
     Promise.allSettled(tasks),
-    new Promise(resolve => setTimeout(resolve, 9000))
+    new Promise(resolve => setTimeout(resolve, 4500))
   ]);
 
   // Share available Turkish subtitles (e.g. from Dizipal / OpenSubtitles) across subtitled sources

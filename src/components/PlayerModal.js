@@ -144,13 +144,15 @@ export async function openPlayerModal({
   let simulatedCurrentTime = initialTime;
   let isSwitchingEpisode = false;
 
-  let currentCategory = 'dubbed';
+  let currentCategory = effectiveIsAnime 
+    ? 'subtitled' 
+    : (typeof localStorage !== 'undefined' && localStorage.getItem('cp_preferred_category') ? localStorage.getItem('cp_preferred_category') : 'dubbed');
   let activeServers = [];
   let currentServerIndex = 0;
   let categorizedServers = { dubbed: [], subtitled: [] };
   let isSearching = true;
   let countdownTimer = null;
-  let countdownSeconds = 10;
+  let countdownSeconds = 4;
   let hasPlayerStartedPlaying = false;
 
   function getSeasonEpisodeCount(sNum) {
@@ -1760,7 +1762,7 @@ export async function openPlayerModal({
 
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
     if (countdownTimer) clearInterval(countdownTimer);
-    countdownSeconds = 10;
+    countdownSeconds = 4;
     isSearching = true;
     hasPlayerStartedPlaying = false;
     categorizedServers = { dubbed: [], subtitled: [] };
@@ -1785,7 +1787,7 @@ export async function openPlayerModal({
       countdownSeconds--;
       updateCountdownDisplay();
 
-      // Quick fallback: If 8s passed and no dubbed but subtitled exists, start immediately!
+      // Quick fallback: If 2s passed and no dubbed exists but subtitled is ready, start immediately!
       if (currentCategory === 'dubbed' && !hasPlayerStartedPlaying && categorizedServers.subtitled?.length > 0 && countdownSeconds <= 2) {
         if (!categorizedServers.dubbed || categorizedServers.dubbed.length === 0) {
           clearInterval(countdownTimer);
@@ -1827,15 +1829,13 @@ export async function openPlayerModal({
             }
             activeServers = categorizedServers['subtitled'] || [];
             currentServerIndex = 0;
+            hasPlayerStartedPlaying = true;
             updateServerPillsEvents();
             updatePlayerContainer();
           } else {
             updateServerPillsEvents();
             updatePlayerContainer();
           }
-        } else {
-          updateServerPillsEvents();
-          updatePlayerContainer();
         }
       }
     }, 1000);
@@ -2052,6 +2052,7 @@ export async function openPlayerModal({
       e.preventDefault();
       if (currentCategory === 'dubbed') return;
       currentCategory = 'dubbed';
+      try { localStorage.setItem('cp_preferred_category', 'dubbed'); } catch (_) {}
       tabSubtitled.classList.remove('active');
       tabDubbed.classList.add('active');
       activeServers = categorizedServers['dubbed'] || [];
@@ -2067,6 +2068,7 @@ export async function openPlayerModal({
       e.preventDefault();
       if (currentCategory === 'subtitled') return;
       currentCategory = 'subtitled';
+      try { localStorage.setItem('cp_preferred_category', 'subtitled'); } catch (_) {}
       tabDubbed.classList.remove('active');
       tabSubtitled.classList.add('active');
       activeServers = categorizedServers['subtitled'] || [];
