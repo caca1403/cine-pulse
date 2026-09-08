@@ -118,11 +118,20 @@ export async function fetchYtsOfficialSources({
       if (!isMovie) {
         const sPad = season < 10 ? `0${season}` : `${season}`;
         const ePad = episode < 10 ? `0${episode}` : `${episode}`;
-        const sReg = new RegExp(`(s${sPad}|s${season}[^0-9]|season[.\\s-_]*${season})`, 'i');
+        // Fix: use [.\s_-] not [.\s-_] to avoid invalid regex range
+        const sReg = new RegExp(`(s${sPad}|s${season}[^0-9]|season[.\\s_-]*${season})`, 'i');
         const eReg = new RegExp(`(e${ePad}|e${episode}[^0-9])`, 'i');
 
-        const isSeasonMatch = sReg.test(rawTitle) || /complete|all.?seasons/i.test(rawTitle);
-        const isEpisodeMatch = eReg.test(rawTitle) || /complete|all.?seasons/i.test(rawTitle);
+        // Season packs (COMPLETE, S01-S05, all seasons) count as both season+episode match
+        const isSeasonPack = /complete|all[.\s_-]?seasons|s\d{2}-s\d{2}/i.test(rawTitle);
+        // Multi-season packs (e.g. "Season 1-5") that cover our season
+        const multiSeasonMatch = rawTitle.match(/season\s*(\d+)[\s_-]+(?:to[\s_-]+)?(?:s|season)?[\s_-]*(\d+)/i);
+        const coversOurSeason = multiSeasonMatch
+          ? (parseInt(multiSeasonMatch[1]) <= season && season <= parseInt(multiSeasonMatch[2]))
+          : false;
+
+        const isSeasonMatch = sReg.test(rawTitle) || isSeasonPack || coversOurSeason;
+        const isEpisodeMatch = eReg.test(rawTitle) || isSeasonPack || coversOurSeason;
 
         if (!isSeasonMatch || !isEpisodeMatch) {
           continue;
