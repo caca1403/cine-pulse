@@ -3582,20 +3582,81 @@ img {
   border: none;
 }
 
-/* Desktop: Hide Mobile Episodes Rail */
-@media (min-width: 769px) {
-  .mobile-episodes-section {
-    display: none !important;
+/* ==========================================================================
+   Theater Cinema Mode (IMAX Stage Expansion)
+   ========================================================================== */
+.player-modal-content.theater-mode {
+  max-width: 100vw !important;
+  width: 100vw !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: #000000 !important;
+}
+
+.player-modal-content.theater-mode .player-stage-wrapper {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 84vh !important;
+  max-height: 86vh !important;
+  aspect-ratio: auto !important;
+  background: #000000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.player-modal-content.theater-mode .player-iframe-container {
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: auto !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: #000000 !important;
+}
+
+.player-modal-content.theater-mode .direct-video-wrapper,
+.player-modal-content.theater-mode #hls-video-player,
+.player-modal-content.theater-mode #video-iframe {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  border-radius: 0 !important;
+}
+
+.player-modal-content.theater-mode .btn-dizisol-action#btn-player-theater,
+.btn-dizisol-action#btn-player-theater.active {
+  background: rgba(245, 158, 11, 0.22) !important;
+  border-color: #f59e0b !important;
+  color: #fbbf24 !important;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.4) !important;
+}
+
+.player-modal-content.theater-mode .dizisol-cinema-body {
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+  width: 100% !important;
+}
+
+@keyframes slideUpMobile {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
   }
-  .mobile-action-strip {
-    display: none !important;
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
-/* Mobile: Full Screen Modal & Clean Episodes Scroll */
+/* Mobile: Full Screen Modal & Dizisol Responsive Layout */
 @media (max-width: 768px) {
   #player-modal.modal-backdrop {
     padding: 0 !important;
+    margin: 0 !important;
+    align-items: flex-start !important;
+    background: #000 !important;
   }
   .modal-backdrop:not(#player-modal) {
     padding: 0.75rem !important;
@@ -3605,132 +3666,166 @@ img {
   }
   .player-modal-content {
     width: 100vw !important;
+    max-width: 100vw !important;
     height: 100dvh !important;
     max-height: 100dvh !important;
     border-radius: 0 !important;
     border: none !important;
-  }
-  .player-stage-wrapper {
-    aspect-ratio: auto !important;
-    flex: 1;
+    margin: 0 !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: none !important;
+    background: #060910 !important;
+  }
+  .player-cinema-bar {
+    padding: 0.45rem 0.75rem !important;
+    gap: 0.4rem !important;
+    min-height: 48px !important;
+    flex-shrink: 0 !important;
+  }
+  .player-header-title {
+    max-width: 110px !important;
+    font-size: 0.82rem !important;
+  }
+  .player-stage-wrapper {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    aspect-ratio: 16 / 9 !important;
+    height: auto !important;
+    max-height: 48vh !important;
+    flex-shrink: 0 !important;
+    border-radius: 0 !important;
   }
   .player-iframe-container {
     width: 100% !important;
-    aspect-ratio: 16 / 9 !important;
-    height: auto !important;
-    flex-shrink: 0;
+    height: 100% !important;
+    border-radius: 0 !important;
   }
-  .mobile-action-strip {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: stretch !important;
-    padding: 0.55rem 0.85rem !important;
-    background: rgba(10, 14, 22, 0.98) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-    gap: 0.65rem !important;
-    flex-shrink: 0;
+  .dizisol-cinema-body {
+    padding: 0.85rem 0.75rem 2.5rem 0.75rem !important;
+    gap: 1rem !important;
+    width: 100% !important;
   }
-  .mobile-action-strip .btn-footer-pill {
-    flex: 1 !important;
-    justify-content: center !important;
-    padding: 0.55rem 0.75rem !important;
-    font-size: 0.82rem !important;
-    min-height: 40px !important;
-  }
-  .mobile-episodes-section {
-    display: flex !important;
+  .dizisol-meta-top {
     flex-direction: column !important;
-    padding: 0.75rem 0.85rem 1.5rem 0.85rem !important;
-    background: rgba(7, 10, 18, 0.98) !important;
-    gap: 0.65rem !important;
+    gap: 0.85rem !important;
+    width: 100% !important;
   }
-  .mobile-season-picker-rail {
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    margin-bottom: 0.2rem;
+  .dizisol-meta-left {
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 0.45rem !important;
   }
-  .mobile-season-picker-rail::-webkit-scrollbar { display: none; }
-  .mobile-season-picker {
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: nowrap;
+  .dizisol-title {
+    font-size: 1.3rem !important;
+    line-height: 1.25 !important;
   }
-  .mobile-season-picker .drawer-season-btn {
-    padding: 0.38rem 0.8rem;
-    border-radius: var(--radius-full);
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #94a3b8;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    white-space: nowrap;
-    flex-shrink: 0;
-    cursor: pointer;
+  .dizisol-sub-row {
+    font-size: 0.78rem !important;
+    gap: 0.5rem !important;
   }
-  .mobile-season-picker .drawer-season-btn.active {
-    background: var(--primary-gradient);
-    border-color: var(--primary);
-    color: #fff;
-    box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35);
+  .dizisol-genre-chips {
+    gap: 0.35rem !important;
   }
-  .mobile-episodes-rail {
-    display: flex;
-    gap: 0.75rem;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.5rem;
-    flex-wrap: nowrap;
+  .dizisol-genre-chip {
+    font-size: 0.70rem !important;
+    padding: 0.18rem 0.5rem !important;
   }
-  .mobile-episodes-rail::-webkit-scrollbar { display: none; }
-  .mobile-ep-card {
-    width: 155px;
-    flex-shrink: 0;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-sm);
+  .dizisol-overview {
+    font-size: 0.82rem !important;
+    line-height: 1.5 !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
     overflow: hidden;
     cursor: pointer;
-    transition: transform 0.2s ease, border-color 0.2s ease;
   }
-  .mobile-ep-card.playing {
-    border-color: var(--primary);
-    background: rgba(245, 158, 11, 0.12);
+  .dizisol-overview.expanded {
+    display: block !important;
+    -webkit-line-clamp: unset !important;
   }
-  .mobile-ep-thumb {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    background: #000;
-    position: relative;
+  .dizisol-meta-actions {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.5rem !important;
   }
-  .mobile-ep-thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
+  .btn-dizisol-action {
+    padding: 0.55rem 0.7rem !important;
+    font-size: 0.78rem !important;
+    justify-content: center !important;
+    text-align: center !important;
   }
-  .mobile-ep-info {
-    padding: 0.5rem;
+  .btn-dizisol-action#btn-open-sources-drawer {
+    grid-column: span 2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
-  .mobile-ep-name {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: #fff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: block;
+  .btn-dizisol-action#btn-open-sources-drawer span {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
-  .mobile-ep-meta {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    margin-top: 0.2rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  .btn-dizisol-action#btn-toggle-list {
+    grid-column: span 2 !important;
+  }
+  .dizisol-seasons-section {
+    width: 100% !important;
+    gap: 0.75rem !important;
+    margin-top: 0.25rem !important;
+  }
+  .dizisol-seasons-header h4 {
+    font-size: 0.85rem !important;
+  }
+  .dizisol-episodes-count {
+    font-size: 0.72rem !important;
+  }
+  .dizisol-season-tabs {
+    gap: 0.35rem !important;
+  }
+  .dizisol-season-tab {
+    padding: 0.35rem 0.8rem !important;
+    font-size: 0.76rem !important;
+  }
+  .carousel-nav-btn {
+    display: none !important;
+  }
+  .dizisol-episodes-carousel {
+    gap: 0.75rem !important;
+    padding: 0.25rem 0 0.85rem 0 !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+  .dizisol-ep-card {
+    flex: 0 0 155px !important;
+    max-width: 155px !important;
+    scroll-snap-align: start;
+    gap: 0.35rem !important;
+  }
+  .dizisol-ep-badge-num {
+    font-size: 0.65rem !important;
+    padding: 0.1rem 0.35rem !important;
+  }
+  .dizisol-ep-duration {
+    font-size: 0.62rem !important;
+    padding: 0.1rem 0.3rem !important;
+  }
+  .dizisol-ep-title {
+    font-size: 0.76rem !important;
+  }
+  .sources-popover-content {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: 80vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    animation: slideUpMobile 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
   }
 }
 
