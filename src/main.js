@@ -10,6 +10,7 @@ import { renderDiscoverView } from './views/DiscoverView.js';
 import { renderPopularListView } from './views/PopularListView.js';
 import { renderLiveTvView } from './views/LiveTvView.js';
 import { saveAllScrollState, restoreAllScrollState } from './services/scrollManager.js';
+import { initPwa } from './services/pwaManager.js';
 
 // Disable browser default scroll jump on SPA hash changes
 if ('scrollRestoration' in history) {
@@ -22,6 +23,9 @@ if ('serviceWorker' in navigator && window.location.protocol.startsWith('http'))
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }
+
+// Initialize PWA installation events
+initPwa();
 
 const app = document.getElementById('app');
 
