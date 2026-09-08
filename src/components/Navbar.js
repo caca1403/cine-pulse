@@ -29,12 +29,6 @@ export function renderNavbar(currentView = 'home') {
         </ul>
 
         <div class="nav-actions">
-          <!-- PWA Install Button (Desktop) -->
-          <button id="btn-pwa-install" class="btn-pwa-install hidden" title="CinePulse Uygulamasını Yükle">
-            <i data-lucide="download" style="width:15px; height:15px;"></i>
-            <span>Uygulamayı Yükle</span>
-          </button>
-
           <!-- Live TV Quick Action Pill -->
           <a href="#livetv" class="btn-live-shortcut ${currentView === 'livetv' ? 'active' : ''}" title="Canlı TV Yayınları">
             <span class="live-pulse-dot"></span>
@@ -49,8 +43,8 @@ export function renderNavbar(currentView = 'home') {
             <div id="search-overlay" class="search-results-overlay glass-panel hidden"></div>
           </div>
 
-          <!-- PWA Install Button (Mobile) -->
-          <button id="btn-pwa-install-mobile" class="btn-action-icon mobile-only btn-pwa-install hidden" title="Uygulamayı Yükle" aria-label="Uygulamayı Yükle">
+          <!-- Compact PWA Install Button (Small icon only) -->
+          <button id="btn-pwa-install" class="btn-action-icon btn-pwa-install hidden" title="CinePulse Uygulamasını Yükle" aria-label="Uygulamayı Yükle">
             <i data-lucide="download"></i>
           </button>
 
