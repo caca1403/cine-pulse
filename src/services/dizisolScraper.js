@@ -89,6 +89,7 @@ function isDirectHlsUrl(u) {
   if (!u || typeof u !== 'string') return false;
   const lower = u.toLowerCase();
   if (lower.includes('/play?') || lower.includes('/play/') || lower.includes('picturebox.cloud')) return false;
+  if (/^https?:\/\/s\d+\.dizisol\.com\//.test(lower)) return true;
   return lower.includes('.m3u8') || lower.includes('.txt') || lower.includes('?m3u8=');
 }
 
