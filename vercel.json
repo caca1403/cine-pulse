@@ -89,46 +89,6 @@
       "destination": "/api/ddz?path=$1"
     },
     {
-      "source": "/api/dzs",
-      "destination": "/api/dzs"
-    },
-    {
-      "source": "/api/dzs/(.*)",
-      "destination": "/api/dzs?path=$1"
-    },
-    {
-      "source": "/api/ybd",
-      "destination": "/api/ybd"
-    },
-    {
-      "source": "/api/ybd/(.*)",
-      "destination": "/api/ybd?path=$1"
-    },
-    {
-      "source": "/api/dzb",
-      "destination": "/api/dzb"
-    },
-    {
-      "source": "/api/dzb/(.*)",
-      "destination": "/api/dzb?path=$1"
-    },
-    {
-      "source": "/api/dzyo",
-      "destination": "/api/dzyo"
-    },
-    {
-      "source": "/api/dzyo/(.*)",
-      "destination": "/api/dzyo?path=$1"
-    },
-    {
-      "source": "/api/dzr",
-      "destination": "/api/dzr"
-    },
-    {
-      "source": "/api/dzr/(.*)",
-      "destination": "/api/dzr?path=$1"
-    },
-    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
