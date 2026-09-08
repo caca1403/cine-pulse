@@ -116,9 +116,9 @@ export async function extractAlphaStream(embedUrl) {
     const res = await fetchWithProxy(cleanUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': 'https://dizibal.com/'
+        'Referer': 'https://dizibal.org/'
       },
-      timeout: 4000
+      timeout: 4500
     });
 
     if (!res) return null;
@@ -137,7 +137,7 @@ export async function extractAlphaStream(embedUrl) {
         'Origin': origin,
         'Accept': '*/*'
       },
-      timeout: 4000
+      timeout: 4500
     });
 
     if (!dlRes) return null;
@@ -146,6 +146,14 @@ export async function extractAlphaStream(embedUrl) {
 
     let m3u8Url = dlJson.url;
     if (m3u8Url.startsWith('//')) m3u8Url = `https:${m3u8Url}`;
+
+    // IMPORTANT: uk-traffic CDN rejects requests that lack Referer: https://x.ag2m4.cfd/.
+    // Routing through /api/hls_proxy with ref=https://x.ag2m4.cfd/ rewrites all playlists & .ts segments
+    // with proper CORS headers so HTML5 player plays smoothly without 403 Forbidden.
+    const isBrowser = typeof window !== 'undefined';
+    const proxiedStreamUrl = isBrowser
+      ? `/api/hls_proxy?url=${encodeURIComponent(m3u8Url)}&ref=${encodeURIComponent(origin + '/')}`
+      : m3u8Url;
 
     // Extract subtitles from HTML if available
     const subMatch = html.match(/["']?subtitle["']?\s*:\s*["']([^"']+)["']/i);
@@ -164,8 +172,9 @@ export async function extractAlphaStream(embedUrl) {
     }
 
     return {
-      url: m3u8Url,
-      streamUrl: m3u8Url,
+      url: proxiedStreamUrl,
+      streamUrl: proxiedStreamUrl,
+      rawUrl: m3u8Url,
       isHls: true,
       isDirectVideo: true,
       type: 'hls',
@@ -175,6 +184,42 @@ export async function extractAlphaStream(embedUrl) {
     console.warn('[StreamExtractors] AlphaStream extraction error:', err);
   }
 
+  return null;
+}
+
+/**
+ * Extracts pure master.m3u8 from FilmEkseni Eksenload player (eksenload.top / vidload.top)
+ */
+export async function extractEksenloadStream(playerUrl) {
+  if (!playerUrl || !playerUrl.includes('eksenload')) return null;
+  try {
+    const res = await fetchWithProxy(playerUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': 'https://filmekseni.vip/'
+      },
+      timeout: 4500
+    });
+    if (!res) return null;
+    const html = await res.text();
+    const m3u8Match = html.match(/https?:\/\/[^"'\s<>]+\.m3u8[^"'\s<>]*/i);
+    if (m3u8Match) {
+      const rawM3u8 = m3u8Match[0];
+      const isBrowser = typeof window !== 'undefined';
+      const proxiedM3u8 = isBrowser
+        ? `/api/hls_proxy?url=${encodeURIComponent(rawM3u8)}&ref=${encodeURIComponent('https://eksenload.top/')}`
+        : rawM3u8;
+      return {
+        url: proxiedM3u8,
+        streamUrl: proxiedM3u8,
+        rawUrl: rawM3u8,
+        isHls: true,
+        isDirectVideo: true
+      };
+    }
+  } catch (e) {
+    console.warn('[StreamExtractors] Eksenload extraction error:', e);
+  }
   return null;
 }
 
