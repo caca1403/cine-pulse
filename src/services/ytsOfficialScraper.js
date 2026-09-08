@@ -90,10 +90,15 @@ export async function fetchYtsOfficialSources({
     const query = normalizeTitle(originalTitle || title);
     if (!query) return [];
 
-    const yrParam = year ? `&year=${year}` : '';
-    const endpoint = `?api=torrents&mode=${mode}&name=${encodeURIComponent(query)}${yrParam}&quality=all`;
+    const yrParam = (isMovie && year) ? `&year=${year}` : '';
+    let endpoint = `?api=torrents&mode=${mode}&name=${encodeURIComponent(query)}${yrParam}&quality=all`;
 
-    const data = await fetchYtsApi(endpoint);
+    let data = await fetchYtsApi(endpoint);
+    if ((!data || !Array.isArray(data.hits) || data.hits.length === 0) && yrParam) {
+      endpoint = `?api=torrents&mode=${mode}&name=${encodeURIComponent(query)}&quality=all`;
+      data = await fetchYtsApi(endpoint);
+    }
+
     if (!data || !Array.isArray(data.hits) || data.hits.length === 0) {
       return [];
     }
