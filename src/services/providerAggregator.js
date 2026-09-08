@@ -640,6 +640,12 @@ export async function getStreamingServersProgressive({
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
 
+    // 6b. Diziyou (TV Series - HLS FastCDN Subtitled)
+    (!isMovie && !isAnime)
+      ? fetchDiziyouSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      : Promise.resolve([]),
+
     // 4. Sinewix (Direct 1080p Dubbed)
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),

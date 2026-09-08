@@ -686,22 +686,25 @@ export async function openPlayerModal({
 
     const finalIframeUrl = getStreamSafeUrl(srv);
     const isVidmoly = finalIframeUrl.includes('vidmoly');
-    // All third-party video hosts (DP / Alpha Stream, EksenLoad, VidMoly, Rapid) block playback if the parent Vercel referer is leaked.
-    // referrerpolicy="no-referrer" prevents hotlink detection and allows DP's player to authenticate stream URLs.
-    const iframeReferrerPolicy = 'no-referrer';
+    const isVideasy = finalIframeUrl.includes('videasy.net');
+    const isVidsrc = finalIframeUrl.includes('vidsrc.');
+    // All third-party video hosts block playback if the parent Vercel referer is leaked.
+    // referrerpolicy="no-referrer" prevents hotlink detection.
+    // BUT: videasy / vidsrc need origin header for their fullscreen API — use origin for those.
+    const iframeReferrerPolicy = (isVideasy || isVidsrc) ? 'origin' : 'no-referrer';
     // Sandboxing should ONLY be used for VidMoly to suppress annoying popups.
-    // Sandboxing breaks Alpha Stream / DP, EksenLoad, and other embeds by causing infinite loading spinner after preroll ads!
-    const sandboxAttr = isVidmoly ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"' : '';
+    // Sandboxing breaks most embeds!
+    const sandboxAttr = isVidmoly ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-pointer-lock"' : '';
     return `
       <iframe 
         id="video-iframe" 
         src="${finalIframeUrl}" 
         ${sandboxAttr}
-        allowfullscreen="true"
-        webkitallowfullscreen="true"
-        mozallowfullscreen="true"
+        allowfullscreen
+        webkitallowfullscreen
+        mozallowfullscreen
         referrerpolicy="${iframeReferrerPolicy}"
-        allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *; payment *; screen-wake-lock *; web-share *">
+        allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *; payment *; screen-wake-lock *; web-share *; pointer-lock *; orientation-lock *; xr-spatial-tracking *">
       </iframe>
     `;
   }
@@ -887,6 +890,16 @@ export async function openPlayerModal({
               <i data-lucide="server" style="width:16px;height:16px;color:#10b981"></i>
               <span class="action-btn-text" id="active-source-chip-label">Kaynak: ${getActiveServerName()}</span>
             </button>
+            <div class="player-lang-selector-wrap" style="position:relative;display:inline-flex;">
+              <button id="btn-player-lang-menu" class="btn-dizisol-action action-icon-btn" title="Dil & Altyazı Seçenekleri">
+                <i data-lucide="languages" style="width:16px;height:16px;color:#a78bfa"></i>
+                <span class="action-btn-text">Dil</span>
+              </button>
+              <div id="player-lang-dropdown" class="player-lang-dropdown hidden" style="position:absolute;top:calc(100% + 8px);right:0;z-index:9999;background:rgba(15,18,30,0.97);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:0.6rem;min-width:200px;box-shadow:0 12px 32px rgba(0,0,0,0.6);">
+                <p style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 0.4rem 0.3rem;">DİL & ALTYAZI</p>
+                <div id="player-lang-options" style="display:flex;flex-direction:column;gap:4px;"></div>
+              </div>
+            </div>
             <button id="btn-toggle-list" class="btn-dizisol-action action-pill-btn ${isWatched ? 'watched-active' : ''}" title="Listeme Ekle / İzlendi">
               <i data-lucide="${isWatched ? 'check-circle-2' : 'plus'}" style="width:15px;height:15px"></i>
               <span id="list-action-label">${isWatched ? 'İzlendi' : 'Listeme Ekle'}</span>
@@ -1445,8 +1458,112 @@ export async function openPlayerModal({
         btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 
         updatePlayerContainer();
+        updateLangDropdown();
       });
     });
+
+    // Update lang/subtitle dropdown
+    updateLangDropdown();
+  }
+
+  function updateLangDropdown() {
+    const langBtn = document.getElementById('btn-player-lang-menu');
+    const langDropdown = document.getElementById('player-lang-dropdown');
+    const langOptions = document.getElementById('player-lang-options');
+    if (!langBtn || !langDropdown || !langOptions) return;
+
+    const srv = activeServers[currentServerIndex];
+    const subtitles = (srv && Array.isArray(srv.subtitles) && srv.subtitles.length > 0) ? srv.subtitles : [];
+
+    // Build options list
+    let optionsHtml = '';
+
+    // Subtitle tracks from active stream
+    if (subtitles.length > 0) {
+      optionsHtml += `<p style="color:#94a3b8;font-size:10px;font-weight:600;text-transform:uppercase;margin:0 0 3px 2px;">ALTYAZI SEÇENEKLERI</p>`;
+      for (const sub of subtitles) {
+        const label = sub.label || sub.lang || 'Altyazı';
+        optionsHtml += `
+          <button class="lang-opt-btn" data-sub-src="${sub.src || ''}" style="display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border-radius:8px;background:transparent;border:none;cursor:pointer;color:#e2e8f0;font-size:13px;text-align:left;transition:background 0.15s;">
+            <i data-lucide="subtitles" style="width:14px;height:14px;color:#a78bfa;flex-shrink:0;"></i>
+            <span>${label}</span>
+          </button>`;
+      }
+    }
+
+    // Dubbed/subtitled category switcher
+    optionsHtml += `
+      <p style="color:#94a3b8;font-size:10px;font-weight:600;text-transform:uppercase;margin:${subtitles.length > 0 ? '8px' : '0'} 0 3px 2px;">SES DİLİ</p>
+      <button class="lang-cat-btn" data-cat="dubbed" style="display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border-radius:8px;background:${currentCategory === 'dubbed' ? 'rgba(16,185,129,0.15)' : 'transparent'};border:${currentCategory === 'dubbed' ? '1px solid rgba(16,185,129,0.3)' : '1px solid transparent'};cursor:pointer;color:#e2e8f0;font-size:13px;text-align:left;transition:all 0.15s;">
+        <span style="font-size:16px;">🇹🇷</span>
+        <span>Türkçe Dublaj</span>
+        ${currentCategory === 'dubbed' ? '<i data-lucide="check" style="width:12px;height:12px;color:#10b981;margin-left:auto;"></i>' : ''}
+      </button>
+      <button class="lang-cat-btn" data-cat="subtitled" style="display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border-radius:8px;background:${currentCategory === 'subtitled' ? 'rgba(99,102,241,0.15)' : 'transparent'};border:${currentCategory === 'subtitled' ? '1px solid rgba(99,102,241,0.3)' : '1px solid transparent'};cursor:pointer;color:#e2e8f0;font-size:13px;text-align:left;transition:all 0.15s;">
+        <span style="font-size:16px;">💬</span>
+        <span>Türkçe Altyazılı</span>
+        ${currentCategory === 'subtitled' ? '<i data-lucide="check" style="width:12px;height:12px;color:#6366f1;margin-left:auto;"></i>' : ''}
+      </button>`;
+
+    langOptions.innerHTML = optionsHtml;
+    if (window.lucide) window.lucide.createIcons({ el: langOptions });
+
+    // Hover effects
+    langOptions.querySelectorAll('button').forEach(b => {
+      b.addEventListener('mouseenter', () => { b.style.background = 'rgba(255,255,255,0.07)'; });
+      b.addEventListener('mouseleave', () => {
+        const cat = b.getAttribute('data-cat');
+        if (cat && cat === currentCategory) b.style.background = cat === 'dubbed' ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)';
+        else b.style.background = 'transparent';
+      });
+    });
+
+    // Subtitle track click → activate subtitle track on video
+    langOptions.querySelectorAll('.lang-opt-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        const src = b.getAttribute('data-sub-src');
+        const videoEl = document.querySelector('#player-iframe-wrapper video');
+        if (videoEl && src) {
+          // Remove existing tracks
+          videoEl.querySelectorAll('track').forEach(t => t.remove());
+          const track = document.createElement('track');
+          track.kind = 'subtitles';
+          track.src = src;
+          track.srclang = 'tr';
+          track.label = b.querySelector('span:last-child')?.textContent || 'Altyazı';
+          track.default = true;
+          videoEl.appendChild(track);
+          videoEl.textTracks[0] && (videoEl.textTracks[0].mode = 'showing');
+        }
+        langDropdown.classList.add('hidden');
+        showToast('✓ Altyazı seçildi.', 'success');
+      });
+    });
+
+    // Category switch click
+    langOptions.querySelectorAll('.lang-cat-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        const cat = b.getAttribute('data-cat');
+        if (cat === currentCategory) { langDropdown.classList.add('hidden'); return; }
+        langDropdown.classList.add('hidden');
+        const tabBtn = document.getElementById(cat === 'dubbed' ? 'tab-dubbed' : 'tab-subtitled');
+        if (tabBtn) tabBtn.click();
+      });
+    });
+
+    // Toggle
+    if (!langBtn.dataset.langAttached) {
+      langBtn.dataset.langAttached = 'true';
+      langBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        langDropdown.classList.toggle('hidden');
+      });
+      document.addEventListener('click', (e) => {
+        if (!langDropdown.contains(e.target) && e.target !== langBtn) {
+          langDropdown.classList.add('hidden');
+        }
+      });
+    }
   }
 
   async function updatePlayerContainer() {

@@ -73,6 +73,18 @@
       "destination": "/api/ddz?path=$1"
     },
     {
+      "source": "/api/fex/(.*)",
+      "destination": "https://filmekseni.vip/$1"
+    },
+    {
+      "source": "/api/dzy/(.*)",
+      "destination": "https://www.diziyou.one/$1"
+    },
+    {
+      "source": "/api/dzyo/(.*)",
+      "destination": "https://www.diziyo.so/$1"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
