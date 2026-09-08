@@ -2056,9 +2056,39 @@ export async function openPlayerModal({
       const box = document.getElementById('cinema-modal-box');
       if (box) {
         box.classList.toggle('theater-mode');
+        btnTheater.classList.toggle('active');
         const isTheater = box.classList.contains('theater-mode');
-        showToast(isTheater ? '🎥 Sinema Modu Aktif Edildi.' : 'Sinema Modundan Çıkıldı.', 'info');
+        const span = btnTheater.querySelector('span');
+        const icon = btnTheater.querySelector('i');
+        if (span) span.textContent = isTheater ? 'Genişletildi' : 'Sinema';
+        if (icon) icon.setAttribute('data-lucide', isTheater ? 'minimize-2' : 'tv');
+        if (window.lucide) window.lucide.createIcons();
+
+        // On mobile, entering cinema mode also triggers native full-screen video if available
+        const isMobile = window.innerWidth <= 768;
+        const videoEl = document.getElementById('hls-video-player') || document.querySelector('#player-iframe-wrapper video');
+        if (isMobile && videoEl && isTheater) {
+          if (videoEl.webkitEnterFullscreen) {
+            videoEl.webkitEnterFullscreen();
+          } else if (videoEl.requestFullscreen) {
+            videoEl.requestFullscreen().catch(() => {});
+          }
+        }
+
+        if (isTheater) {
+          const stage = document.querySelector('.player-stage-wrapper');
+          if (stage) stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        showToast(isTheater ? '🎥 Sinema Modu (Genişletilmiş Sahne) Aktif Edildi.' : 'Normal Görünüme Dönüldü.', 'info');
       }
+    });
+  }
+
+  const overviewEl = document.getElementById('dizisol-overview');
+  if (overviewEl) {
+    overviewEl.addEventListener('click', () => {
+      overviewEl.classList.toggle('expanded');
     });
   }
 
