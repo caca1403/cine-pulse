@@ -89,6 +89,14 @@
       "destination": "/api/ddz?path=$1"
     },
     {
+      "source": "/api/dzs/(.*)",
+      "destination": "https://dizisol.com/api/$1"
+    },
+    {
+      "source": "/api/ybd/(.*)",
+      "destination": "https://yabancidizi.news/$1"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

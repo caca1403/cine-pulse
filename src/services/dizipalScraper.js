@@ -82,6 +82,23 @@ export async function getActiveDizipalDomain(forceRefresh = false) {
     }
   }
 
+  // Fast-path: test current cachedBaseUrl first (under 1 second)
+  if (cachedBaseUrl) {
+    try {
+      const testRes = await fetchWithProxy(`${cachedBaseUrl}/ara?q=a`, { timeout: 1500 });
+      if (testRes && testRes.ok) {
+        const text = await testRes.text().catch(() => '');
+        if (text && (text.includes('dizi') || text.includes('film') || text.includes('dizipal'))) {
+          lastResolvedTime = now;
+          if (typeof window !== 'undefined' && window.localStorage) {
+            try { window.localStorage.setItem('cp_dizipal_domain', cachedBaseUrl); } catch (_) {}
+          }
+          return cachedBaseUrl;
+        }
+      }
+    } catch (_) {}
+  }
+
   // Probing candidate domains around known numbers
   const candidates = [
     'https://dizipal1229.com',
@@ -189,34 +206,12 @@ export async function fetchDizipalMovieSources({
         if (!embedMatch) continue;
 
         const embedUrl = embedMatch[1];
-        const direct = await extractAlphaStream(embedUrl);
-        if (direct && direct.url) {
-          const proxiedStreamUrl = `/api/hls_proxy?url=${encodeURIComponent(direct.url)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
+        if (embedUrl) {
           return [
             {
               id: `dzp_mov_${movieMatch.slug}_${isDub ? 'dub' : 'sub'}`,
-              name: 'Dizipal Direct 1080p',
-              displayName: 'Dizipal Direct 1080p',
-              badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-              source: 'Dizipal',
-              url: proxiedStreamUrl,
-              streamUrl: proxiedStreamUrl,
-              originalEmbedUrl: embedUrl,
-              quality: '1080p',
-              isHls: true,
-              isDirectVideo: true,
-              type: 'hls',
-              subtitles: direct.subtitles || [],
-              isDub,
-              getUrl: () => proxiedStreamUrl
-            }
-          ];
-        } else if (embedUrl) {
-          return [
-            {
-              id: `dzp_mov_${movieMatch.slug}_${isDub ? 'dub' : 'sub'}`,
-              name: 'Dizipal Direct 1080p',
-              displayName: 'Dizipal Direct 1080p',
+              name: 'Dizipal 1080p',
+              displayName: 'Dizipal 1080p',
               badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
               source: 'Dizipal',
               url: embedUrl,
@@ -268,29 +263,7 @@ export async function fetchDizipalEpisodeSources({
         if (!embedMatch) continue;
 
         const embedUrl = embedMatch[1];
-        const direct = await extractAlphaStream(embedUrl);
-        if (direct && direct.url) {
-          const proxiedStreamUrl = `/api/hls_proxy?url=${encodeURIComponent(direct.url)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
-          return [
-            {
-              id: `dzp_tv_${seriesMatch.slug}_s${season}_e${episode}_${isDub ? 'dub' : 'sub'}`,
-              name: `Dizipal 1080p (S${season}B${episode})`,
-              displayName: `Dizipal 1080p (S${season}B${episode})`,
-              badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-              source: 'Dizipal',
-              url: proxiedStreamUrl,
-              streamUrl: proxiedStreamUrl,
-              originalEmbedUrl: embedUrl,
-              quality: '1080p',
-              isHls: true,
-              isDirectVideo: true,
-              type: 'hls',
-              subtitles: direct.subtitles || [],
-              isDub,
-              getUrl: () => proxiedStreamUrl
-            }
-          ];
-        } else if (embedUrl) {
+        if (embedUrl) {
           return [
             {
               id: `dzp_tv_${seriesMatch.slug}_s${season}_e${episode}_${isDub ? 'dub' : 'sub'}`,

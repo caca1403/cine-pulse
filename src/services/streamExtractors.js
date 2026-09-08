@@ -187,7 +187,7 @@ export async function resolveDirectStream(streamObj) {
 
   // Alpha Stream (ag2m4 / agcdn / liderfilm)
   if (url.includes('ag2m4') || url.includes('agcdn') || url.includes('liderfilm') || (streamObj.id && streamObj.id.startsWith('dbl'))) {
-    const rawUrl = streamObj.url || streamObj.streamUrl || streamObj.getUrl();
+    const rawUrl = streamObj.url || streamObj.streamUrl || (typeof streamObj.getUrl === 'function' ? streamObj.getUrl() : '');
     const direct = await extractAlphaStream(rawUrl);
     if (direct && direct.url) {
       return {
