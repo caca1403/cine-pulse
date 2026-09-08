@@ -167,7 +167,7 @@ export async function fetchYtsOfficialSources({
 
       // Official YTS web player engine (clean direct embed)
       const ytsWebEmbedUrl = tmdbId 
-        ? (isMovie ? `https://vsembed.ru/embed/movie/${tmdbId}` : `https://vsembed.ru/embed/tv/${tmdbId}/${season}-${episode}`)
+        ? (isMovie ? `https://player.videasy.net/movie/${tmdbId}` : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`)
         : null;
 
       const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : magnetUrl;
