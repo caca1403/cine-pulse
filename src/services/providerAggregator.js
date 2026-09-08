@@ -145,6 +145,10 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (id.startsWith('dzr_') || (s.source && s.source.toLowerCase().includes('diziroll')) || raw.includes('diziroll')) {
     return s.displayName || s.name || 'Diziroll VIP';
   }
+  if (id.startsWith('fex_') || (s.source && s.source.toLowerCase().includes('filmekseni')) || raw.includes('filmekseni') || raw.includes('eksenload')) {
+    if (s.isDirectVideo || s.isHls) return 'FilmEkseni 1080p VIP';
+    return s.displayName || s.name || 'FilmEkseni VIP';
+  }
   if (id.startsWith('hdfb_') || (s.source && s.source.toLowerCase().includes('hdfilmizle')) || raw.includes('hdf ')) {
     return s.displayName || s.name || 'HDF 1080p';
   }
@@ -257,6 +261,7 @@ function isValidStream(s) {
     id.startsWith('dzb_') ||
     id.startsWith('dzy_') ||
     id.startsWith('dzr_') ||
+    id.startsWith('fex_') ||
     urlStr.startsWith('magnet:') ||
     urlStr.includes('localhost:4000') ||
     urlStr.includes('hls_proxy') ||
@@ -640,10 +645,10 @@ export async function getStreamingServersProgressive({
       : Promise.resolve([])
   ];
 
-  // Race tasks against a 3.5-second cap so UI never hangs
+  // Race tasks against a 6.0-second cap so UI never hangs while giving all scrapers time to resolve
   await Promise.race([
     Promise.allSettled(tasks),
-    new Promise(resolve => setTimeout(resolve, 3500))
+    new Promise(resolve => setTimeout(resolve, 6000))
   ]);
 
   // Share available Turkish subtitles (e.g. from Dizipal / OpenSubtitles) across subtitled sources

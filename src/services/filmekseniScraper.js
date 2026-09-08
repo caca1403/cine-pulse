@@ -1,3 +1,13 @@
+/* ==========================================================================
+   CinePulse Studio - FilmEkseni Scraper (Movies & TV Series Engine)
+   Fetches VIP 1080p Streams from FilmEkseni & EksenLoad Player
+   ========================================================================== */
+
+import { extractEksenloadStream } from './streamExtractors.js';
+
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+const FILM_EKSENI_BASE = 'https://filmekseni.vip';
+
 function slugify(text) {
   if (!text) return '';
   return text
@@ -13,6 +23,69 @@ function slugify(text) {
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/[\s_]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+async function fetchFex(endpointOrUrl, options = {}) {
+  const isBrowser = typeof window !== 'undefined';
+  const fullUrl = endpointOrUrl.startsWith('http')
+    ? endpointOrUrl
+    : `${FILM_EKSENI_BASE}${endpointOrUrl.startsWith('/') ? endpointOrUrl : `/${endpointOrUrl}`}`;
+
+  // 1. In browser, try /api/fex proxy first (bypasses CORS)
+  if (isBrowser) {
+    try {
+      const cleanPath = endpointOrUrl.startsWith('http')
+        ? new URL(endpointOrUrl).pathname + new URL(endpointOrUrl).search
+        : (endpointOrUrl.startsWith('/') ? endpointOrUrl : `/${endpointOrUrl}`);
+      const proxyUrl = `/api/fex${cleanPath}`;
+      const res = await fetch(proxyUrl, {
+        ...options,
+        signal: AbortSignal.timeout(options.timeout || 4000)
+      }).catch(() => null);
+      if (res && res.ok) return res;
+    } catch (_) {}
+  }
+
+  // 2. Direct fetch (for Node.js or if CORS allowed)
+  try {
+    const res = await fetch(fullUrl, {
+      ...options,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': 'https://filmekseni.vip/',
+        ...(options.headers || {})
+      },
+      signal: AbortSignal.timeout(options.timeout || 4000)
+    }).catch(() => null);
+    if (res && res.ok) return res;
+  } catch (_) {}
+
+  // 3. Cloudflare Worker fallback
+  try {
+    const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(fullUrl)}`;
+    const res = await fetch(workerUrl, {
+      ...options,
+      signal: AbortSignal.timeout(options.timeout || 4500)
+    }).catch(() => null);
+    if (res && res.ok) return res;
+  } catch (_) {}
+
+  return null;
+}
+
+/**
+ * Searches FilmEkseni via public /api/search?q=
+ */
+export async function searchFilmEkseni(query) {
+  if (!query || typeof query !== 'string' || query.trim().length < 2) return [];
+  try {
+    const res = await fetchFex(`/api/search?q=${encodeURIComponent(query.trim())}`, { timeout: 3500 });
+    if (!res) return [];
+    const data = await res.json().catch(() => null);
+    return Array.isArray(data?.data) ? data.data : [];
+  } catch (_) {
+    return [];
+  }
 }
 
 export async function fetchFilmEkseniSources({
@@ -39,44 +112,68 @@ export async function fetchFilmEkseniSources({
     ...(titles || [])
   ])).filter(Boolean);
 
-  const candidateUrls = [];
+  const candidateUrls = new Set();
+
+  // 1. Candidate URLs from direct slug guesses
   for (const t of allTitles) {
     const slug = slugify(t);
     if (!slug) continue;
 
     if (isSeries) {
-      candidateUrls.push(
-        `${baseUrl}/dizi/${slug}/sezon-${sNum}/bolum-${epNum}/`,
-        `${baseUrl}/dizi/hd-${slug}/sezon-${sNum}/bolum-${epNum}/`,
-        `${baseUrl}/dizi/${slug}-izle/sezon-${sNum}/bolum-${epNum}/`,
-        `${baseUrl}/dizi/${slug}/sezon-${sNum}/bolum-${epNum}`
-      );
+      candidateUrls.add(`${baseUrl}/dizi/${slug}/sezon-${sNum}/bolum-${epNum}/`);
+      candidateUrls.add(`${baseUrl}/dizi/${slug}/sezon-${sNum}/bolum-${epNum}`);
+      candidateUrls.add(`${baseUrl}/dizi/hd-${slug}/sezon-${sNum}/bolum-${epNum}/`);
+      candidateUrls.add(`${baseUrl}/dizi/${slug}-izle/sezon-${sNum}/bolum-${epNum}/`);
     } else {
-      candidateUrls.push(
-        `${baseUrl}/${slug}-izle/`,
-        `${baseUrl}/hd-${slug}-izle/`,
-        `${baseUrl}/${slug}/`,
-        `${baseUrl}/hd-${slug}/`,
-        `${baseUrl}/${slug}-izle-hd/`,
-        `${baseUrl}/${slug}-2024-izle/`,
-        `${baseUrl}/${slug}-2025-izle/`
-      );
+      candidateUrls.add(`${baseUrl}/${slug}-izle/`);
+      candidateUrls.add(`${baseUrl}/hd-${slug}-izle/`);
+      candidateUrls.add(`${baseUrl}/${slug}/`);
+      candidateUrls.add(`${baseUrl}/hd-${slug}/`);
+      candidateUrls.add(`${baseUrl}/${slug}-izle-hd/`);
     }
   }
 
-  if (candidateUrls.length === 0) return [];
+  // 2. Search API query to uncover localized titles (e.g. "Dark Matter" -> "dizi/karanlik-madde")
+  try {
+    const searchQueries = allTitles.slice(0, 2);
+    for (const q of searchQueries) {
+      const searchItems = await searchFilmEkseni(q);
+      if (Array.isArray(searchItems) && searchItems.length > 0) {
+        for (const item of searchItems.slice(0, 4)) {
+          if (!item.slug) continue;
+          const cleanSlug = item.slug.replace(/^\/+/, '').replace(/\/+$/, '');
 
-  const uniqueUrls = [...new Set(candidateUrls)];
+          if (isSeries) {
+            if (cleanSlug.startsWith('dizi/')) {
+              candidateUrls.add(`${baseUrl}/${cleanSlug}/sezon-${sNum}/bolum-${epNum}/`);
+              candidateUrls.add(`${baseUrl}/${cleanSlug}/sezon-${sNum}/bolum-${epNum}`);
+            } else {
+              candidateUrls.add(`${baseUrl}/dizi/${cleanSlug}/sezon-${sNum}/bolum-${epNum}/`);
+            }
+          } else {
+            if (!cleanSlug.startsWith('dizi/')) {
+              candidateUrls.add(`${baseUrl}/${cleanSlug}/`);
+              candidateUrls.add(`${baseUrl}/${cleanSlug}-izle/`);
+            }
+          }
+        }
+      }
+    }
+  } catch (_) {}
 
-  // Fetch all candidate URLs in parallel
+  if (candidateUrls.size === 0) return [];
+
+  const uniqueUrls = [...candidateUrls];
+
+  // 3. Fetch candidate URLs in parallel
   const htmlResults = await Promise.all(
-    uniqueUrls.map(async (movieUrl) => {
+    uniqueUrls.map(async (pageUrl) => {
       try {
-        const res = await fetch(movieUrl, { signal: AbortSignal.timeout(5000) });
-        if (!res.ok) return null;
+        const res = await fetchFex(pageUrl, { timeout: 4500 });
+        if (!res) return null;
         const html = await res.text();
         if (!html || html.length < 500 || html.includes('404 Not Found')) return null;
-        return { movieUrl, html };
+        return { pageUrl, html };
       } catch (_) {
         return null;
       }
@@ -86,7 +183,7 @@ export async function fetchFilmEkseniSources({
   const sources = [];
 
   for (const match of htmlResults.filter(Boolean)) {
-    const { html, movieUrl } = match;
+    const { html } = match;
 
     // Check for videoPlayerData JSON
     let parsedData = null;
@@ -113,7 +210,12 @@ export async function fetchFilmEkseniSources({
     }
 
     if (parsedData) {
-      const items = isDub ? (parsedData.dual || parsedData.tr || parsedData.dublaj || []) : (parsedData.sub || parsedData.altyazi || parsedData.en || []);
+      // FilmEkseni series are almost always provided as "dual" (TR Dub + Original Audio).
+      // We include "dual" in both isDub: true and isDub: false so series are never missed!
+      const items = isDub
+        ? (parsedData.dual || parsedData.tr || parsedData.dublaj || [])
+        : (parsedData.dual || parsedData.sub || parsedData.altyazi || parsedData.en || []);
+
       for (const item of items) {
         if (item.link) {
           let playerUrl = `https://eksenload.top/eplayer/${item.link}`;
@@ -122,22 +224,46 @@ export async function fetchFilmEkseniSources({
               const decodedTemplate = atob(item.template);
               const srcMatch = decodedTemplate.match(/data-src=["']([^"']+)["']/i) || decodedTemplate.match(/src=["']([^"']+)["']/i);
               if (srcMatch) {
-                playerUrl = srcMatch[1].replace('{url}', item.link).replace('{slug}', item.slug || 'movie');
+                playerUrl = srcMatch[1].replace('{url}', item.link).replace('{slug}', item.slug || 'media');
                 if (playerUrl.startsWith('//')) playerUrl = `https:${playerUrl}`;
               }
             } catch (_) {}
           }
 
-          const hostName = item.service_name || (playerUrl.includes('eksenload') ? 'EksenLoad VIP' : 'Eksen Player 1080p');
+          // Try extracting pure direct HLS from EksenLoad
+          const directHls = await extractEksenloadStream(playerUrl).catch(() => null);
+
+          if (directHls && directHls.streamUrl) {
+            let finalStreamUrl = directHls.streamUrl;
+            if (finalStreamUrl.startsWith('http') && !finalStreamUrl.includes('/api/hls_proxy')) {
+              finalStreamUrl = `/api/hls_proxy?url=${encodeURIComponent(finalStreamUrl)}&ref=${encodeURIComponent('https://eksenload.top/')}`;
+            }
+            sources.push({
+              id: `fex_direct_${item.service_slug || 'vip'}_${item.link}`,
+              name: isDub ? 'FilmEkseni 1080p VIP (TR Dublaj)' : 'FilmEkseni 1080p VIP (TR Altyazı)',
+              displayName: 'FilmEkseni 1080p VIP',
+              badge: isDub ? '⚡ FilmEkseni Dublaj' : '💬 FilmEkseni Altyazı',
+              url: finalStreamUrl,
+              streamUrl: finalStreamUrl,
+              isHls: true,
+              isDirectVideo: true,
+              source: 'FilmEkseni',
+              getUrl: () => finalStreamUrl
+            });
+          }
+
+          // Also provide embed option
+          const hostName = item.service_name || (playerUrl.includes('eksenload') ? 'EksenLoad VIP' : 'FilmEkseni VIP');
           sources.push({
             id: `fex_${item.service_slug || 'vip'}_${item.link}`,
             name: `${hostName}`,
             displayName: `${hostName}`,
-            badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
+            badge: isDub ? '⚡ FilmEkseni Dublaj' : '💬 FilmEkseni Altyazı',
             url: playerUrl,
             streamUrl: playerUrl,
             isHls: false,
             isDirectVideo: false,
+            source: 'FilmEkseni',
             getUrl: () => playerUrl
           });
         }
@@ -149,22 +275,22 @@ export async function fetchFilmEkseniSources({
       const iframes = html.match(/<iframe[^>]+src=["']([^"']*(?:eksenload|vidmoly|fembed|streamtape|snwix)[^"']*)["']/gi) || [];
       for (const ifr of iframes) {
         const src = (ifr.match(/src=["']([^"']+)["']/i) || [])[1];
-        if (src) {
+        if (src && !src.includes('youtube.com')) {
           const isVidmoly = src.includes('vidmoly');
           const fullSrc = src.startsWith('//') ? `https:${src}` : src;
-          const finalUrl = fullSrc;
-          const name = isVidmoly ? 'VidMoly 1080p' : 'EksenLoad VIP';
+          const name = isVidmoly ? 'FilmEkseni VidMoly' : 'FilmEkseni VIP';
 
           sources.push({
             id: `fex_iframe_${Math.random().toString(36).substring(2, 6)}`,
             name: name,
             displayName: name,
-            badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-            url: finalUrl,
-            streamUrl: finalUrl,
+            badge: isDub ? '⚡ FilmEkseni Dublaj' : '💬 FilmEkseni Altyazı',
+            url: fullSrc,
+            streamUrl: fullSrc,
             isHls: false,
             isDirectVideo: false,
-            getUrl: () => finalUrl
+            source: 'FilmEkseni',
+            getUrl: () => fullSrc
           });
         }
       }

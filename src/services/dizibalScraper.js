@@ -180,18 +180,22 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
     // 1. Get subtitles from dizibal stream metadata endpoint
     let subtitles = [];
     try {
-      const metaRes = await fetchDizibal(`/stream/m3u8?code=${encodeURIComponent(srcCode)}`, { timeout: 3000 });
+      const metaRes = await fetchDizibal(`/stream/m3u8?code=${encodeURIComponent(srcCode)}`, { timeout: 3500 });
       if (metaRes) {
         const metaJson = await metaRes.json().catch(() => null);
         if (metaJson && Array.isArray(metaJson.subtitles)) {
-          subtitles = metaJson.subtitles.map(s => ({
-            label: s.label || (s.lang === 'tr' ? 'Türkçe' : 'English'),
-            srclang: s.lang || 'tr',
-            src: s.url,
-            file: s.url,
-            kind: 'subtitles',
-            default: s.lang === 'tr'
-          }));
+          subtitles = metaJson.subtitles.map(s => {
+            const rawSrc = s.url || s.file || '';
+            const safeSrc = rawSrc.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(rawSrc)}` : rawSrc;
+            return {
+              label: s.label || (s.lang === 'tr' ? 'Türkçe' : 'English'),
+              srclang: s.lang || 'tr',
+              src: safeSrc,
+              file: safeSrc,
+              kind: 'subtitles',
+              default: s.lang === 'tr'
+            };
+          });
         }
       }
     } catch (_) {}
@@ -200,13 +204,17 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
     const embedUrl = `https://x.ag2m4.cfd/embed-${srcCode}.html`;
     const directStream = await extractAlphaStream(embedUrl).catch(() => null);
 
-    if (directStream && directStream.streamUrl) {
+    if (directStream && (directStream.streamUrl || directStream.url)) {
+      let finalStreamUrl = directStream.streamUrl || directStream.url;
+      if (finalStreamUrl.startsWith('http') && !finalStreamUrl.includes('/api/hls_proxy')) {
+        finalStreamUrl = `/api/hls_proxy?url=${encodeURIComponent(finalStreamUrl)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
+      }
       sources.push({
         id: `dzb_direct_s${sNum}e${epNum}`,
         name: isDub ? 'DiziBal 1080p Alpha (TR Dublaj)' : 'DiziBal 1080p Alpha (TR Altyazı)',
         displayName: 'DiziBal 1080p Alpha',
-        streamUrl: directStream.streamUrl,
-        url: directStream.streamUrl,
+        streamUrl: finalStreamUrl,
+        url: finalStreamUrl,
         subtitles: subtitles.length > 0 ? subtitles : (directStream.subtitles || []),
         isHls: true,
         isDirectVideo: true,
@@ -217,7 +225,7 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
       // Fallback: embed
       sources.push({
         id: `dzb_embed_s${sNum}e${epNum}`,
-        name: 'DiziBal Alpha Player',
+        name: isDub ? 'DiziBal Alpha Player (Dublaj)' : 'DiziBal Alpha Player (Altyazı)',
         displayName: 'DiziBal Alpha Player',
         streamUrl: embedUrl,
         url: embedUrl,
@@ -284,18 +292,22 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
   // Subtitles
   let subtitles = [];
   try {
-    const metaRes = await fetchDizibal(`/stream/m3u8?code=${encodeURIComponent(srcCode)}`, { timeout: 3000 });
+    const metaRes = await fetchDizibal(`/stream/m3u8?code=${encodeURIComponent(srcCode)}`, { timeout: 3500 });
     if (metaRes) {
       const metaJson = await metaRes.json().catch(() => null);
       if (metaJson && Array.isArray(metaJson.subtitles)) {
-        subtitles = metaJson.subtitles.map(s => ({
-          label: s.label || (s.lang === 'tr' ? 'Türkçe' : 'English'),
-          srclang: s.lang || 'tr',
-          src: s.url,
-          file: s.url,
-          kind: 'subtitles',
-          default: s.lang === 'tr'
-        }));
+        subtitles = metaJson.subtitles.map(s => {
+          const rawSrc = s.url || s.file || '';
+          const safeSrc = rawSrc.startsWith('http') ? `/api/proxy?url=${encodeURIComponent(rawSrc)}` : rawSrc;
+          return {
+            label: s.label || (s.lang === 'tr' ? 'Türkçe' : 'English'),
+            srclang: s.lang || 'tr',
+            src: safeSrc,
+            file: safeSrc,
+            kind: 'subtitles',
+            default: s.lang === 'tr'
+          };
+        });
       }
     }
   } catch (_) {}
@@ -304,13 +316,17 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
   const embedUrl = `https://x.ag2m4.cfd/embed-${srcCode}.html`;
   const directStream = await extractAlphaStream(embedUrl).catch(() => null);
 
-  if (directStream && directStream.streamUrl) {
+  if (directStream && (directStream.streamUrl || directStream.url)) {
+    let finalStreamUrl = directStream.streamUrl || directStream.url;
+    if (finalStreamUrl.startsWith('http') && !finalStreamUrl.includes('/api/hls_proxy')) {
+      finalStreamUrl = `/api/hls_proxy?url=${encodeURIComponent(finalStreamUrl)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
+    }
     sources.push({
       id: 'dzb_direct_movie',
       name: isDub ? 'DiziBal 1080p Alpha (TR Dublaj)' : 'DiziBal 1080p Alpha (TR Altyazı)',
       displayName: 'DiziBal 1080p Alpha',
-      streamUrl: directStream.streamUrl,
-      url: directStream.streamUrl,
+      streamUrl: finalStreamUrl,
+      url: finalStreamUrl,
       subtitles: subtitles.length > 0 ? subtitles : (directStream.subtitles || []),
       isHls: true,
       isDirectVideo: true,
@@ -320,7 +336,7 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
   } else {
     sources.push({
       id: 'dzb_embed_movie',
-      name: 'DiziBal Alpha Player',
+      name: isDub ? 'DiziBal Alpha Player (Dublaj)' : 'DiziBal Alpha Player (Altyazı)',
       displayName: 'DiziBal Alpha Player',
       streamUrl: embedUrl,
       url: embedUrl,
