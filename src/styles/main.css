@@ -3022,6 +3022,22 @@ img {
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
+.player-modal-content {
+  width: 100%;
+  max-width: 1460px;
+  max-height: 94vh;
+  background: #070a12;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 35px 90px rgba(0, 0, 0, 0.95), 0 0 60px rgba(245, 158, 11, 0.15);
+}
+
 /* Video Stage & Containers */
 .player-stage-wrapper {
   position: relative;
@@ -3031,6 +3047,522 @@ img {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Dizisol Cinema Aesthetic Player Page Layout
+   ========================================================================== */
+.dizisol-cinema-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem 2rem 2.5rem 2rem;
+  background: #080b12;
+  color: #fff;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dizisol-meta-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.dizisol-meta-left {
+  flex: 1;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.dizisol-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.dizisol-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.dizisol-ep-badge {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.dizisol-genre-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.15rem;
+}
+
+.dizisol-genre-chip {
+  padding: 0.22rem 0.65rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.dizisol-overview {
+  font-size: 0.90rem;
+  line-height: 1.6;
+  color: #94a3b8;
+  max-width: 850px;
+  margin: 0.4rem 0 0 0;
+}
+
+.dizisol-meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.btn-dizisol-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+  user-select: none;
+}
+
+.btn-dizisol-action:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.btn-dizisol-action.active-source-action {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.btn-dizisol-action.active-source-action:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: rgba(16, 185, 129, 0.55);
+}
+
+/* SEZONLAR SECTION */
+.dizisol-seasons-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.dizisol-seasons-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding-bottom: 0.65rem;
+}
+
+.dizisol-seasons-header h4 {
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.dizisol-episodes-count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.dizisol-season-tabs-rail {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 0.25rem;
+}
+
+.dizisol-season-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.dizisol-season-tab {
+  padding: 0.45rem 1.1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.dizisol-season-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.dizisol-season-tab.active {
+  background: #e50914;
+  border-color: #e50914;
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
+}
+
+/* Episodes Horizontal Carousel */
+.dizisol-carousel-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.dizisol-episodes-carousel {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  padding: 0.5rem 0.25rem;
+  width: 100%;
+}
+
+.dizisol-episodes-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel-nav-btn {
+  position: absolute;
+  top: 40%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(10, 14, 22, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.carousel-nav-btn:hover {
+  background: rgba(229, 9, 20, 0.9);
+  border-color: #e50914;
+  transform: translateY(-50%) scale(1.08);
+}
+
+.carousel-nav-btn.left { left: -14px; }
+.carousel-nav-btn.right { right: -14px; }
+
+/* Episode Card */
+.dizisol-ep-card {
+  flex: 0 0 220px;
+  max-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.dizisol-ep-card:hover {
+  transform: translateY(-3px);
+}
+
+.dizisol-ep-thumb-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #131722;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dizisol-ep-thumb-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.dizisol-ep-badge-num {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: #e50914;
+  color: #fff;
+  font-size: 0.70rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.dizisol-ep-duration {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #cbd5e1;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+.dizisol-ep-play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.dizisol-ep-play-overlay i {
+  width: 32px;
+  height: 32px;
+  color: #ffffff;
+  fill: #ffffff;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+}
+
+.dizisol-ep-card:hover .dizisol-ep-play-overlay {
+  opacity: 1;
+}
+
+.dizisol-ep-card.playing .dizisol-ep-thumb-box {
+  border: 2px solid #e50914;
+  box-shadow: 0 0 16px rgba(229, 9, 20, 0.5);
+}
+
+.dizisol-ep-card.playing .dizisol-ep-play-overlay {
+  opacity: 1;
+}
+
+.dizisol-ep-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.dizisol-ep-card.playing .dizisol-ep-title {
+  color: #fbbf24;
+}
+
+/* Floating Glassmorphism Source Selector Modal */
+.player-sources-popover {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.player-sources-popover.hidden {
+  display: none !important;
+}
+
+.sources-popover-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+}
+
+.sources-popover-content {
+  position: relative;
+  z-index: 2;
+  width: 90%;
+  max-width: 520px;
+  max-height: 80vh;
+  background: rgba(14, 18, 28, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(245, 158, 11, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sources-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sources-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.sources-header-title h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.btn-close-popover {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.btn-close-popover:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sources-popover-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.sources-popover-info {
+  font-size: 0.80rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid #f59e0b;
+}
+
+.sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.source-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.95rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.source-list-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateX(3px);
+}
+
+.source-list-item.active {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.source-list-item.failed {
+  opacity: 0.6;
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.source-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.source-item-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.source-item-badge {
+  font-size: 0.70rem;
+  font-weight: 800;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.source-active-tag {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #10b981;
+}
+
+.source-failed-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.source-ready-tag {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #64748b;
 }
 
 .player-iframe-container {

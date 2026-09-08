@@ -302,7 +302,7 @@ function getStreamPriorityScore(s) {
   // Deprioritize unplayable or dead .mkv streams
   if (url.includes('.mkv') || s.isMkv) return 16;
 
-  // Priority 0: Dizisol, Dizipal, DiziBal & Diziyo Direct 1080p HLS (Highest Reliability, Instant 0ms playback)
+  // Priority 0: Dizisol, Dizipal, DiziBal, Diziyo & FilmEkseni VIP Direct 1080p HLS (Highest Reliability, Instant 0ms playback)
   if (id.startsWith('dzs_') || raw.includes('dizisol')) {
     return 0;
   }
@@ -313,6 +313,9 @@ function getStreamPriorityScore(s) {
     return 0;
   }
   if (id.startsWith('dzy_') || raw.includes('diziyo')) {
+    return 0;
+  }
+  if ((id.startsWith('fex_') || raw.includes('filmekseni')) && (s.isDirectVideo || s.isHls || url.includes('.m3u8'))) {
     return 0;
   }
 
@@ -584,11 +587,12 @@ export async function getStreamingServersProgressive({
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : Promise.resolve([]),
 
-    // 4. Movie Dubbed Providers (FilmEkseni, AyFilm, HdfBest)
-    isMovie
-      ? fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : Promise.resolve([]),
+    // 7. FilmEkseni (Movies & Series - Dubbed & Subtitled)
+    fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+
+    fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     isMovie
       ? fetchAyfilmSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })

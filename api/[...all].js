@@ -44,16 +44,29 @@ export default async function handler(req, res) {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
 
-      if (
-        decodedTarget.includes('.m3u8') || 
-        decodedTarget.includes('.txt') || 
-        decodedTarget.includes('/play') ||
-        decodedTarget.includes('m3u8') ||
-        decodedTarget.includes('dizisol') ||
-        contentType.includes('mpegurl') || 
-        contentType.includes('application/x-mpegURL') || 
-        contentType.includes('text/plain')
-      ) {
+      const lowerTarget = decodedTarget.toLowerCase();
+      const lowerCt = contentType.toLowerCase();
+      const isSegment = (
+        lowerTarget.includes('/ts') || 
+        lowerTarget.includes('ts?') || 
+        lowerTarget.includes('.ts') || 
+        lowerTarget.includes('.jpg') || 
+        lowerTarget.includes('.png') || 
+        lowerCt.includes('mp2t') || 
+        lowerCt.includes('video/')
+      );
+
+      const isPlaylist = !isSegment && (
+        lowerTarget.includes('.m3u8') || 
+        lowerTarget.includes('.txt') || 
+        lowerTarget.includes('/play') ||
+        lowerTarget.includes('m3u8?') ||
+        lowerCt.includes('mpegurl') || 
+        lowerCt.includes('application/x-mpegurl') || 
+        lowerCt.includes('text/plain')
+      );
+
+      if (isPlaylist) {
         const text = await upstreamRes.text();
         const baseOrigin = new URL(decodedTarget).origin;
 
@@ -96,20 +109,8 @@ export default async function handler(req, res) {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
         return res.status(upstreamRes.status).send(rewritten);
       } else {
-        // HDFilmizle and Dizisol ts segments
-        let finalContentType = contentType;
-        if (
-          decodedTarget.includes('/video/') || 
-          decodedTarget.includes('/tur/') || 
-          decodedTarget.includes('/eng/') || 
-          decodedTarget.includes('.png') || 
-          decodedTarget.includes('.ts') ||
-          decodedTarget.includes('/ts') ||
-          decodedTarget.includes('ts?')
-        ) {
-          finalContentType = 'video/mp2t';
-        }
-        res.setHeader('Content-Type', finalContentType || 'video/mp2t');
+        // Binary video TS segment
+        res.setHeader('Content-Type', 'video/mp2t');
         const buf = await upstreamRes.arrayBuffer();
         return res.status(upstreamRes.status).send(Buffer.from(buf));
       }
