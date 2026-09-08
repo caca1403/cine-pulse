@@ -32,6 +32,9 @@ import { fetchDiziyoMovieSources, fetchDiziyoEpisodeSources } from './diziyoScra
 import { fetchDizirollEpisodeSources } from './dizirollScraper.js';
 import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
+
+// Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
+const CACHE_VERSION = 'v4';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -400,7 +403,7 @@ export async function getStreamingServersProgressive({
 
   if (!streamServersCache.has(cacheKey)) {
     try {
-      const sess = sessionStorage.getItem(`cp_streams_${cacheKey}`);
+      const sess = sessionStorage.getItem(`cp_streams_${CACHE_VERSION}_${cacheKey}`);
       if (sess) {
         const parsed = JSON.parse(sess);
         if (parsed && (parsed.dubbed?.length || parsed.subtitled?.length)) {
@@ -729,7 +732,7 @@ export async function getStreamingServersProgressive({
   if (finalResult.totalServers > 0) {
     streamServersCache.set(cacheKey, finalResult);
     try {
-      sessionStorage.setItem(`cp_streams_${cacheKey}`, JSON.stringify(finalResult));
+      sessionStorage.setItem(`cp_streams_${CACHE_VERSION}_${cacheKey}`, JSON.stringify(finalResult));
     } catch (_) {}
   }
 
