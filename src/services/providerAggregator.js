@@ -34,7 +34,7 @@ import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
 
 // Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
-const CACHE_VERSION = 'v8';
+const CACHE_VERSION = 'v9';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
