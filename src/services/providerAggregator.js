@@ -566,13 +566,9 @@ export async function getStreamingServersProgressive({
         }
       }).catch(() => []),
 
-    // Subtitled Sources: ONLY YTS Official (en.yts-official.com) & genuine torrents with native YTS player
+    // Subtitled Sources: ONLY YTS Official (en.yts-official.com)
     fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
-    // Dubbed Sources: Autonomous DUAL Torrents & Turkish Fast-Path Streaming Providers
-    fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
     // 1. Dizipal (Movies & Series - Direct AlphaStream HLS 1080p)
     isMovie 
@@ -739,16 +735,19 @@ export async function getStreamingServersProgressive({
            !nm.includes('yts');
   });
 
-  // Sort Subtitled list to prominently place YTS Official & Torrents at the very front
+  // Filter out any raw unstreamable magnet links
+  currentSubtitled = currentSubtitled.filter(s => {
+    const u = (s.streamUrl || s.url || '').toLowerCase();
+    if (u.startsWith('magnet:')) return false;
+    return true;
+  });
+
+  // Sort Subtitled list to prominently place YTS Official at the very front
   currentSubtitled.sort((a, b) => {
-    const aIsYts = a.isYts || a.id.startsWith('yts_off_') || (a.name || '').includes('YTS');
-    const bIsYts = b.isYts || b.id.startsWith('yts_off_') || (b.name || '').includes('YTS');
+    const aIsYts = a.isYts || a.id.startsWith('cp_global_yts') || (a.name || '').includes('YTS');
+    const bIsYts = b.isYts || b.id.startsWith('cp_global_yts') || (b.name || '').includes('YTS');
     if (aIsYts && !bIsYts) return -1;
     if (!aIsYts && bIsYts) return 1;
-    const aIsTorrent = a.id.startsWith('cp_global_torrent') || (a.name || '').includes('Torrent');
-    const bIsTorrent = b.id.startsWith('cp_global_torrent') || (b.name || '').includes('Torrent');
-    if (aIsTorrent && !bIsTorrent) return -1;
-    if (!aIsTorrent && bIsTorrent) return 1;
     return (a.priority ?? 0) - (b.priority ?? 0);
   });
 

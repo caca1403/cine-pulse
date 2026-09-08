@@ -219,46 +219,32 @@ export async function fetchGlobalAutonomousSources({
 }) {
   if (!tmdbId) return [];
 
+  // Dubbed torrents are completely disabled as requested by user
+  if (isDub) return [];
+
   try {
     const imdbId = await fetchImdbId(type, tmdbId);
 
-    // If dubbed mode: ONLY fetch genuine Turkish / DUAL torrents
-    if (isDub) {
-      const dubbedTorrents = await fetchTorrentSources({ type, tmdbId, season, episode, isDub: true, imdbId });
-      return dubbedTorrents.map(s => ({
-        ...s,
-        category: 'dubbed'
-      }));
-    }
+    // Fetch exclusively from YTS Official (en.yts-official.com)
+    const ytsList = await fetchYtsOfficialSources({
+      type,
+      tmdbId,
+      title,
+      originalTitle,
+      year,
+      season,
+      episode,
+      imdbId,
+      isDub: false
+    });
 
-    // 1. Subtitled mode: Fetch from YTS Official (en.yts-official.com) and Torrentio in parallel
-    const [ytsResults, torrentioResults] = await Promise.allSettled([
-      fetchYtsOfficialSources({ type, tmdbId, title, originalTitle, year, season, episode, imdbId, isDub: false }),
-      fetchTorrentSources({ type, tmdbId, season, episode, isDub: false, imdbId })
-    ]);
+    if (!Array.isArray(ytsList) || ytsList.length === 0) return [];
 
-    const ytsList = (ytsResults.status === 'fulfilled' && Array.isArray(ytsResults.value)) ? ytsResults.value : [];
-    const tioList = (torrentioResults.status === 'fulfilled' && Array.isArray(torrentioResults.value)) ? torrentioResults.value : [];
-
-    // 2. Merge all distinct releases from YTS and Torrentio by unique hash (up to 10 releases)
-    const merged = [];
-    const seenHashes = new Set();
-
-    for (const s of [...ytsList, ...tioList]) {
-      const hash = s.infoHash || s.streamUrl || s.url;
-      if (hash && !seenHashes.has(hash)) {
-        seenHashes.add(hash);
-        merged.push(s);
-      }
-      if (merged.length >= 10) break;
-    }
-
-    // 4. For Subtitled mode: attach Turkish subtitle URL to every stream
     const subUrl = imdbId 
       ? (type === 'movie' ? `/api/subtitles?imdbId=${imdbId}` : `/api/subtitles?imdbId=${imdbId}&season=${season}&episode=${episode}`)
       : null;
 
-    return merged.map(s => ({
+    return ytsList.map(s => ({
       ...s,
       category: 'subtitled',
       subtitles: (Array.isArray(s.subtitles) && s.subtitles.length > 0)
@@ -266,7 +252,7 @@ export async function fetchGlobalAutonomousSources({
         : (subUrl ? [{ label: 'Türkçe', src: subUrl }] : [])
     }));
   } catch (err) {
-    console.warn('[GlobalStreamEngine] Autonomous fetch error:', err.message);
+    console.warn('[GlobalStreamEngine] YTS fetch error:', err.message);
     return [];
   }
 }
