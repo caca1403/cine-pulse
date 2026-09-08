@@ -210,10 +210,10 @@ export async function fetchDizipalMovieSources({
           return [
             {
               id: `dzp_mov_${movieMatch.slug}_${isDub ? 'dub' : 'sub'}`,
-              name: 'Dizipal 1080p',
-              displayName: 'Dizipal 1080p',
+              name: 'DP 1080p',
+              displayName: 'DP 1080p',
               badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-              source: 'Dizipal',
+              source: 'DP',
               url: embedUrl,
               streamUrl: embedUrl,
               originalEmbedUrl: embedUrl,
@@ -267,10 +267,10 @@ export async function fetchDizipalEpisodeSources({
           return [
             {
               id: `dzp_tv_${seriesMatch.slug}_s${season}_e${episode}_${isDub ? 'dub' : 'sub'}`,
-              name: `Dizipal 1080p (S${season}B${episode})`,
-              displayName: `Dizipal 1080p (S${season}B${episode})`,
+              name: `DP 1080p (S${season}B${episode})`,
+              displayName: `DP 1080p (S${season}B${episode})`,
               badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-              source: 'Dizipal',
+              source: 'DP',
               url: embedUrl,
               streamUrl: embedUrl,
               originalEmbedUrl: embedUrl,

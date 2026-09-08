@@ -128,10 +128,10 @@ export async function fetchDizisolMovieSources({
       const proxiedUrl = toProxiedDizisolStreamUrl(data.m3u8Url);
       streams.push({
         id: `dzs_mov_${targetTmdbId}_primary`,
-        name: 'Dizisol 1080p (HLS)',
-        displayName: 'Dizisol 1080p (HLS)',
+        name: 'DS 1080p (HLS)',
+        displayName: 'DS 1080p (HLS)',
         badge: isDub ? '⚡ TR Dublaj (Dual)' : '💬 TR Altyazı',
-        source: 'Dizisol',
+        source: 'DS',
         url: proxiedUrl,
         streamUrl: proxiedUrl,
         originalEmbedUrl: data.m3u8Url,
@@ -157,10 +157,10 @@ export async function fetchDizisolMovieSources({
         const proxiedUrl = toProxiedDizisolStreamUrl(s.m3u8Url);
         streams.push({
           id: `dzs_mov_${targetTmdbId}_${s.id || s.provider || Math.random().toString(36).substring(7)}`,
-          name: `Dizisol ${providerName} 1080p`,
-          displayName: `Dizisol ${providerName} 1080p`,
+          name: `DS ${providerName} 1080p`,
+          displayName: `DS ${providerName} 1080p`,
           badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-          source: 'Dizisol',
+          source: 'DS',
           url: proxiedUrl,
           streamUrl: proxiedUrl,
           originalEmbedUrl: s.m3u8Url,
@@ -230,10 +230,10 @@ export async function fetchDizisolEpisodeSources({
       const proxiedUrl = toProxiedDizisolStreamUrl(targetEp.m3u8Url);
       streams.push({
         id: `dzs_tv_${targetTmdbId}_s${season}_e${episode}_primary`,
-        name: `Dizisol 1080p (S${season}B${episode})`,
-        displayName: `Dizisol 1080p (S${season}B${episode})`,
+        name: `DS 1080p (S${season}B${episode})`,
+        displayName: `DS 1080p (S${season}B${episode})`,
         badge: isDub ? '⚡ TR Dublaj (Dual)' : '💬 TR Altyazı',
-        source: 'Dizisol',
+        source: 'DS',
         url: proxiedUrl,
         streamUrl: proxiedUrl,
         originalEmbedUrl: targetEp.m3u8Url,
@@ -259,10 +259,10 @@ export async function fetchDizisolEpisodeSources({
         const proxiedUrl = toProxiedDizisolStreamUrl(s.m3u8Url);
         streams.push({
           id: `dzs_tv_${targetTmdbId}_s${season}_e${episode}_${s.id || s.provider || Math.random().toString(36).substring(7)}`,
-          name: `Dizisol ${providerName} (S${season}B${episode})`,
-          displayName: `Dizisol ${providerName} (S${season}B${episode})`,
+          name: `DS ${providerName} (S${season}B${episode})`,
+          displayName: `DS ${providerName} (S${season}B${episode})`,
           badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-          source: 'Dizisol',
+          source: 'DS',
           url: proxiedUrl,
           streamUrl: proxiedUrl,
           originalEmbedUrl: s.m3u8Url,

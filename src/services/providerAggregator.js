@@ -34,7 +34,7 @@ import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
 
 // Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -128,10 +128,14 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
     return s.displayName || s.name || '⚡ Torrent 1080p';
   }
   if (id.startsWith('dzp_') || (s.source && s.source.toLowerCase().includes('dizipal')) || raw.includes('dizipal')) {
-    return s.displayName || s.name || 'Dizipal 1080p';
+    let base = (s.displayName || s.name || 'DP 1080p').replace(/dizipal/gi, 'DP').trim();
+    if (!base.startsWith('DP')) base = `DP ${base}`;
+    return base;
   }
   if (id.startsWith('dzs_') || (s.source && s.source.toLowerCase().includes('dizisol')) || raw.includes('dizisol')) {
-    return s.displayName || s.name || 'Dizisol 1080p (HLS)';
+    let base = (s.displayName || s.name || 'DS 1080p (HLS)').replace(/dizisol/gi, 'DS').trim();
+    if (!base.startsWith('DS')) base = `DS ${base}`;
+    return base;
   }
   if (id.startsWith('ybd_') || (s.source && s.source.toLowerCase().includes('yabancidizi')) || raw.includes('yabancidizi')) {
     if (url.includes('vidmoly')) return 'YabancıDizi VidMoly 1080p';
@@ -139,7 +143,9 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
     return s.displayName || s.name || 'YabancıDizi 1080p';
   }
   if (id.startsWith('dzb_') || (s.source && s.source.toLowerCase().includes('dizibal')) || raw.includes('dizibal')) {
-    return s.displayName || s.name || 'DiziBal 1080p Alpha';
+    let base = (s.displayName || s.name || 'DP 1080p').replace(/dizibal/gi, 'DP').trim();
+    if (!base.startsWith('DP')) base = `DP ${base}`;
+    return base;
   }
   if (id.startsWith('dzy_') || (s.source && s.source.toLowerCase().includes('diziyo')) || raw.includes('diziyo')) {
     if (url.includes('vidmoly')) return 'Diziyo VidMoly 1080p';
@@ -209,6 +215,9 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (raw.includes('belgesel')) return 'Belgesel TR';
 
   let clean = (s.displayName || s.name || '')
+    .replace(/dizipal/gi, 'DP')
+    .replace(/dizibal/gi, 'DP')
+    .replace(/dizisol/gi, 'DS')
     .replace(/sinewix|sezonlukdizi|filmekseni|diziyou|ayfilm|turkanime|animecix|vip\s*hat\s*\d*/gi, '')
     .replace(/\s*\(.*?\)/g, '')
     .trim();
@@ -218,7 +227,10 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
 }
 
 function formatStreamItem(s, category, fallbackName) {
-  const engineName = resolveEngineName(s, fallbackName);
+  let engineName = resolveEngineName(s, fallbackName)
+    .replace(/dizipal/gi, 'DP')
+    .replace(/dizibal/gi, 'DP')
+    .replace(/dizisol/gi, 'DS');
   const badge = s.badge || (category === 'dubbed' ? '⚡ TR Dublaj' : '💬 TR Altyazı');
   return {
     id: s.id,

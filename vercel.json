@@ -21,24 +21,8 @@
   ],
   "rewrites": [
     {
-      "source": "/api/fex/(.*)",
-      "destination": "https://filmekseni.vip/$1"
-    },
-    {
       "source": "/api/hdi/(.*)",
       "destination": "https://www.hdfilmizle.vip/$1"
-    },
-    {
-      "source": "/api/dzy/(.*)",
-      "destination": "https://www.diziyou.one/$1"
-    },
-    {
-      "source": "/api/dbl/(.*)",
-      "destination": "https://dizibal.com/api/$1"
-    },
-    {
-      "source": "/api/dzp/(.*)",
-      "destination": "https://dizipal.bid/$1"
     },
     {
       "source": "/api/flz/(.*)",
