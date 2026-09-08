@@ -158,6 +158,17 @@ export async function openPlayerModal({
       : cleanSeriesName;
   }
 
+  function getStreamSafeUrl(srv) {
+    if (!srv) return '';
+    if (typeof srv.getUrl === 'function') {
+      try {
+        const u = srv.getUrl();
+        if (u) return u;
+      } catch (_) {}
+    }
+    return srv.streamUrl || srv.url || srv.originalEmbedUrl || '';
+  }
+
   function renderServerPills() {
     if (isSearching && (!activeServers || activeServers.length === 0)) {
       return `
@@ -465,7 +476,7 @@ export async function openPlayerModal({
       srv.isHls ||
       (srv.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
     ) {
-      const streamUrl = srv.streamUrl || srv.getUrl();
+      const streamUrl = getStreamSafeUrl(srv);
 
       // Dual-Audio Toggle Bar (shown when hybrid dubbed audio is available and separate from main video)
       const isSameStream = srv.dubbedAudioUrl && (streamUrl === srv.dubbedAudioUrl);
@@ -587,7 +598,7 @@ export async function openPlayerModal({
       `;
     }
 
-    const finalIframeUrl = srv.getUrl() || srv.streamUrl || '';
+    const finalIframeUrl = getStreamSafeUrl(srv);
     const isVidmoly = finalIframeUrl.includes('vidmoly');
     // All third-party video hosts (DP / Alpha Stream, EksenLoad, VidMoly, Rapid) block playback if the parent Vercel referer is leaked.
     // referrerpolicy="no-referrer" prevents hotlink detection and allows DP's player to authenticate stream URLs.
@@ -1383,37 +1394,18 @@ export async function openPlayerModal({
     if (!wrapper) return;
 
     if (activeHlsInstance) {
-      activeHlsInstance.destroy();
+      try { activeHlsInstance.destroy(); } catch (_) {}
       activeHlsInstance = null;
     }
 
     let srv = activeServers[currentServerIndex];
-
-    // On-the-fly Direct HLS resolution for Alpha Stream embeds
-    if (srv && !srv.isDirectVideo && !srv.isHls) {
-      const rawUrl = (srv.url || srv.streamUrl || '').toLowerCase();
-      if (
-        rawUrl.includes('ag2m4') ||
-        rawUrl.includes('agcdn') ||
-        rawUrl.includes('liderfilm') ||
-        (srv.id && srv.id.startsWith('dbl'))
-      ) {
-        try {
-          const direct = await resolveDirectStream(srv);
-          if (direct && (direct.isDirectVideo || direct.isHls)) {
-            srv = direct;
-            activeServers[currentServerIndex] = direct;
-          }
-        } catch (_) {}
-      }
-    }
 
     wrapper.innerHTML = renderPlayerContent();
     if (window.lucide) window.lucide.createIcons();
 
     const popoutBtn = document.getElementById('player-popout-btn');
     if (popoutBtn) {
-      popoutBtn.href = srv?.streamUrl || srv?.getUrl() || '#';
+      popoutBtn.href = getStreamSafeUrl(srv) || '#';
     }
 
 
@@ -1455,7 +1447,7 @@ export async function openPlayerModal({
       }
 
       const videoEl = document.getElementById('hls-video-player');
-      const streamUrl = srv.streamUrl || srv.getUrl();
+      const streamUrl = getStreamSafeUrl(srv);
       if (videoEl && streamUrl) {
         const isHlsStream = streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || srv.isHls;
 
@@ -1769,8 +1761,8 @@ export async function openPlayerModal({
       countdownSeconds--;
       updateCountdownDisplay();
 
-      // Quick fallback: If 3s passed and no dubbed but subtitled exists, start immediately!
-      if (currentCategory === 'dubbed' && !hasPlayerStartedPlaying && categorizedServers.subtitled?.length > 0 && countdownSeconds <= 7) {
+      // Quick fallback: If 8s passed and no dubbed but subtitled exists, start immediately!
+      if (currentCategory === 'dubbed' && !hasPlayerStartedPlaying && categorizedServers.subtitled?.length > 0 && countdownSeconds <= 2) {
         if (!categorizedServers.dubbed || categorizedServers.dubbed.length === 0) {
           clearInterval(countdownTimer);
           countdownTimer = null;
@@ -2063,6 +2055,10 @@ export async function openPlayerModal({
   // Close Modal Cleanly
   const closeBtn = document.getElementById('player-close-btn');
   const closeModal = () => {
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+    }
     clearInterval(activeProgressInterval);
     if (activeHlsInstance) {
       try { activeHlsInstance.destroy(); } catch (_) {}

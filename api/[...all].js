@@ -223,6 +223,19 @@ export default async function handler(req, res) {
     targetUrl = `https://dramadizilerim.com${cleanSub}${search}`;
     customHeaders['Referer'] = 'https://dramadizilerim.com/';
     customHeaders['Origin'] = 'https://dramadizilerim.com';
+  } else if (pathname.startsWith('/api/dzs')) {
+    const subPath = pathname.replace(/^\/api\/dzs/, '');
+    targetUrl = `https://dizisol.com/api${subPath}${search}`;
+    customHeaders['Referer'] = 'https://dizisol.com/';
+    customHeaders['Origin'] = 'https://dizisol.com';
+  } else if (pathname.startsWith('/api/ybd')) {
+    const subPath = pathname.replace(/^\/api\/ybd/, '');
+    targetUrl = `https://yabancidizi.news${subPath}${search}`;
+    customHeaders['Referer'] = 'https://yabancidizi.news/';
+    customHeaders['Origin'] = 'https://yabancidizi.news';
+    if (req.method === 'POST') {
+      customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+    }
   } else if (pathname.startsWith('/api/fmk_rapid')) {
     const subPath = pathname.replace(/^\/api\/fmk_rapid/, '');
     targetUrl = `https://rapid.filmmakinesi.to${subPath}${search}`;
@@ -282,7 +295,21 @@ export default async function handler(req, res) {
     targetUrl = decodeURIComponent(rawTarget);
     customHeaders['Referer'] = 'https://filmmakinesi.to/';
     customHeaders['Origin'] = 'https://filmmakinesi.to';
-    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  } else if (pathname.startsWith('/api/dzs')) {
+    const subPath = pathname.replace(/^\/api\/dzs/, '');
+    targetUrl = `https://dizisol.com/api${subPath}${search}`;
+    customHeaders['Referer'] = 'https://dizisol.com/';
+    customHeaders['Origin'] = 'https://dizisol.com';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  } else if (pathname.startsWith('/api/ybd')) {
+    const subPath = pathname.replace(/^\/api\/ybd/, '');
+    targetUrl = `https://yabancidizi.news${subPath}${search}`;
+    customHeaders['Referer'] = 'https://yabancidizi.news/';
+    customHeaders['Origin'] = 'https://yabancidizi.news';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    if (req.method === 'POST') {
+      customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+    }
   } else if (pathname.startsWith('/api/proxy')) {
     const rawTarget = urlObj.searchParams.get('url') || '';
     if (!rawTarget) return res.status(400).send('Missing url param');

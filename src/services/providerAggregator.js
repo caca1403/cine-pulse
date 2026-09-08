@@ -25,6 +25,8 @@ import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchTrAnimeIzleSources } from './tranimeizleScraper.js';
 import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
 import { fetchDizipalMovieSources, fetchDizipalEpisodeSources } from './dizipalScraper.js';
+import { fetchDizisolMovieSources, fetchDizisolEpisodeSources } from './dizisolScraper.js';
+import { fetchYabanciDiziMovieSources, fetchYabanciDiziEpisodeSources } from './yabancidiziScraper.js';
 import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
 import { resolveDirectStream } from './streamExtractors.js';
@@ -121,6 +123,14 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   }
   if (id.startsWith('dzp_') || (s.source && s.source.toLowerCase().includes('dizipal')) || raw.includes('dizipal')) {
     return s.displayName || s.name || 'Dizipal 1080p';
+  }
+  if (id.startsWith('dzs_') || (s.source && s.source.toLowerCase().includes('dizisol')) || raw.includes('dizisol')) {
+    return s.displayName || s.name || 'Dizisol 1080p (HLS)';
+  }
+  if (id.startsWith('ybd_') || (s.source && s.source.toLowerCase().includes('yabancidizi')) || raw.includes('yabancidizi')) {
+    if (url.includes('vidmoly')) return 'YabancıDizi VidMoly 1080p';
+    if (url.includes('sibnet')) return 'YabancıDizi Sibnet HD';
+    return s.displayName || s.name || 'YabancıDizi 1080p';
   }
   if (id.startsWith('hdfb_') || (s.source && s.source.toLowerCase().includes('hdfilmizle')) || raw.includes('hdf ')) {
     return s.displayName || s.name || 'HDF 1080p';
@@ -229,6 +239,8 @@ function isValidStream(s) {
     id.startsWith('yts_') ||
     id.startsWith('cp_hybrid_') ||
     id.startsWith('dzp_') ||
+    id.startsWith('dzs_') ||
+    id.startsWith('ybd_') ||
     urlStr.startsWith('magnet:') ||
     urlStr.includes('localhost:4000') ||
     urlStr.includes('hls_proxy') ||
@@ -256,10 +268,7 @@ function isValidStream(s) {
     'vidsrc.me',
     'autoembed.cc',
     'play.liderfilm',
-    'liderfilm',
-    'ag2m4.cfd',
-    'agcdn',
-    'cdn77.services'
+    'liderfilm'
   ];
 
   for (const b of blockedDomains) {
@@ -277,7 +286,10 @@ function getStreamPriorityScore(s) {
   // Deprioritize unplayable or dead .mkv streams
   if (url.includes('.mkv') || s.isMkv) return 16;
 
-  // Priority 0: Dizipal Direct 1080p HLS (Highest Reliability, Instant 0ms playback)
+  // Priority 0: Dizisol & Dizipal Direct 1080p HLS (Highest Reliability, Instant 0ms playback)
+  if (id.startsWith('dzs_') || raw.includes('dizisol')) {
+    return 0;
+  }
   if (id.startsWith('dzp_') || raw.includes('dizipal')) {
     return 0;
   }
@@ -300,6 +312,7 @@ function getStreamPriorityScore(s) {
   }
 
   // Priority 4: Fast Clean Embeds
+  if (id.startsWith('ybd_') || raw.includes('yabancidizi')) return 4;
   if (id.startsWith('jet_') || (s.source && s.source.toLowerCase().includes('jet')) || raw.includes('jetfilm')) return 4;
   if (url.includes('sibnet') || raw.includes('sibnet')) return 4;
   if (url.includes('vidmoly') || raw.includes('vidmoly')) return 5;
@@ -340,13 +353,32 @@ export async function getStreamingServersProgressive({
   const targetTitle = cleanTitle(seriesTitle || title);
   const cacheKey = `${type}_${tmdbId || targetTitle}_s${season}_e${episode}`;
 
+  const hydrateServers = (list) => {
+    if (!Array.isArray(list)) return [];
+    return list.map(s => {
+      if (!s) return s;
+      const u = s.streamUrl || s.url || s.originalEmbedUrl || '';
+      return {
+        ...s,
+        streamUrl: u,
+        url: u,
+        getUrl: () => u
+      };
+    });
+  };
+
   if (!streamServersCache.has(cacheKey)) {
     try {
       const sess = sessionStorage.getItem(`cp_streams_${cacheKey}`);
       if (sess) {
         const parsed = JSON.parse(sess);
         if (parsed && (parsed.dubbed?.length || parsed.subtitled?.length)) {
-          streamServersCache.set(cacheKey, parsed);
+          const hydrated = {
+            ...parsed,
+            dubbed: hydrateServers(parsed.dubbed),
+            subtitled: hydrateServers(parsed.subtitled)
+          };
+          streamServersCache.set(cacheKey, hydrated);
         }
       }
     } catch (_) {}
@@ -354,8 +386,16 @@ export async function getStreamingServersProgressive({
 
   if (streamServersCache.has(cacheKey)) {
     const cached = streamServersCache.get(cacheKey);
-    onUpdate({ ...cached, isComplete: true });
-    return cached;
+    const hydrated = {
+      ...cached,
+      dubbed: hydrateServers(cached.dubbed),
+      subtitled: hydrateServers(cached.subtitled)
+    };
+    // Defer slightly to let UI finish mounting and avoid synchronous race conditions
+    setTimeout(() => {
+      onUpdate({ ...hydrated, isComplete: true });
+    }, 50);
+    return hydrated;
   }
 
   const { candidateTitles, detectedYear } = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle);
@@ -448,7 +488,33 @@ export async function getStreamingServersProgressive({
       : fetchDizipalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
-    // 2. Sinewix (Direct 1080p Dubbed)
+    // 2. Dizisol (Movies & Series - Native Express API HLS with Dual TR Audio & Subtitles)
+    isMovie
+      ? fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => []),
+
+    isMovie
+      ? fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      : fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    // 3. YabancıDizi (Movies & Series - Clean VidMoly & Sibnet embeds)
+    isMovie
+      ? fetchYabanciDiziMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : fetchYabanciDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => []),
+
+    isMovie
+      ? fetchYabanciDiziMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      : fetchYabanciDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    // 4. Sinewix (Direct 1080p Dubbed)
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
