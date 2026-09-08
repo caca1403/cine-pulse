@@ -63,6 +63,32 @@ export default async function handler(req, res) {
     }
   }
 
+  // RecTV / TVR Authenticated API Proxy (Enforces okhttp/4.12.0 User-Agent)
+  if (pathname.startsWith('/api/rtv')) {
+    const sub = pathname.replace(/^\/api\/rtv/, '');
+    const upstreamUrl = `https://a.prectv70.lol/api${sub}${search}`;
+    const forwardHeaders = {};
+    for (const [k, v] of Object.entries(req.headers || {})) {
+      const lk = k.toLowerCase();
+      if (lk === 'host' || lk === 'origin' || lk === 'referer' || lk === 'user-agent') continue;
+      forwardHeaders[k] = v;
+    }
+    forwardHeaders['user-agent'] = 'okhttp/4.12.0';
+
+    try {
+      const upstreamRes = await fetch(upstreamUrl, {
+        method: req.method,
+        headers: forwardHeaders,
+        body: (req.method === 'POST' || req.method === 'PUT') ? (typeof req.body === 'string' ? req.body : JSON.stringify(req.body)) : undefined
+      });
+      const data = await upstreamRes.text();
+      res.setHeader('Content-Type', upstreamRes.headers.get('content-type') || 'application/json');
+      return res.status(upstreamRes.status).send(data);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   if (pathname.startsWith('/api/hls_proxy')) {
     const rawTarget = urlObj.searchParams.get('url') || '';
     const ref = urlObj.searchParams.get('ref') || 'https://hdplayersystem.com/';
@@ -246,6 +272,17 @@ export default async function handler(req, res) {
     const subPath = pathname.replace(/^\/api\/dbl/, '');
     targetUrl = `https://dizibal.com/api${subPath}${search}`;
     customHeaders['Referer'] = 'https://dizibal.com/';
+  } else if (pathname.startsWith('/api/rtv')) {
+    const subPath = pathname.replace(/^\/api\/rtv/, '');
+    targetUrl = `https://a.prectv70.lol/api${subPath}${search}`;
+    customHeaders['User-Agent'] = 'okhttp/4.12.0';
+    if (req.headers['authorization']) customHeaders['Authorization'] = req.headers['authorization'];
+    if (req.headers['x-timestamp']) customHeaders['X-Timestamp'] = req.headers['x-timestamp'];
+    if (req.headers['x-nonce']) customHeaders['X-Nonce'] = req.headers['x-nonce'];
+    if (req.headers['x-signature']) customHeaders['X-Signature'] = req.headers['x-signature'];
+    if (req.headers['x-app-version']) customHeaders['X-App-Version'] = req.headers['x-app-version'];
+    if (req.headers['x-client-id']) customHeaders['X-Client-Id'] = req.headers['x-client-id'];
+    if (req.headers['content-type']) customHeaders['Content-Type'] = req.headers['content-type'];
   } else if (pathname.startsWith('/api/dzp')) {
     const subPath = pathname.replace(/^\/api\/dzp/, '');
     targetUrl = `https://dizipal1229.com${subPath}${search}`;
@@ -316,8 +353,10 @@ export default async function handler(req, res) {
   } else if (pathname.startsWith('/api/dzyo')) {
     const subPath = pathname.replace(/^\/api\/dzyo/, '');
     targetUrl = `https://www.diziyo.so${subPath}${search}`;
-    customHeaders['Referer'] = 'https://www.diziyo.so/';
+    customHeaders['Referer'] = req.headers['x-dzyo-referer'] || 'https://www.diziyo.so/';
     customHeaders['Origin'] = 'https://www.diziyo.so';
+    if (req.headers['cookie']) customHeaders['Cookie'] = req.headers['cookie'];
+    if (req.headers['x-dzyo-cookie']) customHeaders['Cookie'] = req.headers['x-dzyo-cookie'];
   } else if (pathname.startsWith('/api/dzr')) {
     const subPath = pathname.replace(/^\/api\/dzr/, '');
     targetUrl = `https://diziroll.club${subPath}${search}`;

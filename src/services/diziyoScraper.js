@@ -140,7 +140,7 @@ async function resolveDiziyoPlayerEmbed(playerGateUrl, refererUrl) {
       headers: {
         'Referer': refererUrl
       },
-      timeout: 4000
+      timeout: 4500
     });
     if (!gateRes) return null;
 
@@ -161,46 +161,67 @@ async function resolveDiziyoPlayerEmbed(playerGateUrl, refererUrl) {
       cookieHeader = rawCookie.split(/,\s*(?=[a-zA-Z0-9_-]+=)/).map(c => c.split(';')[0].trim()).join('; ');
     }
 
-    // POST authorize with redirect manual to capture 302
-    const postRes = await fetch(authUrl, {
+    // POST authorize using fetchDiziyo so it routes through proxy without CORS issues
+    const postRes = await fetchDiziyo(authUrl, {
       method: 'POST',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Content-Type': 'application/x-www-form-urlencoded',
         'Referer': playerGateUrl,
         'Origin': DIZIYO_BASE,
-        ...(cookieHeader ? { 'Cookie': cookieHeader } : {})
+        'x-dzyo-referer': playerGateUrl,
+        ...(cookieHeader ? { 'Cookie': cookieHeader, 'x-dzyo-cookie': cookieHeader } : {})
       },
       body: new URLSearchParams({ _token: token }),
-      redirect: 'manual',
-      signal: AbortSignal.timeout(4000)
-    }).catch(() => null);
+      timeout: 5000
+    });
 
     if (!postRes) return null;
 
-    let watchUrl = postRes.headers.get('location');
-    if (!watchUrl && (postRes.status === 200 || postRes.ok)) {
-      const postHtml = await postRes.text().catch(() => '');
-      const iframeMatch = postHtml.match(/<iframe[^>]+src="([^"]+)"/i);
-      if (iframeMatch) return iframeMatch[1];
-      const refreshMatch = postHtml.match(/url='([^']+)'/i) || postHtml.match(/url="([^"]+)"/i);
+    let watchHtml = '';
+    if (postRes.ok || postRes.status === 200) {
+      watchHtml = await postRes.text().catch(() => '');
+    }
+
+    let watchUrl = postRes.headers?.get?.('location');
+    if (!watchUrl && watchHtml) {
+      const refreshMatch = watchHtml.match(/url='([^']+)'/i) || watchHtml.match(/url="([^"]+)"/i);
       if (refreshMatch) watchUrl = refreshMatch[1];
     }
 
     if (watchUrl) {
-      const watchRes = await fetch(watchUrl, {
+      const watchRes = await fetchDiziyo(watchUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           'Referer': authUrl,
-          ...(cookieHeader ? { 'Cookie': cookieHeader } : {})
+          'x-dzyo-referer': authUrl,
+          ...(cookieHeader ? { 'Cookie': cookieHeader, 'x-dzyo-cookie': cookieHeader } : {})
         },
-        signal: AbortSignal.timeout(4000)
-      }).catch(() => null);
+        timeout: 4500
+      });
 
       if (watchRes) {
-        const watchHtml = await watchRes.text().catch(() => '');
-        const iframeMatch = watchHtml.match(/<iframe[^>]+src="([^"]+)"/i);
-        if (iframeMatch) return iframeMatch[1];
+        const text = await watchRes.text().catch(() => '');
+        if (text) watchHtml = text;
+      }
+    }
+
+    if (watchHtml) {
+      // Find vidmoly or provider frame iframe
+      const vidmolyMatch = watchHtml.match(/src="([^"]+vidmoly[^"]+)"/i);
+      if (vidmolyMatch) {
+        const vUrl = vidmolyMatch[1];
+        return vUrl.startsWith('//') ? `https:${vUrl}` : vUrl;
+      }
+
+      const iframeMatch = watchHtml.match(/id="provider-frame"[^>]*src="([^"]+)"/i) ||
+                          watchHtml.match(/<iframe[^>]+class="[^"]*player-watch[^"]*"[^>]*src="([^"]+)"/i) ||
+                          watchHtml.match(/<iframe[^>]+src="([^"]+)"/i);
+      if (iframeMatch) {
+        let foundUrl = iframeMatch[1];
+        if (foundUrl.startsWith('//')) foundUrl = `https:${foundUrl}`;
+        // Ensure not returning internal diziyo.so URLs which cause X-Frame-Options / Bağlanmayı reddetti
+        if (!foundUrl.includes('diziyo.so') && !foundUrl.includes('/player/video/') && !foundUrl.includes('/player/gate/')) {
+          return foundUrl;
+        }
       }
     }
   } catch (_) {}
@@ -312,19 +333,21 @@ export async function fetchDiziyoEpisodeSources({ titles = [], seriesTitle, orig
       });
     }
 
-    const fallbackUrl = resolvedEmbedUrl || selectedPlayer;
-    sources.push({
-      id: `dzy_player_s${sNum}e${epNum}_${isDub ? 'dub' : 'sub'}`,
-      name: isDub ? 'Diziyo VIP (TR Dublaj)' : 'Diziyo VIP (TR Altyazı)',
-      displayName: 'Diziyo VIP',
-      streamUrl: fallbackUrl,
-      url: fallbackUrl,
-      isHls: false,
-      isDirectVideo: false,
-      source: 'Diziyo',
-      badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı',
-      getUrl: () => fallbackUrl
-    });
+    // Only push fallback if it's a real resolved external embed (e.g. vidmoly embed), NEVER the raw gate or diziyo.so URL!
+    if (resolvedEmbedUrl && !resolvedEmbedUrl.includes('diziyo.so') && !resolvedEmbedUrl.includes('/player/video/') && !resolvedEmbedUrl.includes('/player/gate/')) {
+      sources.push({
+        id: `dzy_player_s${sNum}e${epNum}_${isDub ? 'dub' : 'sub'}`,
+        name: isDub ? 'Diziyo VIP (TR Dublaj)' : 'Diziyo VIP (TR Altyazı)',
+        displayName: 'Diziyo VIP',
+        streamUrl: resolvedEmbedUrl,
+        url: resolvedEmbedUrl,
+        isHls: false,
+        isDirectVideo: false,
+        source: 'Diziyo',
+        badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı',
+        getUrl: () => resolvedEmbedUrl
+      });
+    }
   } catch (_) {}
 
   return sources;
@@ -422,19 +445,21 @@ export async function fetchDiziyoMovieSources({ titles = [], title, originalTitl
       });
     }
 
-    const fallbackUrl = resolvedEmbedUrl || selectedPlayer;
-    sources.push({
-      id: `dzy_player_movie_${isDub ? 'dub' : 'sub'}`,
-      name: isDub ? 'Diziyo VIP (TR Dublaj)' : 'Diziyo VIP (TR Altyazı)',
-      displayName: 'Diziyo VIP',
-      streamUrl: fallbackUrl,
-      url: fallbackUrl,
-      isHls: false,
-      isDirectVideo: false,
-      source: 'Diziyo',
-      badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı',
-      getUrl: () => fallbackUrl
-    });
+    // Only push fallback if it's a real resolved external embed (e.g. vidmoly embed), NEVER the raw gate or diziyo.so URL!
+    if (resolvedEmbedUrl && !resolvedEmbedUrl.includes('diziyo.so') && !resolvedEmbedUrl.includes('/player/video/') && !resolvedEmbedUrl.includes('/player/gate/')) {
+      sources.push({
+        id: `dzy_player_movie_${isDub ? 'dub' : 'sub'}`,
+        name: isDub ? 'Diziyo VIP (TR Dublaj)' : 'Diziyo VIP (TR Altyazı)',
+        displayName: 'Diziyo VIP',
+        streamUrl: resolvedEmbedUrl,
+        url: resolvedEmbedUrl,
+        isHls: false,
+        isDirectVideo: false,
+        source: 'Diziyo',
+        badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı',
+        getUrl: () => resolvedEmbedUrl
+      });
+    }
   } catch (_) {}
 
   return sources;

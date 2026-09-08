@@ -111,6 +111,11 @@ async function getRsaPrivateKey() {
 let memoryJwt = null;
 let memoryJwtExp = 0;
 
+const isNodeEnv = typeof window === 'undefined';
+function getRtvFetchUrl(subPath) {
+  return isNodeEnv ? `https://a.prectv70.lol/api${subPath}` : `/api/rtv${subPath}`;
+}
+
 /**
  * Ensures a valid RecTV JWT token via RSA Key Attestation
  */
@@ -135,7 +140,7 @@ export async function getValidRecTvJwt() {
     // 1. GET /api/attest/nonce
     const noncePath = '/api/attest/nonce';
     const nonceHeaders = await createHmacHeaders('GET', noncePath, '');
-    const nonceRes = await fetch('/api/rtv/attest/nonce', {
+    const nonceRes = await fetch(getRtvFetchUrl('/attest/nonce'), {
       method: 'GET',
       headers: nonceHeaders
     });
@@ -169,7 +174,7 @@ export async function getValidRecTvJwt() {
       'Content-Type': 'application/json'
     };
 
-    const verifyRes = await fetch('/api/rtv/attest/verify', {
+    const verifyRes = await fetch(getRtvFetchUrl('/attest/verify'), {
       method: 'POST',
       headers: verifyHeaders,
       body: verifyReqBody
@@ -234,7 +239,7 @@ export async function decryptRecTvStreamUrl(encB64) {
   }
 }
 
-// Authenticated RecTV API Request Helper
+// Authenticated TVR (RecTV) API Request Helper
 async function recTvApiRequest(apiPath, method = 'GET', bodyStr = '') {
   const jwt = await getValidRecTvJwt();
   if (!jwt) return null;
@@ -248,7 +253,7 @@ async function recTvApiRequest(apiPath, method = 'GET', bodyStr = '') {
   };
 
   try {
-    const res = await fetch(`/api/rtv${apiPath}`, {
+    const res = await fetch(getRtvFetchUrl(apiPath), {
       method,
       headers,
       ...(bodyStr ? { body: bodyStr } : {})
@@ -270,7 +275,8 @@ function normalizeTitle(t) {
 }
 
 /**
- * Searches and extracts direct HLS streams from RecTV for Movies and Series
+ * Searches and extracts direct HLS streams from TVR (RecTV) for Movies and Series
+ * Strictly camouflaged as TVR.
  */
 export async function fetchRecTvSources({
   type = 'movie',
@@ -284,7 +290,11 @@ export async function fetchRecTvSources({
   if (!query) return [];
 
   try {
-    const searchRes = await recTvApiRequest(`/search/${encodeURIComponent(query)}/${SW_KEY}/`);
+    let searchRes = await recTvApiRequest(`/search/${encodeURIComponent(query)}/${SW_KEY}/`);
+    if ((!searchRes || !Array.isArray(searchRes.posters) || searchRes.posters.length === 0) && originalTitle && originalTitle.toLowerCase() !== query.toLowerCase()) {
+      searchRes = await recTvApiRequest(`/search/${encodeURIComponent(originalTitle.trim())}/${SW_KEY}/`);
+    }
+
     if (!searchRes || !Array.isArray(searchRes.posters) || searchRes.posters.length === 0) {
       return [];
     }
@@ -300,7 +310,13 @@ export async function fetchRecTvSources({
       const isTargetType = isMovie ? item.type === 'movie' : item.type === 'serie';
       if (!isTargetType) continue;
 
-      if (itemTitle === normQuery || itemTitle === normOrig || itemTitle.includes(normQuery) || normQuery.includes(itemTitle)) {
+      if (
+        itemTitle === normQuery || 
+        itemTitle === normOrig || 
+        itemTitle.includes(normQuery) || 
+        normQuery.includes(itemTitle) ||
+        (normOrig && (itemTitle.includes(normOrig) || normOrig.includes(itemTitle)))
+      ) {
         match = item;
         break;
       }
@@ -321,14 +337,14 @@ export async function fetchRecTvSources({
           // Wrap through HLS proxy for rock-solid Cloudflare bypass and CORS
           const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(rawUrl)}&ref=https://a.prectv70.lol/`;
           const isDub = (s.title || '').toLowerCase().includes('dublaj') || (match.label || '').toLowerCase().includes('dublaj');
-          const label = isDub ? '🇹🇷 RecTV VIP (TR Dublaj)' : '⚡ RecTV VIP (TR Altyazı)';
+          const label = isDub ? '🇹🇷 TVR VIP (TR Dublaj)' : '⚡ TVR VIP (TR Altyazı)';
 
           streams.push({
-            id: `rectv_movie_${match.id}_${s.id}`,
+            id: `tvr_movie_${match.id}_${s.id}`,
             name: label,
             displayName: label,
-            badge: '⚡ RecTV VIP',
-            source: 'RecTV VIP',
+            badge: '⚡ TVR VIP',
+            source: 'TVR VIP',
             url: proxiedUrl,
             streamUrl: proxiedUrl,
             rawStreamUrl: rawUrl,
@@ -350,7 +366,7 @@ export async function fetchRecTvSources({
           const sNum = sNumMatch ? parseInt(sNumMatch[1], 10) : 1;
           if (sNum !== season) continue;
 
-          const isDub = sTitle.includes('dublaj');
+          const isDub = sTitle.includes('dublaj') || (s.label || '').toLowerCase().includes('dublaj');
 
           if (Array.isArray(s.episodes)) {
             for (const ep of s.episodes) {
@@ -367,15 +383,15 @@ export async function fetchRecTvSources({
 
                   const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(rawUrl)}&ref=https://a.prectv70.lol/`;
                   const label = isDub 
-                    ? `🇹🇷 RecTV S${season}E${episode} (TR Dublaj)` 
-                    : `⚡ RecTV S${season}E${episode} (TR Altyazı)`;
+                    ? `🇹🇷 TVR S${season}E${episode} (TR Dublaj)` 
+                    : `⚡ TVR S${season}E${episode} (TR Altyazı)`;
 
                   streams.push({
-                    id: `rectv_ep_${match.id}_${ep.id}_${src.id}`,
+                    id: `tvr_ep_${match.id}_${ep.id}_${src.id}`,
                     name: label,
                     displayName: label,
-                    badge: '⚡ RecTV VIP',
-                    source: 'RecTV VIP',
+                    badge: '⚡ TVR VIP',
+                    source: 'TVR VIP',
                     url: proxiedUrl,
                     streamUrl: proxiedUrl,
                     rawStreamUrl: rawUrl,
@@ -395,13 +411,13 @@ export async function fetchRecTvSources({
 
     return streams;
   } catch (err) {
-    console.warn('[RecTV] Fetch sources failed:', err.message);
+    console.warn('[TVR] Fetch sources failed:', err.message);
     return [];
   }
 }
 
 /**
- * Fetches all unlocked RecTV Live Channels (Sports, Cinema, Docs, etc.)
+ * Fetches all unlocked TVR (RecTV) Live Channels (Sports, Cinema, Docs, etc.)
  */
 export async function fetchRecTvLiveChannels() {
   try {
@@ -427,7 +443,7 @@ export async function fetchRecTvLiveChannels() {
         const catName = catId === 1 ? 'sports' : (catId === 6 ? 'national' : (catId === 2 ? 'doc' : 'kids'));
 
         channels.push({
-          id: `rectv_ch_${ch.id}`,
+          id: `tvr_ch_${ch.id}`,
           name: ch.title,
           category: catName,
           logo: ch.image || '',
@@ -440,7 +456,7 @@ export async function fetchRecTvLiveChannels() {
 
     return channels;
   } catch (err) {
-    console.warn('[RecTV] Fetch live channels failed:', err.message);
+    console.warn('[TVR] Fetch live channels failed:', err.message);
     return [];
   }
 }
