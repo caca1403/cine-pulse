@@ -250,6 +250,21 @@ export default async function handler(req, res) {
     targetUrl = `https://dizisol.com/api${subPath}${search}`;
     customHeaders['Referer'] = 'https://dizisol.com/';
     customHeaders['Origin'] = 'https://dizisol.com';
+  } else if (pathname.startsWith('/api/dzb')) {
+    const subPath = pathname.replace(/^\/api\/dzb/, '');
+    targetUrl = `https://dizibal.org/api${subPath}${search}`;
+    customHeaders['Referer'] = 'https://dizibal.org/';
+    customHeaders['Origin'] = 'https://dizibal.org';
+  } else if (pathname.startsWith('/api/dzyo')) {
+    const subPath = pathname.replace(/^\/api\/dzyo/, '');
+    targetUrl = `https://www.diziyo.so${subPath}${search}`;
+    customHeaders['Referer'] = 'https://www.diziyo.so/';
+    customHeaders['Origin'] = 'https://www.diziyo.so';
+  } else if (pathname.startsWith('/api/dzr')) {
+    const subPath = pathname.replace(/^\/api\/dzr/, '');
+    targetUrl = `https://diziroll.club${subPath}${search}`;
+    customHeaders['Referer'] = 'https://diziroll.club/';
+    customHeaders['Origin'] = 'https://diziroll.club';
   } else if (pathname.startsWith('/api/ybd')) {
     const subPath = pathname.replace(/^\/api\/ybd/, '');
     targetUrl = `https://yabancidizi.news${subPath}${search}`;
