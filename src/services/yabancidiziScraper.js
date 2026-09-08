@@ -79,6 +79,15 @@ function cleanTitle(raw) {
     .trim();
 }
 
+function toSlug(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
 /**
  * Searches yabancidizi.news via its AJAX search endpoint
  */
@@ -86,14 +95,16 @@ export async function searchYabanciDizi(query) {
   if (!query || typeof query !== 'string' || query.trim().length < 2) return [];
 
   try {
-    const searchUrl = `${YBD_BASE}/search?qr=${encodeURIComponent(query.trim())}`;
+    const cleanQ = query.trim();
+    const searchUrl = `${YBD_BASE}/search?qr=${encodeURIComponent(cleanQ)}`;
     const res = await fetchYbd(searchUrl, {
-      method: 'POST',
+      method: 'GET',
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'Referer': 'https://yabancidizi.news/'
       },
-      timeout: 4000
+      timeout: 4500
     });
 
     if (!res) return [];
@@ -193,29 +204,46 @@ export async function fetchYabanciDiziEpisodeSources({
     const candidates = [...new Set([...titles, seriesTitle, originalTitle])].filter(t => t && t.trim().length > 1);
     if (candidates.length === 0) return [];
 
-    let targetLink = null;
+    const candidateLinks = [];
 
+    // 1. Search endpoint
     for (const q of candidates) {
       const results = await searchYabanciDizi(q);
       if (results.length > 0) {
-        // Find best match by title
         const normQ = cleanTitle(q);
         const match = results.find(r => cleanTitle(r.s_name).includes(normQ) || normQ.includes(cleanTitle(r.s_name))) || results[0];
         if (match && match.s_link) {
-          targetLink = match.s_link;
+          candidateLinks.push(match.s_link);
           break;
         }
       }
     }
 
-    if (!targetLink) return [];
+    // 2. Add predicted slug variations as fallback
+    for (const c of candidates) {
+      const slug = toSlug(c);
+      if (slug) {
+        candidateLinks.push(`${slug}-izle-1`);
+        candidateLinks.push(`${slug}-izle`);
+        candidateLinks.push(slug);
+      }
+    }
 
-    const epPageUrl = `${YBD_BASE}/dizi/${targetLink}/sezon-${season}/bolum-${episode}`;
-    const res = await fetchYbd(epPageUrl, { timeout: 4500 });
-    if (!res) return [];
+    const uniqueLinks = [...new Set(candidateLinks)];
 
-    const html = await res.text().catch(() => '');
-    return extractStreamsFromHtml(html, isDub);
+    for (const link of uniqueLinks) {
+      const epPageUrl = `${YBD_BASE}/dizi/${link}/sezon-${season}/bolum-${episode}`;
+      const res = await fetchYbd(epPageUrl, { timeout: 4000 });
+      if (!res || !res.ok) continue;
+
+      const html = await res.text().catch(() => '');
+      const streams = extractStreamsFromHtml(html, isDub);
+      if (streams.length > 0) {
+        return streams;
+      }
+    }
+
+    return [];
   } catch (err) {
     console.warn('[YabanciDiziScraper] Episode error:', err);
     return [];
@@ -235,28 +263,46 @@ export async function fetchYabanciDiziMovieSources({
     const candidates = [...new Set([...titles, title, originalTitle])].filter(t => t && t.trim().length > 1);
     if (candidates.length === 0) return [];
 
-    let targetLink = null;
+    const candidateLinks = [];
 
+    // 1. Search endpoint
     for (const q of candidates) {
       const results = await searchYabanciDizi(q);
       if (results.length > 0) {
         const normQ = cleanTitle(q);
         const match = results.find(r => r.s_type === '1' || cleanTitle(r.s_name).includes(normQ)) || results[0];
         if (match && match.s_link) {
-          targetLink = match.s_link;
+          candidateLinks.push(match.s_link);
           break;
         }
       }
     }
 
-    if (!targetLink) return [];
+    // 2. Add predicted slug variations
+    for (const c of candidates) {
+      const slug = toSlug(c);
+      if (slug) {
+        candidateLinks.push(`${slug}-izle`);
+        candidateLinks.push(`${slug}-izle-1`);
+        candidateLinks.push(slug);
+      }
+    }
 
-    const moviePageUrl = `${YBD_BASE}/film/${targetLink}`;
-    const res = await fetchYbd(moviePageUrl, { timeout: 4500 });
-    if (!res) return [];
+    const uniqueLinks = [...new Set(candidateLinks)];
 
-    const html = await res.text().catch(() => '');
-    return extractStreamsFromHtml(html, isDub);
+    for (const link of uniqueLinks) {
+      const moviePageUrl = `${YBD_BASE}/film/${link}`;
+      const res = await fetchYbd(moviePageUrl, { timeout: 4000 });
+      if (!res || !res.ok) continue;
+
+      const html = await res.text().catch(() => '');
+      const streams = extractStreamsFromHtml(html, isDub);
+      if (streams.length > 0) {
+        return streams;
+      }
+    }
+
+    return [];
   } catch (err) {
     console.warn('[YabanciDiziScraper] Movie error:', err);
     return [];
