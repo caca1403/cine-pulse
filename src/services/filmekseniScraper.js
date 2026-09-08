@@ -116,7 +116,7 @@ export async function fetchFilmEkseniSources({
   episode = null,
   isDub = true
 }) {
-  const isSeries = type === 'series' || type === 'tv' || season !== null;
+  const isSeries = (type === 'series' || type === 'tv') && type !== 'movie';
   const sNum = parseInt(season, 10) || 1;
   const epNum = parseInt(episode, 10) || 1;
 
