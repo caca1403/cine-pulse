@@ -28,6 +28,7 @@ import {
   isAnimeRecord
 } from '../services/storage.js';
 import { showToast } from './Toast.js';
+import { translateToTurkish } from '../services/tmdbApi.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -134,6 +135,7 @@ export async function openPlayerModal({
   }
 
   let mediaOverview = '';
+  let currentEpisodeOverview = '';
   let mediaGenres = [];
   let isSourcesPopoverOpen = false;
 
@@ -186,12 +188,60 @@ export async function openPlayerModal({
       genresEl.innerHTML = mediaGenres.map(g => `<span class="dizisol-genre-chip">${g}</span>`).join('');
     }
     const overviewEl = document.getElementById('dizisol-overview');
-    if (overviewEl && mediaOverview) {
-      overviewEl.textContent = mediaOverview;
+    if (overviewEl) {
+      if (isSeries) {
+        if (currentEpisodeOverview) {
+          overviewEl.textContent = currentEpisodeOverview;
+        }
+      } else if (mediaOverview) {
+        overviewEl.textContent = mediaOverview;
+      }
     }
     const epBadge = document.querySelector('.dizisol-ep-badge');
     if (epBadge) {
       epBadge.textContent = isSeries ? `Sezon ${currentSeason} • Bölüm ${currentEpisode}` : 'Film';
+    }
+  }
+
+  async function updateEpisodeOverview(seasonNum, epNum) {
+    if (!isSeries || !tmdbId) return;
+    const overviewEl = document.getElementById('dizisol-overview');
+
+    // 1. Check if season episodes are cached
+    let episodes = drawerEpisodesCache.get(seasonNum);
+    if (!episodes || episodes.length === 0) {
+      episodes = await fetchSeasonEpisodes(seasonNum);
+    }
+
+    const ep = episodes ? episodes.find(e => e.episode_number === epNum) : null;
+
+    if (ep && ep.overview && ep.overview.trim().length > 0) {
+      currentEpisodeOverview = ep.overview.trim();
+      if (overviewEl) overviewEl.textContent = currentEpisodeOverview;
+      return;
+    }
+
+    // 2. If Turkish overview is empty in TMDB, fetch English overview and translate to Turkish
+    try {
+      const enRes = await fetch(`https://api.themoviedb.org/3/tv/${tmdbId}/season/${seasonNum}/episode/${epNum}?api_key=${TMDB_API_KEY}&language=en-US`);
+      if (enRes && enRes.ok) {
+        const enData = await enRes.json();
+        if (enData && enData.overview && enData.overview.trim().length > 0) {
+          const translated = await translateToTurkish(enData.overview.trim());
+          if (translated && translated.trim()) {
+            currentEpisodeOverview = translated.trim();
+            if (overviewEl) overviewEl.textContent = currentEpisodeOverview;
+            return;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Fallback if no specific overview found
+    if (ep && ep.name && !ep.name.toLowerCase().includes('bölüm')) {
+      if (overviewEl) overviewEl.textContent = `${ep.name} - Bölüm özeti hazırlanıyor...`;
+    } else if (mediaOverview) {
+      if (overviewEl) overviewEl.textContent = mediaOverview;
     }
   }
 
@@ -666,11 +716,10 @@ export async function openPlayerModal({
       ` : '';
 
       return `
-        <div class="direct-video-wrapper">
+        <div class="direct-video-wrapper" id="direct-video-wrapper">
           ${dualAudioBarHTML}
           <video 
             id="hls-video-player" 
-            controls 
             autoplay 
             playsinline
             webkit-playsinline
@@ -680,6 +729,115 @@ export async function openPlayerModal({
           </video>
           ${dubbedAudioHTML}
           ${floatingAudioTip}
+
+          <!-- Center Click Ripple Animation -->
+          <div class="custom-center-play-indicator" id="custom-center-play-indicator">
+            <i data-lucide="play" style="width: 32px; height: 32px;"></i>
+          </div>
+
+          <!-- Bottom Custom Control Bar -->
+          <div class="custom-player-controls" id="custom-player-controls">
+            <!-- Timeline Scrubber -->
+            <div class="custom-timeline-container" id="custom-timeline-container">
+              <div class="custom-timeline-bg">
+                <div class="custom-timeline-buffered" id="custom-timeline-buffered"></div>
+                <div class="custom-timeline-played" id="custom-timeline-played"></div>
+              </div>
+              <div class="custom-timeline-thumb" id="custom-timeline-thumb"></div>
+              <div class="custom-timeline-tooltip" id="custom-timeline-tooltip">0:00</div>
+            </div>
+
+            <!-- Controls Row -->
+            <div class="custom-controls-row">
+              <div class="custom-controls-left">
+                <button class="custom-ctrl-btn" id="custom-btn-play" title="Oynat / Duraklat (Space)">
+                  <i data-lucide="pause" style="width: 20px; height: 20px;"></i>
+                </button>
+                <div class="custom-time-display" id="custom-time-display">0:00 / 0:00</div>
+              </div>
+
+              <div class="custom-controls-right">
+                <!-- Volume Wrap -->
+                <div class="custom-volume-wrap">
+                  <button class="custom-ctrl-btn" id="custom-btn-volume" title="Ses">
+                    <i data-lucide="volume-2" style="width: 20px; height: 20px;"></i>
+                  </button>
+                  <input type="range" class="custom-volume-slider" id="custom-volume-slider" min="0" max="1" step="0.05" value="1" />
+                </div>
+
+                <!-- Fullscreen Button -->
+                <button class="custom-ctrl-btn" id="custom-btn-fullscreen" title="Tam Ekran (F)">
+                  <i data-lucide="maximize" style="width: 20px; height: 20px;"></i>
+                </button>
+
+                <!-- Three-Dots Button (⋮) -->
+                <button class="custom-ctrl-btn" id="custom-btn-more" title="Seçenekler">
+                  <i data-lucide="more-vertical" style="width: 20px; height: 20px;"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Three-Dots Context Menu -->
+          <div class="custom-player-menu hidden" id="custom-player-menu">
+            <!-- Main View -->
+            <div class="custom-menu-view" id="custom-menu-main">
+              <!-- Item 1: Ses / Dil (Placed ABOVE Altyazılar) -->
+              <div class="custom-menu-item" id="custom-menu-item-audio">
+                <div class="custom-menu-item-icon">
+                  <i data-lucide="headphones" style="width: 17px; height: 17px; color: #f59e0b;"></i>
+                </div>
+                <div class="custom-menu-item-body">
+                  <span class="custom-menu-item-title">Ses / Dil</span>
+                  <span class="custom-menu-item-sub" id="custom-menu-active-audio">${currentCategory === 'dubbed' ? 'Türkçe Dublaj' : 'Orijinal / Altyazılı'}</span>
+                </div>
+                <i data-lucide="chevron-right" style="width: 15px; height: 15px; color: #94a3b8;"></i>
+              </div>
+
+              <!-- Item 2: Altyazılar -->
+              <div class="custom-menu-item" id="custom-menu-item-subs">
+                <div class="custom-menu-item-icon">
+                  <i data-lucide="subtitles" style="width: 17px; height: 17px; color: #60a5fa;"></i>
+                </div>
+                <div class="custom-menu-item-body">
+                  <span class="custom-menu-item-title">Altyazılar</span>
+                  <span class="custom-menu-item-sub" id="custom-menu-active-sub">Kapalı</span>
+                </div>
+                <i data-lucide="chevron-right" style="width: 15px; height: 15px; color: #94a3b8;"></i>
+              </div>
+
+              <!-- Item 3: Oynatma hızı -->
+              <div class="custom-menu-item" id="custom-menu-item-speed">
+                <div class="custom-menu-item-icon">
+                  <i data-lucide="gauge" style="width: 17px; height: 17px; color: #a78bfa;"></i>
+                </div>
+                <div class="custom-menu-item-body">
+                  <span class="custom-menu-item-title">Oynatma hızı</span>
+                  <span class="custom-menu-item-sub" id="custom-menu-active-speed">Normal</span>
+                </div>
+                <i data-lucide="chevron-right" style="width: 15px; height: 15px; color: #94a3b8;"></i>
+              </div>
+
+              <!-- Item 4: Pencere içinde pencere -->
+              <div class="custom-menu-item" id="custom-menu-item-pip">
+                <div class="custom-menu-item-icon">
+                  <i data-lucide="picture-in-picture-2" style="width: 17px; height: 17px; color: #34d399;"></i>
+                </div>
+                <div class="custom-menu-item-body">
+                  <span class="custom-menu-item-title">Pencere içinde pencere</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Submenu View -->
+            <div class="custom-menu-view hidden" id="custom-menu-subview">
+              <div class="custom-menu-back-header" id="custom-menu-back-btn">
+                <i data-lucide="chevron-left" style="width: 15px; height: 15px;"></i>
+                <span id="custom-menu-subview-title">Geri</span>
+              </div>
+              <div class="custom-menu-options-list" id="custom-menu-options-list"></div>
+            </div>
+          </div>
         </div>
       `;
     }
@@ -890,16 +1048,6 @@ export async function openPlayerModal({
               <i data-lucide="server" style="width:16px;height:16px;color:#10b981"></i>
               <span class="action-btn-text" id="active-source-chip-label">Kaynak: ${getActiveServerName()}</span>
             </button>
-            <div class="player-lang-selector-wrap" style="position:relative;display:inline-flex;">
-              <button id="btn-player-lang-menu" class="btn-dizisol-action action-icon-btn" title="Dil & Altyazı Seçenekleri">
-                <i data-lucide="languages" style="width:16px;height:16px;color:#a78bfa"></i>
-                <span class="action-btn-text">Dil</span>
-              </button>
-              <div id="player-lang-dropdown" class="player-lang-dropdown hidden" style="position:absolute;top:calc(100% + 8px);right:0;z-index:9999;background:rgba(15,18,30,0.97);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:0.6rem;min-width:200px;box-shadow:0 12px 32px rgba(0,0,0,0.6);">
-                <p style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 0.4rem 0.3rem;">DİL & ALTYAZI</p>
-                <div id="player-lang-options" style="display:flex;flex-direction:column;gap:4px;"></div>
-              </div>
-            </div>
             <button id="btn-toggle-list" class="btn-dizisol-action action-pill-btn ${isWatched ? 'watched-active' : ''}" title="Listeme Ekle / İzlendi">
               <i data-lucide="${isWatched ? 'check-circle-2' : 'plus'}" style="width:15px;height:15px"></i>
               <span id="list-action-label">${isWatched ? 'İzlendi' : 'Listeme Ekle'}</span>
@@ -912,7 +1060,7 @@ export async function openPlayerModal({
         </div>
 
         <p class="dizisol-overview" id="dizisol-overview">
-          ${mediaOverview || 'İçerik bilgileri hazırlanıyor...'}
+          ${isSeries ? (currentEpisodeOverview || 'Bölüm özeti hazırlanıyor...') : (mediaOverview || 'İçerik bilgileri hazırlanıyor...')}
         </p>
 
         <!-- SEZONLAR SECTION (Only for TV Series) -->
@@ -1174,6 +1322,7 @@ export async function openPlayerModal({
   // Trigger initial drawer & mobile episode rail rendering for TV & Anime series
   if (isSeries) {
     renderDrawerContent();
+    updateEpisodeOverview(currentSeason, currentEpisode);
   }
   async function renderQuickEpisodesRail() {
     const rail = document.getElementById('player-quick-episodes-rail');
@@ -1458,112 +1607,514 @@ export async function openPlayerModal({
         btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 
         updatePlayerContainer();
-        updateLangDropdown();
       });
     });
-
-    // Update lang/subtitle dropdown
-    updateLangDropdown();
   }
 
-  function updateLangDropdown() {
-    const langBtn = document.getElementById('btn-player-lang-menu');
-    const langDropdown = document.getElementById('player-lang-dropdown');
-    const langOptions = document.getElementById('player-lang-options');
-    if (!langBtn || !langDropdown || !langOptions) return;
+  function initCustomPlayerControls(videoEl, srv) {
+    if (!videoEl) return;
+    const wrapper = document.getElementById('direct-video-wrapper') || videoEl.closest('.direct-video-wrapper');
+    if (!wrapper) return;
 
-    const srv = activeServers[currentServerIndex];
-    const subtitles = (srv && Array.isArray(srv.subtitles) && srv.subtitles.length > 0) ? srv.subtitles : [];
+    const playBtn = wrapper.querySelector('#custom-btn-play');
+    const timeDisplay = wrapper.querySelector('#custom-time-display');
+    const timelineContainer = wrapper.querySelector('#custom-timeline-container');
+    const playedBar = wrapper.querySelector('#custom-timeline-played');
+    const bufferedBar = wrapper.querySelector('#custom-timeline-buffered');
+    const thumb = wrapper.querySelector('#custom-timeline-thumb');
+    const tooltip = wrapper.querySelector('#custom-timeline-tooltip');
+    const volBtn = wrapper.querySelector('#custom-btn-volume');
+    const volSlider = wrapper.querySelector('#custom-volume-slider');
+    const fsBtn = wrapper.querySelector('#custom-btn-fullscreen');
+    const moreBtn = wrapper.querySelector('#custom-btn-more');
+    const menu = wrapper.querySelector('#custom-player-menu');
+    const mainView = wrapper.querySelector('#custom-menu-main');
+    const subview = wrapper.querySelector('#custom-menu-subview');
+    const subviewTitle = wrapper.querySelector('#custom-menu-subview-title');
+    const subviewList = wrapper.querySelector('#custom-menu-options-list');
+    const backBtn = wrapper.querySelector('#custom-menu-back-btn');
+    const centerIndicator = wrapper.querySelector('#custom-center-play-indicator');
 
-    // Build options list
-    let optionsHtml = '';
-
-    // Subtitle tracks from active stream
-    if (subtitles.length > 0) {
-      optionsHtml += `<p style="color:#94a3b8;font-size:10px;font-weight:600;text-transform:uppercase;margin:0 0 3px 2px;">ALTYAZI SEÇENEKLERI</p>`;
-      for (const sub of subtitles) {
-        const label = sub.label || sub.lang || 'Altyazı';
-        optionsHtml += `
-          <button class="lang-opt-btn" data-sub-src="${sub.src || ''}" style="display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border-radius:8px;background:transparent;border:none;cursor:pointer;color:#e2e8f0;font-size:13px;text-align:left;transition:background 0.15s;">
-            <i data-lucide="subtitles" style="width:14px;height:14px;color:#a78bfa;flex-shrink:0;"></i>
-            <span>${label}</span>
-          </button>`;
+    // 1. Play / Pause Control
+    const updatePlayState = () => {
+      const isPaused = videoEl.paused;
+      if (playBtn) {
+        playBtn.innerHTML = `<i data-lucide="${isPaused ? 'play' : 'pause'}" style="width: 20px; height: 20px;"></i>`;
+        if (window.lucide) window.lucide.createIcons({ el: playBtn });
       }
+      if (isPaused) {
+        wrapper.classList.remove('hide-controls');
+      }
+    };
+
+    const togglePlay = () => {
+      if (videoEl.paused) {
+        videoEl.play().catch(() => {});
+        showCenterAnimation('play');
+      } else {
+        videoEl.pause();
+        showCenterAnimation('pause');
+      }
+    };
+
+    const showCenterAnimation = (iconName) => {
+      if (!centerIndicator) return;
+      centerIndicator.innerHTML = `<i data-lucide="${iconName}" style="width: 32px; height: 32px;"></i>`;
+      if (window.lucide) window.lucide.createIcons({ el: centerIndicator });
+      centerIndicator.classList.add('animate');
+      setTimeout(() => centerIndicator.classList.remove('animate'), 350);
+    };
+
+    if (playBtn) playBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
+    videoEl.onclick = (e) => {
+      if (menu && !menu.classList.contains('hidden')) {
+        menu.classList.add('hidden');
+        return;
+      }
+      togglePlay();
+    };
+
+    videoEl.addEventListener('play', updatePlayState);
+    videoEl.addEventListener('pause', updatePlayState);
+    videoEl.addEventListener('ended', updatePlayState);
+
+    // 2. Timeline and Time Update
+    const updateTimeAndTimeline = () => {
+      const cur = videoEl.currentTime || 0;
+      const dur = videoEl.duration || 0;
+      if (timeDisplay) {
+        timeDisplay.textContent = `${formatSecondsToTime(cur)} / ${formatSecondsToTime(dur)}`;
+      }
+      if (dur > 0) {
+        const pct = Math.min(100, Math.max(0, (cur / dur) * 100));
+        if (playedBar) playedBar.style.width = `${pct}%`;
+        if (thumb) thumb.style.left = `${pct}%`;
+
+        if (videoEl.buffered && videoEl.buffered.length > 0) {
+          for (let i = videoEl.buffered.length - 1; i >= 0; i--) {
+            if (videoEl.buffered.start(i) <= cur) {
+              const bufEnd = videoEl.buffered.end(i);
+              const bufPct = Math.min(100, (bufEnd / dur) * 100);
+              if (bufferedBar) bufferedBar.style.width = `${bufPct}%`;
+              break;
+            }
+          }
+        }
+      }
+    };
+
+    videoEl.addEventListener('timeupdate', updateTimeAndTimeline);
+    videoEl.addEventListener('durationchange', updateTimeAndTimeline);
+    videoEl.addEventListener('loadedmetadata', updateTimeAndTimeline);
+    videoEl.addEventListener('canplay', updateTimeAndTimeline);
+    videoEl.addEventListener('progress', updateTimeAndTimeline);
+
+    // Timeline Scrubbing / Seeking
+    if (timelineContainer) {
+      let isSeeking = false;
+      const handleSeek = (e) => {
+        const rect = timelineContainer.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        if (videoEl.duration) {
+          videoEl.currentTime = ratio * videoEl.duration;
+        }
+      };
+
+      timelineContainer.addEventListener('mousedown', (e) => {
+        isSeeking = true;
+        handleSeek(e);
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (isSeeking) handleSeek(e);
+      });
+
+      window.addEventListener('mouseup', () => {
+        isSeeking = false;
+      });
+
+      timelineContainer.addEventListener('mousemove', (e) => {
+        if (!tooltip) return;
+        const rect = timelineContainer.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const dur = videoEl.duration || 0;
+        tooltip.textContent = formatSecondsToTime(ratio * dur);
+        tooltip.style.left = `${ratio * 100}%`;
+      });
     }
 
-    // Dubbed/subtitled category switcher
-    optionsHtml += `
-      <p style="color:#94a3b8;font-size:10px;font-weight:600;text-transform:uppercase;margin:${subtitles.length > 0 ? '8px' : '0'} 0 3px 2px;">SES DİLİ</p>
-      <button class="lang-cat-btn" data-cat="dubbed" style="display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border-radius:8px;background:${currentCategory === 'dubbed' ? 'rgba(16,185,129,0.15)' : 'transparent'};border:${currentCategory === 'dubbed' ? '1px solid rgba(16,185,129,0.3)' : '1px solid transparent'};cursor:pointer;color:#e2e8f0;font-size:13px;text-align:left;transition:all 0.15s;">
-        <span style="font-size:16px;">🇹🇷</span>
-        <span>Türkçe Dublaj</span>
-        ${currentCategory === 'dubbed' ? '<i data-lucide="check" style="width:12px;height:12px;color:#10b981;margin-left:auto;"></i>' : ''}
-      </button>
-      <button class="lang-cat-btn" data-cat="subtitled" style="display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border-radius:8px;background:${currentCategory === 'subtitled' ? 'rgba(99,102,241,0.15)' : 'transparent'};border:${currentCategory === 'subtitled' ? '1px solid rgba(99,102,241,0.3)' : '1px solid transparent'};cursor:pointer;color:#e2e8f0;font-size:13px;text-align:left;transition:all 0.15s;">
-        <span style="font-size:16px;">💬</span>
-        <span>Türkçe Altyazılı</span>
-        ${currentCategory === 'subtitled' ? '<i data-lucide="check" style="width:12px;height:12px;color:#6366f1;margin-left:auto;"></i>' : ''}
-      </button>`;
+    // 3. Volume Control
+    const updateVolumeUI = () => {
+      const vol = videoEl.muted ? 0 : videoEl.volume;
+      if (volSlider) volSlider.value = vol;
+      if (volBtn) {
+        let iconName = 'volume-2';
+        if (videoEl.muted || vol === 0) iconName = 'volume-x';
+        else if (vol < 0.5) iconName = 'volume-1';
+        volBtn.innerHTML = `<i data-lucide="${iconName}" style="width: 20px; height: 20px;"></i>`;
+        if (window.lucide) window.lucide.createIcons({ el: volBtn });
+      }
+    };
 
-    langOptions.innerHTML = optionsHtml;
-    if (window.lucide) window.lucide.createIcons({ el: langOptions });
-
-    // Hover effects
-    langOptions.querySelectorAll('button').forEach(b => {
-      b.addEventListener('mouseenter', () => { b.style.background = 'rgba(255,255,255,0.07)'; });
-      b.addEventListener('mouseleave', () => {
-        const cat = b.getAttribute('data-cat');
-        if (cat && cat === currentCategory) b.style.background = cat === 'dubbed' ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)';
-        else b.style.background = 'transparent';
-      });
-    });
-
-    // Subtitle track click → activate subtitle track on video
-    langOptions.querySelectorAll('.lang-opt-btn').forEach(b => {
-      b.addEventListener('click', () => {
-        const src = b.getAttribute('data-sub-src');
-        const videoEl = document.querySelector('#player-iframe-wrapper video');
-        if (videoEl && src) {
-          // Remove existing tracks
-          videoEl.querySelectorAll('track').forEach(t => t.remove());
-          const track = document.createElement('track');
-          track.kind = 'subtitles';
-          track.src = src;
-          track.srclang = 'tr';
-          track.label = b.querySelector('span:last-child')?.textContent || 'Altyazı';
-          track.default = true;
-          videoEl.appendChild(track);
-          videoEl.textTracks[0] && (videoEl.textTracks[0].mode = 'showing');
-        }
-        langDropdown.classList.add('hidden');
-        showToast('✓ Altyazı seçildi.', 'success');
-      });
-    });
-
-    // Category switch click
-    langOptions.querySelectorAll('.lang-cat-btn').forEach(b => {
-      b.addEventListener('click', () => {
-        const cat = b.getAttribute('data-cat');
-        if (cat === currentCategory) { langDropdown.classList.add('hidden'); return; }
-        langDropdown.classList.add('hidden');
-        const tabBtn = document.getElementById(cat === 'dubbed' ? 'tab-dubbed' : 'tab-subtitled');
-        if (tabBtn) tabBtn.click();
-      });
-    });
-
-    // Toggle
-    if (!langBtn.dataset.langAttached) {
-      langBtn.dataset.langAttached = 'true';
-      langBtn.addEventListener('click', (e) => {
+    if (volBtn) {
+      volBtn.onclick = (e) => {
         e.stopPropagation();
-        langDropdown.classList.toggle('hidden');
-      });
+        videoEl.muted = !videoEl.muted;
+        updateVolumeUI();
+      };
+    }
+
+    if (volSlider) {
+      volSlider.oninput = (e) => {
+        e.stopPropagation();
+        videoEl.volume = parseFloat(volSlider.value);
+        videoEl.muted = false;
+        updateVolumeUI();
+      };
+    }
+
+    // 4. Fullscreen Control
+    const toggleFullscreen = () => {
+      if (!document.fullscreenElement) {
+        if (wrapper.requestFullscreen) wrapper.requestFullscreen();
+        else if (wrapper.webkitRequestFullscreen) wrapper.webkitRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      }
+    };
+
+    if (fsBtn) fsBtn.onclick = (e) => { e.stopPropagation(); toggleFullscreen(); };
+    videoEl.ondblclick = (e) => { e.stopPropagation(); toggleFullscreen(); };
+
+    document.addEventListener('fullscreenchange', () => {
+      const isFs = !!document.fullscreenElement;
+      if (fsBtn) {
+        fsBtn.innerHTML = `<i data-lucide="${isFs ? 'minimize' : 'maximize'}" style="width: 20px; height: 20px;"></i>`;
+        if (window.lucide) window.lucide.createIcons({ el: fsBtn });
+      }
+    });
+
+    // 5. Inactivity Auto-hide Controls
+    let hideTimeout = null;
+    const resetHideTimer = () => {
+      wrapper.classList.remove('hide-controls');
+      if (hideTimeout) clearTimeout(hideTimeout);
+      if (!videoEl.paused && menu && menu.classList.contains('hidden')) {
+        hideTimeout = setTimeout(() => {
+          if (!videoEl.paused && menu.classList.contains('hidden')) {
+            wrapper.classList.add('hide-controls');
+          }
+        }, 2500);
+      }
+    };
+
+    wrapper.addEventListener('mousemove', resetHideTimer);
+    wrapper.addEventListener('mouseenter', resetHideTimer);
+    wrapper.addEventListener('mouseleave', () => {
+      if (!videoEl.paused && menu && menu.classList.contains('hidden')) {
+        wrapper.classList.add('hide-controls');
+      }
+    });
+
+    // 6. Three-Dots Menu Toggle & Navigation
+    if (moreBtn && menu) {
+      moreBtn.onclick = (e) => {
+        e.stopPropagation();
+        const willOpen = menu.classList.contains('hidden');
+        if (willOpen) {
+          showMainMenu();
+          menu.classList.remove('hidden');
+          wrapper.classList.remove('hide-controls');
+        } else {
+          menu.classList.add('hidden');
+        }
+      };
+
       document.addEventListener('click', (e) => {
-        if (!langDropdown.contains(e.target) && e.target !== langBtn) {
-          langDropdown.classList.add('hidden');
+        if (!wrapper.contains(e.target) || (!menu.contains(e.target) && !moreBtn.contains(e.target))) {
+          menu.classList.add('hidden');
         }
       });
     }
+
+    const showMainMenu = () => {
+      if (mainView) mainView.classList.remove('hidden');
+      if (subview) subview.classList.add('hidden');
+      updateMenuLabels();
+    };
+
+    const showSubView = (title, itemsHtml) => {
+      if (mainView) mainView.classList.add('hidden');
+      if (subview) subview.classList.remove('hidden');
+      if (subviewTitle) subviewTitle.textContent = title;
+      if (subviewList) {
+        subviewList.innerHTML = itemsHtml;
+        if (window.lucide) window.lucide.createIcons({ el: subviewList });
+      }
+      if (window.lucide && backBtn) window.lucide.createIcons({ el: backBtn });
+    };
+
+    if (backBtn) {
+      backBtn.onclick = (e) => {
+        e.stopPropagation();
+        showMainMenu();
+      };
+    }
+
+    const updateMenuLabels = () => {
+      const audioSub = wrapper.querySelector('#custom-menu-active-audio');
+      if (audioSub) {
+        audioSub.textContent = currentCategory === 'dubbed' ? 'Türkçe Dublaj' : 'Orijinal / Altyazılı';
+      }
+
+      const subLabelEl = wrapper.querySelector('#custom-menu-active-sub');
+      if (subLabelEl) {
+        let activeSub = 'Kapalı';
+        const tracks = videoEl.textTracks;
+        if (tracks && tracks.length > 0) {
+          for (let i = 0; i < tracks.length; i++) {
+            if (tracks[i].mode === 'showing') {
+              activeSub = tracks[i].label || 'Türkçe';
+              break;
+            }
+          }
+        }
+        subLabelEl.textContent = activeSub;
+      }
+
+      const speedLabelEl = wrapper.querySelector('#custom-menu-active-speed');
+      if (speedLabelEl) {
+        const rate = videoEl.playbackRate || 1;
+        speedLabelEl.textContent = rate === 1 ? 'Normal' : `${rate}x`;
+      }
+    };
+
+    // ITEM 1: SES / DİL CLICK (ABOVE ALTYAZILAR)
+    const itemAudio = wrapper.querySelector('#custom-menu-item-audio');
+    if (itemAudio) {
+      itemAudio.onclick = (e) => {
+        e.stopPropagation();
+        renderAudioSubmenu();
+      };
+    }
+
+    const renderAudioSubmenu = () => {
+      let html = '';
+
+      // Check if HLS has multiple audio tracks
+      if (activeHlsInstance && activeHlsInstance.audioTracks && activeHlsInstance.audioTracks.length > 1) {
+        html += `<p style="color:#94a3b8;font-size:10.5px;font-weight:700;text-transform:uppercase;margin:2px 0 4px 6px;">HLS SES KANALLARI</p>`;
+        activeHlsInstance.audioTracks.forEach((t, idx) => {
+          const isAct = activeHlsInstance.audioTrack === idx;
+          const label = t.name || t.lang || `Ses ${idx + 1}`;
+          html += `
+            <div class="custom-menu-opt-row ${isAct ? 'active' : ''}" data-hls-track="${idx}">
+              <span>${label}</span>
+              ${isAct ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+            </div>
+          `;
+        });
+      }
+
+      html += `<p style="color:#94a3b8;font-size:10.5px;font-weight:700;text-transform:uppercase;margin:6px 0 4px 6px;">SES DİLİ SEÇİMİ</p>`;
+      html += `
+        <div class="custom-menu-opt-row ${currentCategory === 'dubbed' ? 'active' : ''}" data-cat="dubbed">
+          <span>🇹🇷 Türkçe Dublaj</span>
+          ${currentCategory === 'dubbed' ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+        </div>
+        <div class="custom-menu-opt-row ${currentCategory === 'subtitled' ? 'active' : ''}" data-cat="subtitled">
+          <span>🇬🇧 Orijinal / Altyazılı</span>
+          ${currentCategory === 'subtitled' ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+        </div>
+      `;
+
+      showSubView('Ses / Dil', html);
+
+      if (subviewList) {
+        subviewList.querySelectorAll('[data-hls-track]').forEach(el => {
+          el.onclick = (ev) => {
+            ev.stopPropagation();
+            const trackIdx = parseInt(el.getAttribute('data-hls-track'), 10);
+            if (activeHlsInstance) {
+              activeHlsInstance.audioTrack = trackIdx;
+              showToast(`✓ Ses değiştirildi: ${activeHlsInstance.audioTracks[trackIdx]?.name || 'Seçildi'}`, 'success');
+            }
+            showMainMenu();
+          };
+        });
+
+        subviewList.querySelectorAll('[data-cat]').forEach(el => {
+          el.onclick = (ev) => {
+            ev.stopPropagation();
+            const cat = el.getAttribute('data-cat');
+            menu.classList.add('hidden');
+            if (cat !== currentCategory) {
+              const tabBtn = document.getElementById(cat === 'dubbed' ? 'tab-dubbed' : 'tab-subtitled');
+              if (tabBtn) tabBtn.click();
+            }
+          };
+        });
+      }
+    };
+
+    // ITEM 2: ALTYAZILAR CLICK
+    const itemSubs = wrapper.querySelector('#custom-menu-item-subs');
+    if (itemSubs) {
+      itemSubs.onclick = (e) => {
+        e.stopPropagation();
+        renderSubsSubmenu();
+      };
+    }
+
+    const renderSubsSubmenu = () => {
+      const tracks = videoEl.textTracks;
+      let activeIdx = -1;
+      if (tracks) {
+        for (let i = 0; i < tracks.length; i++) {
+          if (tracks[i].mode === 'showing') {
+            activeIdx = i;
+            break;
+          }
+        }
+      }
+
+      let html = `
+        <div class="custom-menu-opt-row ${activeIdx === -1 ? 'active' : ''}" data-sub-idx="-1">
+          <span>Kapalı</span>
+          ${activeIdx === -1 ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+        </div>
+      `;
+
+      if (tracks && tracks.length > 0) {
+        for (let i = 0; i < tracks.length; i++) {
+          const t = tracks[i];
+          const isAct = activeIdx === i;
+          html += `
+            <div class="custom-menu-opt-row ${isAct ? 'active' : ''}" data-sub-idx="${i}">
+              <span>${t.label || `Altyazı ${i + 1}`}</span>
+              ${isAct ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+            </div>
+          `;
+        }
+      }
+
+      showSubView('Altyazılar', html);
+
+      if (subviewList) {
+        subviewList.querySelectorAll('[data-sub-idx]').forEach(el => {
+          el.onclick = (ev) => {
+            ev.stopPropagation();
+            const idx = parseInt(el.getAttribute('data-sub-idx'), 10);
+            if (tracks) {
+              for (let i = 0; i < tracks.length; i++) {
+                tracks[i].mode = (i === idx) ? 'showing' : 'disabled';
+              }
+            }
+            showToast(idx === -1 ? 'Altyazı kapatıldı' : `✓ Altyazı: ${tracks[idx]?.label || 'Açık'}`, 'info');
+            showMainMenu();
+          };
+        });
+      }
+    };
+
+    // ITEM 3: OYNATMA HIZI CLICK
+    const itemSpeed = wrapper.querySelector('#custom-menu-item-speed');
+    if (itemSpeed) {
+      itemSpeed.onclick = (e) => {
+        e.stopPropagation();
+        renderSpeedSubmenu();
+      };
+    }
+
+    const renderSpeedSubmenu = () => {
+      const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+      const curSpeed = videoEl.playbackRate || 1;
+      let html = '';
+      speeds.forEach(sp => {
+        const isAct = curSpeed === sp;
+        html += `
+          <div class="custom-menu-opt-row ${isAct ? 'active' : ''}" data-speed="${sp}">
+            <span>${sp === 1 ? 'Normal (1x)' : `${sp}x`}</span>
+            ${isAct ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+          </div>
+        `;
+      });
+
+      showSubView('Oynatma hızı', html);
+
+      if (subviewList) {
+        subviewList.querySelectorAll('[data-speed]').forEach(el => {
+          el.onclick = (ev) => {
+            ev.stopPropagation();
+            const sp = parseFloat(el.getAttribute('data-speed'));
+            videoEl.playbackRate = sp;
+            showToast(`Oynatma Hızı: ${sp === 1 ? 'Normal' : `${sp}x`}`, 'info');
+            showMainMenu();
+          };
+        });
+      }
+    };
+
+    // ITEM 4: PENCERE İÇİNDE PENCERE CLICK
+    const itemPip = wrapper.querySelector('#custom-menu-item-pip');
+    if (itemPip) {
+      itemPip.onclick = async (e) => {
+        e.stopPropagation();
+        menu.classList.add('hidden');
+        try {
+          if (document.pictureInPictureElement) {
+            await document.exitPictureInPicture();
+          } else if (videoEl.requestPictureInPicture) {
+            await videoEl.requestPictureInPicture();
+          }
+        } catch (_) {
+          showToast('Pencere içinde pencere desteklenmiyor.', 'error');
+        }
+      };
+    }
+
+    // Keyboard controls handler
+    const handleKeydown = (e) => {
+      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+      if (!modalContainer || modalContainer.classList.contains('hidden')) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        videoEl.currentTime = Math.max(0, videoEl.currentTime - 10);
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        videoEl.currentTime = Math.min(videoEl.duration || Infinity, videoEl.currentTime + 10);
+      } else if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        videoEl.volume = Math.min(1, videoEl.volume + 0.1);
+        videoEl.muted = false;
+        updateVolumeUI();
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        videoEl.volume = Math.max(0, videoEl.volume - 0.1);
+        updateVolumeUI();
+      } else if (e.code === 'KeyF') {
+        e.preventDefault();
+        toggleFullscreen();
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        videoEl.muted = !videoEl.muted;
+        updateVolumeUI();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeydown);
+
+    // Initial UI state setup
+    updatePlayState();
+    updateVolumeUI();
+    updateTimeAndTimeline();
+    updateMenuLabels();
+    if (window.lucide) window.lucide.createIcons({ el: wrapper });
   }
 
   async function updatePlayerContainer() {
@@ -1881,6 +2432,7 @@ export async function openPlayerModal({
 
         // ============ Subtitle Control Engine for Torrent, Sinewix & Direct Streams ============
         attachSubtitleControls(videoEl, srv);
+        initCustomPlayerControls(videoEl, srv);
       }
     }
   }
@@ -2152,7 +2704,10 @@ export async function openPlayerModal({
     });
 
     updateNavButtons();
-    if (isSeries) renderDrawerContent();
+    if (isSeries) {
+      renderDrawerContent();
+      updateEpisodeOverview(newSeason, newEpisode);
+    }
 
     simulatedCurrentTime = initialTime;
     isSwitchingEpisode = false;
