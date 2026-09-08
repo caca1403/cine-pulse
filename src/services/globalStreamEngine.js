@@ -192,7 +192,7 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
       return (qOrder[a.quality] ?? 3) - (qOrder[b.quality] ?? 3);
     });
 
-    return results.slice(0, 4);
+    return results.slice(0, 8);
   } catch (_) {
     return [];
   }
