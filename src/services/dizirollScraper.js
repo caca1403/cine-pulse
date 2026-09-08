@@ -98,7 +98,11 @@ export async function fetchDizirollEpisodeSources({ titles = [], seriesTitle, or
         let iframeUrl = iframeMatch[1];
         if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
 
-        if (iframeUrl.toLowerCase().includes('pichive')) {
+        if (
+          iframeUrl.toLowerCase().includes('pichive') ||
+          iframeUrl.toLowerCase().includes('hotlinger') ||
+          iframeUrl.toLowerCase().includes('sn.hotlinger')
+        ) {
           continue;
         }
 

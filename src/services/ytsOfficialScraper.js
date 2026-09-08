@@ -165,9 +165,9 @@ export async function fetchYtsOfficialSources({
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const magnetUrl = `magnet:?xt=urn:btih:${hit.hash}&dn=${encodeURIComponent(hit.title || query)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz`;
 
-      // Official YTS web player engine from en.yts-official.com (vidsrc.mov)
+      // High-speed embed player fallback using working Videasy engine
       const ytsWebEmbedUrl = tmdbId 
-        ? (isMovie ? `https://vidsrc.mov/embed/movie/${tmdbId}` : `https://vidsrc.mov/embed/tv/${tmdbId}/${season}/${episode}`)
+        ? (isMovie ? `https://player.videasy.net/movie/${tmdbId}` : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`)
         : null;
 
       // In production / browser: use clean web player embed URL so playback NEVER fails with black screen
@@ -208,77 +208,77 @@ export async function fetchYtsOfficialSources({
       });
     }
 
-    // Official Web Embed Engines from en.yts-official.com (VidSrc Official & VidSrc.to)
+    // High-Speed Global Multi-Embed FastStream Engines (Videasy, VidSrc IN & AutoEmbed)
     if (tmdbId) {
-      const vidsrcMovUrl = isMovie 
-        ? `https://vidsrc.mov/embed/movie/${tmdbId}` 
-        : `https://vidsrc.mov/embed/tv/${tmdbId}/${season}/${episode}`;
-
-      const vidsrcToUrl = isMovie 
-        ? `https://vidsrc.to/embed/movie/${tmdbId}` 
-        : `https://vidsrc.to/embed/tv/${tmdbId}/${season}/${episode}`;
-
       const videasyUrl = isMovie 
         ? `https://player.videasy.net/movie/${tmdbId}` 
         : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`;
 
+      const vidsrcInUrl = isMovie 
+        ? `https://vidsrc.in/embed/movie/${tmdbId}` 
+        : `https://vidsrc.in/embed/tv/${tmdbId}/${season}/${episode}`;
+
+      const autoEmbedUrl = isMovie 
+        ? `https://autoembed.co/movie/tmdb/${tmdbId}` 
+        : `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`;
+
       streams.unshift(
         {
-          id: `cp_global_yts_vidsrc_official`,
-          name: '⚡ YTS (VidSrc Official 1080p)',
-          displayName: '⚡ YTS (VidSrc Official 1080p)',
-          badge: '⚡ YTS VidSrc',
-          source: 'YTS Official (VidSrc)',
-          url: vidsrcMovUrl,
-          streamUrl: vidsrcMovUrl,
-          embedUrl: vidsrcMovUrl,
-          quality: '1080p',
-          isHls: false,
-          isDirectVideo: false,
-          isYts: true,
-          isMp4: false,
-          seeds: 9999,
-          subtitles: defaultSubs,
-          priority: 0,
-          getUrl: () => vidsrcMovUrl
-        },
-        {
-          id: `cp_global_yts_vidsrcto`,
-          name: '⚡ YTS (VidSrc.to Pro 1080p)',
-          displayName: '⚡ YTS (VidSrc.to Pro 1080p)',
-          badge: '⚡ YTS VidSrc.to',
-          source: 'YTS (VidSrc.to)',
-          url: vidsrcToUrl,
-          streamUrl: vidsrcToUrl,
-          embedUrl: vidsrcToUrl,
-          quality: '1080p',
-          isHls: false,
-          isDirectVideo: false,
-          isYts: true,
-          isMp4: false,
-          seeds: 9998,
-          subtitles: defaultSubs,
-          priority: 0,
-          getUrl: () => vidsrcToUrl
-        },
-        {
-          id: `cp_global_yts_videasy`,
-          name: '⚡ YTS (Videasy FastStream)',
-          displayName: '⚡ YTS (Videasy FastStream)',
-          badge: '⚡ YTS Videasy',
-          source: 'YTS (Videasy)',
+          id: `cp_global_embed_videasy`,
+          name: '⚡ Videasy FastStream 1080p',
+          displayName: '⚡ Videasy FastStream 1080p',
+          badge: '⚡ Videasy',
+          source: 'Videasy FastStream',
           url: videasyUrl,
           streamUrl: videasyUrl,
           embedUrl: videasyUrl,
           quality: '1080p',
           isHls: false,
           isDirectVideo: false,
-          isYts: true,
+          isYts: false,
+          isMp4: false,
+          seeds: 9999,
+          subtitles: defaultSubs,
+          priority: 0,
+          getUrl: () => videasyUrl
+        },
+        {
+          id: `cp_global_embed_vidsrc`,
+          name: '⚡ VidSrc Ultra 1080p',
+          displayName: '⚡ VidSrc Ultra 1080p',
+          badge: '⚡ VidSrc Ultra',
+          source: 'VidSrc Ultra',
+          url: vidsrcInUrl,
+          streamUrl: vidsrcInUrl,
+          embedUrl: vidsrcInUrl,
+          quality: '1080p',
+          isHls: false,
+          isDirectVideo: false,
+          isYts: false,
+          isMp4: false,
+          seeds: 9998,
+          subtitles: defaultSubs,
+          priority: 0,
+          getUrl: () => vidsrcInUrl
+        },
+        {
+          id: `cp_global_embed_autoembed`,
+          name: '⚡ AutoEmbed Multi 1080p',
+          displayName: '⚡ AutoEmbed Multi 1080p',
+          badge: '⚡ AutoEmbed',
+          source: 'AutoEmbed Multi',
+          url: autoEmbedUrl,
+          streamUrl: autoEmbedUrl,
+          embedUrl: autoEmbedUrl,
+          quality: '1080p',
+          isHls: false,
+          isDirectVideo: false,
+          isYts: false,
           isMp4: false,
           seeds: 9997,
           subtitles: defaultSubs,
           priority: 0,
-          getUrl: () => videasyUrl
+          getUrl: () => autoEmbedUrl
         }
       );
     }

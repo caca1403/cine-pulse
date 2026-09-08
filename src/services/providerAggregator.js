@@ -33,6 +33,7 @@ import { fetchDizirollEpisodeSources } from './dizirollScraper.js';
 import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
 import { fetchRecTvSources } from './rectvService.js';
+import { fetchSmashyStreamSources } from './smashyStreamService.js';
 
 // Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
 const CACHE_VERSION = 'v12';
@@ -183,8 +184,8 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   }
 
   // 2. High-Speed Direct Streams
-  if (id.startsWith('rectv_') || (s.source && s.source.includes('RecTV'))) {
-    return s.displayName || s.name || '⚡ RecTV VIP 1080p';
+  if (id.startsWith('tvr_') || id.startsWith('rectv_') || (s.source && (s.source.includes('RecTV') || s.source.includes('TVR')))) {
+    return s.displayName || s.name || '⚡ TVR VIP 1080p';
   }
 
   if (s.isDirectVideo || s.isHls) {
@@ -241,6 +242,7 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
     .replace(/dizipal/gi, 'DP')
     .replace(/dizibal/gi, 'DP')
     .replace(/dizisol/gi, 'DS')
+    .replace(/rectv/gi, 'TVR')
     .replace(/sinewix|sezonlukdizi|filmekseni|diziyou|ayfilm|turkanime|animecix|vip\s*hat\s*\d*/gi, '')
     .replace(/\s*\(.*?\)/g, '')
     .trim();
@@ -253,7 +255,8 @@ function formatStreamItem(s, category, fallbackName) {
   let engineName = resolveEngineName(s, fallbackName)
     .replace(/dizipal/gi, 'DP')
     .replace(/dizibal/gi, 'DP')
-    .replace(/dizisol/gi, 'DS');
+    .replace(/dizisol/gi, 'DS')
+    .replace(/rectv/gi, 'TVR');
   const badge = s.badge || (category === 'dubbed' ? '⚡ TR Dublaj' : '💬 TR Altyazı');
   return {
     id: s.id,
@@ -263,7 +266,7 @@ function formatStreamItem(s, category, fallbackName) {
     category: category,
     isHls: s.isHls || (s.streamUrl || s.url || '').includes('.m3u8'),
     isDirectVideo: s.isDirectVideo || false,
-    isTorrent: Boolean(s.isTorrent || (s.id && (s.id.startsWith('cp_global_') || s.id.startsWith('yts_')))),
+    isTorrent: Boolean(s.isTorrent || (s.id && (s.id.startsWith('cp_global_torrent') || s.id.startsWith('cp_global_yts_') || s.id.startsWith('yts_')))),
     magnetUrl: s.magnetUrl || null,
     infoHash: s.infoHash || null,
     seeds: s.seeds || null,
@@ -286,16 +289,19 @@ function isValidStream(s) {
   const urlStr = (s.url || s.streamUrl || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
   if (!urlStr || urlStr.length < 10) return false;
 
-  // Strictly block domains that reject iframe embedding (X-Frame-Options: SAMEORIGIN)
-  if (urlStr.includes('pichive')) return false;
+  // Strictly block domains that reject iframe embedding (X-Frame-Options: SAMEORIGIN) or show anti-adblock IPv6 errors
+  if (urlStr.includes('pichive') || urlStr.includes('hotlinger') || (urlStr.includes('diziyo.so') && !urlStr.includes('.m3u8'))) return false;
 
   const id = (s.id || '').toLowerCase();
-  // Always allow torrents, P2P, CinePulse autonomous sources, Dizipal direct streams and HLS proxy streams
+  // Always allow torrents, P2P, CinePulse autonomous sources, Dizipal direct streams, TVR, SmashyStream and HLS proxy streams
   if (
     s.isTorrent ||
     id.startsWith('cp_global_') ||
     id.startsWith('yts_') ||
     id.startsWith('cp_hybrid_') ||
+    id.startsWith('tvr_') ||
+    id.startsWith('rectv_') ||
+    id.startsWith('smashy_') ||
     id.startsWith('dzp_') ||
     id.startsWith('dzs_') ||
     id.startsWith('ybd_') ||
@@ -348,9 +354,12 @@ function getStreamPriorityScore(s) {
   // Deprioritize unplayable or dead .mkv streams
   if (url.includes('.mkv') || s.isMkv) return 16;
 
-  // Priority 0: RecTV VIP, Dizisol, Dizipal, DiziBal, Diziyo & FilmEkseni VIP Direct 1080p HLS (Highest Reliability, Instant 0ms playback)
-  if (id.startsWith('rectv_') || raw.includes('rectv')) {
+  // Priority 0: TVR (RecTV) VIP, Dizisol, Dizipal, DiziBal, Diziyo & FilmEkseni VIP Direct 1080p HLS (Highest Reliability, Instant 0ms playback)
+  if (id.startsWith('tvr_') || id.startsWith('rectv_') || raw.includes('tvr') || raw.includes('rectv')) {
     return 0;
+  }
+  if (id.startsWith('smashy_') || raw.includes('smashy')) {
+    return 1;
   }
   if (id.startsWith('dzs_') || raw.includes('dizisol')) {
     return 0;
@@ -583,6 +592,10 @@ export async function getStreamingServersProgressive({
           addStreams(res, 'subtitled');
         }
       }).catch(() => []),
+
+    // SmashyStream VIP Multi-Subbed Source (smashystream.xyz / player.smashystream.com)
+    Promise.resolve(fetchSmashyStreamSources({ type, tmdbId, season, episode }))
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // Subtitled Sources: ONLY YTS Official (en.yts-official.com)
     fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
