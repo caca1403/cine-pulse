@@ -165,9 +165,9 @@ export async function fetchYtsOfficialSources({
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const magnetUrl = `magnet:?xt=urn:btih:${hit.hash}&dn=${encodeURIComponent(hit.title || query)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz`;
 
-      // Official YTS web player engine (clean direct embed - 100% working in browser with zero setup)
+      // Official YTS web player engine from en.yts-official.com (vidsrc.mov)
       const ytsWebEmbedUrl = tmdbId 
-        ? (isMovie ? `https://player.videasy.net/movie/${tmdbId}` : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`)
+        ? (isMovie ? `https://vidsrc.mov/embed/movie/${tmdbId}` : `https://vidsrc.mov/embed/tv/${tmdbId}/${season}/${episode}`)
         : null;
 
       // In production / browser: use clean web player embed URL so playback NEVER fails with black screen
