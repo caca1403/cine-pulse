@@ -34,6 +34,15 @@ export default defineConfig({
         },
         rewrite: (path) => path.replace(/^\/api\/szd/, '')
       },
+      '/api/rtv': {
+        target: 'https://a.prectv70.lol/api',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'okhttp/4.12.0'
+        },
+        rewrite: (path) => path.replace(/^\/api\/rtv/, '')
+      },
       '/api/dbl': {
         target: 'https://dizibal.com/api',
         changeOrigin: true,

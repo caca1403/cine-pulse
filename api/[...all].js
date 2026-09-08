@@ -357,6 +357,17 @@ export default async function handler(req, res) {
       customHeaders['X-Requested-With'] = 'XMLHttpRequest';
       customHeaders['Accept'] = 'application/json, text/javascript, */*; q=0.01';
     }
+  } else if (pathname.startsWith('/api/rtv')) {
+    const subPath = pathname.replace(/^\/api\/rtv/, '');
+    targetUrl = `https://a.prectv70.lol/api${subPath}${search}`;
+    customHeaders['User-Agent'] = 'okhttp/4.12.0';
+    if (req.headers['x-timestamp']) customHeaders['X-Timestamp'] = req.headers['x-timestamp'];
+    if (req.headers['x-nonce']) customHeaders['X-Nonce'] = req.headers['x-nonce'];
+    if (req.headers['x-signature']) customHeaders['X-Signature'] = req.headers['x-signature'];
+    if (req.headers['x-app-version']) customHeaders['X-App-Version'] = req.headers['x-app-version'];
+    if (req.headers['x-client-id']) customHeaders['X-Client-Id'] = req.headers['x-client-id'];
+    if (req.headers['authorization']) customHeaders['Authorization'] = req.headers['authorization'];
+    if (req.headers['content-type']) customHeaders['Content-Type'] = req.headers['content-type'];
   } else if (pathname.startsWith('/api/proxy')) {
     const rawTarget = urlObj.searchParams.get('url') || '';
     if (!rawTarget) return res.status(400).send('Missing url param');

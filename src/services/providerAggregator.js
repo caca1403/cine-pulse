@@ -32,9 +32,10 @@ import { fetchDiziyoMovieSources, fetchDiziyoEpisodeSources } from './diziyoScra
 import { fetchDizirollEpisodeSources } from './dizirollScraper.js';
 import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
+import { fetchRecTvSources } from './rectvService.js';
 
 // Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
-const CACHE_VERSION = 'v9';
+const CACHE_VERSION = 'v10';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -166,6 +167,10 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   }
 
   // 2. High-Speed Direct Streams
+  if (id.startsWith('rectv_') || (s.source && s.source.includes('RecTV'))) {
+    return s.displayName || s.name || '⚡ RecTV VIP 1080p';
+  }
+
   if (s.isDirectVideo || s.isHls) {
     if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 'AX Tau Direct 1080p';
     if (id.startsWith('snx') || raw.includes('sinewix')) return 'SWX Direct 1080p';
@@ -328,7 +333,10 @@ function getStreamPriorityScore(s) {
   // Deprioritize unplayable or dead .mkv streams
   if (url.includes('.mkv') || s.isMkv) return 16;
 
-  // Priority 0: Dizisol, Dizipal, DiziBal, Diziyo & FilmEkseni VIP Direct 1080p HLS (Highest Reliability, Instant 0ms playback)
+  // Priority 0: RecTV VIP, Dizisol, Dizipal, DiziBal, Diziyo & FilmEkseni VIP Direct 1080p HLS (Highest Reliability, Instant 0ms playback)
+  if (id.startsWith('rectv_') || raw.includes('rectv')) {
+    return 0;
+  }
   if (id.startsWith('dzs_') || raw.includes('dizisol')) {
     return 0;
   }
@@ -533,6 +541,20 @@ export async function getStreamingServersProgressive({
   const isDoc = type === 'documentary';
 
   const tasks = [
+    // RecTV VIP Master Stream Engine (Direct 1080p HLS Streams)
+    fetchRecTvSources({ type, title: targetTitle, originalTitle, season, episode, year: targetYear })
+      .then(res => {
+        if (!Array.isArray(res) || res.length === 0) return [];
+        const dubs = res.filter(s => (s.name || '').toLowerCase().includes('dublaj'));
+        const subs = res.filter(s => !(s.name || '').toLowerCase().includes('dublaj'));
+        if (dubs.length > 0) addStreams(dubs, 'dubbed');
+        if (subs.length > 0) addStreams(subs, 'subtitled');
+        if (dubs.length === 0 && subs.length === 0) {
+          addStreams(res, 'dubbed');
+          addStreams(res, 'subtitled');
+        }
+      }).catch(() => []),
+
     // Subtitled Sources: ONLY YTS Official (en.yts-official.com) & genuine torrents with native YTS player
     fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
