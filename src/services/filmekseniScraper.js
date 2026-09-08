@@ -27,17 +27,23 @@ function slugify(text) {
 
 async function fetchFex(endpointOrUrl, options = {}) {
   const isBrowser = typeof window !== 'undefined';
-  const fullUrl = endpointOrUrl.startsWith('http')
-    ? endpointOrUrl
-    : `${FILM_EKSENI_BASE}${endpointOrUrl.startsWith('/') ? endpointOrUrl : `/${endpointOrUrl}`}`;
+  let pathOnly = endpointOrUrl;
+  if (pathOnly.startsWith('http')) {
+    try {
+      const u = new URL(pathOnly);
+      pathOnly = u.pathname + u.search;
+    } catch (_) {}
+  }
+  // Strip any leading /api/fex prefix so cleanPath is always relative to filmekseni root
+  pathOnly = pathOnly.replace(/^\/api\/fex/, '');
+  if (!pathOnly.startsWith('/')) pathOnly = `/${pathOnly}`;
+
+  const fullUrl = `${FILM_EKSENI_BASE}${pathOnly}`;
 
   // 1. In browser, try /api/fex proxy first (bypasses CORS)
   if (isBrowser) {
     try {
-      const cleanPath = endpointOrUrl.startsWith('http')
-        ? new URL(endpointOrUrl).pathname + new URL(endpointOrUrl).search
-        : (endpointOrUrl.startsWith('/') ? endpointOrUrl : `/${endpointOrUrl}`);
-      const proxyUrl = `/api/fex${cleanPath}`;
+      const proxyUrl = `/api/fex${pathOnly}`;
       const res = await fetch(proxyUrl, {
         ...options,
         signal: AbortSignal.timeout(options.timeout || 4000)
@@ -60,7 +66,19 @@ async function fetchFex(endpointOrUrl, options = {}) {
     if (res && res.ok) return res;
   } catch (_) {}
 
-  // 3. Cloudflare Worker fallback
+  // 3. Local proxy fallback
+  if (isBrowser) {
+    try {
+      const localProxyUrl = `/api/proxy?url=${encodeURIComponent(fullUrl)}&ref=${encodeURIComponent('https://filmekseni.vip/')}`;
+      const res = await fetch(localProxyUrl, {
+        ...options,
+        signal: AbortSignal.timeout(options.timeout || 4000)
+      }).catch(() => null);
+      if (res && res.ok) return res;
+    } catch (_) {}
+  }
+
+  // 4. Cloudflare Worker fallback
   try {
     const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(fullUrl)}`;
     const res = await fetch(workerUrl, {
@@ -102,9 +120,6 @@ export async function fetchFilmEkseniSources({
   const sNum = parseInt(season, 10) || 1;
   const epNum = parseInt(episode, 10) || 1;
 
-  const isBrowser = typeof window !== 'undefined';
-  const baseUrl = isBrowser ? '/api/fex' : 'https://filmekseni.vip';
-
   const allTitles = Array.from(new Set([
     title,
     seriesTitle,
@@ -120,16 +135,16 @@ export async function fetchFilmEkseniSources({
     if (!slug) continue;
 
     if (isSeries) {
-      candidateUrls.add(`${baseUrl}/dizi/${slug}/sezon-${sNum}/bolum-${epNum}/`);
-      candidateUrls.add(`${baseUrl}/dizi/${slug}/sezon-${sNum}/bolum-${epNum}`);
-      candidateUrls.add(`${baseUrl}/dizi/hd-${slug}/sezon-${sNum}/bolum-${epNum}/`);
-      candidateUrls.add(`${baseUrl}/dizi/${slug}-izle/sezon-${sNum}/bolum-${epNum}/`);
+      candidateUrls.add(`/dizi/${slug}/sezon-${sNum}/bolum-${epNum}/`);
+      candidateUrls.add(`/dizi/${slug}/sezon-${sNum}/bolum-${epNum}`);
+      candidateUrls.add(`/dizi/hd-${slug}/sezon-${sNum}/bolum-${epNum}/`);
+      candidateUrls.add(`/dizi/${slug}-izle/sezon-${sNum}/bolum-${epNum}/`);
     } else {
-      candidateUrls.add(`${baseUrl}/${slug}-izle/`);
-      candidateUrls.add(`${baseUrl}/hd-${slug}-izle/`);
-      candidateUrls.add(`${baseUrl}/${slug}/`);
-      candidateUrls.add(`${baseUrl}/hd-${slug}/`);
-      candidateUrls.add(`${baseUrl}/${slug}-izle-hd/`);
+      candidateUrls.add(`/${slug}-izle/`);
+      candidateUrls.add(`/hd-${slug}-izle/`);
+      candidateUrls.add(`/${slug}/`);
+      candidateUrls.add(`/hd-${slug}/`);
+      candidateUrls.add(`/${slug}-izle-hd/`);
     }
   }
 
@@ -145,15 +160,15 @@ export async function fetchFilmEkseniSources({
 
           if (isSeries) {
             if (cleanSlug.startsWith('dizi/')) {
-              candidateUrls.add(`${baseUrl}/${cleanSlug}/sezon-${sNum}/bolum-${epNum}/`);
-              candidateUrls.add(`${baseUrl}/${cleanSlug}/sezon-${sNum}/bolum-${epNum}`);
+              candidateUrls.add(`/${cleanSlug}/sezon-${sNum}/bolum-${epNum}/`);
+              candidateUrls.add(`/${cleanSlug}/sezon-${sNum}/bolum-${epNum}`);
             } else {
-              candidateUrls.add(`${baseUrl}/dizi/${cleanSlug}/sezon-${sNum}/bolum-${epNum}/`);
+              candidateUrls.add(`/dizi/${cleanSlug}/sezon-${sNum}/bolum-${epNum}/`);
             }
           } else {
             if (!cleanSlug.startsWith('dizi/')) {
-              candidateUrls.add(`${baseUrl}/${cleanSlug}/`);
-              candidateUrls.add(`${baseUrl}/${cleanSlug}-izle/`);
+              candidateUrls.add(`/${cleanSlug}/`);
+              candidateUrls.add(`/${cleanSlug}-izle/`);
             }
           }
         }
@@ -253,10 +268,10 @@ export async function fetchFilmEkseniSources({
           }
 
           // Also provide embed option
-          const hostName = item.service_name || (playerUrl.includes('eksenload') ? 'EksenLoad VIP' : 'FilmEkseni VIP');
+          const hostName = item.service_name ? `FilmEkseni ${item.service_name}` : 'FilmEkseni VIP';
           sources.push({
             id: `fex_${item.service_slug || 'vip'}_${item.link}`,
-            name: `${hostName}`,
+            name: isDub ? `${hostName} (TR Dublaj)` : `${hostName} (TR Altyazı)`,
             displayName: `${hostName}`,
             badge: isDub ? '⚡ FilmEkseni Dublaj' : '💬 FilmEkseni Altyazı',
             url: playerUrl,
