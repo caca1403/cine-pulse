@@ -34,7 +34,7 @@ import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
 
 // Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -124,7 +124,10 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (id.startsWith('cp_hybrid_') || raw.includes('hibrit')) {
     return s.displayName || s.name || '🎬🇹🇷 CinePulse Hibrit 1080p';
   }
-  if (id.startsWith('cp_global_') || raw.includes('yts') || raw.includes('torrent')) {
+  if (id.startsWith('cp_global_yts_') || raw.includes('yts') || s.isYts) {
+    return s.displayName || s.name || '⚡ YTS 1080p';
+  }
+  if (id.startsWith('cp_global_') || raw.includes('torrent')) {
     return s.displayName || s.name || '⚡ Torrent 1080p';
   }
   if (id.startsWith('dzp_') || (s.source && s.source.toLowerCase().includes('dizipal')) || raw.includes('dizipal')) {

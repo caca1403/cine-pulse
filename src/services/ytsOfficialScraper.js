@@ -122,18 +122,18 @@ export async function fetchYtsOfficialSources({
         const sReg = new RegExp(`(s${sPad}|s${season}[^0-9]|season[.\\s_-]*${season})`, 'i');
         const eReg = new RegExp(`(e${ePad}|e${episode}[^0-9])`, 'i');
 
-        // Season packs (COMPLETE, S01-S05, all seasons) count as both season+episode match
-        const isSeasonPack = /complete|all[.\s_-]?seasons|s\d{2}-s\d{2}/i.test(rawTitle);
-        // Multi-season packs (e.g. "Season 1-5") that cover our season
-        const multiSeasonMatch = rawTitle.match(/season\s*(\d+)[\s_-]+(?:to[\s_-]+)?(?:s|season)?[\s_-]*(\d+)/i);
+        // Multi-season packs (e.g. "Season 1-5" or "S01-S05") that cover our season
+        const multiSeasonMatch = rawTitle.match(/season\s*(\d+)[\s_-]+(?:to[\s_-]+)?(?:s|season)?[\s_-]*(\d+)/i) ||
+          rawTitle.match(/s(\d{1,2})\s*-\s*s?(\d{1,2})/i);
         const coversOurSeason = multiSeasonMatch
           ? (parseInt(multiSeasonMatch[1]) <= season && season <= parseInt(multiSeasonMatch[2]))
           : false;
 
-        const isSeasonMatch = sReg.test(rawTitle) || isSeasonPack || coversOurSeason;
-        const isEpisodeMatch = eReg.test(rawTitle) || isSeasonPack || coversOurSeason;
+        const sMatch = sReg.test(rawTitle) || coversOurSeason;
+        const isSeasonPack = sMatch && /complete|all[.\s_-]?seasons|s\d{2}-s\d{2}/i.test(rawTitle);
+        const eMatch = eReg.test(rawTitle);
 
-        if (!isSeasonMatch || !isEpisodeMatch) {
+        if (!sMatch || (!eMatch && !isSeasonPack)) {
           continue;
         }
       }
@@ -144,8 +144,10 @@ export async function fetchYtsOfficialSources({
       const is720 = lower.includes('720p');
       const quality = is4K ? '4K UHD' : is1080 ? '1080p' : is720 ? '720p' : 'HD';
 
-      const isYts = lower.includes('yify') || lower.includes('yts');
-      const isMp4 = lower.includes('.mp4') || isYts;
+      // All streams originating from en.yts-official.com are YTS streams!
+      const isYts = true;
+      const isYtsSpecific = lower.includes('yify') || lower.includes('yts');
+      const isMp4 = lower.includes('.mp4') || isYtsSpecific;
 
       // Filter out low quality camrips or oversized files (> 14GB)
       if (!is4K && !is1080 && !is720 && !lower.includes('bluray') && !lower.includes('web-dl') && !lower.includes('webrip')) {
@@ -164,20 +166,16 @@ export async function fetchYtsOfficialSources({
         : null;
 
       const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : magnetUrl;
-      const sourceLabel = isYts ? 'YTS (YIFY)' : (hit.source || 'YTS P2P');
+      const sourceLabel = isYtsSpecific ? 'YTS (YIFY)' : 'YTS (Official)';
 
       const sizeStr = formatSize(hit.bytes);
       const sizePart = sizeStr ? `${sizeStr} • ` : '';
 
-      const displayName = isYts
-        ? (is4K 
-            ? `⚡ YTS 4K UHD (${sizePart}S:${hit.seeds || 0})` 
-            : `⚡ YTS ${quality} (${sizePart}S:${hit.seeds || 0})`)
-        : (is4K 
-            ? `⚡ Torrent 4K UHD (${sizePart}S:${hit.seeds || 0})` 
-            : `⚡ Torrent ${quality} (${sizePart || (isMp4 ? 'MP4 • ' : 'MKV • ')}S:${hit.seeds || 0})`);
+      const displayName = is4K 
+        ? `⚡ YTS 4K UHD (${sizePart}S:${hit.seeds || 0})` 
+        : `⚡ YTS ${quality} (${sizePart || (isMp4 ? 'MP4 • ' : '')}S:${hit.seeds || 0})`;
 
-      const badge = is4K ? '⚡ 4K UHD' : `⚡ ${quality}`;
+      const badge = is4K ? '⚡ YTS 4K' : `⚡ YTS ${quality}`;
 
       streams.push({
         id: `cp_global_yts_${hit.hash.substring(0, 10)}`,
