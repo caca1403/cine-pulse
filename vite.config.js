@@ -24,6 +24,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/hls_proxy/, '/hls_proxy')
       },
+      '/api/live_tv_stream': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/live_tv_stream/, '/live_tv_stream')
+      },
       '/api/szd': {
         target: 'https://sezonlukdizi.cc',
         changeOrigin: true,

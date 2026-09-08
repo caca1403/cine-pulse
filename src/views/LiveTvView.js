@@ -105,14 +105,22 @@ export function renderLiveTvView() {
             <input type="text" id="tv-search" class="tv-search-input" placeholder="Kanal ara..." />
           </div>
 
-          <!-- Category Pills -->
-          <div class="tv-category-strip" id="tv-category-strip">
-            ${LIVE_TV_CATEGORIES.map(cat => `
-              <button class="tv-cat-pill ${cat.id === activeCategory ? 'active' : ''}" data-cat="${cat.id}">
-                <i data-lucide="${cat.icon}" style="width:12px;height:12px;"></i>
-                <span>${cat.name}</span>
-              </button>
-            `).join('')}
+          <!-- Category Pills with Scroll Controls -->
+          <div class="tv-category-wrapper">
+            <button class="tv-cat-nav-btn tv-cat-prev" id="tv-cat-prev" type="button" title="Geri kaydır">
+              <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
+            </button>
+            <div class="tv-category-strip" id="tv-category-strip">
+              ${LIVE_TV_CATEGORIES.map(cat => `
+                <button class="tv-cat-pill ${cat.id === activeCategory ? 'active' : ''}" data-cat="${cat.id}">
+                  <i data-lucide="${cat.icon}" style="width:12px;height:12px;"></i>
+                  <span>${cat.name}</span>
+                </button>
+              `).join('')}
+            </div>
+            <button class="tv-cat-nav-btn tv-cat-next" id="tv-cat-next" type="button" title="İleri kaydır">
+              <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+            </button>
           </div>
 
           <!-- Channel Count -->
@@ -150,6 +158,8 @@ export function renderLiveTvView() {
       const channelList = container.querySelector('#tv-channel-list');
       const searchInput = container.querySelector('#tv-search');
       const catStrip = container.querySelector('#tv-category-strip');
+      const catPrevBtn = container.querySelector('#tv-cat-prev');
+      const catNextBtn = container.querySelector('#tv-cat-next');
       const countLabel = container.querySelector('#tv-guide-count');
       const muteBtn = container.querySelector('#tv-btn-mute');
       const pipBtn = container.querySelector('#tv-btn-pip');
@@ -377,12 +387,64 @@ export function renderLiveTvView() {
         renderChannelList();
       });
 
+      // Category Scroll Controls
+      if (catPrevBtn) {
+        catPrevBtn.addEventListener('click', () => {
+          catStrip.scrollBy({ left: -140, behavior: 'smooth' });
+        });
+      }
+      if (catNextBtn) {
+        catNextBtn.addEventListener('click', () => {
+          catStrip.scrollBy({ left: 140, behavior: 'smooth' });
+        });
+      }
+
+      // Mouse Wheel Horizontal Scroll (PC Wheel Support)
+      catStrip.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+          e.preventDefault();
+          catStrip.scrollLeft += e.deltaY;
+        }
+      }, { passive: false });
+
+      // Mouse Drag to Scroll
+      let isDraggingCat = false;
+      let startX = 0;
+      let scrollLeftPos = 0;
+      let hasDragged = false;
+
+      catStrip.addEventListener('mousedown', (e) => {
+        isDraggingCat = true;
+        hasDragged = false;
+        catStrip.classList.add('grabbing');
+        startX = e.pageX - catStrip.offsetLeft;
+        scrollLeftPos = catStrip.scrollLeft;
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (isDraggingCat) {
+          isDraggingCat = false;
+          catStrip.classList.remove('grabbing');
+        }
+      });
+
+      catStrip.addEventListener('mousemove', (e) => {
+        if (!isDraggingCat) return;
+        e.preventDefault();
+        const x = e.pageX - catStrip.offsetLeft;
+        const walk = (x - startX) * 1.5;
+        if (Math.abs(walk) > 5) hasDragged = true;
+        catStrip.scrollLeft = scrollLeftPos - walk;
+      });
+
       // Category pills
       catStrip.querySelectorAll('.tv-cat-pill').forEach(pill => {
         pill.addEventListener('click', () => {
+          if (hasDragged) return;
           catStrip.querySelectorAll('.tv-cat-pill').forEach(p => p.classList.remove('active'));
           pill.classList.add('active');
           activeCategory = pill.dataset.cat;
+          pill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
           renderChannelList();
         });
       });

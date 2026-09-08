@@ -18,6 +18,51 @@ export default async function handler(req, res) {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
   };
 
+  if (pathname.startsWith('/api/live_tv_stream')) {
+    const channel = (urlObj.searchParams.get('channel') || '').toLowerCase();
+    try {
+      let pageUrl = '';
+      let refUrl = '';
+      if (channel === 'dmax') {
+        pageUrl = 'https://www.dmax.com.tr/canli-izle';
+        refUrl = 'https://www.dmax.com.tr/';
+      } else if (channel === 'tlc') {
+        pageUrl = 'https://www.tlctv.com.tr/canli-izle';
+        refUrl = 'https://www.tlctv.com.tr/';
+      } else {
+        return res.status(400).json({ error: 'Unsupported channel' });
+      }
+
+      const now = Date.now();
+      if (globalThis._liveTvCache && globalThis._liveTvCache[channel] && globalThis._liveTvCache[channel].exp > now) {
+        return res.redirect(302, globalThis._liveTvCache[channel].url);
+      }
+
+      const pageRes = await fetch(pageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        }
+      });
+      const html = await pageRes.text();
+      const m = html.match(/daionUrl\s*:\s*['"]([^'"]+)['"]/);
+      if (!m || !m[1]) {
+        return res.status(502).json({ error: 'Failed to extract live stream URL' });
+      }
+      const daionUrl = m[1];
+      const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(daionUrl)}&ref=${encodeURIComponent(refUrl)}`;
+
+      if (!globalThis._liveTvCache) globalThis._liveTvCache = {};
+      globalThis._liveTvCache[channel] = {
+        url: proxiedUrl,
+        exp: now + 5 * 60 * 1000 // Cache for 5 minutes
+      };
+
+      return res.redirect(302, proxiedUrl);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (pathname.startsWith('/api/hls_proxy')) {
     const rawTarget = urlObj.searchParams.get('url') || '';
     const ref = urlObj.searchParams.get('ref') || 'https://hdplayersystem.com/';
