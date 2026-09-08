@@ -19,16 +19,22 @@ export async function fetchFilmEkseniSources({
   type = 'movie',
   titles = [],
   title = '',
+  seriesTitle = '',
   originalTitle = '',
+  season = null,
+  episode = null,
   isDub = true
 }) {
-  if (type !== 'movie') return [];
+  const isSeries = type === 'series' || type === 'tv' || season !== null;
+  const sNum = parseInt(season, 10) || 1;
+  const epNum = parseInt(episode, 10) || 1;
 
   const isBrowser = typeof window !== 'undefined';
   const baseUrl = isBrowser ? '/api/fex' : 'https://filmekseni.vip';
 
   const allTitles = Array.from(new Set([
     title,
+    seriesTitle,
     originalTitle,
     ...(titles || [])
   ])).filter(Boolean);
@@ -38,15 +44,24 @@ export async function fetchFilmEkseniSources({
     const slug = slugify(t);
     if (!slug) continue;
 
-    candidateUrls.push(
-      `${baseUrl}/${slug}-izle/`,
-      `${baseUrl}/hd-${slug}-izle/`,
-      `${baseUrl}/${slug}/`,
-      `${baseUrl}/hd-${slug}/`,
-      `${baseUrl}/${slug}-izle-hd/`,
-      `${baseUrl}/${slug}-2024-izle/`,
-      `${baseUrl}/${slug}-2025-izle/`
-    );
+    if (isSeries) {
+      candidateUrls.push(
+        `${baseUrl}/dizi/${slug}/sezon-${sNum}/bolum-${epNum}/`,
+        `${baseUrl}/dizi/hd-${slug}/sezon-${sNum}/bolum-${epNum}/`,
+        `${baseUrl}/dizi/${slug}-izle/sezon-${sNum}/bolum-${epNum}/`,
+        `${baseUrl}/dizi/${slug}/sezon-${sNum}/bolum-${epNum}`
+      );
+    } else {
+      candidateUrls.push(
+        `${baseUrl}/${slug}-izle/`,
+        `${baseUrl}/hd-${slug}-izle/`,
+        `${baseUrl}/${slug}/`,
+        `${baseUrl}/hd-${slug}/`,
+        `${baseUrl}/${slug}-izle-hd/`,
+        `${baseUrl}/${slug}-2024-izle/`,
+        `${baseUrl}/${slug}-2025-izle/`
+      );
+    }
   }
 
   if (candidateUrls.length === 0) return [];
