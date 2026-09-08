@@ -3326,12 +3326,19 @@ img {
   position: absolute;
   top: 6px;
   left: 6px;
-  background: #e50914;
-  color: #fff;
-  font-size: 0.70rem;
+  background: rgba(0, 0, 0, 0.72);
+  color: #cbd5e1;
+  font-size: 0.68rem;
   font-weight: 800;
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
+  backdrop-filter: blur(4px);
+  z-index: 2;
+}
+
+.dizisol-ep-badge-num.active {
+  background: #e50914 !important;
+  color: #fff !important;
 }
 
 .dizisol-ep-duration {
@@ -3345,6 +3352,23 @@ img {
   padding: 0.12rem 0.4rem;
   border-radius: 4px;
   backdrop-filter: blur(4px);
+  z-index: 2;
+}
+
+.dizisol-ep-play-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e50914;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(229, 9, 20, 0.6);
+  z-index: 4;
 }
 
 .dizisol-ep-play-overlay {
@@ -3375,22 +3399,70 @@ img {
   box-shadow: 0 0 16px rgba(229, 9, 20, 0.5);
 }
 
-.dizisol-ep-card.playing .dizisol-ep-play-overlay {
-  opacity: 1;
+.dizisol-ep-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .dizisol-ep-title {
   font-size: 0.82rem;
   font-weight: 700;
   color: #e2e8f0;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
   margin: 0;
+  line-height: 1.35;
 }
 
 .dizisol-ep-card.playing .dizisol-ep-title {
-  color: #fbbf24;
+  color: #ffffff;
+}
+
+.dizisol-ep-date {
+  font-size: 0.70rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dizisol-carousel-scroll-track {
+  width: 140px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  margin-top: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.dizisol-carousel-scroll-thumb {
+  width: 50px;
+  height: 100%;
+  background: #64748b;
+  border-radius: 2px;
+  transition: transform 0.1s ease-out;
+}
+
+.action-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.action-pill-btn {
+  height: 38px;
+  padding: 0 14px !important;
+  border-radius: 9999px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
 }
 
 /* Floating Glassmorphism Source Selector Modal */
@@ -3704,117 +3776,180 @@ img {
     border-radius: 0 !important;
   }
   .dizisol-cinema-body {
-    padding: 0.85rem 0.75rem 2.5rem 0.75rem !important;
-    gap: 1rem !important;
+    padding: 1rem 1rem 3rem 1rem !important;
+    gap: 1.2rem !important;
     width: 100% !important;
+    background: #000000 !important;
   }
   .dizisol-meta-top {
-    flex-direction: column !important;
-    gap: 0.85rem !important;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
     width: 100% !important;
   }
   .dizisol-meta-left {
-    width: 100% !important;
+    flex: 1 1 auto !important;
     min-width: 0 !important;
-    gap: 0.45rem !important;
+    gap: 2px !important;
   }
   .dizisol-title {
-    font-size: 1.3rem !important;
-    line-height: 1.25 !important;
+    font-size: 1.5rem !important;
+    font-weight: 800 !important;
+    color: #fff !important;
+    line-height: 1.15 !important;
+    margin: 0 !important;
   }
   .dizisol-sub-row {
-    font-size: 0.78rem !important;
-    gap: 0.5rem !important;
-  }
-  .dizisol-genre-chips {
-    gap: 0.35rem !important;
-  }
-  .dizisol-genre-chip {
-    font-size: 0.70rem !important;
-    padding: 0.18rem 0.5rem !important;
-  }
-  .dizisol-overview {
-    font-size: 0.82rem !important;
-    line-height: 1.5 !important;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    cursor: pointer;
-  }
-  .dizisol-overview.expanded {
-    display: block !important;
-    -webkit-line-clamp: unset !important;
+    font-size: 0.85rem !important;
+    color: #94a3b8 !important;
+    font-weight: 600 !important;
+    margin-top: 4px !important;
   }
   .dizisol-meta-actions {
-    width: 100% !important;
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 0.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-end !important;
+    flex-shrink: 0 !important;
   }
-  .btn-dizisol-action {
-    padding: 0.55rem 0.7rem !important;
-    font-size: 0.78rem !important;
+  .action-btn-text {
+    display: none !important;
+  }
+  .action-icon-btn {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
     justify-content: center !important;
-    text-align: center !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
   }
-  .btn-dizisol-action#btn-open-sources-drawer {
-    grid-column: span 2 !important;
+  .action-pill-btn {
+    height: 36px !important;
+    padding: 0 12px !important;
+    border-radius: 9999px !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
     white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
   }
-  .btn-dizisol-action#btn-open-sources-drawer span {
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
+  .dizisol-genre-chips {
+    display: flex !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+    margin-top: -4px !important;
   }
-  .btn-dizisol-action#btn-toggle-list {
-    grid-column: span 2 !important;
+  .dizisol-genre-chip {
+    padding: 4px 12px !important;
+    border-radius: 9999px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #cbd5e1 !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+  }
+  .dizisol-overview {
+    font-size: 0.88rem !important;
+    line-height: 1.6 !important;
+    color: #cbd5e1 !important;
+    margin: 0 !important;
   }
   .dizisol-seasons-section {
     width: 100% !important;
-    gap: 0.75rem !important;
-    margin-top: 0.25rem !important;
+    gap: 0.85rem !important;
+    margin-top: 0.35rem !important;
+  }
+  .dizisol-seasons-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding-bottom: 0.6rem !important;
   }
   .dizisol-seasons-header h4 {
-    font-size: 0.85rem !important;
+    font-size: 0.95rem !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.08em !important;
+    color: #cbd5e1 !important;
   }
   .dizisol-episodes-count {
-    font-size: 0.72rem !important;
+    font-size: 0.80rem !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
   }
   .dizisol-season-tabs {
-    gap: 0.35rem !important;
+    gap: 8px !important;
   }
   .dizisol-season-tab {
-    padding: 0.35rem 0.8rem !important;
-    font-size: 0.76rem !important;
+    padding: 6px 16px !important;
+    border-radius: 9999px !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    flex-shrink: 0 !important;
+  }
+  .dizisol-season-tab.active {
+    background: #e50914 !important;
+    border-color: #e50914 !important;
+    color: #fff !important;
+    box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4) !important;
+  }
+  .dizisol-season-tab:not(.active) {
+    background: #1a1e29 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #94a3b8 !important;
   }
   .carousel-nav-btn {
     display: none !important;
   }
   .dizisol-episodes-carousel {
-    gap: 0.75rem !important;
-    padding: 0.25rem 0 0.85rem 0 !important;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
+    gap: 12px !important;
+    padding: 4px 0 12px 0 !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x proximity !important;
   }
   .dizisol-ep-card {
-    flex: 0 0 155px !important;
-    max-width: 155px !important;
-    scroll-snap-align: start;
-    gap: 0.35rem !important;
+    flex: 0 0 170px !important;
+    max-width: 170px !important;
+    scroll-snap-align: start !important;
+    gap: 6px !important;
+  }
+  .dizisol-ep-thumb-box {
+    border-radius: 10px !important;
+  }
+  .dizisol-ep-card.playing .dizisol-ep-thumb-box {
+    border: 2px solid #e50914 !important;
+    box-shadow: 0 0 18px rgba(229, 9, 20, 0.5) !important;
   }
   .dizisol-ep-badge-num {
     font-size: 0.65rem !important;
-    padding: 0.1rem 0.35rem !important;
+    padding: 0.12rem 0.4rem !important;
   }
   .dizisol-ep-duration {
-    font-size: 0.62rem !important;
-    padding: 0.1rem 0.3rem !important;
+    font-size: 0.64rem !important;
+    padding: 0.12rem 0.35rem !important;
   }
   .dizisol-ep-title {
-    font-size: 0.76rem !important;
+    font-size: 0.80rem !important;
+    font-weight: 700 !important;
+    color: #fff !important;
+    line-height: 1.35 !important;
+  }
+  .dizisol-ep-date {
+    font-size: 0.70rem !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+  }
+  .dizisol-carousel-scroll-track {
+    display: block !important;
+    margin-top: 6px !important;
   }
   .sources-popover-content {
     position: fixed !important;

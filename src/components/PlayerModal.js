@@ -806,32 +806,34 @@ export async function openPlayerModal({
             <div class="dizisol-sub-row">
               <span class="dizisol-ep-badge">${type === 'tv' ? `Sezon ${currentSeason} • Bölüm ${currentEpisode}` : 'Film'}</span>
             </div>
-            <div class="dizisol-genre-chips" id="dizisol-genre-chips">
-              ${mediaGenres.map(g => `<span class="dizisol-genre-chip">${g}</span>`).join('')}
-            </div>
-            <p class="dizisol-overview" id="dizisol-overview">
-              ${mediaOverview || 'İçerik bilgileri hazırlanıyor...'}
-            </p>
           </div>
           <div class="dizisol-meta-actions">
-            <button id="btn-player-theater" class="btn-dizisol-action" title="Sinema Modu (Genişlet)">
-              <i data-lucide="tv" style="width:15px;height:15px"></i>
-              <span>Sinema</span>
+            <button id="btn-player-theater" class="btn-dizisol-action action-icon-btn" title="Sinema Modu (Genişlet)">
+              <i data-lucide="tv" style="width:16px;height:16px"></i>
+              <span class="action-btn-text">Sinema</span>
             </button>
-            <button id="btn-open-sources-drawer" class="btn-dizisol-action active-source-action" title="Yayın Hatları & Sunucular">
-              <i data-lucide="server" style="width:15px;height:15px;color:#10b981"></i>
-              <span id="active-source-chip-label">Kaynak: ${getActiveServerName()} (Değiştir)</span>
+            <button id="btn-report-issue" class="btn-dizisol-action action-icon-btn" title="Hata Bildir">
+              <i data-lucide="flag" style="width:16px;height:16px"></i>
+              <span class="action-btn-text">Hata Bildir</span>
             </button>
-            <button id="btn-report-issue" class="btn-dizisol-action" title="Hata Bildir">
-              <i data-lucide="flag" style="width:15px;height:15px"></i>
-              <span>Hata Bildir</span>
+            <button id="btn-open-sources-drawer" class="btn-dizisol-action action-icon-btn active-source-action" title="Yayın Hatları & Sunucular">
+              <i data-lucide="server" style="width:16px;height:16px;color:#10b981"></i>
+              <span class="action-btn-text" id="active-source-chip-label">Kaynak: ${getActiveServerName()}</span>
             </button>
-            <button id="btn-toggle-list" class="btn-dizisol-action ${isWatched ? 'watched-active' : ''}" title="Listeme Ekle / İzlendi">
+            <button id="btn-toggle-list" class="btn-dizisol-action action-pill-btn ${isWatched ? 'watched-active' : ''}" title="Listeme Ekle / İzlendi">
               <i data-lucide="${isWatched ? 'check-circle-2' : 'plus'}" style="width:15px;height:15px"></i>
               <span id="list-action-label">${isWatched ? 'İzlendi' : '+ Listeme Ekle'}</span>
             </button>
           </div>
         </div>
+
+        <div class="dizisol-genre-chips" id="dizisol-genre-chips">
+          ${mediaGenres.map(g => `<span class="dizisol-genre-chip">${g}</span>`).join('')}
+        </div>
+
+        <p class="dizisol-overview" id="dizisol-overview">
+          ${mediaOverview || 'İçerik bilgileri hazırlanıyor...'}
+        </p>
 
         <!-- SEZONLAR SECTION (Only for TV Series) -->
         ${isSeries ? `
@@ -863,6 +865,8 @@ export async function openPlayerModal({
                 <i data-lucide="chevron-right" style="width:20px;height:20px"></i>
               </button>
             </div>
+            <div class="dizisol-carousel-scroll-track" id="dizisol-carousel-scroll-track">
+              <div class="dizisol-carousel-scroll-thumb" id="dizisol-carousel-scroll-thumb"></div>
           </div>
         ` : ''}
       </div>
@@ -943,11 +947,18 @@ export async function openPlayerModal({
       ? currentSeasonsList
       : Array.from({ length: 5 }, (_, i) => ({ season_number: i + 1, name: `${i + 1}. Sezon` }));
 
-    const seasonPillsHTML = seasons.map(s => `
-      <button class="dizisol-season-tab ${s.season_number === drawerSeason ? 'active' : ''}" data-season="${s.season_number}">
-        ${s.name || `Sezon ${s.season_number}`}
-      </button>
-    `).join('');
+    const seasonPillsHTML = seasons.map(s => {
+      const seriesBaseName = cleanSeriesName || 'Sezon';
+      const displayName = s.name && !s.name.toLowerCase().includes('sezon')
+        ? s.name
+        : (s.season_number === 1 ? seriesBaseName : `${seriesBaseName} ${s.season_number}`);
+
+      return `
+        <button class="dizisol-season-tab ${s.season_number === drawerSeason ? 'active' : ''}" data-season="${s.season_number}">
+          ${displayName}
+        </button>
+      `;
+    }).join('');
 
     if (tabsContainer) {
       tabsContainer.innerHTML = seasonPillsHTML;
@@ -963,7 +974,7 @@ export async function openPlayerModal({
     const loadingHTML = `
       <div class="drawer-loading" style="display:flex;align-items:center;gap:0.75rem;padding:1.5rem;color:#94a3b8;">
         <div class="drawer-spinner" style="width:20px;height:20px;border:2px solid rgba(255,255,255,0.2);border-top-color:#e50914;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-        <p style="margin:0;font-size:0.85rem;">Sezon ${drawerSeason} bölümleri yükleniyor...</p>
+        <p style="margin:0;font-size:0.85rem;">Bölümler yükleniyor...</p>
       </div>
     `;
 
@@ -984,12 +995,20 @@ export async function openPlayerModal({
           <div class="dizisol-ep-card ${isCurrent ? 'playing' : ''}" data-season="${drawerSeason}" data-episode="${epNum}">
             <div class="dizisol-ep-thumb-box">
               <div class="ep-thumb-fallback" style="display:flex;align-items:center;justify-content:center;height:100%;color:#475569;"><i data-lucide="film" style="width:24px;height:24px"></i></div>
-              <span class="dizisol-ep-badge-num">${epNum}. Bölüm</span>
-              <div class="dizisol-ep-play-overlay">
-                <i data-lucide="play" style="width:28px;height:28px;"></i>
-              </div>
+              <span class="dizisol-ep-badge-num ${isCurrent ? 'active' : ''}">${epNum}. Bölüm</span>
+              ${isCurrent ? `
+                <div class="dizisol-ep-play-circle">
+                  <i data-lucide="play" style="width:16px;height:16px;fill:#fff;color:#fff;margin-left:2px;"></i>
+                </div>
+              ` : `
+                <div class="dizisol-ep-play-overlay">
+                  <i data-lucide="play" style="width:28px;height:28px;"></i>
+                </div>
+              `}
             </div>
-            <h5 class="dizisol-ep-title" title="${epNum}. Bölüm">${epNum}. Bölüm ${epWatched ? '✓' : ''}</h5>
+            <div class="dizisol-ep-info">
+              <h5 class="dizisol-ep-title" title="${epNum}. Bölüm">${epNum}. Bölüm ${epWatched ? '✓' : ''}</h5>
+            </div>
           </div>
         `;
       }).join('');
@@ -999,19 +1018,29 @@ export async function openPlayerModal({
         const isCurrent = drawerSeason === currentSeason && epNum === currentEpisode;
         const epWatched = isMediaWatched(tmdbId, drawerSeason, epNum);
         const stillUrl = ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : '';
-        const durationText = ep.runtime ? `${ep.runtime} dk` : '';
+        const durationText = ep.runtime ? `${ep.runtime}dk` : '';
+        const airDateText = ep.air_date ? ep.air_date.substring(0, 7) : '';
 
         return `
           <div class="dizisol-ep-card ${isCurrent ? 'playing' : ''}" data-season="${drawerSeason}" data-episode="${epNum}">
             <div class="dizisol-ep-thumb-box">
               ${stillUrl ? `<img src="${stillUrl}" alt="B${epNum}" loading="lazy" />` : `<div class="ep-thumb-fallback" style="display:flex;align-items:center;justify-content:center;height:100%;color:#475569;"><i data-lucide="film" style="width:24px;height:24px"></i></div>`}
-              <span class="dizisol-ep-badge-num">${epNum}. Bölüm</span>
+              <span class="dizisol-ep-badge-num ${isCurrent ? 'active' : ''}">${epNum}. Bölüm</span>
               ${durationText ? `<span class="dizisol-ep-duration">${durationText}</span>` : ''}
-              <div class="dizisol-ep-play-overlay">
-                <i data-lucide="play" style="width:28px;height:28px;"></i>
-              </div>
+              ${isCurrent ? `
+                <div class="dizisol-ep-play-circle">
+                  <i data-lucide="play" style="width:16px;height:16px;fill:#fff;color:#fff;margin-left:2px;"></i>
+                </div>
+              ` : `
+                <div class="dizisol-ep-play-overlay">
+                  <i data-lucide="play" style="width:28px;height:28px;"></i>
+                </div>
+              `}
             </div>
-            <h5 class="dizisol-ep-title" title="${ep.name || `${epNum}. Bölüm`}">${ep.name || `${epNum}. Bölüm`} ${epWatched ? '✓' : ''}</h5>
+            <div class="dizisol-ep-info">
+              <h5 class="dizisol-ep-title" title="${ep.name || `${epNum}. Bölüm`}">${ep.name || `${epNum}. Bölüm`}${epWatched ? ' ✓' : ''}</h5>
+              ${airDateText ? `<span class="dizisol-ep-date">${airDateText}</span>` : ''}
+            </div>
           </div>
         `;
       }).join('');
@@ -1035,6 +1064,18 @@ export async function openPlayerModal({
           playingCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }, 150);
       }
+
+      // Scrollbar Thumb Movement Sync
+      const updateScrollThumb = () => {
+        const maxScroll = carouselContainer.scrollWidth - carouselContainer.clientWidth;
+        const thumb = document.getElementById('dizisol-carousel-scroll-thumb');
+        if (thumb && maxScroll > 0) {
+          const ratio = carouselContainer.scrollLeft / maxScroll;
+          thumb.style.transform = `translateX(${ratio * 150}%)`;
+        }
+      };
+      carouselContainer.removeEventListener('scroll', updateScrollThumb);
+      carouselContainer.addEventListener('scroll', updateScrollThumb, { passive: true });
     }
 
     // Attach Carousel Left & Right Arrows
