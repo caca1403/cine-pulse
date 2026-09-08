@@ -154,6 +154,7 @@ export async function openPlayerModal({
   let countdownTimer = null;
   let countdownSeconds = 4;
   let hasPlayerStartedPlaying = false;
+  let currentImdbId = null; // Resolved asynchronously when available
 
   function getSeasonEpisodeCount(sNum) {
     const sObj = currentSeasonsList.find(s => s.season_number === sNum);
@@ -261,6 +262,7 @@ export async function openPlayerModal({
         const idx = parseInt(item.getAttribute('data-index'), 10);
         if (idx === currentServerIndex) return;
         currentServerIndex = idx;
+        failoverCountInSession = 0;
         toggleSourcesPopover(false);
         updateActiveSourceLabel();
         updatePlayerContainer();
@@ -273,6 +275,65 @@ export async function openPlayerModal({
   // Alias to prevent any ReferenceError
   const renderSourcesPopoverContent = renderSourcesPopoverList;
 
+  let failoverCountInSession = 0;
+  let lastFailoverTimestamp = 0;
+
+  function showInPlayerError(reason = 'Yayın yanıt vermedi') {
+    const wrapper = document.getElementById('player-iframe-wrapper');
+    if (!wrapper) return;
+
+    if (activeHlsInstance) {
+      try { activeHlsInstance.destroy(); } catch (_) {}
+      activeHlsInstance = null;
+    }
+    if (activeAudioHlsInstance) {
+      try { activeAudioHlsInstance.destroy(); } catch (_) {}
+      activeAudioHlsInstance = null;
+    }
+
+    const currentSrv = activeServers[currentServerIndex];
+    const nextIndex = activeServers.findIndex((s, idx) => idx > currentServerIndex && !s.failed);
+    const hasNext = nextIndex !== -1;
+    const hasSubtitled = currentCategory === 'dubbed' && (categorizedServers.subtitled?.length > 0);
+
+    wrapper.innerHTML = `
+      <div class="player-error-view" style="display:flex;align-items:center;justify-content:center;height:100%;text-align:center;padding:2rem;">
+        <div class="player-error-card" style="background:rgba(20,24,35,0.92);backdrop-filter:blur(16px);padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.12);max-width:460px;box-shadow:0 20px 40px rgba(0,0,0,0.6);">
+          <i data-lucide="alert-circle" style="width:44px;height:44px;color:#f59e0b;margin-bottom:1rem;"></i>
+          <h3 style="color:#fff;font-size:1.15rem;margin-bottom:0.5rem;">${currentSrv?.displayName || currentSrv?.name || 'Seçili Kaynak'} Yanıt Vermedi</h3>
+          <p style="color:#94a3b8;font-size:0.85rem;line-height:1.5;margin-bottom:1.25rem;">
+            ${reason}. Alternatif yayın hatlarından birine geçiş yapabilir veya diğer dildeki kaynakları deneyebilirsiniz.
+          </p>
+          <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+            ${hasNext ? `<button class="btn-primary" id="btn-err-try-next" style="padding:0.55rem 1.1rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;"><i data-lucide="skip-forward" style="width:14px;height:14px"></i> Sıradaki Kaynağa Geç (${activeServers[nextIndex].displayName || 'Alternatif'})</button>` : ''}
+            <button class="btn-secondary" id="btn-err-open-sources" style="padding:0.55rem 1.1rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;"><i data-lucide="layers" style="width:14px;height:14px"></i> Tüm Kaynaklar (${activeServers.length})</button>
+            ${hasSubtitled ? `<button class="btn-secondary" id="btn-err-switch-sub" style="padding:0.55rem 1.1rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;color:#f59e0b;"><i data-lucide="message-square" style="width:14px;height:14px"></i> 💬 Altyazılıya Geç</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+
+    document.getElementById('btn-err-try-next')?.addEventListener('click', () => {
+      if (hasNext) {
+        failoverCountInSession = 0;
+        currentServerIndex = nextIndex;
+        updateActiveSourceLabel();
+        updatePlayerContainer();
+      }
+    });
+
+    document.getElementById('btn-err-open-sources')?.addEventListener('click', () => {
+      toggleSourcesPopover(true);
+    });
+
+    document.getElementById('btn-err-switch-sub')?.addEventListener('click', () => {
+      failoverCountInSession = 0;
+      const tabSub = document.getElementById('tab-subtitled');
+      if (tabSub) tabSub.click();
+    });
+  }
+
   function triggerAutoFailover(reason = 'Bağlantı yanıt vermedi') {
     // Zaman aşımı (timeout) kaynaklı otomatik kaynak atlamaları devre dışı
     if (reason && /zaman aşımı|timeout/i.test(reason)) {
@@ -280,63 +341,42 @@ export async function openPlayerModal({
       return;
     }
 
+    // Rate-limit failover to prevent rapid flickering loop (max 1 per 2.5s)
+    const now = Date.now();
+    if (now - lastFailoverTimestamp < 2500) {
+      console.warn(`[PlayerModal] Failover throttled to prevent loop: ${reason}`);
+      return;
+    }
+    lastFailoverTimestamp = now;
+
     const currentSrv = activeServers[currentServerIndex];
     if (currentSrv) {
       currentSrv.failed = true;
       currentSrv.failReason = reason;
-      console.warn(`[PlayerModal] Server failed: ${currentSrv.name} (${reason}). Auto-failing over...`);
+      console.warn(`[PlayerModal] Server failed: ${currentSrv.name} (${reason})`);
+    }
+
+    // Allow at most 1 automatic skip to the immediate next server; if that also fails, stop and show error card!
+    failoverCountInSession++;
+    if (failoverCountInSession > 1) {
+      console.warn('[PlayerModal] Max automatic failover reached. Showing in-player options.');
+      showInPlayerError(reason);
+      return;
     }
 
     // Find next available non-failed server in active category
     const nextIndex = activeServers.findIndex((s, idx) => idx > currentServerIndex && !s.failed);
     if (nextIndex !== -1) {
       const nextSrv = activeServers[nextIndex];
-      showToast(`⚠️ ${currentSrv?.displayName || currentSrv?.name || 'Mevcut kaynak'} yanıt vermedi (${reason}). ${nextSrv.displayName || nextSrv.name} hattına bağlanılıyor...`, 'warning');
+      showToast(`⚠️ ${currentSrv?.displayName || currentSrv?.name || 'Mevcut kaynak'} yanıt vermedi. ${nextSrv.displayName || nextSrv.name} hattı deneniyor...`, 'warning');
       currentServerIndex = nextIndex;
       updateActiveSourceLabel();
       updatePlayerContainer();
       return;
     }
 
-    // If current category is dubbed and all dubbed servers failed, automatically failover to subtitled!
-    if (currentCategory === 'dubbed' && categorizedServers.subtitled?.some(s => !s.failed)) {
-      showToast('⚠️ Dublaj hatları yanıt vermedi. Sistem otomatik olarak Türkçe Altyazılı yayına geçiş yaptı.', 'info');
-      currentCategory = 'subtitled';
-      const tabDub = document.getElementById('tab-dubbed');
-      const tabSub = document.getElementById('tab-subtitled');
-      if (tabDub && tabSub) {
-        tabDub.classList.remove('active');
-        tabSub.classList.add('active');
-      }
-      activeServers = categorizedServers.subtitled;
-      currentServerIndex = activeServers.findIndex(s => !s.failed);
-      if (currentServerIndex === -1) currentServerIndex = 0;
-      updateActiveSourceLabel();
-      updatePlayerContainer();
-      return;
-    }
-
-    // All available servers failed
-    showToast('❌ Bu içerik için çalışan bir yayın hattı bulunamadı.', 'error');
-    const wrapper = document.getElementById('player-iframe-wrapper');
-    if (wrapper) {
-      wrapper.innerHTML = `
-        <div class="player-error-view" style="display:flex;align-items:center;justify-content:center;height:100%;text-align:center;padding:2rem;">
-          <div class="player-error-card" style="background:rgba(20,24,35,0.9);padding:2rem;border-radius:12px;border:1px solid rgba(255,255,255,0.1);max-width:450px;">
-            <i data-lucide="alert-triangle" style="width:48px;height:48px;color:#ef4444;margin-bottom:1rem;"></i>
-            <h3 style="color:#fff;margin-bottom:0.5rem;">Yayın Başlatılamadı</h3>
-            <p style="color:#94a3b8;font-size:0.85rem;line-height:1.5;margin-bottom:1.25rem;">Mevcut sunuculardan yanıt alınamadı. Farklı bir dil sekmesini deneyebilir veya tekrar tarama başlatabilirsiniz.</p>
-            <div style="display:flex;gap:0.75rem;justify-content:center;">
-              <button class="btn-primary" id="btn-retry-all-streams" style="padding:0.5rem 1rem;font-size:0.82rem;"><i data-lucide="refresh-cw"></i> Tekrar Tara</button>
-              <button class="btn-secondary" id="btn-open-failed-sources" style="padding:0.5rem 1rem;font-size:0.82rem;"><i data-lucide="layers"></i> Kaynakları Gör</button>
-            </div>
-          </div>
-        </div>
-      `;
-      if (window.lucide) window.lucide.createIcons();
-      document.getElementById('btn-retry-all-streams')?.addEventListener('click', () => startServerDiscovery());
-      document.getElementById('btn-open-failed-sources')?.addEventListener('click', () => toggleSourcesPopover(true));
-    }
+    // No next server in current category -> show in-player error (do NOT auto-switch tabs silently!)
+    showInPlayerError(reason);
   }
 
   function renderServerPills() {
@@ -517,8 +557,8 @@ export async function openPlayerModal({
             ? srv.streamUrl
             : (tmdbId 
                 ? (type === 'movie' 
-                    ? `https://player.videasy.net/movie/${tmdbId}` 
-                    : `https://player.videasy.net/tv/${tmdbId}/${currentSeason}/${currentEpisode}`)
+                    ? `https://vidsrc.mov/embed/movie/${tmdbId}` 
+                    : `https://vidsrc.mov/embed/tv/${tmdbId}/${currentSeason}/${currentEpisode}`)
                 : ''));
 
       const subDownloadUrl = `/api/subtitles?imdbId=${currentImdbId || ''}${isSeries ? `&season=${currentSeason}&episode=${currentEpisode}` : ''}`;
@@ -1434,7 +1474,10 @@ export async function openPlayerModal({
         // Find first non-torrent direct stream
         const directIdx = activeServers.findIndex(s => s && (s.isDirectVideo || s.isHls || (s.streamUrl && !s.streamUrl.startsWith('magnet:')) && !s.isTorrent));
         if (directIdx !== -1 && directIdx !== currentServerIndex) {
-          switchServer(directIdx);
+          currentServerIndex = directIdx;
+          failoverCountInSession = 0;
+          updateActiveSourceLabel();
+          updatePlayerContainer();
         } else {
           const tabDub = document.getElementById('tab-dubbed');
           if (tabDub) tabDub.click();
@@ -1765,9 +1808,10 @@ export async function openPlayerModal({
 
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
     if (countdownTimer) clearInterval(countdownTimer);
-    countdownSeconds = 4;
+    countdownSeconds = 5;
     isSearching = true;
     hasPlayerStartedPlaying = false;
+    failoverCountInSession = 0;
     categorizedServers = { dubbed: [], subtitled: [] };
     activeServers = [];
 
@@ -1796,31 +1840,8 @@ export async function openPlayerModal({
         countdownTimer = null;
         isSearching = false;
 
-        // If user is on Dubbed and NO dubbed source was found, then auto-switch to Subtitled and launch
-        if (currentCategory === 'dubbed' && (!categorizedServers.dubbed || categorizedServers.dubbed.length === 0)) {
-          if (categorizedServers.subtitled && categorizedServers.subtitled.length > 0) {
-            showToast('💬 Türkçe Dublaj bulunamadı. Türkçe Altyazılı sunuculara yönlendirildiniz.', 'info');
-            currentCategory = 'subtitled';
-            const tabDub = document.getElementById('tab-dubbed');
-            const tabSub = document.getElementById('tab-subtitled');
-            if (tabDub && tabSub) {
-              tabDub.classList.remove('active');
-              tabSub.classList.add('active');
-            }
-            activeServers = categorizedServers['subtitled'] || [];
-            currentServerIndex = 0;
-            hasPlayerStartedPlaying = true;
-            updateServerPillsEvents();
-            updateActiveSourceLabel();
-            renderSourcesPopoverList();
-            updatePlayerContainer();
-          } else {
-            updateServerPillsEvents();
-            updateActiveSourceLabel();
-            renderSourcesPopoverList();
-            updatePlayerContainer();
-          }
-        } else if (!hasPlayerStartedPlaying && categorizedServers[currentCategory]?.length > 0) {
+        // If not started playing yet, pick first available server in current category
+        if (!hasPlayerStartedPlaying && categorizedServers[currentCategory]?.length > 0) {
           activeServers = categorizedServers[currentCategory];
           currentServerIndex = 0;
           hasPlayerStartedPlaying = true;
@@ -1830,6 +1851,8 @@ export async function openPlayerModal({
           updatePlayerContainer();
         } else {
           updateServerPillsEvents();
+          updateActiveSourceLabel();
+          renderSourcesPopoverList();
           updatePlayerContainer();
         }
       }
@@ -1887,7 +1910,15 @@ export async function openPlayerModal({
         }
 
         // 3. Keep sources pills, popover list and subtitles continuously updated as more servers arrive
+        const currentPlayingSrv = activeServers[currentServerIndex];
         activeServers = categorizedServers[currentCategory] || [];
+        if (currentPlayingSrv && hasPlayerStartedPlaying) {
+          const reIndex = activeServers.findIndex(s => (s.id && s.id === currentPlayingSrv.id) || (s.url && s.url === currentPlayingSrv.url));
+          if (reIndex !== -1) {
+            currentServerIndex = reIndex;
+          }
+        }
+
         updateServerPillsEvents();
         updateActiveSourceLabel();
         renderSourcesPopoverList();
@@ -2056,6 +2087,7 @@ export async function openPlayerModal({
       e.preventDefault();
       if (currentCategory === 'dubbed') return;
       currentCategory = 'dubbed';
+      failoverCountInSession = 0;
       try { localStorage.setItem('cp_preferred_category', 'dubbed'); } catch (_) {}
       tabSubtitled.classList.remove('active');
       tabDubbed.classList.add('active');
@@ -2072,6 +2104,7 @@ export async function openPlayerModal({
       e.preventDefault();
       if (currentCategory === 'subtitled') return;
       currentCategory = 'subtitled';
+      failoverCountInSession = 0;
       try { localStorage.setItem('cp_preferred_category', 'subtitled'); } catch (_) {}
       tabDubbed.classList.remove('active');
       tabSubtitled.classList.add('active');
