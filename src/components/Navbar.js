@@ -4,6 +4,7 @@
 
 import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
 import { openDataManagerModal } from './DataManagerModal.js';
+import { promptInstall, updatePwaButtons } from '../services/pwaManager.js';
 
 export function renderNavbar(currentView = 'home') {
   const navbarHTML = `
@@ -28,6 +29,12 @@ export function renderNavbar(currentView = 'home') {
         </ul>
 
         <div class="nav-actions">
+          <!-- PWA Install Button (Desktop) -->
+          <button id="btn-pwa-install" class="btn-pwa-install hidden" title="CinePulse Uygulamasını Yükle">
+            <i data-lucide="download" style="width:15px; height:15px;"></i>
+            <span>Uygulamayı Yükle</span>
+          </button>
+
           <!-- Live TV Quick Action Pill -->
           <a href="#livetv" class="btn-live-shortcut ${currentView === 'livetv' ? 'active' : ''}" title="Canlı TV Yayınları">
             <span class="live-pulse-dot"></span>
@@ -41,6 +48,11 @@ export function renderNavbar(currentView = 'home') {
             <span class="search-kbd">⌘K</span>
             <div id="search-overlay" class="search-results-overlay glass-panel hidden"></div>
           </div>
+
+          <!-- PWA Install Button (Mobile) -->
+          <button id="btn-pwa-install-mobile" class="btn-action-icon mobile-only btn-pwa-install hidden" title="Uygulamayı Yükle" aria-label="Uygulamayı Yükle">
+            <i data-lucide="download"></i>
+          </button>
 
           <!-- Mobile Search Button -->
           <button id="btn-mobile-search-toggle" class="btn-action-icon mobile-only" aria-label="Arama Yap">
@@ -136,6 +148,16 @@ export function attachNavbarEvents(onNavigate) {
       openDataManagerModal();
     });
   }
+
+  // Attach PWA Install Buttons
+  const pwaBtns = document.querySelectorAll('.btn-pwa-install');
+  pwaBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      promptInstall();
+    });
+  });
+  updatePwaButtons(true);
 
   // Attach search handlers for both Desktop and Mobile search inputs
   setupSearchInput('nav-search-input', 'search-overlay');

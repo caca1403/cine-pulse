@@ -6951,3 +6951,127 @@ video::cue {
   }
 }
 
+/* ==========================================================================
+   PWA Install Buttons & Guide Modal
+   ========================================================================== */
+.btn-pwa-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: var(--font-heading);
+  color: #fff;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(239, 68, 68, 0.22) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.18);
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.btn-pwa-install:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.42) 0%, rgba(239, 68, 68, 0.42) 100%);
+  border-color: rgba(245, 158, 11, 0.85);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.4);
+}
+
+.btn-pwa-install:active {
+  transform: translateY(0);
+}
+
+.btn-action-icon.btn-pwa-install {
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.pwa-guide-modal {
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.pwa-guide-content {
+  max-width: 440px;
+  width: 100%;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(245, 158, 11, 0.15);
+}
+
+.pwa-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.pwa-guide-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pwa-guide-logo h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+
+.pwa-guide-logo p {
+  font-size: 0.8rem;
+  color: var(--text-sub);
+  margin: 2px 0 0 0;
+}
+
+.pwa-guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 1.2rem 0;
+}
+
+.pwa-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary-gradient);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+

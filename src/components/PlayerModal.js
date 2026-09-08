@@ -1847,7 +1847,9 @@ export async function openPlayerModal({
           isSearching = false;
           activeServers = dubbed;
           currentServerIndex = 0;
+          updateServerPillsEvents();
           updateActiveSourceLabel();
+          renderSourcesPopoverContent();
           updatePlayerContainer();
           return;
         }
@@ -1862,14 +1864,18 @@ export async function openPlayerModal({
           isSearching = false;
           activeServers = subtitled;
           currentServerIndex = 0;
+          updateServerPillsEvents();
           updateActiveSourceLabel();
+          renderSourcesPopoverContent();
           updatePlayerContainer();
           return;
         }
 
-        // 3. Keep sources popover list and subtitles updated as more servers arrive
+        // 3. Keep sources pills, popover list and subtitles continuously updated as more servers arrive
         activeServers = categorizedServers[currentCategory] || [];
+        updateServerPillsEvents();
         updateActiveSourceLabel();
+        renderSourcesPopoverContent();
         syncSubtitlesToActivePlayer();
 
         if (isComplete && activeServers.length === 0) {
@@ -1885,7 +1891,10 @@ export async function openPlayerModal({
             currentServerIndex = 0;
             hasPlayerStartedPlaying = true;
           }
+          isSearching = false;
+          updateServerPillsEvents();
           updateActiveSourceLabel();
+          renderSourcesPopoverContent();
           updatePlayerContainer();
         }
       }
