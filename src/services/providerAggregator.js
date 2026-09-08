@@ -444,7 +444,15 @@ export async function getStreamingServersProgressive({
 
     for (const raw of valid) {
       const formatted = formatStreamItem(raw, category, category === 'dubbed' ? 'VIP 1080p' : 'VIP Altyazılı');
-      const urlKey = (formatted.streamUrl || formatted.url || (typeof formatted.getUrl === 'function' ? formatted.getUrl() : '') || '').trim().toLowerCase();
+      const urlStr = (formatted.streamUrl || formatted.url || (typeof formatted.getUrl === 'function' ? formatted.getUrl() : '') || '').trim().toLowerCase();
+      
+      // Use provider prefix + url as dedup key so Dizipal & DiziBal (same CDN, different sources) both appear.
+      // For torrents, deduplicate purely by infoHash to avoid true duplicate magnet links.
+      const id = (formatted.id || '').toLowerCase();
+      const providerPrefix = id.split('_').slice(0, 2).join('_'); // e.g. "dzp_", "dzb_", "cp_global"
+      const urlKey = formatted.infoHash
+        ? formatted.infoHash.toLowerCase()           // torrents: dedup by hash
+        : `${providerPrefix}||${urlStr}`;            // streams: dedup by provider+url
 
       if (category === 'dubbed') {
         // Absolutely forbid fake VidSrc embeds
@@ -693,14 +701,16 @@ export async function getStreamingServersProgressive({
     return (a.priority ?? 0) - (b.priority ?? 0);
   });
 
-  // De-duplicate any duplicate server display names across lists
+  // De-duplicate entries with same provider+name (not just name) so Dizipal & DiziBal both appear
   const dedupeServers = (list) => {
-    const seenNames = new Set();
+    const seenKeys = new Set();
     const result = [];
     for (const s of list) {
-      const key = (s.displayName || s.name || s.id).toLowerCase().trim();
-      if (!seenNames.has(key)) {
-        seenNames.add(key);
+      const idPrefix = (s.id || '').toLowerCase().split('_').slice(0, 2).join('_');
+      const nameKey = (s.displayName || s.name || s.id).toLowerCase().trim();
+      const key = `${idPrefix}||${nameKey}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
         result.push(s);
       }
     }
