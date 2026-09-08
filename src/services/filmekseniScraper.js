@@ -159,16 +159,23 @@ export async function fetchFilmEkseniSources({
           const cleanSlug = item.slug.replace(/^\/+/, '').replace(/\/+$/, '');
 
           if (isSeries) {
+            const rawSlug = cleanSlug.replace(/-izle$/, '');
             if (cleanSlug.startsWith('dizi/')) {
               candidateUrls.add(`/${cleanSlug}/sezon-${sNum}/bolum-${epNum}/`);
               candidateUrls.add(`/${cleanSlug}/sezon-${sNum}/bolum-${epNum}`);
+              candidateUrls.add(`/${rawSlug}/sezon-${sNum}/bolum-${epNum}/`);
+              candidateUrls.add(`/${rawSlug}/sezon-${sNum}/bolum-${epNum}`);
             } else {
               candidateUrls.add(`/dizi/${cleanSlug}/sezon-${sNum}/bolum-${epNum}/`);
+              candidateUrls.add(`/dizi/${rawSlug}/sezon-${sNum}/bolum-${epNum}/`);
             }
           } else {
+            const rawSlug = cleanSlug.replace(/-izle$/, '');
             if (!cleanSlug.startsWith('dizi/')) {
               candidateUrls.add(`/${cleanSlug}/`);
               candidateUrls.add(`/${cleanSlug}-izle/`);
+              candidateUrls.add(`/${rawSlug}/`);
+              candidateUrls.add(`/${rawSlug}-izle/`);
             }
           }
         }
