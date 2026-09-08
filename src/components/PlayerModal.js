@@ -269,6 +269,12 @@ export async function openPlayerModal({
   }
 
   function triggerAutoFailover(reason = 'Bağlantı yanıt vermedi') {
+    // Zaman aşımı (timeout) kaynaklı otomatik kaynak atlamaları devre dışı
+    if (reason && /zaman aşımı|timeout/i.test(reason)) {
+      console.warn(`[PlayerModal] Zaman aşımı kaynaklı failover engellendi: ${reason}`);
+      return;
+    }
+
     const currentSrv = activeServers[currentServerIndex];
     if (currentSrv) {
       currentSrv.failed = true;
@@ -1453,27 +1459,6 @@ export async function openPlayerModal({
           });
           activeHlsInstance = hls;
 
-          let hasStartedPlaying = false;
-          let hlsWatchdog = setTimeout(() => {
-            if (!hasStartedPlaying && videoEl.currentTime === 0) {
-              console.warn('[PlayerModal] HLS playback stalled (>15s). Auto-failover triggered.');
-              try { hls.destroy(); } catch (_) {}
-              activeHlsInstance = null;
-              triggerAutoFailover('Yayın zaman aşımı (Başlatılamadı)');
-            }
-          }, 15000);
-
-          const clearHlsWatchdog = () => {
-            hasStartedPlaying = true;
-            if (hlsWatchdog) {
-              clearTimeout(hlsWatchdog);
-              hlsWatchdog = null;
-            }
-          };
-
-          videoEl.addEventListener('playing', clearHlsWatchdog, { once: true });
-          videoEl.addEventListener('timeupdate', clearHlsWatchdog, { once: true });
-
           const applySafeSeek = () => {
             if (initialTime > 0) {
               const dur = videoEl.duration;
@@ -1498,8 +1483,7 @@ export async function openPlayerModal({
           let networkErrorCount = 0;
           hls.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal) {
-              clearHlsWatchdog();
-              if (data.response && (data.response.code >= 400 || data.response.code === 0)) {
+              if (data.response && data.response.code >= 400) {
                 try { hls.destroy(); } catch (_) {}
                 activeHlsInstance = null;
                 triggerAutoFailover(`Sunucu Hatası (HTTP ${data.response.code})`);
@@ -1508,7 +1492,7 @@ export async function openPlayerModal({
               switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
                   networkErrorCount++;
-                  if (networkErrorCount > 1) {
+                  if (networkErrorCount > 2) {
                     try { hls.destroy(); } catch (_) {}
                     activeHlsInstance = null;
                     triggerAutoFailover('Ağ Hatası (Bağlantı koptu)');
@@ -1547,25 +1531,6 @@ export async function openPlayerModal({
         } else {
           videoEl.src = streamUrl;
 
-          // 12-second watchdog timer to eliminate dead/stalled stream freezes
-          let directStreamWatchdog = setTimeout(() => {
-            if (videoEl.readyState < 2) {
-              console.warn('[PlayerModal] Direct video stream stalled. Auto-failing over...');
-              triggerAutoFailover('Yayın zaman aşımı (Veri alınamadı)');
-            }
-          }, 12000);
-
-          const clearDirectWatchdog = () => {
-            if (directStreamWatchdog) {
-              clearTimeout(directStreamWatchdog);
-              directStreamWatchdog = null;
-            }
-          };
-
-          videoEl.addEventListener('loadeddata', clearDirectWatchdog, { once: true });
-          videoEl.addEventListener('canplay', clearDirectWatchdog, { once: true });
-          videoEl.addEventListener('playing', clearDirectWatchdog, { once: true });
-
           videoEl.addEventListener('loadedmetadata', () => {
             if (initialTime > 0) {
               const dur = videoEl.duration;
@@ -1578,7 +1543,6 @@ export async function openPlayerModal({
             videoEl.play().catch(() => {});
           });
           videoEl.addEventListener('error', () => {
-            clearDirectWatchdog();
             triggerAutoFailover('Video Oynatma Hatası');
           });
         }
