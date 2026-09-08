@@ -66,24 +66,11 @@ async function performSinewixRequest(endpoint) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const directTarget = `${SINEWIX_API_BASE}${cleanEndpoint}`;
 
-  // 1. Try Cloudflare Worker Gateway first
-  try {
-    const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(directTarget)}`;
-    const res = await fetch(workerUrl, {
-      signal: AbortSignal.timeout(4000)
-    }).catch(() => null);
-
-    if (res && res.ok) {
-      const data = await res.json().catch(() => null);
-      if (data) return data;
-    }
-  } catch (_) {}
-
-  // 2. Try Vercel Serverless Proxy (/api/snx)
+  // 1. Try Vercel Serverless Proxy (/api/snx)
   try {
     const vercelProxyUrl = `/api/snx?path=${encodeURIComponent(cleanEndpoint)}`;
     const res = await fetch(vercelProxyUrl, {
-      signal: AbortSignal.timeout(4000)
+      signal: AbortSignal.timeout(2200)
     }).catch(() => null);
 
     if (res && res.ok) {
@@ -92,11 +79,11 @@ async function performSinewixRequest(endpoint) {
     }
   } catch (_) {}
 
-  // 3. Direct backend fallback (for Node/native environments)
+  // 2. Direct backend fallback (for Node/native environments)
   try {
     const res = await fetch(directTarget, {
       headers: SINEWIX_HEADERS,
-      signal: AbortSignal.timeout(4000)
+      signal: AbortSignal.timeout(2500)
     }).catch(() => null);
 
     if (res && res.ok) {

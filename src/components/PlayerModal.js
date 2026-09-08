@@ -750,13 +750,29 @@ export async function openPlayerModal({
             <!-- Controls Row -->
             <div class="custom-controls-row">
               <div class="custom-controls-left">
+                <button class="custom-ctrl-btn custom-ctrl-btn-skip" id="custom-btn-rewind-10" title="10 Saniye Geri (←)">
+                  <i data-lucide="rotate-ccw" style="width: 19px; height: 19px;"></i>
+                  <span class="custom-btn-badge-10">10</span>
+                </button>
                 <button class="custom-ctrl-btn" id="custom-btn-play" title="Oynat / Duraklat (Space)">
                   <i data-lucide="pause" style="width: 20px; height: 20px;"></i>
+                </button>
+                <button class="custom-ctrl-btn custom-ctrl-btn-skip" id="custom-btn-forward-10" title="10 Saniye İleri (→)">
+                  <i data-lucide="rotate-cw" style="width: 19px; height: 19px;"></i>
+                  <span class="custom-btn-badge-10">10</span>
                 </button>
                 <div class="custom-time-display" id="custom-time-display">0:00 / 0:00</div>
               </div>
 
               <div class="custom-controls-right">
+                <!-- Brightness Slider Wrap -->
+                <div class="custom-brightness-wrap" title="Parlaklık Ayarı">
+                  <button class="custom-ctrl-btn" id="custom-btn-brightness" title="Parlaklık Aç / Kıs">
+                    <i data-lucide="sun" style="width: 19px; height: 19px; color: #fbbf24;"></i>
+                  </button>
+                  <input type="range" class="custom-brightness-slider" id="custom-brightness-slider" min="30" max="150" step="5" value="100" />
+                </div>
+
                 <!-- Volume Wrap -->
                 <div class="custom-volume-wrap">
                   <button class="custom-ctrl-btn" id="custom-btn-volume" title="Ses">
@@ -782,14 +798,14 @@ export async function openPlayerModal({
           <div class="custom-player-menu hidden" id="custom-player-menu">
             <!-- Main View -->
             <div class="custom-menu-view" id="custom-menu-main">
-              <!-- Item 1: Ses / Dil (Placed ABOVE Altyazılar) -->
+              <!-- Item 1: Ses Dili -->
               <div class="custom-menu-item" id="custom-menu-item-audio">
                 <div class="custom-menu-item-icon">
                   <i data-lucide="headphones" style="width: 17px; height: 17px; color: #f59e0b;"></i>
                 </div>
                 <div class="custom-menu-item-body">
-                  <span class="custom-menu-item-title">Ses / Dil</span>
-                  <span class="custom-menu-item-sub" id="custom-menu-active-audio">${currentCategory === 'dubbed' ? 'Türkçe Dublaj' : 'Orijinal / Altyazılı'}</span>
+                  <span class="custom-menu-item-title">Ses Dili</span>
+                  <span class="custom-menu-item-sub" id="custom-menu-active-audio">${currentCategory === 'dubbed' ? 'Türkçe Dublaj' : 'Orijinal (İngilizce)'}</span>
                 </div>
                 <i data-lucide="chevron-right" style="width: 15px; height: 15px; color: #94a3b8;"></i>
               </div>
@@ -818,7 +834,19 @@ export async function openPlayerModal({
                 <i data-lucide="chevron-right" style="width: 15px; height: 15px; color: #94a3b8;"></i>
               </div>
 
-              <!-- Item 4: Pencere içinde pencere -->
+              <!-- Item 4: Parlaklık -->
+              <div class="custom-menu-item" id="custom-menu-item-brightness-menu">
+                <div class="custom-menu-item-icon">
+                  <i data-lucide="sun" style="width: 17px; height: 17px; color: #fbbf24;"></i>
+                </div>
+                <div class="custom-menu-item-body">
+                  <span class="custom-menu-item-title">Parlaklık</span>
+                  <span class="custom-menu-item-sub" id="custom-menu-active-brightness">%100</span>
+                </div>
+                <i data-lucide="chevron-right" style="width: 15px; height: 15px; color: #94a3b8;"></i>
+              </div>
+
+              <!-- Item 5: Pencere içinde pencere -->
               <div class="custom-menu-item" id="custom-menu-item-pip">
                 <div class="custom-menu-item-icon">
                   <i data-lucide="picture-in-picture-2" style="width: 17px; height: 17px; color: #34d399;"></i>
@@ -1635,7 +1663,12 @@ export async function openPlayerModal({
     const backBtn = wrapper.querySelector('#custom-menu-back-btn');
     const centerIndicator = wrapper.querySelector('#custom-center-play-indicator');
 
-    // 1. Play / Pause Control
+    const rewindBtn = wrapper.querySelector('#custom-btn-rewind-10');
+    const forwardBtn = wrapper.querySelector('#custom-btn-forward-10');
+    const brightBtn = wrapper.querySelector('#custom-btn-brightness');
+    const brightSlider = wrapper.querySelector('#custom-brightness-slider');
+
+    // 1. Play / Pause & Skip Control
     const updatePlayState = () => {
       const isPaused = videoEl.paused;
       if (playBtn) {
@@ -1656,6 +1689,43 @@ export async function openPlayerModal({
         showCenterAnimation('pause');
       }
     };
+
+    const skipTime = (seconds) => {
+      const cur = videoEl.currentTime || 0;
+      const dur = videoEl.duration || Infinity;
+      const target = Math.max(0, Math.min(dur, cur + seconds));
+      videoEl.currentTime = target;
+      showCenterAnimation(seconds > 0 ? 'rotate-cw' : 'rotate-ccw');
+      showToast(seconds > 0 ? '⏩ +10 saniye' : '⏪ -10 saniye', 'info');
+    };
+
+    if (rewindBtn) rewindBtn.onclick = (e) => { e.stopPropagation(); skipTime(-10); };
+    if (forwardBtn) forwardBtn.onclick = (e) => { e.stopPropagation(); skipTime(10); };
+
+    // Brightness Control
+    let currentBrightness = 100;
+    const setBrightness = (pct) => {
+      currentBrightness = Math.max(30, Math.min(150, pct));
+      videoEl.style.filter = `brightness(${currentBrightness / 100})`;
+      if (brightSlider) brightSlider.value = currentBrightness;
+      const brightMenuSub = wrapper.querySelector('#custom-menu-active-brightness');
+      if (brightMenuSub) brightMenuSub.textContent = `%${currentBrightness}`;
+    };
+
+    if (brightSlider) {
+      brightSlider.oninput = (e) => {
+        e.stopPropagation();
+        setBrightness(parseInt(brightSlider.value, 10));
+      };
+    }
+    if (brightBtn) {
+      brightBtn.onclick = (e) => {
+        e.stopPropagation();
+        const next = currentBrightness === 100 ? 70 : 100;
+        setBrightness(next);
+        showToast(`Parlaklık: %${next}`, 'info');
+      };
+    }
 
     const showCenterAnimation = (iconName) => {
       if (!centerIndicator) return;
@@ -1773,7 +1843,7 @@ export async function openPlayerModal({
       };
     }
 
-    // 4. Fullscreen Control
+    // 4. Fullscreen & Video Gestures (Double click left: -10s, right: +10s, middle: fullscreen)
     const toggleFullscreen = () => {
       if (!document.fullscreenElement) {
         if (wrapper.requestFullscreen) wrapper.requestFullscreen();
@@ -1785,7 +1855,18 @@ export async function openPlayerModal({
     };
 
     if (fsBtn) fsBtn.onclick = (e) => { e.stopPropagation(); toggleFullscreen(); };
-    videoEl.ondblclick = (e) => { e.stopPropagation(); toggleFullscreen(); };
+    videoEl.ondblclick = (e) => {
+      e.stopPropagation();
+      const rect = videoEl.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      if (clickX < rect.width * 0.35) {
+        skipTime(-10);
+      } else if (clickX > rect.width * 0.65) {
+        skipTime(10);
+      } else {
+        toggleFullscreen();
+      }
+    };
 
     document.addEventListener('fullscreenchange', () => {
       const isFs = !!document.fullscreenElement;
@@ -1865,7 +1946,17 @@ export async function openPlayerModal({
     const updateMenuLabels = () => {
       const audioSub = wrapper.querySelector('#custom-menu-active-audio');
       if (audioSub) {
-        audioSub.textContent = currentCategory === 'dubbed' ? 'Türkçe Dublaj' : 'Orijinal / Altyazılı';
+        if (activeHlsInstance && activeHlsInstance.audioTracks && activeHlsInstance.audioTracks.length > 1) {
+          const act = activeHlsInstance.audioTracks[activeHlsInstance.audioTrack];
+          let label = act ? (act.name || act.lang || `Ses ${activeHlsInstance.audioTrack + 1}`) : 'Otomatik';
+          if (/tr|turk/i.test(label)) label = 'Türkçe Dublaj';
+          else if (/en|eng|orig/i.test(label)) label = 'Orijinal (İngilizce)';
+          audioSub.textContent = label;
+        } else if (videoEl._currentAudioTrack) {
+          audioSub.textContent = videoEl._currentAudioTrack === 'dubbed' ? 'Türkçe Dublaj' : 'Orijinal Ses';
+        } else {
+          audioSub.textContent = currentCategory === 'dubbed' ? 'Türkçe Dublaj' : 'Orijinal Ses';
+        }
       }
 
       const subLabelEl = wrapper.querySelector('#custom-menu-active-sub');
@@ -1888,9 +1979,14 @@ export async function openPlayerModal({
         const rate = videoEl.playbackRate || 1;
         speedLabelEl.textContent = rate === 1 ? 'Normal' : `${rate}x`;
       }
+
+      const brightLabelEl = wrapper.querySelector('#custom-menu-active-brightness');
+      if (brightLabelEl) {
+        brightLabelEl.textContent = `%${currentBrightness}`;
+      }
     };
 
-    // ITEM 1: SES / DİL CLICK (ABOVE ALTYAZILAR)
+    // ITEM 1: SES DİLİ CLICK (DIRECT IN-PLAYER AUDIO SWITCHING)
     const itemAudio = wrapper.querySelector('#custom-menu-item-audio');
     if (itemAudio) {
       itemAudio.onclick = (e) => {
@@ -1902,12 +1998,17 @@ export async function openPlayerModal({
     const renderAudioSubmenu = () => {
       let html = '';
 
-      // Check if HLS has multiple audio tracks
+      // Mode A: HLS Multi-Audio Track inside the active stream
       if (activeHlsInstance && activeHlsInstance.audioTracks && activeHlsInstance.audioTracks.length > 1) {
-        html += `<p style="color:#94a3b8;font-size:10.5px;font-weight:700;text-transform:uppercase;margin:2px 0 4px 6px;">HLS SES KANALLARI</p>`;
+        html += `<p style="color:#94a3b8;font-size:10.5px;font-weight:700;text-transform:uppercase;margin:2px 0 6px 6px;">VİDEO SES KANALLARI</p>`;
         activeHlsInstance.audioTracks.forEach((t, idx) => {
           const isAct = activeHlsInstance.audioTrack === idx;
-          const label = t.name || t.lang || `Ses ${idx + 1}`;
+          let label = t.name || t.lang || `Ses Kanalı ${idx + 1}`;
+          if (/tr|turk/i.test(label) || /tr|turk/i.test(t.lang || '')) {
+            label = '🇹🇷 Türkçe Dublaj';
+          } else if (/en|eng|orig/i.test(label) || /en|eng/i.test(t.lang || '')) {
+            label = '🇬🇧 Orijinal (İngilizce)';
+          }
           html += `
             <div class="custom-menu-opt-row ${isAct ? 'active' : ''}" data-hls-track="${idx}">
               <span>${label}</span>
@@ -1915,44 +2016,98 @@ export async function openPlayerModal({
             </div>
           `;
         });
+      } else if (videoEl._setAudioTrack) {
+        // Mode B: Dual-Audio Synchronized Stream
+        const cur = videoEl._currentAudioTrack || 'dubbed';
+        html += `<p style="color:#94a3b8;font-size:10.5px;font-weight:700;text-transform:uppercase;margin:2px 0 6px 6px;">SES DİLİ SEÇİMİ</p>`;
+        html += `
+          <div class="custom-menu-opt-row ${cur === 'dubbed' ? 'active' : ''}" data-dual-track="dubbed">
+            <span>🇹🇷 Türkçe Dublaj</span>
+            ${cur === 'dubbed' ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+          </div>
+          <div class="custom-menu-opt-row ${cur === 'original' ? 'active' : ''}" data-dual-track="original">
+            <span>🇬🇧 Orijinal (İngilizce) Ses</span>
+            ${cur === 'original' ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+          </div>
+        `;
+      } else {
+        // Mode C: Audio Language selector across audio tracks (seamless in-player switch preserving currentTime)
+        html += `<p style="color:#94a3b8;font-size:10.5px;font-weight:700;text-transform:uppercase;margin:2px 0 6px 6px;">SES DİLİ SEÇİMİ</p>`;
+        const isDub = currentCategory === 'dubbed';
+        html += `
+          <div class="custom-menu-opt-row ${isDub ? 'active' : ''}" data-audio-lang="dubbed">
+            <span>🇹🇷 Türkçe Dublaj</span>
+            ${isDub ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+          </div>
+          <div class="custom-menu-opt-row ${!isDub ? 'active' : ''}" data-audio-lang="original">
+            <span>🇬🇧 Orijinal (İngilizce) Ses</span>
+            ${!isDub ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+          </div>
+        `;
       }
 
-      html += `<p style="color:#94a3b8;font-size:10.5px;font-weight:700;text-transform:uppercase;margin:6px 0 4px 6px;">SES DİLİ SEÇİMİ</p>`;
-      html += `
-        <div class="custom-menu-opt-row ${currentCategory === 'dubbed' ? 'active' : ''}" data-cat="dubbed">
-          <span>🇹🇷 Türkçe Dublaj</span>
-          ${currentCategory === 'dubbed' ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
-        </div>
-        <div class="custom-menu-opt-row ${currentCategory === 'subtitled' ? 'active' : ''}" data-cat="subtitled">
-          <span>🇬🇧 Orijinal / Altyazılı</span>
-          ${currentCategory === 'subtitled' ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
-        </div>
-      `;
-
-      showSubView('Ses / Dil', html);
+      showSubView('Ses Dili', html);
 
       if (subviewList) {
+        // Switch HLS audio track directly
         subviewList.querySelectorAll('[data-hls-track]').forEach(el => {
           el.onclick = (ev) => {
             ev.stopPropagation();
             const trackIdx = parseInt(el.getAttribute('data-hls-track'), 10);
             if (activeHlsInstance) {
               activeHlsInstance.audioTrack = trackIdx;
-              showToast(`✓ Ses değiştirildi: ${activeHlsInstance.audioTracks[trackIdx]?.name || 'Seçildi'}`, 'success');
+              const track = activeHlsInstance.audioTracks[trackIdx];
+              const name = track?.name || track?.lang || `Ses ${trackIdx + 1}`;
+              showToast(`✓ Ses dili değiştirildi: ${name}`, 'success');
             }
             showMainMenu();
           };
         });
 
-        subviewList.querySelectorAll('[data-cat]').forEach(el => {
+        // Switch dual-audio track directly
+        subviewList.querySelectorAll('[data-dual-track]').forEach(el => {
           el.onclick = (ev) => {
             ev.stopPropagation();
-            const cat = el.getAttribute('data-cat');
-            menu.classList.add('hidden');
-            if (cat !== currentCategory) {
-              const tabBtn = document.getElementById(cat === 'dubbed' ? 'tab-dubbed' : 'tab-subtitled');
-              if (tabBtn) tabBtn.click();
+            const track = el.getAttribute('data-dual-track');
+            if (videoEl._setAudioTrack) {
+              videoEl._setAudioTrack(track);
             }
+            showMainMenu();
+          };
+        });
+
+        // Seamless audio language change across streams (preserves currentTime!)
+        subviewList.querySelectorAll('[data-audio-lang]').forEach(el => {
+          el.onclick = (ev) => {
+            ev.stopPropagation();
+            const targetLang = el.getAttribute('data-audio-lang');
+            const isCurrentlyDub = currentCategory === 'dubbed';
+            const isRequestingDub = targetLang === 'dubbed';
+
+            if (isCurrentlyDub === isRequestingDub) {
+              showToast(isRequestingDub ? '✓ Zaten Türkçe Dublaj sesi oynatılıyor.' : '✓ Zaten Orijinal ses oynatılıyor.', 'info');
+              showMainMenu();
+              return;
+            }
+
+            const targetCategory = isRequestingDub ? 'dubbed' : 'subtitled';
+            const targetServers = categorizedServers[targetCategory] || [];
+            if (targetServers.length === 0) {
+              showToast(isRequestingDub ? 'Bu içerik için Türkçe Dublaj sesi bulunamadı.' : 'Bu içerik için Orijinal ses kaynağı bulunamadı.', 'warning');
+              showMainMenu();
+              return;
+            }
+
+            // Save playback position
+            const curTime = videoEl.currentTime || 0;
+            currentCategory = targetCategory;
+            activeServers = targetServers;
+            currentServerIndex = 0;
+            initialTime = curTime; // Resume at exact same position!
+            menu.classList.add('hidden');
+            updateActiveSourceLabel();
+            updatePlayerContainer();
+            showToast(isRequestingDub ? '🇹🇷 Türkçe Dublaj sesine geçildi.' : '🇬🇧 Orijinal (İngilizce) sese geçildi.', 'success');
           };
         });
       }
@@ -2056,7 +2211,50 @@ export async function openPlayerModal({
       }
     };
 
-    // ITEM 4: PENCERE İÇİNDE PENCERE CLICK
+    // ITEM 4: PARLAKLIK CLICK
+    const itemBrightnessMenu = wrapper.querySelector('#custom-menu-item-brightness-menu');
+    if (itemBrightnessMenu) {
+      itemBrightnessMenu.onclick = (e) => {
+        e.stopPropagation();
+        renderBrightnessSubmenu();
+      };
+    }
+
+    const renderBrightnessSubmenu = () => {
+      const presets = [
+        { label: '%50 (Gece Modu)', val: 50 },
+        { label: '%75 (Kısık)', val: 75 },
+        { label: '%100 (Normal)', val: 100 },
+        { label: '%125 (Canlı)', val: 125 },
+        { label: '%150 (Maksimum)', val: 150 }
+      ];
+      let html = '';
+      presets.forEach(p => {
+        const isAct = currentBrightness === p.val;
+        html += `
+          <div class="custom-menu-opt-row ${isAct ? 'active' : ''}" data-brightness="${p.val}">
+            <span>${p.label}</span>
+            ${isAct ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+          </div>
+        `;
+      });
+
+      showSubView('Parlaklık', html);
+
+      if (subviewList) {
+        subviewList.querySelectorAll('[data-brightness]').forEach(el => {
+          el.onclick = (ev) => {
+            ev.stopPropagation();
+            const val = parseInt(el.getAttribute('data-brightness'), 10);
+            setBrightness(val);
+            showToast(`Parlaklık: %${val}`, 'info');
+            showMainMenu();
+          };
+        });
+      }
+    };
+
+    // ITEM 5: PENCERE İÇİNDE PENCERE CLICK
     const itemPip = wrapper.querySelector('#custom-menu-item-pip');
     if (itemPip) {
       itemPip.onclick = async (e) => {
@@ -2200,8 +2398,13 @@ export async function openPlayerModal({
           const hls = new Hls({
             enableWorker: true,
             lowLatencyMode: true,
-            maxBufferLength: 30,
-            maxMaxBufferLength: 60
+            maxBufferLength: 10,
+            maxMaxBufferLength: 20,
+            startPosition: -1,
+            backBufferLength: 15,
+            highBufferWatchdogPeriod: 1,
+            nudgeOffset: 0.1,
+            nudgeMaxRetry: 5
           });
           activeHlsInstance = hls;
 
@@ -2222,7 +2425,23 @@ export async function openPlayerModal({
           hls.attachMedia(videoEl);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             applySafeSeek();
-            videoEl.play().catch(() => {});
+            const playPromise = videoEl.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(() => {
+                videoEl.muted = true;
+                videoEl.play().catch(() => {});
+              });
+            }
+          });
+          hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
+            const audioSub = document.querySelector('#custom-menu-active-audio');
+            if (audioSub && hls.audioTracks && hls.audioTracks.length > 1) {
+              const act = hls.audioTracks[hls.audioTrack];
+              let label = act ? (act.name || act.lang || `Ses ${hls.audioTrack + 1}`) : 'Otomatik';
+              if (/tr|turk/i.test(label)) label = 'Türkçe Dublaj';
+              else if (/en|eng|orig/i.test(label)) label = 'Orijinal (İngilizce)';
+              audioSub.textContent = label;
+            }
           });
           videoEl.addEventListener('loadedmetadata', applySafeSeek, { once: true });
 
@@ -2317,6 +2536,7 @@ export async function openPlayerModal({
 
           const setAudioTrack = (track, silent = false) => {
             currentAudioTrack = track;
+            videoEl._currentAudioTrack = track;
             if (track === 'dubbed') {
               if (btnDubbed) btnDubbed.classList.add('active');
               if (btnOriginal) btnOriginal.classList.remove('active');
@@ -2352,6 +2572,9 @@ export async function openPlayerModal({
               if (!silent) showToast('🇬🇧 Orijinal ses aktif edildi.', 'info');
             }
           };
+
+          videoEl._setAudioTrack = setAudioTrack;
+          videoEl._currentAudioTrack = currentAudioTrack;
 
           if (btnOriginal) {
             btnOriginal.onclick = () => setAudioTrack('original');
