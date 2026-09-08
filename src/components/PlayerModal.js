@@ -270,6 +270,9 @@ export async function openPlayerModal({
     if (window.lucide) window.lucide.createIcons();
   }
 
+  // Alias to prevent any ReferenceError
+  const renderSourcesPopoverContent = renderSourcesPopoverList;
+
   function triggerAutoFailover(reason = 'Bağlantı yanıt vermedi') {
     // Zaman aşımı (timeout) kaynaklı otomatik kaynak atlamaları devre dışı
     if (reason && /zaman aşımı|timeout/i.test(reason)) {
@@ -1762,7 +1765,7 @@ export async function openPlayerModal({
 
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
     if (countdownTimer) clearInterval(countdownTimer);
-    countdownSeconds = 12;
+    countdownSeconds = 4;
     isSearching = true;
     hasPlayerStartedPlaying = false;
     categorizedServers = { dubbed: [], subtitled: [] };
@@ -1787,13 +1790,13 @@ export async function openPlayerModal({
       countdownSeconds--;
       updateCountdownDisplay();
 
-      // When full countdown finishes and all scrapers have run:
+      // When countdown finishes:
       if (countdownSeconds <= 0) {
         clearInterval(countdownTimer);
         countdownTimer = null;
         isSearching = false;
 
-        // If user is on Dubbed and NO dubbed source was found, then redirect to Subtitled
+        // If user is on Dubbed and NO dubbed source was found, then auto-switch to Subtitled and launch
         if (currentCategory === 'dubbed' && (!categorizedServers.dubbed || categorizedServers.dubbed.length === 0)) {
           if (categorizedServers.subtitled && categorizedServers.subtitled.length > 0) {
             showToast('💬 Türkçe Dublaj bulunamadı. Türkçe Altyazılı sunuculara yönlendirildiniz.', 'info');
@@ -1808,11 +1811,23 @@ export async function openPlayerModal({
             currentServerIndex = 0;
             hasPlayerStartedPlaying = true;
             updateServerPillsEvents();
+            updateActiveSourceLabel();
+            renderSourcesPopoverList();
             updatePlayerContainer();
           } else {
             updateServerPillsEvents();
+            updateActiveSourceLabel();
+            renderSourcesPopoverList();
             updatePlayerContainer();
           }
+        } else if (!hasPlayerStartedPlaying && categorizedServers[currentCategory]?.length > 0) {
+          activeServers = categorizedServers[currentCategory];
+          currentServerIndex = 0;
+          hasPlayerStartedPlaying = true;
+          updateServerPillsEvents();
+          updateActiveSourceLabel();
+          renderSourcesPopoverList();
+          updatePlayerContainer();
         } else {
           updateServerPillsEvents();
           updatePlayerContainer();
@@ -1849,7 +1864,7 @@ export async function openPlayerModal({
           currentServerIndex = 0;
           updateServerPillsEvents();
           updateActiveSourceLabel();
-          renderSourcesPopoverContent();
+          renderSourcesPopoverList();
           updatePlayerContainer();
           return;
         }
@@ -1866,7 +1881,7 @@ export async function openPlayerModal({
           currentServerIndex = 0;
           updateServerPillsEvents();
           updateActiveSourceLabel();
-          renderSourcesPopoverContent();
+          renderSourcesPopoverList();
           updatePlayerContainer();
           return;
         }
@@ -1875,7 +1890,7 @@ export async function openPlayerModal({
         activeServers = categorizedServers[currentCategory] || [];
         updateServerPillsEvents();
         updateActiveSourceLabel();
-        renderSourcesPopoverContent();
+        renderSourcesPopoverList();
         syncSubtitlesToActivePlayer();
 
         if (isComplete && activeServers.length === 0) {
@@ -1894,7 +1909,7 @@ export async function openPlayerModal({
           isSearching = false;
           updateServerPillsEvents();
           updateActiveSourceLabel();
-          renderSourcesPopoverContent();
+          renderSourcesPopoverList();
           updatePlayerContainer();
         }
       }

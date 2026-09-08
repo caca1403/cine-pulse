@@ -208,22 +208,99 @@ export async function fetchYtsOfficialSources({
       });
     }
 
-    // Sort: YTS first, then by quality (1080p, 4K, 720p), then seeds
+    // Official Web Embed Engines from en.yts-official.com (VidSrc Official & VidSrc.to)
+    if (tmdbId) {
+      const vidsrcMovUrl = isMovie 
+        ? `https://vidsrc.mov/embed/movie/${tmdbId}` 
+        : `https://vidsrc.mov/embed/tv/${tmdbId}/${season}/${episode}`;
+
+      const vidsrcToUrl = isMovie 
+        ? `https://vidsrc.to/embed/movie/${tmdbId}` 
+        : `https://vidsrc.to/embed/tv/${tmdbId}/${season}/${episode}`;
+
+      const videasyUrl = isMovie 
+        ? `https://player.videasy.net/movie/${tmdbId}` 
+        : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`;
+
+      streams.unshift(
+        {
+          id: `cp_global_yts_vidsrc_official`,
+          name: '⚡ YTS (VidSrc Official 1080p)',
+          displayName: '⚡ YTS (VidSrc Official 1080p)',
+          badge: '⚡ YTS VidSrc',
+          source: 'YTS Official (VidSrc)',
+          url: vidsrcMovUrl,
+          streamUrl: vidsrcMovUrl,
+          embedUrl: vidsrcMovUrl,
+          quality: '1080p',
+          isHls: false,
+          isDirectVideo: false,
+          isYts: true,
+          isMp4: false,
+          seeds: 9999,
+          subtitles: defaultSubs,
+          priority: 0,
+          getUrl: () => vidsrcMovUrl
+        },
+        {
+          id: `cp_global_yts_vidsrcto`,
+          name: '⚡ YTS (VidSrc.to Pro 1080p)',
+          displayName: '⚡ YTS (VidSrc.to Pro 1080p)',
+          badge: '⚡ YTS VidSrc.to',
+          source: 'YTS (VidSrc.to)',
+          url: vidsrcToUrl,
+          streamUrl: vidsrcToUrl,
+          embedUrl: vidsrcToUrl,
+          quality: '1080p',
+          isHls: false,
+          isDirectVideo: false,
+          isYts: true,
+          isMp4: false,
+          seeds: 9998,
+          subtitles: defaultSubs,
+          priority: 0,
+          getUrl: () => vidsrcToUrl
+        },
+        {
+          id: `cp_global_yts_videasy`,
+          name: '⚡ YTS (Videasy FastStream)',
+          displayName: '⚡ YTS (Videasy FastStream)',
+          badge: '⚡ YTS Videasy',
+          source: 'YTS (Videasy)',
+          url: videasyUrl,
+          streamUrl: videasyUrl,
+          embedUrl: videasyUrl,
+          quality: '1080p',
+          isHls: false,
+          isDirectVideo: false,
+          isYts: true,
+          isMp4: false,
+          seeds: 9997,
+          subtitles: defaultSubs,
+          priority: 0,
+          getUrl: () => videasyUrl
+        }
+      );
+    }
+
+    // Sort: YTS embeds & top streams first, then by seeds
     streams.sort((a, b) => {
-      if (a.isYts && !b.isYts) return -1;
-      if (!a.isYts && b.isYts) return 1;
+      const aPriority = typeof a.priority === 'number' ? a.priority : 1;
+      const bPriority = typeof b.priority === 'number' ? b.priority : 1;
+      if (aPriority !== bPriority) return aPriority - bPriority;
       return (b.seeds || 0) - (a.seeds || 0);
     });
 
-    // Deduplicate by hash and keep up to 8 top distinct releases
+    // Deduplicate by id / infoHash and keep top distinct releases
     const unique = [];
-    const seenHashes = new Set();
+    const seenKeys = new Set();
     for (const s of streams) {
-      if (!seenHashes.has(s.infoHash)) {
-        seenHashes.add(s.infoHash);
+      const key = s.infoHash || s.id;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
         unique.push(s);
       }
-      if (unique.length >= 8) break;
+      if (unique.length >= 10) break;
     }
 
     return unique;
