@@ -165,9 +165,9 @@ export async function fetchYtsOfficialSources({
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const magnetUrl = `magnet:?xt=urn:btih:${hit.hash}&dn=${encodeURIComponent(hit.title || query)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz`;
 
-      // Official YTS web player engine (en.yts-official.com uses vidsrc.mov/embed)
+      // Official YTS web player engine (clean direct embed)
       const ytsWebEmbedUrl = tmdbId 
-        ? (isMovie ? `https://vidsrc.mov/embed/movie/${tmdbId}` : `https://vidsrc.mov/embed/tv/${tmdbId}/${season}/${episode}`)
+        ? (isMovie ? `https://vsembed.ru/embed/movie/${tmdbId}` : `https://vsembed.ru/embed/tv/${tmdbId}/${season}-${episode}`)
         : null;
 
       const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : magnetUrl;

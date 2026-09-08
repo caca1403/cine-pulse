@@ -34,7 +34,7 @@ import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
 
 // Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -265,6 +265,9 @@ function formatStreamItem(s, category, fallbackName) {
 function isValidStream(s) {
   const urlStr = (s.url || s.streamUrl || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
   if (!urlStr || urlStr.length < 10) return false;
+
+  // Strictly block domains that reject iframe embedding (X-Frame-Options: SAMEORIGIN)
+  if (urlStr.includes('pichive')) return false;
 
   const id = (s.id || '').toLowerCase();
   // Always allow torrents, P2P, CinePulse autonomous sources, Dizipal direct streams and HLS proxy streams

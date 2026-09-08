@@ -141,7 +141,7 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
 
       const magnetUrl = `magnet:?xt=urn:btih:${stream.infoHash}&dn=${encodeURIComponent(fullTitle)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz`;
       const ytsWebEmbedUrl = tmdbId 
-        ? (isMovie ? `https://vidsrc.mov/embed/movie/${tmdbId}` : `https://vidsrc.mov/embed/tv/${tmdbId}/${season}/${episode}`)
+        ? (isMovie ? `https://vsembed.ru/embed/movie/${tmdbId}` : `https://vsembed.ru/embed/tv/${tmdbId}/${season}-${episode}`)
         : null;
       // streamUrl is always unique (mediaserver path or magnetUrl) so dedup works correctly.
       // embedUrl is stored separately for PlayerModal iframe fallback.
