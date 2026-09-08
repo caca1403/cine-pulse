@@ -76,10 +76,21 @@ export default async function handler(req, res) {
     forwardHeaders['user-agent'] = 'okhttp/4.12.0';
 
     try {
+      // Read raw body as stream buffer (req.body is undefined in Vercel serverless)
+      let rawBody = undefined;
+      if (req.method === 'POST' || req.method === 'PUT') {
+        rawBody = await new Promise((resolve, reject) => {
+          const chunks = [];
+          req.on('data', chunk => chunks.push(chunk));
+          req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+          req.on('error', reject);
+        });
+      }
+
       const upstreamRes = await fetch(upstreamUrl, {
         method: req.method,
         headers: forwardHeaders,
-        body: (req.method === 'POST' || req.method === 'PUT') ? (typeof req.body === 'string' ? req.body : JSON.stringify(req.body)) : undefined
+        body: rawBody || undefined
       });
       const data = await upstreamRes.text();
       res.setHeader('Content-Type', upstreamRes.headers.get('content-type') || 'application/json');
