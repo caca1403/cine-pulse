@@ -155,6 +155,10 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
     if (url.includes('vidmoly')) return 'Diziyo VidMoly 1080p';
     return s.displayName || s.name || 'Diziyo 1080p';
   }
+  if (id.startsWith('dyu_') || (s.source && s.source.toLowerCase().includes('diziyou')) || raw.includes('diziyou') || url.includes('diziyou')) {
+    if (s.isDirectVideo || s.isHls || url.includes('.m3u8')) return 'Diziyou 1080p';
+    return s.displayName || s.name || 'Diziyou VIP';
+  }
   if (id.startsWith('dzr_') || (s.source && s.source.toLowerCase().includes('diziroll')) || raw.includes('diziroll')) {
     return s.displayName || s.name || 'Diziroll VIP';
   }
@@ -174,7 +178,6 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   if (s.isDirectVideo || s.isHls) {
     if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 'AX Tau Direct 1080p';
     if (id.startsWith('snx') || raw.includes('sinewix')) return 'SWX Direct 1080p';
-    if (url.includes('storage.diziyou') || id.startsWith('dzy')) return 'HLS FastCDN';
   }
 
   if (url.includes('rapidrame') || url.includes('rapid') || raw.includes('rapid')) return 'Rapid FastStream 1080p';
@@ -346,10 +349,13 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('dzb_') || raw.includes('dizibal')) {
     return 0;
   }
-  if (id.startsWith('dzy_') || raw.includes('diziyo')) {
+  if (id.startsWith('dzy_') || raw.includes('diziyo') || (s.source && s.source.toLowerCase().includes('diziyo'))) {
     return 0;
   }
-  if ((id.startsWith('fex_') || raw.includes('filmekseni')) && (s.isDirectVideo || s.isHls || url.includes('.m3u8'))) {
+  if (id.startsWith('dyu_') || raw.includes('diziyou') || (s.source && s.source.toLowerCase().includes('diziyou'))) {
+    return 0;
+  }
+  if (id.startsWith('fex_') || raw.includes('filmekseni') || (s.source && s.source.toLowerCase().includes('filmekseni'))) {
     return 0;
   }
 
@@ -640,10 +646,15 @@ export async function getStreamingServersProgressive({
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
 
-    // 6b. Diziyou (TV Series - HLS FastCDN Subtitled)
+    // 6b. Diziyou (TV Series - Direct 1080p HLS & Web Player)
     (!isMovie && !isAnime)
       ? fetchDiziyouSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+          .then(res => {
+            if (Array.isArray(res) && res.length > 0) {
+              addStreams(res, 'subtitled');
+              addStreams(res, 'dubbed');
+            }
+          }).catch(() => [])
       : Promise.resolve([]),
 
     // 4. Sinewix (Direct 1080p Dubbed)
@@ -656,12 +667,21 @@ export async function getStreamingServersProgressive({
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : Promise.resolve([]),
 
-    // 7. FilmEkseni (Movies & Series - Dubbed & Subtitled)
+    // 7. FilmEkseni (Movies & Series - 1080p VIP & EksenLoad)
     fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+      .then(res => {
+        if (Array.isArray(res) && res.length > 0) {
+          addStreams(res, 'dubbed');
+          addStreams(res, 'subtitled');
+        }
+      }).catch(() => []),
 
     fetchFilmEkseniSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+      .then(res => {
+        if (Array.isArray(res) && res.length > 0) {
+          addStreams(res, 'subtitled');
+        }
+      }).catch(() => []),
 
     isMovie
       ? fetchAyfilmSources({ type, titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })

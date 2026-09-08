@@ -156,6 +156,16 @@ export default defineConfig({
         },
         rewrite: (path) => path.replace(/^\/api\/dzy/, '')
       },
+      '/api/dzyo': {
+        target: 'https://www.diziyo.so',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://www.diziyo.so/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/dzyo/, '')
+      },
       '/api/fex': {
         target: 'https://filmekseni.vip',
         changeOrigin: true,

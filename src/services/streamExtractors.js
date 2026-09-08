@@ -191,18 +191,38 @@ export async function extractAlphaStream(embedUrl) {
  * Extracts pure master.m3u8 from FilmEkseni Eksenload player (eksenload.top / vidload.top)
  */
 export async function extractEksenloadStream(playerUrl) {
-  if (!playerUrl || !playerUrl.includes('eksenload')) return null;
+  if (!playerUrl || (!playerUrl.includes('eksenload') && !playerUrl.includes('vidload'))) return null;
   try {
     const res = await fetchWithProxy(playerUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Referer': 'https://filmekseni.vip/'
       },
+      redirect: 'follow',
       timeout: 4500
     });
     if (!res) return null;
     const html = await res.text();
-    const m3u8Match = html.match(/https?:\/\/[^"'\s<>]+\.m3u8[^"'\s<>]*/i);
+    let m3u8Match = html.match(/https?:\/\/[^"'\s<>]+\.m3u8[^"'\s<>]*/i);
+
+    // If redirected to vidload or contains putperest link
+    if (!m3u8Match) {
+      const vidloadMatch = html.match(/https?:\/\/[^"'\s<>]*vidload\.top\/[^"'\s<>]*/i);
+      if (vidloadMatch) {
+        const subRes = await fetchWithProxy(vidloadMatch[0], {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://eksenload.top/'
+          },
+          timeout: 4000
+        });
+        if (subRes) {
+          const subHtml = await subRes.text();
+          m3u8Match = subHtml.match(/https?:\/\/[^"'\s<>]+\.m3u8[^"'\s<>]*/i);
+        }
+      }
+    }
+
     if (m3u8Match) {
       const rawM3u8 = m3u8Match[0];
       const isBrowser = typeof window !== 'undefined';

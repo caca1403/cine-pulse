@@ -11,27 +11,22 @@ const DIZIYO_BASE = 'https://www.diziyo.so';
 
 async function fetchDiziyo(url, options = {}) {
   const isBrowser = typeof window !== 'undefined';
-  const cleanUrl = url.startsWith('http') ? url : `${DIZIYO_BASE}${url.startsWith('/') ? url : `/${url}`}`;
+  let pathOnly = url;
+  if (pathOnly.startsWith('http')) {
+    try {
+      const u = new URL(pathOnly);
+      pathOnly = u.pathname + u.search;
+    } catch (_) {}
+  }
+  pathOnly = pathOnly.replace(/^\/api\/dzyo/, '');
+  if (!pathOnly.startsWith('/')) pathOnly = `/${pathOnly}`;
 
-  // 1. Direct fetch (Node / Serverless)
-  try {
-    const res = await fetch(cleanUrl, {
-      ...options,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        ...(options.headers || {})
-      },
-      signal: AbortSignal.timeout(options.timeout || 4000)
-    }).catch(() => null);
-    if (res && res.ok) return res;
-  } catch (_) {}
+  const cleanUrl = `${DIZIYO_BASE}${pathOnly}`;
 
-  // 2. Vercel proxy fallback
+  // 1. In browser, try /api/dzyo proxy first (bypasses CORS)
   if (isBrowser) {
     try {
-      const u = new URL(cleanUrl);
-      const proxyUrl = `/api/dzyo${u.pathname}${u.search}`;
+      const proxyUrl = `/api/dzyo${pathOnly}`;
       const res = await fetch(proxyUrl, {
         ...options,
         signal: AbortSignal.timeout(options.timeout || 4000)
@@ -40,7 +35,34 @@ async function fetchDiziyo(url, options = {}) {
     } catch (_) {}
   }
 
-  // 3. Cloudflare Worker fallback
+  // 2. Direct fetch (for Node / Serverless)
+  try {
+    const res = await fetch(cleanUrl, {
+      ...options,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Referer': 'https://www.diziyo.so/',
+        ...(options.headers || {})
+      },
+      signal: AbortSignal.timeout(options.timeout || 4000)
+    }).catch(() => null);
+    if (res && res.ok) return res;
+  } catch (_) {}
+
+  // 3. Local proxy fallback
+  if (isBrowser) {
+    try {
+      const localProxyUrl = `/api/proxy?url=${encodeURIComponent(cleanUrl)}&ref=${encodeURIComponent('https://www.diziyo.so/')}`;
+      const res = await fetch(localProxyUrl, {
+        ...options,
+        signal: AbortSignal.timeout(options.timeout || 4000)
+      }).catch(() => null);
+      if (res && res.ok) return res;
+    } catch (_) {}
+  }
+
+  // 4. Cloudflare Worker fallback
   try {
     const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(cleanUrl)}`;
     const res = await fetch(workerUrl, {
@@ -262,39 +284,47 @@ export async function fetchDiziyoEpisodeSources({ titles = [], seriesTitle, orig
       selectedPlayer = playerMatches[0][1];
     }
 
-    // Resolve embed
-    const embedUrl = await resolveDiziyoPlayerEmbed(selectedPlayer, targetEpUrl);
-    if (embedUrl) {
-      if (embedUrl.includes('vidmoly')) {
-        const directStream = await extractVidmolyStream(embedUrl).catch(() => null);
+    // Resolve embed or direct VidMoly
+    let directHlsStream = null;
+    let resolvedEmbedUrl = null;
+    try {
+      resolvedEmbedUrl = await resolveDiziyoPlayerEmbed(selectedPlayer, targetEpUrl);
+      if (resolvedEmbedUrl && resolvedEmbedUrl.includes('vidmoly')) {
+        const directStream = await extractVidmolyStream(resolvedEmbedUrl).catch(() => null);
         if (directStream && directStream.streamUrl) {
-          sources.push({
-            id: `dzy_vidmoly_s${sNum}e${epNum}`,
-            name: isDub ? 'Diziyo VidMoly 1080p (TR Dublaj)' : 'Diziyo VidMoly 1080p (TR Altyazı)',
-            displayName: 'Diziyo VidMoly 1080p',
-            streamUrl: directStream.streamUrl,
-            url: directStream.streamUrl,
-            isHls: true,
-            isDirectVideo: true,
-            source: 'Diziyo',
-            badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı'
-          });
-          return sources;
+          directHlsStream = directStream.streamUrl;
         }
       }
+    } catch (_) {}
 
+    if (directHlsStream) {
       sources.push({
-        id: `dzy_embed_s${sNum}e${epNum}`,
-        name: isDub ? 'Diziyo Player (TR Dublaj)' : 'Diziyo Player (TR Altyazı)',
-        displayName: 'Diziyo Player',
-        streamUrl: embedUrl,
-        url: embedUrl,
-        isHls: false,
-        isDirectVideo: false,
+        id: `dzy_vidmoly_s${sNum}e${epNum}_${isDub ? 'dub' : 'sub'}`,
+        name: isDub ? 'Diziyo 1080p VIP (TR Dublaj)' : 'Diziyo 1080p VIP (TR Altyazı)',
+        displayName: 'Diziyo 1080p VIP',
+        streamUrl: directHlsStream,
+        url: directHlsStream,
+        isHls: true,
+        isDirectVideo: true,
         source: 'Diziyo',
-        badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı'
+        badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı',
+        getUrl: () => directHlsStream
       });
     }
+
+    const fallbackUrl = resolvedEmbedUrl || selectedPlayer;
+    sources.push({
+      id: `dzy_player_s${sNum}e${epNum}_${isDub ? 'dub' : 'sub'}`,
+      name: isDub ? 'Diziyo VIP (TR Dublaj)' : 'Diziyo VIP (TR Altyazı)',
+      displayName: 'Diziyo VIP',
+      streamUrl: fallbackUrl,
+      url: fallbackUrl,
+      isHls: false,
+      isDirectVideo: false,
+      source: 'Diziyo',
+      badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı',
+      getUrl: () => fallbackUrl
+    });
   } catch (_) {}
 
   return sources;
@@ -365,38 +395,46 @@ export async function fetchDiziyoMovieSources({ titles = [], title, originalTitl
 
     if (!selectedPlayer) selectedPlayer = playerMatches[0][1];
 
-    const embedUrl = await resolveDiziyoPlayerEmbed(selectedPlayer, targetMovieUrl);
-    if (embedUrl) {
-      if (embedUrl.includes('vidmoly')) {
-        const directStream = await extractVidmolyStream(embedUrl).catch(() => null);
+    let directHlsStream = null;
+    let resolvedEmbedUrl = null;
+    try {
+      resolvedEmbedUrl = await resolveDiziyoPlayerEmbed(selectedPlayer, targetMovieUrl);
+      if (resolvedEmbedUrl && resolvedEmbedUrl.includes('vidmoly')) {
+        const directStream = await extractVidmolyStream(resolvedEmbedUrl).catch(() => null);
         if (directStream && directStream.streamUrl) {
-          sources.push({
-            id: 'dzy_vidmoly_movie',
-            name: isDub ? 'Diziyo VidMoly 1080p (TR Dublaj)' : 'Diziyo VidMoly 1080p (TR Altyazı)',
-            displayName: 'Diziyo VidMoly 1080p',
-            streamUrl: directStream.streamUrl,
-            url: directStream.streamUrl,
-            isHls: true,
-            isDirectVideo: true,
-            source: 'Diziyo',
-            badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı'
-          });
-          return sources;
+          directHlsStream = directStream.streamUrl;
         }
       }
+    } catch (_) {}
 
+    if (directHlsStream) {
       sources.push({
-        id: 'dzy_embed_movie',
-        name: isDub ? 'Diziyo Player (TR Dublaj)' : 'Diziyo Player (TR Altyazı)',
-        displayName: 'Diziyo Player',
-        streamUrl: embedUrl,
-        url: embedUrl,
-        isHls: false,
-        isDirectVideo: false,
+        id: `dzy_vidmoly_movie_${isDub ? 'dub' : 'sub'}`,
+        name: isDub ? 'Diziyo 1080p VIP (TR Dublaj)' : 'Diziyo 1080p VIP (TR Altyazı)',
+        displayName: 'Diziyo 1080p VIP',
+        streamUrl: directHlsStream,
+        url: directHlsStream,
+        isHls: true,
+        isDirectVideo: true,
         source: 'Diziyo',
-        badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı'
+        badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı',
+        getUrl: () => directHlsStream
       });
     }
+
+    const fallbackUrl = resolvedEmbedUrl || selectedPlayer;
+    sources.push({
+      id: `dzy_player_movie_${isDub ? 'dub' : 'sub'}`,
+      name: isDub ? 'Diziyo VIP (TR Dublaj)' : 'Diziyo VIP (TR Altyazı)',
+      displayName: 'Diziyo VIP',
+      streamUrl: fallbackUrl,
+      url: fallbackUrl,
+      isHls: false,
+      isDirectVideo: false,
+      source: 'Diziyo',
+      badge: isDub ? '⚡ Diziyo Dublaj' : '💬 Diziyo Altyazı',
+      getUrl: () => fallbackUrl
+    });
   } catch (_) {}
 
   return sources;
