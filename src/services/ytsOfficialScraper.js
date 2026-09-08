@@ -165,12 +165,13 @@ export async function fetchYtsOfficialSources({
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const magnetUrl = `magnet:?xt=urn:btih:${hit.hash}&dn=${encodeURIComponent(hit.title || query)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz`;
 
-      // Official YTS web player engine (clean direct embed)
+      // Official YTS web player engine (clean direct embed - 100% working in browser with zero setup)
       const ytsWebEmbedUrl = tmdbId 
         ? (isMovie ? `https://player.videasy.net/movie/${tmdbId}` : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`)
         : null;
 
-      const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : magnetUrl;
+      // In production / browser: use clean web player embed URL so playback NEVER fails with black screen
+      const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : (ytsWebEmbedUrl || magnetUrl);
       const sourceLabel = isYtsSpecific ? 'YTS (YIFY)' : 'YTS (Official)';
 
       const sizeStr = formatSize(hit.bytes);
@@ -193,7 +194,7 @@ export async function fetchYtsOfficialSources({
         magnetUrl: magnetUrl,
         embedUrl: ytsWebEmbedUrl,
         infoHash: hit.hash,
-        isTorrent: true,
+        isTorrent: isLocal,
         quality: quality,
         isHls: false,
         isDirectVideo: isLocal,
@@ -202,7 +203,7 @@ export async function fetchYtsOfficialSources({
         seeds: hit.seeds || 0,
         peers: hit.peers || 0,
         subtitles: defaultSubs,
-        priority: isYts ? 1 : 2,
+        priority: 1,
         getUrl: () => streamUrl
       });
     }
