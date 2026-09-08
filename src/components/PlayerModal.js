@@ -516,9 +516,25 @@ export async function openPlayerModal({
                     : `https://player.videasy.net/tv/${tmdbId}/${currentSeason}/${currentEpisode}`)
                 : ''));
 
+      const subDownloadUrl = `/api/subtitles?imdbId=${currentImdbId || ''}${isSeries ? `&season=${currentSeason}&episode=${currentEpisode}` : ''}`;
+
       return `
-        <div class="direct-video-wrapper torrent-video-wrapper">
-          <div class="torrent-webtor-box" style="position:relative;width:100%;height:100%;overflow:hidden">
+        <div class="direct-video-wrapper torrent-video-wrapper" style="display:flex;flex-direction:column;width:100%;height:100%;">
+          <div class="torrent-sub-tip-bar" style="background:linear-gradient(90deg, #111827, #1f2937);border-bottom:1px solid rgba(255,255,255,0.12);padding:7px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:#e5e7eb;z-index:10;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);padding:2px 7px;border-radius:4px;font-weight:700;">⚡ YTS / Torrent</span>
+              <span>Altyazı için player içindeki <b>CC</b> simgesini kullanabilir veya harici oynatıcıda izleyebilirsiniz.</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button id="btn-switch-vip-direct" class="btn-primary" style="padding:3px 10px;font-size:11px;border-radius:4px;background:#e11d48;display:inline-flex;align-items:center;gap:4px;" title="Reklamsız VIP Kaynağa Geç">
+                <span>⚡ Reklamsız Kaynak</span>
+              </button>
+              <a href="${subDownloadUrl}" target="_blank" download class="btn-secondary" style="padding:3px 8px;font-size:11px;border-radius:4px;text-decoration:none;color:#fff;" title="Türkçe Altyazıyı İndir">📥 TR Altyazı</a>
+              ${magnetLink ? `<a href="vlc://${magnetLink}" class="btn-secondary" style="padding:3px 8px;font-size:11px;border-radius:4px;text-decoration:none;color:#fff;" title="VLC ile Aç">VLC</a>` : ''}
+              ${magnetLink ? `<a href="${magnetLink}" class="btn-secondary" style="padding:3px 8px;font-size:11px;border-radius:4px;text-decoration:none;color:#fff;" title="Magnet Linki">🧲 Magnet</a>` : ''}
+            </div>
+          </div>
+          <div class="torrent-webtor-box" style="position:relative;width:100%;flex:1;overflow:hidden">
             <iframe 
               id="video-iframe" 
               src="${finalEmbedUrl}" 
@@ -1405,6 +1421,20 @@ export async function openPlayerModal({
     const popoutBtn = document.getElementById('player-popout-btn');
     if (popoutBtn) {
       popoutBtn.href = getStreamSafeUrl(srv) || '#';
+    }
+
+    const switchVipDirectBtn = document.getElementById('btn-switch-vip-direct');
+    if (switchVipDirectBtn) {
+      switchVipDirectBtn.addEventListener('click', () => {
+        // Find first non-torrent direct stream
+        const directIdx = activeServers.findIndex(s => s && (s.isDirectVideo || s.isHls || (s.streamUrl && !s.streamUrl.startsWith('magnet:')) && !s.isTorrent));
+        if (directIdx !== -1 && directIdx !== currentServerIndex) {
+          switchServer(directIdx);
+        } else {
+          const tabDub = document.getElementById('tab-dubbed');
+          if (tabDub) tabDub.click();
+        }
+      });
     }
 
 
