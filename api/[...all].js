@@ -86,6 +86,10 @@ export default async function handler(req, res) {
                 const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
                 fullU = `${baseOrigin}${dir}${u}`;
               }
+              // Dizisol audio variants/segments already support direct CORS without Referer
+              if (fullU.includes('dizisol.com') && (fullU.includes('/m3u8') || fullU.includes('/ts') || fullU.includes('.jpg'))) {
+                return `URI="${fullU}"`;
+              }
               return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(ref)}"`;
             });
           }
@@ -102,6 +106,11 @@ export default async function handler(req, res) {
             const lastSlash = urlPath.lastIndexOf('/');
             const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
             fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
+          }
+          // Dizisol variants (/m3u8) and segments (/ts, .ts, .jpg) have direct CORS (*) and no Referer requirement.
+          // Returning them direct allows instant playback at full CDN speed without choking Vercel serverless functions.
+          if (fullLineUrl.includes('dizisol.com') && (fullLineUrl.includes('/ts') || fullLineUrl.includes('/m3u8') || fullLineUrl.includes('.ts') || fullLineUrl.includes('.jpg') || fullLineUrl.includes('.png'))) {
+            return fullLineUrl;
           }
           return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(ref)}`;
         }).join('\n');

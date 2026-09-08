@@ -4134,129 +4134,7 @@ img {
   padding-left: 8px;
 }
 
-/* In-Player Subtitle CC Dropdown Menu (Internal, like volume control) */
-.player-sub-menu-container {
-  position: absolute;
-  bottom: 56px;
-  right: 18px;
-  z-index: 45;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
 
-.btn-player-sub-trigger {
-  background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #94a3b8;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 6px 14px;
-  border-radius: 9999px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-  user-select: none;
-}
-
-.btn-player-sub-trigger:hover,
-.btn-player-sub-trigger.active {
-  background: rgba(30, 41, 59, 0.95);
-  color: #60a5fa;
-  border-color: rgba(96, 165, 250, 0.5);
-}
-
-.btn-player-sub-trigger.active {
-  box-shadow: 0 0 14px rgba(59, 130, 246, 0.4);
-}
-
-.player-sub-popover {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
-  width: 230px;
-  background: rgba(15, 23, 42, 0.96);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  border-radius: 12px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 20px rgba(59, 130, 246, 0.2);
-  padding: 8px;
-  animation: fadeIn 0.2s ease;
-  z-index: 50;
-}
-
-.player-sub-popover-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 6px 8px 8px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 4px;
-}
-
-.player-sub-list-scroll {
-  max-height: 220px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.player-sub-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: transparent;
-  border: none;
-  color: #cbd5e1;
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 7px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: left;
-}
-
-.player-sub-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-}
-
-.player-sub-item.active {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
-  font-weight: 700;
-}
-
-.sub-item-flag {
-  font-size: 0.95rem;
-  flex-shrink: 0;
-}
-
-.sub-item-title {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sub-check-icon {
-  color: #60a5fa;
-  flex-shrink: 0;
-}
 
 /* Webtor In-Browser Live Torrent Video Player */
 .torrent-video-wrapper {
@@ -4375,13 +4253,6 @@ video::cue {
 }
 
 @media (max-width: 768px) {
-  .player-sub-menu-container {
-    bottom: 50px !important;
-    right: 12px !important;
-  }
-  .player-sub-popover {
-    width: 200px !important;
-  }
   .dual-audio-bar {
     top: 8px !important;
     right: 8px !important;

@@ -351,95 +351,23 @@ export async function openPlayerModal({
     if (!videoEl) return;
 
     const subs = resolveEffectiveSubtitles(srv);
-    let activeSubIdx = (currentCategory === 'subtitled' && subs.length > 0) ? 0 : -1;
-
-    const updateTracksState = (targetIdx) => {
-      activeSubIdx = targetIdx;
-      const textTracks = videoEl.textTracks;
-      for (let i = 0; i < textTracks.length; i++) {
-        if (i === targetIdx) {
-          textTracks[i].mode = 'showing';
-        } else {
-          textTracks[i].mode = 'disabled';
-        }
-      }
-
-      const container = document.getElementById('player-sub-menu-container');
-      if (container) {
-        container.querySelectorAll('.player-sub-item').forEach(btn => {
-          const bIdx = parseInt(btn.getAttribute('data-sub-idx'), 10);
-          if (bIdx === targetIdx) {
-            btn.classList.add('active');
-            if (!btn.querySelector('.sub-check-icon')) {
-              const check = document.createElement('i');
-              check.setAttribute('data-lucide', 'check');
-              check.className = 'sub-check-icon';
-              check.style.width = '14px';
-              check.style.height = '14px';
-              btn.appendChild(check);
-              if (window.lucide) window.lucide.createIcons();
-            }
-          } else {
-            btn.classList.remove('active');
-            btn.querySelector('.sub-check-icon')?.remove();
-          }
-        });
-
-        const trigger = document.getElementById('btn-player-sub-trigger');
-        const labelText = document.getElementById('player-sub-label-text');
-        if (trigger && labelText) {
-          if (targetIdx === -1) {
-            trigger.classList.remove('active');
-            labelText.textContent = 'Altyazı (Kapalı)';
-          } else {
-            trigger.classList.add('active');
-            labelText.textContent = subs[targetIdx]?.label || 'TR Altyazı';
-          }
-        }
-      }
-    };
-
-    const container = document.getElementById('player-sub-menu-container');
-    if (container) {
-      const trigger = document.getElementById('btn-player-sub-trigger');
-      const popover = document.getElementById('player-sub-popover');
-
-      if (trigger && popover) {
-        trigger.onclick = (e) => {
-          e.stopPropagation();
-          popover.classList.toggle('hidden');
-        };
-
-        const closePopover = (e) => {
-          if (!container.contains(e.target)) {
-            popover.classList.add('hidden');
-          }
-        };
-        document.removeEventListener('click', closePopover);
-        document.addEventListener('click', closePopover);
-      }
-
-      container.querySelectorAll('.player-sub-item').forEach(btn => {
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          const idx = parseInt(btn.getAttribute('data-sub-idx'), 10);
-          updateTracksState(idx);
-          popover?.classList.add('hidden');
-          if (idx === -1) {
-            showToast('Altyazı kapatıldı.', 'info');
-          } else {
-            const label = subs[idx]?.label || 'Altyazı';
-            showToast(`💬 ${label} seçildi.`, 'success');
-          }
-        };
-      });
-    }
+    const defaultSubIdx = (currentCategory === 'subtitled' && subs.length > 0) ? 0 : -1;
 
     const initSubtitles = () => {
-      if (activeSubIdx >= 0 && videoEl.textTracks.length > activeSubIdx) {
-        updateTracksState(activeSubIdx);
-      }
+      try {
+        const textTracks = videoEl.textTracks;
+        if (textTracks && textTracks.length > 0) {
+          for (let i = 0; i < textTracks.length; i++) {
+            if (defaultSubIdx >= 0 && i === defaultSubIdx) {
+              textTracks[i].mode = 'showing';
+            } else if (defaultSubIdx === -1) {
+              textTracks[i].mode = 'disabled';
+            }
+          }
+        }
+      } catch (_) {}
     };
+
     if (videoEl.readyState >= 1) {
       initSubtitles();
     } else {
@@ -649,42 +577,6 @@ export async function openPlayerModal({
       // Default active subtitle index: if in 'subtitled' mode, default to 0 (Turkish); if in 'dubbed', default to -1 (off)
       const defaultSubIndex = (currentCategory === 'subtitled' && effectiveSubtitles.length > 0) ? 0 : -1;
 
-      // In-Player CC / Subtitle Menu Component (Internal, like volume controls, NOT obscuring the video)
-      const subOptionsHTML = effectiveSubtitles.map((sub, idx) => {
-        const isTr = (sub.label || '').toLowerCase().includes('türk') || (sub.label || '').toLowerCase().includes('tr');
-        const flag = isTr ? '🇹🇷' : '🌐';
-        return `
-          <button class="player-sub-item ${idx === defaultSubIndex ? 'active' : ''}" data-sub-idx="${idx}">
-            <span class="sub-item-flag">${flag}</span>
-            <span class="sub-item-title">${sub.label || 'Altyazı'}</span>
-            ${idx === defaultSubIndex ? '<i data-lucide="check" class="sub-check-icon" style="width: 14px; height: 14px;"></i>' : ''}
-          </button>
-        `;
-      }).join('');
-
-      const playerSubMenuHTML = effectiveSubtitles.length > 0 ? `
-        <div class="player-sub-menu-container" id="player-sub-menu-container">
-          <button class="btn-player-sub-trigger ${defaultSubIndex >= 0 ? 'active' : ''}" id="btn-player-sub-trigger" title="Altyazı Ayarları (CC)">
-            <i data-lucide="subtitles" style="width: 15px; height: 15px;"></i>
-            <span id="player-sub-label-text">${defaultSubIndex >= 0 ? (effectiveSubtitles[defaultSubIndex]?.label || 'TR Altyazı') : 'Altyazı'}</span>
-          </button>
-          <div class="player-sub-popover hidden" id="player-sub-popover">
-            <div class="player-sub-popover-title">
-              <i data-lucide="subtitles" style="width: 14px; height: 14px; color: #60a5fa;"></i>
-              <span>Altyazı Menüsü</span>
-            </div>
-            <div class="player-sub-list-scroll">
-              <button class="player-sub-item ${defaultSubIndex === -1 ? 'active' : ''}" data-sub-idx="-1">
-                <span class="sub-item-flag">❌</span>
-                <span class="sub-item-title">Kapalı</span>
-                ${defaultSubIndex === -1 ? '<i data-lucide="check" class="sub-check-icon" style="width: 14px; height: 14px;"></i>' : ''}
-              </button>
-              ${subOptionsHTML}
-            </div>
-          </div>
-        </div>
-      ` : '';
-
       const tracksHTML = effectiveSubtitles.map((sub, idx) => {
         let safeSrc = sub.src;
         if (safeSrc && safeSrc.startsWith('http')) {
@@ -719,7 +611,6 @@ export async function openPlayerModal({
             preload="auto">
             ${tracksHTML}
           </video>
-          ${playerSubMenuHTML}
           ${dubbedAudioHTML}
           ${floatingAudioTip}
         </div>
@@ -1542,12 +1433,26 @@ export async function openPlayerModal({
           videoEl.addEventListener('playing', clearHlsWatchdog, { once: true });
           videoEl.addEventListener('timeupdate', clearHlsWatchdog, { once: true });
 
+          const applySafeSeek = () => {
+            if (initialTime > 0) {
+              const dur = videoEl.duration;
+              if (dur && isFinite(dur) && dur > 10) {
+                if (initialTime >= dur - 15) {
+                  videoEl.currentTime = 0;
+                  return;
+                }
+              }
+              videoEl.currentTime = initialTime;
+            }
+          };
+
           hls.loadSource(streamUrl);
           hls.attachMedia(videoEl);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            if (initialTime > 0) videoEl.currentTime = initialTime;
+            applySafeSeek();
             videoEl.play().catch(() => {});
           });
+          videoEl.addEventListener('loadedmetadata', applySafeSeek, { once: true });
 
           let networkErrorCount = 0;
           hls.on(Hls.Events.ERROR, (event, data) => {
@@ -1585,7 +1490,14 @@ export async function openPlayerModal({
           // iOS Safari Native HLS Engine
           videoEl.src = streamUrl;
           videoEl.addEventListener('loadedmetadata', () => {
-            if (initialTime > 0) videoEl.currentTime = initialTime;
+            if (initialTime > 0) {
+              const dur = videoEl.duration;
+              if (dur && isFinite(dur) && dur > 10 && initialTime >= dur - 15) {
+                videoEl.currentTime = 0;
+              } else {
+                videoEl.currentTime = initialTime;
+              }
+            }
             videoEl.play().catch(() => {});
           });
           videoEl.addEventListener('error', () => {
@@ -1614,8 +1526,13 @@ export async function openPlayerModal({
           videoEl.addEventListener('playing', clearDirectWatchdog, { once: true });
 
           videoEl.addEventListener('loadedmetadata', () => {
-            if (initialTime > 0 && initialTime < (videoEl.duration || 99999)) {
-              videoEl.currentTime = initialTime;
+            if (initialTime > 0) {
+              const dur = videoEl.duration;
+              if (dur && isFinite(dur) && dur > 10 && initialTime >= dur - 15) {
+                videoEl.currentTime = 0;
+              } else {
+                videoEl.currentTime = initialTime;
+              }
             }
             videoEl.play().catch(() => {});
           });
