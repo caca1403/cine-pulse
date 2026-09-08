@@ -123,16 +123,14 @@ function extractStreamsFromHtml(html, isDub) {
   const streams = [];
   if (!html) return streams;
 
-  // 1. Match VidMoly download / stream links
-  // e.g. <a href="https://vidmoly.me/dl/82kiu4di02bn" ...>Türkçe Dublaj İndir</a>
-  const vidmolyLinks = [...html.matchAll(/<a[^>]+href=["'](https?:\/\/[^"']*(?:vidmoly|vidmoxy)[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)];
-  for (const match of vidmolyLinks) {
+  // 1. Match VidMoly links anywhere in HTML (href, src, data-src, text, regex)
+  const vidmolyMatches = [...html.matchAll(/(?:href=["']|src=["']|["']|content=["']|\b)(https?:\/\/[^"'\s<>]*(?:vidmoly|vidmoxy)[^"'\s<>]*)/gi)];
+  for (const match of vidmolyMatches) {
     const rawLink = match[1];
-    const text = (match[2] || '').toLowerCase();
-    const linkDub = text.includes('dublaj') || text.includes('dub') || rawLink.includes('dub');
-    const linkSub = text.includes('altyaz') || text.includes('sub') || rawLink.includes('sub');
+    const lower = rawLink.toLowerCase();
+    const linkDub = lower.includes('dub') || lower.includes('tr');
+    const linkSub = lower.includes('sub') || lower.includes('alt');
 
-    // Filter by requested category if explicit
     if (isDub && linkSub && !linkDub) continue;
     if (!isDub && linkDub && !linkSub) continue;
 

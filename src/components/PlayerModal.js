@@ -520,7 +520,6 @@ export async function openPlayerModal({
               allowfullscreen="true"
               webkitallowfullscreen="true"
               mozallowfullscreen="true"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-fullscreen"
               allow="autoplay; encrypted-media; picture-in-picture; fullscreen">
             </iframe>
           </div>

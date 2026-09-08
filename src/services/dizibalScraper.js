@@ -211,29 +211,29 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
       }
       sources.push({
         id: `dzb_direct_s${sNum}e${epNum}`,
-        name: isDub ? 'DiziBal 1080p Alpha (TR Dublaj)' : 'DiziBal 1080p Alpha (TR Altyazı)',
-        displayName: 'DiziBal 1080p Alpha',
+        name: isDub ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',
+        displayName: 'DP 1080p',
         streamUrl: finalStreamUrl,
         url: finalStreamUrl,
         subtitles: subtitles.length > 0 ? subtitles : (directStream.subtitles || []),
         isHls: true,
         isDirectVideo: true,
-        source: 'DiziBal',
-        badge: isDub ? '⚡ DiziBal Dublaj' : '💬 DiziBal Altyazı'
+        source: 'DP',
+        badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı'
       });
     } else {
       // Fallback: embed
       sources.push({
         id: `dzb_embed_s${sNum}e${epNum}`,
-        name: isDub ? 'DiziBal Alpha Player (Dublaj)' : 'DiziBal Alpha Player (Altyazı)',
-        displayName: 'DiziBal Alpha Player',
+        name: isDub ? 'DP Player VIP (Dublaj)' : 'DP Player VIP (Altyazı)',
+        displayName: 'DP Player VIP',
         streamUrl: embedUrl,
         url: embedUrl,
         subtitles: subtitles,
         isHls: false,
         isDirectVideo: false,
-        source: 'DiziBal',
-        badge: '🌐 DiziBal VIP'
+        source: 'DP',
+        badge: '🌐 DP VIP'
       });
     }
   } catch (_) {}
@@ -323,28 +323,28 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
     }
     sources.push({
       id: 'dzb_direct_movie',
-      name: isDub ? 'DiziBal 1080p Alpha (TR Dublaj)' : 'DiziBal 1080p Alpha (TR Altyazı)',
-      displayName: 'DiziBal 1080p Alpha',
+      name: isDub ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',
+      displayName: 'DP 1080p',
       streamUrl: finalStreamUrl,
       url: finalStreamUrl,
       subtitles: subtitles.length > 0 ? subtitles : (directStream.subtitles || []),
       isHls: true,
       isDirectVideo: true,
-      source: 'DiziBal',
-      badge: isDub ? '⚡ DiziBal Dublaj' : '💬 DiziBal Altyazı'
+      source: 'DP',
+      badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı'
     });
   } else {
     sources.push({
       id: 'dzb_embed_movie',
-      name: isDub ? 'DiziBal Alpha Player (Dublaj)' : 'DiziBal Alpha Player (Altyazı)',
-      displayName: 'DiziBal Alpha Player',
+      name: isDub ? 'DP Player VIP (Dublaj)' : 'DP Player VIP (Altyazı)',
+      displayName: 'DP Player VIP',
       streamUrl: embedUrl,
       url: embedUrl,
       subtitles: subtitles,
       isHls: false,
       isDirectVideo: false,
-      source: 'DiziBal',
-      badge: '🌐 DiziBal VIP'
+      source: 'DP',
+      badge: '🌐 DP VIP'
     });
   }
 
