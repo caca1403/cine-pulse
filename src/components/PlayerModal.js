@@ -506,8 +506,8 @@ export async function openPlayerModal({
             ? srv.streamUrl
             : (tmdbId 
                 ? (type === 'movie' 
-                    ? `https://vidsrc.mov/embed/movie/${tmdbId}` 
-                    : `https://vidsrc.mov/embed/tv/${tmdbId}/${currentSeason}/${currentEpisode}`)
+                    ? `https://vsembed.ru/embed/movie/${tmdbId}` 
+                    : `https://vsembed.ru/embed/tv/${tmdbId}/${currentSeason}-${currentEpisode}`)
                 : ''));
 
       return `

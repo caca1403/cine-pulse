@@ -98,6 +98,10 @@ export async function fetchDizirollEpisodeSources({ titles = [], seriesTitle, or
         let iframeUrl = iframeMatch[1];
         if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
 
+        if (iframeUrl.toLowerCase().includes('pichive')) {
+          continue;
+        }
+
         sources.push({
           id: `dzr_s${sNum}e${epNum}_${isDub ? 'dub' : 'sub'}`,
           name: isDub ? 'Diziroll VIP (TR Dublaj)' : 'Diziroll VIP (TR Altyazı)',
