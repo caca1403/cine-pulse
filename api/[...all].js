@@ -76,15 +76,21 @@ export default async function handler(req, res) {
     forwardHeaders['user-agent'] = 'okhttp/4.12.0';
 
     try {
-      // Read raw body as stream buffer (req.body is undefined in Vercel serverless)
+      // Read raw body — Vercel may pre-parse req.body or leave it as a stream
       let rawBody = undefined;
       if (req.method === 'POST' || req.method === 'PUT') {
-        rawBody = await new Promise((resolve, reject) => {
-          const chunks = [];
-          req.on('data', chunk => chunks.push(chunk));
-          req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
-          req.on('error', reject);
-        });
+        if (req.body !== undefined && req.body !== null) {
+          // Vercel pre-parsed body (object or string)
+          rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        } else {
+          // Read raw stream (body parser disabled or not triggered)
+          rawBody = await new Promise((resolve, reject) => {
+            const chunks = [];
+            req.on('data', chunk => chunks.push(chunk));
+            req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+            req.on('error', reject);
+          });
+        }
       }
 
       const upstreamRes = await fetch(upstreamUrl, {

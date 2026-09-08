@@ -3800,23 +3800,24 @@ img {
   }
   .dizisol-meta-top {
     display: flex !important;
-    flex-direction: row !important;
-    justify-content: space-between !important;
+    flex-direction: column !important;
     align-items: flex-start !important;
-    gap: 8px !important;
+    gap: 10px !important;
     width: 100% !important;
   }
   .dizisol-meta-left {
     flex: 1 1 auto !important;
     min-width: 0 !important;
     gap: 2px !important;
+    width: 100% !important;
   }
   .dizisol-title {
-    font-size: 1.5rem !important;
+    font-size: 1.4rem !important;
     font-weight: 800 !important;
     color: #fff !important;
     line-height: 1.15 !important;
     margin: 0 !important;
+    word-break: break-word !important;
   }
   .dizisol-sub-row {
     font-size: 0.85rem !important;
@@ -3829,8 +3830,9 @@ img {
     align-items: center !important;
     gap: 6px !important;
     flex-wrap: wrap !important;
-    justify-content: flex-end !important;
+    justify-content: flex-start !important;
     flex-shrink: 0 !important;
+    width: 100% !important;
   }
   .action-btn-text {
     display: none !important;

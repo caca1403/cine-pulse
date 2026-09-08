@@ -288,6 +288,9 @@ export async function fetchRecTvSources({
 }) {
   const query = (title || originalTitle || '').trim();
   if (!query) return [];
+  // Normalize season/episode to integers to avoid string vs number comparison bugs
+  const seasonNum = parseInt(season, 10) || 1;
+  const episodeNum = parseInt(episode, 10) || 1;
 
   try {
     let searchRes = await recTvApiRequest(`/search/${encodeURIComponent(query)}/${SW_KEY}/`);
@@ -361,48 +364,70 @@ export async function fetchRecTvSources({
       const seasons = await recTvApiRequest(`/season/by/serie/${match.id}/${SW_KEY}/`);
       if (Array.isArray(seasons)) {
         for (const s of seasons) {
-          const sTitle = (s.title || '').toLowerCase();
-          const sNumMatch = sTitle.match(/(\d+)/);
-          const sNum = sNumMatch ? parseInt(sNumMatch[1], 10) : 1;
-          if (sNum !== season) continue;
+          const sTitle = (s.title || s.name || '').toLowerCase();
+          const sNumMatch = sTitle.match(/(\d+)/) || [];
+          const sNum = sNumMatch[1] ? parseInt(sNumMatch[1], 10) : (parseInt(s.number || s.season_number || s.num || '0', 10) || 1);
+          if (sNum !== seasonNum) continue;
 
           const isDub = sTitle.includes('dublaj') || (s.label || '').toLowerCase().includes('dublaj');
 
-          if (Array.isArray(s.episodes)) {
-            for (const ep of s.episodes) {
-              const epTitle = (ep.title || '').toLowerCase();
-              const epNumMatch = epTitle.match(/(\d+)/);
-              const epNum = epNumMatch ? parseInt(epNumMatch[1], 10) : 1;
-              if (epNum !== episode) continue;
+          // Episodes may be embedded in the season object or require a separate fetch
+          let episodes = Array.isArray(s.episodes) ? s.episodes : null;
+          if (!episodes || episodes.length === 0) {
+            const epRes = await recTvApiRequest(`/episode/by/season/${s.id}/${SW_KEY}/`);
+            if (Array.isArray(epRes)) episodes = epRes;
+            else if (epRes && Array.isArray(epRes.episodes)) episodes = epRes.episodes;
+          }
 
-              if (Array.isArray(ep.sources)) {
-                for (const src of ep.sources) {
-                  if (!src.enc_url && !src.url) continue;
-                  const rawUrl = src.enc_url ? await decryptRecTvStreamUrl(src.enc_url) : src.url;
-                  if (!rawUrl || !rawUrl.startsWith('http')) continue;
+          if (!Array.isArray(episodes) || episodes.length === 0) continue;
 
-                  const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(rawUrl)}&ref=https://a.prectv70.lol/`;
-                  const label = isDub 
-                    ? `🇹🇷 TVR S${season}E${episode} (TR Dublaj)` 
-                    : `⚡ TVR S${season}E${episode} (TR Altyazı)`;
+          for (const ep of episodes) {
+            const epTitle = (ep.title || ep.name || '').toLowerCase();
+            const epNumMatch = epTitle.match(/(\d+)/) || [];
+            const epNum = epNumMatch[1] 
+              ? parseInt(epNumMatch[1], 10) 
+              : (parseInt(ep.number || ep.episode_number || ep.num || '0', 10) || 1);
+            if (epNum !== episodeNum) continue;
 
-                  streams.push({
-                    id: `tvr_ep_${match.id}_${ep.id}_${src.id}`,
-                    name: label,
-                    displayName: label,
-                    badge: '⚡ TVR VIP',
-                    source: 'TVR VIP',
-                    url: proxiedUrl,
-                    streamUrl: proxiedUrl,
-                    rawStreamUrl: rawUrl,
-                    quality: '1080p HD',
-                    isHls: true,
-                    isDirectVideo: true,
-                    priority: 0,
-                    getUrl: () => proxiedUrl
-                  });
-                }
-              }
+            // Sources may be in ep.sources, ep.videos, or fetched separately
+            let sources = Array.isArray(ep.sources) ? ep.sources 
+              : Array.isArray(ep.videos) ? ep.videos 
+              : Array.isArray(ep.streams) ? ep.streams : [];
+
+            if (sources.length === 0 && ep.id) {
+              const srcRes = await recTvApiRequest(`/source/by/episode/${ep.id}/${SW_KEY}/`);
+              if (Array.isArray(srcRes)) sources = srcRes;
+              else if (srcRes && Array.isArray(srcRes.sources)) sources = srcRes.sources;
+            }
+
+            for (const src of sources) {
+              const encField = src.enc_url || src.encUrl || src.encrypted_url;
+              const plainField = src.url || src.stream_url || src.video || src.link || src.source;
+              if (!encField && !plainField) continue;
+              const rawUrl = encField ? await decryptRecTvStreamUrl(encField) : plainField;
+              if (!rawUrl || !rawUrl.startsWith('http')) continue;
+
+              const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(rawUrl)}&ref=https://a.prectv70.lol/`;
+              const srcIsDub = isDub || (src.title || src.name || '').toLowerCase().includes('dublaj');
+              const label = srcIsDub
+                ? `🇹🇷 TVR S${seasonNum}E${episodeNum} (TR Dublaj)`
+                : `⚡ TVR S${seasonNum}E${episodeNum} (TR Altyazı)`;
+
+              streams.push({
+                id: `tvr_ep_${match.id}_${ep.id || ep.number}_${src.id || rawUrl.slice(-8)}`,
+                name: label,
+                displayName: label,
+                badge: '⚡ TVR VIP',
+                source: 'TVR VIP',
+                url: proxiedUrl,
+                streamUrl: proxiedUrl,
+                rawStreamUrl: rawUrl,
+                quality: '1080p HD',
+                isHls: true,
+                isDirectVideo: true,
+                priority: 0,
+                getUrl: () => proxiedUrl
+              });
             }
           }
         }
