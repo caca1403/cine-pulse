@@ -98,7 +98,11 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
 
   if (tmdbId) {
     try {
-      const enRes = await fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&language=en-US`, { signal: AbortSignal.timeout(1500) }).catch(() => null);
+      const [enRes, trRes] = await Promise.all([
+        fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&language=en-US`, { signal: AbortSignal.timeout(1500) }).catch(() => null),
+        fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&language=tr-TR`, { signal: AbortSignal.timeout(1500) }).catch(() => null)
+      ]);
+
       if (enRes && enRes.ok) {
         const enData = await enRes.json().catch(() => null);
         if (enData) {
@@ -108,6 +112,14 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
           if (enData.original_title) immediateTitles.push(cleanTitle(enData.original_title));
           const dateStr = enData.release_date || enData.first_air_date;
           if (dateStr) detectedYear = dateStr.substring(0, 4);
+        }
+      }
+
+      if (trRes && trRes.ok) {
+        const trData = await trRes.json().catch(() => null);
+        if (trData) {
+          const trName = trData.name || trData.title;
+          if (trName) immediateTitles.push(cleanTitle(trName));
         }
       }
     } catch (_) { }

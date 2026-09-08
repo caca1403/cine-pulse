@@ -197,7 +197,10 @@ export async function renderDiscoverView(initialType = 'tv') {
         });
       };
 
-      const fetchContent = async () => {
+      let currentFetchId = 0;
+
+      const fetchContent = async (reqFetchId) => {
+        const myFetchId = reqFetchId || currentFetchId;
         if (isLoading || discoverCache.isExhausted) return;
         isLoading = true;
 
@@ -225,11 +228,14 @@ export async function renderDiscoverView(initialType = 'tv') {
             isDoc
           });
 
+          // Discard stale responses if filter changed while fetching
+          if (myFetchId !== currentFetchId) return;
+
           if (spinner) spinner.style.display = 'none';
 
           if (!results || results.length === 0) {
             if (pageToFetch === 1) {
-              grid.innerHTML = `<div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">Bu filtre kriterlerine uygun içerik bulunamadı.</div>`;
+              grid.innerHTML = `<div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted); font-size: 1.05rem;">Bu filtre kriterlerine uygun içerik bulunamadı.</div>`;
             }
             discoverCache.isExhausted = true;
             return;
@@ -251,14 +257,8 @@ export async function renderDiscoverView(initialType = 'tv') {
           attachMediaCardEvents(grid);
 
           discoverCache.currentPage = pageToFetch + 1;
-
-          // Auto-fill if initial page doesn't cause overflow
-          setTimeout(() => {
-            if (document.documentElement.scrollHeight <= window.innerHeight + 400 && !discoverCache.isExhausted && !isLoading) {
-              fetchContent();
-            }
-          }, 200);
         } catch (err) {
+          if (myFetchId !== currentFetchId) return;
           console.error('Discover fetch error:', err);
           if (spinner) spinner.style.display = 'none';
           if (pageToFetch === 1 && (!discoverCache.allItems || discoverCache.allItems.length === 0)) {
@@ -277,16 +277,28 @@ export async function renderDiscoverView(initialType = 'tv') {
             });
           }
         } finally {
-          isLoading = false;
+          if (myFetchId === currentFetchId) {
+            isLoading = false;
+            if (spinner) spinner.style.display = 'none';
+          }
         }
       };
 
       const resetAndFetch = () => {
+        currentFetchId++;
+        const myFetchId = currentFetchId;
         discoverCache.currentPage = 1;
         discoverCache.allItems = [];
         discoverCache.isExhausted = false;
-        grid.innerHTML = `<div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">Yükleniyor...</div>`;
-        fetchContent();
+        isLoading = false;
+        grid.innerHTML = `
+          <div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">
+            <div class="spin-loader" style="width: 32px; height: 32px; border: 3px solid rgba(245,158,11,0.2); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem;"></div>
+            <div>İçerikler yükleniyor...</div>
+          </div>
+        `;
+        if (spinner) spinner.style.display = 'none';
+        fetchContent(myFetchId);
       };
 
       // Initial Render
