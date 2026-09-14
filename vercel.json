@@ -73,6 +73,14 @@
       "destination": "/api/ddz?path=$1"
     },
     {
+      "source": "/api/rtv",
+      "destination": "/api/rtv"
+    },
+    {
+      "source": "/api/rtv/(.*)",
+      "destination": "/api/rtv?path=$1"
+    },
+    {
       "source": "/api/fex/(.*)",
       "destination": "https://filmekseni.vip/$1"
     },

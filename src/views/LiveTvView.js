@@ -5,6 +5,7 @@
    ========================================================================== */
 
 import { LIVE_TV_CATEGORIES, LIVE_TV_CHANNELS } from '../services/liveTvChannels.js';
+import { getRecTvChannelStreamUrl } from '../services/rectvService.js';
 import { showToast } from '../components/Toast.js';
 
 export function renderLiveTvView() {
@@ -188,7 +189,7 @@ export function renderLiveTvView() {
       }
 
       // ─── HLS Playback Engine ───
-      function loadChannel(channel) {
+      async function loadChannel(channel) {
         activeChannel = channel;
 
         // Destroy previous HLS instance
@@ -197,16 +198,26 @@ export function renderLiveTvView() {
           activeHls = null;
         }
 
+        // Show loading, hide error
+        loadingEl.classList.remove('hidden');
+        errorEl.classList.add('hidden');
+
+        // Check if channel is RecTV VIP and refresh authenticated token stream
+        if (channel.isTvr && channel.tvrId) {
+          try {
+            const freshUrl = await getRecTvChannelStreamUrl(channel.tvrId);
+            if (freshUrl) {
+              channel.streamUrl = freshUrl;
+            }
+          } catch (_) {}
+        }
+
         // Update control bar
         ctrlLogo.src = channel.logo;
         ctrlLogo.style.display = '';
         ctrlName.textContent = channel.name;
         ctrlQuality.textContent = channel.quality;
         vlcBtn.href = `vlc://${channel.streamUrl}`;
-
-        // Show loading, hide error
-        loadingEl.classList.remove('hidden');
-        errorEl.classList.add('hidden');
 
         // Show OSD overlay
         osdLogo.src = channel.logo;

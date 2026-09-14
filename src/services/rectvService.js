@@ -469,6 +469,8 @@ export async function fetchRecTvLiveChannels() {
 
         channels.push({
           id: `tvr_ch_${ch.id}`,
+          tvrId: ch.id,
+          isTvr: true,
           name: ch.title,
           category: catName,
           logo: ch.image || '',
@@ -485,3 +487,27 @@ export async function fetchRecTvLiveChannels() {
     return [];
   }
 }
+
+/**
+ * Fetches a fresh authenticated HLS stream URL for a specific RecTV channel ID
+ */
+export async function getRecTvChannelStreamUrl(chId) {
+  if (!chId) return null;
+  try {
+    const cleanId = String(chId).replace(/^tvr_ch_/, '');
+    const detail = await recTvApiRequest(`/channel/by/${cleanId}/${SW_KEY}/`);
+    if (!detail || !Array.isArray(detail.sources)) return null;
+
+    const src = detail.sources.find(s => !s.locked && (s.enc_url || s.url));
+    if (!src) return null;
+
+    const rawUrl = src.enc_url ? await decryptRecTvStreamUrl(src.enc_url) : src.url;
+    if (!rawUrl || !rawUrl.startsWith('http')) return null;
+
+    return `/api/hls_proxy?url=${encodeURIComponent(rawUrl)}&ref=https://a.prectv70.lol/`;
+  } catch (err) {
+    console.warn('[TVR] Fetch channel stream failed:', err.message);
+    return null;
+  }
+}
+
