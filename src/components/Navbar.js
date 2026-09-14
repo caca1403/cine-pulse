@@ -4,6 +4,7 @@
 
 import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
 import { openDataManagerModal } from './DataManagerModal.js';
+import { openRandomPickerModal } from './RandomPickerModal.js';
 import { promptInstall, updatePwaButtons } from '../services/pwaManager.js';
 
 export function renderNavbar(currentView = 'home') {
@@ -29,6 +30,12 @@ export function renderNavbar(currentView = 'home') {
         </ul>
 
         <div class="nav-actions">
+          <!-- Ne İzlesem? Quick Action Button -->
+          <button id="btn-open-random-picker" class="btn-random-shortcut" title="Ne İzlesem? (Rastgele Öneri)">
+            <i data-lucide="dices" style="width: 15px; height: 15px; color: #f59e0b;"></i>
+            <span>NE İZLESEM?</span>
+          </button>
+
           <!-- Live TV Quick Action Pill -->
           <a href="#livetv" class="btn-live-shortcut ${currentView === 'livetv' ? 'active' : ''}" title="Canlı TV Yayınları">
             <span class="live-pulse-dot"></span>
@@ -140,6 +147,13 @@ export function attachNavbarEvents(onNavigate) {
   if (backupBtn) {
     backupBtn.addEventListener('click', () => {
       openDataManagerModal();
+    });
+  }
+
+  const randomPickerBtn = document.getElementById('btn-open-random-picker');
+  if (randomPickerBtn) {
+    randomPickerBtn.addEventListener('click', () => {
+      openRandomPickerModal();
     });
   }
 

@@ -11,6 +11,7 @@ import { renderSeasonSelector } from '../components/SeasonSelector.js';
 import { renderMediaCard, attachMediaCardEvents, isAnimeItem } from '../components/MediaCard.js';
 import { openPlayerModal } from '../components/PlayerModal.js';
 import { openTrailerModal } from '../components/TrailerModal.js';
+import { openCastExplorerModal } from '../components/CastExplorerModal.js';
 import { showToast } from '../components/Toast.js';
 
 function formatMediaRuntime(minutes) {
@@ -202,7 +203,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                       const actorPic = actor.profile_path ? getImageUrl(actor.profile_path, TMDB_IMAGE_SIZES.POSTER_SMALL) : SINEFLIX_ACTOR_FALLBACK;
                       const character = actor.character ? actor.character.split('/')[0].trim() : '';
                       return `
-                        <div class="detail-actor-pill" title="${actor.name}${character ? ' (' + character + ')' : ''}">
+                        <div class="detail-actor-pill" data-person-id="${actor.id}" data-person-name="${actor.name}" title="${actor.name}${character ? ' (' + character + ')' : ''} • Filmografiyi Gör" style="cursor: pointer;">
                           <img src="${actorPic}" alt="${actor.name}" class="detail-actor-avatar" onerror="this.onerror=null; this.src='${SINEFLIX_ACTOR_FALLBACK}';" />
                           <div style="display: flex; flex-direction: column; min-width: 0;">
                             <span class="detail-actor-name">${actor.name}</span>
@@ -649,6 +650,18 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           const x = e.pageX - castRail.offsetLeft;
           const walk = (x - startX) * 1.5;
           castRail.scrollLeft = scrollLeft - walk;
+        });
+
+        // Cast & Crew Explorer Modal
+        castRail.querySelectorAll('.detail-actor-pill').forEach(pill => {
+          pill.addEventListener('click', (e) => {
+            e.preventDefault();
+            const personId = pill.getAttribute('data-person-id');
+            const personName = pill.getAttribute('data-person-name');
+            if (personId) {
+              openCastExplorerModal(personId, personName);
+            }
+          });
         });
       }
 

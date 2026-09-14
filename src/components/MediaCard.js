@@ -4,7 +4,7 @@
    clean typography, smart type detection, and smooth responsive hover animations.
    ========================================================================== */
 
-import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK, hasNonLatinCharacters } from '../services/tmdbApi.js';
+import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK, hasNonLatinCharacters, fetchMediaTrailer } from '../services/tmdbApi.js';
 import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime, isRegisteredAnimeId, registerAnimeId, KNOWN_ANIME_KEYWORDS as STORAGE_ANIME_KEYWORDS } from '../services/storage.js';
 import { openPlayerModal } from './PlayerModal.js';
 import { saveAllScrollState } from '../services/scrollManager.js';
@@ -321,5 +321,52 @@ export function attachMediaCardEvents(container) {
       window.location.hash = `#detail?type=${isAnime ? 'anime' : type}&id=${id}`;
     }
   });
+
+  // Desktop Hover Video Preview (Netflix Experience)
+  const isFinePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  if (isFinePointer) {
+    let hoverTimer = null;
+
+    container.addEventListener('mouseenter', (e) => {
+      const card = e.target.closest('.media-card');
+      if (!card) return;
+      if (hoverTimer) clearTimeout(hoverTimer);
+
+      hoverTimer = setTimeout(async () => {
+        if (!card.matches(':hover')) return;
+        const id = card.getAttribute('data-id');
+        const type = card.getAttribute('data-type') || 'movie';
+        const posterWrap = card.querySelector('.card-poster-wrapper');
+        if (!posterWrap || posterWrap.querySelector('.card-hover-video-preview')) return;
+
+        try {
+          const trailer = await fetchMediaTrailer(type === 'tv' ? 'tv' : 'movie', id);
+          if (trailer && trailer.key && card.matches(':hover')) {
+            const previewBox = document.createElement('div');
+            previewBox.className = 'card-hover-video-preview';
+            previewBox.innerHTML = `
+              <iframe 
+                src="https://www.youtube-nocookie.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&modestbranding=1&loop=1&playlist=${trailer.key}&rel=0" 
+                frameborder="0" 
+                allow="autoplay"
+                tabindex="-1">
+              </iframe>
+            `;
+            posterWrap.appendChild(previewBox);
+          }
+        } catch (_) {}
+      }, 950);
+    }, true);
+
+    container.addEventListener('mouseleave', (e) => {
+      const card = e.target.closest('.media-card');
+      if (!card) return;
+      if (hoverTimer) clearTimeout(hoverTimer);
+      const preview = card.querySelector('.card-hover-video-preview');
+      if (preview) {
+        try { preview.remove(); } catch (_) {}
+      }
+    }, true);
+  }
 }
 

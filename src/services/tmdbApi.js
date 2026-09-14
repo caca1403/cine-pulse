@@ -383,7 +383,11 @@ export async function fetchDiscoverMedia({
   sortBy = 'popularity.desc',
   minRating = 0,
   isAnime = false,
-  isDoc = false
+  isDoc = false,
+  yearMin = null,
+  yearMax = null,
+  withNetworks = null,
+  withProviders = null
 }) {
   const params = {
     sort_by: sortBy,
@@ -402,7 +406,31 @@ export async function fetchDiscoverMedia({
 
   if (minRating > 0) {
     params['vote_average.gte'] = minRating;
-    params['vote_count.gte'] = 50; // Minimum 50 votes for quality ratings
+    params['vote_count.gte'] = 40;
+  }
+
+  if (yearMin) {
+    if (type === 'movie') {
+      params['primary_release_date.gte'] = `${yearMin}-01-01`;
+    } else {
+      params['first_air_date.gte'] = `${yearMin}-01-01`;
+    }
+  }
+  if (yearMax) {
+    if (type === 'movie') {
+      params['primary_release_date.lte'] = `${yearMax}-12-31`;
+    } else {
+      params['first_air_date.lte'] = `${yearMax}-12-31`;
+    }
+  }
+
+  if (withNetworks) {
+    if (type === 'tv') {
+      params.with_networks = withNetworks;
+    } else {
+      params.with_watch_providers = withProviders || withNetworks;
+      params.watch_region = 'TR';
+    }
   }
 
   const endpoint = type === 'movie' ? '/discover/movie' : '/discover/tv';
@@ -679,3 +707,29 @@ export const GENRE_MAP_MOVIE = {
   WAR: 10752,
   WESTERN: 37
 };
+
+export async function fetchPersonDetails(personId) {
+  if (!personId) return null;
+  const data = await tmdbFetch(`/person/${personId}`, {
+    language: 'tr-TR',
+    append_to_response: 'combined_credits'
+  });
+  if (!data || !data.biography || data.biography.trim().length === 0) {
+    const enData = await tmdbFetch(`/person/${personId}`, {
+      language: 'en-US',
+      append_to_response: 'combined_credits'
+    });
+    if (enData) {
+      if (data) {
+        data.biography = enData.biography;
+        if (!data.combined_credits && enData.combined_credits) {
+          data.combined_credits = enData.combined_credits;
+        }
+      } else {
+        return enData;
+      }
+    }
+  }
+  return data;
+}
+

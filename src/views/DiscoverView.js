@@ -9,12 +9,15 @@ import {
   GENRE_MAP_MOVIE
 } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
+import { openRandomPickerModal } from '../components/RandomPickerModal.js';
 
 const discoverCache = {
   currentType: 'tv',
   currentGenreId: null,
   currentSortBy: 'popularity.desc',
   currentMinRating: 0,
+  currentPlatform: null,
+  currentYearRange: 'all',
   currentPage: 1,
   allItems: [],
   isExhausted: false
@@ -29,6 +32,8 @@ export async function renderDiscoverView(initialType = 'tv') {
   let currentGenreId = discoverCache.currentGenreId;
   let currentSortBy = discoverCache.currentSortBy;
   let currentMinRating = discoverCache.currentMinRating;
+  let currentPlatform = discoverCache.currentPlatform;
+  let currentYearRange = discoverCache.currentYearRange;
   let isLoading = false;
 
   const tvGenres = [
@@ -85,9 +90,14 @@ export async function renderDiscoverView(initialType = 'tv') {
                 <i data-lucide="compass" style="color: var(--primary)"></i> Özelleştirilebilir Sinema Filtresi
               </h1>
               <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.35rem;">
-                Türe, IMDb puanına ve çıkış yılına göre nokta atışı arama yapın
+                Platforma, türe, IMDb puanına ve çıkış yılına göre nokta atışı arama yapın
               </p>
             </div>
+
+            <button class="btn-discover-random-reel" id="btn-discover-random" title="Kararsız mısınız? Rastgele bir başyapıt önerelim!">
+              <i data-lucide="dices" style="width: 18px; height: 18px; color: #f59e0b;"></i>
+              <span>Ne İzlesem? (Rastgele Öner)</span>
+            </button>
           </div>
         </div>
 
@@ -110,9 +120,40 @@ export async function renderDiscoverView(initialType = 'tv') {
             </button>
           </div>
 
-          <!-- Secondary Filters Row -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; align-items: end;">
+          <!-- Secondary Filters Row (Mega Filter) -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1.2rem; align-items: end;">
             
+            <!-- Platform Filter -->
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                <i data-lucide="tv" style="width:12px; height:12px;"></i> Yayın Platformu
+              </label>
+              <select id="discover-platform-select" class="discover-filter-select">
+                <option value="" ${!currentPlatform ? 'selected' : ''}>🌐 Tüm Platformlar</option>
+                <option value="213" ${currentPlatform === '213' ? 'selected' : ''}>🔴 Netflix</option>
+                <option value="49" ${currentPlatform === '49' ? 'selected' : ''}>🟣 HBO / Max</option>
+                <option value="2739" ${currentPlatform === '2739' ? 'selected' : ''}>🔵 Disney+</option>
+                <option value="1024" ${currentPlatform === '1024' ? 'selected' : ''}>🟡 Amazon Prime</option>
+                <option value="2552" ${currentPlatform === '2552' ? 'selected' : ''}>⚪ Apple TV+</option>
+              </select>
+            </div>
+
+            <!-- Year Range Filter -->
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                <i data-lucide="calendar" style="width:12px; height:12px;"></i> Çıkış Yılı Aralığı
+              </label>
+              <select id="discover-year-select" class="discover-filter-select">
+                <option value="all" ${currentYearRange === 'all' ? 'selected' : ''}>📅 Tüm Yıllar</option>
+                <option value="2024-2026" ${currentYearRange === '2024-2026' ? 'selected' : ''}>✨ 2024 - 2026 (En Yeniler)</option>
+                <option value="2020-2023" ${currentYearRange === '2020-2023' ? 'selected' : ''}>🌟 2020 - 2023 (Son Yıllar)</option>
+                <option value="2010-2019" ${currentYearRange === '2010-2019' ? 'selected' : ''}>🎬 2010 - 2019 (2010'lar)</option>
+                <option value="2000-2009" ${currentYearRange === '2000-2009' ? 'selected' : ''}>📼 2000 - 2009 (2000'ler)</option>
+                <option value="1990-1999" ${currentYearRange === '1990-1999' ? 'selected' : ''}>🎞️ 1990 - 1999 (90'lar)</option>
+                <option value="before-1990" ${currentYearRange === 'before-1990' ? 'selected' : ''}>🏛️ 1990 Öncesi (Klasikler)</option>
+              </select>
+            </div>
+
             <!-- Sort Filter -->
             <div>
               <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
@@ -170,12 +211,37 @@ export async function renderDiscoverView(initialType = 'tv') {
       const movieBtn = container.querySelector('#discover-type-movie');
       const animeBtn = container.querySelector('#discover-type-anime');
       const docBtn = container.querySelector('#discover-type-doc');
+      const platformSelect = container.querySelector('#discover-platform-select');
+      const yearSelect = container.querySelector('#discover-year-select');
       const sortSelect = container.querySelector('#discover-sort-select');
       const ratingSelect = container.querySelector('#discover-rating-select');
+      const randomBtn = container.querySelector('#btn-discover-random');
       const genreBar = container.querySelector('#discover-genre-bar');
       const grid = container.querySelector('#discover-media-grid');
       const sentinel = container.querySelector('#discover-sentinel');
       const spinner = sentinel ? sentinel.querySelector('.spin-loader') : null;
+
+      if (randomBtn) {
+        randomBtn.addEventListener('click', () => {
+          openRandomPickerModal();
+        });
+      }
+
+      if (platformSelect) {
+        platformSelect.addEventListener('change', () => {
+          currentPlatform = platformSelect.value || null;
+          discoverCache.currentPlatform = currentPlatform;
+          resetAndFetch();
+        });
+      }
+
+      if (yearSelect) {
+        yearSelect.addEventListener('change', () => {
+          currentYearRange = yearSelect.value || 'all';
+          discoverCache.currentYearRange = currentYearRange;
+          resetAndFetch();
+        });
+      }
 
       const renderGenreBar = () => {
         const activeGenres = getActiveGenres();
@@ -218,6 +284,14 @@ export async function renderDiscoverView(initialType = 'tv') {
             effectiveSort = 'primary_release_date.desc';
           }
 
+          let yearMin = null, yearMax = null;
+          if (currentYearRange === '2024-2026') { yearMin = 2024; yearMax = 2026; }
+          else if (currentYearRange === '2020-2023') { yearMin = 2020; yearMax = 2023; }
+          else if (currentYearRange === '2010-2019') { yearMin = 2010; yearMax = 2019; }
+          else if (currentYearRange === '2000-2009') { yearMin = 2000; yearMax = 2009; }
+          else if (currentYearRange === '1990-1999') { yearMin = 1990; yearMax = 1999; }
+          else if (currentYearRange === 'before-1990') { yearMin = 1940; yearMax = 1989; }
+
           const results = await fetchDiscoverMedia({
             type: effectiveType,
             genreId: currentGenreId,
@@ -225,7 +299,10 @@ export async function renderDiscoverView(initialType = 'tv') {
             sortBy: effectiveSort,
             minRating: currentMinRating,
             isAnime,
-            isDoc
+            isDoc,
+            yearMin,
+            yearMax,
+            withNetworks: currentPlatform
           });
 
           // Discard stale responses if filter changed while fetching
