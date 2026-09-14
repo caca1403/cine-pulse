@@ -7,7 +7,7 @@
 
 import {
   fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated, fetchPopularAnime, fetchPopularDocumentaries,
-  fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsAdventures
+  fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsAdventures, fetchKidsDocumentaries
 } from '../services/tmdbApi.js';
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
 import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile } from '../services/storage.js';
@@ -196,7 +196,7 @@ export async function renderHomeView() {
         fetchKidsPopularMovies(1),
         fetchKidsAdventures(1),
         fetchPopularAnime(1),
-        fetchPopularDocumentaries(1)
+        fetchKidsDocumentaries(1)
       ]);
       homeDataCache = { isKid: true, trending, popularTV, popularMovies, kidsAdventures, animeItems, docItems };
     } else {
@@ -246,7 +246,11 @@ export async function renderHomeView() {
     if (!railState['rail-top-movies']) railState['rail-top-movies'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) };
   }
   if (!railState['rail-anime']) railState['rail-anime'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularAnime };
-  if (!railState['rail-documentary']) railState['rail-documentary'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularDocumentaries };
+  if (isKid) {
+    if (!railState['rail-documentary']) railState['rail-documentary'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsDocumentaries };
+  } else {
+    if (!railState['rail-documentary']) railState['rail-documentary'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularDocumentaries };
+  }
   Object.values(railState).forEach(s => { s.loading = false; });
 
   let railsHTML = '';

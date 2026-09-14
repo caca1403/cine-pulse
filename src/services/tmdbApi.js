@@ -410,6 +410,56 @@ export async function fetchPopularDocumentaries(page = 1) {
     }));
 }
 
+export async function fetchKidsDocumentaries(page = 1) {
+  // Fetch family-friendly documentaries (Documentary + Family genre)
+  const movieRes = await tmdbFetch('/discover/movie', {
+    sort_by: 'popularity.desc',
+    page,
+    language: 'tr-TR',
+    with_genres: '99,10751',
+    without_genres: '27,80,53,10752',
+    'vote_count.gte': 10
+  });
+  
+  // Also fetch animation documentaries as fallback
+  const animDocRes = await tmdbFetch('/discover/movie', {
+    sort_by: 'popularity.desc',
+    page,
+    language: 'tr-TR',
+    with_genres: '99,16',
+    without_genres: '27,80,53',
+    'vote_count.gte': 5
+  });
+
+  const results1 = (movieRes?.results || []);
+  const results2 = (animDocRes?.results || []);
+  const seenIds = new Set();
+  const combined = [];
+  
+  for (const item of [...results1, ...results2]) {
+    if (item && item.id && !seenIds.has(item.id)) {
+      seenIds.add(item.id);
+      combined.push(item);
+    }
+  }
+
+  // Extra filter: block any adult-sounding keywords
+  const blockedWords = ['jackass', 'murder', 'killer', 'war', 'drug', 'crime', 'sex', 'violent', 'savaş', 'cinayet', 'uyuşturucu'];
+  
+  return combined
+    .filter(item => {
+      if (!(item.poster_path || item.backdrop_path) || isBlockedContent(item)) return false;
+      const text = `${item.title || ''} ${item.name || ''} ${item.overview || ''}`.toLowerCase();
+      return !blockedWords.some(kw => text.includes(kw));
+    })
+    .map(item => ({
+      ...item,
+      type: 'movie',
+      media_type: 'movie',
+      overview: item.overview || generateCinematicOverview(item, 'movie')
+    }));
+}
+
 export async function fetchTopRated(type = 'tv', page = 1) {
   const [trRes, enRes] = await Promise.all([
     tmdbFetch(`/${type}/top_rated`, { page, language: 'tr-TR' }),

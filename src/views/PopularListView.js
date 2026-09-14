@@ -3,7 +3,7 @@
    Progressive 3-page parallel fetching with instant first-paint rendering.
    ========================================================================== */
 
-import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries, fetchKidsPopularSeries, fetchKidsPopularMovies } from '../services/tmdbApi.js';
+import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries, fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsDocumentaries } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { isKidProfileActive } from '../services/storage.js';
 
@@ -25,7 +25,7 @@ function getFetcher(type) {
     switch (type) {
       case 'movie': return fetchKidsPopularMovies;
       case 'anime': return fetchPopularAnime;
-      case 'documentary': return fetchPopularDocumentaries;
+      case 'documentary': return fetchKidsDocumentaries;
       default: return fetchKidsPopularSeries;
     }
   }
