@@ -403,12 +403,6 @@ export function renderLiveTvView() {
         }
       });
 
-      // ─── Favorite Toggle ───
-      topFavBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleFav(activeChannel.id);
-      });
-
       // ─── HLS Stream Engine with Sequential Cancellation Token ───
       let channelPlaybackToken = 0;
 
@@ -628,6 +622,7 @@ export function renderLiveTvView() {
       renderAllViews = () => {
         renderBottomChannelGrid();
         updateTopBar();
+        if (window.lucide) window.lucide.createIcons();
       };
 
       // ─── Search Handlers ───
@@ -648,9 +643,9 @@ export function renderLiveTvView() {
         });
       }
 
-      // ─── Category Navigation (Horizontal Smooth Drag & Scroll) ───
+      // ─── Category Navigation (Horizontal Native Scroll & Desktop Drag) ───
       if (catStrip) {
-        // Arrow clicks
+        // Arrow clicks (Desktop)
         if (catPrevBtn) {
           catPrevBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -664,7 +659,7 @@ export function renderLiveTvView() {
           });
         }
 
-        // Mouse wheel horizontal conversion
+        // Mouse wheel horizontal conversion (Desktop)
         catStrip.addEventListener('wheel', (e) => {
           if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
             e.preventDefault();
@@ -672,26 +667,27 @@ export function renderLiveTvView() {
           }
         }, { passive: false });
 
-        // Touch & Mouse Drag scrolling
+        // Mouse Drag scrolling for Desktop
         let isMouseDown = false;
         let startX = 0;
         let scrollStart = 0;
-        let hasMoved = false;
+        let isDragging = false;
 
         catStrip.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
           isMouseDown = true;
-          hasMoved = false;
+          isDragging = false;
           startX = e.pageX - catStrip.offsetLeft;
           scrollStart = catStrip.scrollLeft;
-          catStrip.classList.add('is-dragging');
         });
 
         window.addEventListener('mousemove', (e) => {
           if (!isMouseDown) return;
           const x = e.pageX - catStrip.offsetLeft;
           const walk = (x - startX) * 1.5;
-          if (Math.abs(walk) > 4) {
-            hasMoved = true;
+          if (Math.abs(walk) > 6) {
+            isDragging = true;
+            catStrip.classList.add('is-dragging');
           }
           catStrip.scrollLeft = scrollStart - walk;
         });
@@ -700,28 +696,14 @@ export function renderLiveTvView() {
           if (isMouseDown) {
             isMouseDown = false;
             catStrip.classList.remove('is-dragging');
-            setTimeout(() => { hasMoved = false; }, 40);
+            setTimeout(() => { isDragging = false; }, 50);
           }
         });
-
-        // Touch scroll helper for mobile devices
-        let touchStartX = 0;
-        let touchStartScroll = 0;
-        catStrip.addEventListener('touchstart', (e) => {
-          touchStartX = e.touches[0].pageX;
-          touchStartScroll = catStrip.scrollLeft;
-        }, { passive: true });
-
-        catStrip.addEventListener('touchmove', (e) => {
-          const touchX = e.touches[0].pageX;
-          const dist = touchStartX - touchX;
-          catStrip.scrollLeft = touchStartScroll + dist;
-        }, { passive: true });
 
         // Category pill click handler
         catStrip.querySelectorAll('.tv-cat-filter-btn').forEach(pill => {
           pill.addEventListener('click', (e) => {
-            if (hasMoved) {
+            if (isDragging) {
               e.preventDefault();
               return;
             }

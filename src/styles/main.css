@@ -6552,7 +6552,6 @@ video::cue {
   min-width: 0 !important;
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
   position: relative;
 }
 
@@ -6567,6 +6566,7 @@ video::cue {
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #94a3b8;
   cursor: pointer;
+  flex: 0 0 32px !important;
   flex-shrink: 0 !important;
   transition: all 0.2s ease;
   padding: 0;
@@ -6583,12 +6583,14 @@ video::cue {
   align-items: center;
   gap: 0.45rem;
   overflow-x: auto !important;
+  overflow-y: hidden !important;
   -webkit-overflow-scrolling: touch !important;
   touch-action: pan-x !important;
   overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  flex: 1 1 0%;
+  scrollbar-width: none !important;
+  flex: 1 1 0% !important;
   min-width: 0 !important;
+  width: 0 !important;
   padding: 0.2rem 0;
   cursor: grab;
 }
@@ -6995,31 +6997,36 @@ video::cue {
     box-sizing: border-box !important;
     overflow: hidden !important;
   }
+  .tv-cat-arrow-btn {
+    display: none !important;
+  }
   .tv-cat-nav-container {
     min-width: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
-    gap: 0.35rem !important;
-    display: flex !important;
-    align-items: center !important;
-  }
-  .tv-cat-arrow-btn {
-    width: 28px !important;
-    height: 28px !important;
-    flex-shrink: 0 !important;
+    display: block !important;
+    overflow: hidden !important;
   }
   .tv-catalog-categories {
-    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.45rem !important;
     width: 100% !important;
-    flex: 1 1 0% !important;
-    gap: 0.35rem !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     overflow-x: auto !important;
+    overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch !important;
-    touch-action: pan-x !important;
+    touch-action: pan-x pinch-zoom !important;
+    overscroll-behavior-x: contain !important;
+    scrollbar-width: none !important;
+    padding: 0.25rem 0.2rem !important;
+    box-sizing: border-box !important;
   }
   .tv-cat-filter-btn {
     padding: 0.38rem 0.75rem !important;
     font-size: 0.74rem !important;
+    flex: 0 0 auto !important;
     flex-shrink: 0 !important;
     white-space: nowrap !important;
   }
