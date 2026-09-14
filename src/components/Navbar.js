@@ -5,9 +5,15 @@
 import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
 import { openDataManagerModal } from './DataManagerModal.js';
 import { openRandomPickerModal } from './RandomPickerModal.js';
+import { openProfileModal } from './ProfileModal.js';
+import { getActiveProfile } from '../services/storage.js';
+import { openNotificationCenterModal, getUnreadNotificationCount, updateNotificationBellBadge } from './NotificationCenterModal.js';
 import { promptInstall, updatePwaButtons } from '../services/pwaManager.js';
 
 export function renderNavbar(currentView = 'home') {
+  const activeProfile = getActiveProfile();
+  const unreadCount = getUnreadNotificationCount();
+
   const navbarHTML = `
     <nav class="navbar" id="main-navbar">
       <div class="nav-container">
@@ -49,6 +55,20 @@ export function renderNavbar(currentView = 'home') {
             <span class="search-kbd">⌘K</span>
             <div id="search-overlay" class="search-results-overlay glass-panel hidden"></div>
           </div>
+
+          <!-- Notification Bell Button -->
+          <button id="btn-nav-notifications" class="btn-action-icon btn-nav-bell" title="Bildirimler & Alarmlar">
+            <i data-lucide="bell"></i>
+            <span id="nav-notif-badge" class="nav-notif-dot ${unreadCount > 0 ? '' : 'hidden'}">${unreadCount}</span>
+          </button>
+
+          <!-- Profile Switcher Button -->
+          <button id="btn-nav-profile" class="btn-nav-profile-pill" title="Profil Değiştir (${activeProfile.name})">
+            <div class="nav-profile-avatar" style="background: ${activeProfile.color || '#f59e0b'};">
+              <i data-lucide="${activeProfile.avatar || 'user'}" style="width: 13px; height: 13px; color: #fff;"></i>
+            </div>
+            <span class="nav-profile-name">${activeProfile.name}</span>
+          </button>
 
           <!-- Compact PWA Install Button (Small icon only) -->
           <button id="btn-pwa-install" class="btn-action-icon btn-pwa-install hidden" title="CinePulse Uygulamasını Yükle" aria-label="Uygulamayı Yükle">
@@ -154,6 +174,20 @@ export function attachNavbarEvents(onNavigate) {
   if (randomPickerBtn) {
     randomPickerBtn.addEventListener('click', () => {
       openRandomPickerModal();
+    });
+  }
+
+  const notifBtn = document.getElementById('btn-nav-notifications');
+  if (notifBtn) {
+    notifBtn.addEventListener('click', () => {
+      openNotificationCenterModal();
+    });
+  }
+
+  const profileBtn = document.getElementById('btn-nav-profile');
+  if (profileBtn) {
+    profileBtn.addEventListener('click', () => {
+      openProfileModal();
     });
   }
 

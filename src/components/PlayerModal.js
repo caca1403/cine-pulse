@@ -828,6 +828,11 @@ export async function openPlayerModal({
 
       return `
         <div class="direct-video-wrapper" id="direct-video-wrapper">
+          <!-- Cinema Ambient Glow Layer (YouTube Style) -->
+          <div class="player-ambient-glow" id="player-ambient-glow">
+            <canvas id="player-ambient-canvas" class="player-ambient-canvas"></canvas>
+          </div>
+
           ${dualAudioBarHTML}
           <video 
             id="hls-video-player" 
@@ -1935,6 +1940,43 @@ export async function openPlayerModal({
     const gestureIcon = wrapper.querySelector('#gesture-hud-icon');
     const gestureText = wrapper.querySelector('#gesture-hud-text');
     const gestureFill = wrapper.querySelector('#gesture-hud-fill');
+
+    // Cinema Ambient Mode Glow (YouTube Style)
+    const ambientBox = wrapper.querySelector('#player-ambient-glow');
+    const ambientCanvas = wrapper.querySelector('#player-ambient-canvas');
+    if (ambientBox && ambientCanvas) {
+      let ambientTimer = null;
+      let ctx = null;
+      try {
+        ctx = ambientCanvas.getContext('2d', { willReadFrequently: false });
+      } catch (_) {}
+
+      const updateAmbient = () => {
+        if (!videoEl || videoEl.paused || videoEl.ended) return;
+        try {
+          if (ctx && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
+            ambientCanvas.width = 32;
+            ambientCanvas.height = 18;
+            ctx.drawImage(videoEl, 0, 0, 32, 18);
+          }
+        } catch (_) {
+          // If cross-origin protects video frames, apply CSS ambient glow fallback
+          if (ambientCanvas) ambientCanvas.style.display = 'none';
+          if (ambientBox) ambientBox.style.background = 'radial-gradient(circle at center, rgba(245, 158, 11, 0.22) 0%, rgba(20, 184, 166, 0.14) 50%, transparent 75%)';
+        }
+      };
+
+      videoEl.addEventListener('play', () => {
+        if (ambientTimer) clearInterval(ambientTimer);
+        ambientTimer = setInterval(updateAmbient, 300);
+      });
+      videoEl.addEventListener('pause', () => {
+        if (ambientTimer) {
+          clearInterval(ambientTimer);
+          ambientTimer = null;
+        }
+      });
+    }
 
     // Screen Lock State
     let isScreenLocked = false;

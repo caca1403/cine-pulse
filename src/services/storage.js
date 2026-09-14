@@ -55,10 +55,92 @@ function clearStorageCache() {
   _watchlistCache = null;
 }
 
+export function getProfiles() {
+  const defaultProfiles = [
+    { id: 'prof_1', name: 'Çağatay', avatar: 'user-circle', isKid: false, color: '#f59e0b' },
+    { id: 'prof_kids', name: 'Çocuk Modu 🎈', avatar: 'baby', isKid: true, color: '#38bdf8' },
+    { id: 'prof_cinema', name: 'Sinema Odası 🍿', avatar: 'film', isKid: false, color: '#ec4899' }
+  ];
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return defaultProfiles;
+    const raw = localStorage.getItem('sineflix_profiles_list_v1');
+    return raw ? JSON.parse(raw) : defaultProfiles;
+  } catch (_) {
+    return defaultProfiles;
+  }
+}
+
+export function saveProfiles(profilesList) {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    localStorage.setItem('sineflix_profiles_list_v1', JSON.stringify(profilesList));
+    window.dispatchEvent(new CustomEvent('sineflix_profiles_updated'));
+  } catch (_) {}
+}
+
+export function getActiveProfile() {
+  try {
+    const profiles = getProfiles();
+    const activeId = localStorage.getItem('sineflix_active_profile_id') || 'prof_1';
+    return profiles.find(p => p.id === activeId) || profiles[0];
+  } catch (_) {
+    return { id: 'prof_1', name: 'Çağatay', avatar: 'user-circle', isKid: false, color: '#f59e0b' };
+  }
+}
+
+export function setActiveProfile(profileId) {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    localStorage.setItem('sineflix_active_profile_id', profileId);
+    clearStorageCache();
+    window.dispatchEvent(new CustomEvent('sineflix_profile_changed', { detail: { profileId } }));
+  } catch (_) {}
+}
+
+export function isKidProfileActive() {
+  return getActiveProfile()?.isKid === true;
+}
+
+export function addProfile({ name, isKid = false, avatar = 'user-circle', color = '#f59e0b' }) {
+  const profiles = getProfiles();
+  const newProfile = {
+    id: `prof_${Date.now()}`,
+    name: name.trim() || 'Yeni Profil',
+    avatar,
+    isKid: Boolean(isKid),
+    color
+  };
+  profiles.push(newProfile);
+  saveProfiles(profiles);
+  return newProfile;
+}
+
+export function deleteProfile(profileId) {
+  if (profileId === 'prof_1') return false; // Prevent deleting master profile
+  let profiles = getProfiles();
+  profiles = profiles.filter(p => p.id !== profileId);
+  saveProfiles(profiles);
+  if (getActiveProfile()?.id === profileId) {
+    setActiveProfile('prof_1');
+  }
+  return true;
+}
+
+function getNamespacedKey(key) {
+  if (key === STORAGE_KEYS.WATCH_HISTORY || key === STORAGE_KEYS.FAVORITES || key === STORAGE_KEYS.WATCHLIST) {
+    const profile = getActiveProfile();
+    if (profile && profile.id && profile.id !== 'prof_1') {
+      return `${key}_${profile.id}`;
+    }
+  }
+  return key;
+}
+
 function getLocalItem(key, defaultValue = []) {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return defaultValue;
-    const data = localStorage.getItem(key);
+    const namespacedKey = getNamespacedKey(key);
+    const data = localStorage.getItem(namespacedKey);
     return data ? JSON.parse(data) : defaultValue;
   } catch (err) {
     return defaultValue;
@@ -68,9 +150,10 @@ function getLocalItem(key, defaultValue = []) {
 function setLocalItem(key, value) {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return;
-    localStorage.setItem(key, JSON.stringify(value));
+    const namespacedKey = getNamespacedKey(key);
+    localStorage.setItem(namespacedKey, JSON.stringify(value));
     clearStorageCache();
-    window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { key, value } }));
+    window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { key: namespacedKey, value } }));
   } catch (err) {
     console.error(`Error saving ${key} to localStorage:`, err);
   }
