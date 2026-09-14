@@ -26,17 +26,17 @@ export function renderNavbar(currentView = 'home') {
         <ul class="nav-links desktop-nav-links">
           ${activeProfile.isKid ? `
             <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}"><i data-lucide="home"></i><span>Ana Sayfa</span></a></li>
-            <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="tv"></i><span>Çizgi Diziler</span></a></li>
-            <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="film"></i><span>Animasyonlar</span></a></li>
-            <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="sparkles"></i><span>Anime</span></a></li>
-            <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="bookmark"></i><span>Listem</span></a></li>
+            <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="monitor-play"></i><span>Çizgi Diziler</span></a></li>
+            <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="popcorn"></i><span>Animasyonlar</span></a></li>
+            <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="cat"></i><span>Anime</span></a></li>
+            <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="heart"></i><span>Listem</span></a></li>
           ` : `
             <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}"><i data-lucide="home"></i><span>Ana Sayfa</span></a></li>
-            <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="tv"></i><span>Diziler</span></a></li>
-            <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="film"></i><span>Filmler</span></a></li>
-            <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="sparkles"></i><span>Anime</span></a></li>
+            <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="monitor-play"></i><span>Diziler</span></a></li>
+            <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="popcorn"></i><span>Filmler</span></a></li>
+            <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="cat"></i><span>Anime</span></a></li>
             <li><a href="#discover" class="nav-link ${currentView === 'discover' ? 'active' : ''}"><i data-lucide="compass"></i><span>Keşfet</span></a></li>
-            <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="bookmark"></i><span>Listem</span></a></li>
+            <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="heart"></i><span>Listem</span></a></li>
           `}
         </ul>
 
@@ -103,15 +103,15 @@ export function renderNavbar(currentView = 'home') {
         <span>Ana Sayfa</span>
       </a>
       <a href="#series" class="dock-item ${currentView === 'series' ? 'active' : ''}">
-        <i data-lucide="tv"></i>
+        <i data-lucide="monitor-play"></i>
         <span>Diziler</span>
       </a>
       <a href="#movies" class="dock-item ${currentView === 'movies' ? 'active' : ''}">
-        <i data-lucide="film"></i>
+        <i data-lucide="popcorn"></i>
         <span>Filmler</span>
       </a>
       <a href="#anime" class="dock-item ${currentView === 'anime' ? 'active' : ''}">
-        <i data-lucide="sparkles"></i>
+        <i data-lucide="cat"></i>
         <span>Anime</span>
       </a>
       <a href="#discover" class="dock-item ${currentView === 'discover' ? 'active' : ''}">

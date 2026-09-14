@@ -223,7 +223,10 @@ export async function renderHomeView() {
 
   const rawWatchHistory = getUnifiedContinueWatching();
   const watchHistory = filterForActiveProfile(rawWatchHistory);
-  const heroHTML = renderHeroSlider(trending);
+  
+  // Kids mode: filter hero slider items for kid-safe content only
+  const heroItems = isKid ? filterForActiveProfile(trending) : trending;
+  const heroHTML = renderHeroSlider(heroItems);
 
   // Register infinite loaders without resetting page count
   if (isKid) {

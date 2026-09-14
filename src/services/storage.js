@@ -58,8 +58,7 @@ function clearStorageCache() {
 export function getProfiles() {
   const defaultProfiles = [
     { id: 'prof_1', name: 'Çağatay', avatar: 'user-circle', isKid: false, color: '#f59e0b' },
-    { id: 'prof_kids', name: 'Çocuk Modu 🎈', avatar: 'baby', isKid: true, color: '#38bdf8' },
-    { id: 'prof_cinema', name: 'Sinema Odası 🍿', avatar: 'film', isKid: false, color: '#ec4899' }
+    { id: 'prof_kids', name: 'Çocuk Modu 🎈', avatar: 'baby', isKid: true, color: '#38bdf8' }
   ];
   try {
     if (typeof window === 'undefined' || !window.localStorage) return defaultProfiles;

@@ -40,28 +40,38 @@ export function openProfileModal() {
           <div class="profile-cards-grid">
             ${profiles.map(p => {
               const isAct = p.id === active.id;
+              const canDelete = p.id !== 'prof_1';
               return `
-                <div class="profile-card ${isAct ? 'is-active' : ''}" data-profile-id="${p.id}">
-                  <div class="profile-avatar-wrap" style="border-color: ${p.color || '#f59e0b'}; background: ${p.color || '#f59e0b'}22;">
-                    <i data-lucide="${p.avatar || 'user'}" style="width: 44px; height: 44px; color: ${p.color || '#f59e0b'};"></i>
-                    ${isAct ? `
-                      <div class="profile-active-check">
-                        <i data-lucide="check" style="width: 14px; height: 14px;"></i>
-                      </div>
-                    ` : ''}
+                <div class="profile-card-wrapper">
+                  <div class="profile-card ${isAct ? 'is-active' : ''}" data-profile-id="${p.id}">
+                    <div class="profile-avatar-wrap" style="border-color: ${p.color || '#f59e0b'}; background: ${p.color || '#f59e0b'}22;">
+                      <i data-lucide="${p.avatar || 'user'}" style="width: 44px; height: 44px; color: ${p.color || '#f59e0b'};"></i>
+                      ${isAct ? `
+                        <div class="profile-active-check">
+                          <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+                        </div>
+                      ` : ''}
+                    </div>
+                    <span class="profile-name">${p.name}</span>
+                    ${p.isKid ? `<span class="profile-kid-badge">Çocuk</span>` : ''}
                   </div>
-                  <span class="profile-name">${p.name}</span>
-                  ${p.isKid ? `<span class="profile-kid-badge">Çocuk</span>` : ''}
+                  ${canDelete ? `
+                    <button class="btn-delete-profile" data-delete-id="${p.id}" title="Profili Sil">
+                      <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+                    </button>
+                  ` : ''}
                 </div>
               `;
             }).join('')}
 
             <!-- Add Profile Card -->
-            <div class="profile-card profile-card-add" id="btn-show-add-profile">
-              <div class="profile-avatar-wrap add-wrap">
-                <i data-lucide="plus" style="width: 38px; height: 38px; color: #94a3b8;"></i>
+            <div class="profile-card-wrapper">
+              <div class="profile-card profile-card-add" id="btn-show-add-profile">
+                <div class="profile-avatar-wrap add-wrap">
+                  <i data-lucide="plus" style="width: 38px; height: 38px; color: #94a3b8;"></i>
+                </div>
+                <span class="profile-name">Profil Ekle</span>
               </div>
-              <span class="profile-name">Profil Ekle</span>
             </div>
           </div>
 
@@ -127,15 +137,32 @@ export function openProfileModal() {
 
     if (window.lucide) window.lucide.createIcons({ el: modalContainer });
 
-    // Events
+    // --- SELECT VIEW EVENTS ---
     const closeBtn = modalContainer.querySelector('#btn-close-profile-modal');
     if (closeBtn) closeBtn.onclick = () => closeProfileModal();
 
     const addCardBtn = modalContainer.querySelector('#btn-show-add-profile');
     if (addCardBtn) addCardBtn.onclick = () => renderModalContent('add');
 
-    const backBtn = modalContainer.querySelector('#btn-cancel-add-profile') || modalContainer.querySelector('#btn-back-to-profiles');
-    if (backBtn) backBtn.onclick = () => renderModalContent('select');
+    // Delete profile buttons
+    modalContainer.querySelectorAll('.btn-delete-profile').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const deleteId = btn.getAttribute('data-delete-id');
+        const profileToDelete = getProfiles().find(p => p.id === deleteId);
+        if (!profileToDelete) return;
+
+        if (!confirm(`"${profileToDelete.name}" profilini silmek istediğinize emin misiniz?`)) return;
+
+        const success = deleteProfile(deleteId);
+        if (success) {
+          showToast(`"${profileToDelete.name}" profili silindi.`, 'info');
+          renderModalContent('select');
+        } else {
+          showToast('Bu profil silinemez.', 'error');
+        }
+      };
+    });
 
     // Backup and PWA Buttons inside modal
     const backupBtn = modalContainer.querySelector('#btn-modal-open-backup');
@@ -165,6 +192,15 @@ export function openProfileModal() {
         }
       };
     });
+
+    // --- ADD VIEW EVENTS ---
+    // Back arrow button (top-left)
+    const cancelAddBtn = modalContainer.querySelector('#btn-cancel-add-profile');
+    if (cancelAddBtn) cancelAddBtn.onclick = () => renderModalContent('select');
+
+    // İptal button (bottom)
+    const backBtn = modalContainer.querySelector('#btn-back-to-profiles');
+    if (backBtn) backBtn.onclick = () => renderModalContent('select');
 
     // Form Add Profile
     const form = modalContainer.querySelector('#form-add-profile');
