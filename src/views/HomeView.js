@@ -224,8 +224,14 @@ export async function renderHomeView() {
   const rawWatchHistory = getUnifiedContinueWatching();
   const watchHistory = filterForActiveProfile(rawWatchHistory);
   
-  // Kids mode: filter hero slider items for kid-safe content only
-  const heroItems = isKid ? filterForActiveProfile(trending) : trending;
+  // Kids mode: use kids-specific content for hero (not filtered trending which lets adult content through)
+  let heroItems;
+  if (isKid) {
+    const kidsHeroPool = [...(popularMovies || []), ...(popularTV || [])].filter(i => i.backdrop_path);
+    heroItems = kidsHeroPool.slice(0, 10);
+  } else {
+    heroItems = trending;
+  }
   const heroHTML = renderHeroSlider(heroItems);
 
   // Register infinite loaders without resetting page count

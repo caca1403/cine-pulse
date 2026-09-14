@@ -3,20 +3,32 @@
    Progressive 3-page parallel fetching with instant first-paint rendering.
    ========================================================================== */
 
-import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries } from '../services/tmdbApi.js';
+import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries, fetchKidsPopularSeries, fetchKidsPopularMovies } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
+import { isKidProfileActive } from '../services/storage.js';
 
 // In-memory cache per category — resets on each fresh view render
 const popularListCache = {};
 
 function getCache(type) {
-  if (!popularListCache[type] || popularListCache[type].stale) {
-    popularListCache[type] = { allItems: [], seenIds: new Set(), nextPage: 1, isExhausted: false, stale: false };
+  const isKid = isKidProfileActive();
+  const cacheKey = isKid ? `${type}_kids` : type;
+  if (!popularListCache[cacheKey] || popularListCache[cacheKey].stale) {
+    popularListCache[cacheKey] = { allItems: [], seenIds: new Set(), nextPage: 1, isExhausted: false, stale: false };
   }
-  return popularListCache[type];
+  return popularListCache[cacheKey];
 }
 
 function getFetcher(type) {
+  const isKid = isKidProfileActive();
+  if (isKid) {
+    switch (type) {
+      case 'movie': return fetchKidsPopularMovies;
+      case 'anime': return fetchPopularAnime;
+      case 'documentary': return fetchPopularDocumentaries;
+      default: return fetchKidsPopularSeries;
+    }
+  }
   switch (type) {
     case 'movie': return fetchPopularMovies;
     case 'anime': return fetchPopularAnime;
@@ -26,17 +38,25 @@ function getFetcher(type) {
 }
 
 export async function renderPopularListView(type = 'tv') {
+  const isKid = isKidProfileActive();
+  const cacheKey = isKid ? `${type}_kids` : type;
+
   // Mark old cache as stale so it gets reset
-  if (popularListCache[type]) {
-    popularListCache[type].stale = true;
+  if (popularListCache[cacheKey]) {
+    popularListCache[cacheKey].stale = true;
   }
 
   const cache = getCache(type);
 
-  const titleMap = {
-    tv: ['Tüm Zamanların En Popüler Dizileri', 'tv-2'],
-    movie: ['Tüm Zamanların En Popüler Filmleri', 'clapperboard'],
-    anime: ['Tüm Zamanların En Popüler Animeleri', 'sparkles'],
+  const titleMap = isKid ? {
+    tv: ['🌟 Çizgi Diziler & Çocuk Yapımları', 'monitor-play'],
+    movie: ['🎈 Animasyon & Çocuk Filmleri', 'popcorn'],
+    anime: ['🎌 Çocuk & Genç Anime', 'cat'],
+    documentary: ['🐾 Doğa & Hayvan Belgeselleri', 'globe']
+  } : {
+    tv: ['Tüm Zamanların En Popüler Dizileri', 'monitor-play'],
+    movie: ['Tüm Zamanların En Popüler Filmleri', 'popcorn'],
+    anime: ['Tüm Zamanların En Popüler Animeleri', 'cat'],
     documentary: ['Tüm Zamanların En Çok İzlenen Belgeselleri', 'globe']
   };
   const [titleText, iconName] = titleMap[type] || titleMap.tv;
