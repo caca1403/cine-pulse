@@ -261,6 +261,16 @@ export default defineConfig({
           'Referer': 'https://filmmakinesi.to/'
         },
         rewrite: (path) => path.replace(/^\/api\/fmk/, '')
+      },
+      '/api/kvip': {
+        target: 'https://cizgimax.online',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://cizgimax.online/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/kvip/, '')
       }
     }
   },

@@ -34,9 +34,10 @@ import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
 import { fetchRecTvSources } from './rectvService.js';
 import { fetchSmashyStreamSources } from './smashyStreamService.js';
+import { fetchKidsVipSources, fetchKidsVipMovieSources } from './kidsVipScraper.js';
 
 // Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
-const CACHE_VERSION = 'v12';
+const CACHE_VERSION = 'v13';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -189,6 +190,7 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   }
 
   if (s.isDirectVideo || s.isHls) {
+    if (id.startsWith('kvip_') || raw.includes('kids vip')) return s.displayName || s.name || '⚡ Kids VIP Direct 1080p';
     if (id.startsWith('acx_') || raw.includes('animecix') || url.includes('tau-video')) return 'AX Tau Direct 1080p';
     if (id.startsWith('snx') || raw.includes('sinewix')) return 'SWX Direct 1080p';
   }
@@ -302,6 +304,7 @@ function isValidStream(s) {
     id.startsWith('tvr_') ||
     id.startsWith('rectv_') ||
     id.startsWith('smashy_') ||
+    id.startsWith('kvip_') ||
     id.startsWith('dzp_') ||
     id.startsWith('dzs_') ||
     id.startsWith('ybd_') ||
@@ -356,6 +359,9 @@ function getStreamPriorityScore(s) {
 
   // Priority 0: TVR (RecTV) VIP, Dizisol, Dizipal, DiziBal, Diziyo & FilmEkseni VIP Direct 1080p HLS (Highest Reliability, Instant 0ms playback)
   if (id.startsWith('tvr_') || id.startsWith('rectv_') || raw.includes('tvr') || raw.includes('rectv')) {
+    return 0;
+  }
+  if (id.startsWith('kvip_') || raw.includes('kids vip')) {
     return 0;
   }
   if (id.startsWith('smashy_') || raw.includes('smashy')) {
@@ -596,6 +602,23 @@ export async function getStreamingServersProgressive({
     // SmashyStream VIP Multi-Subbed Source (smashystream.xyz / player.smashystream.com)
     Promise.resolve(fetchSmashyStreamSources({ type, tmdbId, season, episode }))
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    // Kids VIP Cartoon & Animation Stream Engine (Direct 1080p TR Dublaj & Altyazı)
+    fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+
+    fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    isMovie
+      ? fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : Promise.resolve([]),
+
+    isMovie
+      ? fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      : Promise.resolve([]),
 
     // Subtitled Sources: ONLY YTS Official (en.yts-official.com)
     fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })

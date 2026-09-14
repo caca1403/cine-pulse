@@ -465,13 +465,22 @@ export default async function handler(req, res) {
     targetUrl = `https://${host}${subPath}${search}`;
     customHeaders['Referer'] = 'https://filmmakinesi.to/';
     customHeaders['Origin'] = 'https://filmmakinesi.to';
-    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   } else if (pathname.startsWith('/api/fmk_proxy')) {
     const rawTarget = urlObj.searchParams.get('url') || '';
     if (!rawTarget) return res.status(400).send('Missing url param');
     targetUrl = decodeURIComponent(rawTarget);
     customHeaders['Referer'] = 'https://filmmakinesi.to/';
     customHeaders['Origin'] = 'https://filmmakinesi.to';
+  } else if (pathname.startsWith('/api/kvip') || pathname.startsWith('/api/czm')) {
+    const subPath = pathname.replace(/^\/api\/(kvip|czm)/, '');
+    targetUrl = `https://cizgimax.online${subPath}${search}`;
+    customHeaders['Referer'] = 'https://cizgimax.online/';
+    customHeaders['Origin'] = 'https://cizgimax.online';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    if (req.method === 'POST' || req.headers['x-requested-with'] || pathname.includes('/suggest') || pathname.includes('/search')) {
+      customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+      customHeaders['Accept'] = 'application/json, text/javascript, */*; q=0.01';
+    }
   } else if (pathname.startsWith('/api/dzs')) {
     const pathParam = urlObj.searchParams.get('path');
     const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : pathname.replace(/^\/api\/dzs/, '');
