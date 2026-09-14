@@ -264,7 +264,7 @@ export function renderLiveTvView() {
           <div class="tv-catalog-search-area">
             <div class="tv-catalog-search-box">
               <i data-lucide="search" class="tv-search-icon"></i>
-              <input type="text" id="tv-search" class="tv-search-field" placeholder="Kanal adı ara (Örn: S Sport, TRT 1, ATV)..." />
+              <input type="text" id="tv-search" class="tv-search-field" placeholder="Kanal adı ara..." />
               <button class="tv-search-clear-btn hidden" id="tv-search-clear" title="Temizle">
                 <i data-lucide="x" style="width:14px;height:14px;"></i>
               </button>
