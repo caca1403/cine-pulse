@@ -205,38 +205,54 @@ export function isBlockedContent(item) {
 }
 
 export async function fetchKidsPopularSeries(page = 1) {
-  // All-time most popular cartoon & animation series in Turkey
-  const trRes = await tmdbFetch('/discover/tv', {
-    sort_by: 'vote_count.desc',
-    page,
-    language: 'tr-TR',
-    watch_region: 'TR',
-    with_genres: '10762,16,10751',
-    without_genres: '27,80,53,10752,18',
-    'vote_count.gte': 40
-  });
-  if (!trRes || !trRes.results) return [];
+  // All-time most popular cartoons & animated series with Turkish localization
+  const [trRes, enRes] = await Promise.all([
+    tmdbFetch('/discover/tv', {
+      sort_by: 'vote_count.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '16',
+      without_genres: '27,80,53,10752,18',
+      'vote_count.gte': 20
+    }),
+    tmdbFetch('/discover/tv', {
+      sort_by: 'popularity.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '10762',
+      without_genres: '27,80,53',
+      'vote_count.gte': 5
+    })
+  ]);
 
-  return trRes.results
+  const combined = [...(trRes?.results || []), ...(enRes?.results || [])];
+  const uniqueMap = new Map();
+  for (const item of combined) {
+    if (item && item.id && !uniqueMap.has(item.id)) {
+      uniqueMap.set(item.id, item);
+    }
+  }
+
+  return Array.from(uniqueMap.values())
     .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => ({
       ...item,
       type: 'tv',
       media_type: 'tv',
+      isSeries: true,
       overview: (item.overview || '').trim() || generateCinematicOverview(item, 'tv')
     }));
 }
 
 export async function fetchKidsPopularMovies(page = 1) {
-  // All-time most popular animated feature films in Turkey
+  // All-time most popular animated feature films with Turkish localization
   const trRes = await tmdbFetch('/discover/movie', {
     sort_by: 'vote_count.desc',
     page,
     language: 'tr-TR',
-    watch_region: 'TR',
     with_genres: '16,10751',
     without_genres: '27,80,53,10752',
-    'vote_count.gte': 120
+    'vote_count.gte': 40
   });
   if (!trRes || !trRes.results) return [];
 

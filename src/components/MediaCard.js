@@ -341,14 +341,14 @@ export function attachMediaCardEvents(container) {
 
         try {
           const trailer = await fetchMediaTrailer(type === 'tv' ? 'tv' : 'movie', id);
-          if (trailer && trailer.key && card.matches(':hover')) {
+          if (trailer && trailer.key && trailer.key.trim() && card.matches(':hover')) {
             const previewBox = document.createElement('div');
             previewBox.className = 'card-hover-video-preview';
             previewBox.innerHTML = `
               <iframe 
-                src="https://www.youtube-nocookie.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&modestbranding=1&loop=1&playlist=${trailer.key}&rel=0" 
+                src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(trailer.key)}?autoplay=1&mute=1&controls=0&modestbranding=1&loop=1&playlist=${encodeURIComponent(trailer.key)}&rel=0&playsinline=1&enablejsapi=1" 
                 frameborder="0" 
-                allow="autoplay"
+                allow="autoplay; encrypted-media"
                 tabindex="-1">
               </iframe>
             `;
