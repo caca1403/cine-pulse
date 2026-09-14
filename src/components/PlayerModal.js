@@ -146,6 +146,115 @@ export async function openPlayerModal({
   let simulatedCurrentTime = initialTime;
   let isSwitchingEpisode = false;
 
+  const updateWatchedUI = (watched) => {
+    [document.getElementById('btn-toggle-watched-player'), document.getElementById('btn-toggle-watched-mobile')].forEach(btn => {
+      if (!btn) return;
+      const span = btn.querySelector('span');
+      const icon = btn.querySelector('i');
+      if (span) span.textContent = watched ? 'İzlendi' : 'İzlendi Yap';
+      if (icon) icon.setAttribute('data-lucide', watched ? 'check-circle-2' : 'check');
+      if (watched) btn.classList.add('watched-active');
+      else btn.classList.remove('watched-active');
+    });
+
+    const btnToggleList = document.getElementById('btn-toggle-list');
+    if (btnToggleList) {
+      const span = btnToggleList.querySelector('#list-action-label');
+      const icon = btnToggleList.querySelector('i');
+      if (span) span.textContent = watched ? 'İzlendi' : 'Listeme Ekle';
+      if (icon) icon.setAttribute('data-lucide', watched ? 'check-circle-2' : 'plus');
+      if (watched) btnToggleList.classList.add('watched-active');
+      else btnToggleList.classList.remove('watched-active');
+    }
+
+    if (isSeries) {
+      const carouselContainer = document.getElementById('dizisol-episodes-carousel');
+      if (carouselContainer) {
+        const card = carouselContainer.querySelector(`.dizisol-ep-card[data-season="${currentSeason}"][data-episode="${currentEpisode}"]`);
+        if (card) {
+          card.classList.toggle('is-watched-card', watched);
+          const watchBtn = card.querySelector('.dizisol-ep-watch-toggle');
+          if (watchBtn) {
+            watchBtn.classList.toggle('is-watched', watched);
+            watchBtn.setAttribute('title', watched ? 'İzlendi (Kaldırmak için tıkla)' : 'İzlendi Olarak İşaretle');
+            watchBtn.innerHTML = `
+              <i data-lucide="${watched ? 'check-circle-2' : 'eye'}" style="width: 13px; height: 13px;"></i>
+              <span class="ep-watch-text">${watched ? 'İzlendi' : 'İşaretle'}</span>
+            `;
+          }
+          const titleEl = card.querySelector('.dizisol-ep-title');
+          if (titleEl) {
+            const baseTitle = titleEl.getAttribute('data-base-title') || titleEl.textContent.replace(/\s*✓.*$/, '');
+            titleEl.textContent = `${baseTitle}${watched ? ' ✓' : ''}`;
+          }
+        }
+      }
+    }
+    if (window.lucide) window.lucide.createIcons();
+  };
+
+  let lastProgressSaveTimestamp = 0;
+  const persistCurrentProgress = (curTime, durTime, forceCompleted = null, immediate = false) => {
+    if (!tmdbId) return;
+    const cur = Math.max(0, Math.round(curTime ?? simulatedCurrentTime ?? 0));
+    const dur = Math.max(0, Math.round(durTime || estimatedDuration || 0));
+    simulatedCurrentTime = cur;
+
+    const now = Date.now();
+    if (!immediate && (now - lastProgressSaveTimestamp < 3000)) return;
+    lastProgressSaveTimestamp = now;
+
+    const progressPercent = dur > 0 ? Math.min(100, Math.round((cur / dur) * 100)) : 0;
+    const completedStatus = (forceCompleted !== null) ? forceCompleted : (isWatched || progressPercent >= 90);
+    if (completedStatus && !isWatched) {
+      isWatched = true;
+      updateWatchedUI(true);
+    }
+
+    saveWatchProgress({
+      id: tmdbId,
+      title: cleanSeriesName,
+      posterPath,
+      backdropPath,
+      type: effectiveIsAnime ? 'anime' : (isSeries ? 'tv' : 'movie'),
+      isAnime: effectiveIsAnime,
+      isSeries: isSeries,
+      season: currentSeason,
+      episode: currentEpisode,
+      currentTime: cur,
+      duration: dur > 0 ? dur : estimatedDuration,
+      completed: completedStatus
+    });
+  };
+
+  function startWatchProgressLoop() {
+    if (activeProgressInterval) clearInterval(activeProgressInterval);
+    activeProgressInterval = setInterval(() => {
+      const videoEl = document.getElementById('hls-video-player');
+      if (videoEl && !isNaN(videoEl.currentTime)) {
+        if (!videoEl.paused && !videoEl.seeking) {
+          persistCurrentProgress(videoEl.currentTime, videoEl.duration, null, false);
+        }
+      } else {
+        if (document.visibilityState === 'visible' && hasPlayerStartedPlaying) {
+          simulatedCurrentTime += 5;
+          persistCurrentProgress(simulatedCurrentTime, estimatedDuration, null, false);
+        }
+      }
+    }, 4000);
+  }
+
+  const handleGlobalPageUnload = () => {
+    const videoEl = document.getElementById('hls-video-player');
+    if (videoEl && typeof videoEl._persistProgress === 'function') {
+      videoEl._persistProgress(true);
+    } else {
+      persistCurrentProgress(simulatedCurrentTime, estimatedDuration, null, true);
+    }
+  };
+  window.addEventListener('pagehide', handleGlobalPageUnload);
+  window.addEventListener('beforeunload', handleGlobalPageUnload);
+
   let currentCategory = effectiveIsAnime 
     ? 'subtitled' 
     : (typeof localStorage !== 'undefined' && localStorage.getItem('cp_preferred_category') ? localStorage.getItem('cp_preferred_category') : 'dubbed');
@@ -680,7 +789,7 @@ export async function openPlayerModal({
         <div class="floating-audio-chip" id="floating-audio-chip">
           <div class="audio-chip-content">
             <i data-lucide="volume-2" style="width: 13px; height: 13px; color: #f59e0b;"></i>
-            <span>Ses Gelmiyor mu? (Dolby AC3)</span>
+            <span>Ses Gelmiyor mu?</span>
             <a href="vlc://${streamUrl}" class="btn-audio-mini" title="VLC ile Aç">VLC</a>
             <a href="${streamUrl}" target="_blank" download class="btn-audio-mini" title="İndir">İndir</a>
           </div>
@@ -1261,10 +1370,14 @@ export async function openPlayerModal({
         const isCurrent = drawerSeason === currentSeason && epNum === currentEpisode;
         const epWatched = isMediaWatched(tmdbId, drawerSeason, epNum);
         return `
-          <div class="dizisol-ep-card ${isCurrent ? 'playing' : ''}" data-season="${drawerSeason}" data-episode="${epNum}">
+          <div class="dizisol-ep-card ${isCurrent ? 'playing' : ''} ${epWatched ? 'is-watched-card' : ''}" data-season="${drawerSeason}" data-episode="${epNum}">
             <div class="dizisol-ep-thumb-box">
               <div class="ep-thumb-fallback" style="display:flex;align-items:center;justify-content:center;height:100%;color:#475569;"><i data-lucide="film" style="width:24px;height:24px"></i></div>
               <span class="dizisol-ep-badge-num ${isCurrent ? 'active' : ''}">${epNum}. Bölüm</span>
+              <button class="dizisol-ep-watch-toggle ${epWatched ? 'is-watched' : ''}" data-season="${drawerSeason}" data-episode="${epNum}" title="${epWatched ? 'İzlendi (Kaldırmak için tıkla)' : 'İzlendi Olarak İşaretle'}">
+                <i data-lucide="${epWatched ? 'check-circle-2' : 'eye'}" style="width: 13px; height: 13px;"></i>
+                <span class="ep-watch-text">${epWatched ? 'İzlendi' : 'İşaretle'}</span>
+              </button>
               ${isCurrent ? `
                 <div class="dizisol-ep-play-circle">
                   <i data-lucide="play" style="width:16px;height:16px;fill:#fff;color:#fff;margin-left:2px;"></i>
@@ -1276,7 +1389,7 @@ export async function openPlayerModal({
               `}
             </div>
             <div class="dizisol-ep-info">
-              <h5 class="dizisol-ep-title" title="${epNum}. Bölüm">${epNum}. Bölüm ${epWatched ? '✓' : ''}</h5>
+              <h5 class="dizisol-ep-title" data-base-title="${epNum}. Bölüm" title="${epNum}. Bölüm">${epNum}. Bölüm ${epWatched ? '✓' : ''}</h5>
             </div>
           </div>
         `;
@@ -1291,10 +1404,14 @@ export async function openPlayerModal({
         const airDateText = ep.air_date ? ep.air_date.substring(0, 7) : '';
 
         return `
-          <div class="dizisol-ep-card ${isCurrent ? 'playing' : ''}" data-season="${drawerSeason}" data-episode="${epNum}">
+          <div class="dizisol-ep-card ${isCurrent ? 'playing' : ''} ${epWatched ? 'is-watched-card' : ''}" data-season="${drawerSeason}" data-episode="${epNum}">
             <div class="dizisol-ep-thumb-box">
               ${stillUrl ? `<img src="${stillUrl}" alt="B${epNum}" loading="lazy" />` : `<div class="ep-thumb-fallback" style="display:flex;align-items:center;justify-content:center;height:100%;color:#475569;"><i data-lucide="film" style="width:24px;height:24px"></i></div>`}
               <span class="dizisol-ep-badge-num ${isCurrent ? 'active' : ''}">${epNum}. Bölüm</span>
+              <button class="dizisol-ep-watch-toggle ${epWatched ? 'is-watched' : ''}" data-season="${drawerSeason}" data-episode="${epNum}" title="${epWatched ? 'İzlendi (Kaldırmak için tıkla)' : 'İzlendi Olarak İşaretle'}">
+                <i data-lucide="${epWatched ? 'check-circle-2' : 'eye'}" style="width: 13px; height: 13px;"></i>
+                <span class="ep-watch-text">${epWatched ? 'İzlendi' : 'İşaretle'}</span>
+              </button>
               ${durationText ? `<span class="dizisol-ep-duration">${durationText}</span>` : ''}
               ${isCurrent ? `
                 <div class="dizisol-ep-play-circle">
@@ -1307,7 +1424,7 @@ export async function openPlayerModal({
               `}
             </div>
             <div class="dizisol-ep-info">
-              <h5 class="dizisol-ep-title" title="${ep.name || `${epNum}. Bölüm`}">${ep.name || `${epNum}. Bölüm`}${epWatched ? ' ✓' : ''}</h5>
+              <h5 class="dizisol-ep-title" data-base-title="${ep.name || `${epNum}. Bölüm`}" title="${ep.name || `${epNum}. Bölüm`}">${ep.name || `${epNum}. Bölüm`}${epWatched ? ' ✓' : ''}</h5>
               ${airDateText ? `<span class="dizisol-ep-date">${airDateText}</span>` : ''}
             </div>
           </div>
@@ -1317,8 +1434,53 @@ export async function openPlayerModal({
 
     if (carouselContainer) {
       carouselContainer.innerHTML = carouselCardsHTML;
+
+      // Attach Watch Toggle Event Listeners to each Episode Card
+      carouselContainer.querySelectorAll('.dizisol-ep-watch-toggle').forEach(watchBtn => {
+        watchBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          const s = parseInt(watchBtn.getAttribute('data-season'), 10);
+          const e = parseInt(watchBtn.getAttribute('data-episode'), 10);
+          const res = toggleEpisodeWatched(tmdbId, s, e, {
+            title: cleanSeriesName,
+            posterPath,
+            backdropPath,
+            type: effectiveIsAnime ? 'anime' : 'tv',
+            isAnime: effectiveIsAnime,
+            isSeries: true
+          });
+          const nowWatched = res.completed;
+          watchBtn.classList.toggle('is-watched', nowWatched);
+          watchBtn.setAttribute('title', nowWatched ? 'İzlendi (Kaldırmak için tıkla)' : 'İzlendi Olarak İşaretle');
+          watchBtn.innerHTML = `
+            <i data-lucide="${nowWatched ? 'check-circle-2' : 'eye'}" style="width: 13px; height: 13px;"></i>
+            <span class="ep-watch-text">${nowWatched ? 'İzlendi' : 'İşaretle'}</span>
+          `;
+          if (window.lucide) window.lucide.createIcons({ el: watchBtn });
+
+          const card = watchBtn.closest('.dizisol-ep-card');
+          if (card) {
+            card.classList.toggle('is-watched-card', nowWatched);
+            const titleEl = card.querySelector('.dizisol-ep-title');
+            if (titleEl) {
+              const baseTitle = titleEl.getAttribute('data-base-title') || titleEl.textContent.replace(/\s*✓.*$/, '');
+              titleEl.textContent = `${baseTitle}${nowWatched ? ' ✓' : ''}`;
+            }
+          }
+
+          if (s === currentSeason && e === currentEpisode) {
+            isWatched = nowWatched;
+            updateWatchedUI(nowWatched);
+          }
+
+          showToast(nowWatched ? `✓ S${s} B${e} izlendi olarak işaretlendi.` : `S${s} B${e} izlendi işareti kaldırıldı.`, 'info');
+        });
+      });
+
       carouselContainer.querySelectorAll('.dizisol-ep-card').forEach(card => {
-        card.addEventListener('click', () => {
+        card.addEventListener('click', (ev) => {
+          if (ev.target.closest('.dizisol-ep-watch-toggle')) return;
           const s = parseInt(card.getAttribute('data-season'), 10);
           const e = parseInt(card.getAttribute('data-episode'), 10);
           if (s === currentSeason && e === currentEpisode) return;
@@ -1742,6 +1904,7 @@ export async function openPlayerModal({
     if (brightSlider) {
       brightSlider.oninput = (e) => {
         e.stopPropagation();
+        resetPopoverHideTimer();
         setBrightness(parseInt(brightSlider.value, 10));
       };
     }
@@ -1755,6 +1918,7 @@ export async function openPlayerModal({
             brightWrap.classList.remove('is-open');
           } else {
             brightWrap.classList.add('is-open');
+            resetPopoverHideTimer();
           }
         }
       };
@@ -1770,21 +1934,48 @@ export async function openPlayerModal({
 
     if (playBtn) playBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
     videoEl.onclick = (e) => {
-      if (menu && !menu.classList.contains('hidden')) {
-        menu.classList.add('hidden');
+      const hadOpen = (brightWrap && brightWrap.classList.contains('is-open')) ||
+                      (volWrap && volWrap.classList.contains('is-open')) ||
+                      (menu && !menu.classList.contains('hidden'));
+      if (hadOpen) {
+        closeOpenControlPopovers();
         return;
       }
       togglePlay();
     };
 
-    videoEl.addEventListener('play', updatePlayState);
-    videoEl.addEventListener('pause', updatePlayState);
-    videoEl.addEventListener('ended', updatePlayState);
+    videoEl.addEventListener('play', () => {
+      updatePlayState();
+      resetPopoverHideTimer();
+    });
+    videoEl.addEventListener('pause', () => {
+      updatePlayState();
+      handleVideoProgressUpdate(true);
+    });
+    videoEl.addEventListener('ended', () => {
+      updatePlayState();
+      persistCurrentProgress(videoEl.duration || videoEl.currentTime, videoEl.duration, true, true);
+    });
+    videoEl.addEventListener('seeked', () => {
+      handleVideoProgressUpdate(true);
+    });
+
+    const handleVideoProgressUpdate = (force = false) => {
+      if (!videoEl) return;
+      const cur = videoEl.currentTime;
+      const dur = videoEl.duration;
+      if (isNaN(cur) || cur < 0) return;
+      persistCurrentProgress(cur, dur, null, force);
+    };
+    videoEl._persistProgress = handleVideoProgressUpdate;
 
     // 2. Timeline and Time Update
     const updateTimeAndTimeline = () => {
       const cur = videoEl.currentTime || 0;
       const dur = videoEl.duration || 0;
+      simulatedCurrentTime = Math.round(cur);
+      handleVideoProgressUpdate(false);
+
       if (timeDisplay) {
         timeDisplay.textContent = `${formatSecondsToTime(cur)} / ${formatSecondsToTime(dur)}`;
       }
@@ -1877,6 +2068,7 @@ export async function openPlayerModal({
               volWrap.classList.remove('is-open');
             } else {
               volWrap.classList.add('is-open');
+              resetPopoverHideTimer();
             }
           } else {
             videoEl.muted = !videoEl.muted;
@@ -1892,6 +2084,7 @@ export async function openPlayerModal({
     if (volSlider) {
       volSlider.oninput = (e) => {
         e.stopPropagation();
+        resetPopoverHideTimer();
         videoEl.volume = parseFloat(volSlider.value);
         videoEl.muted = false;
         updateVolumeUI();
@@ -1931,25 +2124,46 @@ export async function openPlayerModal({
       }
     });
 
-    // 5. Inactivity Auto-hide Controls
+    // 5. Inactivity Auto-hide Controls & Popovers
     let hideTimeout = null;
+    let popoverHideTimeout = null;
+
+    const closeOpenControlPopovers = () => {
+      if (brightWrap) brightWrap.classList.remove('is-open');
+      if (volWrap) volWrap.classList.remove('is-open');
+      if (menu) menu.classList.add('hidden');
+      if (popoverHideTimeout) {
+        clearTimeout(popoverHideTimeout);
+        popoverHideTimeout = null;
+      }
+    };
+
+    const resetPopoverHideTimer = () => {
+      if (popoverHideTimeout) clearTimeout(popoverHideTimeout);
+      popoverHideTimeout = setTimeout(() => {
+        closeOpenControlPopovers();
+      }, 3500);
+    };
+
     const resetHideTimer = () => {
       wrapper.classList.remove('hide-controls');
       if (hideTimeout) clearTimeout(hideTimeout);
-      if (!videoEl.paused && menu && menu.classList.contains('hidden')) {
+      if (!videoEl.paused) {
         hideTimeout = setTimeout(() => {
-          if (!videoEl.paused && menu.classList.contains('hidden')) {
+          if (!videoEl.paused) {
             wrapper.classList.add('hide-controls');
+            closeOpenControlPopovers();
           }
-        }, 2500);
+        }, 3000);
       }
     };
 
     wrapper.addEventListener('mousemove', resetHideTimer);
     wrapper.addEventListener('mouseenter', resetHideTimer);
     wrapper.addEventListener('mouseleave', () => {
-      if (!videoEl.paused && menu && menu.classList.contains('hidden')) {
+      if (!videoEl.paused) {
         wrapper.classList.add('hide-controls');
+        closeOpenControlPopovers();
       }
     });
 
@@ -1962,6 +2176,7 @@ export async function openPlayerModal({
           showMainMenu();
           menu.classList.remove('hidden');
           wrapper.classList.remove('hide-controls');
+          resetPopoverHideTimer();
         } else {
           menu.classList.add('hidden');
         }
@@ -2866,38 +3081,7 @@ export async function openPlayerModal({
   // Initial Progressive Server Discovery
   startServerDiscovery();
   if (type === 'tv') renderDrawerContent();
-
-  // Progress Saving Interval
-  clearInterval(activeProgressInterval);
-  activeProgressInterval = setInterval(() => {
-    simulatedCurrentTime += 5;
-    const progressPercent = estimatedDuration > 0 ? Math.round((simulatedCurrentTime / estimatedDuration) * 100) : 0;
-    if (progressPercent >= 90 && !isWatched) {
-      isWatched = true;
-      [document.getElementById('btn-toggle-watched-player'), document.getElementById('btn-toggle-watched-mobile')].forEach(btn => {
-        if (!btn) return;
-        const span = btn.querySelector('span');
-        const icon = btn.querySelector('i');
-        if (span) span.textContent = 'İzlendi';
-        if (icon) icon.setAttribute('data-lucide', 'check-circle-2');
-        btn.classList.add('watched-active');
-      });
-      if (type === 'tv') renderDrawerContent();
-      if (window.lucide) window.lucide.createIcons();
-    }
-    saveWatchProgress({
-      id: tmdbId,
-      title: cleanSeriesName,
-      posterPath,
-      backdropPath,
-      type,
-      season: currentSeason,
-      episode: currentEpisode,
-      currentTime: simulatedCurrentTime,
-      duration: estimatedDuration,
-      completed: isWatched
-    });
-  }, 5000);
+  startWatchProgressLoop();
 
   // In-Place Episode Switching
   async function switchEpisodeInPlayer(newSeason, newEpisode) {
@@ -2936,63 +3120,16 @@ export async function openPlayerModal({
     const newRecord = getMediaProgress(tmdbId, currentSeason, currentEpisode);
     initialTime = newRecord ? newRecord.currentTime : 0;
     isWatched = isMediaWatched(tmdbId, currentSeason, currentEpisode);
+    simulatedCurrentTime = initialTime;
 
-    [document.getElementById('btn-toggle-watched-player'), document.getElementById('btn-toggle-watched-mobile')].forEach(btn => {
-      if (!btn) return;
-      const span = btn.querySelector('span');
-      const icon = btn.querySelector('i');
-      if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Yap';
-      if (icon) icon.setAttribute('data-lucide', isWatched ? 'check-circle-2' : 'check');
-      if (isWatched) {
-        btn.classList.add('watched-active');
-      } else {
-        btn.classList.remove('watched-active');
-      }
-    });
-
+    updateWatchedUI(isWatched);
     updateNavButtons();
     if (isSeries) {
       renderDrawerContent();
       updateEpisodeOverview(newSeason, newEpisode);
     }
 
-    simulatedCurrentTime = initialTime;
-    isSwitchingEpisode = false;
-    if (window.lucide) window.lucide.createIcons();
-
-    clearInterval(activeProgressInterval);
-    activeProgressInterval = setInterval(() => {
-      simulatedCurrentTime += 5;
-      const progressPercent = estimatedDuration > 0 ? Math.round((simulatedCurrentTime / estimatedDuration) * 100) : 0;
-      if (progressPercent >= 90 && !isWatched) {
-        isWatched = true;
-        [document.getElementById('btn-toggle-watched-player'), document.getElementById('btn-toggle-watched-mobile')].forEach(btn => {
-          if (!btn) return;
-          const span = btn.querySelector('span');
-          const icon = btn.querySelector('i');
-          if (span) span.textContent = 'İzlendi';
-          if (icon) icon.setAttribute('data-lucide', 'check-circle-2');
-          btn.classList.add('watched-active');
-        });
-        if (isSeries) renderDrawerContent();
-        if (window.lucide) window.lucide.createIcons();
-      }
-      saveWatchProgress({
-        id: tmdbId,
-        title: cleanSeriesName,
-        posterPath,
-        backdropPath,
-        type: effectiveIsAnime ? 'anime' : (isSeries ? 'tv' : 'movie'),
-        isAnime: effectiveIsAnime,
-        isSeries: isSeries,
-        season: currentSeason,
-        episode: currentEpisode,
-        currentTime: simulatedCurrentTime,
-        duration: estimatedDuration,
-        completed: isWatched
-      });
-    }, 5000);
-
+    startWatchProgressLoop();
     if (window.lucide) window.lucide.createIcons();
     isSwitchingEpisode = false;
   }
@@ -3107,6 +3244,17 @@ export async function openPlayerModal({
       countdownTimer = null;
     }
     clearInterval(activeProgressInterval);
+
+    // Immediately persist accurate final progress before unloading
+    const videoEl = document.getElementById('hls-video-player');
+    if (videoEl && typeof videoEl._persistProgress === 'function') {
+      videoEl._persistProgress(true);
+    } else {
+      persistCurrentProgress(simulatedCurrentTime, estimatedDuration, null, true);
+    }
+
+    window.removeEventListener('pagehide', handleGlobalPageUnload);
+    window.removeEventListener('beforeunload', handleGlobalPageUnload);
     if (activeHlsInstance) {
       try { activeHlsInstance.destroy(); } catch (_) {}
       activeHlsInstance = null;

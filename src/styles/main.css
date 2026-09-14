@@ -4638,13 +4638,30 @@ img {
 }
 
 /* Reveal on desktop hover, focus-within, or active touch class .is-open */
-.custom-slider-popup-wrap:hover .custom-vertical-slider-popover,
-.custom-slider-popup-wrap:focus-within .custom-vertical-slider-popover,
+@media (hover: hover) and (pointer: fine) {
+  .custom-slider-popup-wrap:hover .custom-vertical-slider-popover,
+  .custom-slider-popup-wrap:focus-within .custom-vertical-slider-popover {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
 .custom-slider-popup-wrap.is-open .custom-vertical-slider-popover {
-  opacity: 1;
-  pointer-events: auto;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0) scale(1);
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  transform: translateX(-50%) translateY(0) scale(1) !important;
+}
+
+/* Force hide any popover / menu when controls are hidden */
+.direct-video-wrapper.hide-controls .custom-vertical-slider-popover,
+.direct-video-wrapper.hide-controls .custom-player-menu {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  display: none !important;
 }
 
 .custom-slider-val-badge {
@@ -4999,10 +5016,11 @@ video::cue {
 
 @media (max-width: 768px) {
   .dual-audio-bar {
-    top: 8px !important;
+    top: 46px !important;
     right: 8px !important;
     padding: 3px 8px !important;
     gap: 4px !important;
+    z-index: 40 !important;
   }
   .dual-audio-btn {
     padding: 3px 7px !important;
@@ -5010,6 +5028,140 @@ video::cue {
   }
   .dual-audio-source-name {
     display: none !important;
+  }
+  .floating-audio-chip {
+    top: 46px !important;
+    right: 8px !important;
+    left: auto !important;
+    padding: 0.25rem 0.55rem !important;
+    gap: 0.35rem !important;
+    max-width: 85vw !important;
+    z-index: 40 !important;
+  }
+  .audio-chip-content {
+    font-size: 0.70rem !important;
+    gap: 0.35rem !important;
+  }
+  .audio-chip-content span {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 140px !important;
+  }
+  .custom-player-menu {
+    bottom: 50px !important;
+    right: 8px !important;
+    max-height: calc(100% - 58px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    min-width: 220px !important;
+    max-width: calc(100% - 16px) !important;
+    padding: 6px !important;
+    border-radius: 10px !important;
+  }
+  .custom-menu-item {
+    padding: 6px 8px !important;
+    gap: 8px !important;
+  }
+  .custom-menu-item-icon {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  .custom-menu-item-title {
+    font-size: 12px !important;
+  }
+  .custom-menu-item-sub {
+    font-size: 10px !important;
+  }
+  .custom-vertical-slider-popover {
+    bottom: 46px !important;
+    height: 125px !important;
+  }
+  .custom-vertical-track-wrap {
+    height: 80px !important;
+  }
+  .custom-vertical-slider {
+    width: 75px !important;
+  }
+}
+
+/* Dizisol Episode Card Watch Toggle Button */
+.dizisol-ep-watch-toggle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(10, 14, 24, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  padding: 3px 8px;
+  color: #cbd5e1;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  user-select: none;
+}
+
+.dizisol-ep-watch-toggle:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.dizisol-ep-watch-toggle.is-watched {
+  background: rgba(16, 185, 129, 0.92) !important;
+  border-color: #10b981 !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);
+}
+
+@media (max-width: 768px) {
+  .dizisol-ep-watch-toggle {
+    top: 5px !important;
+    right: 5px !important;
+    padding: 2px 6px !important;
+    font-size: 0.62rem !important;
+    gap: 3px !important;
+  }
+}
+
+/* Mobile Landscape Player Responsiveness */
+@media (orientation: landscape) and (max-height: 560px) {
+  .player-modal-content {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+  .player-cinema-bar {
+    min-height: 36px !important;
+    padding: 0.2rem 0.75rem !important;
+  }
+  .player-stage-wrapper {
+    height: calc(100vh - 36px) !important;
+    max-height: 100vh !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    aspect-ratio: auto !important;
+    flex-shrink: 0 !important;
+  }
+  .custom-player-controls {
+    padding: 0 max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)) !important;
+  }
+  .custom-player-menu {
+    max-height: calc(100% - 50px) !important;
+    bottom: 46px !important;
+  }
+  .dizisol-cinema-body {
+    padding: 1rem max(16px, env(safe-area-inset-right)) 2rem max(16px, env(safe-area-inset-left)) !important;
   }
 }
 
