@@ -93,6 +93,10 @@
       "destination": "https://www.diziyo.so/$1"
     },
     {
+      "source": "/api/epg",
+      "destination": "/api/epg"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

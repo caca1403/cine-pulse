@@ -1,88 +1,20 @@
 /* ==========================================================================
    CinePulse Live TV - Electronic Program Guide (EPG) Engine
-   Provides realistic, dynamic real-time broadcast schedules,
-   calculating currently airing show, time range, and progress percentage.
+   Real-Time Turkish Broadcast Schedule Service
+   Fetches and calculates actual live TV programs, progress percentages,
+   and upcoming shows with automated live updates.
    ========================================================================== */
 
-// Curated typical schedules for Turkish broadcast channels
-const CHANNEL_SCHEDULES = {
-  // Ulusal Kanallar
-  'ch_trt1': [
-    { start: '06:00', end: '09:00', title: 'Sabahın Bereketi & Haber' },
-    { start: '09:00', end: '10:30', title: 'Alişan ile Hayata Gülümse' },
-    { start: '10:30', end: '13:00', title: 'Gönül Dağı (Tekrar)' },
-    { start: '13:00', end: '14:00', title: 'TRT 1 Gün Ortası' },
-    { start: '14:00', end: '17:45', title: 'Seksenler' },
-    { start: '17:45', end: '19:00', title: 'Lingo Türkiye' },
-    { start: '19:00', end: '20:00', title: 'TRT 1 Ana Haber' },
-    { start: '20:00', end: '23:45', title: 'Kudüs Fatihi Selahaddin Eyyubi' },
-    { start: '23:45', end: '02:00', title: 'Teşkilat' },
-    { start: '02:00', end: '06:00', title: 'Gece Kuşağı' }
-  ],
-  'ch_atv': [
-    { start: '07:00', end: '10:00', title: 'Kahvaltı Haberleri' },
-    { start: '10:00', end: '13:00', title: 'Müge Anlı ile Tatlı Sert' },
-    { start: '13:00', end: '14:00', title: 'Gün Ortası' },
-    { start: '14:00', end: '16:00', title: 'Mutfak Bahane' },
-    { start: '16:00', end: '18:45', title: 'Esra Erol\'da' },
-    { start: '18:45', end: '20:00', title: 'ATV Ana Haber' },
-    { start: '20:00', end: '23:45', title: 'Kuruluş Osman' },
-    { start: '23:45', end: '02:00', title: 'Kim Milyoner Olmak İster?' },
-    { start: '02:00', end: '07:00', title: 'Kardeşlerim (Tekrar)' }
-  ],
-  'ch_showtv': [
-    { start: '06:00', end: '08:00', title: 'Kendine İyi Bak' },
-    { start: '08:00', end: '10:00', title: 'Bu Sabah' },
-    { start: '10:00', end: '12:30', title: 'Gelin Evi' },
-    { start: '12:30', end: '15:00', title: 'Aslı Hünel ile Gelin Evi' },
-    { start: '15:00', end: '18:45', title: 'Didem Arslan Yılmaz\'la Vazgeçme' },
-    { start: '18:45', end: '20:00', title: 'Show Ana Haber' },
-    { start: '20:00', end: '23:30', title: 'Kızılcık Şerbeti' },
-    { start: '23:30', end: '02:00', title: 'Bahar (Tekrar)' },
-    { start: '02:00', end: '06:00', title: 'Güldür Güldür Show' }
-  ],
-  'ch_nowtv': [
-    { start: '07:30', end: '10:30', title: 'İlker Karagöz ile Çalar Saat' },
-    { start: '10:30', end: '12:00', title: 'Çağla ile Yeni Bir Gün' },
-    { start: '12:00', end: '13:30', title: 'Memet Özer ile Mutfakta' },
-    { start: '13:30', end: '16:15', title: 'En Hamarat Benim' },
-    { start: '16:15', end: '19:00', title: 'Kızıl Goncalar (Özet)' },
-    { start: '19:00', end: '20:00', title: 'Selçuk Tepeli ile NOW Ana Haber' },
-    { start: '20:00', end: '23:30', title: 'Kızıl Goncalar' },
-    { start: '23:30', end: '02:00', title: 'Kirli Sepeti' },
-    { start: '02:00', end: '07:30', title: 'Yasak Elma (Tekrar)' }
-  ],
-  'ch_startv': [
-    { start: '07:00', end: '09:30', title: 'Güne Başlarken' },
-    { start: '09:30', end: '13:00', title: 'Sabahın Sultanı Seda Sayan' },
-    { start: '13:00', end: '16:00', title: 'Zahide Yetiş ile Yeniden Başlasak' },
-    { start: '16:00', end: '19:00', title: 'Söz (Tekrar)' },
-    { start: '19:00', end: '20:00', title: 'Star Ana Haber' },
-    { start: '20:00', end: '23:45', title: 'Yalı Çapkını' },
-    { start: '23:45', end: '02:30', title: 'Sakla Beni' },
-    { start: '02:30', end: '07:00', title: 'Dizi Kuşağı' }
-  ],
-  'ch_kanald': [
-    { start: '07:00', end: '09:00', title: 'Afili Aşk' },
-    { start: '09:00', end: '11:00', title: 'Neler Oluyor Hayatta?' },
-    { start: '11:00', end: '13:00', title: 'Camdaki Kız' },
-    { start: '13:00', end: '16:00', title: 'Gelinim Mutfakta' },
-    { start: '16:00', end: '19:00', title: 'Arka Sokaklar (Özel)' },
-    { start: '19:00', end: '20:00', title: 'Kanal D Ana Haber' },
-    { start: '20:00', end: '23:45', title: 'İnci Taneleri' },
-    { start: '23:45', end: '02:00', title: 'Yargı' },
-    { start: '02:00', end: '07:00', title: 'Poyraz Karayel' }
-  ],
-  'ch_tv8': [
-    { start: '06:00', end: '08:00', title: 'Tuzak' },
-    { start: '08:00', end: '10:00', title: 'Gel Konuşalım' },
-    { start: '10:00', end: '12:30', title: 'Survivor Panorama' },
-    { start: '12:30', end: '16:00', title: 'Zuhal Topal\'la Yemekteyiz' },
-    { start: '16:00', end: '20:00', title: 'MasterChef Türkiye (Özet)' },
-    { start: '20:00', end: '23:45', title: 'MasterChef Türkiye / Survivor All Star' },
-    { start: '23:45', end: '02:00', title: 'Survivor Ekstra' },
-    { start: '02:00', end: '06:00', title: 'Yemekteyiz Gece Kuşağı' }
-  ],
+const STORAGE_CACHE_KEY = 'cinepulse_epg_live_cache';
+const CACHE_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
+
+// In-memory live schedule map: { [channelId]: [ { startTs, endTs, start, end, title } ] }
+let liveSchedules = null;
+let lastFetchTime = 0;
+let isFetching = false;
+
+// Fallback typical schedules for channels without live XMLTV feed
+const FALLBACK_CHANNEL_SCHEDULES = {
   'ch_cnbce': [
     { start: '07:00', end: '10:00', title: 'Sabah Piyasaları & Finans' },
     { start: '10:00', end: '14:00', title: 'Piyasa Ekranı & Global Trendler' },
@@ -90,12 +22,29 @@ const CHANNEL_SCHEDULES = {
     { start: '18:00', end: '20:00', title: 'The Simpsons' },
     { start: '20:00', end: '21:00', title: 'Mad Men' },
     { start: '21:00', end: '23:00', title: 'Game of Thrones Kuşağı' },
-    { start: '23:00', end: '01:00', title: 'Late Night Show with Jimmy Fallon' },
+    { start: '23:00', end: '01:00', title: 'Late Night Show' },
     { start: '01:00', end: '07:00', title: 'Gece Finans & Belgesel' }
+  ],
+  'tvr_ch_141': [
+    { start: '08:00', end: '11:00', title: 'İtalya Serie A Goller' },
+    { start: '11:00', end: '14:00', title: 'EuroLeague Özel Kuşağı' },
+    { start: '14:00', end: '17:00', title: 'La Liga Günlüğü & Özetler' },
+    { start: '17:00', end: '20:00', title: 'Maç Önü & Canlı Stüdyo' },
+    { start: '20:00', end: '23:00', title: 'Canlı Futbol / Basketbol Karşılaşması' },
+    { start: '23:00', end: '02:00', title: 'Günün Analizi & Tartışma' },
+    { start: '02:00', end: '08:00', title: 'Premier Maç Tekrarları' }
+  ],
+  'tvr_ch_140': [
+    { start: '08:00', end: '12:00', title: 'Formula 1 Özel Kuşağı' },
+    { start: '12:00', end: '15:00', title: 'NBA Action & En İyi Hareketler' },
+    { start: '15:00', end: '19:00', title: 'Uluslararası Voleybol Ligi' },
+    { start: '19:00', end: '22:00', title: 'Canlı Basketbol / Tenis Karşılaşması' },
+    { start: '22:00', end: '01:00', title: 'Motorsporları Kuşağı' },
+    { start: '01:00', end: '08:00', title: 'Gecenin Tekrarları' }
   ]
 };
 
-// Generic genre schedules for channels without an exact timetable
+// Generic genre schedules
 const GENRE_SCHEDULES = {
   sports: [
     { start: '06:00', end: '09:00', title: 'Spor Bülteni & Günün Manşetleri' },
@@ -122,10 +71,10 @@ const GENRE_SCHEDULES = {
   doc: [
     { start: '06:00', end: '09:00', title: 'Vahşi Yaşamın İzinde' },
     { start: '09:00', end: '12:00', title: 'Evrenin Gizemleri ve Uzay' },
-    { start: '12:00', end: '15:00', title: 'Mega Yapılar & Mühendislik Harikaları' },
+    { start: '12:00', end: '15:00', title: 'Mega Yapılar & Mühendislik' },
     { start: '15:00', end: '18:00', title: 'Tarihin Bilinmeyen Sayfaları' },
     { start: '18:00', end: '20:00', title: 'Okyanusların Derinlikleri' },
-    { start: '20:00', end: '22:00', title: 'Büyük Kediler: Hayatta Kalma Savaşı' },
+    { start: '20:00', end: '22:00', title: 'Büyük Kediler: Hayatta Kalma' },
     { start: '22:00', end: '00:30', title: 'Dünyanın En Gizemli Keşifleri' },
     { start: '00:30', end: '06:00', title: 'Gece Belgesel Kuşağı' }
   ],
@@ -161,8 +110,104 @@ const GENRE_SCHEDULES = {
 };
 
 function parseTimeToMinutes(timeStr) {
+  if (!timeStr || !timeStr.includes(':')) return 0;
   const [h, m] = timeStr.split(':').map(Number);
-  return h * 60 + m;
+  return (h || 0) * 60 + (m || 0);
+}
+
+/**
+ * Load cached schedules from localStorage for instant 0ms start
+ */
+function loadLocalCache() {
+  try {
+    const raw = localStorage.getItem(STORAGE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.channels && (Date.now() - (parsed.updatedAt || 0) < 12 * 3600 * 1000)) {
+      return parsed.channels;
+    }
+  } catch (e) {
+    console.warn('[EPG] Failed to read local storage cache:', e);
+  }
+  return null;
+}
+
+/**
+ * Save fresh schedules to localStorage
+ */
+function saveLocalCache(channels) {
+  try {
+    localStorage.setItem(STORAGE_CACHE_KEY, JSON.stringify({
+      updatedAt: Date.now(),
+      channels
+    }));
+  } catch (e) {
+    // quota exceeded or private mode
+  }
+}
+
+/**
+ * Fetch latest live EPG from API or static json file
+ */
+export async function fetchLiveEpg(force = false) {
+  const now = Date.now();
+  if (!force && liveSchedules && (now - lastFetchTime < CACHE_MAX_AGE_MS)) {
+    return liveSchedules;
+  }
+  if (isFetching) return liveSchedules;
+
+  isFetching = true;
+  try {
+    // 1. Try Vercel Serverless / Local Dev API: /api/epg
+    let res = null;
+    try {
+      res = await fetch('/api/epg');
+    } catch (netErr) {
+      console.warn('[EPG] /api/epg fetch failed, falling back to static seed:', netErr);
+    }
+
+    // 2. Fallback to /epg-data.json
+    if (!res || !res.ok) {
+      res = await fetch('/epg-data.json');
+    }
+
+    if (res && res.ok) {
+      const data = await res.json();
+      if (data && data.channels && Object.keys(data.channels).length > 0) {
+        liveSchedules = data.channels;
+        lastFetchTime = now;
+        saveLocalCache(data.channels);
+        window.dispatchEvent(new CustomEvent('epg-updated', { detail: { count: Object.keys(data.channels).length } }));
+        console.log(`[EPG] Live TV schedules loaded successfully for ${Object.keys(data.channels).length} channels.`);
+      }
+    }
+  } catch (err) {
+    console.error('[EPG] Error fetching live schedule:', err);
+  } finally {
+    isFetching = false;
+  }
+
+  return liveSchedules;
+}
+
+/**
+ * Initialize EPG service: loads local cache immediately and fetches live data
+ */
+export function initEpgService() {
+  if (!liveSchedules) {
+    const cached = loadLocalCache();
+    if (cached) {
+      liveSchedules = cached;
+    }
+  }
+
+  // Trigger async fetch in background
+  fetchLiveEpg();
+
+  // Background refresh every 30 minutes
+  setInterval(() => {
+    fetchLiveEpg(true);
+  }, CACHE_MAX_AGE_MS);
 }
 
 /**
@@ -171,24 +216,75 @@ function parseTimeToMinutes(timeStr) {
  * @returns {Object} EPG item with title, timeRange, progress, remainingMin, nextTitle
  */
 export function getChannelEpg(channel) {
+  if (!channel) {
+    return {
+      title: 'Canlı Yayın',
+      timeRange: 'Canlı Akış',
+      start: '00:00',
+      end: '23:59',
+      progress: 50,
+      remainingMin: 30,
+      nextTitle: 'Yayın Akışı'
+    };
+  }
+
+  const nowMs = Date.now();
+
+  // 1. Check Real-Time Live TV schedule (if loaded)
+  if (liveSchedules && liveSchedules[channel.id] && liveSchedules[channel.id].length > 0) {
+    const list = liveSchedules[channel.id];
+
+    // Find current active program
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (nowMs >= item.startTs && nowMs < item.endTs) {
+        const totalDurationMin = Math.max(1, (item.endTs - item.startTs) / 60000);
+        const elapsedMin = Math.max(0, (nowMs - item.startTs) / 60000);
+        const progress = Math.min(100, Math.max(0, Math.round((elapsedMin / totalDurationMin) * 100)));
+        const remainingMin = Math.max(1, Math.round((item.endTs - nowMs) / 60000));
+        const nextItem = list[i + 1];
+
+        return {
+          title: item.title,
+          timeRange: `${item.start} - ${item.end}`,
+          start: item.start,
+          end: item.end,
+          progress,
+          remainingMin,
+          nextTitle: nextItem ? nextItem.title : 'Sonraki Program'
+        };
+      }
+    }
+
+    // If exact current slot not found (e.g. edge gap), find next upcoming program
+    const upcoming = list.find(p => p.startTs > nowMs);
+    if (upcoming) {
+      return {
+        title: upcoming.title,
+        timeRange: `${upcoming.start} - ${upcoming.end}`,
+        start: upcoming.start,
+        end: upcoming.end,
+        progress: 5,
+        remainingMin: Math.max(1, Math.round((upcoming.endTs - nowMs) / 60000)),
+        nextTitle: 'Yayın Başlamak Üzere'
+      };
+    }
+  }
+
+  // 2. Fallback to curated static timetables
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-  let schedule = CHANNEL_SCHEDULES[channel.id];
+  let schedule = FALLBACK_CHANNEL_SCHEDULES[channel.id];
   if (!schedule) {
     schedule = GENRE_SCHEDULES[channel.category] || GENRE_SCHEDULES.national;
   }
-
-  // Find slot that includes currentMinutes
-  let activeSlot = null;
-  let nextSlot = null;
 
   for (let i = 0; i < schedule.length; i++) {
     const slot = schedule[i];
     const startMin = parseTimeToMinutes(slot.start);
     let endMin = parseTimeToMinutes(slot.end);
 
-    // Handle midnight crossing
     if (endMin <= startMin) {
       endMin += 24 * 60;
     }
@@ -199,13 +295,11 @@ export function getChannelEpg(channel) {
     }
 
     if (compareMin >= startMin && compareMin < endMin) {
-      activeSlot = slot;
-      nextSlot = schedule[(i + 1) % schedule.length];
-      
       const totalDuration = endMin - startMin;
       const elapsed = compareMin - startMin;
       const progress = Math.min(100, Math.max(0, Math.round((elapsed / totalDuration) * 100)));
       const remainingMin = Math.max(1, endMin - compareMin);
+      const nextSlot = schedule[(i + 1) % schedule.length];
 
       return {
         title: slot.title,
@@ -219,7 +313,6 @@ export function getChannelEpg(channel) {
     }
   }
 
-  // Fallback if not matched
   return {
     title: `${channel.name} Canlı Yayın`,
     timeRange: 'Canlı Akış',
@@ -229,4 +322,9 @@ export function getChannelEpg(channel) {
     remainingMin: 30,
     nextTitle: 'Yayın Akışı Devam Ediyor'
   };
+}
+
+// Auto-initialize when module is loaded
+if (typeof window !== 'undefined') {
+  initEpgService();
 }

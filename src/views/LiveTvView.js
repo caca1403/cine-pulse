@@ -413,6 +413,54 @@ export function renderLiveTvView() {
         }
       }
 
+      // ─── Real-Time EPG Updates Across All Cards & Player ───
+      function refreshAllEpgDisplays() {
+        updateTopBar();
+        if (channelGrid) {
+          const cards = channelGrid.querySelectorAll('.tv-grid-card');
+          cards.forEach(card => {
+            const chId = card.getAttribute('data-id');
+            const ch = LIVE_TV_CHANNELS.find(c => c.id === chId);
+            if (!ch) return;
+            const epg = getChannelEpg(ch);
+            
+            const titleEl = card.querySelector('.tv-epg-title');
+            const timeEl = card.querySelector('.tv-epg-time');
+            const fillEl = card.querySelector('.tv-epg-bar-fill');
+            const pctEl = card.querySelector('.tv-epg-pct');
+
+            if (titleEl && titleEl.textContent !== epg.title) {
+              titleEl.textContent = epg.title;
+              titleEl.title = epg.title;
+            }
+            if (timeEl && timeEl.textContent !== epg.timeRange) {
+              timeEl.textContent = epg.timeRange;
+            }
+            if (fillEl) {
+              fillEl.style.width = `${epg.progress}%`;
+            }
+            if (pctEl && pctEl.textContent !== `%${epg.progress}`) {
+              pctEl.textContent = `%${epg.progress}`;
+            }
+          });
+        }
+      }
+
+      const onEpgUpdated = () => {
+        refreshAllEpgDisplays();
+      };
+      window.addEventListener('epg-updated', onEpgUpdated);
+
+      // Continuous real-time ticker (every 20s) ensuring EPG progress and active titles never go stale
+      let epgInterval = setInterval(() => {
+        if (!document.body.contains(container)) {
+          clearInterval(epgInterval);
+          window.removeEventListener('epg-updated', onEpgUpdated);
+          return;
+        }
+        refreshAllEpgDisplays();
+      }, 20000);
+
       // ─── OSD Center Popup Banner with EPG ───
       function showOSD() {
         if (osdTimeout) clearTimeout(osdTimeout);
@@ -1163,15 +1211,11 @@ export function renderLiveTvView() {
       }
       document.addEventListener('keydown', handleKeyboard);
 
-      // ─── Dynamic EPG Periodic Auto-Update ───
-      const epgInterval = setInterval(() => {
-        updateTopBar();
-      }, 30000);
-
       // ─── Global Clean Up & Lifecycle Manager ───
       const stopAllPlayback = () => {
         channelPlaybackToken++;
         clearInterval(epgInterval);
+        window.removeEventListener('epg-updated', onEpgUpdated);
         window.removeEventListener('scroll', handlePipScroll);
         if (activeHls) {
           try {

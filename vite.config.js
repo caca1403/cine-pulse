@@ -1,6 +1,42 @@
 import { defineConfig } from 'vite';
 
+function epgDevPlugin() {
+  return {
+    name: 'epg-dev-plugin',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url && req.url.startsWith('/api/epg')) {
+          try {
+            const epgHandler = (await import('./api/epg.js')).default;
+            const resWrapper = {
+              setHeader: (k, v) => res.setHeader(k, v),
+              status: (code) => {
+                res.statusCode = code;
+                return {
+                  json: (data) => {
+                    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                    res.end(JSON.stringify(data));
+                  },
+                  end: () => res.end()
+                };
+              }
+            };
+            return await epgHandler(req, resWrapper);
+          } catch (err) {
+            console.error('Vite EPG Dev Middleware Error:', err);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: err.message }));
+            return;
+          }
+        }
+        next();
+      });
+    }
+  };
+}
+
 export default defineConfig({
+  plugins: [epgDevPlugin()],
   base: './',
   server: {
     port: 3000,
