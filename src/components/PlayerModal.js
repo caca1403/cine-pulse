@@ -841,9 +841,60 @@ export async function openPlayerModal({
           ${dubbedAudioHTML}
           ${floatingAudioTip}
 
+          <!-- Screen Lock / Unlock Overlay Buttons -->
+          <button class="custom-screen-lock-btn" id="custom-btn-screen-lock" title="Ekranı Kilitle">
+            <i data-lucide="unlock" style="width: 16px; height: 16px;"></i>
+          </button>
+          <button class="custom-screen-unlock-badge hidden" id="custom-btn-screen-unlock" title="Kilidi Aç">
+            <i data-lucide="lock" style="width: 15px; height: 15px; color: #fbbf24;"></i>
+            <span>Ekran Kilitli • Dokunarak Aç</span>
+          </button>
+
           <!-- Center Click Ripple Animation -->
           <div class="custom-center-play-indicator" id="custom-center-play-indicator">
             <i data-lucide="play" style="width: 32px; height: 32px;"></i>
+          </div>
+
+          <!-- Mobile Gesture HUD (Brightness / Volume Visualizer) -->
+          <div class="custom-gesture-hud hidden" id="custom-gesture-hud">
+            <div class="gesture-hud-icon-wrap" id="gesture-hud-icon-wrap">
+              <i data-lucide="sun" id="gesture-hud-icon" style="width: 24px; height: 24px;"></i>
+            </div>
+            <span class="gesture-hud-text" id="gesture-hud-text">%100</span>
+            <div class="gesture-hud-bar">
+              <div class="gesture-hud-fill" id="gesture-hud-fill" style="height: 100%;"></div>
+            </div>
+          </div>
+
+          <!-- Sleep Curtain (Active when sleep timer fires) -->
+          <div class="custom-sleep-curtain hidden" id="custom-sleep-curtain">
+            <div class="sleep-curtain-box">
+              <i data-lucide="moon" style="width: 44px; height: 44px; color: #c084fc;"></i>
+              <h3>Uyku Modu Aktif 🌙</h3>
+              <p>Zamanlayıcı süresi doldu ve yayın duraklatıldı. Devam etmek için ekrana dokunun.</p>
+            </div>
+          </div>
+
+          <!-- Skip Intro Button (Appears around 0:10 - 1:30) -->
+          <button class="custom-skip-intro-btn hidden" id="custom-btn-skip-intro" title="Jeneriği Atla">
+            <i data-lucide="fast-forward" style="width: 15px; height: 15px;"></i>
+            <span>İntroyu Atla</span>
+          </button>
+
+          <!-- Auto Next Episode Binge Countdown Card (Netflix-Style) -->
+          <div class="custom-binge-card hidden" id="custom-binge-card">
+            <div class="binge-card-body">
+              <span class="binge-card-tag">SONRAKİ BÖLÜM</span>
+              <span class="binge-card-title" id="binge-card-title">${cleanSeriesName} • Bölüm ${currentEpisode + 1}</span>
+              <span class="binge-card-sub"><b id="binge-sec-num">5</b> saniye içinde başlıyor...</span>
+            </div>
+            <button class="binge-card-jump-btn" id="binge-card-jump-btn">
+              <i data-lucide="play" style="width: 14px; height: 14px;"></i>
+              <span>Hemen Geç</span>
+            </button>
+            <button class="binge-card-close-btn" id="binge-card-close-btn" title="Kapat">
+              <i data-lucide="x" style="width: 13px; height: 13px;"></i>
+            </button>
           </div>
 
           <!-- Bottom Custom Control Bar -->
@@ -901,6 +952,11 @@ export async function openPlayerModal({
                     </div>
                   </div>
                 </div>
+
+                <!-- Sleep Timer Button -->
+                <button class="custom-ctrl-btn" id="custom-btn-sleep" title="Uyku Zamanlayıcısı (Sleep Timer)">
+                  <i data-lucide="moon" style="width: 19px; height: 19px; color: #c084fc;"></i>
+                </button>
 
                 <!-- Fullscreen Button -->
                 <button class="custom-ctrl-btn" id="custom-btn-fullscreen" title="Tam Ekran (F)">
@@ -975,6 +1031,18 @@ export async function openPlayerModal({
                 <div class="custom-menu-item-body">
                   <span class="custom-menu-item-title">Pencere içinde pencere</span>
                 </div>
+              </div>
+
+              <!-- Item 6: Uyku Zamanlayıcısı -->
+              <div class="custom-menu-item" id="custom-menu-item-sleep-menu">
+                <div class="custom-menu-item-icon">
+                  <i data-lucide="moon" style="width: 17px; height: 17px; color: #c084fc;"></i>
+                </div>
+                <div class="custom-menu-item-body">
+                  <span class="custom-menu-item-title">Uyku Zamanlayıcısı</span>
+                  <span class="custom-menu-item-sub" id="custom-menu-active-sleep">Kapalı</span>
+                </div>
+                <i data-lucide="chevron-right" style="width: 15px; height: 15px; color: #94a3b8;"></i>
               </div>
             </div>
 
@@ -1851,6 +1919,99 @@ export async function openPlayerModal({
     const brightBadge = wrapper.querySelector('#custom-brightness-badge');
     const brightPopover = wrapper.querySelector('#custom-brightness-popover');
 
+    // Faz 2 Elements
+    const lockBtn = wrapper.querySelector('#custom-btn-screen-lock');
+    const unlockBadge = wrapper.querySelector('#custom-btn-screen-unlock');
+    const skipIntroBtn = wrapper.querySelector('#custom-btn-skip-intro');
+    const bingeCard = wrapper.querySelector('#custom-binge-card');
+    const bingeSecNum = wrapper.querySelector('#binge-sec-num');
+    const bingeJumpBtn = wrapper.querySelector('#binge-card-jump-btn');
+    const bingeCloseBtn = wrapper.querySelector('#binge-card-close-btn');
+    const sleepBtn = wrapper.querySelector('#custom-btn-sleep');
+    const itemSleepMenu = wrapper.querySelector('#custom-menu-item-sleep-menu');
+    const activeSleepBadge = wrapper.querySelector('#custom-menu-active-sleep');
+    const sleepCurtain = wrapper.querySelector('#custom-sleep-curtain');
+    const gestureHud = wrapper.querySelector('#custom-gesture-hud');
+    const gestureIcon = wrapper.querySelector('#gesture-hud-icon');
+    const gestureText = wrapper.querySelector('#gesture-hud-text');
+    const gestureFill = wrapper.querySelector('#gesture-hud-fill');
+
+    // Screen Lock State
+    let isScreenLocked = false;
+    if (lockBtn) {
+      lockBtn.onclick = (e) => {
+        e.stopPropagation();
+        isScreenLocked = true;
+        wrapper.classList.add('is-screen-locked');
+        if (unlockBadge) unlockBadge.classList.remove('hidden');
+        closeOpenControlPopovers();
+        wrapper.classList.add('hide-controls');
+        showToast('🔒 Ekran kilitlendi. Dokunmalar korumalı.', 'info');
+      };
+    }
+
+    if (unlockBadge) {
+      unlockBadge.onclick = (e) => {
+        e.stopPropagation();
+        isScreenLocked = false;
+        wrapper.classList.remove('is-screen-locked');
+        unlockBadge.classList.add('hidden');
+        wrapper.classList.remove('hide-controls');
+        showToast('🔓 Ekran kilidi açıldı.', 'success');
+      };
+    }
+
+    // Skip Intro State
+    let hasSkippedIntro = false;
+    if (skipIntroBtn) {
+      skipIntroBtn.onclick = (e) => {
+        e.stopPropagation();
+        hasSkippedIntro = true;
+        skipIntroBtn.classList.add('hidden');
+        const cur = videoEl.currentTime || 0;
+        const target = Math.max(cur + 80, 85);
+        videoEl.currentTime = Math.min(videoEl.duration || target, target);
+        showToast('⚡ İntro başarıyla atlandı!', 'success');
+      };
+    }
+
+    // Binge Next Episode Countdown State
+    let bingeTimer = null;
+    let bingeDismissed = false;
+    let bingeCountdown = 5;
+
+    const triggerNextEpisode = () => {
+      if (bingeTimer) {
+        clearInterval(bingeTimer);
+        bingeTimer = null;
+      }
+      if (bingeCard) bingeCard.classList.add('hidden');
+      const nextBtn = document.getElementById('btn-next-episode');
+      if (nextBtn) {
+        showToast('Sonraki bölüme geçiliyor...', 'info');
+        nextBtn.click();
+      }
+    };
+
+    if (bingeJumpBtn) {
+      bingeJumpBtn.onclick = (e) => {
+        e.stopPropagation();
+        triggerNextEpisode();
+      };
+    }
+
+    if (bingeCloseBtn) {
+      bingeCloseBtn.onclick = (e) => {
+        e.stopPropagation();
+        bingeDismissed = true;
+        if (bingeTimer) {
+          clearInterval(bingeTimer);
+          bingeTimer = null;
+        }
+        if (bingeCard) bingeCard.classList.add('hidden');
+      };
+    }
+
     // 1. Play / Pause & Skip Control
     const updatePlayState = () => {
       const isPaused = videoEl.paused;
@@ -1934,6 +2095,7 @@ export async function openPlayerModal({
 
     if (playBtn) playBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
     videoEl.onclick = (e) => {
+      if (isScreenLocked) return;
       const hadOpen = (brightWrap && brightWrap.classList.contains('is-open')) ||
                       (volWrap && volWrap.classList.contains('is-open')) ||
                       (menu && !menu.classList.contains('hidden'));
@@ -1993,6 +2155,35 @@ export async function openPlayerModal({
               break;
             }
           }
+        }
+      }
+
+      // Skip intro trigger
+      if (skipIntroBtn) {
+        if (cur >= 10 && cur <= 90 && !hasSkippedIntro) {
+          skipIntroBtn.classList.remove('hidden');
+        } else {
+          skipIntroBtn.classList.add('hidden');
+        }
+      }
+
+      // Binge Watch Next Episode countdown trigger
+      if (bingeCard && isSeries && dur > 70) {
+        const remaining = dur - cur;
+        if (remaining <= 40 && remaining > 3 && !bingeDismissed && !bingeTimer) {
+          bingeCard.classList.remove('hidden');
+          if (window.lucide) window.lucide.createIcons({ el: bingeCard });
+          bingeCountdown = 5;
+          if (bingeSecNum) bingeSecNum.textContent = bingeCountdown;
+          bingeTimer = setInterval(() => {
+            bingeCountdown--;
+            if (bingeSecNum) bingeSecNum.textContent = bingeCountdown;
+            if (bingeCountdown <= 0) {
+              clearInterval(bingeTimer);
+              bingeTimer = null;
+              triggerNextEpisode();
+            }
+          }, 1000);
         }
       }
     };
@@ -2146,6 +2337,10 @@ export async function openPlayerModal({
     };
 
     const resetHideTimer = () => {
+      if (isScreenLocked) {
+        wrapper.classList.add('hide-controls');
+        return;
+      }
       wrapper.classList.remove('hide-controls');
       if (hideTimeout) clearTimeout(hideTimeout);
       if (!videoEl.paused) {
@@ -2511,8 +2706,234 @@ export async function openPlayerModal({
       };
     }
 
+    // ITEM 6: UYKU ZAMANLAYICISI (SLEEP TIMER)
+    let sleepTimerTimeout = null;
+    let activeSleepLabel = 'Kapalı';
+
+    const triggerSleepMode = () => {
+      videoEl.pause();
+      if (sleepCurtain) {
+        sleepCurtain.classList.remove('hidden');
+        if (window.lucide) window.lucide.createIcons({ el: sleepCurtain });
+      }
+      showToast('🌙 Uyku Modu: Süre doldu, yayın duraklatıldı.', 'info');
+      clearSleepTimer();
+    };
+
+    const clearSleepTimer = () => {
+      if (sleepTimerTimeout) {
+        clearTimeout(sleepTimerTimeout);
+        sleepTimerTimeout = null;
+      }
+      activeSleepLabel = 'Kapalı';
+      if (activeSleepBadge) activeSleepBadge.textContent = activeSleepLabel;
+      if (sleepBtn) sleepBtn.style.color = '#c084fc';
+    };
+
+    const setSleepTimer = (minutes, label) => {
+      clearSleepTimer();
+      activeSleepLabel = label;
+      if (activeSleepBadge) activeSleepBadge.textContent = activeSleepLabel;
+      if (sleepBtn) sleepBtn.style.color = '#a855f7';
+
+      if (minutes === 'end-of-episode') {
+        showToast('🌙 Uyku Zamanlayıcısı: Bölüm bitince yayın durdurulacak.', 'info');
+        const onEnded = () => {
+          videoEl.removeEventListener('ended', onEnded);
+          triggerSleepMode();
+        };
+        videoEl.addEventListener('ended', onEnded);
+        return;
+      }
+
+      const totalSeconds = minutes * 60;
+      showToast(`🌙 Uyku Zamanlayıcısı: ${label} sonra kapatılacak.`, 'success');
+
+      sleepTimerTimeout = setTimeout(() => {
+        triggerSleepMode();
+      }, totalSeconds * 1000);
+    };
+
+    if (sleepCurtain) {
+      sleepCurtain.onclick = (e) => {
+        e.stopPropagation();
+        sleepCurtain.classList.add('hidden');
+        videoEl.play().catch(() => {});
+      };
+    }
+
+    const renderSleepSubmenu = () => {
+      const presets = [
+        { label: 'Kapalı (İptal Et)', val: 0 },
+        { label: '15 Dakika', val: 15 },
+        { label: '30 Dakika', val: 30 },
+        { label: '45 Dakika', val: 45 },
+        { label: '60 Dakika (1 Saat)', val: 60 },
+        { label: 'Bölüm Bitince', val: 'end-of-episode' }
+      ];
+
+      let html = '';
+      presets.forEach(p => {
+        const isAct = (p.val === 0 && activeSleepLabel === 'Kapalı') || activeSleepLabel === p.label;
+        html += `
+          <div class="custom-menu-opt-row ${isAct ? 'active' : ''}" data-sleep-val="${p.val}" data-sleep-label="${p.label}">
+            <span>${p.label}</span>
+            ${isAct ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
+          </div>
+        `;
+      });
+
+      showSubView('Uyku Zamanlayıcısı', html);
+
+      if (subviewList) {
+        subviewList.querySelectorAll('[data-sleep-val]').forEach(el => {
+          el.onclick = (ev) => {
+            ev.stopPropagation();
+            const val = el.getAttribute('data-sleep-val');
+            const lbl = el.getAttribute('data-sleep-label');
+            if (val === '0') {
+              clearSleepTimer();
+              showToast('Uyku zamanlayıcısı kapatıldı', 'info');
+            } else if (val === 'end-of-episode') {
+              setSleepTimer('end-of-episode', 'Bölüm Bitince');
+            } else {
+              setSleepTimer(parseInt(val, 10), lbl);
+            }
+            showMainMenu();
+          };
+        });
+      }
+    };
+
+    if (itemSleepMenu) {
+      itemSleepMenu.onclick = (e) => {
+        e.stopPropagation();
+        renderSleepSubmenu();
+      };
+    }
+
+    if (sleepBtn) {
+      sleepBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (menu.classList.contains('hidden')) {
+          closeOpenControlPopovers();
+          menu.classList.remove('hidden');
+          renderSleepSubmenu();
+        } else {
+          menu.classList.add('hidden');
+        }
+      };
+    }
+
+    // 7. Touch Gestures on Mobile / Tablet (Brightness, Volume, Double-Tap Skip)
+    let gestureHideTimeout = null;
+    const showGestureHud = (iconName, text, fillPct) => {
+      if (!gestureHud) return;
+      if (gestureIcon) {
+        gestureIcon.setAttribute('data-lucide', iconName);
+        if (window.lucide) window.lucide.createIcons({ el: gestureHud });
+      }
+      if (gestureText) gestureText.textContent = text;
+      if (gestureFill) gestureFill.style.height = `${Math.max(0, Math.min(100, fillPct))}%`;
+
+      gestureHud.classList.remove('hidden');
+      if (gestureHideTimeout) clearTimeout(gestureHideTimeout);
+      gestureHideTimeout = setTimeout(() => {
+        gestureHud.classList.add('hidden');
+      }, 700);
+    };
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let activeSwipeType = null; // 'brightness' | 'volume' | null
+    let swipeInitialVal = 0;
+    let lastTapTimestamp = 0;
+
+    wrapper.addEventListener('touchstart', (e) => {
+      if (isScreenLocked) return;
+      if (e.touches.length !== 1) return;
+      const target = e.target;
+      if (target.closest('.custom-player-controls') || target.closest('.custom-player-menu') || target.closest('.custom-skip-intro-btn') || target.closest('.custom-binge-card') || target.closest('.custom-screen-lock-btn') || target.closest('.custom-screen-unlock-badge') || target.closest('.custom-sleep-curtain')) {
+        return;
+      }
+
+      const touch = e.touches[0];
+      const rect = wrapper.getBoundingClientRect();
+      const relativeX = touch.clientX - rect.left;
+      const now = Date.now();
+
+      // Double-tap skip detection (YouTube style)
+      if (now - lastTapTimestamp < 320) {
+        lastTapTimestamp = 0;
+        e.preventDefault();
+        if (relativeX < rect.width * 0.4) {
+          skipTime(-10);
+        } else if (relativeX > rect.width * 0.6) {
+          skipTime(10);
+        } else {
+          togglePlay();
+        }
+        activeSwipeType = null;
+        return;
+      }
+      lastTapTimestamp = now;
+
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      activeSwipeType = null;
+    }, { passive: false });
+
+    wrapper.addEventListener('touchmove', (e) => {
+      if (isScreenLocked) return;
+      if (e.touches.length !== 1) return;
+      const target = e.target;
+      if (target.closest('.custom-player-controls') || target.closest('.custom-player-menu') || target.closest('.custom-skip-intro-btn') || target.closest('.custom-binge-card') || target.closest('.custom-screen-lock-btn') || target.closest('.custom-screen-unlock-badge')) {
+        return;
+      }
+
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = touchStartY - touch.clientY; // positive = swipe up
+      const rect = wrapper.getBoundingClientRect();
+
+      // Vertical swipe detection
+      if (!activeSwipeType && Math.abs(deltaY) > 12 && Math.abs(deltaY) > Math.abs(deltaX) * 1.2) {
+        const relativeX = touchStartX - rect.left;
+        if (relativeX < rect.width * 0.5) {
+          activeSwipeType = 'brightness';
+          swipeInitialVal = currentBrightness;
+        } else {
+          activeSwipeType = 'volume';
+          swipeInitialVal = videoEl.muted ? 0 : videoEl.volume;
+        }
+      }
+
+      if (activeSwipeType) {
+        e.preventDefault();
+        const sensitivity = 0.8;
+        const progressDelta = (deltaY / (rect.height * sensitivity));
+
+        if (activeSwipeType === 'brightness') {
+          const newBright = Math.max(30, Math.min(150, Math.round(swipeInitialVal + progressDelta * 100)));
+          setBrightness(newBright);
+          showGestureHud('sun', `%${newBright}`, ((newBright - 30) / 120) * 100);
+        } else if (activeSwipeType === 'volume') {
+          const newVol = Math.max(0, Math.min(1, swipeInitialVal + progressDelta));
+          videoEl.volume = newVol;
+          videoEl.muted = false;
+          updateVolumeUI();
+          showGestureHud(newVol === 0 ? 'volume-x' : (newVol < 0.5 ? 'volume-1' : 'volume-2'), `%${Math.round(newVol * 100)}`, newVol * 100);
+        }
+      }
+    }, { passive: false });
+
+    wrapper.addEventListener('touchend', () => {
+      activeSwipeType = null;
+    }, { passive: true });
+
     // Keyboard controls handler
     const handleKeydown = (e) => {
+      if (isScreenLocked) return;
       if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
       if (!modalContainer || modalContainer.classList.contains('hidden')) return;
 
