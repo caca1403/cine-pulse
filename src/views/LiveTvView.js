@@ -1,8 +1,7 @@
 /* ==========================================================================
-   CinePulse Studio - Advanced Interactive Television & IPTV Player
-   100% Native HLS.js Direct Playback — Zero Iframes, Zero External Ads
-   Full-featured OSD Controls, In-Player Fullscreen Channel Drawer,
-   Volume Slider, Quick Channel Carousel, Favorites & Remote Control.
+   CinePulse Studio - Cinema IPTV Platform (Full-Width Player + Bottom Grid)
+   Zero Sidebars — Player takes full top width, Channel catalog flows below.
+   100% Native HLS.js Direct Playback — Zero Iframes, Zero Ads
    ========================================================================== */
 
 import { LIVE_TV_CATEGORIES, LIVE_TV_CHANNELS, getChannelBadgeSvg } from '../services/liveTvChannels.js';
@@ -74,235 +73,213 @@ export function renderLiveTvView() {
   let renderAllViews = () => {};
 
   const html = `
-    <div class="livetv-view" id="livetv-root">
+    <div class="livetv-view-full" id="livetv-root">
 
-      <!-- Main Layout -->
-      <div class="tv-cinema-layout">
+      <!-- TOP: Full-Width Cinematic TV Player -->
+      <section class="tv-hero-player-section">
+        <div class="tv-screen" id="tv-screen" tabindex="0">
+          <video id="tv-video" autoplay playsinline webkit-playsinline></video>
 
-        <!-- Player Column -->
-        <div class="tv-player-column" id="tv-player-column">
+          <!-- Backdrop Click Handler for Toggle Controls -->
+          <div class="tv-screen-backdrop" id="tv-screen-backdrop"></div>
 
-          <!-- Interactive Screen Container -->
-          <div class="tv-screen" id="tv-screen" tabindex="0">
-            <video id="tv-video" autoplay playsinline webkit-playsinline></video>
-
-            <!-- Screen Click Overlay for Gesture / Toggle -->
-            <div class="tv-screen-backdrop" id="tv-screen-backdrop"></div>
-
-            <!-- In-Player Floating Top Bar (Channel Info + Actions) -->
-            <div class="tv-osd-topbar" id="tv-osd-topbar">
-              <div class="tv-osd-channel-meta">
-                <div class="tv-osd-logo-box">
-                  <img id="tv-top-logo" class="tv-top-logo" src="${activeChannel.logo}" alt="" onerror="this.onerror=null; this.src='${getChannelBadgeSvg(activeChannel.name, activeChannel.category)}';" />
+          <!-- In-Player Floating Top Bar (Channel Info + Actions) -->
+          <div class="tv-osd-topbar" id="tv-osd-topbar">
+            <div class="tv-osd-channel-meta">
+              <div class="tv-osd-logo-box">
+                <img id="tv-top-logo" class="tv-top-logo" src="${activeChannel.logo}" alt="" onerror="this.onerror=null; this.src='${getChannelBadgeSvg(activeChannel.name, activeChannel.category)}';" />
+              </div>
+              <div class="tv-osd-text">
+                <div class="tv-osd-ch-title">
+                  <span id="tv-top-name">${activeChannel.name}</span>
+                  <span class="tv-osd-num-tag" id="tv-top-num">CH 01</span>
                 </div>
-                <div class="tv-osd-text">
-                  <div class="tv-osd-ch-title">
-                    <span id="tv-top-name">${activeChannel.name}</span>
-                    <span class="tv-osd-num-tag" id="tv-top-num">CH 01</span>
-                  </div>
-                  <div class="tv-osd-ch-sub">
-                    <span class="tv-live-pill"><span class="tv-live-dot"></span> CANLI YAYIN</span>
-                    <span class="tv-quality-pill" id="tv-top-quality">${activeChannel.quality}</span>
-                    ${activeChannel.isTvr ? '<span class="tv-vip-pill">TVR VIP</span>' : ''}
-                  </div>
+                <div class="tv-osd-ch-sub">
+                  <span class="tv-live-pill"><span class="tv-live-dot"></span> CANLI YAYIN</span>
+                  <span class="tv-quality-pill" id="tv-top-quality">${activeChannel.quality}</span>
+                  ${activeChannel.isTvr ? '<span class="tv-vip-pill">TVR VIP</span>' : ''}
                 </div>
               </div>
-
-              <div class="tv-osd-top-actions">
-                <button class="tv-icon-btn tv-fav-btn" id="tv-btn-fav-top" title="Favorilere Ekle/Çıkar">
-                  <i data-lucide="star" style="width:18px;height:18px;"></i>
-                </button>
-                <button class="tv-icon-btn tv-drawer-toggle-btn" id="tv-btn-drawer-top" title="Kanal Listesini Aç (C)">
-                  <i data-lucide="list-video" style="width:18px;height:18px;"></i>
-                  <span class="tv-btn-label">Kanallar</span>
-                </button>
-              </div>
             </div>
 
-            <!-- Left / Right Zap Arrows (Visible on hover & touch) -->
-            <button class="tv-zap-btn tv-zap-prev" id="tv-zap-prev" title="Önceki Kanal (Yukarı Ok / Sol Ok)">
-              <i data-lucide="chevron-left" style="width:26px;height:26px;"></i>
-              <span class="tv-zap-hint">Önceki</span>
-            </button>
-            <button class="tv-zap-btn tv-zap-next" id="tv-zap-next" title="Sonraki Kanal (Aşağı Ok / Sağ Ok)">
-              <span class="tv-zap-hint">Sonraki</span>
-              <i data-lucide="chevron-right" style="width:26px;height:26px;"></i>
-            </button>
-
-            <!-- Big Center OSD Banner on Channel Switch -->
-            <div class="tv-osd-banner hidden" id="tv-osd">
-              <img id="tv-osd-logo" class="tv-osd-logo" src="" alt="" />
-              <div class="tv-osd-info">
-                <div class="tv-osd-name" id="tv-osd-name"></div>
-                <div class="tv-osd-meta">
-                  <span class="tv-osd-live-dot"></span>
-                  <span>CANLI YAYIN</span>
-                  <span class="tv-osd-quality" id="tv-osd-quality"></span>
-                </div>
-              </div>
-              <div class="tv-osd-chnum" id="tv-osd-chnum"></div>
-            </div>
-
-            <!-- Loading Spinner -->
-            <div class="tv-loading hidden" id="tv-loading">
-              <div class="tv-loading-spinner"></div>
-              <span class="tv-loading-text">Yayın bağlanıyor...</span>
-            </div>
-
-            <!-- Error State with Auto-Reconnect -->
-            <div class="tv-error hidden" id="tv-error">
-              <div class="tv-error-icon-box">
-                <i data-lucide="radio" style="width:36px;height:36px;color:#ef4444;"></i>
-              </div>
-              <span class="tv-error-msg">Yayın akışı geçici olarak yanıt vermedi</span>
-              <div class="tv-error-actions">
-                <button class="tv-retry-btn" id="tv-retry-btn">
-                  <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Tekrar Bağlan
-                </button>
-                <button class="tv-next-btn" id="tv-error-next-btn">Sonraki Kanala Geç</button>
-              </div>
-            </div>
-
-            <!-- IN-PLAYER FULLSCREEN CHANNEL DRAWER (Allows channel switching without leaving fullscreen) -->
-            <div class="tv-inplayer-drawer" id="tv-inplayer-drawer">
-              <div class="tv-drawer-header">
-                <div class="tv-drawer-title">
-                  <i data-lucide="tv" style="width:18px;height:18px;color:var(--primary);"></i>
-                  <span>Kanal Rehberi</span>
-                </div>
-                <button class="tv-drawer-close" id="tv-drawer-close" title="Kapat">
-                  <i data-lucide="x" style="width:18px;height:18px;"></i>
-                </button>
-              </div>
-
-              <!-- Drawer Search -->
-              <div class="tv-drawer-search">
-                <i data-lucide="search" style="width:14px;height:14px;"></i>
-                <input type="text" id="tv-drawer-search-input" placeholder="Kanal ara..." />
-              </div>
-
-              <!-- Drawer Categories Strip -->
-              <div class="tv-drawer-cats" id="tv-drawer-cats">
-                ${LIVE_TV_CATEGORIES.map(cat => `
-                  <button class="tv-drawer-cat-btn ${cat.id === activeCategory ? 'active' : ''}" data-cat="${cat.id}">
-                    <i data-lucide="${cat.icon}" style="width:12px;height:12px;"></i>
-                    <span>${cat.name}</span>
-                  </button>
-                `).join('')}
-              </div>
-
-              <!-- Drawer Channel Items List -->
-              <div class="tv-drawer-list" id="tv-drawer-list"></div>
-            </div>
-
-            <!-- In-Player Bottom Control Bar -->
-            <div class="tv-screen-controls" id="tv-screen-controls">
-              <!-- Left: Quick Navigation -->
-              <div class="tv-ctrl-group">
-                <button class="tv-ctrl-action-btn" id="tv-btn-prev-ch" title="Önceki Kanal (P-)">
-                  <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
-                </button>
-                <button class="tv-ctrl-action-btn" id="tv-btn-play-pause" title="Oynat / Duraklat (Space)">
-                  <i data-lucide="pause" style="width:18px;height:18px;"></i>
-                </button>
-                <button class="tv-ctrl-action-btn" id="tv-btn-next-ch" title="Sonraki Kanal (P+)">
-                  <i data-lucide="skip-forward" style="width:16px;height:16px;"></i>
-                </button>
-                <button class="tv-ctrl-action-btn tv-live-sync-btn" id="tv-btn-sync" title="Canlı Yayına Eşitle">
-                  <span class="tv-live-sync-dot"></span> CANLI
-                </button>
-              </div>
-
-              <!-- Center: Volume Slider & Mute -->
-              <div class="tv-volume-group">
-                <button class="tv-ctrl-action-btn" id="tv-btn-mute" title="Sesi Aç/Kapat (M)">
-                  <i data-lucide="volume-2" style="width:18px;height:18px;"></i>
-                </button>
-                <div class="tv-volume-slider-box">
-                  <input type="range" id="tv-volume-slider" class="tv-volume-slider" min="0" max="1" step="0.05" value="1" />
-                </div>
-                <span class="tv-volume-label" id="tv-volume-label">100%</span>
-              </div>
-
-              <!-- Right: Drawer, Reload, PiP, Fullscreen -->
-              <div class="tv-ctrl-group tv-ctrl-right">
-                <button class="tv-ctrl-action-btn" id="tv-btn-reload" title="Akışı Yenile (R)">
-                  <i data-lucide="rotate-cw" style="width:16px;height:16px;"></i>
-                </button>
-                <button class="tv-ctrl-action-btn tv-btn-channels-drawer" id="tv-btn-open-drawer" title="Kanal Listesi (C)">
-                  <i data-lucide="layout-grid" style="width:16px;height:16px;"></i>
-                  <span class="tv-ctrl-text">Rehber</span>
-                </button>
-                <button class="tv-ctrl-action-btn" id="tv-btn-pip" title="Resim İçinde Resim">
-                  <i data-lucide="picture-in-picture-2" style="width:16px;height:16px;"></i>
-                </button>
-                <button class="tv-ctrl-action-btn" id="tv-btn-fullscreen" title="Tam Ekran (F)">
-                  <i data-lucide="maximize-2" style="width:18px;height:18px;"></i>
-                </button>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- Mobile & Compact Quick Channel Carousel -->
-          <div class="tv-quick-carousel-wrapper">
-            <div class="tv-quick-header">
-              <div class="tv-quick-title">
-                <i data-lucide="zap" style="width:14px;height:14px;color:var(--primary);"></i>
-                <span>Hızlı Kanal Değiştir</span>
-              </div>
-              <span class="tv-quick-hint">Kaydırarak kanal seçin</span>
-            </div>
-            <div class="tv-quick-strip" id="tv-quick-strip">
-              <!-- Rendered dynamically -->
+            <div class="tv-osd-top-actions">
+              <button class="tv-icon-btn tv-fav-btn" id="tv-btn-fav-top" title="Favorilere Ekle/Çıkar">
+                <i data-lucide="star" style="width:18px;height:18px;"></i>
+              </button>
+              <button class="tv-icon-btn tv-drawer-toggle-btn" id="tv-btn-drawer-top" title="Tam Ekran Kanal Menüsü">
+                <i data-lucide="list-video" style="width:18px;height:18px;"></i>
+                <span class="tv-btn-label">Hızlı Menü</span>
+              </button>
             </div>
           </div>
 
-        </div>
+          <!-- Left / Right Zap Arrows (Visible on hover & touch) -->
+          <button class="tv-zap-btn tv-zap-prev" id="tv-zap-prev" title="Önceki Kanal (Yukarı Ok / Sol Ok)">
+            <i data-lucide="chevron-left" style="width:28px;height:28px;"></i>
+            <span class="tv-zap-hint">ÖNCEKİ</span>
+          </button>
+          <button class="tv-zap-btn tv-zap-next" id="tv-zap-next" title="Sonraki Kanal (Aşağı Ok / Sağ Ok)">
+            <span class="tv-zap-hint">SONRAKİ</span>
+            <i data-lucide="chevron-right" style="width:28px;height:28px;"></i>
+          </button>
 
-        <!-- Right: Comprehensive Channel Guide Column (For Desktop) -->
-        <div class="tv-guide-column" id="tv-guide-column">
-
-          <!-- Search Bar -->
-          <div class="tv-guide-search">
-            <i data-lucide="search" class="tv-search-icon"></i>
-            <input type="text" id="tv-search" class="tv-search-input" placeholder="Kanal adı veya spor/haber ara..." />
-            <button class="tv-search-clear hidden" id="tv-search-clear"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+          <!-- Big Center OSD Banner on Channel Switch -->
+          <div class="tv-osd-banner hidden" id="tv-osd">
+            <img id="tv-osd-logo" class="tv-osd-logo" src="" alt="" />
+            <div class="tv-osd-info">
+              <div class="tv-osd-name" id="tv-osd-name"></div>
+              <div class="tv-osd-meta">
+                <span class="tv-osd-live-dot"></span>
+                <span>CANLI YAYIN</span>
+                <span class="tv-osd-quality" id="tv-osd-quality"></span>
+              </div>
+            </div>
+            <div class="tv-osd-chnum" id="tv-osd-chnum"></div>
           </div>
 
-          <!-- Category Navigation Pills -->
-          <div class="tv-category-wrapper">
-            <button class="tv-cat-nav-btn tv-cat-prev" id="tv-cat-prev" type="button" title="Geri kaydır">
-              <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
-            </button>
-            <div class="tv-category-strip" id="tv-category-strip">
+          <!-- Loading Spinner -->
+          <div class="tv-loading hidden" id="tv-loading">
+            <div class="tv-loading-spinner"></div>
+            <span class="tv-loading-text">Yayın bağlanıyor...</span>
+          </div>
+
+          <!-- Error State with Auto-Reconnect -->
+          <div class="tv-error hidden" id="tv-error">
+            <div class="tv-error-icon-box">
+              <i data-lucide="radio" style="width:36px;height:36px;color:#ef4444;"></i>
+            </div>
+            <span class="tv-error-msg">Yayın akışı geçici olarak yanıt vermedi</span>
+            <div class="tv-error-actions">
+              <button class="tv-retry-btn" id="tv-retry-btn">
+                <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Tekrar Bağlan
+              </button>
+              <button class="tv-next-btn" id="tv-error-next-btn">Sonraki Kanala Geç</button>
+            </div>
+          </div>
+
+          <!-- IN-PLAYER FULLSCREEN CHANNEL DRAWER -->
+          <div class="tv-inplayer-drawer" id="tv-inplayer-drawer">
+            <div class="tv-drawer-header">
+              <div class="tv-drawer-title">
+                <i data-lucide="tv" style="width:18px;height:18px;color:var(--primary);"></i>
+                <span>Hızlı Kanal Listesi</span>
+              </div>
+              <button class="tv-drawer-close" id="tv-drawer-close" title="Kapat">
+                <i data-lucide="x" style="width:18px;height:18px;"></i>
+              </button>
+            </div>
+
+            <div class="tv-drawer-search">
+              <i data-lucide="search" style="width:14px;height:14px;"></i>
+              <input type="text" id="tv-drawer-search-input" placeholder="Kanal ara..." />
+            </div>
+
+            <div class="tv-drawer-cats" id="tv-drawer-cats">
               ${LIVE_TV_CATEGORIES.map(cat => `
-                <button class="tv-cat-pill ${cat.id === activeCategory ? 'active' : ''}" data-cat="${cat.id}">
-                  <i data-lucide="${cat.icon}" style="width:13px;height:13px;"></i>
+                <button class="tv-drawer-cat-btn ${cat.id === activeCategory ? 'active' : ''}" data-cat="${cat.id}">
+                  <i data-lucide="${cat.icon}" style="width:12px;height:12px;"></i>
                   <span>${cat.name}</span>
                 </button>
               `).join('')}
             </div>
-            <button class="tv-cat-nav-btn tv-cat-next" id="tv-cat-next" type="button" title="İleri kaydır">
-              <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
-            </button>
+
+            <div class="tv-drawer-list" id="tv-drawer-list"></div>
           </div>
 
-          <!-- Channel Stats & Filter State -->
-          <div class="tv-guide-header">
-            <span class="tv-guide-count" id="tv-guide-count"></span>
-            <div class="tv-remote-shortcuts-hint" title="Kumanda & Klavye Kısayolları">
-              <i data-lucide="keyboard" style="width:13px;height:13px;"></i>
-              <span>Yön Tuşları: Zap / Ses</span>
+          <!-- In-Player Bottom Control Bar -->
+          <div class="tv-screen-controls" id="tv-screen-controls">
+            <!-- Left: Quick Navigation -->
+            <div class="tv-ctrl-group">
+              <button class="tv-ctrl-action-btn" id="tv-btn-prev-ch" title="Önceki Kanal (P-)">
+                <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
+              </button>
+              <button class="tv-ctrl-action-btn" id="tv-btn-play-pause" title="Oynat / Duraklat (Space)">
+                <i data-lucide="pause" style="width:18px;height:18px;"></i>
+              </button>
+              <button class="tv-ctrl-action-btn" id="tv-btn-next-ch" title="Sonraki Kanal (P+)">
+                <i data-lucide="skip-forward" style="width:16px;height:16px;"></i>
+              </button>
+              <button class="tv-ctrl-action-btn tv-live-sync-btn" id="tv-btn-sync" title="Canlı Yayına Eşitle">
+                <span class="tv-live-sync-dot"></span> CANLI
+              </button>
+            </div>
+
+            <!-- Center: Volume Slider & Mute -->
+            <div class="tv-volume-group">
+              <button class="tv-ctrl-action-btn" id="tv-btn-mute" title="Sesi Aç/Kapat (M)">
+                <i data-lucide="volume-2" style="width:18px;height:18px;"></i>
+              </button>
+              <div class="tv-volume-slider-box">
+                <input type="range" id="tv-volume-slider" class="tv-volume-slider" min="0" max="1" step="0.05" value="1" />
+              </div>
+              <span class="tv-volume-label" id="tv-volume-label">100%</span>
+            </div>
+
+            <!-- Right: Drawer, Reload, PiP, Fullscreen -->
+            <div class="tv-ctrl-group tv-ctrl-right">
+              <button class="tv-ctrl-action-btn" id="tv-btn-reload" title="Akışı Yenile (R)">
+                <i data-lucide="rotate-cw" style="width:16px;height:16px;"></i>
+              </button>
+              <button class="tv-ctrl-action-btn tv-btn-channels-drawer" id="tv-btn-open-drawer" title="Hızlı Menü">
+                <i data-lucide="layout-grid" style="width:16px;height:16px;"></i>
+                <span class="tv-ctrl-text">Menü</span>
+              </button>
+              <button class="tv-ctrl-action-btn" id="tv-btn-pip" title="Resim İçinde Resim">
+                <i data-lucide="picture-in-picture-2" style="width:16px;height:16px;"></i>
+              </button>
+              <button class="tv-ctrl-action-btn" id="tv-btn-fullscreen" title="Tam Ekran (F)">
+                <i data-lucide="maximize-2" style="width:18px;height:18px;"></i>
+              </button>
             </div>
           </div>
 
-          <!-- Channel List Scroll Area -->
-          <div class="tv-channel-list" id="tv-channel-list"></div>
+        </div>
+      </section>
+
+      <!-- BOTTOM: Channel Switcher & Full Catalog (Mobile & Desktop) -->
+      <section class="tv-bottom-catalog-section">
+
+        <!-- Controls & Filter Toolbar -->
+        <div class="tv-catalog-toolbar">
+
+          <!-- Category Navigation Pills with Arrows -->
+          <div class="tv-cat-nav-container">
+            <button class="tv-cat-arrow-btn tv-cat-prev" id="tv-cat-prev" type="button" title="Geri kaydır">
+              <i data-lucide="chevron-left" style="width:16px;height:16px;"></i>
+            </button>
+            <div class="tv-catalog-categories" id="tv-category-strip">
+              ${LIVE_TV_CATEGORIES.map(cat => `
+                <button class="tv-cat-filter-btn ${cat.id === activeCategory ? 'active' : ''}" data-cat="${cat.id}">
+                  <i data-lucide="${cat.icon}" style="width:14px;height:14px;"></i>
+                  <span>${cat.name}</span>
+                </button>
+              `).join('')}
+            </div>
+            <button class="tv-cat-arrow-btn tv-cat-next" id="tv-cat-next" type="button" title="İleri kaydır">
+              <i data-lucide="chevron-right" style="width:16px;height:16px;"></i>
+            </button>
+          </div>
+
+          <!-- Search & Counter Area -->
+          <div class="tv-catalog-search-area">
+            <div class="tv-catalog-search-box">
+              <i data-lucide="search" class="tv-search-icon"></i>
+              <input type="text" id="tv-search" class="tv-search-field" placeholder="Kanal adı ara (Örn: S Sport, TRT 1, ATV)..." />
+              <button class="tv-search-clear-btn hidden" id="tv-search-clear" title="Temizle">
+                <i data-lucide="x" style="width:14px;height:14px;"></i>
+              </button>
+            </div>
+            <span class="tv-catalog-count-badge" id="tv-guide-count">73 KANAL</span>
+          </div>
 
         </div>
 
-      </div>
+        <!-- Main Channel Grid (Flows Below Video) -->
+        <div class="tv-channel-grid" id="tv-channel-grid">
+          <!-- Rendered dynamically -->
+        </div>
+
+      </section>
 
     </div>
   `;
@@ -336,7 +313,6 @@ export function renderLiveTvView() {
       const retryBtn = container.querySelector('#tv-retry-btn');
       const errorNextBtn = container.querySelector('#tv-error-next-btn');
 
-      const screenControls = container.querySelector('#tv-screen-controls');
       const playPauseBtn = container.querySelector('#tv-btn-play-pause');
       const prevChBtn = container.querySelector('#tv-btn-prev-ch');
       const nextChBtn = container.querySelector('#tv-btn-next-ch');
@@ -355,8 +331,7 @@ export function renderLiveTvView() {
       const drawerCats = container.querySelector('#tv-drawer-cats');
       const drawerList = container.querySelector('#tv-drawer-list');
 
-      const quickStrip = container.querySelector('#tv-quick-strip');
-      const channelList = container.querySelector('#tv-channel-list');
+      const channelGrid = container.querySelector('#tv-channel-grid');
       const searchInput = container.querySelector('#tv-search');
       const searchClearBtn = container.querySelector('#tv-search-clear');
       const catStrip = container.querySelector('#tv-category-strip');
@@ -411,7 +386,7 @@ export function renderLiveTvView() {
             osdEl.classList.add('hidden');
             osdEl.classList.remove('tv-osd-hide');
           }, 350);
-        }, 3200);
+        }, 3000);
       }
 
       // ─── Auto-Hiding Controls On Screen ───
@@ -663,7 +638,7 @@ export function renderLiveTvView() {
                 <span class="tv-drawer-item-name">${ch.name}</span>
                 <div class="tv-drawer-item-tags">
                   <span class="tv-drawer-tag-quality">${ch.quality}</span>
-                  ${ch.isTvr ? '<span class="tv-drawer-tag-vip">TVR VIP</span>' : ''}
+                  ${ch.isTvr ? '<span class="tv-drawer-tag-vip">VIP</span>' : ''}
                 </div>
               </div>
               <button class="tv-drawer-fav-btn ${isFavorited ? 'is-fav' : ''}" data-favid="${ch.id}" title="Favori">
@@ -674,7 +649,6 @@ export function renderLiveTvView() {
           `;
         }).join('');
 
-        // Item click
         drawerList.querySelectorAll('.tv-drawer-item').forEach(item => {
           item.addEventListener('click', (e) => {
             if (e.target.closest('.tv-drawer-fav-btn')) return;
@@ -686,19 +660,12 @@ export function renderLiveTvView() {
           });
         });
 
-        // Fav click in drawer
         drawerList.querySelectorAll('.tv-drawer-fav-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleFav(btn.dataset.favid);
           });
         });
-
-        // Scroll active item into view
-        const activeItem = drawerList.querySelector('.tv-drawer-item.active');
-        if (activeItem) {
-          activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
 
         if (window.lucide) window.lucide.createIcons();
       }
@@ -710,119 +677,85 @@ export function renderLiveTvView() {
           drawerCats.querySelectorAll('.tv-drawer-cat-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           activeCategory = btn.dataset.cat;
-          // Sync desktop cat pill
-          catStrip.querySelectorAll('.tv-cat-pill').forEach(p => {
+          catStrip.querySelectorAll('.tv-cat-filter-btn').forEach(p => {
             p.classList.toggle('active', p.dataset.cat === activeCategory);
           });
           renderAllViews();
         });
       });
 
-      // ─── Mobile Quick Channel Strip ───
-      function renderQuickCarousel() {
-        const filtered = getFilteredChannels();
-        if (filtered.length === 0) {
-          quickStrip.innerHTML = '<span class="tv-quick-empty">Kanal yok</span>';
-          return;
-        }
-
-        quickStrip.innerHTML = filtered.map(ch => {
-          const isActive = ch.id === activeChannel.id;
-          const fallbackBadge = getChannelBadgeSvg(ch.name, ch.category);
-          return `
-            <button class="tv-quick-card ${isActive ? 'active' : ''}" data-id="${ch.id}">
-              <img class="tv-quick-logo" src="${ch.logo}" alt="${ch.name}" onerror="this.onerror=null; this.src='${fallbackBadge}';" loading="lazy" />
-              <span class="tv-quick-name">${ch.name}</span>
-              ${isActive ? '<span class="tv-quick-dot"></span>' : ''}
-            </button>
-          `;
-        }).join('');
-
-        quickStrip.querySelectorAll('.tv-quick-card').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const ch = LIVE_TV_CHANNELS.find(c => c.id === btn.dataset.id);
-            if (ch && ch.id !== activeChannel.id) loadChannel(ch);
-          });
-        });
-
-        const activeCard = quickStrip.querySelector('.tv-quick-card.active');
-        if (activeCard) {
-          setTimeout(() => activeCard.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }), 50);
-        }
-      }
-
-      // ─── Main Desktop Channel Guide List ───
-      function renderMainChannelList() {
+      // ─── Main Bottom Channel Grid ───
+      function renderBottomChannelGrid() {
         const filtered = getFilteredChannels();
         countLabel.textContent = `${filtered.length} KANAL`;
 
         if (filtered.length === 0) {
-          channelList.innerHTML = `
-            <div class="tv-empty-state">
-              <i data-lucide="radio" style="width:32px;height:32px;color:var(--text-muted);"></i>
+          channelGrid.innerHTML = `
+            <div class="tv-catalog-empty-state">
+              <i data-lucide="radio" style="width:40px;height:40px;color:var(--text-muted);"></i>
               <span class="tv-empty-title">Kanal Bulunamadı</span>
-              <p class="tv-empty-sub">Arama kriterlerinizi veya kategori filtrenizi değiştirin.</p>
+              <p class="tv-empty-sub">Arama teriminizi veya kategori filtrenizi değiştirin.</p>
             </div>
           `;
           if (window.lucide) window.lucide.createIcons();
           return;
         }
 
-        channelList.innerHTML = filtered.map(ch => {
+        channelGrid.innerHTML = filtered.map(ch => {
           const isActive = ch.id === activeChannel.id;
           const isFavorited = isFav(ch.id);
           const globalIdx = getChannelIndex(ch) + 1;
           const fallbackBadge = getChannelBadgeSvg(ch.name, ch.category);
           return `
-            <div class="tv-channel-item ${isActive ? 'active' : ''}" data-id="${ch.id}">
-              <span class="tv-ch-num">${String(globalIdx).padStart(2, '0')}</span>
-              <div class="tv-ch-logo-wrapper">
-                <img class="tv-ch-logo" src="${ch.logo}" alt="${ch.name}" onerror="this.onerror=null; this.src='${fallbackBadge}';" loading="lazy" />
+            <div class="tv-grid-card ${isActive ? 'active' : ''}" data-id="${ch.id}">
+              <div class="tv-grid-card-top">
+                <span class="tv-grid-num">${String(globalIdx).padStart(2, '0')}</span>
+                <button class="tv-grid-fav-btn ${isFavorited ? 'is-fav' : ''}" data-favid="${ch.id}" title="${isFavorited ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}">
+                  <i data-lucide="star" style="width:15px;height:15px;${isFavorited ? 'fill:#fbbf24;color:#fbbf24;' : ''}"></i>
+                </button>
               </div>
-              <div class="tv-ch-info">
-                <div class="tv-ch-name-row">
-                  <span class="tv-ch-name">${ch.name}</span>
-                  ${ch.isTvr ? '<span class="tv-ch-vip-badge">VIP</span>' : ''}
-                </div>
-                <div class="tv-ch-meta-row">
-                  <span class="tv-ch-quality">${ch.quality}</span>
-                  <span class="tv-ch-cat-tag">${ch.category.toUpperCase()}</span>
+
+              <div class="tv-grid-logo-box">
+                <img class="tv-grid-logo" src="${ch.logo}" alt="${ch.name}" onerror="this.onerror=null; this.src='${fallbackBadge}';" loading="lazy" />
+              </div>
+
+              <div class="tv-grid-info">
+                <span class="tv-grid-name" title="${ch.name}">${ch.name}</span>
+                <div class="tv-grid-meta">
+                  <span class="tv-grid-quality">${ch.quality}</span>
+                  ${ch.isTvr ? '<span class="tv-grid-vip-tag">VIP</span>' : ''}
                 </div>
               </div>
-              <button class="tv-ch-fav-btn ${isFavorited ? 'is-fav' : ''}" data-favid="${ch.id}" title="${isFavorited ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}">
-                <i data-lucide="star" style="width:16px;height:16px;${isFavorited ? 'fill:#fbbf24;color:#fbbf24;' : ''}"></i>
-              </button>
-              ${isActive ? '<span class="tv-ch-live-indicator"><span class="tv-live-dot"></span></span>' : ''}
+
+              ${isActive ? '<div class="tv-grid-live-indicator"><span class="tv-live-dot"></span> <span>ŞU AN İZLENİYOR</span></div>' : ''}
             </div>
           `;
         }).join('');
 
-        channelList.querySelectorAll('.tv-channel-item').forEach(item => {
+        channelGrid.querySelectorAll('.tv-grid-card').forEach(item => {
           item.addEventListener('click', (e) => {
-            if (e.target.closest('.tv-ch-fav-btn')) return;
+            if (e.target.closest('.tv-grid-fav-btn')) return;
             const ch = LIVE_TV_CHANNELS.find(c => c.id === item.dataset.id);
-            if (ch && ch.id !== activeChannel.id) loadChannel(ch);
+            if (ch && ch.id !== activeChannel.id) {
+              loadChannel(ch);
+              // Smooth scroll player into view if user scrolled down
+              screenEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
           });
         });
 
-        channelList.querySelectorAll('.tv-ch-fav-btn').forEach(btn => {
+        channelGrid.querySelectorAll('.tv-grid-fav-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleFav(btn.dataset.favid);
           });
         });
 
-        const activeEl = channelList.querySelector('.tv-channel-item.active');
-        if (activeEl) {
-          setTimeout(() => activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
-        }
-
         if (window.lucide) window.lucide.createIcons();
       }
 
       renderAllViews = () => {
-        renderMainChannelList();
-        renderQuickCarousel();
+        renderBottomChannelGrid();
         if (isDrawerOpen) renderDrawerChannelList();
         updateTopBar();
       };
@@ -841,20 +774,19 @@ export function renderLiveTvView() {
         renderAllViews();
       });
 
-      // ─── Category Navigation ───
+      // ─── Category Navigation (Horizontal Scroll & Selection) ───
       if (catPrevBtn) {
-        catPrevBtn.addEventListener('click', () => catStrip.scrollBy({ left: -140, behavior: 'smooth' }));
+        catPrevBtn.addEventListener('click', () => catStrip.scrollBy({ left: -160, behavior: 'smooth' }));
       }
       if (catNextBtn) {
-        catNextBtn.addEventListener('click', () => catStrip.scrollBy({ left: 140, behavior: 'smooth' }));
+        catNextBtn.addEventListener('click', () => catStrip.scrollBy({ left: 160, behavior: 'smooth' }));
       }
 
-      catStrip.querySelectorAll('.tv-cat-pill').forEach(pill => {
+      catStrip.querySelectorAll('.tv-cat-filter-btn').forEach(pill => {
         pill.addEventListener('click', () => {
-          catStrip.querySelectorAll('.tv-cat-pill').forEach(p => p.classList.remove('active'));
+          catStrip.querySelectorAll('.tv-cat-filter-btn').forEach(p => p.classList.remove('active'));
           pill.classList.add('active');
           activeCategory = pill.dataset.cat;
-          // Sync drawer cat buttons
           drawerCats.querySelectorAll('.tv-drawer-cat-btn').forEach(b => {
             b.classList.toggle('active', b.dataset.cat === activeCategory);
           });
