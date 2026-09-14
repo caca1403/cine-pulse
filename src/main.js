@@ -73,6 +73,12 @@ async function route() {
   } else if (hash === '#library') {
     viewName = 'library';
   } else if (hash === '#admin') {
+    // Anyone typing #admin directly into browser URL is strictly blocked & sent home
+    const isUnlocked = sessionStorage.getItem('cinepulse_admin_unlocked') === 'true';
+    if (!isUnlocked) {
+      window.location.replace('#home');
+      return;
+    }
     viewName = 'admin';
   }
 
@@ -203,11 +209,13 @@ window.addEventListener('sineflix_profile_changed', async () => {
   }, { capture: true });
 
   // 2. Admin & DevTools Key Guard
-  document.addEventListener('keydown', (e) => {
-    // Secret Admin Shortcuts: Alt+A OR Ctrl+Alt+A OR Ctrl+Shift+A
-    const isAltA = e.altKey && (e.key === 'a' || e.key === 'A' || e.code === 'KeyA');
-    const isCtrlShiftA = (e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'a' || e.key === 'A' || e.code === 'KeyA');
-    if (isAltA || isCtrlShiftA) {
+  window.addEventListener('keydown', (e) => {
+    // Secret Admin Shortcut: Alt + A or Ctrl + Shift + A (Case-insensitive & Layout-independent)
+    const codeKey = (e.code || '').toLowerCase();
+    const keyStr = (e.key || '').toLowerCase();
+    const isAKey = codeKey === 'keya' || keyStr === 'a';
+
+    if (isAKey && (e.altKey || ((e.ctrlKey || e.metaKey) && e.shiftKey))) {
       e.preventDefault();
       e.stopPropagation();
       sessionStorage.setItem('cinepulse_admin_unlocked', 'true');
@@ -223,7 +231,7 @@ window.addEventListener('sineflix_profile_changed', async () => {
 
     // Block Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U, Ctrl+S
     if (e.ctrlKey || e.metaKey) {
-      const k = (e.key || '').toLowerCase();
+      const k = keyStr;
       if (
         (e.shiftKey && (k === 'i' || k === 'j' || k === 'c')) ||
         k === 'u' ||
@@ -233,7 +241,7 @@ window.addEventListener('sineflix_profile_changed', async () => {
         return false;
       }
     }
-  }, { capture: true });
+  }, true);
 
   // 3. Prevent Drag & Drop Source Inspection
   document.addEventListener('dragstart', (e) => e.preventDefault());
