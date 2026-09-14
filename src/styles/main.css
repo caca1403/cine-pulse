@@ -9754,6 +9754,14 @@ video::cue {
   .cards-landscape .media-card {
     width: min(72vw, 280px);
   }
+  /* Home rails should hint at the next item without making a landscape card
+     dominate the phone viewport. Grid cards keep their two-column sizing. */
+  .cards-landscape .home-view .card-rail .media-card {
+    width: clamp(220px, 66vw, 260px);
+  }
+  .cards-landscape .home-view .card-rail .media-card .card-poster-wrapper {
+    aspect-ratio: 16 / 9 !important;
+  }
   .cards-landscape .media-grid .media-card {
     width: 100%;
     min-width: 0;
