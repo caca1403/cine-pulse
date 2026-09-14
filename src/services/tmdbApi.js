@@ -377,6 +377,63 @@ export async function fetchKidsPopularSeries(page = 1) {
     })));
 }
 
+function prepareKidsCartoonSeries(items) {
+  const unique = new Map();
+  for (const item of items) {
+    if (item?.id && !unique.has(item.id)) unique.set(item.id, item);
+  }
+
+  return rankForTurkey(Array.from(unique.values())
+    .filter(item => {
+      const genres = (item.genre_ids || []).map(Number);
+      return (item.poster_path || item.backdrop_path)
+        && genres.includes(16)
+        && (genres.includes(10751) || genres.includes(10762) || isKnownKidsCartoon(item))
+        && !isEastAsianAnimation(item)
+        && isItemKidSafe(item)
+        && !isBlockedContent(item);
+    })
+    .map(item => ({
+      ...item,
+      type: 'tv',
+      media_type: 'tv',
+      isSeries: true,
+      overview: (item.overview || '').trim() || generateCinematicOverview(item, 'tv')
+    })));
+}
+
+async function fetchKidsCartoonsByPeriods(page, periods, sortBy) {
+  const responses = await Promise.all(periods.map(([from, to]) =>
+    tmdbFetch('/discover/tv', {
+      sort_by: sortBy,
+      page,
+      language: 'tr-TR',
+      with_genres: '16',
+      without_genres: '18,27,53,80,99,10752,10764,10766,10767',
+      'first_air_date.gte': from,
+      'first_air_date.lte': to,
+      include_adult: false
+    })
+  ));
+  return prepareKidsCartoonSeries(responses.flatMap(response => response?.results || []));
+}
+
+export async function fetchKidsAnimationSeries(page = 1) {
+  return fetchKidsCartoonsByPeriods(page, [
+    ['2020-01-01', '2099-12-31'],
+    ['2015-01-01', '2019-12-31']
+  ], 'popularity.desc');
+}
+
+export async function fetchKidsClassicCartoonSeries(page = 1) {
+  return fetchKidsCartoonsByPeriods(page, [
+    ['2010-01-01', '2014-12-31'],
+    ['2000-01-01', '2009-12-31'],
+    ['1990-01-01', '1999-12-31'],
+    ['1900-01-01', '1989-12-31']
+  ], 'vote_count.desc');
+}
+
 export async function fetchAdultAnimationSeries(page = 1) {
   const [popularRes, acclaimedRes, trendingRes] = await Promise.all([
     tmdbFetch('/discover/tv', {

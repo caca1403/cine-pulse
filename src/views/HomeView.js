@@ -8,6 +8,7 @@
 import {
   fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated, fetchPopularAnime, fetchPopularDocumentaries,
   fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsAdventures, fetchKidsDocumentaries, fetchKidsAnime,
+  fetchKidsAnimationSeries, fetchKidsClassicCartoonSeries,
   fetchAdultAnimationSeries, fetchCartoonSeries
 } from '../services/tmdbApi.js';
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
@@ -24,7 +25,7 @@ const HOME_CACHE_TTL_MS = 10 * 60 * 1000;
 
 function getPersistentHomeCache(isKid) {
   try {
-    const raw = sessionStorage.getItem(`cinepulse_home_fast_v6_${isKid ? 'kids' : 'adult'}`);
+    const raw = sessionStorage.getItem(`cinepulse_home_fast_v7_${isKid ? 'kids' : 'adult'}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed?.savedAt || Date.now() - parsed.savedAt > HOME_CACHE_TTL_MS) return null;
@@ -36,7 +37,7 @@ function getPersistentHomeCache(isKid) {
 
 function persistHomeCache(data) {
   try {
-    sessionStorage.setItem(`cinepulse_home_fast_v6_${data.isKid ? 'kids' : 'adult'}`, JSON.stringify({
+    sessionStorage.setItem(`cinepulse_home_fast_v7_${data.isKid ? 'kids' : 'adult'}`, JSON.stringify({
       savedAt: Date.now(),
       data
     }));
@@ -56,6 +57,8 @@ export function clearHomeCache() {
     sessionStorage.removeItem('cinepulse_home_fast_v5_adult');
     sessionStorage.removeItem('cinepulse_home_fast_v6_kids');
     sessionStorage.removeItem('cinepulse_home_fast_v6_adult');
+    sessionStorage.removeItem('cinepulse_home_fast_v7_kids');
+    sessionStorage.removeItem('cinepulse_home_fast_v7_adult');
   } catch (_) {}
   railExtraItemsCache.clear();
   Object.keys(railState).forEach(k => {
@@ -238,28 +241,32 @@ function initInfiniteRails(container) {
 -------------------------------------------------------------------------- */
 export async function renderHomeView() {
   const isKid = isKidProfileActive();
-  let trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems;
+  let trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems, kidsAnimationItems, kidsClassicCartoonItems;
 
   if (!homeDataCache) homeDataCache = getPersistentHomeCache(isKid);
 
   if (homeDataCache && homeDataCache.isKid === isKid) {
-    ({ trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems } = homeDataCache);
+    ({ trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems, kidsAnimationItems, kidsClassicCartoonItems } = homeDataCache);
   } else {
     if (isKid) {
       [
         popularTV,
         popularMovies,
         kidsAdventures,
-        animeItems
+        animeItems,
+        kidsAnimationItems,
+        kidsClassicCartoonItems
       ] = await Promise.all([
         fetchKidsPopularSeries(1),
         fetchKidsPopularMovies(1),
         fetchKidsAdventures(1),
-        fetchKidsAnime(1)
+        fetchKidsAnime(1),
+        fetchKidsAnimationSeries(1),
+        fetchKidsClassicCartoonSeries(1)
       ]);
       const kidsHeroPool = [...(popularMovies || []), ...(popularTV || [])].filter(i => i.backdrop_path && isItemKidSafe(i));
       trending = kidsHeroPool.slice(0, 10);
-      homeDataCache = { isKid: true, trending, popularTV, popularMovies, kidsAdventures, animeItems };
+      homeDataCache = { isKid: true, trending, popularTV, popularMovies, kidsAdventures, animeItems, kidsAnimationItems, kidsClassicCartoonItems };
       persistHomeCache(homeDataCache);
     } else {
       [
@@ -303,7 +310,8 @@ export async function renderHomeView() {
 
   // Register infinite loaders without resetting page count
   if (isKid) {
-    if (!railState['rail-kids-series']) railState['rail-kids-series'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsPopularSeries };
+    if (!railState['rail-kids-animation']) railState['rail-kids-animation'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsAnimationSeries };
+    if (!railState['rail-kids-classics']) railState['rail-kids-classics'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsClassicCartoonSeries };
     if (!railState['rail-kids-movies']) railState['rail-kids-movies'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsPopularMovies };
     if (!railState['rail-kids-adventures']) railState['rail-kids-adventures'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsAdventures };
     if (!railState['rail-anime']) railState['rail-anime'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsAnime };
@@ -332,13 +340,21 @@ export async function renderHomeView() {
         items: popularMovies
       })}
 
-      ${renderInfiniteRail({
-        id:    'rail-kids-series',
-        icon:  'tv',
-        title: '🌟 Eğlenceli Çizgi Diziler & Maceralar',
-        accent:'#f59e0b',
-        items: popularTV
-      })}
+      ${kidsAnimationItems && kidsAnimationItems.length > 0 ? renderInfiniteRail({
+        id:    'rail-kids-animation',
+        icon:  'sparkles',
+        title: 'Çocuk Animasyonları & Yeni Çizgi Diziler',
+        accent:'#fb7185',
+        items: kidsAnimationItems
+      }) : ''}
+
+      ${kidsClassicCartoonItems && kidsClassicCartoonItems.length > 0 ? renderInfiniteRail({
+        id:    'rail-kids-classics',
+        icon:  'palette',
+        title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler',
+        accent:'#38bdf8',
+        items: kidsClassicCartoonItems
+      }) : ''}
 
       ${kidsAdventures && kidsAdventures.length > 0 ? renderInfiniteRail({
         id:    'rail-kids-adventures',
