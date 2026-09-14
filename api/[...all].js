@@ -120,12 +120,22 @@ export default async function handler(req, res) {
         if (ref) targetOrigin = new URL(ref).origin;
       } catch (_) {}
 
+      const isRecTv = decodedTarget.includes('prectv') || 
+                      decodedTarget.includes('mariuannastluisborg') || 
+                      decodedTarget.includes('moveonjoy') || 
+                      (ref && ref.includes('prectv'));
+      const ua = isRecTv ? 'okhttp/4.12.0' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+      const upstreamHeaders = {
+        'User-Agent': ua
+      };
+      if (!isRecTv) {
+        upstreamHeaders['Referer'] = ref;
+        upstreamHeaders['Origin'] = targetOrigin;
+      }
+
       const upstreamRes = await fetch(decodedTarget, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Referer': ref,
-          'Origin': targetOrigin
-        }
+        headers: upstreamHeaders
       });
 
       const contentType = upstreamRes.headers.get('content-type') || '';
@@ -138,6 +148,8 @@ export default async function handler(req, res) {
         lowerTarget.includes('/ts') || 
         lowerTarget.includes('ts?') || 
         lowerTarget.includes('.ts') || 
+        lowerTarget.includes('seg-') ||
+        lowerTarget.includes('/seg') ||
         lowerTarget.includes('.jpg') || 
         lowerTarget.includes('.png') || 
         lowerCt.includes('mp2t') || 
@@ -146,7 +158,6 @@ export default async function handler(req, res) {
 
       const isPlaylist = !isSegment && (
         lowerTarget.includes('.m3u8') || 
-        lowerTarget.includes('.txt') || 
         lowerTarget.includes('/play') ||
         lowerTarget.includes('m3u8?') ||
         lowerCt.includes('mpegurl') || 
