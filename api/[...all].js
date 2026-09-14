@@ -18,6 +18,29 @@ export default async function handler(req, res) {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
   };
 
+  if (pathname.startsWith('/api/img_proxy')) {
+    const rawTarget = urlObj.searchParams.get('url') || '';
+    if (!rawTarget) return res.status(400).send('Missing url');
+    try {
+      const decodedTarget = decodeURIComponent(rawTarget);
+      const imgRes = await fetch(decodedTarget, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+        }
+      });
+      if (!imgRes.ok) {
+        return res.status(imgRes.status).send('Image fetch failed');
+      }
+      res.setHeader('Content-Type', imgRes.headers.get('content-type') || 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400');
+      const arrayBuffer = await imgRes.arrayBuffer();
+      return res.status(200).send(Buffer.from(arrayBuffer));
+    } catch (err) {
+      return res.status(500).send('Proxy error: ' + err.message);
+    }
+  }
+
   if (pathname.startsWith('/api/live_tv_stream')) {
     const channel = (urlObj.searchParams.get('channel') || '').toLowerCase();
     try {
