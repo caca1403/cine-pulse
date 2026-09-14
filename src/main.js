@@ -75,6 +75,8 @@ async function route() {
     }
   } else if (hash === '#series') {
     viewName = 'series';
+  } else if (hash === '#cartoons') {
+    viewName = 'cartoons';
   } else if (hash === '#movies') {
     viewName = 'movies';
   } else if (hash === '#anime') {
@@ -126,7 +128,7 @@ async function route() {
 
   // Render Navbar for regular application views
   const navbarHTML = renderNavbar(viewName);
-  const cardViews = new Set(['home', 'series', 'movies', 'anime', 'documentary', 'discover', 'library']);
+  const cardViews = new Set(['home', 'series', 'cartoons', 'movies', 'anime', 'documentary', 'discover', 'library']);
   const cardLayoutSwitcherHTML = cardViews.has(viewName) ? renderCardLayoutSwitcher() : '';
 
   let viewResult = null;
@@ -136,6 +138,8 @@ async function route() {
     viewResult = await renderDetailView(params.type, params.id);
   } else if (viewName === 'series') {
     viewResult = await renderPopularListView('tv');
+  } else if (viewName === 'cartoons') {
+    viewResult = await renderPopularListView('cartoon');
   } else if (viewName === 'movies') {
     viewResult = await renderPopularListView('movie');
   } else if (viewName === 'anime') {

@@ -1,4 +1,5 @@
 import { guardNodeRequest, isSafePublicUrl } from './_security.js';
+import { Readable } from 'stream';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -243,10 +244,20 @@ export default async function handler(req, res) {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
         return res.status(upstreamRes.status).send(rewritten);
       } else {
-        // Binary video TS segment
-        res.setHeader('Content-Type', 'video/mp2t');
-        const buf = await upstreamRes.arrayBuffer();
-        return res.status(upstreamRes.status).send(Buffer.from(buf));
+        // Stream TS/video bytes immediately; buffering a complete 6-10 second
+        // segment made TVR channel startup feel unnecessarily slow.
+        res.statusCode = upstreamRes.status;
+        res.setHeader('Content-Type', contentType || 'video/mp2t');
+        const contentLength = upstreamRes.headers.get('content-length');
+        if (contentLength) res.setHeader('Content-Length', contentLength);
+        if (!upstreamRes.body) return res.end();
+        await new Promise((resolve, reject) => {
+          const stream = Readable.fromWeb(upstreamRes.body);
+          stream.on('error', reject);
+          res.on('finish', resolve);
+          stream.pipe(res);
+        });
+        return;
       }
     } catch (err) {
       console.error('HLS Proxy Error:', err);

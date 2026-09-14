@@ -25,18 +25,19 @@ export function renderNavbar(currentView = 'home') {
         <ul class="nav-links desktop-nav-links">
           ${activeProfile.isKid ? `
             <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}"><i data-lucide="home"></i><span>Ana Sayfa</span></a></li>
-            <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="monitor-play"></i><span>Çizgi Diziler</span></a></li>
-            <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="popcorn"></i><span>Animasyonlar</span></a></li>
-            <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="cat"></i><span>Anime</span></a></li>
-            <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="heart"></i><span>Listem</span></a></li>
+            <li><a href="#series" title="Çizgi Diziler" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="palette"></i><span>Çizgi Diziler</span></a></li>
+            <li><a href="#movies" title="Animasyon Filmleri" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="clapperboard"></i><span>Animasyonlar</span></a></li>
+            <li><a href="#anime" title="Anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="sparkles"></i><span>Anime</span></a></li>
+            <li><a href="#library" title="Listem" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="bookmark"></i><span>Listem</span></a></li>
           ` : `
             <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}"><i data-lucide="home"></i><span>Ana Sayfa</span></a></li>
-            <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="monitor-play"></i><span>Diziler</span></a></li>
-            <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="popcorn"></i><span>Filmler</span></a></li>
-            <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="cat"></i><span>Anime</span></a></li>
-            <li><a href="#documentary" class="nav-link ${currentView === 'documentary' ? 'active' : ''}"><i data-lucide="globe"></i><span>Belgesel</span></a></li>
-            <li><a href="#discover" class="nav-link ${currentView === 'discover' ? 'active' : ''}"><i data-lucide="compass"></i><span>Keşfet</span></a></li>
-            <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="heart"></i><span>Listem</span></a></li>
+            <li><a href="#series" title="Diziler" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="tv"></i><span>Diziler</span></a></li>
+            <li><a href="#cartoons" title="Çizgi Diziler" class="nav-link ${currentView === 'cartoons' ? 'active' : ''}"><i data-lucide="palette"></i><span>Çizgi Diziler</span></a></li>
+            <li><a href="#movies" title="Filmler" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="clapperboard"></i><span>Filmler</span></a></li>
+            <li><a href="#anime" title="Anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="sparkles"></i><span>Anime</span></a></li>
+            <li><a href="#documentary" title="Belgesel" class="nav-link ${currentView === 'documentary' ? 'active' : ''}"><i data-lucide="book-open"></i><span>Belgesel</span></a></li>
+            <li><a href="#discover" title="Keşfet" class="nav-link ${currentView === 'discover' ? 'active' : ''}"><i data-lucide="compass"></i><span>Keşfet</span></a></li>
+            <li><a href="#library" title="Listem" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="bookmark"></i><span>Listem</span></a></li>
           `}
         </ul>
 
@@ -94,25 +95,31 @@ export function renderNavbar(currentView = 'home') {
         <span>Ana Sayfa</span>
       </a>
       <a href="#series" class="dock-item ${currentView === 'series' ? 'active' : ''}">
-        <i data-lucide="monitor-play"></i>
-        <span>Diziler</span>
+        <i data-lucide="${activeProfile.isKid ? 'palette' : 'tv'}"></i>
+        <span>${activeProfile.isKid ? 'Çizgi Diziler' : 'Diziler'}</span>
       </a>
       <a href="#movies" class="dock-item ${currentView === 'movies' ? 'active' : ''}">
-        <i data-lucide="popcorn"></i>
-        <span>Filmler</span>
+        <i data-lucide="clapperboard"></i>
+        <span>${activeProfile.isKid ? 'Animasyonlar' : 'Filmler'}</span>
+      </a>
+      ${!activeProfile.isKid ? `
+      <a href="#cartoons" class="dock-item ${currentView === 'cartoons' ? 'active' : ''}">
+        <i data-lucide="palette"></i>
+        <span>Çizgi Diziler</span>
       </a>
       <a href="#anime" class="dock-item ${currentView === 'anime' ? 'active' : ''}">
-        <i data-lucide="cat"></i>
+        <i data-lucide="sparkles"></i>
         <span>Anime</span>
       </a>
       <a href="#documentary" class="dock-item ${currentView === 'documentary' ? 'active' : ''}">
-        <i data-lucide="globe"></i>
+        <i data-lucide="book-open"></i>
         <span>Belgesel</span>
       </a>
       <a href="#discover" class="dock-item ${currentView === 'discover' ? 'active' : ''}">
         <i data-lucide="compass"></i>
         <span>Keşfet</span>
       </a>
+      ` : ''}
       <a href="#library" class="dock-item ${currentView === 'library' ? 'active' : ''}">
         <i data-lucide="bookmark"></i>
         <span>Listem</span>

@@ -115,7 +115,7 @@ let memoryJwtExp = 0;
 
 const isNodeEnv = typeof window === 'undefined';
 function getRtvFetchUrl(subPath) {
-  return isNodeEnv ? `https://a.prectv70.lol/api${subPath}` : `/api/rtv`;
+  return isNodeEnv ? `https://a.prectv70.lol/api${subPath}` : `/api/rtv${subPath}`;
 }
 
 /**
@@ -445,39 +445,34 @@ export async function fetchRecTvSources({
  */
 export async function fetchRecTvLiveChannels() {
   try {
+    const jwt = await getValidRecTvJwt();
+    if (!jwt) return [];
+    // Category 0 is TVR's current live roster. One request replaces eight
+    // category requests; callers verify that each candidate has an open source.
+    const list = await recTvApiRequest(`/channel/by/filtres/0/0/0/${SW_KEY}/`);
+    if (!Array.isArray(list)) return [];
+    const categoryMap = new Map([
+      [1, 'sports'], [2, 'doc'], [3, 'national'], [4, 'news'],
+      [5, 'music'], [6, 'national'], [7, 'kids'], [8, 'national']
+    ]);
+    const seen = new Set();
     const channels = [];
-    // Category 1: Spor, Category 6: Sinema, Category 2: Belgesel, Category 7: Çocuk
-    const targetCats = [1, 6, 2, 7];
 
-    for (const catId of targetCats) {
-      const list = await recTvApiRequest(`/channel/by/filtres/${catId}/0/0/${SW_KEY}/`);
-      if (!Array.isArray(list)) continue;
-
-      for (const ch of list) {
-        const detail = await recTvApiRequest(`/channel/by/${ch.id}/${SW_KEY}/`);
-        if (!detail || !Array.isArray(detail.sources)) continue;
-
-        const src = detail.sources.find(s => !s.locked && (s.enc_url || s.url));
-        if (!src) continue;
-
-        const rawUrl = src.enc_url ? await decryptRecTvStreamUrl(src.enc_url) : src.url;
-        if (!rawUrl || !rawUrl.startsWith('http')) continue;
-
-        const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(rawUrl)}&ref=https://a.prectv70.lol/`;
-        const catName = catId === 1 ? 'sports' : (catId === 6 ? 'national' : (catId === 2 ? 'doc' : 'kids'));
-
-        channels.push({
-          id: `tvr_ch_${ch.id}`,
-          tvrId: ch.id,
-          isTvr: true,
-          name: ch.title,
-          category: catName,
-          logo: ch.image || '',
-          quality: '1080p HD',
-          streamUrl: proxiedUrl,
-          rawStreamUrl: rawUrl
-        });
-      }
+    for (const ch of list) {
+      const cleanId = String(ch.id || '').trim();
+      if (!cleanId || seen.has(cleanId) || String(ch.playas || '1') === '0') continue;
+      seen.add(cleanId);
+      const categoryId = Number(ch.categories?.[0]?.id || 0);
+      channels.push({
+        id: `tvr_ch_${cleanId}`,
+        tvrId: cleanId,
+        isTvr: true,
+        name: ch.title || ch.name || `TVR ${cleanId}`,
+        category: categoryMap.get(categoryId) || 'national',
+        logo: ch.image || ch.poster || '',
+        quality: '1080p TVR',
+        streamUrl: ''
+      });
     }
 
     return channels;
@@ -490,22 +485,42 @@ export async function fetchRecTvLiveChannels() {
 /**
  * Fetches a fresh authenticated HLS stream URL for a specific RecTV channel ID
  */
-export async function getRecTvChannelStreamUrl(chId) {
+const liveChannelUrlCache = new Map();
+const liveChannelUrlPending = new Map();
+const LIVE_CHANNEL_URL_TTL_MS = 2 * 60 * 1000;
+
+export async function getRecTvChannelStreamUrl(chId, { forceRefresh = false } = {}) {
   if (!chId) return null;
+  const cleanId = String(chId).replace(/^tvr_ch_/, '');
+  const cached = liveChannelUrlCache.get(cleanId);
+  if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.url;
+  if (liveChannelUrlPending.has(cleanId)) return liveChannelUrlPending.get(cleanId);
+  if (forceRefresh) liveChannelUrlCache.delete(cleanId);
+
+  const request = (async () => {
+    try {
+      const detail = await recTvApiRequest(`/channel/by/${cleanId}/${SW_KEY}/`);
+      if (!detail || !Array.isArray(detail.sources)) return null;
+
+      const src = detail.sources.find(s => !s.locked && (s.enc_url || s.url));
+      if (!src) return null;
+
+      const rawUrl = src.enc_url ? await decryptRecTvStreamUrl(src.enc_url) : src.url;
+      if (!rawUrl || !rawUrl.startsWith('http')) return null;
+
+      const url = `/api/hls_proxy?url=${encodeURIComponent(rawUrl)}&ref=https://a.prectv70.lol/`;
+      liveChannelUrlCache.set(cleanId, { url, expiresAt: Date.now() + LIVE_CHANNEL_URL_TTL_MS });
+      return url;
+    } catch (err) {
+      console.warn('[TVR] Fetch channel stream failed:', err.message);
+      return null;
+    }
+  })();
+
+  liveChannelUrlPending.set(cleanId, request);
   try {
-    const cleanId = String(chId).replace(/^tvr_ch_/, '');
-    const detail = await recTvApiRequest(`/channel/by/${cleanId}/${SW_KEY}/`);
-    if (!detail || !Array.isArray(detail.sources)) return null;
-
-    const src = detail.sources.find(s => !s.locked && (s.enc_url || s.url));
-    if (!src) return null;
-
-    const rawUrl = src.enc_url ? await decryptRecTvStreamUrl(src.enc_url) : src.url;
-    if (!rawUrl || !rawUrl.startsWith('http')) return null;
-
-    return `/api/hls_proxy?url=${encodeURIComponent(rawUrl)}&ref=https://a.prectv70.lol/`;
-  } catch (err) {
-    console.warn('[TVR] Fetch channel stream failed:', err.message);
-    return null;
+    return await request;
+  } finally {
+    liveChannelUrlPending.delete(cleanId);
   }
 }

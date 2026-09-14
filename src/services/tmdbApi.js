@@ -212,6 +212,7 @@ const TR_CARTOON_BOOSTS = [
   [180, ['rafadan tayfa', 'kral sakir', 'niloya', 'pepee']],
   [225, ['miraculous', 'gumball', 'adventure time', 'regular show', 'teen titans go', 'ben 10', 'spongebob', 'sunger bob']],
   [130, ['masha and the bear', 'masa ile koca ayi', 'winx', 'scooby doo', 'ninjago', 'paw patrol', 'pijamaskeliler']],
+  [150, ['samurai jack', 'johnny test', 'johnny bravo', 'dexter laboratory', 'powerpuff girls', 'courage cowardly dog']],
   [110, ['avatar the last airbender', 'avatar son hava bukucu', 'gravity falls', 'steven universe', 'the owl house', 'amphibia']]
 ];
 
@@ -221,6 +222,15 @@ const TR_ANIME_BOOSTS = [
   [140, ['pokemon', 'beyblade', 'captain tsubasa', 'yu gi oh', 'bakugan', 'my hero academia', 'boku no hero']],
   [120, ['hunter x hunter', 'tokyo ghoul', 'fullmetal alchemist', 'vinland saga', 'monster', 'jojo', 'haikyuu', 'blue lock']],
   [105, ['chainsaw man', 'one punch man', 'spy x family', 'black clover', 'frieren', 'kaiju no 8', 'dandadan']]
+];
+
+const ADULT_ANIMATION_BOOSTS = [
+  [320, ['rick and morty', 'invincible', 'arcane', 'bojack horseman']],
+  [280, ['south park', 'family guy', 'american dad', 'futurama', 'the simpsons']],
+  [250, ['love death robots', 'harley quinn', 'archer', 'solar opposites']],
+  [220, ['castlevania', 'blue eye samurai', 'the legend of vox machina', 'spawn', 'primal']],
+  [200, ['big mouth', 'f is for family', 'disenchantment', 'inside job', 'smiling friends', 'hazbin hotel', 'helluva boss']],
+  [180, ['boondocks', 'paradise pd', 'brickleberry', 'final space', 'scavengers reign', 'pantheon', 'undone', 'creature commandos']]
 ];
 
 function normalizeTrPopularityTitle(value = '') {
@@ -233,6 +243,15 @@ function normalizeTrPopularityTitle(value = '') {
     .trim();
 }
 
+function isEastAsianAnimation(item) {
+  const language = String(item?.original_language || '').toLowerCase();
+  const countries = Array.isArray(item?.origin_country)
+    ? item.origin_country.map(code => String(code).toUpperCase())
+    : [];
+  return ['ja', 'zh', 'ko'].includes(language)
+    || countries.some(code => ['JP', 'CN', 'KR'].includes(code));
+}
+
 function getRegionalTitleBoost(item, animeOnly = false) {
   const title = normalizeTrPopularityTitle([
     item.name,
@@ -242,6 +261,42 @@ function getRegionalTitleBoost(item, animeOnly = false) {
   ].filter(Boolean).join(' '));
   const groups = animeOnly ? TR_ANIME_BOOSTS : [...TR_CARTOON_BOOSTS, ...TR_ANIME_BOOSTS];
   for (const [boost, patterns] of groups) {
+    if (patterns.some(pattern => title.includes(pattern))) return boost;
+  }
+  return 0;
+}
+
+function getAdultAnimationBoost(item) {
+  const title = normalizeTrPopularityTitle([
+    item.name,
+    item.title,
+    item.original_name,
+    item.original_title
+  ].filter(Boolean).join(' '));
+  for (const [boost, patterns] of ADULT_ANIMATION_BOOSTS) {
+    if (patterns.some(pattern => title.includes(pattern))) return boost;
+  }
+  return 0;
+}
+
+function isKnownKidsCartoon(item) {
+  const title = normalizeTrPopularityTitle([
+    item.name,
+    item.title,
+    item.original_name,
+    item.original_title
+  ].filter(Boolean).join(' '));
+  return TR_CARTOON_BOOSTS.some(([, patterns]) => patterns.some(pattern => title.includes(pattern)));
+}
+
+function getCartoonRecognitionBoost(item) {
+  const title = normalizeTrPopularityTitle([
+    item.name,
+    item.title,
+    item.original_name,
+    item.original_title
+  ].filter(Boolean).join(' '));
+  for (const [boost, patterns] of TR_CARTOON_BOOSTS) {
     if (patterns.some(pattern => title.includes(pattern))) return boost;
   }
   return 0;
@@ -320,6 +375,125 @@ export async function fetchKidsPopularSeries(page = 1) {
       isSeries: true,
       overview: (item.overview || '').trim() || generateCinematicOverview(item, 'tv')
     })));
+}
+
+export async function fetchAdultAnimationSeries(page = 1) {
+  const [popularRes, acclaimedRes, trendingRes] = await Promise.all([
+    tmdbFetch('/discover/tv', {
+      sort_by: 'popularity.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '16',
+      without_genres: '10751,10762',
+      'vote_count.gte': 80,
+      include_adult: false
+    }),
+    tmdbFetch('/discover/tv', {
+      sort_by: 'vote_count.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '16',
+      without_genres: '10751,10762',
+      'vote_average.gte': 6.5,
+      'vote_count.gte': 150,
+      include_adult: false
+    }),
+    page === 1 ? tmdbFetch('/trending/tv/week', { language: 'tr-TR' }) : Promise.resolve(null)
+  ]);
+
+  const trendingAnimation = (trendingRes?.results || []).filter(item =>
+    (item.genre_ids || []).includes(16)
+  );
+  const unique = new Map();
+  for (const item of [...(popularRes?.results || []), ...(acclaimedRes?.results || []), ...trendingAnimation]) {
+    if (item?.id && !unique.has(item.id)) unique.set(item.id, item);
+  }
+
+  return Array.from(unique.values())
+    .filter(item => {
+      const genres = (item.genre_ids || []).map(Number);
+      return (item.poster_path || item.backdrop_path)
+        && genres.includes(16)
+        && !genres.includes(10751)
+        && !genres.includes(10762)
+        && !isEastAsianAnimation(item)
+        && !isKnownKidsCartoon(item)
+        && getAdultAnimationBoost(item) > 0
+        && !isBlockedContent(item);
+    })
+    .map(item => {
+      const popularity = Math.min(250, Number(item.popularity) || 0);
+      const votes = Math.min(130, Math.log10((Number(item.vote_count) || 0) + 1) * 30);
+      const rating = Math.max(0, (Number(item.vote_average) || 0) - 5) * 8;
+      return {
+        ...item,
+        type: 'tv',
+        media_type: 'tv',
+        isSeries: true,
+        overview: (item.overview || '').trim() || generateCinematicOverview(item, 'tv'),
+        _adultAnimationScore: popularity + votes + rating + getAdultAnimationBoost(item)
+      };
+    })
+    .sort((a, b) => b._adultAnimationScore - a._adultAnimationScore);
+}
+
+export async function fetchCartoonSeries(page = 1) {
+  // TMDB caps a single discover query at 500 pages. Non-overlapping release
+  // periods expose the full catalogue without recycling the same popular set.
+  const periods = [
+    ['2020-01-01', '2099-12-31'],
+    ['2015-01-01', '2019-12-31'],
+    ['2010-01-01', '2014-12-31'],
+    ['2000-01-01', '2009-12-31'],
+    ['1990-01-01', '1999-12-31'],
+    ['1980-01-01', '1989-12-31'],
+    ['1900-01-01', '1979-12-31']
+  ];
+  const responses = await Promise.all(periods.map(([from, to]) =>
+    tmdbFetch('/discover/tv', {
+      sort_by: 'vote_count.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '16',
+      without_genres: '27,80,53,99,10764,10766,10767',
+      'first_air_date.gte': from,
+      'first_air_date.lte': to,
+      include_adult: false
+    })
+  ));
+
+  const unique = new Map();
+  for (const response of responses) {
+    for (const item of response?.results || []) {
+      if (item?.id && !unique.has(item.id)) unique.set(item.id, item);
+    }
+  }
+
+  return Array.from(unique.values())
+    .filter(item => {
+      const genres = (item.genre_ids || []).map(Number);
+      return (item.poster_path || item.backdrop_path)
+        && genres.includes(16)
+        && !genres.includes(99)
+        && !isEastAsianAnimation(item)
+        && !hasNonLatinCharacters(item.name || item.title || '')
+        && !isBlockedContent(item);
+    })
+    .map(item => {
+      const year = parseInt(String(item.first_air_date || '').slice(0, 4), 10) || 9999;
+      const popularity = Math.min(220, Number(item.popularity) || 0);
+      const votes = Math.min(115, Math.log10((Number(item.vote_count) || 0) + 1) * 27);
+      const classicBonus = year <= 2018 ? 35 : 0;
+      return {
+        ...item,
+        type: 'tv',
+        media_type: 'tv',
+        isSeries: true,
+        overview: (item.overview || '').trim() || generateCinematicOverview(item, 'tv'),
+        _cartoonScore: popularity + votes + classicBonus + getCartoonRecognitionBoost(item)
+      };
+    })
+    .sort((a, b) => b._cartoonScore - a._cartoonScore);
 }
 
 export async function fetchKidsPopularMovies(page = 1) {

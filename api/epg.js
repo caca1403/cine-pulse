@@ -3,6 +3,7 @@ import { guardNodeRequest } from './_security.js';
 import zlib from 'zlib';
 
 const EPG_URL = 'https://iptv-epg.org/files/epg-tr.xml.gz';
+const STAR_EPG_URL = 'https://www.startv.com.tr/yayin-akisi';
 
 const CHANNEL_MAPPINGS = {
   // Ulusal
@@ -112,6 +113,32 @@ function cleanHtmlEntities(text) {
     .trim();
 }
 
+function parseOfficialStarSchedule(html, windowStart, windowEnd) {
+  if (!html) return [];
+  const items = [];
+  const seen = new Set();
+  const scheduleRegex = /\\"startTime\\":\\"([^"\\]+)\\",\\"endTime\\":\\"([^"\\]+)\\",\\"duration\\":\d+,\\"title\\":\\"([^"\\]+)\\"/g;
+  let match;
+
+  while ((match = scheduleRegex.exec(html)) !== null) {
+    const startMs = Date.parse(match[1]);
+    const endMs = Date.parse(match[2]);
+    const key = `${startMs}:${endMs}`;
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || seen.has(key)) continue;
+    if (endMs < windowStart || startMs > windowEnd) continue;
+    seen.add(key);
+    items.push({
+      startTs: startMs,
+      endTs: endMs,
+      start: formatTrTime(startMs),
+      end: formatTrTime(endMs),
+      title: cleanHtmlEntities(match[3])
+    });
+  }
+
+  return items.sort((a, b) => a.startTs - b.startTs);
+}
+
 // In-memory cache
 let cachedData = null;
 let cacheTime = 0;
@@ -133,7 +160,12 @@ export default async function handler(req, res) {
       return res.status(200).json(cachedData);
     }
 
-    const fetchRes = await fetch(EPG_URL);
+    const [fetchRes, starHtml] = await Promise.all([
+      fetch(EPG_URL),
+      fetch(STAR_EPG_URL)
+        .then(response => response.ok ? response.text() : '')
+        .catch(() => '')
+    ]);
     if (!fetchRes.ok) {
       throw new Error(`Failed to download EPG: ${fetchRes.status}`);
     }
@@ -171,6 +203,13 @@ export default async function handler(req, res) {
           });
         }
       }
+    }
+
+    // The generic XMLTV feed sometimes labels Star TV programmes only as
+    // "Dizi". Star's official schedule contains the actual programme names.
+    const officialStarSchedule = parseOfficialStarSchedule(starHtml, windowStart, windowEnd);
+    if (officialStarSchedule.length > 0) {
+      channels.ch_startv = officialStarSchedule;
     }
 
     // Sort programmes by startTs for each channel

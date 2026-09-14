@@ -7,7 +7,8 @@
 
 import {
   fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated, fetchPopularAnime, fetchPopularDocumentaries,
-  fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsAdventures, fetchKidsDocumentaries, fetchKidsAnime
+  fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsAdventures, fetchKidsDocumentaries, fetchKidsAnime,
+  fetchAdultAnimationSeries, fetchCartoonSeries
 } from '../services/tmdbApi.js';
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
 import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile, isItemKidSafe } from '../services/storage.js';
@@ -23,7 +24,7 @@ const HOME_CACHE_TTL_MS = 10 * 60 * 1000;
 
 function getPersistentHomeCache(isKid) {
   try {
-    const raw = sessionStorage.getItem(`cinepulse_home_fast_v2_${isKid ? 'kids' : 'adult'}`);
+    const raw = sessionStorage.getItem(`cinepulse_home_fast_v6_${isKid ? 'kids' : 'adult'}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed?.savedAt || Date.now() - parsed.savedAt > HOME_CACHE_TTL_MS) return null;
@@ -35,7 +36,7 @@ function getPersistentHomeCache(isKid) {
 
 function persistHomeCache(data) {
   try {
-    sessionStorage.setItem(`cinepulse_home_fast_v2_${data.isKid ? 'kids' : 'adult'}`, JSON.stringify({
+    sessionStorage.setItem(`cinepulse_home_fast_v6_${data.isKid ? 'kids' : 'adult'}`, JSON.stringify({
       savedAt: Date.now(),
       data
     }));
@@ -47,6 +48,14 @@ export function clearHomeCache() {
   try {
     sessionStorage.removeItem('cinepulse_home_fast_v2_kids');
     sessionStorage.removeItem('cinepulse_home_fast_v2_adult');
+    sessionStorage.removeItem('cinepulse_home_fast_v3_kids');
+    sessionStorage.removeItem('cinepulse_home_fast_v3_adult');
+    sessionStorage.removeItem('cinepulse_home_fast_v4_kids');
+    sessionStorage.removeItem('cinepulse_home_fast_v4_adult');
+    sessionStorage.removeItem('cinepulse_home_fast_v5_kids');
+    sessionStorage.removeItem('cinepulse_home_fast_v5_adult');
+    sessionStorage.removeItem('cinepulse_home_fast_v6_kids');
+    sessionStorage.removeItem('cinepulse_home_fast_v6_adult');
   } catch (_) {}
   railExtraItemsCache.clear();
   Object.keys(railState).forEach(k => {
@@ -63,6 +72,8 @@ const railState = {
   'rail-top-tv':         { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('tv', p) },
   'rail-top-movies':     { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) },
   'rail-anime':          { page: 1, loading: false, exhausted: false, fetcher: fetchPopularAnime },
+  'rail-adult-animation':{ page: 1, loading: false, exhausted: false, fetcher: fetchAdultAnimationSeries },
+  'rail-cartoon-series':  { page: 1, loading: false, exhausted: false, fetcher: fetchCartoonSeries },
   'rail-documentary':    { page: 1, loading: false, exhausted: false, fetcher: fetchPopularDocumentaries }
 };
 
@@ -145,7 +156,6 @@ function initInfiniteRails(container) {
       if (!state || state.loading || state.exhausted) return;
 
       state.loading = true;
-      state.page   += 1;
 
       // Show spinner before sentinel
       const spinner = document.createElement('div');
@@ -155,20 +165,45 @@ function initInfiniteRails(container) {
       if (window.lucide) window.lucide.createIcons();
 
       try {
-        const newItems = await state.fetcher(state.page);
+        const rail = document.getElementById(railId);
+        if (!rail) {
+          spinner.remove();
+          state.loading = false;
+          return;
+        }
+
+        const seenIds = new Set(
+          Array.from(rail.querySelectorAll('.media-card[data-id]'))
+            .map(card => String(card.getAttribute('data-id')))
+            .filter(Boolean)
+        );
+        let newItems = [];
+
+        // Some combined TMDB queries overlap heavily between adjacent pages.
+        // Advance through up to three real pages until genuinely new cards arrive.
+        for (let attempt = 0; attempt < 3 && newItems.length === 0; attempt += 1) {
+          state.page += 1;
+          const fetchedItems = await state.fetcher(state.page);
+          if (!fetchedItems || fetchedItems.length === 0) {
+            state.exhausted = true;
+            break;
+          }
+          newItems = fetchedItems.filter(item => {
+            const id = String(item?.id || '');
+            if (!id || seenIds.has(id)) return false;
+            seenIds.add(id);
+            return true;
+          });
+        }
         spinner.remove();
 
-        if (!newItems || newItems.length === 0) {
-          state.exhausted = true;
+        if (newItems.length === 0) {
           return;
         }
 
         // Cache extra items for this rail
         const prevExtra = railExtraItemsCache.get(railId) || [];
         railExtraItemsCache.set(railId, [...prevExtra, ...newItems]);
-
-        const rail = document.getElementById(railId);
-        if (!rail) return;
 
         newItems.forEach(item => {
           const div = document.createElement('div');
@@ -203,12 +238,12 @@ function initInfiniteRails(container) {
 -------------------------------------------------------------------------- */
 export async function renderHomeView() {
   const isKid = isKidProfileActive();
-  let trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures;
+  let trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems;
 
   if (!homeDataCache) homeDataCache = getPersistentHomeCache(isKid);
 
   if (homeDataCache && homeDataCache.isKid === isKid) {
-    ({ trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures } = homeDataCache);
+    ({ trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems } = homeDataCache);
   } else {
     if (isKid) {
       [
@@ -234,7 +269,9 @@ export async function renderHomeView() {
         topRatedTV,
         topRatedMovies,
         animeItems,
-        docItems
+        docItems,
+        adultAnimationItems,
+        cartoonSeriesItems
       ] = await Promise.all([
         fetchTrending('all',   'week', 1),
         fetchPopularSeries(1),
@@ -242,9 +279,11 @@ export async function renderHomeView() {
         fetchTopRated('tv',    1),
         fetchTopRated('movie', 1),
         fetchPopularAnime(1),
-        fetchPopularDocumentaries(1)
+        fetchPopularDocumentaries(1),
+        fetchAdultAnimationSeries(1),
+        fetchCartoonSeries(1)
       ]);
-      homeDataCache = { isKid: false, trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems };
+      homeDataCache = { isKid: false, trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, adultAnimationItems, cartoonSeriesItems };
       persistHomeCache(homeDataCache);
     }
   }
@@ -274,6 +313,8 @@ export async function renderHomeView() {
     if (!railState['rail-top-tv']) railState['rail-top-tv'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('tv', p) };
     if (!railState['rail-top-movies']) railState['rail-top-movies'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) };
     if (!railState['rail-anime']) railState['rail-anime'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularAnime };
+    if (!railState['rail-adult-animation']) railState['rail-adult-animation'] = { page: 1, loading: false, exhausted: false, fetcher: fetchAdultAnimationSeries };
+    if (!railState['rail-cartoon-series']) railState['rail-cartoon-series'] = { page: 1, loading: false, exhausted: false, fetcher: fetchCartoonSeries };
   }
   if (!isKid) {
     if (!railState['rail-documentary']) railState['rail-documentary'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularDocumentaries };
@@ -324,6 +365,22 @@ export async function renderHomeView() {
         accent:'#14b8a6',
         items: popularTV
       })}
+
+      ${adultAnimationItems && adultAnimationItems.length > 0 ? renderInfiniteRail({
+        id:    'rail-adult-animation',
+        icon:  'sparkles',
+        title: 'Yetişkin Animasyonları & Çizgi Diziler',
+        accent:'#fb7185',
+        items: adultAnimationItems
+      }) : ''}
+
+      ${cartoonSeriesItems && cartoonSeriesItems.length > 0 ? renderInfiniteRail({
+        id:    'rail-cartoon-series',
+        icon:  'wand-sparkles',
+        title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler',
+        accent:'#38bdf8',
+        items: cartoonSeriesItems
+      }) : ''}
 
       ${renderInfiniteRail({
         id:    'rail-popular-movies',

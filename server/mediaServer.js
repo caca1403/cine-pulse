@@ -15,6 +15,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
+import { Readable } from 'stream';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -546,11 +547,15 @@ const server = http.createServer(async (req, res) => {
         });
         res.end(rewritten);
       } else {
-        res.writeHead(upstreamRes.status, {
-          'Content-Type': contentType || 'video/mp2t'
-        });
-        const arrayBuf = await upstreamRes.arrayBuffer();
-        res.end(Buffer.from(arrayBuf));
+        const headers = { 'Content-Type': contentType || 'video/mp2t' };
+        const contentLength = upstreamRes.headers.get('content-length');
+        if (contentLength) headers['Content-Length'] = contentLength;
+        res.writeHead(upstreamRes.status, headers);
+        if (upstreamRes.body) {
+          Readable.fromWeb(upstreamRes.body).pipe(res);
+        } else {
+          res.end();
+        }
       }
     } catch (err) {
       console.error('[MediaServer] HLS Proxy error:', err.message);

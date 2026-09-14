@@ -3,7 +3,7 @@
    Progressive 3-page parallel fetching with instant first-paint rendering.
    ========================================================================== */
 
-import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries, fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsDocumentaries, fetchKidsAnime } from '../services/tmdbApi.js';
+import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries, fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsDocumentaries, fetchKidsAnime, fetchCartoonSeries } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { isKidProfileActive } from '../services/storage.js';
 
@@ -26,6 +26,7 @@ function getFetcher(type) {
       case 'movie': return fetchKidsPopularMovies;
       case 'anime': return fetchKidsAnime;
       case 'documentary': return fetchKidsDocumentaries;
+      case 'cartoon': return fetchKidsPopularSeries;
       default: return fetchKidsPopularSeries;
     }
   }
@@ -33,6 +34,7 @@ function getFetcher(type) {
     case 'movie': return fetchPopularMovies;
     case 'anime': return fetchPopularAnime;
     case 'documentary': return fetchPopularDocumentaries;
+    case 'cartoon': return fetchCartoonSeries;
     default: return fetchPopularSeries;
   }
 }
@@ -55,12 +57,13 @@ export async function renderPopularListView(type = 'tv') {
     documentary: ['🐾 Doğa & Hayvan Belgeselleri', 'globe']
   } : {
     tv: ['Tüm Zamanların En Popüler Dizileri', 'monitor-play'],
+    cartoon: ['Çizgi Dizi Dünyası & Unutulmaz Klasikler', 'wand-sparkles'],
     movie: ['Tüm Zamanların En Popüler Filmleri', 'popcorn'],
     anime: ['Türkiye’de En Popüler Animeler', 'cat'],
     documentary: ['Tüm Zamanların En Çok İzlenen Belgeselleri', 'globe']
   };
   const [titleText, iconName] = titleMap[type] || titleMap.tv;
-  const popularityDescription = (type === 'anime' || (isKid && type === 'tv'))
+  const popularityDescription = (type === 'anime' || type === 'cartoon' || (isKid && type === 'tv'))
     ? 'Güncel ilgi, izleyici güveni ve Türkiye popülerlik sinyaline göre sıralanıyor'
     : 'Tüm zamanların popülerliğine göre akıcı olarak listeleniyor';
 
@@ -156,7 +159,7 @@ export async function renderPopularListView(type = 'tv') {
 
           let totalNew = 0;
 
-          const preserveRegionalOrder = type === 'anime' || (isKid && type === 'tv');
+          const preserveRegionalOrder = type === 'anime' || type === 'cartoon' || (isKid && type === 'tv');
           // Turkey-ranked animation needs the whole parallel batch before
           // painting; otherwise a slower page could appear above page one.
           const promises = pages.map(p => fetcher(p).catch(() => []));
@@ -164,7 +167,8 @@ export async function renderPopularListView(type = 'tv') {
           const results = await Promise.all(promises);
           const allItems = results.flat().filter(Boolean);
           if (preserveRegionalOrder) {
-            allItems.sort((a, b) => (b._turkeyPopularityScore || 0) - (a._turkeyPopularityScore || 0));
+            const scoreKey = type === 'cartoon' ? '_cartoonScore' : '_turkeyPopularityScore';
+            allItems.sort((a, b) => (b[scoreKey] || 0) - (a[scoreKey] || 0));
             totalNew = allItems.length;
             appendItems(allItems);
           } else {
