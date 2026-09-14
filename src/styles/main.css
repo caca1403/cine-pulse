@@ -5842,17 +5842,16 @@ video::cue {
   cursor: pointer;
 }
 
-/* ── In-Player Floating Top OSD Bar ── */
+/* ── In-Player Floating Top Minimal Badge ── */
 .tv-osd-topbar {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  padding: 1.15rem 1.5rem;
+  padding: 0.85rem 1.25rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.5) 60%, transparent 100%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%);
   z-index: 6;
   opacity: 0;
   transform: translateY(-8px);
@@ -5870,22 +5869,22 @@ video::cue {
 .tv-osd-channel-meta {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.65rem;
   min-width: 0;
 }
 
 .tv-osd-logo-box {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
+  padding: 3px;
   flex-shrink: 0;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(10px);
 }
 
@@ -5896,20 +5895,17 @@ video::cue {
 }
 
 .tv-osd-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
   min-width: 0;
 }
 
 .tv-osd-ch-title {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
 #tv-top-name {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #fff;
   letter-spacing: -0.01em;
@@ -5920,124 +5916,23 @@ video::cue {
 }
 
 .tv-osd-num-tag {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 900;
   color: #fbbf24;
-  background: rgba(245, 158, 11, 0.18);
+  background: rgba(245, 158, 11, 0.2);
   border: 1px solid rgba(245, 158, 11, 0.35);
-  padding: 0.12rem 0.5rem;
+  padding: 0.12rem 0.45rem;
   border-radius: 5px;
   letter-spacing: 0.05em;
   font-family: var(--font-heading);
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
-.tv-osd-ch-sub {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.tv-live-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  padding: 0.14rem 0.55rem;
-  border-radius: var(--radius-full);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.tv-live-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 10px #ef4444;
-  animation: tvPulse 1.3s infinite;
-}
-
-.tv-quality-pill {
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  padding: 0.14rem 0.48rem;
-  border-radius: var(--radius-full);
-}
-
-.tv-vip-pill {
-  font-size: 0.68rem;
-  font-weight: 800;
-  color: #fbbf24;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(239, 68, 68, 0.25));
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  padding: 0.14rem 0.5rem;
-  border-radius: var(--radius-full);
-}
-
-.tv-osd-top-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.tv-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.5rem 0.9rem;
-  border-radius: var(--radius-full);
-  background: rgba(15, 23, 42, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #e2e8f0;
-  font-size: 0.84rem;
-  font-weight: 700;
-  cursor: pointer;
-  backdrop-filter: blur(14px);
-  transition: all 0.2s ease;
-}
-
-.tv-icon-btn:hover {
-  background: rgba(245, 158, 11, 0.25);
-  border-color: var(--primary);
-  color: #fff;
-  transform: translateY(-1px);
-}
-
-.tv-fav-btn.is-active {
-  background: rgba(245, 158, 11, 0.2);
-  border-color: #fbbf24;
-  color: #fbbf24;
-}
-
-/* ── Zap Left / Right Arrows (Center Overlay) ── */
+/* Zap buttons are removed for clean uncluttered player */
 .tv-zap-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 1rem 0.75rem;
-  background: rgba(5, 8, 15, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #fff;
-  border-radius: 14px;
-  cursor: pointer;
-  z-index: 5;
-  opacity: 0;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  backdrop-filter: blur(12px);
+  display: none !important;
 }
-
-.tv-zap-prev { left: 1rem; }
-.tv-zap-next { right: 1rem; }
 
 .tv-zap-hint {
   font-size: 0.75rem;
@@ -6492,12 +6387,12 @@ video::cue {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 1rem 1.5rem;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.72) 60%, transparent 100%);
+  padding: 0.85rem 1.25rem;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.94) 0%, rgba(0, 0, 0, 0.5) 60%, transparent 100%);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   z-index: 6;
   opacity: 0;
   transform: translateY(8px);
@@ -6532,6 +6427,7 @@ video::cue {
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 0;
+  flex-shrink: 0;
 }
 
 .tv-ctrl-action-btn:hover {
@@ -6541,28 +6437,37 @@ video::cue {
   transform: scale(1.08);
 }
 
-.tv-btn-channels-drawer {
-  width: auto;
-  border-radius: var(--radius-full);
-  padding: 0 0.95rem;
-  gap: 0.4rem;
+.tv-ctrl-action-btn.tv-play-btn {
+  width: 42px;
+  height: 42px;
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+.tv-ctrl-action-btn.tv-play-btn:hover {
+  background: var(--primary-gradient);
+  color: #000;
+  transform: scale(1.1);
 }
 
-.tv-ctrl-text {
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.tv-live-sync-btn {
-  width: auto;
+.tv-live-sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
   border-radius: var(--radius-full);
-  padding: 0 0.85rem;
   font-size: 0.72rem;
   font-weight: 800;
-  gap: 0.35rem;
   background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.35);
+  border: 1px solid rgba(239, 68, 68, 0.35);
   color: #ef4444;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.tv-live-sync-indicator:hover {
+  background: rgba(239, 68, 68, 0.3);
 }
 
 .tv-live-sync-dot {
@@ -6578,12 +6483,12 @@ video::cue {
 .tv-volume-group {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.5rem;
   flex-shrink: 0;
 }
 
 .tv-volume-slider-box {
-  width: 90px;
+  width: 85px;
   display: flex;
   align-items: center;
 }
@@ -6613,14 +6518,6 @@ video::cue {
   transform: scale(1.3);
 }
 
-.tv-volume-label {
-  font-size: 0.74rem;
-  font-weight: 800;
-  color: #94a3b8;
-  min-width: 34px;
-  font-family: var(--font-heading);
-}
-
 /* ==========================================================================
    BOTTOM: Channel Catalog & Grid Section (Flows Completely Under Video)
    ========================================================================== */
@@ -6637,36 +6534,43 @@ video::cue {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.25rem;
-  flex-wrap: wrap;
+  gap: 1rem;
   background: rgba(8, 12, 20, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  padding: 0.85rem 1.25rem;
+  padding: 0.75rem 1.15rem;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .tv-cat-nav-container {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  flex: 1;
-  min-width: 280px;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0 !important;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  position: relative;
 }
 
 .tv-cat-arrow-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   color: #94a3b8;
   cursor: pointer;
-  flex-shrink: 0;
+  flex-shrink: 0 !important;
   transition: all 0.2s ease;
   padding: 0;
+  z-index: 2;
 }
 .tv-cat-arrow-btn:hover {
   background: rgba(245, 158, 11, 0.25);
@@ -6676,29 +6580,41 @@ video::cue {
 
 .tv-catalog-categories {
   display: flex;
+  align-items: center;
   gap: 0.45rem;
-  overflow-x: auto;
-  padding: 0.2rem 0;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-x !important;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
-  flex: 1;
+  flex: 1 1 0%;
+  min-width: 0 !important;
+  padding: 0.2rem 0;
+  cursor: grab;
 }
-.tv-catalog-categories::-webkit-scrollbar { display: none; }
+.tv-catalog-categories::-webkit-scrollbar { display: none !important; }
+.tv-catalog-categories.is-dragging {
+  cursor: grabbing;
+  scroll-behavior: auto !important;
+}
 
 .tv-cat-filter-btn {
-  padding: 0.42rem 0.95rem;
+  padding: 0.45rem 1rem;
   border-radius: var(--radius-full);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: #94a3b8;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  white-space: nowrap;
+  white-space: nowrap !important;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  flex-shrink: 0;
+  flex-shrink: 0 !important;
   transition: all 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tv-cat-filter-btn:hover {
@@ -6987,57 +6903,37 @@ video::cue {
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.9);
   }
   .tv-osd-topbar {
-    padding: 0.5rem 0.65rem;
-    gap: 0.4rem;
+    padding: 0.4rem 0.65rem !important;
+    gap: 0.35rem;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, transparent 100%) !important;
   }
   .tv-osd-channel-meta {
-    gap: 0.55rem;
+    gap: 0.5rem;
     min-width: 0;
     flex: 1;
   }
   .tv-osd-logo-box {
-    width: 36px;
-    height: 36px;
-    padding: 3px;
-    border-radius: 8px;
+    width: 28px !important;
+    height: 28px !important;
+    padding: 2px !important;
+    border-radius: 6px !important;
   }
   .tv-osd-text {
     min-width: 0;
     overflow: hidden;
   }
   #tv-top-name {
-    font-size: 0.92rem;
-    max-width: 130px;
+    font-size: 0.88rem !important;
+    max-width: 170px !important;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: nowrap !important;
   }
   .tv-osd-num-tag {
-    font-size: 0.68rem;
-    padding: 0.08rem 0.35rem;
-  }
-  .tv-live-pill {
-    font-size: 0.62rem;
-    padding: 0.1rem 0.4rem;
-  }
-  .tv-quality-pill {
-    font-size: 0.6rem;
-    padding: 0.08rem 0.35rem;
-  }
-  .tv-vip-pill {
-    font-size: 0.6rem;
-    padding: 0.08rem 0.35rem;
-  }
-  .tv-osd-top-actions {
-    gap: 0.35rem;
-    flex-shrink: 0;
-  }
-  .tv-icon-btn {
-    padding: 0.4rem 0.65rem;
-    font-size: 0.75rem;
-  }
-  .tv-drawer-toggle-btn .tv-btn-label {
-    display: none;
+    font-size: 0.62rem !important;
+    padding: 0.08rem 0.32rem !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
   }
   .tv-osd-banner {
     bottom: 3.8rem;
@@ -7059,87 +6955,95 @@ video::cue {
 
   /* In-Player Bottom Controls on Mobile */
   .tv-screen-controls {
-    padding: 0.45rem 0.6rem;
-    gap: 0.25rem;
+    padding: 0.35rem 0.55rem !important;
+    gap: 0.3rem !important;
+    background: linear-gradient(0deg, rgba(0, 0, 0, 0.9) 0%, transparent 100%) !important;
   }
   .tv-ctrl-group {
-    gap: 0.25rem;
+    gap: 0.3rem !important;
   }
   .tv-ctrl-action-btn {
-    width: 32px;
-    height: 32px;
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .tv-ctrl-action-btn.tv-play-btn {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .tv-live-sync-indicator {
+    padding: 0.15rem 0.45rem !important;
+    font-size: 0.62rem !important;
   }
   .tv-volume-slider-box {
     display: none !important;
   }
-  .tv-volume-label {
-    display: none !important;
-  }
-  #tv-btn-pip {
-    display: none !important;
-  }
-  .tv-live-sync-btn {
-    padding: 0 0.55rem;
-    font-size: 0.65rem;
-    gap: 0.25rem;
-  }
-  .tv-btn-channels-drawer {
-    padding: 0;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    justify-content: center;
-  }
-  .tv-btn-channels-drawer .tv-ctrl-text {
-    display: none;
-  }
-
   .tv-zap-btn {
-    padding: 0.6rem 0.4rem;
+    display: none !important;
   }
-  .tv-zap-hint {
-    display: none;
+  .tv-inplayer-drawer {
+    display: none !important;
   }
 
   /* Bottom Catalog Toolbar on Mobile */
   .tv-catalog-toolbar {
-    padding: 0.65rem;
-    border-radius: 14px;
-    gap: 0.65rem;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 0.55rem 0.65rem !important;
+    border-radius: 14px !important;
+    gap: 0.65rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
   .tv-cat-nav-container {
-    min-width: 0;
-    width: 100%;
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 0.35rem !important;
+    display: flex !important;
+    align-items: center !important;
   }
   .tv-cat-arrow-btn {
-    width: 24px;
-    height: 24px;
+    width: 28px !important;
+    height: 28px !important;
+    flex-shrink: 0 !important;
+  }
+  .tv-catalog-categories {
+    min-width: 0 !important;
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    gap: 0.35rem !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
   }
   .tv-cat-filter-btn {
-    padding: 0.35rem 0.75rem;
-    font-size: 0.74rem;
+    padding: 0.38rem 0.75rem !important;
+    font-size: 0.74rem !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
   }
   .tv-catalog-search-area {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
   }
   .tv-catalog-search-box {
-    flex: 1;
-    min-width: 0;
-    width: auto;
+    flex: 1 !important;
+    min-width: 0 !important;
+    width: auto !important;
   }
   .tv-search-field {
-    padding: 0.48rem 1.8rem 0.48rem 2.2rem;
-    font-size: 0.78rem;
+    padding: 0.48rem 1.8rem 0.48rem 2.2rem !important;
+    font-size: 0.78rem !important;
   }
   .tv-catalog-count-badge {
-    white-space: nowrap;
-    flex-shrink: 0;
-    font-size: 0.7rem;
-    padding: 0.3rem 0.6rem;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    font-size: 0.7rem !important;
+    padding: 0.3rem 0.6rem !important;
   }
 
   /* Grid Layout on Phones */
@@ -7171,12 +7075,6 @@ video::cue {
   .tv-grid-live-indicator {
     font-size: 0.56rem;
     margin-top: 0.25rem;
-  }
-
-  /* In-Player Drawer on Mobile */
-  .tv-inplayer-drawer {
-    width: 100%;
-    max-width: 100%;
   }
 }
 
