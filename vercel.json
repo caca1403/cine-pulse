@@ -41,6 +41,34 @@
   ],
   "rewrites": [
     {
+      "source": "/api/hdi/(.*)",
+      "destination": "https://www.hdfilmizle.vip/$1"
+    },
+    {
+      "source": "/api/flz/(.*)",
+      "destination": "https://filmizlech.com/$1"
+    },
+    {
+      "source": "/api/hfd/(.*)",
+      "destination": "https://hdfilmdelisi.one/$1"
+    },
+    {
+      "source": "/api/hdfc/(.*)",
+      "destination": "https://www.hdfilmcehennemi.now/$1"
+    },
+    {
+      "source": "/api/fin/(.*)",
+      "destination": "https://filmizle.now/$1"
+    },
+    {
+      "source": "/api/vidmixi/(.*)",
+      "destination": "https://vidmixi.com/$1"
+    },
+    {
+      "source": "/api/fmk/(.*)",
+      "destination": "https://filmmakinesi.to/$1"
+    },
+    {
       "source": "/api/snx",
       "destination": "/api/snx"
     },
@@ -71,6 +99,18 @@
     {
       "source": "/api/rtv/(.*)",
       "destination": "/api/rtv?path=$1"
+    },
+    {
+      "source": "/api/fex/(.*)",
+      "destination": "https://filmekseni.vip/$1"
+    },
+    {
+      "source": "/api/dzy/(.*)",
+      "destination": "https://www.diziyou.one/$1"
+    },
+    {
+      "source": "/api/dzyo/(.*)",
+      "destination": "https://www.diziyo.so/$1"
     },
     {
       "source": "/api/epg",
