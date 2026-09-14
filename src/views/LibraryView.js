@@ -99,7 +99,7 @@ export function renderLibraryView() {
             </div>
             <div>
               <div class="stat-card-label" style="color: #fbbf24;">Toplam İzleme</div>
-              <div id="stat-total-watch" class="stat-card-val">${stats.formattedTotal}</div>
+              <div id="stat-total-watch" class="stat-card-val">${stats.formattedTotal || stats.formattedTotalTime || '0 dk'}</div>
             </div>
           </div>
 
@@ -109,7 +109,7 @@ export function renderLibraryView() {
             </div>
             <div>
               <div class="stat-card-label" style="color: #60a5fa;">İzlenen Bölüm</div>
-              <div id="stat-eps-count" class="stat-card-val">${stats.totalEpisodes} Bölüm</div>
+              <div id="stat-eps-count" class="stat-card-val">${stats.totalEpisodes ?? stats.episodesCount ?? 0} Bölüm</div>
             </div>
           </div>
 
@@ -119,7 +119,7 @@ export function renderLibraryView() {
             </div>
             <div>
               <div class="stat-card-label" style="color: #34d399;">İzlenen Film</div>
-              <div id="stat-movies-count" class="stat-card-val">${stats.totalMovies} Film</div>
+              <div id="stat-movies-count" class="stat-card-val">${stats.totalMovies ?? stats.moviesCount ?? 0} Film</div>
             </div>
           </div>
 
@@ -436,6 +436,30 @@ export function renderLibraryView() {
         });
       });
 
+      // Helper to dynamically refresh stats cards and segmented tab counts
+      const refreshLibraryStats = () => {
+        const updatedStats = getTotalWatchStats();
+        const elTime = container.querySelector('#stat-total-watch') || container.querySelector('#stat-total-time');
+        const elEp = container.querySelector('#stat-eps-count') || container.querySelector('#stat-episodes-count');
+        const elMov = container.querySelector('#stat-movies-count');
+        const elFav = container.querySelector('#stat-favs-count');
+        if (elTime) elTime.textContent = updatedStats.formattedTotal || updatedStats.formattedTotalTime || '0 dk';
+        if (elEp) elEp.textContent = `${updatedStats.totalEpisodes ?? updatedStats.episodesCount ?? 0} Bölüm`;
+        if (elMov) elMov.textContent = `${updatedStats.totalMovies ?? updatedStats.moviesCount ?? 0} Film`;
+        if (elFav) elFav.textContent = `${getFavorites().length + getWatchlist().length} Yapım`;
+
+        const cCont = container.querySelector('#tab-count-continue');
+        const cComp = container.querySelector('#tab-count-completed');
+        const cFav = container.querySelector('#tab-count-favorites');
+        const cWatch = container.querySelector('#tab-count-watchlist');
+        const cAll = container.querySelector('#tab-count-all-episodes');
+        if (cCont) cCont.textContent = getContinueWatchingList().length;
+        if (cComp) cComp.textContent = getCompletedWatchList().length;
+        if (cFav) cFav.textContent = getFavorites().length;
+        if (cWatch) cWatch.textContent = getWatchlist().length;
+        if (cAll) cAll.textContent = getWatchHistory().length;
+      };
+
       // Helper to bind delete buttons per rendered tab
       const bindDeleteButtons = (scopeEl) => {
         if (!scopeEl) return;
@@ -482,28 +506,7 @@ export function renderLibraryView() {
               wrapper.style.opacity = '0';
               setTimeout(() => {
                 wrapper.remove();
-
-                // Refresh stats & tab counts dynamically
-                const updatedStats = getTotalWatchStats();
-                const elTime = container.querySelector('#stat-total-time');
-                const elEp = container.querySelector('#stat-episodes-count');
-                const elMov = container.querySelector('#stat-movies-count');
-                const elFav = container.querySelector('#stat-favs-count');
-                if (elTime) elTime.textContent = updatedStats.formattedTotalTime;
-                if (elEp) elEp.textContent = `${updatedStats.episodesCount} Bölüm`;
-                if (elMov) elMov.textContent = `${updatedStats.moviesCount} Film`;
-                if (elFav) elFav.textContent = `${getFavorites().length + getWatchlist().length} Yapım`;
-
-                const cCont = container.querySelector('#tab-count-continue');
-                const cComp = container.querySelector('#tab-count-completed');
-                const cFav = container.querySelector('#tab-count-favorites');
-                const cWatch = container.querySelector('#tab-count-watchlist');
-                const cAll = container.querySelector('#tab-count-all-episodes');
-                if (cCont) cCont.textContent = getContinueWatchingList().length;
-                if (cComp) cComp.textContent = getCompletedWatchList().length;
-                if (cFav) cFav.textContent = getFavorites().length;
-                if (cWatch) cWatch.textContent = getWatchlist().length;
-                if (cAll) cAll.textContent = getWatchHistory().length;
+                refreshLibraryStats();
               }, 300);
             }
           });
@@ -576,23 +579,7 @@ export function renderLibraryView() {
             showToast('✓ Liste başarıyla temizlendi.', 'success');
             
             // Refresh stats & tab counts
-            const updatedStats = getTotalWatchStats();
-            const elTime = container.querySelector('#stat-total-time');
-            const elEp = container.querySelector('#stat-episodes-count');
-            const elMov = container.querySelector('#stat-movies-count');
-            const elFav = container.querySelector('#stat-favs-count');
-            if (elTime) elTime.textContent = updatedStats.formattedTotalTime;
-            if (elEp) elEp.textContent = `${updatedStats.episodesCount} Bölüm`;
-            if (elMov) elMov.textContent = `${updatedStats.moviesCount} Film`;
-            if (elFav) elFav.textContent = `${getFavorites().length + getWatchlist().length} Yapım`;
-
-            const cCont = container.querySelector('#tab-count-continue');
-            const cComp = container.querySelector('#tab-count-completed');
-            const cAll = container.querySelector('#tab-count-all-episodes');
-            if (cCont) cCont.textContent = getContinueWatchingList().length;
-            if (cComp) cComp.textContent = getCompletedWatchList().length;
-            if (cAll) cAll.textContent = getWatchHistory().length;
-
+            refreshLibraryStats();
             renderActiveTabContent();
           }
         });
@@ -617,6 +604,7 @@ export function renderLibraryView() {
               const res = importDataFromJSON(event.target.result, 'merge');
               if (res.success) {
                 showToast(`✓ Yedek başarıyla yüklendi! (${res.countHistory} izleme, ${res.countFavs} favori aktarıldı)`, 'success');
+                refreshLibraryStats();
                 renderActiveTabContent();
               } else {
                 showToast(`Yükleme hatası: ${res.message || res.error}`, 'error');
@@ -641,10 +629,12 @@ export function renderLibraryView() {
 
       // Background Anime Enrichment: automatically resolves any anime stored as TV series
       syncHistoryAnimeStatus().then(() => {
+        refreshLibraryStats();
         renderActiveTabContent();
       }).catch(() => {});
 
       const onStorageChanged = () => {
+        refreshLibraryStats();
         renderActiveTabContent();
       };
       window.addEventListener('sineflix_data_changed', onStorageChanged);

@@ -705,29 +705,38 @@ export function getTotalWatchStats() {
   let episodesCount = 0;
 
   for (const item of history) {
-    const isMovie = item.type === 'movie';
-    const itemDuration = item.duration || (isMovie ? 6600 : 3000);
+    const isMovie = isMovieRecord(item);
+    const itemDuration = item.duration && item.duration > 0 ? item.duration : (isMovie ? 6600 : 3000);
 
     if (item.completed) {
       totalSeconds += itemDuration;
     } else if (item.currentTime > 0) {
       totalSeconds += item.currentTime;
+    } else if (item.progressPercent && item.progressPercent > 0) {
+      totalSeconds += Math.round((item.progressPercent / 100) * itemDuration);
+    } else {
+      totalSeconds += itemDuration;
     }
 
     if (isMovie) {
-      if (item.completed || item.progressPercent >= 50) moviesCount++;
+      moviesCount++;
     } else {
-      if (item.completed || item.progressPercent >= 50) episodesCount++;
+      episodesCount++;
     }
   }
+
+  const formatted = formatTotalWatchTime(totalSeconds);
 
   return {
     totalSeconds,
     totalMinutes: Math.floor(totalSeconds / 60),
     totalHours: (totalSeconds / 3600).toFixed(1),
-    formattedTotalTime: formatTotalWatchTime(totalSeconds),
+    formattedTotalTime: formatted,
+    formattedTotal: formatted,
     moviesCount,
+    totalMovies: moviesCount,
     episodesCount,
+    totalEpisodes: episodesCount,
     totalEntries: history.length
   };
 }
