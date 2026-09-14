@@ -6,6 +6,8 @@
 
 import { getProfiles, getActiveProfile, setActiveProfile, addProfile, deleteProfile } from '../services/storage.js';
 import { showToast } from './Toast.js';
+import { openDataManagerModal } from './DataManagerModal.js';
+import { promptInstall } from '../services/pwaManager.js';
 
 let activeProfileModal = null;
 
@@ -65,9 +67,13 @@ export function openProfileModal() {
 
           <!-- Bottom Management Bar -->
           <div class="profile-footer-bar">
-            <button class="btn-manage-profiles" id="btn-toggle-manage">
-              <i data-lucide="settings" style="width: 15px; height: 15px;"></i>
-              <span>Profilleri Yönet</span>
+            <button class="btn-manage-profiles" id="btn-modal-open-backup" title="Yedekleme & Veri Yönetimi">
+              <i data-lucide="hard-drive-download" style="width: 15px; height: 15px;"></i>
+              <span>Veri & Yedek</span>
+            </button>
+            <button class="btn-manage-profiles" id="btn-modal-pwa-install" title="CinePulse Uygulamasını Yükle">
+              <i data-lucide="download" style="width: 15px; height: 15px;"></i>
+              <span>Uygulamayı Yükle</span>
             </button>
           </div>
         </div>
@@ -131,17 +137,31 @@ export function openProfileModal() {
     const backBtn = modalContainer.querySelector('#btn-cancel-add-profile') || modalContainer.querySelector('#btn-back-to-profiles');
     if (backBtn) backBtn.onclick = () => renderModalContent('select');
 
+    // Backup and PWA Buttons inside modal
+    const backupBtn = modalContainer.querySelector('#btn-modal-open-backup');
+    if (backupBtn) {
+      backupBtn.onclick = () => {
+        closeProfileModal();
+        openDataManagerModal();
+      };
+    }
+
+    const pwaBtn = modalContainer.querySelector('#btn-modal-pwa-install');
+    if (pwaBtn) {
+      pwaBtn.onclick = () => {
+        promptInstall();
+      };
+    }
+
     // Profile Click Handlers
     modalContainer.querySelectorAll('.profile-card[data-profile-id]').forEach(card => {
       card.onclick = () => {
         const pId = card.getAttribute('data-profile-id');
         if (pId) {
-          setActiveProfile(pId);
           const p = getProfiles().find(x => x.id === pId);
-          showToast(`👤 "${p?.name || 'Profil'}" profiline geçiş yapıldı!`, 'success');
+          setActiveProfile(pId);
           closeProfileModal();
-          // Reload page state / hash to re-render views with new profile isolation
-          window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { key: 'profile_switch' } }));
+          triggerProfileSwitchTransition(p);
         }
       };
     });
@@ -169,12 +189,12 @@ export function openProfileModal() {
           const newP = addProfile({
             name,
             isKid,
-            avatar: isKid ? 'baby' : 'user',
+            avatar: isKid ? 'smile' : 'user',
             color: selectedColor
           });
           setActiveProfile(newP.id);
-          showToast(`✓ "${name}" profili oluşturuldu!`, 'success');
           closeProfileModal();
+          triggerProfileSwitchTransition(newP);
         }
       };
     }
@@ -200,4 +220,45 @@ export function closeProfileModal() {
     try { activeProfileModal.remove(); } catch (_) {}
     activeProfileModal = null;
   }
+}
+
+/**
+ * Silky 60fps glass transition curtain when switching profiles
+ * Re-renders SPA view without full page reload!
+ */
+export function triggerProfileSwitchTransition(profile) {
+  const existing = document.getElementById('profile-switch-curtain');
+  if (existing) existing.remove();
+
+  const curtain = document.createElement('div');
+  curtain.id = 'profile-switch-curtain';
+  curtain.className = 'profile-switch-curtain is-entering';
+  curtain.innerHTML = `
+    <div class="profile-switch-card">
+      <div class="profile-switch-avatar" style="border-color: ${profile?.color || '#f59e0b'}; background: ${profile?.color || '#f59e0b'}22;">
+        <i data-lucide="${profile?.avatar || (profile?.isKid ? 'smile' : 'user')}" style="width: 50px; height: 50px; color: ${profile?.color || '#f59e0b'};"></i>
+      </div>
+      <h2 class="profile-switch-name">${profile?.name || 'Profil'}</h2>
+      <p class="profile-switch-subtitle">
+        ${profile?.isKid ? '🎈 Güvenli Çocuk Moduna Geçiliyor...' : '✨ Profiline Geçiliyor...'}
+      </p>
+      <div class="profile-switch-progress-bar">
+        <div class="profile-switch-progress-fill"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(curtain);
+  if (window.lucide) window.lucide.createIcons({ el: curtain });
+
+  // Notify router & views to reload data for the new profile
+  window.dispatchEvent(new CustomEvent('sineflix_profile_changed', { detail: { profile } }));
+
+  // Silky smooth dismissal after view renders
+  setTimeout(() => {
+    curtain.classList.remove('is-entering');
+    curtain.classList.add('is-leaving');
+    setTimeout(() => {
+      curtain.remove();
+    }, 450);
+  }, 600);
 }

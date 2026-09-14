@@ -3,7 +3,7 @@
    ========================================================================== */
 
 import { renderNavbar, attachNavbarEvents } from './components/Navbar.js';
-import { renderHomeView } from './views/HomeView.js';
+import { renderHomeView, clearHomeCache } from './views/HomeView.js';
 import { renderDetailView } from './views/DetailView.js';
 import { renderLibraryView } from './views/LibraryView.js';
 import { renderDiscoverView } from './views/DiscoverView.js';
@@ -161,3 +161,9 @@ const onExternalDataImport = (e) => {
 window.addEventListener('sineflix_data_changed', onExternalDataImport);
 window.addEventListener('dizibol_data_changed', onExternalDataImport);
 window.addEventListener('cinepulse_data_changed', onExternalDataImport);
+
+// Seamless Profile Switch Handler (Zero full page reload)
+window.addEventListener('sineflix_profile_changed', async () => {
+  clearHomeCache();
+  await route();
+});

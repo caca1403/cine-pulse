@@ -2,7 +2,7 @@
    CinePulse Studio - TMDB API Metadata Service
    ========================================================================== */
 
-import { registerAnimeId } from './storage.js';
+import { registerAnimeId, isKidProfileActive, isItemKidSafe } from './storage.js';
 
 const API_BASE_URL = 'https://api.themoviedb.org/3';
 
@@ -196,7 +196,73 @@ export function isBlockedContent(item) {
     if (rawTitle.includes(b)) return true;
   }
 
+  // 4. Strict Kid Filter when in Kids Mode
+  if (isKidProfileActive()) {
+    if (!isItemKidSafe(item)) return true;
+  }
+
   return false;
+}
+
+export async function fetchKidsPopularSeries(page = 1) {
+  const trRes = await tmdbFetch('/discover/tv', {
+    sort_by: 'popularity.desc',
+    page,
+    language: 'tr-TR',
+    with_genres: '10762,16,10751',
+    'vote_count.gte': 15
+  });
+  if (!trRes || !trRes.results) return [];
+
+  return trRes.results
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => ({
+      ...item,
+      type: 'tv',
+      media_type: 'tv',
+      overview: (item.overview || '').trim() || generateCinematicOverview(item, 'tv')
+    }));
+}
+
+export async function fetchKidsPopularMovies(page = 1) {
+  const trRes = await tmdbFetch('/discover/movie', {
+    sort_by: 'popularity.desc',
+    page,
+    language: 'tr-TR',
+    with_genres: '16,10751',
+    'vote_count.gte': 30
+  });
+  if (!trRes || !trRes.results) return [];
+
+  return trRes.results
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => ({
+      ...item,
+      type: 'movie',
+      media_type: 'movie',
+      overview: (item.overview || '').trim() || generateCinematicOverview(item, 'movie')
+    }));
+}
+
+export async function fetchKidsAdventures(page = 1) {
+  const trRes = await tmdbFetch('/discover/movie', {
+    sort_by: 'vote_average.desc',
+    page,
+    language: 'tr-TR',
+    with_genres: '12,14,10751',
+    'vote_count.gte': 150,
+    without_genres: '27,80,53'
+  });
+  if (!trRes || !trRes.results) return [];
+
+  return trRes.results
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => ({
+      ...item,
+      type: 'movie',
+      media_type: 'movie',
+      overview: (item.overview || '').trim() || generateCinematicOverview(item, 'movie')
+    }));
 }
 
 export async function fetchTrending(type = 'all', timeWindow = 'week', page = 1) {

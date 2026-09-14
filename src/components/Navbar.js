@@ -3,12 +3,10 @@
    ========================================================================== */
 
 import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
-import { openDataManagerModal } from './DataManagerModal.js';
 import { openRandomPickerModal } from './RandomPickerModal.js';
-import { openProfileModal } from './ProfileModal.js';
-import { getActiveProfile } from '../services/storage.js';
+import { openProfileModal, triggerProfileSwitchTransition } from './ProfileModal.js';
+import { getActiveProfile, setActiveProfile, getProfiles } from '../services/storage.js';
 import { openNotificationCenterModal, getUnreadNotificationCount, updateNotificationBellBadge } from './NotificationCenterModal.js';
-import { promptInstall, updatePwaButtons } from '../services/pwaManager.js';
 
 export function renderNavbar(currentView = 'home') {
   const activeProfile = getActiveProfile();
@@ -26,22 +24,24 @@ export function renderNavbar(currentView = 'home') {
 
         <!-- Desktop Apple Segmented Navigation Track -->
         <ul class="nav-links desktop-nav-links">
-          <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}"><i data-lucide="home"></i><span>Ana Sayfa</span></a></li>
-          <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="tv"></i><span>Diziler</span></a></li>
-          <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="film"></i><span>Filmler</span></a></li>
-          <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="sparkles"></i><span>Anime</span></a></li>
-          <li><a href="#documentary" class="nav-link ${currentView === 'documentary' ? 'active' : ''}"><i data-lucide="globe"></i><span>Belgesel</span></a></li>
-          <li><a href="#discover" class="nav-link ${currentView === 'discover' ? 'active' : ''}"><i data-lucide="compass"></i><span>Keşfet</span></a></li>
-          <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="bookmark"></i><span>Listem</span></a></li>
+          ${activeProfile.isKid ? `
+            <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}"><i data-lucide="home"></i><span>Ana Sayfa</span></a></li>
+            <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="tv"></i><span>Çizgi Diziler</span></a></li>
+            <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="film"></i><span>Animasyonlar</span></a></li>
+            <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="sparkles"></i><span>Anime</span></a></li>
+            <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="bookmark"></i><span>Listem</span></a></li>
+          ` : `
+            <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}"><i data-lucide="home"></i><span>Ana Sayfa</span></a></li>
+            <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="tv"></i><span>Diziler</span></a></li>
+            <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="film"></i><span>Filmler</span></a></li>
+            <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="sparkles"></i><span>Anime</span></a></li>
+            <li><a href="#documentary" class="nav-link ${currentView === 'documentary' ? 'active' : ''}"><i data-lucide="globe"></i><span>Belgesel</span></a></li>
+            <li><a href="#discover" class="nav-link ${currentView === 'discover' ? 'active' : ''}"><i data-lucide="compass"></i><span>Keşfet</span></a></li>
+            <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="bookmark"></i><span>Listem</span></a></li>
+          `}
         </ul>
 
         <div class="nav-actions">
-          <!-- Ne İzlesem? Quick Action Button -->
-          <button id="btn-open-random-picker" class="btn-random-shortcut" title="Ne İzlesem? (Rastgele Öneri)">
-            <i data-lucide="dices" style="width: 15px; height: 15px; color: #f59e0b;"></i>
-            <span>NE İZLESEM?</span>
-          </button>
-
           <!-- Live TV Quick Action Pill -->
           <a href="#livetv" class="btn-live-shortcut ${currentView === 'livetv' ? 'active' : ''}" title="Canlı TV Yayınları">
             <span class="live-pulse-dot"></span>
@@ -51,38 +51,40 @@ export function renderNavbar(currentView = 'home') {
           <!-- Desktop Search Box -->
           <div class="search-box desktop-search-box">
             <i data-lucide="search" class="search-icon"></i>
-            <input type="text" id="nav-search-input" class="search-input" placeholder="Dizi veya film ara..." autocomplete="off" />
+            <input type="text" id="nav-search-input" class="search-input" placeholder="Ara..." autocomplete="off" />
             <span class="search-kbd">⌘K</span>
             <div id="search-overlay" class="search-results-overlay glass-panel hidden"></div>
           </div>
 
+          <!-- Ne İzlesem? Quick Action Icon -->
+          <button id="btn-open-random-picker" class="btn-action-icon btn-random-nav" title="Ne İzlesem? (Rastgele Öneri)">
+            <i data-lucide="dices" style="width: 17px; height: 17px; color: #f59e0b;"></i>
+          </button>
+
           <!-- Notification Bell Button -->
           <button id="btn-nav-notifications" class="btn-action-icon btn-nav-bell" title="Bildirimler & Alarmlar">
-            <i data-lucide="bell"></i>
+            <i data-lucide="bell" style="width: 17px; height: 17px;"></i>
             <span id="nav-notif-badge" class="nav-notif-dot ${unreadCount > 0 ? '' : 'hidden'}">${unreadCount}</span>
           </button>
 
-          <!-- Profile Switcher Button -->
-          <button id="btn-nav-profile" class="btn-nav-profile-pill" title="Profil Değiştir (${activeProfile.name})">
-            <div class="nav-profile-avatar" style="background: ${activeProfile.color || '#f59e0b'};">
-              <i data-lucide="${activeProfile.avatar || 'user'}" style="width: 13px; height: 13px; color: #fff;"></i>
-            </div>
-            <span class="nav-profile-name">${activeProfile.name}</span>
-          </button>
+          <!-- Kids Mode Active Pill (Quick Exit) -->
+          ${activeProfile.isKid ? `
+            <button id="btn-exit-kids-mode" class="nav-kids-mode-pill" title="Çocuk Modundan Çık (Yetişkin Moduna Dön)">
+              <span>🎈 ÇOCUK</span>
+              <span class="kids-pill-exit"><i data-lucide="x" style="width:11px;height:11px;"></i></span>
+            </button>
+          ` : ''}
 
-          <!-- Compact PWA Install Button (Small icon only) -->
-          <button id="btn-pwa-install" class="btn-action-icon btn-pwa-install hidden" title="CinePulse Uygulamasını Yükle" aria-label="Uygulamayı Yükle">
-            <i data-lucide="download"></i>
+          <!-- Profile Switcher Button (Compact Circular Avatar) -->
+          <button id="btn-nav-profile" class="btn-nav-avatar" title="Profil: ${activeProfile.name} (Değiştir / Ayarlar)">
+            <div class="nav-avatar-circle" style="border-color: ${activeProfile.color || '#f59e0b'}; background: ${activeProfile.color || '#f59e0b'}22;">
+              <i data-lucide="${activeProfile.avatar || (activeProfile.isKid ? 'smile' : 'user')}" style="width: 16px; height: 16px; color: ${activeProfile.color || '#f59e0b'};"></i>
+            </div>
           </button>
 
           <!-- Mobile Search Button -->
           <button id="btn-mobile-search-toggle" class="btn-action-icon mobile-only" aria-label="Arama Yap">
             <i data-lucide="search"></i>
-          </button>
-
-          <!-- Backup / Data Button -->
-          <button id="btn-open-backup" class="btn-action-icon" title="Yedekleme & Veri Yönetimi">
-            <i data-lucide="hard-drive-download"></i>
           </button>
         </div>
       </div>
@@ -191,15 +193,17 @@ export function attachNavbarEvents(onNavigate) {
     });
   }
 
-  // Attach PWA Install Buttons
-  const pwaBtns = document.querySelectorAll('.btn-pwa-install');
-  pwaBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      promptInstall();
+  // Kids Mode Quick Exit Pill
+  const exitKidsBtn = document.getElementById('btn-exit-kids-mode');
+  if (exitKidsBtn) {
+    exitKidsBtn.addEventListener('click', () => {
+      // Find first non-kid profile or fallback to prof_1
+      const profiles = getProfiles();
+      const adult = profiles.find(p => !p.isKid) || profiles[0];
+      setActiveProfile(adult.id);
+      triggerProfileSwitchTransition(adult);
     });
-  });
-  updatePwaButtons(true);
+  }
 
   // Attach search handlers for both Desktop and Mobile search inputs
   setupSearchInput('nav-search-input', 'search-overlay');

@@ -101,6 +101,57 @@ export function isKidProfileActive() {
   return getActiveProfile()?.isKid === true;
 }
 
+/**
+ * Check if a movie or series is appropriate for children
+ */
+export function isItemKidSafe(item) {
+  if (!item) return false;
+  if (item.adult === true) return false;
+
+  // Mature genres to strictly block: Horror (27), Crime (80), War (10752/10768), Thriller (53)
+  const matureGenreIds = [27, 80, 10752, 10768, 53];
+  const itemGenreIds = item.genre_ids || (Array.isArray(item.genres) ? item.genres.map(g => (typeof g === 'object' ? g.id : g)) : []);
+
+  if (itemGenreIds.some(id => matureGenreIds.includes(Number(id)))) {
+    return false;
+  }
+
+  // Safe genres: Animation (16), Family (10751), Kids (10762)
+  const safeGenreIds = [16, 10751, 10762];
+  const hasKidGenre = itemGenreIds.some(id => safeGenreIds.includes(Number(id)));
+
+  // Check text content for mature keywords
+  const text = `${item.title || ''} ${item.name || ''} ${item.overview || ''}`.toLowerCase();
+  const blockedKeywords = [
+    'cinayet', 'katil', 'vahşet', 'kanlı', 'erotik', 'dehşet', 'intikam', 'mafya',
+    'uyuşturucu', 'şiddet', 'tecavüz', 'seri katil', 'katliam', 'korku', 'kan donduran',
+    'murder', 'killer', 'horror', 'bloody', 'psychopath', 'terror', 'revenge'
+  ];
+
+  if (blockedKeywords.some(kw => text.includes(kw))) {
+    return false;
+  }
+
+  // If it's animation, family, or kids, it's safe
+  if (hasKidGenre) return true;
+
+  // Allow light adventure (12), comedy (35), fantasy (14) if not blocked
+  if (itemGenreIds.some(id => [12, 35, 14].includes(Number(id)))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Filter an array of items according to active user profile
+ */
+export function filterForActiveProfile(items = []) {
+  if (!Array.isArray(items)) return [];
+  if (!isKidProfileActive()) return items;
+  return items.filter(isItemKidSafe);
+}
+
 export function addProfile({ name, isKid = false, avatar = 'user-circle', color = '#f59e0b' }) {
   const profiles = getProfiles();
   const newProfile = {

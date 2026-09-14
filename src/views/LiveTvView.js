@@ -8,6 +8,7 @@ import { LIVE_TV_CATEGORIES, LIVE_TV_CHANNELS, getChannelBadgeSvg } from '../ser
 import { getRecTvChannelStreamUrl } from '../services/rectvService.js';
 import { getChannelEpg } from '../services/epgService.js';
 import { showToast } from '../components/Toast.js';
+import { isKidProfileActive } from '../services/storage.js';
 
 const FAVS_STORAGE_KEY = 'cinepulse_live_favs';
 
@@ -27,8 +28,15 @@ function saveFavoriteIds(ids) {
 }
 
 export function renderLiveTvView() {
-  let activeCategory = 'all';
-  let activeChannel = LIVE_TV_CHANNELS.find(c => c.id === 'ch_trt1') || LIVE_TV_CHANNELS[0];
+  const isKid = isKidProfileActive();
+  const channelsPool = isKid 
+    ? LIVE_TV_CHANNELS.filter(c => c.category === 'kids')
+    : LIVE_TV_CHANNELS;
+
+  let activeCategory = isKid ? 'kids' : 'all';
+  let activeChannel = isKid
+    ? (channelsPool.find(c => c.id === 'ch_trtcocuk') || channelsPool[0])
+    : (LIVE_TV_CHANNELS.find(c => c.id === 'ch_trt1') || LIVE_TV_CHANNELS[0]);
   let searchQuery = '';
   let activeHls = null;
   let isMuted = false;
@@ -54,7 +62,7 @@ export function renderLiveTvView() {
   }
 
   function getFilteredChannels() {
-    return LIVE_TV_CHANNELS.filter(ch => {
+    return channelsPool.filter(ch => {
       let matchCat = true;
       if (activeCategory === 'favorites') {
         matchCat = isFav(ch.id);
@@ -67,7 +75,7 @@ export function renderLiveTvView() {
   }
 
   function getChannelIndex(ch) {
-    return LIVE_TV_CHANNELS.findIndex(c => c.id === ch.id);
+    return channelsPool.findIndex(c => c.id === ch.id);
   }
 
   let renderAllViews = () => {};

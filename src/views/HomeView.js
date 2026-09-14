@@ -1,14 +1,16 @@
 /* ==========================================================================
    CinePulse Studio - Home View
-   - "Haftanın Öne Çıkanları" spotlight grid at top
+   - Dynamic Hero Slider
    - Infinite-loading horizontal rails with full horizontal scroll position memory
+   - Dedicated Kids Mode support
    ========================================================================== */
 
 import {
-  fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated, fetchPopularAnime, fetchPopularDocumentaries
+  fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated, fetchPopularAnime, fetchPopularDocumentaries,
+  fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsAdventures
 } from '../services/tmdbApi.js';
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { getUnifiedContinueWatching, removeSeriesFromHistory } from '../services/storage.js';
+import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile } from '../services/storage.js';
 import { renderHeroSlider, attachHeroSliderEvents } from '../components/HeroSlider.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
@@ -17,6 +19,16 @@ import { railScrollMemory } from '../services/scrollManager.js';
 // Cache home TMDB data & rail state across navigations
 let homeDataCache = null;
 const railExtraItemsCache = new Map();
+
+export function clearHomeCache() {
+  homeDataCache = null;
+  railExtraItemsCache.clear();
+  Object.keys(railState).forEach(k => {
+    railState[k].page = 1;
+    railState[k].loading = false;
+    railState[k].exhausted = false;
+  });
+}
 
 // Rail state for infinite horizontal scrolling
 const railState = {
@@ -28,94 +40,7 @@ const railState = {
   'rail-documentary':    { page: 1, loading: false, exhausted: false, fetcher: fetchPopularDocumentaries }
 };
 
-/* --------------------------------------------------------------------------
-   "Haftanın Öne Çıkanları" spotlight — large feature + mini grid
--------------------------------------------------------------------------- */
-function renderWeeklySpotlight(tvItems = [], movieItems = []) {
-  const combined = [];
-  for (let i = 0; i < Math.max(tvItems.length, movieItems.length); i++) {
-    if (tvItems[i])    combined.push({ ...tvItems[i],    media_type: 'tv'    });
-    if (movieItems[i]) combined.push({ ...movieItems[i], media_type: 'movie' });
-  }
-  const top7 = combined.slice(0, 7);
-  if (top7.length === 0) return '';
 
-  const hero = top7[0];
-  const heroBackdrop = getImageUrl(hero.backdrop_path, TMDB_IMAGE_SIZES.BACKDROP_LARGE);
-  const heroPoster   = getImageUrl(hero.poster_path,   TMDB_IMAGE_SIZES.POSTER_MEDIUM);
-  const heroTitle    = hero.title || hero.name || '';
-  const heroYear     = (hero.release_date || hero.first_air_date || '').substring(0, 4);
-  const heroRating   = hero.vote_average ? hero.vote_average.toFixed(1) : '';
-  const heroType     = hero.media_type === 'tv' ? 'DİZİ' : 'FİLM';
-  const heroOverview = (hero.overview || '').slice(0, 180) + (hero.overview?.length > 180 ? '…' : '');
-
-  const miniCards = top7.slice(1).map(item => {
-    const poster  = getImageUrl(item.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL);
-    const title   = item.title || item.name || '';
-    const year    = (item.release_date || item.first_air_date || '').substring(0, 4);
-    const rating  = item.vote_average ? item.vote_average.toFixed(1) : '';
-    const type    = item.media_type === 'tv' ? 'DİZİ' : 'FİLM';
-    return `
-      <div class="spotlight-mini" data-id="${item.id}" data-type="${item.media_type || (item.first_air_date ? 'tv' : 'movie')}">
-        <div class="spotlight-mini-poster-wrap">
-          <img src="${poster}" alt="${title}" loading="lazy" onerror="this.src='${SINEFLIX_POSTER_FALLBACK}'" />
-          <div class="spotlight-mini-overlay">
-            <i data-lucide="play" style="fill:#fff;width:20px;height:20px;"></i>
-          </div>
-        </div>
-        <div class="spotlight-mini-info">
-          <span class="spotlight-mini-title">${title}</span>
-          <span class="spotlight-mini-meta">
-            <span class="spotlight-mini-type">${type}</span>
-            ${year ? `<span>${year}</span>` : ''}
-            ${rating ? `<span class="spotlight-mini-rating"><i data-lucide="star" style="width:10px;height:10px;fill:#fbbf24;color:#fbbf24;"></i>${rating}</span>` : ''}
-          </span>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  return `
-    <section class="weekly-spotlight-section">
-      <div class="container">
-        <div class="rail-header" style="margin-bottom:1.2rem;">
-          <h2 class="rail-title">
-            <span class="rail-icon-pill" style="--rail-color: #f59e0b;">
-              <i data-lucide="flame" style="width:15px;height:15px;"></i>
-            </span>
-            Haftanın Öne Çıkanları
-          </h2>
-        </div>
-
-        <div class="weekly-spotlight-grid">
-          <!-- Large hero card -->
-          <div class="spotlight-hero" data-id="${hero.id}" data-type="${hero.media_type || (hero.first_air_date ? 'tv' : 'movie')}">
-            <div class="spotlight-hero-bg" style="background-image:url('${heroBackdrop}')"></div>
-            <div class="spotlight-hero-overlay"></div>
-            <div class="spotlight-hero-content">
-              <div class="spotlight-hero-meta">
-                <span class="spotlight-hero-type">${heroType}</span>
-                ${heroYear ? `<span class="spotlight-hero-year">${heroYear}</span>` : ''}
-                ${heroRating ? `<span class="spotlight-hero-rating"><i data-lucide="star" style="width:12px;height:12px;fill:#fbbf24;color:#fbbf24;"></i>${heroRating}</span>` : ''}
-              </div>
-              <h3 class="spotlight-hero-title">${heroTitle}</h3>
-              ${heroOverview ? `<p class="spotlight-hero-overview">${heroOverview}</p>` : ''}
-              <button class="spotlight-hero-btn">
-                <i data-lucide="play" style="fill:#fff;width:16px;height:16px;"></i>
-                Şimdi İzle
-              </button>
-            </div>
-          </div>
-
-          <!-- 6 mini cards grid -->
-          <div class="spotlight-mini-grid">
-            ${miniCards}
-          </div>
-        </div>
-      </div>
-    </section>
-  `;
-}
 
 /* --------------------------------------------------------------------------
    Horizontal rail with infinite loading & extra cached cards
@@ -251,55 +176,115 @@ function initInfiniteRails(container) {
    Main render
 -------------------------------------------------------------------------- */
 export async function renderHomeView() {
-  let trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems;
+  const isKid = isKidProfileActive();
+  let trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures;
 
-  if (homeDataCache) {
-    ({ trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems } = homeDataCache);
+  if (homeDataCache && homeDataCache.isKid === isKid) {
+    ({ trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures } = homeDataCache);
   } else {
-    [
-      trending,
-      trendingTV,
-      trendingMovies,
-      popularTV,
-      popularMovies,
-      topRatedTV,
-      topRatedMovies,
-      animeItems,
-      docItems
-    ] = await Promise.all([
-      fetchTrending('all',   'week', 1),
-      fetchTrending('tv',    'week', 1),
-      fetchTrending('movie', 'week', 1),
-      fetchPopularSeries(1),
-      fetchPopularMovies(1),
-      fetchTopRated('tv',    1),
-      fetchTopRated('movie', 1),
-      fetchPopularAnime(1),
-      fetchPopularDocumentaries(1)
-    ]);
-    homeDataCache = { trending, trendingTV, trendingMovies, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems };
+    if (isKid) {
+      [
+        trending,
+        popularTV,
+        popularMovies,
+        kidsAdventures,
+        animeItems,
+        docItems
+      ] = await Promise.all([
+        fetchTrending('all', 'week', 1),
+        fetchKidsPopularSeries(1),
+        fetchKidsPopularMovies(1),
+        fetchKidsAdventures(1),
+        fetchPopularAnime(1),
+        fetchPopularDocumentaries(1)
+      ]);
+      homeDataCache = { isKid: true, trending, popularTV, popularMovies, kidsAdventures, animeItems, docItems };
+    } else {
+      [
+        trending,
+        popularTV,
+        popularMovies,
+        topRatedTV,
+        topRatedMovies,
+        animeItems,
+        docItems
+      ] = await Promise.all([
+        fetchTrending('all',   'week', 1),
+        fetchPopularSeries(1),
+        fetchPopularMovies(1),
+        fetchTopRated('tv',    1),
+        fetchTopRated('movie', 1),
+        fetchPopularAnime(1),
+        fetchPopularDocumentaries(1)
+      ]);
+      homeDataCache = { isKid: false, trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems };
+    }
   }
 
-  const watchHistory = getUnifiedContinueWatching();
+  const rawWatchHistory = getUnifiedContinueWatching();
+  const watchHistory = filterForActiveProfile(rawWatchHistory);
   const heroHTML = renderHeroSlider(trending);
 
   // Register infinite loaders without resetting page count
-  if (!railState['rail-popular-tv']) railState['rail-popular-tv'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularSeries };
-  if (!railState['rail-popular-movies']) railState['rail-popular-movies'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularMovies };
-  if (!railState['rail-top-tv']) railState['rail-top-tv'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('tv', p) };
-  if (!railState['rail-top-movies']) railState['rail-top-movies'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) };
+  if (isKid) {
+    if (!railState['rail-kids-series']) railState['rail-kids-series'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsPopularSeries };
+    if (!railState['rail-kids-movies']) railState['rail-kids-movies'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsPopularMovies };
+    if (!railState['rail-kids-adventures']) railState['rail-kids-adventures'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsAdventures };
+  } else {
+    if (!railState['rail-popular-tv']) railState['rail-popular-tv'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularSeries };
+    if (!railState['rail-popular-movies']) railState['rail-popular-movies'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularMovies };
+    if (!railState['rail-top-tv']) railState['rail-top-tv'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('tv', p) };
+    if (!railState['rail-top-movies']) railState['rail-top-movies'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) };
+  }
   if (!railState['rail-anime']) railState['rail-anime'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularAnime };
   if (!railState['rail-documentary']) railState['rail-documentary'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularDocumentaries };
   Object.values(railState).forEach(s => { s.loading = false; });
 
-  const viewHTML = `
-    <div class="home-view">
-      ${heroHTML}
+  let railsHTML = '';
+  if (isKid) {
+    railsHTML = `
+      ${renderInfiniteRail({
+        id:    'rail-kids-movies',
+        icon:  'sparkles',
+        title: '🎈 En Çok Sevilen Animasyon & Çocuk Filmleri',
+        accent:'#ec4899',
+        items: popularMovies
+      })}
 
-      ${renderContinueWatchingSection(watchHistory)}
+      ${renderInfiniteRail({
+        id:    'rail-kids-series',
+        icon:  'tv',
+        title: '🌟 Eğlenceli Çizgi Diziler & Maceralar',
+        accent:'#f59e0b',
+        items: popularTV
+      })}
 
-      ${renderWeeklySpotlight(trendingTV, trendingMovies)}
+      ${kidsAdventures && kidsAdventures.length > 0 ? renderInfiniteRail({
+        id:    'rail-kids-adventures',
+        icon:  'compass',
+        title: '⭐ Aile ve Fantastik Sinema Kuşağı',
+        accent:'#38bdf8',
+        items: kidsAdventures
+      }) : ''}
 
+      ${animeItems && animeItems.length > 0 ? renderInfiniteRail({
+        id:    'rail-anime',
+        icon:  'smile',
+        title: '🎌 Çocuk & Genç Anime Dünyası',
+        accent:'#a855f7',
+        items: animeItems
+      }) : ''}
+
+      ${docItems && docItems.length > 0 ? renderInfiniteRail({
+        id:    'rail-documentary',
+        icon:  'globe',
+        title: '🐾 Sevimli Hayvanlar & Doğa Alemi',
+        accent:'#10b981',
+        items: docItems
+      }) : ''}
+    `;
+  } else {
+    railsHTML = `
       ${renderInfiniteRail({
         id:    'rail-popular-tv',
         icon:  'tv-2',
@@ -347,6 +332,16 @@ export async function renderHomeView() {
         accent:'#38bdf8',
         items: docItems
       }) : ''}
+    `;
+  }
+
+  const viewHTML = `
+    <div class="home-view ${isKid ? 'is-kids-mode' : ''}">
+      ${heroHTML}
+
+      ${renderContinueWatchingSection(watchHistory)}
+
+      ${railsHTML}
     </div>
   `;
 
