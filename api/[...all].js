@@ -1,8 +1,10 @@
+import { guardNodeRequest, isSafePublicUrl } from './_security.js';
+
 export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
+
+  const isMediaSegment = /hls_proxy|live_tv_stream/.test(req.url || '');
+  if (guardNodeRequest(req, res, { limit: isMediaSegment ? 900 : 180, bucket: isMediaSegment ? 'media' : 'proxy' })) return;
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -23,6 +25,7 @@ export default async function handler(req, res) {
     if (!rawTarget) return res.status(400).send('Missing url');
     try {
       const decodedTarget = decodeURIComponent(rawTarget);
+      if (!isSafePublicUrl(decodedTarget)) return res.status(403).send('Target blocked');
       const imgRes = await fetch(decodedTarget, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -138,6 +141,7 @@ export default async function handler(req, res) {
 
     try {
       const decodedTarget = decodeURIComponent(rawTarget);
+      if (!isSafePublicUrl(decodedTarget)) return res.status(403).send('Target blocked');
       let targetOrigin = 'https://hdplayersystem.com';
       try {
         if (ref) targetOrigin = new URL(ref).origin;
@@ -162,7 +166,6 @@ export default async function handler(req, res) {
       });
 
       const contentType = upstreamRes.headers.get('content-type') || '';
-      res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
 
       const lowerTarget = decodedTarget.toLowerCase();
@@ -469,6 +472,7 @@ export default async function handler(req, res) {
     const rawTarget = urlObj.searchParams.get('url') || '';
     if (!rawTarget) return res.status(400).send('Missing url param');
     targetUrl = decodeURIComponent(rawTarget);
+    if (!isSafePublicUrl(targetUrl)) return res.status(403).send('Target blocked');
     customHeaders['Referer'] = 'https://filmmakinesi.to/';
     customHeaders['Origin'] = 'https://filmmakinesi.to';
   } else if (pathname.startsWith('/api/kvip') || pathname.startsWith('/api/czm')) {
@@ -516,6 +520,7 @@ export default async function handler(req, res) {
     const rawTarget = urlObj.searchParams.get('url') || '';
     if (!rawTarget) return res.status(400).send('Missing url param');
     targetUrl = decodeURIComponent(rawTarget);
+    if (!isSafePublicUrl(targetUrl)) return res.status(403).send('Target blocked');
 
     let targetOrigin = '';
     try { targetOrigin = new URL(targetUrl).origin + '/'; } catch (_) {}
@@ -529,7 +534,6 @@ export default async function handler(req, res) {
     if (req.headers['x-requested-with']) customHeaders['X-Requested-With'] = req.headers['x-requested-with'];
   } else if (pathname.startsWith('/api/subtitles')) {
     // WebVTT Subtitle Proxy & OpenSubtitles resolver for Vercel
-    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
 
@@ -563,6 +567,8 @@ export default async function handler(req, res) {
     if (!downloadUrl) {
       return res.status(200).send('WEBVTT\n\n');
     }
+
+    if (!isSafePublicUrl(downloadUrl)) return res.status(403).send('WEBVTT\n\n');
 
     try {
       const zlib = await import('zlib');

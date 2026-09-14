@@ -5,6 +5,8 @@
    - Native TR Dublaj & Altyazı for top cartoon franchises
    ========================================================================== */
 
+import { isStrictMediaTitleMatch } from './mediaMatcher.js';
+
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 function decodeBase64(str) {
@@ -129,6 +131,8 @@ async function searchUpstreamCatalog(candidateQueries) {
 
       for (const item of data.animes) {
         if (!item || !item.url || seenIds.has(item.id)) continue;
+        const itemTitle = item.title || item.name || item.anime_name || item.slug || '';
+        if (!isStrictMediaTitleMatch(itemTitle, candidateQueries)) continue;
         seenIds.add(item.id);
         matched.push(item);
       }

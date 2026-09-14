@@ -1,15 +1,17 @@
+import { guardEdgeRequest } from './_security.js';
+
 export const config = {
   runtime: 'edge'
 };
 
 export default async function handler(request) {
+  const blockedResponse = guardEdgeRequest(request, { limit: 180, bucket: 'jet' });
+  if (blockedResponse) return blockedResponse;
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': '*'
       }
     });
   }
@@ -56,14 +58,12 @@ export default async function handler(request) {
     if (!upstreamRes) {
       return new Response(JSON.stringify({ error: 'Upstream fetch failed' }), {
         status: 502,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
     const responseHeaders = new Headers();
-    responseHeaders.set('Access-Control-Allow-Origin', '*');
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    responseHeaders.set('Access-Control-Allow-Headers', '*');
     responseHeaders.set('Content-Type', upstreamRes.headers.get('content-type') || 'text/html; charset=utf-8');
 
     return new Response(upstreamRes.body, {
@@ -73,7 +73,7 @@ export default async function handler(request) {
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 }

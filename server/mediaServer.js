@@ -22,6 +22,41 @@ const __dirname = path.dirname(__filename);
 
 const PORT = 4000;
 const MEDIA_DIR = path.join(__dirname, '..', 'media_storage');
+const requestBuckets = new Map();
+
+function isSafePublicUrl(rawUrl) {
+  try {
+    const parsed = new URL(String(rawUrl));
+    const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+    if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return false;
+    if (host === 'metadata.google.internal' || host === '169.254.169.254') return false;
+    const ipv4 = host.split('.').map(Number);
+    if (ipv4.length === 4 && ipv4.every(value => Number.isInteger(value) && value >= 0 && value <= 255)) {
+      if (ipv4[0] === 0 || ipv4[0] === 10 || ipv4[0] === 127
+        || (ipv4[0] === 169 && ipv4[1] === 254)
+        || (ipv4[0] === 172 && ipv4[1] >= 16 && ipv4[1] <= 31)
+        || (ipv4[0] === 192 && ipv4[1] === 168)
+        || (ipv4[0] === 100 && ipv4[1] >= 64 && ipv4[1] <= 127)) return false;
+    }
+    if (host === '::1' || host === '::' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return false;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function exceedsRateLimit(req, limit = 1200) {
+  const ip = req.socket?.remoteAddress || 'local';
+  const now = Date.now();
+  const current = requestBuckets.get(ip);
+  if (!current || current.resetAt <= now) {
+    requestBuckets.set(ip, { count: 1, resetAt: now + 60_000 });
+    return false;
+  }
+  current.count += 1;
+  return current.count > limit;
+}
 
 if (!fs.existsSync(MEDIA_DIR)) {
   fs.mkdirSync(MEDIA_DIR, { recursive: true });
@@ -200,10 +235,22 @@ async function getTorrentVideoFile(infoHashOrMagnet) {
 // ============ HTTP Server ============
 
 const server = http.createServer(async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const requestOrigin = req.headers.origin || '';
+  if (/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(requestOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'same-origin');
+
+  if (exceedsRateLimit(req)) {
+    res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' });
+    res.end(JSON.stringify({ error: 'Too many requests' }));
+    return;
+  }
 
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
@@ -234,6 +281,11 @@ const server = http.createServer(async (req, res) => {
     }
     try {
       const decodedTarget = decodeURIComponent(rawTarget);
+      if (!isSafePublicUrl(decodedTarget)) {
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('Target blocked');
+        return;
+      }
       let targetOrigin = '';
       try { targetOrigin = new URL(decodedTarget).origin + '/'; } catch (_) {}
 
@@ -251,7 +303,6 @@ const server = http.createServer(async (req, res) => {
       const upstreamRes = await fetch(decodedTarget, {
         headers: customHeaders
       });
-      res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
       const arrayBuf = await upstreamRes.arrayBuffer();
       if (!res.headersSent) {
@@ -262,7 +313,6 @@ const server = http.createServer(async (req, res) => {
       res.end(Buffer.from(arrayBuf));
     } catch (err) {
       if (!res.headersSent) {
-        res.setHeader('Access-Control-Allow-Origin', '*');
         res.writeHead(500, { 'Content-Type': 'text/plain' });
       }
       res.end(`Proxy Error: ${err.message}`);
@@ -272,7 +322,6 @@ const server = http.createServer(async (req, res) => {
 
   // ============ WebVTT Subtitle Proxy & Auto-Converter ============
   if (reqUrl.pathname === '/subtitles' || reqUrl.pathname === '/api/subtitles') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
 
@@ -317,6 +366,12 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      if (!isSafePublicUrl(targetUrl)) {
+        res.writeHead(403, { 'Content-Type': 'text/vtt; charset=utf-8' });
+        res.end('WEBVTT\n\n');
+        return;
+      }
+
       const subRes = await fetch(targetUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
@@ -349,8 +404,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       res.writeHead(200, {
-        'Content-Type': 'text/vtt; charset=utf-8',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'text/vtt; charset=utf-8'
       });
       res.end(text);
     } catch (err) {
@@ -428,6 +482,11 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const decodedTarget = decodeURIComponent(rawTarget);
+      if (!isSafePublicUrl(decodedTarget)) {
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('Target blocked');
+        return;
+      }
       let refOrigin = 'https://x.ag2m4.cfd';
       try { refOrigin = new URL(ref).origin; } catch (_) {}
 
@@ -440,7 +499,6 @@ const server = http.createServer(async (req, res) => {
       });
 
       const contentType = upstreamRes.headers.get('content-type') || '';
-      res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
 
       if (decodedTarget.includes('.m3u8') || decodedTarget.includes('.txt') || contentType.includes('mpegurl') || contentType.includes('application/x-mpegURL') || contentType.includes('text/plain')) {
@@ -484,14 +542,12 @@ const server = http.createServer(async (req, res) => {
         }).join('\n');
 
         res.writeHead(upstreamRes.status, {
-          'Content-Type': 'application/vnd.apple.mpegurl',
-          'Access-Control-Allow-Origin': '*'
+          'Content-Type': 'application/vnd.apple.mpegurl'
         });
         res.end(rewritten);
       } else {
         res.writeHead(upstreamRes.status, {
-          'Content-Type': contentType || 'video/mp2t',
-          'Access-Control-Allow-Origin': '*'
+          'Content-Type': contentType || 'video/mp2t'
         });
         const arrayBuf = await upstreamRes.arrayBuffer();
         res.end(Buffer.from(arrayBuf));
@@ -610,9 +666,10 @@ const server = http.createServer(async (req, res) => {
   // ============ Local File Streaming ============
   if (reqUrl.pathname.startsWith('/stream/')) {
     const filename = decodeURIComponent(reqUrl.pathname.replace('/stream/', ''));
-    const filePath = path.join(MEDIA_DIR, filename);
+    const filePath = path.resolve(MEDIA_DIR, filename);
+    const mediaRoot = path.resolve(MEDIA_DIR) + path.sep;
 
-    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    if (!filePath.startsWith(mediaRoot) || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Video not found on server');
       return;
@@ -644,13 +701,13 @@ const server = http.createServer(async (req, res) => {
 
   // ============ Health Check ============
   if (reqUrl.pathname === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', webtorrent: !!wtClient }));
     return;
   }
 
   // Fallback
-  res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({
     status: 'ok',
     name: 'CinePulse Autonomous Media Server',
@@ -665,8 +722,8 @@ const server = http.createServer(async (req, res) => {
   }));
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[MediaServer] ✅ Active on http://0.0.0.0:${PORT}`);
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`[MediaServer] ✅ Active on http://127.0.0.1:${PORT}`);
   console.log(`[MediaServer] 🎬 Torrent streaming: http://localhost:${PORT}/torrent/<infoHash>`);
   console.log(`[MediaServer] 📁 Local media: ${MEDIA_DIR}`);
 });

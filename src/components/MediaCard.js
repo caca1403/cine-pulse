@@ -5,13 +5,19 @@
    ========================================================================== */
 
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK, hasNonLatinCharacters, fetchMediaTrailer } from '../services/tmdbApi.js';
-import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime, isRegisteredAnimeId, registerAnimeId, KNOWN_ANIME_KEYWORDS as STORAGE_ANIME_KEYWORDS } from '../services/storage.js';
+import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime, isRegisteredAnimeId, registerAnimeId, getUserSettings, KNOWN_ANIME_KEYWORDS as STORAGE_ANIME_KEYWORDS } from '../services/storage.js';
 import { openPlayerModal } from './PlayerModal.js';
 import { saveAllScrollState } from '../services/scrollManager.js';
 
 const KNOWN_ANIME_KEYWORDS = STORAGE_ANIME_KEYWORDS || [
   'anime', 'kimetsu', 'yaiba', 'iblis keser', 'demon slayer', 'naruto', 'boruto', 'shingeki', 'titan'
 ];
+
+function escapePreviewText(value = '') {
+  return String(value).replace(/[&<>'"]/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+  }[char]));
+}
 
 function hasJapaneseCharacters(text) {
   if (!text) return false;
@@ -140,6 +146,9 @@ export function renderMediaCard(item, options = {}) {
   const posterPath = item.poster_path || item.posterPath || item.poster || '';
   const backdropPath = item.backdrop_path || item.backdropPath || item.backdrop || '';
   const posterUrl = getImageUrl(posterPath, TMDB_IMAGE_SIZES.POSTER_MEDIUM);
+  const backdropUrl = getImageUrl(backdropPath || posterPath, TMDB_IMAGE_SIZES.BACKDROP_LARGE);
+  const usesLandscapeCards = getUserSettings().cardLayout === 'landscape';
+  const cardImageUrl = usesLandscapeCards ? backdropUrl : posterUrl;
   
   // Real rating or empty
   let rawRating = item.vote_average ?? item.voteAverage ?? item.rating;
@@ -218,7 +227,9 @@ export function renderMediaCard(item, options = {}) {
       
       <div class="card-poster-wrapper">
         <img 
-          src="${posterUrl}" 
+          src="${cardImageUrl}"
+          data-poster-src="${posterUrl}"
+          data-backdrop-src="${backdropUrl}"
           alt="${title}" 
           class="card-poster-img" 
           loading="lazy" 
@@ -228,13 +239,13 @@ export function renderMediaCard(item, options = {}) {
         
         <div class="card-glass-glow"></div>
 
-        <!-- Left Status Pill (Completed / In-Progress) -->
+        <!-- Left Status Pill (Completed / In-Progress with actual progress) -->
         ${isCompleted ? `
           <div class="card-status-badge card-status-completed" title="Tamamlandı">
             <i data-lucide="check" style="width:10px;height:10px;stroke-width:3;"></i>
             <span>İZLENDİ</span>
           </div>
-        ` : (isContinue && isSeries ? `
+        ` : (isContinue && isSeries && (currentTime > 0 || progressPercent > 0) ? `
           <div class="card-status-badge card-status-continue" title="Kaldığın Bölüm">
             <i data-lucide="clock" style="width:10px;height:10px;"></i>
             <span>S${season} B${episode}</span>
@@ -269,7 +280,6 @@ export function renderMediaCard(item, options = {}) {
         <h3 class="card-title" title="${title}">${title}</h3>
         <div class="card-meta">
           <span class="card-type-tag ${typeClass}">${typeLabel}</span>
-          ${isSeries && (isAnime || mediaType === 'tv') && season ? `<span class="card-episode-tag">S${season} B${episode}</span>` : ''}
           ${year ? `<span class="card-year-tag">${year}</span>` : ''}
         </div>
       </div>
@@ -324,49 +334,127 @@ export function attachMediaCardEvents(container) {
 
   // Desktop Hover Video Preview (Netflix Experience)
   const isFinePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-  if (isFinePointer) {
-    let hoverTimer = null;
+  if (isFinePointer && getUserSettings().hoverPreviewsEnabled !== false && getUserSettings().trailersEnabled !== false) {
+    const hoverTimers = new WeakMap();
+    let previewSoundEnabled = sessionStorage.getItem('cinepulse_preview_sound') === 'on';
 
-    container.addEventListener('mouseenter', (e) => {
+    container.addEventListener('pointerover', (e) => {
       const card = e.target.closest('.media-card');
       if (!card) return;
-      if (hoverTimer) clearTimeout(hoverTimer);
+      if (e.relatedTarget && card.contains(e.relatedTarget)) return;
 
-      hoverTimer = setTimeout(async () => {
+      // Start the network request immediately, then reveal the lightweight
+      // landscape preview after a short intent delay.
+      const id = card.getAttribute('data-id');
+      const type = card.getAttribute('data-type') || 'movie';
+      const trailerPromise = fetchMediaTrailer(type === 'tv' ? 'tv' : 'movie', id);
+      const timer = setTimeout(async () => {
         if (!card.matches(':hover')) return;
-        const id = card.getAttribute('data-id');
-        const type = card.getAttribute('data-type') || 'movie';
-        const posterWrap = card.querySelector('.card-poster-wrapper');
-        if (!posterWrap || posterWrap.querySelector('.card-hover-video-preview')) return;
+        if (card.querySelector('.card-hover-video-preview')) return;
 
         try {
-          const trailer = await fetchMediaTrailer(type === 'tv' ? 'tv' : 'movie', id);
+          const trailer = await trailerPromise;
           if (trailer && trailer.key && trailer.key.trim() && card.matches(':hover')) {
+            const title = decodeURIComponent(card.getAttribute('data-title') || 'Fragman');
+            const typeLabel = card.querySelector('.card-type-tag')?.textContent?.trim() || '';
+            const year = card.querySelector('.card-year-tag')?.textContent?.trim() || '';
+            const rating = card.querySelector('.card-rating-pill span')?.textContent?.trim() || '';
+            const safeKey = encodeURIComponent(trailer.key);
             const previewBox = document.createElement('div');
             previewBox.className = 'card-hover-video-preview';
             previewBox.innerHTML = `
-              <iframe 
-                src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(trailer.key)}?autoplay=1&mute=1&controls=0&modestbranding=1&loop=1&playlist=${encodeURIComponent(trailer.key)}&rel=0&playsinline=1&enablejsapi=1" 
-                frameborder="0" 
-                allow="autoplay; encrypted-media"
-                tabindex="-1">
-              </iframe>
+              <div class="card-preview-media">
+                <iframe
+                  src="https://www.youtube-nocookie.com/embed/${safeKey}?autoplay=1&mute=1&controls=0&disablekb=1&modestbranding=1&loop=1&playlist=${safeKey}&rel=0&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}"
+                  frameborder="0"
+                  allow="autoplay; encrypted-media"
+                  tabindex="-1"
+                  title="${escapePreviewText(title)} fragmanı">
+                </iframe>
+                <div class="card-preview-cinematic-shade"></div>
+                <span class="card-preview-badge">FRAGMAN</span>
+              </div>
+              <div class="card-preview-details">
+                <div class="card-preview-copy">
+                  <strong class="card-preview-title">${escapePreviewText(title)}</strong>
+                  <div class="card-preview-meta">
+                    ${rating ? `<span class="card-preview-match">${escapePreviewText(rating)} IMDb</span>` : ''}
+                    ${year ? `<span>${escapePreviewText(year)}</span>` : ''}
+                    ${typeLabel ? `<span>${escapePreviewText(typeLabel)}</span>` : ''}
+                  </div>
+                </div>
+                <div class="card-preview-actions">
+                  <span class="card-preview-open" aria-hidden="true"><i data-lucide="play"></i></span>
+                  <button class="card-preview-sound ${previewSoundEnabled ? 'is-on' : ''}" type="button" aria-label="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}" title="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}">
+                    <i data-lucide="${previewSoundEnabled ? 'volume-2' : 'volume-x'}"></i>
+                  </button>
+                </div>
+              </div>
             `;
-            posterWrap.appendChild(previewBox);
+            const rect = card.getBoundingClientRect();
+            const edgeTop = window.innerHeight < 520 ? 12 : 76;
+            const idealPreviewWidth = Math.min(460, Math.max(390, rect.width * 2.2), window.innerWidth - 32);
+            const maxWidthByHeight = Math.max(240, ((window.innerHeight - edgeTop - 94) * 16) / 9);
+            const previewWidth = Math.max(240, Math.min(idealPreviewWidth, maxWidthByHeight));
+            const previewHeight = (previewWidth * 9 / 16) + 82;
+            const left = Math.max(16, Math.min(window.innerWidth - previewWidth - 16, rect.left + (rect.width - previewWidth) / 2));
+            const top = Math.max(edgeTop, Math.min(window.innerHeight - previewHeight - 12, rect.top + (rect.height - previewHeight) / 2));
+            previewBox.style.left = `${left}px`;
+            previewBox.style.top = `${top}px`;
+            previewBox.style.width = `${previewWidth}px`;
+            const previewMedia = previewBox.querySelector('.card-preview-media');
+            const backdropSrc = card.querySelector('.card-poster-img')?.dataset?.backdropSrc;
+            if (previewMedia && backdropSrc) previewMedia.style.backgroundImage = `url("${backdropSrc}")`;
+            card.classList.add('preview-active');
+            card.appendChild(previewBox);
+            if (window.lucide) window.lucide.createIcons();
+
+            const iframe = previewBox.querySelector('iframe');
+            const soundBtn = previewBox.querySelector('.card-preview-sound');
+            const sendPlayerCommand = (command, args = []) => {
+              iframe?.contentWindow?.postMessage(JSON.stringify({
+                event: 'command', func: command, args
+              }), '*');
+            };
+            const applySoundState = () => {
+              sendPlayerCommand(previewSoundEnabled ? 'unMute' : 'mute');
+              if (previewSoundEnabled) sendPlayerCommand('setVolume', [75]);
+              soundBtn.classList.toggle('is-on', previewSoundEnabled);
+              soundBtn.title = previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç';
+              soundBtn.setAttribute('aria-label', soundBtn.title);
+              soundBtn.innerHTML = `<i data-lucide="${previewSoundEnabled ? 'volume-2' : 'volume-x'}"></i>`;
+              if (window.lucide) window.lucide.createIcons();
+            };
+            iframe.addEventListener('load', () => {
+              previewBox.classList.add('video-ready');
+              if (previewSoundEnabled) window.setTimeout(applySoundState, 180);
+            }, { once: true });
+            soundBtn.addEventListener('click', e => {
+              e.preventDefault();
+              e.stopPropagation();
+              previewSoundEnabled = !previewSoundEnabled;
+              sessionStorage.setItem('cinepulse_preview_sound', previewSoundEnabled ? 'on' : 'off');
+              applySoundState();
+              window.setTimeout(applySoundState, 180);
+            });
           }
         } catch (_) {}
-      }, 950);
-    }, true);
+      }, 600);
+      hoverTimers.set(card, timer);
+    });
 
-    container.addEventListener('mouseleave', (e) => {
+    container.addEventListener('pointerout', (e) => {
       const card = e.target.closest('.media-card');
       if (!card) return;
-      if (hoverTimer) clearTimeout(hoverTimer);
+      if (e.relatedTarget && card.contains(e.relatedTarget)) return;
+      const timer = hoverTimers.get(card);
+      if (timer) clearTimeout(timer);
+      hoverTimers.delete(card);
       const preview = card.querySelector('.card-hover-video-preview');
       if (preview) {
         try { preview.remove(); } catch (_) {}
       }
-    }, true);
+      card.classList.remove('preview-active');
+    });
   }
 }
-

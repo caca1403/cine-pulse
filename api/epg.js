@@ -1,3 +1,5 @@
+import { guardNodeRequest } from './_security.js';
+
 import zlib from 'zlib';
 
 const EPG_URL = 'https://iptv-epg.org/files/epg-tr.xml.gz';
@@ -116,9 +118,8 @@ let cacheTime = 0;
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
+  if (guardNodeRequest(req, res, { limit: 60, bucket: 'epg' })) return;
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();

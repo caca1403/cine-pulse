@@ -5,6 +5,7 @@
    ========================================================================== */
 
 import { extractAlphaStream } from './streamExtractors.js';
+import { isStrictMediaTitleMatch } from './mediaMatcher.js';
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const DIZIBAL_API_BASE = 'https://dizibal.org/api';
@@ -137,7 +138,8 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
       const res = await fetchDizibal(`/series/${slug}`, { timeout: 3000 });
       if (res) {
         const json = await res.json().catch(() => null);
-        if (json && json.success && json.data && json.data._id) {
+        const resolvedTitle = json?.data?.title || json?.data?.name || json?.data?.name_tr || json?.data?.name_en || json?.data?.slug || '';
+        if (json && json.success && json.data && json.data._id && isStrictMediaTitleMatch(resolvedTitle, [...candidateQueries])) {
           matchedSeries = json.data;
           break;
         }
@@ -150,12 +152,10 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
     for (const q of candidateQueries) {
       const results = await searchDizibalSeries(q);
       if (results.length > 0) {
-        const normQ = normalizeTitle(q);
         matchedSeries = results.find(item => {
-          const normTitle = normalizeTitle(item.title || item.name || item.name_tr || item.name_en || '');
-          const normSlug = normalizeTitle(item.slug || '');
-          return normTitle.includes(normQ) || normQ.includes(normTitle) || normSlug.includes(normQ);
-        }) || results[0];
+          const candidateTitle = item.title || item.name || item.name_tr || item.name_en || item.slug || '';
+          return isStrictMediaTitleMatch(candidateTitle, [...candidateQueries]);
+        });
         if (matchedSeries) break;
       }
     }
@@ -261,7 +261,8 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
       const res = await fetchDizibal(`/movies/${slug}`, { timeout: 3000 });
       if (res) {
         const json = await res.json().catch(() => null);
-        if (json && json.success && json.data && json.data.src) {
+        const resolvedTitle = json?.data?.title || json?.data?.title_tr || json?.data?.title_en || json?.data?.slug || '';
+        if (json && json.success && json.data && json.data.src && isStrictMediaTitleMatch(resolvedTitle, [...candidateQueries])) {
           matchedMovie = json.data;
           break;
         }
@@ -274,12 +275,10 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
     for (const q of candidateQueries) {
       const results = await searchDizibalMovies(q);
       if (results.length > 0) {
-        const normQ = normalizeTitle(q);
         matchedMovie = results.find(item => {
-          const normTitle = normalizeTitle(item.title || item.title_tr || item.title_en || '');
-          const normSlug = normalizeTitle(item.slug || '');
-          return normTitle.includes(normQ) || normQ.includes(normTitle) || normSlug.includes(normQ);
-        }) || results[0];
+          const candidateTitle = item.title || item.title_tr || item.title_en || item.slug || '';
+          return isStrictMediaTitleMatch(candidateTitle, [...candidateQueries]);
+        });
         if (matchedMovie) break;
       }
     }

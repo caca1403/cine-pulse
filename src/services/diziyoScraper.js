@@ -6,6 +6,8 @@
 
 import { extractVidmolyStream } from './streamExtractors.js';
 
+import { extractPageMediaTitle, isStrictMediaTitleMatch } from './mediaMatcher.js';
+
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const DIZIYO_BASE = 'https://www.diziyo.so';
 
@@ -262,7 +264,7 @@ export async function fetchDiziyoEpisodeSources({ titles = [], seriesTitle, orig
   if (!targetEpUrl) {
     for (const q of candidateQueries) {
       const results = await searchDiziyo(q);
-      const seriesResult = results.find(r => r.isSeries);
+      const seriesResult = results.find(r => r.isSeries && isStrictMediaTitleMatch(r.slug, [...candidateQueries]));
       if (seriesResult && seriesResult.slug) {
         const testUrl = `https://www.diziyo.so/dizi/${seriesResult.slug}/sezon-${sNum}/bolum-${epNum}/`;
         const res = await fetchDiziyo(testUrl, { timeout: 3000 });
@@ -281,6 +283,7 @@ export async function fetchDiziyoEpisodeSources({ titles = [], seriesTitle, orig
     if (!epRes) return [];
     const html = await epRes.text().catch(() => '');
     if (!html) return [];
+    if (!isStrictMediaTitleMatch(extractPageMediaTitle(html), [...candidateQueries])) return [];
 
     // Parse player sources
     const playerMatches = [...html.matchAll(/data-player-source="([^"]+)"[^>]*data-player-language-name="([^"]+)"/gi)];
@@ -383,7 +386,7 @@ export async function fetchDiziyoMovieSources({ titles = [], title, originalTitl
   if (!targetMovieUrl) {
     for (const q of candidateQueries) {
       const results = await searchDiziyo(q);
-      const movieResult = results.find(r => !r.isSeries);
+      const movieResult = results.find(r => !r.isSeries && isStrictMediaTitleMatch(r.slug, [...candidateQueries]));
       if (movieResult && movieResult.url) {
         targetMovieUrl = movieResult.url;
         break;
@@ -398,6 +401,7 @@ export async function fetchDiziyoMovieSources({ titles = [], title, originalTitl
     if (!mRes) return [];
     const html = await mRes.text().catch(() => '');
     if (!html) return [];
+    if (!isStrictMediaTitleMatch(extractPageMediaTitle(html), [...candidateQueries])) return [];
 
     const playerMatches = [...html.matchAll(/data-player-source="([^"]+)"[^>]*data-player-language-name="([^"]+)"/gi)];
     if (playerMatches.length === 0) return [];

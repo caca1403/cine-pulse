@@ -1,3 +1,5 @@
+import { extractPageMediaTitle, isStrictMediaTitleMatch } from './mediaMatcher.js';
+
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 function toTurkishSlug(title) {
@@ -87,6 +89,8 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
       if (!res) continue;
 
       const html = await res.text();
+      const pageTitle = extractPageMediaTitle(html);
+      if (!isStrictMediaTitleMatch(pageTitle, allTitles)) continue;
 
       const bidMatch = html.match(/data-id=["'](\d+)["']/i) || html.match(/var\s+bid\s*=\s*["']?(\d+)["']?/i) || html.match(/bid\s*=\s*(\d+)/i);
       const bid = bidMatch ? bidMatch[1] : null;

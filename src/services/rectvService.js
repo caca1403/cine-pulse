@@ -8,6 +8,8 @@
    - Ultra-Fast Direct HLS Master (.m3u8) Streaming with ZERO ADS
    ========================================================================== */
 
+import { isStrictMediaTitleMatch } from './mediaMatcher.js';
+
 const HMAC_KEY_HEX = '3508611138826751fdf77beaa6f93eb93fd27e6a5acb910e7aad22665513dd6e';
 const STREAM_ENC_KEY_HEX = '666482389dc76bfa57068407418f7dac9f6c14b6868856b169165b9fac7d812e';
 const SW_KEY = '4F5A9C3D9A86FA54EACEDDD635185/c3c5bd17-e37b-4b94-a944-8a3688a30452';
@@ -307,24 +309,16 @@ export async function fetchRecTvSources({
       return [];
     }
 
-    const normQuery = normalizeTitle(query);
-    const normOrig = normalizeTitle(originalTitle);
+    const expectedTitles = [query, originalTitle].filter(Boolean);
     const isMovie = type === 'movie';
 
     // Find best matching item
     let match = null;
     for (const item of searchRes.posters) {
-      const itemTitle = normalizeTitle(item.title);
       const isTargetType = isMovie ? item.type === 'movie' : item.type === 'serie';
       if (!isTargetType) continue;
 
-      if (
-        itemTitle === normQuery || 
-        itemTitle === normOrig || 
-        itemTitle.includes(normQuery) || 
-        normQuery.includes(itemTitle) ||
-        (normOrig && (itemTitle.includes(normOrig) || normOrig.includes(itemTitle)))
-      ) {
+      if (isStrictMediaTitleMatch(item.title || item.name || '', expectedTitles)) {
         match = item;
         break;
       }
@@ -515,4 +509,3 @@ export async function getRecTvChannelStreamUrl(chId) {
     return null;
   }
 }
-

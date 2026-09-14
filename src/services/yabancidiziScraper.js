@@ -4,6 +4,8 @@
    Supports AJAX search and episode source extraction.
    ========================================================================== */
 
+import { extractPageMediaTitle, isStrictMediaTitleMatch } from './mediaMatcher.js';
+
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const YBD_BASE = 'https://yabancidizi.news';
 
@@ -208,8 +210,7 @@ export async function fetchYabanciDiziEpisodeSources({
     for (const q of candidates) {
       const results = await searchYabanciDizi(q);
       if (results.length > 0) {
-        const normQ = cleanTitle(q);
-        const match = results.find(r => cleanTitle(r.s_name).includes(normQ) || normQ.includes(cleanTitle(r.s_name))) || results[0];
+        const match = results.find(r => isStrictMediaTitleMatch(r.s_name || r.title || '', candidates));
         if (match && match.s_link) {
           candidateLinks.push(match.s_link);
           break;
@@ -235,6 +236,7 @@ export async function fetchYabanciDiziEpisodeSources({
       if (!res || !res.ok) continue;
 
       const html = await res.text().catch(() => '');
+      if (!isStrictMediaTitleMatch(extractPageMediaTitle(html), candidates)) continue;
       const streams = extractStreamsFromHtml(html, isDub);
       if (streams.length > 0) {
         return streams;
@@ -267,8 +269,11 @@ export async function fetchYabanciDiziMovieSources({
     for (const q of candidates) {
       const results = await searchYabanciDizi(q);
       if (results.length > 0) {
-        const normQ = cleanTitle(q);
-        const match = results.find(r => r.s_type === '1' || cleanTitle(r.s_name).includes(normQ)) || results[0];
+        const match = results.find(r => {
+          const isMovieResult = String(r.s_type || r.type || '').toLowerCase() === '1'
+            || String(r.type || '').toLowerCase() === 'movie';
+          return isMovieResult && isStrictMediaTitleMatch(r.s_name || r.title || '', candidates);
+        });
         if (match && match.s_link) {
           candidateLinks.push(match.s_link);
           break;
@@ -294,6 +299,7 @@ export async function fetchYabanciDiziMovieSources({
       if (!res || !res.ok) continue;
 
       const html = await res.text().catch(() => '');
+      if (!isStrictMediaTitleMatch(extractPageMediaTitle(html), candidates)) continue;
       const streams = extractStreamsFromHtml(html, isDub);
       if (streams.length > 0) {
         return streams;

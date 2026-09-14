@@ -818,6 +818,12 @@ export function renderLiveTvView() {
         activeChannel = channel;
         isPipDismissed = false;
 
+        // Update the zap UI immediately. Rebuilding the entire catalog here
+        // made every switch feel delayed before playback even started.
+        updateTopBar();
+        showOSD();
+        updateActiveChannelCard();
+
         // 1. Immediately HARD STOP and detach previous playback to prevent audio echo
         if (activeHls) {
           try {
@@ -839,22 +845,33 @@ export function renderLiveTvView() {
         loadingEl.classList.remove('hidden');
         errorEl.classList.add('hidden');
 
-        // Check if channel is RecTV VIP and refresh authenticated token stream
-        if (channel.isTvr && channel.tvrId) {
+        let freshStreamAttempted = false;
+        let directNetworkRetryCount = 0;
+        let mediaRecoveryAttempted = false;
+
+        async function tryFreshRecTvStream(failedUrl) {
+          if (freshStreamAttempted || !channel.isTvr || !channel.tvrId) return false;
+          freshStreamAttempted = true;
+          loadingEl.classList.remove('hidden');
+          errorEl.classList.add('hidden');
+
           try {
             const freshUrl = await getRecTvChannelStreamUrl(channel.tvrId);
-            if (channelPlaybackToken !== myToken) return;
-            if (freshUrl) {
+            if (channelPlaybackToken !== myToken) return true;
+            if (freshUrl && freshUrl !== failedUrl) {
               channel.streamUrl = freshUrl;
+              startHls(freshUrl);
+              return true;
             }
           } catch (_) {}
+          return false;
         }
 
-        if (channelPlaybackToken !== myToken) return;
-
-        updateTopBar();
-        showOSD();
-        renderAllViews();
+        function showPlaybackError() {
+          if (channelPlaybackToken !== myToken) return;
+          loadingEl.classList.add('hidden');
+          errorEl.classList.remove('hidden');
+        }
 
         function startHls(url) {
           if (channelPlaybackToken !== myToken) return;
@@ -872,10 +889,13 @@ export function renderLiveTvView() {
             const hls = new window.Hls({
               enableWorker: true,
               lowLatencyMode: true,
-              backBufferLength: 30,
-              maxBufferLength: 15,
-              maxMaxBufferLength: 30,
-              liveSyncDurationCount: 3
+              startLevel: 0,
+              capLevelToPlayerSize: true,
+              backBufferLength: 10,
+              maxBufferLength: 8,
+              maxMaxBufferLength: 15,
+              liveSyncDurationCount: 2,
+              liveMaxLatencyDurationCount: 5
             });
             activeHls = hls;
 
@@ -898,17 +918,36 @@ export function renderLiveTvView() {
             });
 
             hls.on(window.Hls.Events.ERROR, (_, data) => {
-              if (channelPlaybackToken !== myToken) return;
+              if (channelPlaybackToken !== myToken || activeHls !== hls) return;
               if (data.fatal) {
                 console.warn('[LiveTV] Fatal HLS error on:', url, data.type, data.details);
-                loadingEl.classList.add('hidden');
-                errorEl.classList.remove('hidden');
                 if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
-                  setTimeout(() => {
-                    if (channelPlaybackToken === myToken && activeHls) {
-                      hls.startLoad();
+                  if (channel.isTvr && channel.tvrId) {
+                    tryFreshRecTvStream(url).then(recovered => {
+                      if (!recovered) showPlaybackError();
+                    });
+                  } else if (directNetworkRetryCount < 1) {
+                    directNetworkRetryCount += 1;
+                    loadingEl.classList.remove('hidden');
+                    window.setTimeout(() => {
+                      if (channelPlaybackToken === myToken && activeHls === hls) hls.startLoad();
+                    }, 700);
+                  } else {
+                    showPlaybackError();
+                  }
+                } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+                  if (mediaRecoveryAttempted) {
+                    showPlaybackError();
+                  } else {
+                    mediaRecoveryAttempted = true;
+                    try {
+                      hls.recoverMediaError();
+                    } catch (_) {
+                      showPlaybackError();
                     }
-                  }, 3500);
+                  }
+                } else {
+                  showPlaybackError();
                 }
               }
             });
@@ -924,8 +963,9 @@ export function renderLiveTvView() {
             }, { once: true });
             videoEl.addEventListener('error', () => {
               if (channelPlaybackToken !== myToken) return;
-              loadingEl.classList.add('hidden');
-              errorEl.classList.remove('hidden');
+              tryFreshRecTvStream(url).then(recovered => {
+                if (!recovered) showPlaybackError();
+              });
             }, { once: true });
           }
         }
@@ -1042,6 +1082,23 @@ export function renderLiveTvView() {
         });
 
         if (window.lucide) window.lucide.createIcons();
+      }
+
+      function updateActiveChannelCard() {
+        if (!channelGrid) return;
+        channelGrid.querySelectorAll('.tv-grid-card').forEach(card => {
+          const isActive = card.dataset.id === activeChannel.id;
+          card.classList.toggle('active', isActive);
+
+          const existingIndicator = card.querySelector('.tv-grid-live-indicator');
+          if (!isActive && existingIndicator) existingIndicator.remove();
+          if (isActive && !existingIndicator) {
+            const indicator = document.createElement('div');
+            indicator.className = 'tv-grid-live-indicator';
+            indicator.innerHTML = '<span class="tv-live-dot"></span><span>ŞU AN İZLENİYOR</span>';
+            card.appendChild(indicator);
+          }
+        });
       }
 
       renderAllViews = () => {

@@ -37,7 +37,7 @@ import { fetchSmashyStreamSources } from './smashyStreamService.js';
 import { fetchKidsVipSources, fetchKidsVipMovieSources } from './kidsVipScraper.js';
 
 // Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
-const CACHE_VERSION = 'v13';
+const CACHE_VERSION = 'v14';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -97,12 +97,13 @@ function resolveCandidateTitlesSync(targetTitle, originalTitle) {
 async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) {
   const immediateTitles = resolveCandidateTitlesSync(targetTitle, originalTitle);
   let detectedYear = null;
+  const tmdbType = (type === 'anime' || type === 'documentary') ? 'tv' : type;
 
   if (tmdbId) {
     try {
       const [enRes, trRes] = await Promise.all([
-        fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&language=en-US`, { signal: AbortSignal.timeout(1500) }).catch(() => null),
-        fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&language=tr-TR`, { signal: AbortSignal.timeout(1500) }).catch(() => null)
+        fetch(`https://api.themoviedb.org/3/${tmdbType}/${tmdbId}?api_key=${TMDB_API_KEY}&language=en-US`, { signal: AbortSignal.timeout(1800) }).catch(() => null),
+        fetch(`https://api.themoviedb.org/3/${tmdbType}/${tmdbId}?api_key=${TMDB_API_KEY}&language=tr-TR`, { signal: AbortSignal.timeout(1800) }).catch(() => null)
       ]);
 
       if (enRes && enRes.ok) {
@@ -491,18 +492,16 @@ export async function getStreamingServersProgressive({
     return hydrated;
   }
 
-  const candidateTitles = resolveCandidateTitlesSync(targetTitle, originalTitle);
-  const targetYear = year;
+  let candidateTitles = resolveCandidateTitlesSync(targetTitle, originalTitle);
+  let targetYear = year;
 
-  // Background non-blocking TMDB candidate title enrichment
+  // Resolve localized/original TMDB aliases before starting providers. Previously
+  // this ran in the background, so most scrapers had already copied the short
+  // title list before Turkish/anime aliases arrived.
   if (tmdbId) {
-    resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle).then(({ candidateTitles: extraTitles }) => {
-      if (Array.isArray(extraTitles)) {
-        for (const t of extraTitles) {
-          if (!candidateTitles.includes(t)) candidateTitles.push(t);
-        }
-      }
-    }).catch(() => {});
+    const enriched = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle).catch(() => null);
+    if (enriched?.candidateTitles?.length) candidateTitles = enriched.candidateTitles;
+    if (!targetYear && enriched?.detectedYear) targetYear = enriched.detectedYear;
   }
 
   let currentDubbed = [];
@@ -709,10 +708,15 @@ export async function getStreamingServersProgressive({
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
-    // 3. SezonlukDizi (TV Series Dubbed)
-    (!isMovie && !isAnime)
+    // 3. SezonlukDizi (TV/Anime series, dubbed and subtitled)
+    !isMovie
       ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : Promise.resolve([]),
+
+    !isMovie
+      ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
 
     // 7. FilmEkseni (Movies & Series - 1080p VIP & EksenLoad)

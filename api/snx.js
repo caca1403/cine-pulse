@@ -1,7 +1,8 @@
+import { guardNodeRequest } from './_security.js';
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
+  if (guardNodeRequest(req, res, { limit: 180, bucket: 'snx' })) return;
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const urlObj = new URL(req.url, `https://${req.headers.host || 'localhost'}`);

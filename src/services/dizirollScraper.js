@@ -4,6 +4,8 @@
    Supports Turkish Dubbed (Türkçe Dublaj) & Subtitled (Türkçe Altyazılı).
    ========================================================================== */
 
+import { extractPageMediaTitle, isStrictMediaTitleMatch } from './mediaMatcher.js';
+
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const DIZIROLL_BASE = 'https://diziroll.club';
 
@@ -92,6 +94,7 @@ export async function fetchDizirollEpisodeSources({ titles = [], seriesTitle, or
 
       const html = await res.text().catch(() => '');
       if (!html) continue;
+      if (!isStrictMediaTitleMatch(extractPageMediaTitle(html), [...candidateQueries])) continue;
 
       const iframeMatch = html.match(/<iframe[^>]+src="([^"]+)"/i);
       if (iframeMatch && iframeMatch[1]) {

@@ -7,6 +7,8 @@
 
 import { extractAlphaStream } from './streamExtractors.js';
 
+import { isStrictMediaTitleMatch } from './mediaMatcher.js';
+
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const KNOWN_START_NUM = 1227;
 
@@ -194,7 +196,7 @@ export async function fetchDizipalMovieSources({
 
   for (const query of candidateTitles) {
     const searchResults = await searchDizipal(query);
-    const movieMatch = searchResults.find(r => r.type === 'film');
+    const movieMatch = searchResults.find(r => r.type === 'film' && isStrictMediaTitleMatch(r.slug, candidateTitles));
 
     if (movieMatch) {
       try {
@@ -249,7 +251,7 @@ export async function fetchDizipalEpisodeSources({
 
   for (const query of candidateTitles) {
     const searchResults = await searchDizipal(query);
-    const seriesMatch = searchResults.find(r => r.type === 'dizi');
+    const seriesMatch = searchResults.find(r => r.type === 'dizi' && isStrictMediaTitleMatch(r.slug, candidateTitles));
 
     if (seriesMatch) {
       try {

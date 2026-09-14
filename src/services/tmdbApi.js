@@ -2,7 +2,7 @@
    CinePulse Studio - TMDB API Metadata Service
    ========================================================================== */
 
-import { registerAnimeId, isKidProfileActive, isItemKidSafe } from './storage.js';
+import { registerAnimeId, isKidProfileActive, isItemKidSafe, getUserSettings } from './storage.js';
 
 const API_BASE_URL = 'https://api.themoviedb.org/3';
 
@@ -25,6 +25,7 @@ export const TMDB_IMAGE_SIZES = {
   POSTER_SMALL: 'https://image.tmdb.org/t/p/w185',
   POSTER_MEDIUM: 'https://image.tmdb.org/t/p/w342', // Crisp Retina & 6x lighter than w500
   BACKDROP_LARGE: 'https://image.tmdb.org/t/p/w780',
+  BACKDROP_XLARGE: 'https://image.tmdb.org/t/p/w1280',
   BACKDROP_ORIGINAL: 'https://image.tmdb.org/t/p/original',
   STILL_MEDIUM: 'https://image.tmdb.org/t/p/w300'
 };
@@ -602,13 +603,13 @@ export async function fetchDiscoverMedia({
     language: 'tr-TR'
   };
 
-  if (genreId) params.with_genres = genreId;
   if (isAnime) {
-    params.with_genres = '16';
+    params.with_genres = genreId ? `16,${genreId}` : '16';
     params.with_original_language = 'ja';
-  }
-  if (isDoc) {
-    params.with_genres = '99';
+  } else if (isDoc) {
+    params.with_genres = genreId ? `99,${genreId}` : '99';
+  } else if (genreId) {
+    params.with_genres = genreId;
   }
 
   if (minRating > 0) {
@@ -765,37 +766,62 @@ export async function fetchMediaDetails(type = 'tv', id) {
   return res;
 }
 
-export async function fetchMediaTrailer(type = 'tv', id) {
-  try {
-    // 1. Try Turkish trailers first
-    let res = await tmdbFetch(`/${type}/${id}/videos`, { language: 'tr-TR' });
-    let videos = res?.results || [];
-    let trailer = videos.find(v => v.site === 'YouTube' && v.type === 'Trailer');
-    if (!trailer) trailer = videos.find(v => v.site === 'YouTube' && v.type === 'Teaser');
+const trailerRequestCache = new Map();
 
-    // 2. Fallback to English/Global trailers
-    if (!trailer) {
-      const enRes = await tmdbFetch(`/${type}/${id}/videos`, { language: 'en-US' });
-      const enVideos = enRes?.results || [];
-      trailer = enVideos.find(v => v.site === 'YouTube' && v.type === 'Trailer');
-      if (!trailer) trailer = enVideos.find(v => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip'));
-      if (!trailer && enVideos.length > 0) trailer = enVideos.find(v => v.site === 'YouTube');
-    }
+function scoreTrailer(video, language) {
+  if (!video || video.site !== 'YouTube' || !video.key) return -1;
+  const typeScores = { Trailer: 500, Teaser: 320, Clip: 120, Featurette: 60 };
+  let score = typeScores[video.type] || 0;
+  if (video.official === true) score += 1000;
+  if (language === 'tr') score += 35;
+  if (/official|resmi|final trailer/i.test(video.name || '')) score += 80;
+  if (/fan|concept|reaction|breakdown/i.test(video.name || '')) score -= 800;
+  return score;
+}
 
-    if (trailer && trailer.key) {
-      return {
-        key: trailer.key,
-        name: trailer.name || 'Resmi Fragman',
-        site: trailer.site,
-        type: trailer.type,
-        embedUrl: `https://www.youtube-nocookie.com/embed/${trailer.key}?autoplay=1&rel=0&modestbranding=1`,
-        watchUrl: `https://www.youtube.com/watch?v=${trailer.key}`
-      };
+export function fetchMediaTrailer(type = 'tv', id) {
+  if (getUserSettings().trailersEnabled === false) return Promise.resolve(null);
+  const cacheKey = `${type}:${id}`;
+  if (trailerRequestCache.has(cacheKey)) return trailerRequestCache.get(cacheKey);
+
+  const request = (async () => {
+    try {
+      // Fetch both languages together. An official global trailer is safer than
+      // an unofficial Turkish upload that may require a YouTube sign-in.
+      const [trRes, enRes] = await Promise.all([
+        tmdbFetch(`/${type}/${id}/videos`, { language: 'tr-TR' }).catch(() => null),
+        tmdbFetch(`/${type}/${id}/videos`, { language: 'en-US' }).catch(() => null)
+      ]);
+      const candidates = [
+        ...((trRes?.results || []).map(video => ({ video, language: 'tr' }))),
+        ...((enRes?.results || []).map(video => ({ video, language: 'en' })))
+      ];
+      candidates.sort((a, b) => scoreTrailer(b.video, b.language) - scoreTrailer(a.video, a.language));
+      const trailer = candidates.find(entry => scoreTrailer(entry.video, entry.language) >= 0)?.video;
+
+      if (trailer?.key) {
+        const cleanKey = trailer.key.trim();
+        const encodedKey = encodeURIComponent(cleanKey);
+        return {
+          key: cleanKey,
+          name: trailer.name || 'Resmi Fragman',
+          site: trailer.site,
+          type: trailer.type,
+          embedUrl: `https://www.youtube-nocookie.com/embed/${encodedKey}?autoplay=1&rel=0&modestbranding=1&playsinline=1`,
+          watchUrl: `https://www.youtube.com/watch?v=${encodedKey}`
+        };
+      }
+    } catch (err) {
+      console.error('fetchMediaTrailer error:', err);
     }
-  } catch (err) {
-    console.error('fetchMediaTrailer error:', err);
-  }
-  return null;
+    return null;
+  })();
+
+  trailerRequestCache.set(cacheKey, request);
+  request.then(result => {
+    if (!result) trailerRequestCache.delete(cacheKey);
+  });
+  return request;
 }
 
 export async function fetchSeasonDetails(tvId, seasonNumber = 1) {
@@ -939,4 +965,3 @@ export async function fetchPersonDetails(personId) {
   }
   return data;
 }
-

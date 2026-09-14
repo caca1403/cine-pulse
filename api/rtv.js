@@ -1,15 +1,17 @@
+import { guardEdgeRequest } from './_security.js';
+
 export const config = {
   runtime: 'edge'
 };
 
 export default async function handler(request) {
+  const blockedResponse = guardEdgeRequest(request, { limit: 180, bucket: 'rtv' });
+  if (blockedResponse) return blockedResponse;
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-        'Access-Control-Allow-Headers': '*'
       }
     });
   }
@@ -54,9 +56,7 @@ export default async function handler(request) {
     const responseData = await upstreamRes.arrayBuffer();
 
     const responseHeaders = new Headers();
-    responseHeaders.set('Access-Control-Allow-Origin', '*');
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
-    responseHeaders.set('Access-Control-Allow-Headers', '*');
     responseHeaders.set('Content-Type', upstreamRes.headers.get('content-type') || 'application/json');
 
     return new Response(responseData, {
@@ -68,7 +68,7 @@ export default async function handler(request) {
       status: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Cache-Control': 'no-store'
       }
     });
   }

@@ -6,6 +6,8 @@
    Strict title & year & type matching to prevent wrong media playback.
    ========================================================================== */
 
+import { isStrictMediaTitleMatch } from './mediaMatcher.js';
+
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const SINEWIX_API_BASE = 'https://ydfvfdizipanel.ru/public/api';
 const SINEWIX_TOKEN = '9iQNC5HQwPlaFuJDkhncJ5XTJ8feGXOJatAA';
@@ -35,31 +37,11 @@ function normalizeText(text) {
 }
 
 function isTitleSimilar(target, candidate, targetYear = null, candidateYear = null) {
-  if (!target || !candidate) return false;
-  const normT = normalizeText(target);
-  const normC = normalizeText(candidate);
-  if (!normT || !normC) return false;
-
-  if (normT === normC) {
-    if (targetYear && candidateYear) {
-      return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
-    }
-    return true;
+  if (!isStrictMediaTitleMatch(candidate, [target])) return false;
+  if (targetYear && candidateYear) {
+    return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
   }
-
-  const tWords = normT.split(/\s+/).filter(w => w.length > 0);
-  const cWords = normC.split(/\s+/).filter(w => w.length > 0);
-
-  const allTargetInCandidate = tWords.length > 0 && tWords.every(w => cWords.includes(w));
-  const allCandidateInTarget = cWords.length > 0 && cWords.every(w => tWords.includes(w));
-
-  if (allTargetInCandidate || allCandidateInTarget) {
-    if (targetYear && candidateYear) {
-      return Math.abs(parseInt(targetYear, 10) - parseInt(candidateYear, 10)) <= 1;
-    }
-    return true;
-  }
-  return false;
+  return true;
 }
 
 async function performSinewixRequest(endpoint) {
@@ -167,18 +149,18 @@ export async function fetchSinewixSources({
       // Anime uses a separate /animes/show/ endpoint with anime_season_id / anime_episode_id
       const animeData = await performSinewixRequest(`/animes/show/${itemId}/${SINEWIX_TOKEN}`);
       if (animeData?.seasons && Array.isArray(animeData.seasons)) {
-        const seasonMatch = animeData.seasons.find(s => s.season_number === Number(season)) || animeData.seasons[0];
+        const seasonMatch = animeData.seasons.find(s => s.season_number === Number(season));
         if (seasonMatch?.episodes && Array.isArray(seasonMatch.episodes)) {
-          const epMatch = seasonMatch.episodes.find(e => e.episode_number === Number(episode)) || seasonMatch.episodes[0];
+          const epMatch = seasonMatch.episodes.find(e => e.episode_number === Number(episode));
           videoList = epMatch ? epMatch.videos || [] : [];
         }
       }
     } else {
       const seriesData = await performSinewixRequest(`/series/show/${itemId}/${SINEWIX_TOKEN}`);
       if (seriesData?.seasons && Array.isArray(seriesData.seasons)) {
-        const seasonMatch = seriesData.seasons.find(s => s.season_number === Number(season)) || seriesData.seasons[0];
+        const seasonMatch = seriesData.seasons.find(s => s.season_number === Number(season));
         if (seasonMatch?.episodes && Array.isArray(seasonMatch.episodes)) {
-          const epMatch = seasonMatch.episodes.find(e => e.episode_number === Number(episode)) || seasonMatch.episodes[0];
+          const epMatch = seasonMatch.episodes.find(e => e.episode_number === Number(episode));
           videoList = epMatch ? epMatch.videos || [] : [];
         }
       }

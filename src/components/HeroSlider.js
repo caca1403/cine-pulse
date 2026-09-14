@@ -5,12 +5,19 @@
    ========================================================================== */
 
 import { getImageUrl, TMDB_IMAGE_SIZES, fetchMediaTrailer, generateCinematicOverview } from '../services/tmdbApi.js';
-import { isWatchlist, toggleWatchlist, isKidProfileActive, isItemKidSafe } from '../services/storage.js';
+import { isWatchlist, toggleWatchlist, isKidProfileActive, isItemKidSafe, getUserSettings } from '../services/storage.js';
 import { openTrailerModal } from './TrailerModal.js';
 import { showToast } from './Toast.js';
 
 let currentSlideIndex = 0;
 let slideInterval = null;
+
+function getHeroBackdropUrl(item) {
+  const size = window.innerWidth <= 768
+    ? TMDB_IMAGE_SIZES.BACKDROP_LARGE
+    : TMDB_IMAGE_SIZES.BACKDROP_XLARGE;
+  return getImageUrl(item?.backdrop_path, size);
+}
 
 export function renderHeroSlider(items = []) {
   const isKid = isKidProfileActive();
@@ -25,7 +32,7 @@ export function renderHeroSlider(items = []) {
   const type = featured.first_air_date || featured.media_type === 'tv' ? 'tv' : 'movie';
   const title = featured.title || featured.name || 'Öne Çıkan Yapım';
   const overview = (featured.overview && featured.overview.trim().length > 15) ? featured.overview : generateCinematicOverview(featured, type);
-  const backdropUrl = getImageUrl(featured.backdrop_path, TMDB_IMAGE_SIZES.BACKDROP_ORIGINAL);
+  const backdropUrl = getHeroBackdropUrl(featured);
   const rating = featured.vote_average ? featured.vote_average.toFixed(1) : '8.8';
   const year = (featured.first_air_date || featured.release_date || '').substring(0, 4);
 
@@ -35,7 +42,7 @@ export function renderHeroSlider(items = []) {
     <section class="hero-slider" id="hero-slider-section">
       <div class="hero-ambient-glow"></div>
 
-      <div class="hero-backdrop" id="hero-backdrop-img" style="background-image: url('${backdropUrl}')"></div>
+      <img class="hero-backdrop" id="hero-backdrop-img" src="${backdropUrl}" alt="" loading="eager" fetchpriority="high" decoding="async" />
       <div class="hero-overlay-gradient"></div>
       
       <div class="container">
@@ -90,6 +97,28 @@ export function attachHeroSliderEvents(items = []) {
   const listBtn = document.getElementById('hero-list-btn');
   const trailerBtn = document.getElementById('hero-trailer-btn');
 
+  // The first image is requested with high priority. Warm upcoming slides only
+  // after it has started so automatic rotations do not show an empty backdrop.
+  const warmUpcomingBackdrops = () => {
+    slides.slice(1, 4).forEach(item => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.src = getHeroBackdropUrl(item);
+    });
+  };
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(warmUpcomingBackdrops, { timeout: 1500 });
+  } else {
+    window.setTimeout(warmUpcomingBackdrops, 500);
+  }
+
+  // Warm the current and next trailer while the hero is visible so opening the
+  // modal is normally instant without preloading every slide.
+  slides.slice(0, 2).forEach(item => {
+    const itemType = item.first_air_date || item.media_type === 'tv' ? 'tv' : 'movie';
+    fetchMediaTrailer(itemType, item.id).catch(() => null);
+  });
+
   if (playBtn) {
     playBtn.addEventListener('click', () => {
       const id = playBtn.getAttribute('data-id');
@@ -100,6 +129,10 @@ export function attachHeroSliderEvents(items = []) {
 
   if (trailerBtn) {
     trailerBtn.addEventListener('click', async () => {
+      if (getUserSettings().trailersEnabled === false) {
+        showToast('Fragmanlar yönetici ayarlarından kapatıldı.', 'info');
+        return;
+      }
       const currentItem = slides[currentSlideIndex];
       if (!currentItem) return;
       const type = currentItem.first_air_date || currentItem.media_type === 'tv' ? 'tv' : 'movie';
@@ -172,11 +205,21 @@ function updateHeroSlide(item) {
   const typeBadge = document.getElementById('hero-type-badge');
 
   const type = item.first_air_date || item.media_type === 'tv' ? 'tv' : 'movie';
-  const backdropUrl = getImageUrl(item.backdrop_path, TMDB_IMAGE_SIZES.BACKDROP_ORIGINAL);
+  const backdropUrl = getHeroBackdropUrl(item);
   const rating = item.vote_average ? item.vote_average.toFixed(1) : '8.5';
   const year = (item.first_air_date || item.release_date || '').substring(0, 4);
 
-  if (backdropEl) backdropEl.style.backgroundImage = `url('${backdropUrl}')`;
+  if (backdropEl && backdropEl.src !== backdropUrl) {
+    backdropEl.dataset.pendingSrc = backdropUrl;
+    const nextBackdrop = new Image();
+    nextBackdrop.decoding = 'async';
+    nextBackdrop.onload = () => {
+      if (backdropEl.isConnected && backdropEl.dataset.pendingSrc === backdropUrl) {
+        backdropEl.src = backdropUrl;
+      }
+    };
+    nextBackdrop.src = backdropUrl;
+  }
   if (titleEl) titleEl.textContent = item.title || item.name;
   const slideOverview = (item.overview && item.overview.trim().length > 15)
     ? item.overview

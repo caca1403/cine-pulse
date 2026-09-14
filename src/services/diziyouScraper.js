@@ -4,6 +4,8 @@
    Parallel Candidate URL resolution for ultra-fast response (<500ms)
    ========================================================================== */
 
+import { extractPageMediaTitle, isStrictMediaTitleMatch } from './mediaMatcher.js';
+
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const DIZIYOU_BASE = 'https://www.diziyou.one';
 
@@ -164,6 +166,7 @@ export async function fetchDiziyouSources({
 
   for (const match of validMatches) {
     const { html } = match;
+    if (!isStrictMediaTitleMatch(extractPageMediaTitle(html), allTitles)) continue;
 
     // 1. Extract Player Iframe & direct HLS
     const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']*(?:player|embed)[^"']*)["']/i);

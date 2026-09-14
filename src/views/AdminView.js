@@ -10,12 +10,21 @@ import {
   getBlockedContent,
   addBlockedContent,
   removeBlockedContent,
-  getProfiles
+  getProfiles,
+  getUserSettings,
+  saveUserSettings
 } from '../services/storage.js';
 import { clearHomeCache } from './HomeView.js';
+import {
+  completeAdminAuthentication,
+  getAdminPinLockSeconds,
+  isAdminAuthenticated,
+  lockAdminAccess,
+  recordAdminPinFailure
+} from '../services/adminAccess.js';
 
 export async function renderAdminView() {
-  const isUnlocked = sessionStorage.getItem('cinepulse_admin_unlocked') === 'true';
+  const isUnlocked = isAdminAuthenticated();
   if (!isUnlocked) {
     return {
       html: `
@@ -70,10 +79,20 @@ export async function renderAdminView() {
         form.addEventListener('submit', (e) => {
           e.preventDefault();
           const val = input.value.trim();
+          const remainingLock = getAdminPinLockSeconds();
+          if (remainingLock > 0) {
+            errorEl.textContent = `Çok fazla hatalı deneme. ${remainingLock} saniye sonra tekrar deneyin.`;
+            errorEl.style.display = 'block';
+            return;
+          }
           if (verifyAdminPin(val)) {
-            sessionStorage.setItem('cinepulse_admin_unlocked', 'true');
-            window.location.reload();
+            completeAdminAuthentication();
+            window.dispatchEvent(new CustomEvent('cinepulse_admin_state_changed'));
           } else {
+            const lockSeconds = recordAdminPinFailure();
+            errorEl.textContent = lockSeconds > 0
+              ? `Çok fazla hatalı deneme. ${lockSeconds} saniye bekleyin.`
+              : 'Geçersiz PIN kodu!';
             errorEl.style.display = 'block';
             input.classList.add('admin-input-error');
             setTimeout(() => input.classList.remove('admin-input-error'), 400);
@@ -89,6 +108,7 @@ export async function renderAdminView() {
   // Unlocked Admin Dashboard
   const blockedItems = getBlockedContent();
   const profiles = getProfiles();
+  const siteSettings = getUserSettings();
 
   return {
     html: `
@@ -227,6 +247,46 @@ export async function renderAdminView() {
           <!-- 4. System & Cache Utilities Card -->
           <div class="admin-card">
             <div class="admin-card-header">
+              <i data-lucide="sliders-horizontal" style="width: 20px; height: 20px; color: #a78bfa;"></i>
+              <h2 style="font-size: 1.15rem; font-weight: 700; color: #fff;">Tüm Profilleri Etkileyen Kontroller</h2>
+            </div>
+            <p style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 1rem;">
+              Bu tarayıcıdaki tüm profiller için kart ve fragman davranışını tek yerden yönetin.
+            </p>
+            <label class="admin-engine-row" style="cursor:pointer;">
+              <span>Yatay kart görünümü</span>
+              <input id="admin-setting-landscape" type="checkbox" ${siteSettings.cardLayout === 'landscape' ? 'checked' : ''} />
+            </label>
+            <label class="admin-engine-row" style="cursor:pointer; margin-top:.65rem;">
+              <span>Kart üstü fragman önizlemesi</span>
+              <input id="admin-setting-hover" type="checkbox" ${siteSettings.hoverPreviewsEnabled !== false ? 'checked' : ''} />
+            </label>
+            <label class="admin-engine-row" style="cursor:pointer; margin-top:.65rem;">
+              <span>Fragmanları aç</span>
+              <input id="admin-setting-trailers" type="checkbox" ${siteSettings.trailersEnabled !== false ? 'checked' : ''} />
+            </label>
+            <label class="admin-engine-row" style="cursor:pointer; margin-top:.65rem;">
+              <span>Sonraki bölümü otomatik oynat</span>
+              <input id="admin-setting-autoplay-next" type="checkbox" ${siteSettings.autoplayNext !== false ? 'checked' : ''} />
+            </label>
+            <label class="admin-engine-row" style="cursor:pointer; margin-top:.65rem;">
+              <span>Altyazılar varsayılan olarak açık</span>
+              <input id="admin-setting-subtitles" type="checkbox" ${siteSettings.subtitlesEnabled !== false ? 'checked' : ''} />
+            </label>
+            <label class="admin-engine-row" style="cursor:pointer; margin-top:.65rem;">
+              <span>Varsayılan oynatma kalitesi</span>
+              <select id="admin-setting-resolution" class="admin-input-small" style="width:auto;min-width:110px;">
+                ${['720p', '1080p', '2160p'].map(value => `<option value="${value}" ${siteSettings.preferredResolution === value ? 'selected' : ''}>${value}</option>`).join('')}
+              </select>
+            </label>
+            <button id="admin-save-site-settings" class="admin-btn-accent" style="width:100%;justify-content:center;margin-top:1rem;">
+              <i data-lucide="save" style="width:16px;height:16px;"></i> Kontrolleri Uygula
+            </button>
+          </div>
+
+          <!-- 5. System & Cache Utilities Card -->
+          <div class="admin-card">
+            <div class="admin-card-header">
               <i data-lucide="trash-2" style="width: 20px; height: 20px; color: #ec4899;"></i>
               <h2 style="font-size: 1.15rem; font-weight: 700; color: #fff;">Sistem & Önbellek Temizliği</h2>
             </div>
@@ -247,9 +307,30 @@ export async function renderAdminView() {
       const lockBtn = container.querySelector('#admin-lock-btn');
       if (lockBtn) {
         lockBtn.addEventListener('click', () => {
-          isSessionUnlocked = false;
-          sessionStorage.removeItem('cinepulse_admin_unlocked');
+          lockAdminAccess();
           window.location.hash = '#home';
+        });
+      }
+
+      const saveSiteSettingsBtn = container.querySelector('#admin-save-site-settings');
+      if (saveSiteSettingsBtn) {
+        saveSiteSettingsBtn.addEventListener('click', () => {
+          const landscape = container.querySelector('#admin-setting-landscape')?.checked === true;
+          const hoverPreviewsEnabled = container.querySelector('#admin-setting-hover')?.checked === true;
+          const trailersEnabled = container.querySelector('#admin-setting-trailers')?.checked === true;
+          const autoplayNext = container.querySelector('#admin-setting-autoplay-next')?.checked === true;
+          const subtitlesEnabled = container.querySelector('#admin-setting-subtitles')?.checked === true;
+          const preferredResolution = container.querySelector('#admin-setting-resolution')?.value || '1080p';
+          saveUserSettings({
+            cardLayout: landscape ? 'landscape' : 'portrait',
+            hoverPreviewsEnabled,
+            trailersEnabled,
+            autoplayNext,
+            subtitlesEnabled,
+            preferredResolution
+          });
+          document.documentElement.classList.toggle('cards-landscape', landscape);
+          alert('Tüm profil kontrolleri uygulandı.');
         });
       }
 

@@ -1424,13 +1424,21 @@ export function getUserSettings() {
     autoplayNext: true,
     preferredResolution: '1080p',
     theme: 'dark',
-    subtitlesEnabled: true
+    subtitlesEnabled: true,
+    cardLayout: 'portrait',
+    hoverPreviewsEnabled: true,
+    trailersEnabled: true
   });
 }
 
 export function saveUserSettings(settings) {
   const current = getUserSettings();
   setLocalItem(STORAGE_KEYS.USER_SETTINGS, { ...current, ...settings });
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cinepulse_settings_changed', {
+      detail: { ...current, ...settings }
+    }));
+  }
 }
 
 /* ==========================================================================

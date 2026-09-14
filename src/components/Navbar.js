@@ -161,23 +161,6 @@ export function attachNavbarEvents(onNavigate) {
     });
   }
 
-  // Secret Admin Activation Trigger: 5 clicks on Brand Logo within 3 seconds
-  const brandLogo = document.getElementById('nav-brand-logo');
-  if (brandLogo) {
-    let logoClicks = 0;
-    let logoTimer = null;
-    brandLogo.addEventListener('click', (e) => {
-      logoClicks++;
-      clearTimeout(logoTimer);
-      logoTimer = setTimeout(() => { logoClicks = 0; }, 3000);
-      if (logoClicks >= 5) {
-        logoClicks = 0;
-        sessionStorage.setItem('cinepulse_admin_unlocked', 'true');
-        window.location.hash = '#admin';
-      }
-    });
-  }
-
   const notifBtn = document.getElementById('btn-nav-notifications');
   if (notifBtn) {
     notifBtn.addEventListener('click', () => {

@@ -7,6 +7,8 @@
    - Automatic multi-season and translation team (Fansub) resolution
    ========================================================================== */
 
+import { isStrictMediaTitleMatch } from './mediaMatcher.js';
+
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 function normalizeTitle(t) {
@@ -63,12 +65,7 @@ export async function fetchAnimecixSources({
       for (const item of data.results) {
         if (item && item.id && !seenAnimeIds.has(item.id)) {
           const itemTitle = normalizeTitle(item.name || item.name_english || item.name_romanji || item.original_title || '');
-          const queryNorm = cleanQ;
-          
-          // Strict check: Either exact match, or high word overlap
-          const isMatch = itemTitle === queryNorm || 
-            itemTitle.includes(queryNorm) || 
-            queryNorm.includes(itemTitle);
+          const isMatch = isStrictMediaTitleMatch(itemTitle, candidateQueries);
 
           if (isMatch) {
             seenAnimeIds.add(item.id);

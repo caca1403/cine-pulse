@@ -13,6 +13,9 @@ import { renderAdminView } from './views/AdminView.js';
 import { checkAndShowProfileOnboarding } from './components/ProfileOnboardingModal.js';
 import { saveAllScrollState, restoreAllScrollState } from './services/scrollManager.js';
 import { initPwa } from './services/pwaManager.js';
+import { getUserSettings } from './services/storage.js';
+import { renderCardLayoutSwitcher, attachCardLayoutSwitcherEvents } from './components/CardLayoutSwitcher.js';
+import { grantAdminEntry, isAdminRouteAllowed } from './services/adminAccess.js';
 
 // Disable browser default scroll jump on SPA hash changes
 if ('scrollRestoration' in history) {
@@ -29,7 +32,19 @@ if ('serviceWorker' in navigator && window.location.protocol.startsWith('http'))
 // Initialize PWA installation events
 initPwa();
 
+// Private admin entry: Ctrl + Alt + Shift + F10. Kept at the application root
+// so it is registered exactly once and works from every regular view.
+window.addEventListener('keydown', (event) => {
+  if (event.ctrlKey && event.altKey && event.shiftKey && event.key === 'F10') {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    grantAdminEntry();
+    window.location.hash = '#admin';
+  }
+}, true);
+
 const app = document.getElementById('app');
+document.documentElement.classList.toggle('cards-landscape', getUserSettings().cardLayout === 'landscape');
 
 // Record scroll position continuously
 window.addEventListener('scroll', () => {
@@ -73,9 +88,9 @@ async function route() {
   } else if (hash === '#library') {
     viewName = 'library';
   } else if (hash === '#admin') {
-    // Anyone typing #admin directly into browser URL is strictly blocked & sent home
-    const isUnlocked = sessionStorage.getItem('cinepulse_admin_unlocked') === 'true';
-    if (!isUnlocked) {
+    // Access grants live only in module memory. Typing #admin or forging a
+    // sessionStorage key can never open the authentication screen/dashboard.
+    if (!isAdminRouteAllowed()) {
       window.location.replace('#home');
       return;
     }
@@ -111,6 +126,8 @@ async function route() {
 
   // Render Navbar for regular application views
   const navbarHTML = renderNavbar(viewName);
+  const cardViews = new Set(['home', 'series', 'movies', 'anime', 'documentary', 'discover', 'library']);
+  const cardLayoutSwitcherHTML = cardViews.has(viewName) ? renderCardLayoutSwitcher() : '';
 
   let viewResult = null;
   if (viewName === 'home') {
@@ -135,6 +152,7 @@ async function route() {
 
   app.innerHTML = `
     ${navbarHTML}
+    ${cardLayoutSwitcherHTML}
     <main style="min-height: 85vh;">
       ${viewResult ? viewResult.html : '<h2>Sayfa Bulunamadı</h2>'}
     </main>
@@ -156,6 +174,7 @@ async function route() {
 
   // Attach navbar events
   attachNavbarEvents();
+  attachCardLayoutSwitcherEvents(app);
 
   // Initialize view scripts & icons
   if (viewResult && viewResult.init) {
@@ -196,6 +215,14 @@ window.addEventListener('sineflix_profile_changed', async () => {
   clearHomeCache();
   await route();
 });
+window.addEventListener('cinepulse_admin_state_changed', route);
+window.addEventListener('storage', (event) => {
+  if (event.key !== 'sineflix_user_settings_v1') return;
+  const settings = getUserSettings();
+  document.documentElement.classList.toggle('cards-landscape', settings.cardLayout === 'landscape');
+  clearHomeCache();
+  route();
+});
 
 /* ==========================================================================
    Client-Side Security Shield & Anti-Inspection Guard
@@ -210,18 +237,7 @@ window.addEventListener('sineflix_profile_changed', async () => {
 
   // 2. Admin & DevTools Key Guard
   window.addEventListener('keydown', (e) => {
-    // Secret Admin Shortcut: Alt + A or Ctrl + Shift + A (Case-insensitive & Layout-independent)
-    const codeKey = (e.code || '').toLowerCase();
     const keyStr = (e.key || '').toLowerCase();
-    const isAKey = codeKey === 'keya' || keyStr === 'a';
-
-    if (isAKey && (e.altKey || ((e.ctrlKey || e.metaKey) && e.shiftKey))) {
-      e.preventDefault();
-      e.stopPropagation();
-      sessionStorage.setItem('cinepulse_admin_unlocked', 'true');
-      window.location.hash = '#admin';
-      return false;
-    }
 
     // Block F12
     if (e.key === 'F12' || e.keyCode === 123) {

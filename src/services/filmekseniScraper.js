@@ -4,6 +4,7 @@
    ========================================================================== */
 
 import { extractEksenloadStream } from './streamExtractors.js';
+import { extractPageMediaTitle, isStrictMediaTitleMatch } from './mediaMatcher.js';
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const FILM_EKSENI_BASE = 'https://filmekseni.vip';
@@ -23,6 +24,25 @@ function slugify(text) {
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/[\s_]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+function isResultTypeValid(item, isSeries) {
+  const rawType = `${item?.contentableType || ''} ${item?.type || ''}`.toLowerCase();
+  const slug = String(item?.slug || '').toLowerCase();
+  const resultIsSeries = /series|serie|tv|dizi/.test(rawType) || slug.startsWith('dizi/');
+  const resultIsMovie = /movie|film/.test(rawType) && !resultIsSeries;
+  return isSeries ? resultIsSeries : !resultIsSeries && (resultIsMovie || rawType === '');
+}
+
+function validateFetchedPage(html, pageUrl, expectedTitles, isSeries) {
+  const canonical = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)/i)?.[1]
+    || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/i)?.[1]
+    || '';
+  const pageTitle = extractPageMediaTitle(html);
+  const resolvedPath = canonical || pageUrl;
+  const looksLikeSeries = /\/dizi\//i.test(resolvedPath) || /(?:dizi|series)[-_ ](?:detail|page|id)/i.test(html);
+  if (isSeries !== looksLikeSeries) return false;
+  return isStrictMediaTitleMatch(pageTitle, expectedTitles);
 }
 
 async function fetchFex(endpointOrUrl, options = {}) {
@@ -112,6 +132,7 @@ export async function fetchFilmEkseniSources({
   title = '',
   seriesTitle = '',
   originalTitle = '',
+  year = null,
   season = null,
   episode = null,
   isDub = true
@@ -156,6 +177,9 @@ export async function fetchFilmEkseniSources({
       if (Array.isArray(searchItems) && searchItems.length > 0) {
         for (const item of searchItems.slice(0, 4)) {
           if (!item.slug) continue;
+          if (!isResultTypeValid(item, isSeries)) continue;
+          if (!isStrictMediaTitleMatch(item.title || item.name || item.slug, allTitles)) continue;
+          if (!isSeries && year && item.releaseYear && Math.abs(Number(year) - Number(item.releaseYear)) > 1) continue;
           const cleanSlug = item.slug.replace(/^\/+/, '').replace(/\/+$/, '');
 
           if (isSeries) {
@@ -205,7 +229,8 @@ export async function fetchFilmEkseniSources({
   const sources = [];
 
   for (const match of htmlResults.filter(Boolean)) {
-    const { html } = match;
+    const { html, pageUrl } = match;
+    if (!validateFetchedPage(html, pageUrl, allTitles, isSeries)) continue;
 
     // Check for videoPlayerData JSON
     let parsedData = null;
