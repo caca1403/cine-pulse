@@ -1,0 +1,1 @@
+"Bu projenin kaynak kodları, tasarım ve arka uç entegrasyonları tarafıma aittir". İzinsiz kopyalandığı için depoyu 24 saat içinde kaldırmanızı rica ediyorum, aksi halde GitHub DMCA telif ihlali başvurusu ile yasal süreç başlatılıcaktır."
