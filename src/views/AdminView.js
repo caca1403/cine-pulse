@@ -14,10 +14,9 @@ import {
 } from '../services/storage.js';
 import { clearHomeCache } from './HomeView.js';
 
-let isSessionUnlocked = false;
-
 export async function renderAdminView() {
-  if (!isSessionUnlocked) {
+  const isUnlocked = sessionStorage.getItem('cinepulse_admin_unlocked') === 'true';
+  if (!isUnlocked) {
     return {
       html: `
         <div class="admin-auth-container animate-fade-in">
@@ -72,7 +71,6 @@ export async function renderAdminView() {
           e.preventDefault();
           const val = input.value.trim();
           if (verifyAdminPin(val)) {
-            isSessionUnlocked = true;
             sessionStorage.setItem('cinepulse_admin_unlocked', 'true');
             window.location.reload();
           } else {

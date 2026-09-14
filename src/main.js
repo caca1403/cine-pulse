@@ -73,11 +73,6 @@ async function route() {
   } else if (hash === '#library') {
     viewName = 'library';
   } else if (hash === '#admin') {
-    // #admin access protection: Cannot be accessed by simply typing #admin in URL
-    if (sessionStorage.getItem('cinepulse_admin_unlocked') !== 'true') {
-      window.location.hash = '#home';
-      return;
-    }
     viewName = 'admin';
   }
 
@@ -207,14 +202,17 @@ window.addEventListener('sineflix_profile_changed', async () => {
     return false;
   }, { capture: true });
 
-  // 2. Disable DevTools Shortcuts & Source Inspection
+  // 2. Admin & DevTools Key Guard
   document.addEventListener('keydown', (e) => {
-    // Secret Admin Shortcut for Owner: Ctrl+Alt+A / Cmd+Alt+A
-    if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'a' || e.key === 'A')) {
+    // Secret Admin Shortcuts: Alt+A OR Ctrl+Alt+A OR Ctrl+Shift+A
+    const isAltA = e.altKey && (e.key === 'a' || e.key === 'A' || e.code === 'KeyA');
+    const isCtrlShiftA = (e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'a' || e.key === 'A' || e.code === 'KeyA');
+    if (isAltA || isCtrlShiftA) {
       e.preventDefault();
+      e.stopPropagation();
       sessionStorage.setItem('cinepulse_admin_unlocked', 'true');
       window.location.hash = '#admin';
-      return;
+      return false;
     }
 
     // Block F12
@@ -225,7 +223,7 @@ window.addEventListener('sineflix_profile_changed', async () => {
 
     // Block Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U, Ctrl+S
     if (e.ctrlKey || e.metaKey) {
-      const k = e.key.toLowerCase();
+      const k = (e.key || '').toLowerCase();
       if (
         (e.shiftKey && (k === 'i' || k === 'j' || k === 'c')) ||
         k === 'u' ||
