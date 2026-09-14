@@ -174,13 +174,21 @@ export function renderLiveTvView() {
               <input type="text" id="tv-drawer-search-input" placeholder="Kanal ara..." />
             </div>
 
-            <div class="tv-drawer-cats" id="tv-drawer-cats">
-              ${LIVE_TV_CATEGORIES.map(cat => `
-                <button class="tv-drawer-cat-btn ${cat.id === activeCategory ? 'active' : ''}" data-cat="${cat.id}">
-                  <i data-lucide="${cat.icon}" style="width:12px;height:12px;"></i>
-                  <span>${cat.name}</span>
-                </button>
-              `).join('')}
+            <div class="tv-drawer-cats-wrapper">
+              <button class="tv-drawer-cat-arrow tv-drawer-cat-prev" id="tv-drawer-cat-prev" type="button" title="Geri">
+                <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
+              </button>
+              <div class="tv-drawer-cats" id="tv-drawer-cats">
+                ${LIVE_TV_CATEGORIES.map(cat => `
+                  <button class="tv-drawer-cat-btn ${cat.id === activeCategory ? 'active' : ''}" data-cat="${cat.id}">
+                    <i data-lucide="${cat.icon}" style="width:12px;height:12px;"></i>
+                    <span>${cat.name}</span>
+                  </button>
+                `).join('')}
+              </div>
+              <button class="tv-drawer-cat-arrow tv-drawer-cat-next" id="tv-drawer-cat-next" type="button" title="İleri">
+                <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+              </button>
             </div>
 
             <div class="tv-drawer-list" id="tv-drawer-list"></div>
@@ -329,6 +337,8 @@ export function renderLiveTvView() {
       const drawerCloseBtn = container.querySelector('#tv-drawer-close');
       const drawerSearchInput = container.querySelector('#tv-drawer-search-input');
       const drawerCats = container.querySelector('#tv-drawer-cats');
+      const drawerCatPrev = container.querySelector('#tv-drawer-cat-prev');
+      const drawerCatNext = container.querySelector('#tv-drawer-cat-next');
       const drawerList = container.querySelector('#tv-drawer-list');
 
       const channelGrid = container.querySelector('#tv-channel-grid');
@@ -717,6 +727,26 @@ export function renderLiveTvView() {
 
       drawerSearchInput.addEventListener('input', () => renderDrawerChannelList());
 
+      if (drawerCatPrev) {
+        drawerCatPrev.addEventListener('click', (e) => {
+          e.stopPropagation();
+          drawerCats.scrollBy({ left: -140, behavior: 'smooth' });
+        });
+      }
+      if (drawerCatNext) {
+        drawerCatNext.addEventListener('click', (e) => {
+          e.stopPropagation();
+          drawerCats.scrollBy({ left: 140, behavior: 'smooth' });
+        });
+      }
+
+      drawerCats.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+          e.preventDefault();
+          drawerCats.scrollLeft += e.deltaY;
+        }
+      }, { passive: false });
+
       drawerCats.querySelectorAll('.tv-drawer-cat-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           drawerCats.querySelectorAll('.tv-drawer-cat-btn').forEach(b => b.classList.remove('active'));
@@ -725,6 +755,7 @@ export function renderLiveTvView() {
           catStrip.querySelectorAll('.tv-cat-filter-btn').forEach(p => {
             p.classList.toggle('active', p.dataset.cat === activeCategory);
           });
+          btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
           renderAllViews();
         });
       });
