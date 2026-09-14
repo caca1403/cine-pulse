@@ -63,7 +63,15 @@ export function getProfiles() {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return defaultProfiles;
     const raw = localStorage.getItem('sineflix_profiles_list_v1');
-    return raw ? JSON.parse(raw) : defaultProfiles;
+    if (!raw) return defaultProfiles;
+    let profiles = JSON.parse(raw);
+    // Migration: remove deprecated prof_cinema if it still exists
+    const hadCinema = profiles.some(p => p.id === 'prof_cinema');
+    if (hadCinema) {
+      profiles = profiles.filter(p => p.id !== 'prof_cinema');
+      localStorage.setItem('sineflix_profiles_list_v1', JSON.stringify(profiles));
+    }
+    return profiles;
   } catch (_) {
     return defaultProfiles;
   }
