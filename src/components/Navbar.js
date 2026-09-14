@@ -35,7 +35,6 @@ export function renderNavbar(currentView = 'home') {
             <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="tv"></i><span>Diziler</span></a></li>
             <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="film"></i><span>Filmler</span></a></li>
             <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="sparkles"></i><span>Anime</span></a></li>
-            <li><a href="#documentary" class="nav-link ${currentView === 'documentary' ? 'active' : ''}"><i data-lucide="globe"></i><span>Belgesel</span></a></li>
             <li><a href="#discover" class="nav-link ${currentView === 'discover' ? 'active' : ''}"><i data-lucide="compass"></i><span>Keşfet</span></a></li>
             <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="bookmark"></i><span>Listem</span></a></li>
           `}
@@ -57,15 +56,10 @@ export function renderNavbar(currentView = 'home') {
           </div>
 
           <!-- Ne İzlesem? Quick Action Icon -->
-          <button id="btn-open-random-picker" class="btn-action-icon btn-random-nav" title="Ne İzlesem? (Rastgele Öneri)">
-            <i data-lucide="dices" style="width: 17px; height: 17px; color: #f59e0b;"></i>
-          </button>
+          <button id="btn-open-random-picker" class="btn-action-icon btn-random-nav mobile-only" title="Ne İzlesem? (Rastgele Öneri)"><i data-lucide="dices" style="width: 16px; height: 16px; color: var(--primary);"></i></button>
 
           <!-- Notification Bell Button -->
-          <button id="btn-nav-notifications" class="btn-action-icon btn-nav-bell" title="Bildirimler & Alarmlar">
-            <i data-lucide="bell" style="width: 17px; height: 17px;"></i>
-            <span id="nav-notif-badge" class="nav-notif-dot ${unreadCount > 0 ? '' : 'hidden'}">${unreadCount}</span>
-          </button>
+          <button id="btn-nav-notifications" class="btn-action-icon btn-nav-bell mobile-only" title="Bildirimler &amp; Alarmlar"><i data-lucide="bell" style="width: 16px; height: 16px;"></i><span id="nav-notif-badge" class="nav-notif-dot ${unreadCount > 0 ? '' : 'hidden'}">${unreadCount}</span></button>
 
           <!-- Kids Mode Active Pill (Quick Exit) -->
           ${activeProfile.isKid ? `
