@@ -1,36 +1,28 @@
-# DiziBol Pro - GitHub Pages Uyumlu Dizi & Film Platformu
+# 🎬 CinePulse Studio / DiziBol
 
-Bu proje, herhangi bir arka sunucuya (backend) veya veritabanına ihtiyaç duymadan, **GitHub Pages, Vercel, Netlify veya Cloudflare Pages** gibi ücretsiz statik hosting hizmetlerinde 7/24 kesintisiz çalışacak şekilde tasarlanmıştır.
-
----
-
-## 🌟 Öne Çıkan Özellikler
-
-- **100% Sunucusuz & Üyeliksiz**: Kullanıcı verileri, izleme geçmişi ve favoriler tarayıcının yerel depolama alanında (`localStorage`) saklanır.
-- **JSON Yedekleme & Cihaz Aktarımı**: İzleme geçmişinizi tek tıkla `.json` dosyası olarak indirebilir, başka bir cihazda yükleyerek kaldığınız yerden devam edebilirsiniz.
-- **TMDB API Entegrasyonu**: Trendler, posterler, arka plan görselleri, IMDb puanları ve bölüm detayları canlı çekilir.
-- **Çoklu Oynatıcı Sunucuları**: SezonlukDizi, FilmMakinesi, HDFilmCehennemi, Dizipal, Sinewix ve DiziBol VIP HD sunucuları üzerinden kesintisiz yayın.
+> **⚠️ TELİF VE KULLANIM HAKLARI UYARISI / PROPRIETARY SOFTWARE NOTICE**  
+> **Copyright (c) 2024-2026 Çağatay (caca1403). Tüm Hakları Saklıdır. / All Rights Reserved.**
 
 ---
 
-## 🚀 GitHub Pages'e Ücretsiz Yükleme Adımları
+### ⛔ YASAL BİLGİLENDİRME VE KULLANIM KOŞULLARI
 
-1. Bu projeyi GitHub hesabınızda yeni bir depoya (**repository**) push edin.
-2. Reponuzun **Settings (Ayarlar)** -> **Pages** sekmesine gidin.
-3. **Source (Kaynak)** seçeneğini **GitHub Actions** olarak ayarlayın.
+Bu projenin kaynak kodları, mimarisi, kullanıcı arayüz tasarımı, akış şemaları ve entegrasyonları **özel mülkiyete tabidir (proprietary software)**.
 
-Otomatik yayınlama iş akışı (`.github/workflows/deploy.yml`) kodları push ettiğiniz anda sitenizi `https://kullaniciadi.github.io/dizibol-web` adresinde canlıya alacaktır!
+* ❌ **Fork Yapılamaz ve Kopyalanamaz:** Bu deponun veya içeriğinin GitHub veya başka platformlar üzerinde forklanması, kopyalanması, klonlanması veya aynalanması (mirroring) kesinlikle yasaktır.
+* ❌ **Yeniden Dağıtılamaz:** Kodların tamamı veya herhangi bir parçası ticari veya ticari olmayan hiçbir amaçla üçüncü şahıslarla paylaşılamaz, dağıtılamaz veya yeniden yayınlanamaz.
+* ❌ **Değiştirilemez ve Yeniden Adlandırılamaz:** Projenin veya kodlarının başkası tarafından kendi eseriymiş gibi sunulması, yeniden paketlenmesi veya isim değiştirilerek yayınlanması telif hakkı ihlalidir.
+* ⚖️ **Hukuki Yaptırım:** Tespit edilen izinsiz fork, kopya veya yayınlar için doğrudan **GitHub DMCA Takedown** başvurusu yapılmakta ve ilgili hesaplar hakkında yasal işlem başlatılmaktadır.
 
 ---
 
-## 💻 Yerelde Çalıştırma
+### 🌐 ENGLISH NOTICE
 
-```bash
-npm install
-npm run dev
-```
+This repository and all associated source code, design assets, and architecture are the exclusive intellectual property of the author (**caca1403**).
 
-Derleme almak için:
-```bash
-npm run build
-```
+* **No License Granted:** No permission is granted to copy, distribute, modify, fork, reverse engineer, or deploy this project, either commercially or non-commercially.
+* **Unauthorized Copies:** Any unauthorized forks, clones, or derivative works will be immediately subject to DMCA takedown requests and relevant copyright enforcement procedures.
+
+---
+
+*İletişim ve Yetkilendirme için GitHub profili üzerinden iletişime geçiniz.*
