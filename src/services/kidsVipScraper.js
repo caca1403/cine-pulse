@@ -262,6 +262,28 @@ export async function fetchKidsVipSources({
           }
         }
 
+        // Current KidsVIP episodes may expose a YouTube player instead of
+        // Sibnet. Keep it as an iframe source so it is not sent to the native
+        // HLS/MP4 video element.
+        if (s.type === 'youtube' && s.ytId) {
+          const youtubeEmbed = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(s.ytId)}?autoplay=1&rel=0&playsinline=1`;
+          if (!seenStreams.has(youtubeEmbed)) {
+            seenStreams.add(youtubeEmbed);
+            sources.push({
+              id: `kvip_youtube_${s.ytId}_${isDub ? 'dub' : 'sub'}`,
+              name: `Kids VIP - HD (${isDub ? 'TR Dublaj' : 'AltyazÄ±lÄ±'})`,
+              displayName: `Kids VIP (${isDub ? 'TR Dublaj' : 'AltyazÄ±lÄ±'})`,
+              badge: 'âš¡ Kids VIP',
+              category: isDub ? 'dubbed' : 'subtitled',
+              streamUrl: youtubeEmbed,
+              url: youtubeEmbed,
+              type: 'embed',
+              getUrl: () => youtubeEmbed
+            });
+            continue;
+          }
+        }
+
         // 2. Generic stream fallback
         if (s.streamUrl && !seenStreams.has(s.streamUrl)) {
           seenStreams.add(s.streamUrl);
@@ -357,6 +379,24 @@ export async function fetchKidsVipMovieSources({
               type: 'mp4',
               quality: '1080p',
               getUrl: () => directMp4
+            });
+          }
+        }
+
+        if (s.type === 'youtube' && s.ytId) {
+          const youtubeEmbed = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(s.ytId)}?autoplay=1&rel=0&playsinline=1`;
+          if (!seenStreams.has(youtubeEmbed)) {
+            seenStreams.add(youtubeEmbed);
+            sources.push({
+              id: `kvip_movie_youtube_${s.ytId}_${isDub ? 'dub' : 'sub'}`,
+              name: `Kids VIP - HD (${isDub ? 'TR Dublaj' : 'AltyazÄ±lÄ±'})`,
+              displayName: `Kids VIP (${isDub ? 'TR Dublaj' : 'AltyazÄ±lÄ±'})`,
+              badge: 'âš¡ Kids VIP',
+              category: isDub ? 'dubbed' : 'subtitled',
+              streamUrl: youtubeEmbed,
+              url: youtubeEmbed,
+              type: 'embed',
+              getUrl: () => youtubeEmbed
             });
           }
         }
