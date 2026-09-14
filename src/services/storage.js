@@ -57,7 +57,7 @@ function clearStorageCache() {
 
 export function getProfiles() {
   const defaultProfiles = [
-    { id: 'prof_1', name: 'Çağatay', avatar: 'user-circle', isKid: false, color: '#f59e0b' },
+    { id: 'prof_1', name: 'Profilim', avatar: 'user-circle', isKid: false, color: '#f59e0b' },
     { id: 'prof_kids', name: 'Çocuk Modu 🎈', avatar: 'baby', isKid: true, color: '#38bdf8' }
   ];
   try {
@@ -85,13 +85,123 @@ export function saveProfiles(profilesList) {
   } catch (_) {}
 }
 
+export function isProfileSetupComplete() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return true;
+    return localStorage.getItem('cinepulse_onboarding_completed') === 'true';
+  } catch (_) {
+    return true;
+  }
+}
+
+export function completeProfileSetup({ name, avatar = 'user-circle', color = '#f59e0b', isKid = false }) {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    const cleanName = (name || '').trim() || (isKid ? 'Çocuk' : 'Profilim');
+    let profiles = getProfiles();
+    const profIndex = profiles.findIndex(p => p.id === 'prof_1');
+    const updatedProfile = {
+      id: 'prof_1',
+      name: cleanName,
+      avatar,
+      color,
+      isKid: Boolean(isKid)
+    };
+    if (profIndex !== -1) {
+      profiles[profIndex] = updatedProfile;
+    } else {
+      profiles.unshift(updatedProfile);
+    }
+    saveProfiles(profiles);
+    setActiveProfile('prof_1');
+    localStorage.setItem('cinepulse_onboarding_completed', 'true');
+    window.dispatchEvent(new CustomEvent('sineflix_profile_changed', { detail: { profileId: 'prof_1' } }));
+    return updatedProfile;
+  } catch (_) {
+    return null;
+  }
+}
+
+const DEFAULT_ADMIN_PIN = '1403';
+
+export function getAdminPin() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return DEFAULT_ADMIN_PIN;
+    return localStorage.getItem('cinepulse_admin_pin') || DEFAULT_ADMIN_PIN;
+  } catch (_) {
+    return DEFAULT_ADMIN_PIN;
+  }
+}
+
+export function setAdminPin(newPin) {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return false;
+    if (!newPin || String(newPin).length < 4) return false;
+    localStorage.setItem('cinepulse_admin_pin', String(newPin));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+export function verifyAdminPin(pin) {
+  return String(pin).trim() === getAdminPin().trim();
+}
+
+export function getBlockedContent() {
+  const defaultBlocked = ['clitoris', 'le clitoris', 'erotik', 'porn'];
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return defaultBlocked;
+    const raw = localStorage.getItem('cinepulse_blocked_content');
+    if (!raw) return defaultBlocked;
+    return JSON.parse(raw);
+  } catch (_) {
+    return defaultBlocked;
+  }
+}
+
+export function addBlockedContent(entry) {
+  if (!entry) return;
+  const list = getBlockedContent();
+  const clean = String(entry).trim().toLowerCase();
+  if (!list.includes(clean)) {
+    list.push(clean);
+    try {
+      localStorage.setItem('cinepulse_blocked_content', JSON.stringify(list));
+    } catch (_) {}
+  }
+}
+
+export function removeBlockedContent(entry) {
+  if (!entry) return;
+  let list = getBlockedContent();
+  const clean = String(entry).trim().toLowerCase();
+  list = list.filter(item => String(item).toLowerCase() !== clean);
+  try {
+    localStorage.setItem('cinepulse_blocked_content', JSON.stringify(list));
+  } catch (_) {}
+}
+
+export function isContentBlocked(item) {
+  if (!item) return false;
+  const blockedList = getBlockedContent();
+  const idStr = String(item.id || '');
+  const text = `${item.title || ''} ${item.name || ''} ${item.original_title || ''} ${item.original_name || ''}`.toLowerCase();
+  return blockedList.some(b => {
+    const s = String(b).toLowerCase().trim();
+    if (!s) return false;
+    if (idStr === s) return true;
+    return text.includes(s);
+  });
+}
+
 export function getActiveProfile() {
   try {
     const profiles = getProfiles();
     const activeId = localStorage.getItem('sineflix_active_profile_id') || 'prof_1';
     return profiles.find(p => p.id === activeId) || profiles[0];
   } catch (_) {
-    return { id: 'prof_1', name: 'Çağatay', avatar: 'user-circle', isKid: false, color: '#f59e0b' };
+    return { id: 'prof_1', name: 'Profilim', avatar: 'user-circle', isKid: false, color: '#f59e0b' };
   }
 }
 
@@ -114,6 +224,7 @@ export function isKidProfileActive() {
 export function isItemKidSafe(item) {
   if (!item) return false;
   if (item.adult === true) return false;
+  if (isContentBlocked(item)) return false;
 
   // Mature genres to strictly block: Horror (27), Crime (80), War (10752/10768), Thriller (53), Drama (18)
   const matureGenreIds = [27, 80, 10752, 10768, 53, 18];

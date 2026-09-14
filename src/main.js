@@ -9,6 +9,8 @@ import { renderLibraryView } from './views/LibraryView.js';
 import { renderDiscoverView } from './views/DiscoverView.js';
 import { renderPopularListView } from './views/PopularListView.js';
 import { renderLiveTvView } from './views/LiveTvView.js';
+import { renderAdminView } from './views/AdminView.js';
+import { checkAndShowProfileOnboarding } from './components/ProfileOnboardingModal.js';
 import { saveAllScrollState, restoreAllScrollState } from './services/scrollManager.js';
 import { initPwa } from './services/pwaManager.js';
 
@@ -70,6 +72,8 @@ async function route() {
     viewName = 'discover';
   } else if (hash === '#library') {
     viewName = 'library';
+  } else if (hash === '#admin') {
+    viewName = 'admin';
   }
 
   // Render Navbar
@@ -106,6 +110,8 @@ async function route() {
     viewResult = await renderDiscoverView('tv');
   } else if (viewName === 'library') {
     viewResult = renderLibraryView();
+  } else if (viewName === 'admin') {
+    viewResult = await renderAdminView();
   }
 
   app.innerHTML = `
@@ -151,6 +157,11 @@ window.addEventListener('DOMContentLoaded', route);
 
 // Immediate execution for module script execution
 route();
+
+// Check if first-time visitor needs to create their personal profile
+setTimeout(() => {
+  checkAndShowProfileOnboarding();
+}, 400);
 
 // Data change event listeners (Only reload whole route when backup data is imported or cleared)
 const onExternalDataImport = (e) => {

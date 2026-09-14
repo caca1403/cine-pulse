@@ -187,18 +187,16 @@ export async function renderHomeView() {
         popularTV,
         popularMovies,
         kidsAdventures,
-        animeItems,
-        docItems
+        animeItems
       ] = await Promise.all([
         fetchKidsPopularSeries(1),
         fetchKidsPopularMovies(1),
         fetchKidsAdventures(1),
-        fetchKidsAnime(1),
-        fetchKidsDocumentaries(1)
+        fetchKidsAnime(1)
       ]);
       const kidsHeroPool = [...(popularMovies || []), ...(popularTV || [])].filter(i => i.backdrop_path && isItemKidSafe(i));
       trending = kidsHeroPool.slice(0, 10);
-      homeDataCache = { isKid: true, trending, popularTV, popularMovies, kidsAdventures, animeItems, docItems };
+      homeDataCache = { isKid: true, trending, popularTV, popularMovies, kidsAdventures, animeItems };
     } else {
       [
         trending,
@@ -247,9 +245,7 @@ export async function renderHomeView() {
     if (!railState['rail-top-movies']) railState['rail-top-movies'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) };
     if (!railState['rail-anime']) railState['rail-anime'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularAnime };
   }
-  if (isKid) {
-    if (!railState['rail-documentary']) railState['rail-documentary'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsDocumentaries };
-  } else {
+  if (!isKid) {
     if (!railState['rail-documentary']) railState['rail-documentary'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularDocumentaries };
   }
   Object.values(railState).forEach(s => { s.loading = false; });
@@ -287,14 +283,6 @@ export async function renderHomeView() {
         title: '🎌 Çocuk & Genç Anime Dünyası',
         accent:'#a855f7',
         items: animeItems
-      }) : ''}
-
-      ${docItems && docItems.length > 0 ? renderInfiniteRail({
-        id:    'rail-documentary',
-        icon:  'globe',
-        title: '🐾 Sevimli Hayvanlar & Doğa Alemi',
-        accent:'#10b981',
-        items: docItems
       }) : ''}
     `;
   } else {
