@@ -349,7 +349,7 @@ const server = http.createServer(async (req, res) => {
         
         try {
           const osRes = await fetch(osUrl, {
-            headers: { 'User-Agent': 'VLCSub 0.10.0' },
+            headers: { 'User-Agent': 'CinePulse/1.0' },
             signal: AbortSignal.timeout(3500)
           });
           if (osRes.ok) {

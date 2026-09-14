@@ -60,7 +60,7 @@ export async function openPlayerModal({
   if (!originalWindowOpen) originalWindowOpen = window.open;
   window.open = function (url, target, features) {
     if (typeof url === 'string') {
-      const allowed = ['vlc://', 'api.themoviedb.org', 'image.tmdb.org'];
+      const allowed = ['api.themoviedb.org', 'image.tmdb.org'];
       if (allowed.some(a => url.startsWith(a))) {
         return originalWindowOpen.call(window, url, target, features);
       }
@@ -729,14 +729,13 @@ export async function openPlayerModal({
           <div class="torrent-sub-tip-bar" style="background:linear-gradient(90deg, #111827, #1f2937);border-bottom:1px solid rgba(255,255,255,0.12);padding:7px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:#e5e7eb;z-index:10;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:8px;">
               <span style="background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);padding:2px 7px;border-radius:4px;font-weight:700;">⚡ YTS / Torrent</span>
-              <span>Altyazı için player içindeki <b>CC</b> simgesini kullanabilir veya harici oynatıcıda izleyebilirsiniz.</span>
+              <span>Altyazı için oynatıcı içindeki <b>CC</b> simgesini kullanabilirsiniz.</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
               <button id="btn-switch-vip-direct" class="btn-primary" style="padding:3px 10px;font-size:11px;border-radius:4px;background:#e11d48;display:inline-flex;align-items:center;gap:4px;" title="Reklamsız VIP Kaynağa Geç">
                 <span>⚡ Reklamsız Kaynak</span>
               </button>
               <a href="${subDownloadUrl}" target="_blank" download class="btn-secondary" style="padding:3px 8px;font-size:11px;border-radius:4px;text-decoration:none;color:#fff;" title="Türkçe Altyazıyı İndir">📥 TR Altyazı</a>
-              ${magnetLink ? `<a href="vlc://${magnetLink}" class="btn-secondary" style="padding:3px 8px;font-size:11px;border-radius:4px;text-decoration:none;color:#fff;" title="VLC ile Aç">VLC</a>` : ''}
               ${magnetLink ? `<a href="${magnetLink}" class="btn-secondary" style="padding:3px 8px;font-size:11px;border-radius:4px;text-decoration:none;color:#fff;" title="Magnet Linki">🧲 Magnet</a>` : ''}
             </div>
           </div>
@@ -785,20 +784,6 @@ export async function openPlayerModal({
         </div>
       ` : '';
 
-      const floatingAudioTip = !hasDubbedAudio ? `
-        <div class="floating-audio-chip" id="floating-audio-chip">
-          <div class="audio-chip-content">
-            <i data-lucide="volume-2" style="width: 13px; height: 13px; color: #f59e0b;"></i>
-            <span>Ses Gelmiyor mu?</span>
-            <a href="vlc://${streamUrl}" class="btn-audio-mini" title="VLC ile Aç">VLC</a>
-            <a href="${streamUrl}" target="_blank" download class="btn-audio-mini" title="İndir">İndir</a>
-          </div>
-          <button class="btn-audio-chip-close" onclick="document.getElementById('floating-audio-chip')?.remove()">
-            <i data-lucide="x" style="width: 12px; height: 12px;"></i>
-          </button>
-        </div>
-      ` : '';
-
       // Resolve effective subtitles (check current srv, then fallback to any available subtitles in active servers)
       const effectiveSubtitles = resolveEffectiveSubtitles(srv);
 
@@ -844,8 +829,6 @@ export async function openPlayerModal({
             ${tracksHTML}
           </video>
           ${dubbedAudioHTML}
-          ${floatingAudioTip}
-
           <!-- Screen Lock / Unlock Overlay Buttons -->
           <button class="custom-screen-lock-btn" id="custom-btn-screen-lock" title="Ekranı Kilitle">
             <i data-lucide="unlock" style="width: 16px; height: 16px;"></i>

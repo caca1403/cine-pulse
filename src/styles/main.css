@@ -4438,60 +4438,6 @@ img {
   border-radius: var(--radius-full);
 }
 
-/* Floating Audio / AC3 Chip */
-.floating-audio-chip {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  background: rgba(14, 20, 32, 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  padding: 0.45rem 0.85rem;
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  z-index: 20;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
-  animation: slideDown 0.3s ease;
-}
-
-.audio-chip-content {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #e2e8f0;
-}
-
-.btn-audio-mini {
-  background: var(--primary);
-  color: #000;
-  font-weight: 800;
-  font-size: 0.70rem;
-  padding: 0.18rem 0.55rem;
-  border-radius: 4px;
-  text-decoration: none;
-  border: none;
-  cursor: pointer;
-}
-
-.btn-audio-chip-close {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  padding: 0;
-}
-
-.btn-audio-chip-close:hover {
-  color: #fff;
-}
-
 /* Direct Video Wrapper */
 .direct-video-wrapper {
   position: relative;
@@ -5542,25 +5488,6 @@ video::cue {
   .dual-audio-source-name {
     display: none !important;
   }
-  .floating-audio-chip {
-    top: 46px !important;
-    right: 8px !important;
-    left: auto !important;
-    padding: 0.25rem 0.55rem !important;
-    gap: 0.35rem !important;
-    max-width: 85vw !important;
-    z-index: 40 !important;
-  }
-  .audio-chip-content {
-    font-size: 0.70rem !important;
-    gap: 0.35rem !important;
-  }
-  .audio-chip-content span {
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: 140px !important;
-  }
   .custom-player-menu {
     bottom: 50px !important;
     right: 8px !important;
@@ -5813,17 +5740,6 @@ video::cue {
   box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
 }
 
-.btn-torrent-vlc {
-  background: rgba(255, 107, 0, 0.15);
-  color: #ff8c38 !important;
-  border: 1px solid rgba(255, 107, 0, 0.4);
-}
-
-.btn-torrent-vlc:hover {
-  background: rgba(255, 107, 0, 0.25);
-  transform: translateY(-2px);
-}
-
 .btn-torrent-copy {
   background: rgba(255, 255, 255, 0.08);
   color: #e2e8f0;
@@ -5988,11 +5904,6 @@ video::cue {
     text-align: center !important;
     padding: 0.6rem 0.75rem !important;
     font-size: 0.8rem !important;
-  }
-  .floating-audio-chip {
-    max-width: 92% !important;
-    font-size: 0.7rem !important;
-    padding: 0.35rem 0.6rem !important;
   }
 }
 
