@@ -113,7 +113,7 @@ let memoryJwtExp = 0;
 
 const isNodeEnv = typeof window === 'undefined';
 function getRtvFetchUrl(subPath) {
-  return isNodeEnv ? `https://a.prectv70.lol/api${subPath}` : `/api/rtv${subPath}`;
+  return isNodeEnv ? `https://a.prectv70.lol/api${subPath}` : `/api/rtv`;
 }
 
 /**
@@ -139,7 +139,10 @@ export async function getValidRecTvJwt() {
   try {
     // 1. GET /api/attest/nonce
     const noncePath = '/api/attest/nonce';
-    const nonceHeaders = await createHmacHeaders('GET', noncePath, '');
+    const nonceHeaders = {
+      ...(await createHmacHeaders('GET', noncePath, '')),
+      'x-rtv-path': '/attest/nonce'
+    };
     const nonceRes = await fetch(getRtvFetchUrl('/attest/nonce'), {
       method: 'GET',
       headers: nonceHeaders
@@ -171,6 +174,7 @@ export async function getValidRecTvJwt() {
 
     const verifyHeaders = {
       ...(await createHmacHeaders('POST', verifyPath, verifyReqBody)),
+      'x-rtv-path': '/attest/verify',
       'Content-Type': 'application/json'
     };
 
@@ -249,6 +253,7 @@ async function recTvApiRequest(apiPath, method = 'GET', bodyStr = '') {
   const headers = {
     ...hmacHeaders,
     'Authorization': `Bearer ${jwt}`,
+    'x-rtv-path': apiPath,
     ...(bodyStr ? { 'Content-Type': 'application/json' } : {})
   };
 

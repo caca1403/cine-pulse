@@ -17,7 +17,7 @@ export default async function handler(request) {
   try {
     const urlObj = new URL(request.url);
 
-    let subPath = urlObj.searchParams.get('path');
+    let subPath = request.headers.get('x-rtv-path') || urlObj.searchParams.get('path');
     if (!subPath) {
       subPath = urlObj.pathname.replace(/^\/api\/rtv\/?/, '');
     }
@@ -36,7 +36,7 @@ export default async function handler(request) {
     // Forward all incoming custom headers from the client
     for (const [k, v] of request.headers.entries()) {
       const lk = k.toLowerCase();
-      if (lk === 'host' || lk === 'origin' || lk === 'referer' || lk === 'user-agent') continue;
+      if (lk === 'host' || lk === 'origin' || lk === 'referer' || lk === 'user-agent' || lk === 'x-rtv-path') continue;
       forwardHeaders.set(k, v);
     }
 
