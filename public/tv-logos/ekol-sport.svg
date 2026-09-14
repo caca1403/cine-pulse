@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 60" width="190" height="60">
+    <defs>
+      <linearGradient id="ekolGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#3b82f6"/>
+        <stop offset="100%" stop-color="#8b5cf6"/>
+      </linearGradient>
+    </defs>
+    <rect x="10" y="12" width="36" height="36" rx="8" fill="url(#ekolGrad)"/>
+    <text x="28" y="35" dominant-baseline="central" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="22" fill="#ffffff">E</text>
+    <text x="54" y="30" font-family="sans-serif" font-weight="800" font-size="18" fill="#ffffff" letter-spacing="1">EKOL</text>
+    <text x="54" y="45" font-family="sans-serif" font-weight="700" font-size="13" fill="#38bdf8" letter-spacing="2">SPORT</text>
+  </svg>

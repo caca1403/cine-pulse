@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 60" width="180" height="60">
+    <circle cx="28" cy="30" r="18" fill="#7f1d1d" stroke="#d97706" stroke-width="2"/>
+    <text x="28" y="36" dominant-baseline="central" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="20" fill="#fbbf24">T</text>
+    <text x="55" y="29" font-family="sans-serif" font-weight="800" font-size="17" fill="#ffffff" letter-spacing="1.5">TARİH</text>
+    <text x="55" y="46" font-family="sans-serif" font-weight="900" font-size="14" fill="#f59e0b" letter-spacing="2">TV</text>
+  </svg>

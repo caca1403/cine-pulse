@@ -499,13 +499,29 @@ export function renderLiveTvView() {
         toggleFav(activeChannel.id);
       });
 
-      // ─── HLS Stream Engine ───
+      // ─── HLS Stream Engine with Sequential Cancellation Token ───
+      let channelPlaybackToken = 0;
+
       async function loadChannel(channel) {
+        const myToken = ++channelPlaybackToken;
         activeChannel = channel;
 
+        // 1. Immediately HARD STOP and detach previous playback to prevent audio echo
         if (activeHls) {
-          activeHls.destroy();
+          try {
+            activeHls.stopLoad();
+            activeHls.detachMedia();
+            activeHls.destroy();
+          } catch (_) {}
           activeHls = null;
+        }
+
+        if (videoEl) {
+          try {
+            videoEl.pause();
+            videoEl.removeAttribute('src');
+            videoEl.load();
+          } catch (_) {}
         }
 
         loadingEl.classList.remove('hidden');
@@ -515,45 +531,72 @@ export function renderLiveTvView() {
         if (channel.isTvr && channel.tvrId) {
           try {
             const freshUrl = await getRecTvChannelStreamUrl(channel.tvrId);
+            // If user clicked another channel while token was fetching, discard stale stream
+            if (channelPlaybackToken !== myToken) return;
             if (freshUrl) {
               channel.streamUrl = freshUrl;
             }
           } catch (_) {}
         }
 
+        if (channelPlaybackToken !== myToken) return;
+
         updateTopBar();
         showOSD();
         renderAllViews();
 
         function startHls(url) {
+          if (channelPlaybackToken !== myToken) return;
+
           if (window.Hls && window.Hls.isSupported()) {
-            if (activeHls) activeHls.destroy();
+            if (activeHls) {
+              try {
+                activeHls.stopLoad();
+                activeHls.detachMedia();
+                activeHls.destroy();
+              } catch (_) {}
+              activeHls = null;
+            }
 
             const hls = new window.Hls({
               enableWorker: true,
               lowLatencyMode: true,
-              backBufferLength: 60,
-              maxBufferLength: 20,
-              maxMaxBufferLength: 40,
+              backBufferLength: 30,
+              maxBufferLength: 15,
+              maxMaxBufferLength: 30,
               liveSyncDurationCount: 3
             });
             activeHls = hls;
+
             hls.loadSource(url);
             hls.attachMedia(videoEl);
 
             hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+              if (channelPlaybackToken !== myToken) {
+                try {
+                  hls.stopLoad();
+                  hls.detachMedia();
+                  hls.destroy();
+                } catch (_) {}
+                return;
+              }
               loadingEl.classList.add('hidden');
               errorEl.classList.add('hidden');
               videoEl.play().catch(() => {});
             });
 
             hls.on(window.Hls.Events.ERROR, (_, data) => {
+              if (channelPlaybackToken !== myToken) return;
               if (data.fatal) {
                 console.warn('[LiveTV] Fatal HLS error on:', url, data.type, data.details);
                 loadingEl.classList.add('hidden');
                 errorEl.classList.remove('hidden');
                 if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
-                  setTimeout(() => hls.startLoad(), 3500);
+                  setTimeout(() => {
+                    if (channelPlaybackToken === myToken && activeHls) {
+                      hls.startLoad();
+                    }
+                  }, 3500);
                 }
               }
             });
@@ -561,11 +604,13 @@ export function renderLiveTvView() {
             // Safari iOS/macOS
             videoEl.src = url;
             videoEl.addEventListener('loadedmetadata', () => {
+              if (channelPlaybackToken !== myToken) return;
               loadingEl.classList.add('hidden');
               errorEl.classList.add('hidden');
               videoEl.play().catch(() => {});
             }, { once: true });
             videoEl.addEventListener('error', () => {
+              if (channelPlaybackToken !== myToken) return;
               loadingEl.classList.add('hidden');
               errorEl.classList.remove('hidden');
             }, { once: true });
@@ -879,11 +924,34 @@ export function renderLiveTvView() {
       }
       document.addEventListener('keydown', handleKeyboard);
 
-      // Clean up on navigation
+      // ─── Global Clean Up & Lifecycle Manager ───
+      const stopAllPlayback = () => {
+        channelPlaybackToken++;
+        if (activeHls) {
+          try {
+            activeHls.stopLoad();
+            activeHls.detachMedia();
+            activeHls.destroy();
+          } catch (_) {}
+          activeHls = null;
+        }
+        if (videoEl) {
+          try {
+            videoEl.pause();
+            videoEl.removeAttribute('src');
+            videoEl.load();
+          } catch (_) {}
+        }
+        document.removeEventListener('keydown', handleKeyboard);
+      };
+
+      window.__LiveTvController = {
+        cleanup: stopAllPlayback
+      };
+
       const observer = new MutationObserver(() => {
         if (!document.contains(container)) {
-          if (activeHls) { activeHls.destroy(); activeHls = null; }
-          document.removeEventListener('keydown', handleKeyboard);
+          stopAllPlayback();
           observer.disconnect();
         }
       });

@@ -75,6 +75,18 @@ async function route() {
   // Render Navbar
   const navbarHTML = renderNavbar(viewName);
 
+  // Clean up any running live TV stream or video before routing or unmounting DOM
+  if (window.__LiveTvController && typeof window.__LiveTvController.cleanup === 'function') {
+    window.__LiveTvController.cleanup();
+  }
+  document.querySelectorAll('video, audio').forEach(el => {
+    try {
+      el.pause();
+      el.removeAttribute('src');
+      el.load();
+    } catch (_) {}
+  });
+
   let viewResult = null;
   if (viewName === 'home') {
     viewResult = await renderHomeView();
