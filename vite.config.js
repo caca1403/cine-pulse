@@ -276,6 +276,13 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    outDir: 'dist'
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'esbuild',
+    cssMinify: true
+  },
+  esbuild: {
+    drop: ['console', 'debugger'],
+    legalComments: 'none'
   }
 });

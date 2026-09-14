@@ -3,7 +3,6 @@
    ========================================================================== */
 
 import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
-import { openRandomPickerModal } from './RandomPickerModal.js';
 import { openProfileModal, triggerProfileSwitchTransition } from './ProfileModal.js';
 import { getActiveProfile, setActiveProfile, getProfiles } from '../services/storage.js';
 import { openNotificationCenterModal, getUnreadNotificationCount, updateNotificationBellBadge } from './NotificationCenterModal.js';
@@ -15,7 +14,7 @@ export function renderNavbar(currentView = 'home') {
   const navbarHTML = `
     <nav class="navbar" id="main-navbar">
       <div class="nav-container">
-        <a href="#home" class="nav-brand">
+        <a href="#home" class="nav-brand" id="nav-brand-logo" title="CinePulse Studio">
           <div class="brand-logo-icon">
             <i data-lucide="clapperboard" style="width:18px; height:18px; color:#fff;"></i>
           </div>
@@ -35,6 +34,7 @@ export function renderNavbar(currentView = 'home') {
             <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}"><i data-lucide="monitor-play"></i><span>Diziler</span></a></li>
             <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}"><i data-lucide="popcorn"></i><span>Filmler</span></a></li>
             <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="cat"></i><span>Anime</span></a></li>
+            <li><a href="#documentary" class="nav-link ${currentView === 'documentary' ? 'active' : ''}"><i data-lucide="globe"></i><span>Belgesel</span></a></li>
             <li><a href="#discover" class="nav-link ${currentView === 'discover' ? 'active' : ''}"><i data-lucide="compass"></i><span>Keşfet</span></a></li>
             <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="heart"></i><span>Listem</span></a></li>
           `}
@@ -57,13 +57,8 @@ export function renderNavbar(currentView = 'home') {
             <div id="search-overlay" class="search-results-overlay glass-panel hidden"></div>
           </div>
 
-          <!-- Ne İzlesem? Quick Action Icon -->
-          <button id="btn-open-random-picker" class="btn-action-icon btn-random-nav mobile-only" title="Ne İzlesem? (Rastgele Öneri)"><i data-lucide="dices" style="width: 16px; height: 16px; color: var(--primary);"></i></button>
-
           <!-- Notification Bell Button -->
-          <button id="btn-nav-notifications" class="btn-action-icon btn-nav-bell mobile-only" title="Bildirimler &amp; Alarmlar"><i data-lucide="bell" style="width: 16px; height: 16px;"></i><span id="nav-notif-badge" class="nav-notif-dot ${unreadCount > 0 ? '' : 'hidden'}">${unreadCount}</span></button>
-
-
+          <button id="btn-nav-notifications" class="btn-action-icon btn-nav-bell" title="Bildirimler &amp; Alarmlar"><i data-lucide="bell" style="width: 16px; height: 16px;"></i><span id="nav-notif-badge" class="nav-notif-dot ${unreadCount > 0 ? '' : 'hidden'}">${unreadCount}</span></button>
 
           <!-- Profile Switcher Button (Compact Circular Avatar) -->
           <button id="btn-nav-profile" class="btn-nav-avatar" title="Profil: ${activeProfile.name} (Değiştir / Ayarlar)">
@@ -109,6 +104,10 @@ export function renderNavbar(currentView = 'home') {
       <a href="#anime" class="dock-item ${currentView === 'anime' ? 'active' : ''}">
         <i data-lucide="cat"></i>
         <span>Anime</span>
+      </a>
+      <a href="#documentary" class="dock-item ${currentView === 'documentary' ? 'active' : ''}">
+        <i data-lucide="globe"></i>
+        <span>Belgesel</span>
       </a>
       <a href="#discover" class="dock-item ${currentView === 'discover' ? 'active' : ''}">
         <i data-lucide="compass"></i>
@@ -162,10 +161,20 @@ export function attachNavbarEvents(onNavigate) {
     });
   }
 
-  const randomPickerBtn = document.getElementById('btn-open-random-picker');
-  if (randomPickerBtn) {
-    randomPickerBtn.addEventListener('click', () => {
-      openRandomPickerModal();
+  // Secret Admin Activation Trigger: 5 clicks on Brand Logo within 3 seconds
+  const brandLogo = document.getElementById('nav-brand-logo');
+  if (brandLogo) {
+    let logoClicks = 0;
+    let logoTimer = null;
+    brandLogo.addEventListener('click', (e) => {
+      logoClicks++;
+      clearTimeout(logoTimer);
+      logoTimer = setTimeout(() => { logoClicks = 0; }, 3000);
+      if (logoClicks >= 5) {
+        logoClicks = 0;
+        sessionStorage.setItem('cinepulse_admin_unlocked', 'true');
+        window.location.hash = '#admin';
+      }
     });
   }
 

@@ -2213,10 +2213,20 @@ img {
   font-size: 0.78rem;
   color: #94a3b8;
   line-height: 1.5;
+  transition: all 0.2s ease;
+}
+
+.episode-overview.truncated {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.episode-overview:not(.truncated) {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
 }
 
 /* --------------------------------------------------------------------------

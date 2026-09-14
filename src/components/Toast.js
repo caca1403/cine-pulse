@@ -1,5 +1,5 @@
 /* ==========================================================================
-   DiziBol Pro - Toast Notification Component
+   CinePulse Pro - Toast Notification Component
    ========================================================================== */
 
 export function showToast(message, type = 'info', duration = 3500) {

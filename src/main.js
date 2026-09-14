@@ -1,5 +1,5 @@
 /* ==========================================================================
-   DiziBol Pro - Main Application Router & Entry Point
+   CinePulse Pro - Main Application Router & Entry Point
    ========================================================================== */
 
 import { renderNavbar, attachNavbarEvents } from './components/Navbar.js';
@@ -73,11 +73,13 @@ async function route() {
   } else if (hash === '#library') {
     viewName = 'library';
   } else if (hash === '#admin') {
+    // #admin access protection: Cannot be accessed by simply typing #admin in URL
+    if (sessionStorage.getItem('cinepulse_admin_unlocked') !== 'true') {
+      window.location.hash = '#home';
+      return;
+    }
     viewName = 'admin';
   }
-
-  // Render Navbar
-  const navbarHTML = renderNavbar(viewName);
 
   // Clean up any running live TV stream or video before routing or unmounting DOM
   if (window.__LiveTvController && typeof window.__LiveTvController.cleanup === 'function') {
@@ -90,6 +92,24 @@ async function route() {
       el.load();
     } catch (_) {}
   });
+
+  // Dedicated Full-Screen Admin Screen (NO NAVBAR, NO BOTTOM DOCK, NO FOOTER)
+  if (viewName === 'admin') {
+    const viewResult = await renderAdminView();
+    app.innerHTML = `
+      <div class="admin-standalone-wrapper" style="min-height: 100vh; background: #07090e; display: flex; flex-direction: column; width: 100%;">
+        ${viewResult ? viewResult.html : ''}
+      </div>
+    `;
+    if (viewResult && typeof viewResult.init === 'function') {
+      viewResult.init(app);
+    }
+    if (window.lucide) window.lucide.createIcons();
+    return;
+  }
+
+  // Render Navbar for regular application views
+  const navbarHTML = renderNavbar(viewName);
 
   let viewResult = null;
   if (viewName === 'home') {
@@ -110,8 +130,6 @@ async function route() {
     viewResult = await renderDiscoverView('tv');
   } else if (viewName === 'library') {
     viewResult = renderLibraryView();
-  } else if (viewName === 'admin') {
-    viewResult = await renderAdminView();
   }
 
   app.innerHTML = `
@@ -170,7 +188,6 @@ const onExternalDataImport = (e) => {
   }
 };
 window.addEventListener('sineflix_data_changed', onExternalDataImport);
-window.addEventListener('dizibol_data_changed', onExternalDataImport);
 window.addEventListener('cinepulse_data_changed', onExternalDataImport);
 
 // Seamless Profile Switch Handler (Zero full page reload)
@@ -178,3 +195,48 @@ window.addEventListener('sineflix_profile_changed', async () => {
   clearHomeCache();
   await route();
 });
+
+/* ==========================================================================
+   Client-Side Security Shield & Anti-Inspection Guard
+   Blocks right-click, DevTools shortcuts, view-source, and unauthorized probing.
+   ========================================================================== */
+(() => {
+  // 1. Disable Right Click Context Menu
+  document.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    return false;
+  }, { capture: true });
+
+  // 2. Disable DevTools Shortcuts & Source Inspection
+  document.addEventListener('keydown', (e) => {
+    // Secret Admin Shortcut for Owner: Ctrl+Alt+A / Cmd+Alt+A
+    if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'a' || e.key === 'A')) {
+      e.preventDefault();
+      sessionStorage.setItem('cinepulse_admin_unlocked', 'true');
+      window.location.hash = '#admin';
+      return;
+    }
+
+    // Block F12
+    if (e.key === 'F12' || e.keyCode === 123) {
+      e.preventDefault();
+      return false;
+    }
+
+    // Block Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U, Ctrl+S
+    if (e.ctrlKey || e.metaKey) {
+      const k = e.key.toLowerCase();
+      if (
+        (e.shiftKey && (k === 'i' || k === 'j' || k === 'c')) ||
+        k === 'u' ||
+        k === 's'
+      ) {
+        e.preventDefault();
+        return false;
+      }
+    }
+  }, { capture: true });
+
+  // 3. Prevent Drag & Drop Source Inspection
+  document.addEventListener('dragstart', (e) => e.preventDefault());
+})();

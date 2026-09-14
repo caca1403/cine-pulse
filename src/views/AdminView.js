@@ -54,6 +54,11 @@ export async function renderAdminView() {
                 <i data-lucide="unlock" style="width: 18px; height: 18px;"></i>
                 <span>Giriş Yap</span>
               </button>
+
+              <a href="#home" class="admin-btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; text-decoration: none; margin-top: 0.25rem; width: 100%; border-radius: var(--radius-md); padding: 0.75rem; box-sizing: border-box;">
+                <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+                <span>Ana Ekrana Dön</span>
+              </a>
             </form>
           </div>
         </div>
@@ -68,6 +73,7 @@ export async function renderAdminView() {
           const val = input.value.trim();
           if (verifyAdminPin(val)) {
             isSessionUnlocked = true;
+            sessionStorage.setItem('cinepulse_admin_unlocked', 'true');
             window.location.reload();
           } else {
             errorEl.style.display = 'block';
@@ -88,7 +94,7 @@ export async function renderAdminView() {
 
   return {
     html: `
-      <div class="admin-dashboard container animate-fade-in" style="padding: 2.5rem 1rem; max-width: 1000px; margin: 0 auto;">
+      <div class="admin-dashboard container animate-fade-in" style="padding: 2.5rem 1rem; max-width: 1000px; margin: 0 auto; width: 100%;">
         <!-- Header -->
         <div class="admin-dash-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.1));">
           <div>
@@ -100,10 +106,16 @@ export async function renderAdminView() {
               İçerik filtreleme, uygunsuz başlık kara listesi ve sistem ayarları
             </p>
           </div>
-          <button id="admin-lock-btn" class="admin-btn-secondary" style="padding: 0.6rem 1.2rem; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-            <i data-lucide="lock" style="width: 16px; height: 16px;"></i>
-            <span>Paneli Kilitle</span>
-          </button>
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <a href="#home" class="admin-btn-secondary" style="padding: 0.6rem 1.2rem; display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; cursor: pointer;">
+              <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+              <span>Ana Ekrana Dön</span>
+            </a>
+            <button id="admin-lock-btn" class="admin-btn-secondary" style="padding: 0.6rem 1.2rem; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">
+              <i data-lucide="lock" style="width: 16px; height: 16px;"></i>
+              <span>Paneli Kilitle & Çık</span>
+            </button>
+          </div>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
@@ -238,6 +250,7 @@ export async function renderAdminView() {
       if (lockBtn) {
         lockBtn.addEventListener('click', () => {
           isSessionUnlocked = false;
+          sessionStorage.removeItem('cinepulse_admin_unlocked');
           window.location.hash = '#home';
         });
       }

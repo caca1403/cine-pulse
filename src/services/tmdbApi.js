@@ -205,12 +205,15 @@ export function isBlockedContent(item) {
 }
 
 export async function fetchKidsPopularSeries(page = 1) {
+  // All-time most popular cartoon & animation series in Turkey
   const trRes = await tmdbFetch('/discover/tv', {
-    sort_by: 'popularity.desc',
+    sort_by: 'vote_count.desc',
     page,
     language: 'tr-TR',
+    watch_region: 'TR',
     with_genres: '10762,16,10751',
-    'vote_count.gte': 15
+    without_genres: '27,80,53,10752,18',
+    'vote_count.gte': 40
   });
   if (!trRes || !trRes.results) return [];
 
@@ -225,12 +228,15 @@ export async function fetchKidsPopularSeries(page = 1) {
 }
 
 export async function fetchKidsPopularMovies(page = 1) {
+  // All-time most popular animated feature films in Turkey
   const trRes = await tmdbFetch('/discover/movie', {
-    sort_by: 'popularity.desc',
+    sort_by: 'vote_count.desc',
     page,
     language: 'tr-TR',
+    watch_region: 'TR',
     with_genres: '16,10751',
-    'vote_count.gte': 30
+    without_genres: '27,80,53,10752',
+    'vote_count.gte': 120
   });
   if (!trRes || !trRes.results) return [];
 
@@ -439,22 +445,44 @@ export async function fetchKidsAnime(page = 1) {
 }
 
 export async function fetchPopularDocumentaries(page = 1) {
-  const movieRes = await tmdbFetch('/discover/movie', {
-    sort_by: 'popularity.desc',
-    page,
-    language: 'tr-TR',
-    with_genres: '99'
-  });
-  if (!movieRes || !movieRes.results) return [];
+  // All-time most popular & acclaimed documentaries (Planet Earth, Cosmos, Our Planet, Free Solo, etc.)
+  const [movieRes, tvRes] = await Promise.all([
+    tmdbFetch('/discover/movie', {
+      sort_by: 'vote_count.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '99',
+      'vote_count.gte': 40
+    }),
+    tmdbFetch('/discover/tv', {
+      sort_by: 'vote_count.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '99',
+      'vote_count.gte': 30
+    })
+  ]);
 
-  return movieRes.results
+  const movieItems = (movieRes?.results || [])
     .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => ({
       ...item,
       type: 'movie',
       media_type: 'movie',
-      overview: item.overview || generateCinematicOverview(item, 'movie')
+      overview: (item.overview || '').trim() || generateCinematicOverview(item, 'movie')
     }));
+
+  const tvItems = (tvRes?.results || [])
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => ({
+      ...item,
+      type: 'tv',
+      media_type: 'tv',
+      overview: (item.overview || '').trim() || generateCinematicOverview(item, 'tv')
+    }));
+
+  // Combine and sort by vote_count descending
+  return [...movieItems, ...tvItems].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
 }
 
 export async function fetchKidsDocumentaries(page = 1) {

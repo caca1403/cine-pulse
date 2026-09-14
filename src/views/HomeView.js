@@ -298,7 +298,7 @@ export async function renderHomeView() {
       ${renderInfiniteRail({
         id:    'rail-popular-movies',
         icon:  'clapperboard',
-        title: 'Vizyondaki Popüler Filmler',
+        title: 'Tüm Zamanların En Popüler Filmleri',
         accent:'#a78bfa',
         items: popularMovies
       })}

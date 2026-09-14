@@ -1564,7 +1564,7 @@ export function importDataFromJSON(jsonInput, mode = 'merge') {
 
     // Fire all legacy & active synchronization events
     window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { action: 'import' } }));
-    window.dispatchEvent(new CustomEvent('dizibol_data_changed', { detail: { action: 'import' } }));
+    window.dispatchEvent(new CustomEvent('cinepulse_data_changed', { detail: { action: 'import' } }));
     window.dispatchEvent(new CustomEvent('cinepulse_data_changed', { detail: { action: 'import' } }));
 
     return {

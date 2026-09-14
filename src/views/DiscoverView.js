@@ -9,7 +9,6 @@ import {
   GENRE_MAP_MOVIE
 } from '../services/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
-import { openRandomPickerModal } from '../components/RandomPickerModal.js';
 
 const discoverCache = {
   currentType: 'tv',
@@ -93,11 +92,6 @@ export async function renderDiscoverView(initialType = 'tv') {
                 Platforma, türe, IMDb puanına ve çıkış yılına göre nokta atışı arama yapın
               </p>
             </div>
-
-            <button class="btn-discover-random-reel" id="btn-discover-random" title="Kararsız mısınız? Rastgele bir başyapıt önerelim!">
-              <i data-lucide="dices" style="width: 18px; height: 18px; color: #f59e0b;"></i>
-              <span>Ne İzlesem? (Rastgele Öner)</span>
-            </button>
           </div>
         </div>
 
@@ -215,17 +209,10 @@ export async function renderDiscoverView(initialType = 'tv') {
       const yearSelect = container.querySelector('#discover-year-select');
       const sortSelect = container.querySelector('#discover-sort-select');
       const ratingSelect = container.querySelector('#discover-rating-select');
-      const randomBtn = container.querySelector('#btn-discover-random');
       const genreBar = container.querySelector('#discover-genre-bar');
       const grid = container.querySelector('#discover-media-grid');
       const sentinel = container.querySelector('#discover-sentinel');
       const spinner = sentinel ? sentinel.querySelector('.spin-loader') : null;
-
-      if (randomBtn) {
-        randomBtn.addEventListener('click', () => {
-          openRandomPickerModal();
-        });
-      }
 
       if (platformSelect) {
         platformSelect.addEventListener('change', () => {

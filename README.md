@@ -1,4 +1,4 @@
-# 🎬 CinePulse Studio / DiziBol
+# 🎬 CinePulse Studio
 
 > **⚠️ TELİF VE KULLANIM HAKLARI UYARISI / PROPRIETARY SOFTWARE NOTICE**  
 > **Copyright (c) 2024-2026 Çağatay (caca1403). Tüm Hakları Saklıdır. / All Rights Reserved.**
