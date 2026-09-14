@@ -19,9 +19,35 @@ import { railScrollMemory } from '../services/scrollManager.js';
 // Cache home TMDB data & rail state across navigations
 let homeDataCache = null;
 const railExtraItemsCache = new Map();
+const HOME_CACHE_TTL_MS = 10 * 60 * 1000;
+
+function getPersistentHomeCache(isKid) {
+  try {
+    const raw = sessionStorage.getItem(`cinepulse_home_fast_v2_${isKid ? 'kids' : 'adult'}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.savedAt || Date.now() - parsed.savedAt > HOME_CACHE_TTL_MS) return null;
+    return parsed.data?.isKid === isKid ? parsed.data : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function persistHomeCache(data) {
+  try {
+    sessionStorage.setItem(`cinepulse_home_fast_v2_${data.isKid ? 'kids' : 'adult'}`, JSON.stringify({
+      savedAt: Date.now(),
+      data
+    }));
+  } catch (_) {}
+}
 
 export function clearHomeCache() {
   homeDataCache = null;
+  try {
+    sessionStorage.removeItem('cinepulse_home_fast_v2_kids');
+    sessionStorage.removeItem('cinepulse_home_fast_v2_adult');
+  } catch (_) {}
   railExtraItemsCache.clear();
   Object.keys(railState).forEach(k => {
     railState[k].page = 1;
@@ -179,6 +205,8 @@ export async function renderHomeView() {
   const isKid = isKidProfileActive();
   let trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures;
 
+  if (!homeDataCache) homeDataCache = getPersistentHomeCache(isKid);
+
   if (homeDataCache && homeDataCache.isKid === isKid) {
     ({ trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures } = homeDataCache);
   } else {
@@ -197,6 +225,7 @@ export async function renderHomeView() {
       const kidsHeroPool = [...(popularMovies || []), ...(popularTV || [])].filter(i => i.backdrop_path && isItemKidSafe(i));
       trending = kidsHeroPool.slice(0, 10);
       homeDataCache = { isKid: true, trending, popularTV, popularMovies, kidsAdventures, animeItems };
+      persistHomeCache(homeDataCache);
     } else {
       [
         trending,
@@ -216,6 +245,7 @@ export async function renderHomeView() {
         fetchPopularDocumentaries(1)
       ]);
       homeDataCache = { isKid: false, trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems };
+      persistHomeCache(homeDataCache);
     }
   }
 

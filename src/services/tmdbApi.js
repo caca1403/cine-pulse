@@ -205,16 +205,72 @@ export function isBlockedContent(item) {
   return false;
 }
 
+// TMDB does not expose country-specific TV popularity. Build a transparent
+// Turkey-oriented score from its live popularity/vote signals plus titles
+// with demonstrably strong recognition among Turkish kids and young viewers.
+const TR_CARTOON_BOOSTS = [
+  [180, ['rafadan tayfa', 'kral sakir', 'niloya', 'pepee']],
+  [225, ['miraculous', 'gumball', 'adventure time', 'regular show', 'teen titans go', 'ben 10', 'spongebob', 'sunger bob']],
+  [130, ['masha and the bear', 'masa ile koca ayi', 'winx', 'scooby doo', 'ninjago', 'paw patrol', 'pijamaskeliler']],
+  [110, ['avatar the last airbender', 'avatar son hava bukucu', 'gravity falls', 'steven universe', 'the owl house', 'amphibia']]
+];
+
+const TR_ANIME_BOOSTS = [
+  [180, ['naruto', 'one piece', 'attack on titan', 'shingeki no kyojin', 'demon slayer', 'kimetsu no yaiba']],
+  [160, ['jujutsu kaisen', 'death note', 'solo leveling', 'bleach', 'dragon ball']],
+  [140, ['pokemon', 'beyblade', 'captain tsubasa', 'yu gi oh', 'bakugan', 'my hero academia', 'boku no hero']],
+  [120, ['hunter x hunter', 'tokyo ghoul', 'fullmetal alchemist', 'vinland saga', 'monster', 'jojo', 'haikyuu', 'blue lock']],
+  [105, ['chainsaw man', 'one punch man', 'spy x family', 'black clover', 'frieren', 'kaiju no 8', 'dandadan']]
+];
+
+function normalizeTrPopularityTitle(value = '') {
+  return String(value)
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function getRegionalTitleBoost(item, animeOnly = false) {
+  const title = normalizeTrPopularityTitle([
+    item.name,
+    item.title,
+    item.original_name,
+    item.original_title
+  ].filter(Boolean).join(' '));
+  const groups = animeOnly ? TR_ANIME_BOOSTS : [...TR_CARTOON_BOOSTS, ...TR_ANIME_BOOSTS];
+  for (const [boost, patterns] of groups) {
+    if (patterns.some(pattern => title.includes(pattern))) return boost;
+  }
+  return 0;
+}
+
+function rankForTurkey(items, { animeOnly = false } = {}) {
+  return items
+    .map(item => {
+      const livePopularity = Math.min(220, Number(item.popularity) || 0);
+      const audienceConfidence = Math.min(95, Math.log10((Number(item.vote_count) || 0) + 1) * 22);
+      const ratingQuality = Math.max(0, (Number(item.vote_average) || 0) - 5) * 5;
+      const localOriginBoost = !animeOnly && item.origin_country?.includes('TR') ? 115 : 0;
+      const turkeyScore = livePopularity + audienceConfidence + ratingQuality + localOriginBoost + getRegionalTitleBoost(item, animeOnly);
+      return { ...item, _turkeyPopularityScore: Math.round(turkeyScore * 100) / 100 };
+    })
+    .sort((a, b) => b._turkeyPopularityScore - a._turkeyPopularityScore);
+}
+
 export async function fetchKidsPopularSeries(page = 1) {
-  // All-time most popular cartoons & animated series with Turkish localization
-  const [trRes, enRes] = await Promise.all([
+  // Current cartoons, youth animation and safe anime ranked for Turkey.
+  const [animationRes, kidsRes, localRes, classicRes, trendingRes] = await Promise.all([
     tmdbFetch('/discover/tv', {
-      sort_by: 'vote_count.desc',
+      sort_by: 'popularity.desc',
       page,
       language: 'tr-TR',
       with_genres: '16',
       without_genres: '27,80,53,10752,18',
-      'vote_count.gte': 20
+      'vote_count.gte': 10,
+      include_adult: false
     }),
     tmdbFetch('/discover/tv', {
       sort_by: 'popularity.desc',
@@ -222,11 +278,32 @@ export async function fetchKidsPopularSeries(page = 1) {
       language: 'tr-TR',
       with_genres: '10762',
       without_genres: '27,80,53',
-      'vote_count.gte': 5
-    })
+      'vote_count.gte': 5,
+      include_adult: false
+    }),
+    tmdbFetch('/discover/tv', {
+      sort_by: 'popularity.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '16',
+      with_origin_country: 'TR',
+      without_genres: '27,80,53,10752,18',
+      include_adult: false
+    }),
+    tmdbFetch('/discover/tv', {
+      sort_by: 'vote_count.desc',
+      page: page + 2,
+      language: 'tr-TR',
+      with_genres: '16',
+      without_genres: '27,80,53,10752,18',
+      'vote_count.gte': 10,
+      include_adult: false
+    }),
+    page === 1 ? tmdbFetch('/trending/tv/week', { language: 'tr-TR' }) : Promise.resolve(null)
   ]);
 
-  const combined = [...(trRes?.results || []), ...(enRes?.results || [])];
+  const safeTrending = (trendingRes?.results || []).filter(item => (item.genre_ids || []).includes(16));
+  const combined = [...(animationRes?.results || []), ...(kidsRes?.results || []), ...(localRes?.results || []), ...(classicRes?.results || []), ...safeTrending];
   const uniqueMap = new Map();
   for (const item of combined) {
     if (item && item.id && !uniqueMap.has(item.id)) {
@@ -234,7 +311,7 @@ export async function fetchKidsPopularSeries(page = 1) {
     }
   }
 
-  return Array.from(uniqueMap.values())
+  return rankForTurkey(Array.from(uniqueMap.values())
     .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => ({
       ...item,
@@ -242,7 +319,7 @@ export async function fetchKidsPopularSeries(page = 1) {
       media_type: 'tv',
       isSeries: true,
       overview: (item.overview || '').trim() || generateCinematicOverview(item, 'tv')
-    }));
+    })));
 }
 
 export async function fetchKidsPopularMovies(page = 1) {
@@ -369,10 +446,10 @@ export function hasNonLatinCharacters(text) {
 }
 
 export async function fetchPopularAnime(page = 1) {
-  // All-time most popular anime (Attack on Titan, Death Note, Demon Slayer, Naruto, One Piece, etc.)
-  const [trRes, enRes] = await Promise.all([
+  // Live popularity plus a Turkey-specific recognition signal.
+  const [trRes, enRes, classicRes, trendingRes] = await Promise.all([
     tmdbFetch('/discover/tv', {
-      sort_by: 'vote_count.desc',
+      sort_by: 'popularity.desc',
       page,
       language: 'tr-TR',
       with_genres: '16',
@@ -380,19 +457,32 @@ export async function fetchPopularAnime(page = 1) {
       'vote_count.gte': 50
     }),
     tmdbFetch('/discover/tv', {
-      sort_by: 'vote_count.desc',
+      sort_by: 'popularity.desc',
       page,
       language: 'en-US',
       with_genres: '16',
       with_original_language: 'ja',
       'vote_count.gte': 50
-    })
+    }),
+    tmdbFetch('/discover/tv', {
+      sort_by: 'vote_count.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '16',
+      with_original_language: 'ja',
+      'vote_count.gte': 100
+    }),
+    page === 1 ? tmdbFetch('/trending/tv/week', { language: 'tr-TR' }) : Promise.resolve(null)
   ]);
   if (!trRes || !trRes.results) return [];
 
   const enMap = new Map((enRes?.results || []).map(i => [i.id, i.name || i.title]));
 
-  return trRes.results
+  const animeMap = new Map([...(trRes.results || []), ...(classicRes?.results || []), ...(trendingRes?.results || [])
+    .filter(item => item.original_language === 'ja' && (item.genre_ids || []).includes(16))]
+    .map(item => [item.id, item]));
+
+  return rankForTurkey(Array.from(animeMap.values())
     .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => {
       let displayName = item.name || item.title || '';
@@ -411,7 +501,7 @@ export async function fetchPopularAnime(page = 1) {
         isSeries: true,
         overview: item.overview || generateCinematicOverview(item, 'tv')
       };
-    });
+    }), { animeOnly: true });
 }
 
 export async function fetchKidsAnime(page = 1) {
@@ -440,7 +530,7 @@ export async function fetchKidsAnime(page = 1) {
 
   const enMap = new Map((enRes?.results || []).map(i => [i.id, i.name || i.title]));
 
-  return trRes.results
+  return rankForTurkey(trRes.results
     .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => {
       let displayName = item.name || item.title || '';
@@ -458,7 +548,7 @@ export async function fetchKidsAnime(page = 1) {
         isSeries: true,
         overview: item.overview || generateCinematicOverview(item, 'tv')
       };
-    });
+    }), { animeOnly: true });
 }
 
 export async function fetchPopularDocumentaries(page = 1) {

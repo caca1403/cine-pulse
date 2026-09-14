@@ -49,17 +49,20 @@ export async function renderPopularListView(type = 'tv') {
   const cache = getCache(type);
 
   const titleMap = isKid ? {
-    tv: ['🌟 Çizgi Diziler & Çocuk Yapımları', 'monitor-play'],
+    tv: ['Türkiye’de Popüler Çizgi ve Gençlik Dizileri', 'monitor-play'],
     movie: ['🎈 Animasyon & Çocuk Filmleri', 'popcorn'],
-    anime: ['🎌 Çocuk & Genç Anime', 'cat'],
+    anime: ['Türkiye’de Popüler Çocuk ve Genç Animeleri', 'cat'],
     documentary: ['🐾 Doğa & Hayvan Belgeselleri', 'globe']
   } : {
     tv: ['Tüm Zamanların En Popüler Dizileri', 'monitor-play'],
     movie: ['Tüm Zamanların En Popüler Filmleri', 'popcorn'],
-    anime: ['Tüm Zamanların En Popüler Animeleri', 'cat'],
+    anime: ['Türkiye’de En Popüler Animeler', 'cat'],
     documentary: ['Tüm Zamanların En Çok İzlenen Belgeselleri', 'globe']
   };
   const [titleText, iconName] = titleMap[type] || titleMap.tv;
+  const popularityDescription = (type === 'anime' || (isKid && type === 'tv'))
+    ? 'Güncel ilgi, izleyici güveni ve Türkiye popülerlik sinyaline göre sıralanıyor'
+    : 'Tüm zamanların popülerliğine göre akıcı olarak listeleniyor';
 
   const html = `
     <div class="popular-list-view">
@@ -71,7 +74,7 @@ export async function renderPopularListView(type = 'tv') {
             </span>
             <span>${titleText}</span>
           </h1>
-          <p class="popular-list-sub" id="popular-count-label">Tüm zamanların popülerliğine göre akıcı olarak listeleniyor</p>
+          <p class="popular-list-sub" id="popular-count-label">${popularityDescription}</p>
         </div>
 
         <div class="media-grid" id="popular-media-grid">
@@ -153,21 +156,25 @@ export async function renderPopularListView(type = 'tv') {
 
           let totalNew = 0;
 
-          // Fire all page fetches simultaneously, render each as it resolves
-          const promises = pages.map(p =>
-            fetcher(p)
-              .then(items => {
-                if (items && items.length > 0) {
-                  totalNew += items.length;
-                  appendItems(items);
-                }
-                return items;
-              })
-              .catch(() => [])
-          );
+          const preserveRegionalOrder = type === 'anime' || (isKid && type === 'tv');
+          // Turkey-ranked animation needs the whole parallel batch before
+          // painting; otherwise a slower page could appear above page one.
+          const promises = pages.map(p => fetcher(p).catch(() => []));
 
           const results = await Promise.all(promises);
           const allItems = results.flat().filter(Boolean);
+          if (preserveRegionalOrder) {
+            allItems.sort((a, b) => (b._turkeyPopularityScore || 0) - (a._turkeyPopularityScore || 0));
+            totalNew = allItems.length;
+            appendItems(allItems);
+          } else {
+            for (const items of results) {
+              if (items && items.length > 0) {
+                totalNew += items.length;
+                appendItems(items);
+              }
+            }
+          }
 
           // Only mark exhausted if TMDB returned zero results across ALL pages
           if (allItems.length === 0) {

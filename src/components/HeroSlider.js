@@ -11,12 +11,36 @@ import { showToast } from './Toast.js';
 
 let currentSlideIndex = 0;
 let slideInterval = null;
+let heroTransitionToken = 0;
+const heroBackdropCache = new Map();
 
 function getHeroBackdropUrl(item) {
   const size = window.innerWidth <= 768
     ? TMDB_IMAGE_SIZES.BACKDROP_LARGE
     : TMDB_IMAGE_SIZES.BACKDROP_XLARGE;
   return getImageUrl(item?.backdrop_path, size);
+}
+
+function preloadHeroBackdrop(url, priority = 'auto') {
+  if (!url) return Promise.resolve(null);
+  if (heroBackdropCache.has(url)) return heroBackdropCache.get(url);
+
+  const promise = new Promise(resolve => {
+    const image = new Image();
+    image.decoding = 'async';
+    image.fetchPriority = priority;
+    image.onload = async () => {
+      try { await image.decode(); } catch (_) {}
+      resolve(url);
+    };
+    image.onerror = () => {
+      heroBackdropCache.delete(url);
+      resolve(null);
+    };
+    image.src = url;
+  });
+  heroBackdropCache.set(url, promise);
+  return promise;
 }
 
 export function renderHeroSlider(items = []) {
@@ -38,11 +62,25 @@ export function renderHeroSlider(items = []) {
 
   const inWatchlist = isWatchlist(id);
 
+  // Start the hero request before the returned markup is mounted. The DOM img
+  // will reuse this request from the browser cache instead of starting late.
+  let preloadLink = document.getElementById('hero-backdrop-preload');
+  if (!preloadLink) {
+    preloadLink = document.createElement('link');
+    preloadLink.id = 'hero-backdrop-preload';
+    preloadLink.rel = 'preload';
+    preloadLink.as = 'image';
+    document.head.appendChild(preloadLink);
+  }
+  preloadLink.href = backdropUrl;
+  preloadLink.fetchPriority = 'high';
+  preloadHeroBackdrop(backdropUrl, 'high');
+
   return `
-    <section class="hero-slider" id="hero-slider-section">
+    <section class="hero-slider is-loading" id="hero-slider-section" aria-busy="true">
       <div class="hero-ambient-glow"></div>
 
-      <img class="hero-backdrop" id="hero-backdrop-img" src="${backdropUrl}" alt="" loading="eager" fetchpriority="high" decoding="async" />
+      <img class="hero-backdrop" id="hero-backdrop-img" src="${backdropUrl}" alt="" loading="eager" fetchpriority="high" decoding="async" sizes="100vw" />
       <div class="hero-overlay-gradient"></div>
       
       <div class="container">
@@ -96,14 +134,31 @@ export function attachHeroSliderEvents(items = []) {
   const playBtn = document.getElementById('hero-play-btn');
   const listBtn = document.getElementById('hero-list-btn');
   const trailerBtn = document.getElementById('hero-trailer-btn');
+  const heroSection = document.getElementById('hero-slider-section');
+  const firstBackdrop = document.getElementById('hero-backdrop-img');
+
+  const revealFirstSlide = async () => {
+    if (firstBackdrop && !firstBackdrop.complete) {
+      await new Promise(resolve => {
+        firstBackdrop.addEventListener('load', resolve, { once: true });
+        firstBackdrop.addEventListener('error', resolve, { once: true });
+      });
+    }
+    if (firstBackdrop?.complete && firstBackdrop.naturalWidth > 0) {
+      try { await firstBackdrop.decode(); } catch (_) {}
+    }
+    requestAnimationFrame(() => {
+      heroSection?.classList.remove('is-loading');
+      heroSection?.setAttribute('aria-busy', 'false');
+    });
+  };
+  revealFirstSlide();
 
   // The first image is requested with high priority. Warm upcoming slides only
   // after it has started so automatic rotations do not show an empty backdrop.
   const warmUpcomingBackdrops = () => {
     slides.slice(1, 4).forEach(item => {
-      const image = new Image();
-      image.decoding = 'async';
-      image.src = getHeroBackdropUrl(item);
+      preloadHeroBackdrop(getHeroBackdropUrl(item));
     });
   };
   if ('requestIdleCallback' in window) {
@@ -175,8 +230,7 @@ export function attachHeroSliderEvents(items = []) {
   document.querySelectorAll('.hero-dot').forEach(dot => {
     dot.addEventListener('click', () => {
       const idx = parseInt(dot.getAttribute('data-index'), 10);
-      currentSlideIndex = idx;
-      updateHeroSlide(slides[idx]);
+      updateHeroSlide(slides[idx], idx);
     });
   });
 
@@ -184,13 +238,13 @@ export function attachHeroSliderEvents(items = []) {
   clearInterval(slideInterval);
   slideInterval = setInterval(() => {
     if (slides.length > 0) {
-      currentSlideIndex = (currentSlideIndex + 1) % slides.length;
-      updateHeroSlide(slides[currentSlideIndex]);
+      const nextSlideIndex = (currentSlideIndex + 1) % slides.length;
+      updateHeroSlide(slides[nextSlideIndex], nextSlideIndex);
     }
   }, 6000);
 }
 
-function updateHeroSlide(item) {
+async function updateHeroSlide(item, targetSlideIndex = currentSlideIndex) {
   if (!item) return;
   if (isKidProfileActive() && !isItemKidSafe(item)) return;
   const backdropEl = document.getElementById('hero-backdrop-img');
@@ -209,17 +263,22 @@ function updateHeroSlide(item) {
   const rating = item.vote_average ? item.vote_average.toFixed(1) : '8.5';
   const year = (item.first_air_date || item.release_date || '').substring(0, 4);
 
+  // Keep the old image and its matching text together until the next image is
+  // fully downloaded and decoded, then commit the whole slide atomically.
+  const transitionToken = ++heroTransitionToken;
   if (backdropEl && backdropEl.src !== backdropUrl) {
-    backdropEl.dataset.pendingSrc = backdropUrl;
-    const nextBackdrop = new Image();
-    nextBackdrop.decoding = 'async';
-    nextBackdrop.onload = () => {
-      if (backdropEl.isConnected && backdropEl.dataset.pendingSrc === backdropUrl) {
-        backdropEl.src = backdropUrl;
-      }
-    };
-    nextBackdrop.src = backdropUrl;
+    const loadedUrl = await preloadHeroBackdrop(backdropUrl, 'high');
+    if (!loadedUrl || transitionToken !== heroTransitionToken || !backdropEl.isConnected) return;
+    backdropEl.src = loadedUrl;
+    try { await backdropEl.decode(); } catch (_) {}
+    if (transitionToken !== heroTransitionToken || !backdropEl.isConnected) return;
   }
+  currentSlideIndex = targetSlideIndex;
+
+  const heroContent = document.querySelector('#hero-slider-section .hero-content');
+  heroContent?.classList.remove('hero-content-committing');
+  void heroContent?.offsetWidth;
+  heroContent?.classList.add('hero-content-committing');
   if (titleEl) titleEl.textContent = item.title || item.name;
   const slideOverview = (item.overview && item.overview.trim().length > 15)
     ? item.overview
