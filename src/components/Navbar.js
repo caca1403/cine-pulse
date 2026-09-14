@@ -41,11 +41,13 @@ export function renderNavbar(currentView = 'home') {
         </ul>
 
         <div class="nav-actions">
-          <!-- Live TV Quick Action Pill -->
+          <!-- Live TV Quick Action Pill (hidden in kids mode) -->
+          ${!activeProfile.isKid ? `
           <a href="#livetv" class="btn-live-shortcut ${currentView === 'livetv' ? 'active' : ''}" title="Canlı TV Yayınları">
             <span class="live-pulse-dot"></span>
             <span>CANLI</span>
           </a>
+          ` : ''}
 
           <!-- Desktop Search Box -->
           <div class="search-box desktop-search-box">
@@ -61,13 +63,7 @@ export function renderNavbar(currentView = 'home') {
           <!-- Notification Bell Button -->
           <button id="btn-nav-notifications" class="btn-action-icon btn-nav-bell mobile-only" title="Bildirimler &amp; Alarmlar"><i data-lucide="bell" style="width: 16px; height: 16px;"></i><span id="nav-notif-badge" class="nav-notif-dot ${unreadCount > 0 ? '' : 'hidden'}">${unreadCount}</span></button>
 
-          <!-- Kids Mode Active Pill (Quick Exit) -->
-          ${activeProfile.isKid ? `
-            <button id="btn-exit-kids-mode" class="nav-kids-mode-pill" title="Çocuk Modundan Çık (Yetişkin Moduna Dön)">
-              <span>🎈 ÇOCUK</span>
-              <span class="kids-pill-exit"><i data-lucide="x" style="width:11px;height:11px;"></i></span>
-            </button>
-          ` : ''}
+
 
           <!-- Profile Switcher Button (Compact Circular Avatar) -->
           <button id="btn-nav-profile" class="btn-nav-avatar" title="Profil: ${activeProfile.name} (Değiştir / Ayarlar)">

@@ -391,6 +391,53 @@ export async function fetchPopularAnime(page = 1) {
     });
 }
 
+export async function fetchKidsAnime(page = 1) {
+  // Family & kid-friendly anime (Pokemon, Doraemon, Digimon, Studio Ghibli, Tsubasa, etc.)
+  const [trRes, enRes] = await Promise.all([
+    tmdbFetch('/discover/tv', {
+      sort_by: 'popularity.desc',
+      page,
+      language: 'tr-TR',
+      with_genres: '16,10762',
+      with_original_language: 'ja',
+      without_genres: '27,80,53,10752,18',
+      'vote_count.gte': 10
+    }),
+    tmdbFetch('/discover/tv', {
+      sort_by: 'popularity.desc',
+      page,
+      language: 'en-US',
+      with_genres: '16,10762',
+      with_original_language: 'ja',
+      without_genres: '27,80,53,10752,18',
+      'vote_count.gte': 10
+    })
+  ]);
+  if (!trRes || !trRes.results) return [];
+
+  const enMap = new Map((enRes?.results || []).map(i => [i.id, i.name || i.title]));
+
+  return trRes.results
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => {
+      let displayName = item.name || item.title || '';
+      if (!displayName || hasNonLatinCharacters(displayName)) {
+        displayName = enMap.get(item.id) || item.original_name || item.original_title || displayName;
+      }
+      if (item.id) registerAnimeId(item.id);
+      return {
+        ...item,
+        name: displayName,
+        title: displayName,
+        type: 'anime',
+        media_type: 'anime',
+        isAnime: true,
+        isSeries: true,
+        overview: item.overview || generateCinematicOverview(item, 'tv')
+      };
+    });
+}
+
 export async function fetchPopularDocumentaries(page = 1) {
   const movieRes = await tmdbFetch('/discover/movie', {
     sort_by: 'popularity.desc',

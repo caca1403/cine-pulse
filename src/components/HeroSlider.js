@@ -5,7 +5,7 @@
    ========================================================================== */
 
 import { getImageUrl, TMDB_IMAGE_SIZES, fetchMediaTrailer, generateCinematicOverview } from '../services/tmdbApi.js';
-import { isWatchlist, toggleWatchlist } from '../services/storage.js';
+import { isWatchlist, toggleWatchlist, isKidProfileActive, isItemKidSafe } from '../services/storage.js';
 import { openTrailerModal } from './TrailerModal.js';
 import { showToast } from './Toast.js';
 
@@ -13,10 +13,13 @@ let currentSlideIndex = 0;
 let slideInterval = null;
 
 export function renderHeroSlider(items = []) {
-  if (!items || items.length === 0) return '';
+  const isKid = isKidProfileActive();
+  const safeItems = isKid ? items.filter(isItemKidSafe) : items;
+  if (!safeItems || safeItems.length === 0) return '';
 
-  const slides = items.slice(0, 10);
-  const featured = slides[currentSlideIndex] || slides[0];
+  currentSlideIndex = 0;
+  const slides = safeItems.slice(0, 10);
+  const featured = slides[0];
 
   const id = featured.id;
   const type = featured.first_air_date || featured.media_type === 'tv' ? 'tv' : 'movie';
@@ -77,7 +80,12 @@ export function renderHeroSlider(items = []) {
 }
 
 export function attachHeroSliderEvents(items = []) {
-  const slides = items.slice(0, 10);
+  const isKid = isKidProfileActive();
+  const safeItems = isKid ? items.filter(isItemKidSafe) : items;
+  if (!safeItems || safeItems.length === 0) return;
+
+  const slides = safeItems.slice(0, 10);
+  currentSlideIndex = 0;
   const playBtn = document.getElementById('hero-play-btn');
   const listBtn = document.getElementById('hero-list-btn');
   const trailerBtn = document.getElementById('hero-trailer-btn');
@@ -151,6 +159,7 @@ export function attachHeroSliderEvents(items = []) {
 
 function updateHeroSlide(item) {
   if (!item) return;
+  if (isKidProfileActive() && !isItemKidSafe(item)) return;
   const backdropEl = document.getElementById('hero-backdrop-img');
   const titleEl = document.getElementById('hero-title-text');
   const overviewEl = document.getElementById('hero-overview-text');

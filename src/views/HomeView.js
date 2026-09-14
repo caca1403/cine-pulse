@@ -7,10 +7,10 @@
 
 import {
   fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated, fetchPopularAnime, fetchPopularDocumentaries,
-  fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsAdventures, fetchKidsDocumentaries
+  fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsAdventures, fetchKidsDocumentaries, fetchKidsAnime
 } from '../services/tmdbApi.js';
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile } from '../services/storage.js';
+import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile, isItemKidSafe } from '../services/storage.js';
 import { renderHeroSlider, attachHeroSliderEvents } from '../components/HeroSlider.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
@@ -184,20 +184,20 @@ export async function renderHomeView() {
   } else {
     if (isKid) {
       [
-        trending,
         popularTV,
         popularMovies,
         kidsAdventures,
         animeItems,
         docItems
       ] = await Promise.all([
-        fetchTrending('all', 'week', 1),
         fetchKidsPopularSeries(1),
         fetchKidsPopularMovies(1),
         fetchKidsAdventures(1),
-        fetchPopularAnime(1),
+        fetchKidsAnime(1),
         fetchKidsDocumentaries(1)
       ]);
+      const kidsHeroPool = [...(popularMovies || []), ...(popularTV || [])].filter(i => i.backdrop_path && isItemKidSafe(i));
+      trending = kidsHeroPool.slice(0, 10);
       homeDataCache = { isKid: true, trending, popularTV, popularMovies, kidsAdventures, animeItems, docItems };
     } else {
       [
@@ -224,10 +224,10 @@ export async function renderHomeView() {
   const rawWatchHistory = getUnifiedContinueWatching();
   const watchHistory = filterForActiveProfile(rawWatchHistory);
   
-  // Kids mode: use kids-specific content for hero (not filtered trending which lets adult content through)
+  // Kids mode: use kids-specific content for hero (strictly filtered for safe kids items)
   let heroItems;
   if (isKid) {
-    const kidsHeroPool = [...(popularMovies || []), ...(popularTV || [])].filter(i => i.backdrop_path);
+    const kidsHeroPool = [...(popularMovies || []), ...(popularTV || [])].filter(i => i.backdrop_path && isItemKidSafe(i));
     heroItems = kidsHeroPool.slice(0, 10);
   } else {
     heroItems = trending;
@@ -239,13 +239,14 @@ export async function renderHomeView() {
     if (!railState['rail-kids-series']) railState['rail-kids-series'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsPopularSeries };
     if (!railState['rail-kids-movies']) railState['rail-kids-movies'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsPopularMovies };
     if (!railState['rail-kids-adventures']) railState['rail-kids-adventures'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsAdventures };
+    if (!railState['rail-anime']) railState['rail-anime'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsAnime };
   } else {
     if (!railState['rail-popular-tv']) railState['rail-popular-tv'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularSeries };
     if (!railState['rail-popular-movies']) railState['rail-popular-movies'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularMovies };
     if (!railState['rail-top-tv']) railState['rail-top-tv'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('tv', p) };
     if (!railState['rail-top-movies']) railState['rail-top-movies'] = { page: 1, loading: false, exhausted: false, fetcher: (p) => fetchTopRated('movie', p) };
+    if (!railState['rail-anime']) railState['rail-anime'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularAnime };
   }
-  if (!railState['rail-anime']) railState['rail-anime'] = { page: 1, loading: false, exhausted: false, fetcher: fetchPopularAnime };
   if (isKid) {
     if (!railState['rail-documentary']) railState['rail-documentary'] = { page: 1, loading: false, exhausted: false, fetcher: fetchKidsDocumentaries };
   } else {
@@ -361,7 +362,8 @@ export async function renderHomeView() {
   return {
     html: viewHTML,
     init: (container) => {
-      if (trending.length > 0) attachHeroSliderEvents(trending);
+      const sliderItems = (heroItems && heroItems.length > 0) ? heroItems : trending;
+      if (sliderItems && sliderItems.length > 0) attachHeroSliderEvents(sliderItems);
       attachMediaCardEvents(container);
 
       // Restore and track horizontal scroll position for each rail
