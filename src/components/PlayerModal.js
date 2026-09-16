@@ -80,7 +80,7 @@ export async function openPlayerModal({
     });
   }
 
-  // Intercept Pop-Up & Gambling Ads in Parent Window
+  // Intercept Pop-Up, Tab hijacks & Gambling Ads in Parent Window
   if (!originalWindowOpen) originalWindowOpen = window.open;
   window.open = function (url, target, features) {
     if (typeof url === 'string') {
@@ -91,12 +91,20 @@ export async function openPlayerModal({
     }
     console.warn('CinePulse Anti-Ad Shield: Engellendi ->', url);
     return {
-      closed: false,
+      closed: true,
       focus: () => {},
       blur: () => {},
       close: () => {},
       location: { href: '' }
     };
+  };
+
+  // Prevent embedded malicious iframes from redirecting the parent window
+  window.onbeforeunload = function(e) {
+    if (document.getElementById('player-modal') && !document.getElementById('player-modal').classList.contains('hidden')) {
+      // If user is actively watching, prevent unwanted iframe page unloads/redirects
+      return;
+    }
   };
 
   let currentSeason = Number(season) || 1;
@@ -129,10 +137,25 @@ export async function openPlayerModal({
     .replace(/\s*\(\d{4}\).*/, '')
     .trim();
 
-  // Async fetch TMDB metadata (seasons, missing poster/backdrop, anime check)
+  let mediaOverview = '';
+  let currentEpisodeOverview = '';
+  let mediaGenres = [];
+  let movieDirector = '';
+  let movieCast = [];
+  let movieRuntime = 0;
+  let movieReleaseYear = '';
+  let movieVoteAverage = 0;
+  let movieSimilar = [];
+  let isSourcesPopoverOpen = false;
+
+  // Async fetch TMDB metadata (seasons, missing poster/backdrop, movie details & cast/similar)
   if (tmdbId) {
-    const tmdbEndpoint = (!isSeries && type === 'movie') ? `https://api.themoviedb.org/3/movie/${tmdbId}` : `https://api.themoviedb.org/3/tv/${tmdbId}`;
-    fetch(`${tmdbEndpoint}?api_key=${TMDB_API_KEY}&language=tr-TR`)
+    const isMovie = (!isSeries && type === 'movie');
+    const tmdbEndpoint = isMovie 
+      ? `https://api.themoviedb.org/3/movie/${tmdbId}?append_to_response=credits,similar,recommendations&api_key=${TMDB_API_KEY}&language=tr-TR`
+      : `https://api.themoviedb.org/3/tv/${tmdbId}?append_to_response=credits&api_key=${TMDB_API_KEY}&language=tr-TR`;
+
+    fetch(tmdbEndpoint)
       .then(res => res.json())
       .then(data => {
         if (!closed && data) {
@@ -140,6 +163,30 @@ export async function openPlayerModal({
           if (!backdropPath && data.backdrop_path) backdropPath = data.backdrop_path;
           if (data.overview) mediaOverview = data.overview;
           if (Array.isArray(data.genres)) mediaGenres = data.genres.map(g => g.name);
+
+          if (isMovie) {
+            if (data.runtime) movieRuntime = data.runtime;
+            if (data.release_date) movieReleaseYear = data.release_date.substring(0, 4);
+            if (data.vote_average) movieVoteAverage = Number(data.vote_average.toFixed(1));
+            
+            // Extract director
+            if (data.credits && Array.isArray(data.credits.crew)) {
+              const dir = data.credits.crew.find(c => c.job === 'Director');
+              if (dir) movieDirector = dir.name;
+            }
+            // Extract cast
+            if (data.credits && Array.isArray(data.credits.cast)) {
+              movieCast = data.credits.cast.slice(0, 10);
+            }
+            // Extract similar or recommendations
+            const recs = (data.recommendations?.results?.length > 0)
+              ? data.recommendations.results
+              : (data.similar?.results || []);
+            movieSimilar = recs.filter(m => m.poster_path).slice(0, 12);
+
+            renderMovieInfoSection();
+          }
+
           updateHeroMetaUI();
 
           const isJp = data.original_language === 'ja' || (Array.isArray(data.origin_country) && data.origin_country.includes('JP'));
@@ -157,11 +204,6 @@ export async function openPlayerModal({
       })
       .catch(() => {});
   }
-
-  let mediaOverview = '';
-  let currentEpisodeOverview = '';
-  let mediaGenres = [];
-  let isSourcesPopoverOpen = false;
 
   const existingRecord = getMediaProgress(tmdbId, currentSeason, currentEpisode);
   let initialTime = currentTime || (existingRecord ? existingRecord.currentTime : 0);
@@ -332,8 +374,132 @@ export async function openPlayerModal({
     }
     const epBadge = document.querySelector('.dizisol-ep-badge');
     if (epBadge) {
-      epBadge.textContent = isSeries ? `Sezon ${currentSeason} • Bölüm ${currentEpisode}` : 'Film';
+      if (isSeries) {
+        epBadge.textContent = `Sezon ${currentSeason} • Bölüm ${currentEpisode}`;
+      } else {
+        const runtimeText = movieRuntime ? `${Math.floor(movieRuntime / 60)}s ${movieRuntime % 60}dk` : '';
+        const yearText = movieReleaseYear || '';
+        epBadge.textContent = ['Film', yearText, runtimeText].filter(Boolean).join(' • ');
+      }
     }
+  }
+
+  function renderMovieInfoSection() {
+    if (isSeries) return;
+    const movieSection = document.getElementById('dizisol-movie-section');
+    if (!movieSection) return;
+
+    const runtimeFormatted = movieRuntime ? `${Math.floor(movieRuntime / 60)} sa ${movieRuntime % 60} dk` : '';
+    const castHTML = (movieCast && movieCast.length > 0)
+      ? movieCast.map(actor => {
+          const profileImg = actor.profile_path ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` : 'https://image.tmdb.org/t/p/w185/null';
+          return `
+            <div class="player-movie-cast-chip" title="${actor.name} (${actor.character || ''})">
+              <img src="${profileImg}" alt="${actor.name}" class="player-cast-avatar" onerror="this.onerror=null; this.style.display='none';" />
+              <div class="player-cast-meta">
+                <span class="player-cast-name">${actor.name}</span>
+                ${actor.character ? `<span class="player-cast-role">${actor.character}</span>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '';
+
+    const similarHTML = (movieSimilar && movieSimilar.length > 0)
+      ? movieSimilar.map(sim => {
+          const poster = sim.poster_path ? `https://image.tmdb.org/t/p/w342${sim.poster_path}` : '';
+          const rating = sim.vote_average ? sim.vote_average.toFixed(1) : '';
+          const year = (sim.release_date || '').substring(0, 4);
+          return `
+            <div class="player-sim-card" data-sim-id="${sim.id}" data-sim-title="${sim.title || ''}" title="${sim.title || ''} • İzle">
+              <div class="player-sim-poster-box">
+                ${poster ? `<img src="${poster}" alt="${sim.title || ''}" class="player-sim-poster" loading="lazy" />` : ''}
+                <div class="player-sim-play-hover">
+                  <i data-lucide="play" style="width:24px;height:24px;fill:#fff;color:#fff;"></i>
+                </div>
+                ${rating ? `<span class="player-sim-badge">★ ${rating}</span>` : ''}
+              </div>
+              <div class="player-sim-info">
+                <span class="player-sim-title">${sim.title || ''}</span>
+                ${year ? `<span class="player-sim-year">${year}</span>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '';
+
+    movieSection.innerHTML = `
+      <!-- Movie Quick Meta Pills Bar -->
+      <div class="player-movie-meta-bar">
+        ${movieDirector ? `
+          <div class="player-movie-director-tag">
+            <span class="meta-tag-label">YÖNETMEN:</span>
+            <span class="meta-tag-val">${movieDirector}</span>
+          </div>
+        ` : ''}
+        ${runtimeFormatted ? `
+          <div class="player-movie-pill">
+            <i data-lucide="clock" style="width:13px;height:13px;color:#f59e0b"></i>
+            <span>${runtimeFormatted}</span>
+          </div>
+        ` : ''}
+        ${movieVoteAverage > 0 ? `
+          <div class="player-movie-pill highlight">
+            <i data-lucide="star" style="width:13px;height:13px;color:#eab308;fill:#eab308"></i>
+            <span>${movieVoteAverage} / 10</span>
+          </div>
+        ` : ''}
+        ${movieReleaseYear ? `
+          <div class="player-movie-pill">
+            <i data-lucide="calendar" style="width:13px;height:13px;color:#60a5fa"></i>
+            <span>${movieReleaseYear}</span>
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- Cast Chips Rail -->
+      ${castHTML ? `
+        <div class="player-movie-block">
+          <div class="player-movie-block-header">
+            <h4>OYUNCULAR & EKİP</h4>
+          </div>
+          <div class="player-movie-cast-rail">
+            ${castHTML}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Similar Movies Rail -->
+      ${similarHTML ? `
+        <div class="player-movie-block">
+          <div class="player-movie-block-header">
+            <h4>BENZER FİLMLER & ÖNERİLER</h4>
+            <span class="player-sim-count">${movieSimilar.length} Film</span>
+          </div>
+          <div class="player-sim-carousel">
+            ${similarHTML}
+          </div>
+        </div>
+      ` : ''}
+    `;
+
+    // Attach click listeners on similar movies to open in player!
+    movieSection.querySelectorAll('.player-sim-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const nextId = card.getAttribute('data-sim-id');
+        const nextTitle = card.getAttribute('data-sim-title');
+        if (nextId) {
+          openPlayerModal({
+            type: 'movie',
+            tmdbId: parseInt(nextId, 10),
+            title: nextTitle,
+            currentTime: 0
+          });
+        }
+      });
+    });
+
+    renderPlayerIcons(movieSection);
   }
 
   async function updateEpisodeOverview(seasonNum, epNum) {
@@ -1328,8 +1494,17 @@ export async function openPlayerModal({
             </div>
             <div class="dizisol-carousel-scroll-track" id="dizisol-carousel-scroll-track">
               <div class="dizisol-carousel-scroll-thumb" id="dizisol-carousel-scroll-thumb"></div>
+            </div>
           </div>
-        ` : ''}
+        ` : `
+          <!-- FILM BILGI, EKIP VE BENZER FILMLER (Only for Movies) -->
+          <div class="dizisol-movie-section" id="dizisol-movie-section">
+            <div class="drawer-loading" style="display:flex;align-items:center;gap:0.75rem;padding:1.5rem;color:#94a3b8;">
+              <div class="drawer-spinner" style="width:20px;height:20px;border:2px solid rgba(255,255,255,0.2);border-top-color:#e50914;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+              <p style="margin:0;font-size:0.85rem;">Film detayları ve benzer öneriler hazırlanıyor...</p>
+            </div>
+          </div>
+        `}
       </div>
 
       <!-- Modern Footer Action Bar -->
@@ -1607,10 +1782,12 @@ export async function openPlayerModal({
     renderPlayerIcons(modalContainer);
   }
 
-  // Trigger initial drawer & mobile episode rail rendering for TV & Anime series
+  // Trigger initial drawer & mobile episode rail rendering for TV & Anime series, or movie info section
   if (isSeries) {
     renderDrawerContent();
     updateEpisodeOverview(currentSeason, currentEpisode);
+  } else {
+    renderMovieInfoSection();
   }
   async function renderQuickEpisodesRail() {
     const rail = document.getElementById('player-quick-episodes-rail');
