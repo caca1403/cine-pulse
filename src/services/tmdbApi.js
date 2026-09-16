@@ -475,7 +475,7 @@ export async function fetchAdultAnimationSeries(page = 1) {
         && !genres.includes(10762)
         && !isEastAsianAnimation(item)
         && !isKnownKidsCartoon(item)
-        && getAdultAnimationBoost(item) > 0
+        && (page === 1 ? getAdultAnimationBoost(item) > 0 : true)
         && !isBlockedContent(item);
     })
     .map(item => {

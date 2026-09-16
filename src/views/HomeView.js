@@ -150,31 +150,23 @@ function initInfiniteRails(container) {
   const sentinels = container.querySelectorAll('.rail-sentinel');
   if (sentinels.length === 0) return;
 
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(async (entry) => {
-      if (!entry.isIntersecting) return;
+  sentinels.forEach(sentinel => {
+    const railId = sentinel.getAttribute('data-rail');
+    const rail = document.getElementById(railId);
+    if (!rail) return;
 
-      const railId = entry.target.getAttribute('data-rail');
-      const state  = railState[railId];
+    const loadMore = async () => {
+      const state = railState[railId];
       if (!state || state.loading || state.exhausted) return;
 
       state.loading = true;
-
-      // Show spinner before sentinel
       const spinner = document.createElement('div');
       spinner.className = 'rail-loader';
       spinner.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:22px;height:22px;color:var(--text-muted);"></i>`;
-      entry.target.before(spinner);
+      sentinel.before(spinner);
       if (window.lucide) window.lucide.createIcons();
 
       try {
-        const rail = document.getElementById(railId);
-        if (!rail) {
-          spinner.remove();
-          state.loading = false;
-          return;
-        }
-
         const seenIds = new Set(
           Array.from(rail.querySelectorAll('.media-card[data-id]'))
             .map(card => String(card.getAttribute('data-id')))
@@ -182,9 +174,7 @@ function initInfiniteRails(container) {
         );
         let newItems = [];
 
-        // Some combined TMDB queries overlap heavily between adjacent pages.
-        // Advance through up to three real pages until genuinely new cards arrive.
-        for (let attempt = 0; attempt < 3 && newItems.length === 0; attempt += 1) {
+        for (let attempt = 0; attempt < 4 && newItems.length === 0; attempt += 1) {
           state.page += 1;
           const fetchedItems = await state.fetcher(state.page);
           if (!fetchedItems || fetchedItems.length === 0) {
@@ -201,10 +191,10 @@ function initInfiniteRails(container) {
         spinner.remove();
 
         if (newItems.length === 0) {
+          state.loading = false;
           return;
         }
 
-        // Cache extra items for this rail
         const prevExtra = railExtraItemsCache.get(railId) || [];
         railExtraItemsCache.set(railId, [...prevExtra, ...newItems]);
 
@@ -213,7 +203,7 @@ function initInfiniteRails(container) {
           div.innerHTML = renderMediaCard(item);
           const card = div.firstElementChild;
           if (card) {
-            rail.insertBefore(card, entry.target);
+            rail.insertBefore(card, sentinel);
             card.addEventListener('click', () => {
               const id   = card.getAttribute('data-id');
               const type = card.getAttribute('data-type');
@@ -223,17 +213,29 @@ function initInfiniteRails(container) {
         });
 
         if (window.lucide) window.lucide.createIcons();
-
       } catch (err) {
         spinner.remove();
         console.error('Rail load error:', err);
       }
 
       state.loading = false;
-    });
-  }, { root: null, rootMargin: '0px 300px 0px 0px', threshold: 0.1 });
+    };
 
-  sentinels.forEach(s => observer.observe(s));
+    // 1. Scroll listener on the horizontal container
+    rail.addEventListener('scroll', () => {
+      if (rail.scrollWidth - (rail.scrollLeft + rail.clientWidth) < 600) {
+        loadMore();
+      }
+    }, { passive: true });
+
+    // 2. IntersectionObserver with root = rail
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) loadMore();
+      });
+    }, { root: rail, rootMargin: '0px 400px 0px 0px', threshold: 0 });
+    obs.observe(sentinel);
+  });
 }
 
 /* --------------------------------------------------------------------------

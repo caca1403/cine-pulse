@@ -1074,6 +1074,27 @@ img {
   display: none;
 }
 
+.rail-sentinel {
+  width: 40px;
+  min-width: 40px;
+  height: 100%;
+  min-height: 180px;
+  flex-shrink: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.rail-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  min-width: 60px;
+  height: 100%;
+  min-height: 180px;
+  flex-shrink: 0;
+}
+
 /* --------------------------------------------------------------------------
    7. Letterboxd × Plex Media Card Architecture
 -------------------------------------------------------------------------- */
