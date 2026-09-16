@@ -35,13 +35,21 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
         </button>
       </div>
 
-      <!-- Luxury Segmented Season Pills Track -->
-      <div class="season-pills-track" id="season-tabs-bar" style="margin-bottom: 1.5rem;">
-        ${validSeasons.map(season => `
-          <button class="season-pill ${season.season_number === activeSeasonNumber ? 'active' : ''}" data-season="${season.season_number}" data-ep-count="${season.episode_count || 10}">
-            ${season.name || `${season.season_number}. Sezon`} <span style="opacity: 0.75; font-size: 0.72rem; margin-left: 0.2rem;">(${season.episode_count} Bölüm)</span>
-          </button>
-        `).join('')}
+      <!-- Luxury Segmented Season Pills Track with PC Arrows & Scroll Support -->
+      <div class="season-tabs-wrapper" style="position: relative; display: flex; align-items: center; margin-bottom: 1.5rem; width: 100%;">
+        <button class="season-nav-arrow left" id="btn-season-prev" title="Önceki Sezonlar" aria-label="Geri">
+          <i data-lucide="chevron-left" style="width:16px;height:16px;"></i>
+        </button>
+        <div class="season-pills-track" id="season-tabs-bar">
+          ${validSeasons.map(season => `
+            <button class="season-pill ${season.season_number === activeSeasonNumber ? 'active' : ''}" data-season="${season.season_number}" data-ep-count="${season.episode_count || 10}">
+              ${season.name || `${season.season_number}. Sezon`} <span style="opacity: 0.75; font-size: 0.72rem; margin-left: 0.2rem;">(${season.episode_count} Bölüm)</span>
+            </button>
+          `).join('')}
+        </div>
+        <button class="season-nav-arrow right" id="btn-season-next" title="Sonraki Sezonlar" aria-label="İleri">
+          <i data-lucide="chevron-right" style="width:16px;height:16px;"></i>
+        </button>
       </div>
 
       <div class="episodes-grid" id="episode-grid-container">
@@ -166,6 +174,68 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
         setTimeout(() => {
           initialActivePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }, 120);
+      }
+
+      // PC Mouse Wheel & Drag & Arrow Scroll
+      const track = container.querySelector('#season-tabs-bar');
+      const btnPrev = container.querySelector('#btn-season-prev');
+      const btnNext = container.querySelector('#btn-season-next');
+
+      if (track) {
+        // Arrow clicks
+        btnPrev?.addEventListener('click', (e) => {
+          e.preventDefault();
+          track.scrollBy({ left: -260, behavior: 'smooth' });
+        });
+        btnNext?.addEventListener('click', (e) => {
+          e.preventDefault();
+          track.scrollBy({ left: 260, behavior: 'smooth' });
+        });
+
+        // PC Mouse wheel horizontal scroll (shift-wheel or regular vertical wheel)
+        track.addEventListener('wheel', (e) => {
+          if (e.deltaY !== 0 && track.scrollWidth > track.clientWidth) {
+            e.preventDefault();
+            track.scrollLeft += e.deltaY;
+          }
+        }, { passive: false });
+
+        // PC Mouse drag-to-scroll
+        let isDown = false;
+        let startX = 0;
+        let scrollLeftPos = 0;
+        let hasDragged = false;
+
+        track.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          isDown = true;
+          hasDragged = false;
+          track.classList.add('dragging');
+          startX = e.pageX - track.offsetLeft;
+          scrollLeftPos = track.scrollLeft;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!isDown) return;
+          const x = e.pageX - track.offsetLeft;
+          const walk = (x - startX) * 1.5;
+          if (Math.abs(walk) > 4) hasDragged = true;
+          track.scrollLeft = scrollLeftPos - walk;
+        });
+
+        window.addEventListener('mouseup', () => {
+          if (!isDown) return;
+          isDown = false;
+          track.classList.remove('dragging');
+          setTimeout(() => { hasDragged = false; }, 50);
+        });
+
+        track.addEventListener('click', (e) => {
+          if (hasDragged) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }, true);
       }
 
       const seasonAllBtn = container.querySelector('#btn-mark-season-all');

@@ -1613,6 +1613,52 @@ export async function openPlayerModal({
           activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }, 120);
       }
+
+      // PC Mouse wheel horizontal scroll & drag
+      const rail = document.querySelector('.dizisol-season-tabs-rail') || tabsContainer;
+      if (rail && !rail._hasWheel) {
+        rail._hasWheel = true;
+        rail.addEventListener('wheel', (e) => {
+          if (e.deltaY !== 0 && rail.scrollWidth > rail.clientWidth) {
+            e.preventDefault();
+            rail.scrollLeft += e.deltaY;
+          }
+        }, { passive: false });
+
+        let isDown = false;
+        let startX = 0;
+        let scrollLeftPos = 0;
+        let hasDragged = false;
+
+        rail.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          isDown = true;
+          hasDragged = false;
+          startX = e.pageX - rail.offsetLeft;
+          scrollLeftPos = rail.scrollLeft;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!isDown) return;
+          const x = e.pageX - rail.offsetLeft;
+          const walk = (x - startX) * 1.5;
+          if (Math.abs(walk) > 4) hasDragged = true;
+          rail.scrollLeft = scrollLeftPos - walk;
+        });
+
+        window.addEventListener('mouseup', () => {
+          if (!isDown) return;
+          isDown = false;
+          setTimeout(() => { hasDragged = false; }, 50);
+        });
+
+        rail.addEventListener('click', (e) => {
+          if (hasDragged) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }, true);
+      }
     }
 
     const loadingHTML = `

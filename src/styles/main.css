@@ -2175,6 +2175,38 @@ img {
   color: #ffffff;
 }
 
+.season-tabs-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+.season-nav-arrow {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(14, 20, 32, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+}
+
+.season-nav-arrow:hover {
+  background: var(--primary, #e50914);
+  border-color: var(--primary, #e50914);
+  transform: scale(1.08);
+}
+
 .season-pills-track {
   display: flex;
   align-items: center;
@@ -2194,6 +2226,11 @@ img {
   box-sizing: border-box;
   user-select: none;
   scroll-behavior: smooth;
+  cursor: grab;
+}
+
+.season-pills-track.dragging {
+  cursor: grabbing;
 }
 
 .season-pills-track::-webkit-scrollbar {
@@ -3463,6 +3500,13 @@ img {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  scroll-behavior: smooth;
+  user-select: none;
+  cursor: grab;
+}
+
+.dizisol-season-tabs-rail.dragging {
+  cursor: grabbing;
 }
 
 .dizisol-season-tabs-rail::-webkit-scrollbar {
