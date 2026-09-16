@@ -1,0 +1,645 @@
+import { guardNodeRequest, isSafePublicUrl } from './_security.js';
+import { Readable } from 'stream';
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+
+  const isMediaSegment = /hls_proxy|live_tv_stream/.test(req.url || '');
+  if (guardNodeRequest(req, res, { limit: isMediaSegment ? 900 : 180, bucket: isMediaSegment ? 'media' : 'proxy' })) return;
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // Parse path: e.g. /api/hdfc/search/Deadpool/ or /api/szd/ajax/dataAlternatif22.asp
+  const urlObj = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
+  const pathname = urlObj.pathname; // e.g. /api/hdfc/search/Deadpool/
+  const search = urlObj.search || '';
+
+  let targetUrl = '';
+  let customHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  };
+
+  if (pathname.startsWith('/api/img_proxy')) {
+    const rawTarget = urlObj.searchParams.get('url') || '';
+    if (!rawTarget) return res.status(400).send('Missing url');
+    try {
+      const decodedTarget = decodeURIComponent(rawTarget);
+      if (!isSafePublicUrl(decodedTarget)) return res.status(403).send('Target blocked');
+      const imgRes = await fetch(decodedTarget, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+        }
+      });
+      if (!imgRes.ok) {
+        return res.status(imgRes.status).send('Image fetch failed');
+      }
+      res.setHeader('Content-Type', imgRes.headers.get('content-type') || 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400');
+      const arrayBuffer = await imgRes.arrayBuffer();
+      return res.status(200).send(Buffer.from(arrayBuffer));
+    } catch (err) {
+      return res.status(500).send('Proxy error: ' + err.message);
+    }
+  }
+
+  if (pathname.startsWith('/api/live_tv_stream')) {
+    const channel = (urlObj.searchParams.get('channel') || '').toLowerCase();
+    try {
+      let pageUrl = '';
+      let refUrl = '';
+      if (channel === 'dmax') {
+        pageUrl = 'https://www.dmax.com.tr/canli-izle';
+        refUrl = 'https://www.dmax.com.tr/';
+      } else if (channel === 'tlc') {
+        pageUrl = 'https://www.tlctv.com.tr/canli-izle';
+        refUrl = 'https://www.tlctv.com.tr/';
+      } else {
+        return res.status(400).json({ error: 'Unsupported channel' });
+      }
+
+      const now = Date.now();
+      if (globalThis._liveTvCache && globalThis._liveTvCache[channel] && globalThis._liveTvCache[channel].exp > now) {
+        return res.redirect(302, globalThis._liveTvCache[channel].url);
+      }
+
+      const pageRes = await fetch(pageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        }
+      });
+      const html = await pageRes.text();
+      const m = html.match(/daionUrl\s*:\s*['"]([^'"]+)['"]/);
+      if (!m || !m[1]) {
+        return res.status(502).json({ error: 'Failed to extract live stream URL' });
+      }
+      const daionUrl = m[1];
+      const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(daionUrl)}&ref=${encodeURIComponent(refUrl)}`;
+
+      if (!globalThis._liveTvCache) globalThis._liveTvCache = {};
+      globalThis._liveTvCache[channel] = {
+        url: proxiedUrl,
+        exp: now + 5 * 60 * 1000 // Cache for 5 minutes
+      };
+
+      return res.redirect(302, proxiedUrl);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // RecTV / TVR Authenticated API Proxy (Enforces okhttp/4.12.0 User-Agent)
+  if (pathname.startsWith('/api/rtv')) {
+    const sub = pathname.replace(/^\/api\/rtv/, '');
+    const upstreamUrl = `https://a.prectv70.lol/api${sub}${search}`;
+    const forwardHeaders = {};
+    for (const [k, v] of Object.entries(req.headers || {})) {
+      const lk = k.toLowerCase();
+      if (lk === 'host' || lk === 'origin' || lk === 'referer' || lk === 'user-agent') continue;
+      forwardHeaders[k] = v;
+    }
+    forwardHeaders['user-agent'] = 'okhttp/4.12.0';
+
+    try {
+      // Read raw body — Vercel may pre-parse req.body or leave it as a stream
+      let rawBody = undefined;
+      if (req.method === 'POST' || req.method === 'PUT') {
+        if (req.body !== undefined && req.body !== null) {
+          // Vercel pre-parsed body (object or string)
+          rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        } else {
+          // Read raw stream (body parser disabled or not triggered)
+          rawBody = await new Promise((resolve, reject) => {
+            const chunks = [];
+            req.on('data', chunk => chunks.push(chunk));
+            req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+            req.on('error', reject);
+          });
+        }
+      }
+
+      const upstreamRes = await fetch(upstreamUrl, {
+        method: req.method,
+        headers: forwardHeaders,
+        body: rawBody || undefined
+      });
+      const data = await upstreamRes.text();
+      res.setHeader('Content-Type', upstreamRes.headers.get('content-type') || 'application/json');
+      return res.status(upstreamRes.status).send(data);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  if (pathname.startsWith('/api/hls_proxy')) {
+    const rawTarget = urlObj.searchParams.get('url') || '';
+    const ref = urlObj.searchParams.get('ref') || 'https://hdplayersystem.com/';
+    if (!rawTarget) {
+      return res.status(400).send('Missing url param');
+    }
+
+    try {
+      const decodedTarget = decodeURIComponent(rawTarget);
+      if (!isSafePublicUrl(decodedTarget)) return res.status(403).send('Target blocked');
+      let targetOrigin = 'https://hdplayersystem.com';
+      try {
+        if (ref) targetOrigin = new URL(ref).origin;
+      } catch (_) {}
+
+      const isRecTv = decodedTarget.includes('prectv') || 
+                      decodedTarget.includes('mariuannastluisborg') || 
+                      decodedTarget.includes('moveonjoy') || 
+                      (ref && ref.includes('prectv'));
+      const ua = isRecTv ? 'okhttp/4.12.0' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+      const upstreamHeaders = {
+        'User-Agent': ua
+      };
+      if (!isRecTv) {
+        upstreamHeaders['Referer'] = ref;
+        upstreamHeaders['Origin'] = targetOrigin;
+      }
+
+      const upstreamRes = await fetch(decodedTarget, {
+        headers: upstreamHeaders
+      });
+
+      const contentType = upstreamRes.headers.get('content-type') || '';
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+
+      const lowerTarget = decodedTarget.toLowerCase();
+      const lowerCt = contentType.toLowerCase();
+      const isSegment = (
+        lowerTarget.includes('/ts') || 
+        lowerTarget.includes('ts?') || 
+        lowerTarget.includes('.ts') || 
+        lowerTarget.includes('seg-') ||
+        lowerTarget.includes('/seg') ||
+        lowerTarget.includes('.jpg') || 
+        lowerTarget.includes('.png') || 
+        lowerCt.includes('mp2t') || 
+        lowerCt.includes('video/')
+      );
+
+      const isPlaylist = !isSegment && (
+        lowerTarget.includes('.m3u8') || 
+        lowerTarget.includes('/play') ||
+        lowerTarget.includes('m3u8?') ||
+        lowerCt.includes('mpegurl') || 
+        lowerCt.includes('application/x-mpegurl') || 
+        lowerCt.includes('text/plain')
+      );
+
+      if (isPlaylist) {
+        const text = await upstreamRes.text();
+        const baseOrigin = new URL(decodedTarget).origin;
+
+        const rewritten = text.split('\n').map(line => {
+          let currentLine = line;
+          const trimmed = currentLine.trim();
+          if (!trimmed) return line;
+
+          if (trimmed.includes('URI="')) {
+            currentLine = currentLine.replace(/URI="([^"]+)"/g, (m, u) => {
+              let fullU;
+              if (u.startsWith('http')) fullU = u;
+              else if (u.startsWith('/')) fullU = `${baseOrigin}${u}`;
+              else {
+                const urlPath = new URL(decodedTarget).pathname;
+                const lastSlash = urlPath.lastIndexOf('/');
+                const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
+                fullU = `${baseOrigin}${dir}${u}`;
+              }
+              // Dizisol audio variants/segments already support direct CORS without Referer
+              if (fullU.includes('dizisol.com') && (fullU.includes('/m3u8') || fullU.includes('/ts') || fullU.includes('.jpg'))) {
+                return `URI="${fullU}"`;
+              }
+              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(ref)}"`;
+            });
+          }
+
+          if (trimmed.startsWith('#')) return currentLine;
+
+          let fullLineUrl;
+          if (trimmed.startsWith('http')) {
+            fullLineUrl = trimmed;
+          } else if (trimmed.startsWith('/')) {
+            fullLineUrl = `${baseOrigin}${trimmed}`;
+          } else {
+            const urlPath = new URL(decodedTarget).pathname;
+            const lastSlash = urlPath.lastIndexOf('/');
+            const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
+            fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
+          }
+          // Dizisol variants (/m3u8) and segments (/ts, .ts, .jpg) have direct CORS (*) and no Referer requirement.
+          // Returning them direct allows instant playback at full CDN speed without choking Vercel serverless functions.
+          if (fullLineUrl.includes('dizisol.com') && (fullLineUrl.includes('/ts') || fullLineUrl.includes('/m3u8') || fullLineUrl.includes('.ts') || fullLineUrl.includes('.jpg') || fullLineUrl.includes('.png'))) {
+            return fullLineUrl;
+          }
+          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(ref)}`;
+        }).join('\n');
+
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        return res.status(upstreamRes.status).send(rewritten);
+      } else {
+        // Stream TS/video bytes immediately; buffering a complete 6-10 second
+        // segment made TVR channel startup feel unnecessarily slow.
+        res.statusCode = upstreamRes.status;
+        res.setHeader('Content-Type', contentType || 'video/mp2t');
+        const contentLength = upstreamRes.headers.get('content-length');
+        if (contentLength) res.setHeader('Content-Length', contentLength);
+        if (!upstreamRes.body) return res.end();
+        await new Promise((resolve, reject) => {
+          const stream = Readable.fromWeb(upstreamRes.body);
+          stream.on('error', reject);
+          res.on('finish', resolve);
+          stream.pipe(res);
+        });
+        return;
+      }
+    } catch (err) {
+      console.error('HLS Proxy Error:', err);
+      return res.status(500).send(err.message);
+    }
+  }
+
+  if (pathname.startsWith('/api/dzm_video')) {
+    const hash = urlObj.searchParams.get('hash') || urlObj.searchParams.get('data') || '';
+    if (!hash) {
+      return res.status(400).json({ error: 'Missing hash' });
+    }
+
+    try {
+      const postUrl = `https://hdplayersystem.com/player/index.php?data=${hash}&do=getVideo`;
+      const form = new URLSearchParams();
+      form.append('hash', hash);
+      form.append('r', 'https://www.dizimom.surf/');
+
+      const upstreamRes = await fetch(postUrl, {
+        method: 'POST',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://www.dizimom.surf/',
+          'Origin': 'https://hdplayersystem.com',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: form.toString()
+      });
+
+      if (upstreamRes.ok) {
+        const data = await upstreamRes.json().catch(() => null);
+        const originalSecured = data?.securedLink || data?.videoSource;
+        if (originalSecured) {
+          const proxiedHls = `/api/hls_proxy?url=${encodeURIComponent(originalSecured)}&ref=https://hdplayersystem.com/`;
+          return res.status(200).json({
+            success: true,
+            streamUrl: proxiedHls,
+            rawUrl: originalSecured,
+            isHls: true
+          });
+        }
+      }
+      return res.status(404).json({ error: 'Video not found or upstream error' });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (pathname.startsWith('/api/hdfc')) {
+    const subPath = pathname.replace(/^\/api\/hdfc/, '');
+    targetUrl = `https://www.hdfilmcehennemi.now${subPath}${search}`;
+    customHeaders['Referer'] = 'https://www.hdfilmcehennemi.now/';
+    customHeaders['Origin'] = 'https://www.hdfilmcehennemi.now';
+  } else if (pathname.startsWith('/api/fin')) {
+    const subPath = pathname.replace(/^\/api\/fin/, '');
+    targetUrl = `https://filmizle.now${subPath}${search}`;
+    customHeaders['Referer'] = 'https://filmizle.now/';
+    customHeaders['Origin'] = 'https://filmizle.now';
+    if (req.headers['x-csrf-token']) customHeaders['X-CSRF-TOKEN'] = req.headers['x-csrf-token'];
+    if (req.headers['cookie']) customHeaders['Cookie'] = req.headers['cookie'];
+  } else if (pathname.startsWith('/api/vidmixi')) {
+    const subPath = pathname.replace(/^\/api\/vidmixi/, '');
+    targetUrl = `https://vidmixi.com${subPath}${search}`;
+    customHeaders['Referer'] = 'https://filmizle.now/';
+  } else if (pathname.startsWith('/api/szd')) {
+    const subPath = pathname.replace(/^\/api\/szd/, '');
+    targetUrl = `https://sezonlukdizi.cc${subPath}${search}`;
+    customHeaders['Referer'] = 'https://sezonlukdizi.cc/';
+    customHeaders['Origin'] = 'https://sezonlukdizi.cc';
+    customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+    if (req.method === 'POST') {
+      customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+    }
+  } else if (pathname.startsWith('/api/dbl')) {
+    const subPath = pathname.replace(/^\/api\/dbl/, '');
+    targetUrl = `https://dizibal.com/api${subPath}${search}`;
+    customHeaders['Referer'] = 'https://dizibal.com/';
+  } else if (pathname.startsWith('/api/rtv')) {
+    const subPath = pathname.replace(/^\/api\/rtv/, '');
+    targetUrl = `https://a.prectv70.lol/api${subPath}${search}`;
+    customHeaders['User-Agent'] = 'okhttp/4.12.0';
+    if (req.headers['authorization']) customHeaders['Authorization'] = req.headers['authorization'];
+    if (req.headers['x-timestamp']) customHeaders['X-Timestamp'] = req.headers['x-timestamp'];
+    if (req.headers['x-nonce']) customHeaders['X-Nonce'] = req.headers['x-nonce'];
+    if (req.headers['x-signature']) customHeaders['X-Signature'] = req.headers['x-signature'];
+    if (req.headers['x-app-version']) customHeaders['X-App-Version'] = req.headers['x-app-version'];
+    if (req.headers['x-client-id']) customHeaders['X-Client-Id'] = req.headers['x-client-id'];
+    if (req.headers['content-type']) customHeaders['Content-Type'] = req.headers['content-type'];
+  } else if (pathname.startsWith('/api/dzp')) {
+    const subPath = pathname.replace(/^\/api\/dzp/, '');
+    targetUrl = `https://dizipal1229.com${subPath}${search}`;
+  } else if (pathname.startsWith('/api/flz')) {
+    const subPath = pathname.replace(/^\/api\/flz/, '');
+    targetUrl = `https://filmizlech.com${subPath}${search}`;
+    customHeaders['Referer'] = 'https://filmizlech.com/';
+  } else if (pathname.startsWith('/api/snx')) {
+    const subPath = pathname.replace(/^\/api\/snx/, '');
+    targetUrl = `https://ydfvfdizipanel.ru/public/api${subPath}${search}`;
+    customHeaders['hash256'] = '711bff4afeb47f07ab08a0b07e85d3835e739295e8a6361db77eebd93d96306b';
+    customHeaders['signature'] = '3082058830820370a00302010202145bbfbba9791db758ad12295636e094ab4b07dc24300d06092a864886f70d01010b05003074310b3009060355040613025553311330110603550408130a43616c69666f726e6961311630140603550407130d4d6f756e7461696e205669657731143012060355040a130b476f6f676c6520496e632e3110300e060355040b1307416e64726f69643110300e06035504031307416e64726f69643020170d3231313231353232303433335a180f32303531313231353232303433335a3074310b3009060355040613025553311330110603550408130a43616c69666f726e6961311630140603550407130d4d6f756e7461696e205669657731143012060355040a130b476f6f676c6520496e632e3110300e060355040b1307416e64726f69643110300e06035504031307416e64726f696430820222300d06092a864886f70d01010105000382020f003082020a0282020100a5106a24bb3f9c0aaf3a2b228f794b5eaf1757ba758b19736a39d1bdc73fc983a7237b8d5ca5156cfa999c1dab3418bbc2be0920e0ee001c8aa4812d1dae75d080f09e91e0abda83ff9a76e8384a4429f4849248069a59505b12ac2c14ba2e4d1a13afcdaf54e508697ff928a9f738e6f4a6fc27409c55329eb149b5ff89c5a2d7c06bf9e62086f955cad17d7be2623ee9d5ec56068eadc23cb0965a13ff97d49fe10ef41afc6eeca36b4ace9582097faff89f590bc831cdb3a69eec5d15b67c3f2cad49e37ed053733e3d2d400c47755b932bdbe15d749fd6ad1dce30ba5e66094dfb6ee6f64cafb807e11b19a990c5d078c6d6701cda0bdeb21e99404ff166074f4c89b04c418f4e7940db5c78647c475bcfb85d4c4e836ee7d7c1d53e9e736b5d96d4b4d8b98209064b729ac6a682d55a6a930e518d849898bb28329ca0aaa133b5e5270a9d5940cac6af4802a57fd971efda91abb602882dd6aa6ce2b236b57b52ee2481498f0cacbcc2c36c238bc84becad7eaaf1125b9a1ca9ded6c79f3f283a52050377809b2a9995d66e1636b0ed426fdd8685c47cb18e82077f4aefcc07887e1dc58b4d64be1632f0e7b4625da6f40c65a8512a6454a4b96963e7f876136e6c0069a519a79ad632078ed965aa12482458060c030ed50db706d854f88cb004630b49285d8af8b471ff8f6070687826412287b50049bcb7d1b6b62ef90203010001a310300e300c0603551d13040530030101ff300d06092a864886f70d01010b0500038202010051c0b7bd793181dc29ca777d3773f928a366c8469ecf2fa3cfb076e8831970d19bb2b96e44e8ccc647cf0696bb824ac61c23d958525d283cab26037b04d58aa79bf92192db843adf5c26a980f081d2f0e14f759fc5ff4c5bb3dce0860299bfe7b349a8155a2efaf731ba25ce796a80c1442c7bf80f8c1a7912ff0b6f6592264315337251a846460194fa594f81f38f9e5233a63201e931ad9cab5bf119f24025613f307194eaa6eb39a83f3c05a49ba34455b1aff7c6839bbb657d9392ffdf397432af6e56ba9534a8b07d7060fe09691c6cf07cb5324f67b3cc0871a8c621d81fe71d71085c55206a4f57e25f774fd4b979b299e8bb076b50fca42fa57da2d519fd35a4a7c0137babaed4345f8031b63b6a71f5e8268f709d658ccd7c2a58849379d25bfa598c3f4a2c3d9b7d89285fefeb7f0ec65137d38b08ce432a15688b624a179e6a4a505ebc3bcdfbc4d4330508ee2d8d0f016924dcec21a6838ef7d834c6f43bde4a5201ed0b3bb4e9bd377b470e36bcf5bc3d56169dbd8e39567aa7dce4d1a8a8a54a5e1aa6fb1a8aab0062669a966f96e15ccce6fe12ea5e6a8b8c8823bdc94988ca39759fd1cc8fd8ae5c3d74db50b174cf7d77655016c075c91d439ed01cc0a9f695c99fad3b5495fb6cb1e01a5fa020cc6022a85c07ec55f9eba89719f86e49d34ab5bd208c5f70cced2b7b7963c014f8404432979b506de29e';
+    customHeaders['User-Agent'] = 'EasyPlex (Android 14; SM-A546B; Samsung Galaxy A54 5G; tr)';
+  } else if (pathname.startsWith('/api/dzy')) {
+    const pathParam = urlObj.searchParams.get('path');
+    const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : pathname.replace(/^\/api\/dzy/, '');
+    const cleanSearch = search ? search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+    targetUrl = `https://www.diziyou.one${subPath}${cleanSearch}`;
+    customHeaders['Referer'] = 'https://www.diziyou.one/';
+    customHeaders['Origin'] = 'https://www.diziyou.one';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  } else if (pathname.startsWith('/api/fex')) {
+    const subPath = pathname.replace(/^\/api\/fex/, '');
+    targetUrl = `https://filmekseni.vip${subPath}${search}`;
+    customHeaders['Referer'] = 'https://filmekseni.vip/';
+    customHeaders['Origin'] = 'https://filmekseni.vip';
+  } else if (pathname.startsWith('/api/hfd')) {
+    const subPath = pathname.replace(/^\/api\/hfd/, '');
+    targetUrl = `https://hdfilmdelisi.one${subPath}${search}`;
+    customHeaders['Referer'] = 'https://hdfilmdelisi.one/';
+    customHeaders['Origin'] = 'https://hdfilmdelisi.one';
+  } else if (pathname.startsWith('/api/dzl')) {
+    const subPath = pathname.replace(/^\/api\/dzl/, '');
+    targetUrl = `https://dizilla.now${subPath}${search}`;
+    customHeaders['Referer'] = 'https://dizilla.now/';
+    customHeaders['Origin'] = 'https://dizilla.now';
+  } else if (pathname.startsWith('/api/hdi')) {
+    const subPath = pathname.replace(/^\/api\/hdi/, '');
+    targetUrl = `https://www.hdfilmizle.vip${subPath}${search}`;
+    customHeaders['Referer'] = 'https://www.hdfilmizle.vip/';
+    customHeaders['Origin'] = 'https://www.hdfilmizle.vip';
+  } else if (pathname.startsWith('/api/jet')) {
+    const subPath = pathname.replace(/^\/api\/jet/, '');
+    const cleanSub = subPath.startsWith('/') ? subPath : (subPath ? '/' + subPath : '');
+    targetUrl = `https://jetfilmizle.now${cleanSub}${search}`;
+    customHeaders['Referer'] = 'https://jetfilmizle.now/';
+    customHeaders['Origin'] = 'https://jetfilmizle.now';
+    customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+    if (req.method === 'POST') {
+      customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+    }
+  } else if (pathname.startsWith('/api/ddz')) {
+    const subPath = pathname.replace(/^\/api\/ddz/, '');
+    const cleanSub = subPath.startsWith('/') ? subPath : (subPath ? '/' + subPath : '');
+    targetUrl = `https://dramadizilerim.com${cleanSub}${search}`;
+    customHeaders['Referer'] = 'https://dramadizilerim.com/';
+    customHeaders['Origin'] = 'https://dramadizilerim.com';
+  } else if (pathname.startsWith('/api/dzs')) {
+    const subPath = pathname.replace(/^\/api\/dzs/, '');
+    targetUrl = `https://dizisol.com/api${subPath}${search}`;
+    customHeaders['Referer'] = 'https://dizisol.com/';
+    customHeaders['Origin'] = 'https://dizisol.com';
+  } else if (pathname.startsWith('/api/dzb')) {
+    const subPath = pathname.replace(/^\/api\/dzb/, '');
+    targetUrl = `https://dizibal.org/api${subPath}${search}`;
+    customHeaders['Referer'] = 'https://dizibal.org/';
+    customHeaders['Origin'] = 'https://dizibal.org';
+  } else if (pathname.startsWith('/api/dzyo')) {
+    const subPath = pathname.replace(/^\/api\/dzyo/, '');
+    targetUrl = `https://www.diziyo.so${subPath}${search}`;
+    customHeaders['Referer'] = req.headers['x-dzyo-referer'] || 'https://www.diziyo.so/';
+    customHeaders['Origin'] = 'https://www.diziyo.so';
+    if (req.headers['cookie']) customHeaders['Cookie'] = req.headers['cookie'];
+    if (req.headers['x-dzyo-cookie']) customHeaders['Cookie'] = req.headers['x-dzyo-cookie'];
+  } else if (pathname.startsWith('/api/dzr')) {
+    const subPath = pathname.replace(/^\/api\/dzr/, '');
+    targetUrl = `https://diziroll.club${subPath}${search}`;
+    customHeaders['Referer'] = 'https://diziroll.club/';
+    customHeaders['Origin'] = 'https://diziroll.club';
+  } else if (pathname.startsWith('/api/fmk_rapid')) {
+    const subPath = pathname.replace(/^\/api\/fmk_rapid/, '');
+    targetUrl = `https://rapid.filmmakinesi.to${subPath}${search}`;
+    customHeaders['Referer'] = 'https://filmmakinesi.to/';
+    customHeaders['Origin'] = 'https://filmmakinesi.to';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  } else if (pathname.startsWith('/api/fmk')) {
+    const subPath = pathname.replace(/^\/api\/fmk/, '');
+    targetUrl = `https://filmmakinesi.to${subPath}${search}`;
+    customHeaders['Referer'] = 'https://filmmakinesi.to/';
+    customHeaders['Origin'] = 'https://filmmakinesi.to';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  } else if (pathname.startsWith('/api/dzm')) {
+    const subPath = pathname.replace(/^\/api\/dzm/, '');
+    targetUrl = `https://www.dizimom.surf${subPath}${search}`;
+    customHeaders['Referer'] = 'https://www.dizimom.surf/';
+    customHeaders['Origin'] = 'https://www.dizimom.surf';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  } else if (pathname.startsWith('/api/hdp')) {
+    const subPath = pathname.replace(/^\/api\/hdp/, '');
+    targetUrl = `https://hdplayersystem.com${subPath}${search}`;
+    customHeaders['Referer'] = 'https://www.dizimom.surf/';
+    customHeaders['Origin'] = 'https://hdplayersystem.com';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    if (req.method === 'POST') {
+      customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+      customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+    }
+  } else if (pathname.startsWith('/api/hdm')) {
+    const subPath = pathname.replace(/^\/api\/hdm/, '');
+    targetUrl = `https://hdmomplayer.com${subPath}${search}`;
+    customHeaders['Referer'] = 'https://www.dizimom.surf/';
+    customHeaders['Origin'] = 'https://hdmomplayer.com';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    if (req.method === 'POST') {
+      customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+      customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+    }
+  } else if (pathname.startsWith('/api/fmk_close')) {
+    const subPath = pathname.replace(/^\/api\/fmk_close/, '');
+    targetUrl = `https://closeload.filmmakinesi.to${subPath}${search}`;
+    customHeaders['Referer'] = 'https://filmmakinesi.to/';
+    customHeaders['Origin'] = 'https://filmmakinesi.to';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  } else if (pathname.startsWith('/api/fmk_sub/')) {
+    const subMatch = pathname.match(/^\/api\/fmk_sub\/([a-zA-Z0-9_-]+)(.*)/);
+    const sub = subMatch ? subMatch[1] : '';
+    const subPath = subMatch ? subMatch[2] : '';
+    const host = sub ? `${sub}.filmmakinesi.to` : 'filmmakinesi.to';
+    targetUrl = `https://${host}${subPath}${search}`;
+    customHeaders['Referer'] = 'https://filmmakinesi.to/';
+    customHeaders['Origin'] = 'https://filmmakinesi.to';
+  } else if (pathname.startsWith('/api/fmk_proxy')) {
+    const rawTarget = urlObj.searchParams.get('url') || '';
+    if (!rawTarget) return res.status(400).send('Missing url param');
+    targetUrl = decodeURIComponent(rawTarget);
+    if (!isSafePublicUrl(targetUrl)) return res.status(403).send('Target blocked');
+    customHeaders['Referer'] = 'https://filmmakinesi.to/';
+    customHeaders['Origin'] = 'https://filmmakinesi.to';
+  } else if (pathname.startsWith('/api/kvip') || pathname.startsWith('/api/czm')) {
+    const subPath = pathname.replace(/^\/api\/(kvip|czm)/, '');
+    targetUrl = `https://cizgimax.online${subPath}${search}`;
+    customHeaders['Referer'] = 'https://cizgimax.online/';
+    customHeaders['Origin'] = 'https://cizgimax.online';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    if (req.method === 'POST' || req.headers['x-requested-with'] || pathname.includes('/suggest') || pathname.includes('/search')) {
+      customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+      customHeaders['Accept'] = 'application/json, text/javascript, */*; q=0.01';
+    }
+  } else if (pathname.startsWith('/api/dzs')) {
+    const pathParam = urlObj.searchParams.get('path');
+    const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : pathname.replace(/^\/api\/dzs/, '');
+    const cleanSearch = search ? search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+    targetUrl = `https://dizisol.com/api${subPath}${cleanSearch}`;
+    customHeaders['Referer'] = 'https://dizisol.com/';
+    customHeaders['Origin'] = 'https://dizisol.com';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  } else if (pathname.startsWith('/api/ybd')) {
+    const pathParam = urlObj.searchParams.get('path');
+    const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : pathname.replace(/^\/api\/ybd/, '');
+    const cleanSearch = search ? search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+    targetUrl = `https://yabancidizi.news${subPath}${cleanSearch}`;
+    customHeaders['Referer'] = 'https://yabancidizi.news/';
+    customHeaders['Origin'] = 'https://yabancidizi.news';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    if (req.method === 'POST' || req.headers['x-requested-with'] || pathname.includes('/search') || cleanSearch.includes('qr=')) {
+      customHeaders['X-Requested-With'] = 'XMLHttpRequest';
+      customHeaders['Accept'] = 'application/json, text/javascript, */*; q=0.01';
+    }
+  } else if (pathname.startsWith('/api/rtv')) {
+    const subPath = pathname.replace(/^\/api\/rtv/, '');
+    targetUrl = `https://a.prectv70.lol/api${subPath}${search}`;
+    customHeaders['User-Agent'] = 'okhttp/4.12.0';
+    if (req.headers['x-timestamp']) customHeaders['X-Timestamp'] = req.headers['x-timestamp'];
+    if (req.headers['x-nonce']) customHeaders['X-Nonce'] = req.headers['x-nonce'];
+    if (req.headers['x-signature']) customHeaders['X-Signature'] = req.headers['x-signature'];
+    if (req.headers['x-app-version']) customHeaders['X-App-Version'] = req.headers['x-app-version'];
+    if (req.headers['x-client-id']) customHeaders['X-Client-Id'] = req.headers['x-client-id'];
+    if (req.headers['authorization']) customHeaders['Authorization'] = req.headers['authorization'];
+    if (req.headers['content-type']) customHeaders['Content-Type'] = req.headers['content-type'];
+  } else if (pathname.startsWith('/api/proxy')) {
+    const rawTarget = urlObj.searchParams.get('url') || '';
+    if (!rawTarget) return res.status(400).send('Missing url param');
+    targetUrl = decodeURIComponent(rawTarget);
+    if (!isSafePublicUrl(targetUrl)) return res.status(403).send('Target blocked');
+
+    let targetOrigin = '';
+    try { targetOrigin = new URL(targetUrl).origin + '/'; } catch (_) {}
+
+    const ref = urlObj.searchParams.get('ref') || req.headers['x-proxy-referer'] || req.headers['referer'] || targetOrigin;
+    if (ref) customHeaders['Referer'] = decodeURIComponent(ref);
+    if (targetOrigin) customHeaders['Origin'] = new URL(targetUrl).origin;
+
+    customHeaders['User-Agent'] = req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    if (req.headers['x-hdf-nonce']) customHeaders['X-HDF-Nonce'] = req.headers['x-hdf-nonce'];
+    if (req.headers['x-requested-with']) customHeaders['X-Requested-With'] = req.headers['x-requested-with'];
+  } else if (pathname.startsWith('/api/subtitles')) {
+    // WebVTT Subtitle Proxy & OpenSubtitles resolver for Vercel
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+
+    const imdbId = urlObj.searchParams.get('imdbId');
+    const directUrl = urlObj.searchParams.get('url');
+    const season = urlObj.searchParams.get('season');
+    const episode = urlObj.searchParams.get('episode');
+
+    let downloadUrl = directUrl;
+
+    if (!downloadUrl && imdbId) {
+      try {
+        const cleanImdb = imdbId.replace(/^tt/, '');
+        let osUrl = `https://rest.opensubtitles.org/search/imdbid-${cleanImdb}/sublanguageid-tur`;
+        if (season && episode) {
+          osUrl += `/season-${season}/episode-${episode}`;
+        }
+        const osRes = await fetch(osUrl, {
+          headers: { 'User-Agent': 'TemporaryUserAgent', 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(4000)
+        });
+        if (osRes.ok) {
+          const items = await osRes.json();
+          if (Array.isArray(items) && items.length > 0) {
+            downloadUrl = items[0].SubDownloadLink;
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!downloadUrl) {
+      return res.status(200).send('WEBVTT\n\n');
+    }
+
+    if (!isSafePublicUrl(downloadUrl)) return res.status(403).send('WEBVTT\n\n');
+
+    try {
+      const zlib = await import('zlib');
+      const subRes = await fetch(downloadUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(5000)
+      });
+      const arrayBuf = await subRes.arrayBuffer();
+      let rawBuffer = Buffer.from(arrayBuf);
+      if (rawBuffer.length > 2 && rawBuffer[0] === 0x1f && rawBuffer[1] === 0x8b) {
+        try {
+          rawBuffer = zlib.gunzipSync(rawBuffer);
+        } catch (_) {}
+      }
+      let text = rawBuffer.toString('utf-8');
+      if (!text.startsWith('WEBVTT')) {
+        text = 'WEBVTT\n\n' + text.replace(/(\d\d:\d\d:\d\d),(\d\d\d)/g, '$1.$2');
+      }
+      return res.status(200).send(text);
+    } catch (_) {
+      return res.status(200).send('WEBVTT\n\n');
+    }
+  } else {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
+  try {
+    let body = undefined;
+    if (req.method === 'POST') {
+      if (req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
+        customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+      }
+      if (Buffer.isBuffer(req.body)) {
+        body = req.body.toString('utf-8');
+      } else if (typeof req.body === 'object' && req.body !== null) {
+        body = new URLSearchParams(req.body).toString();
+      } else {
+        body = req.body;
+      }
+    }
+
+    const upstreamRes = await fetch(targetUrl, {
+      method: req.method,
+      headers: customHeaders,
+      body: body
+    });
+
+    // Forward Set-Cookie headers if any
+    const setCookies = upstreamRes.headers.getSetCookie ? upstreamRes.headers.getSetCookie() : [upstreamRes.headers.get('set-cookie')];
+    if (setCookies && setCookies.filter(Boolean).length > 0) {
+      res.setHeader('Set-Cookie', setCookies.filter(Boolean));
+    }
+
+    const contentType = upstreamRes.headers.get('content-type') || 'text/html';
+    res.setHeader('Content-Type', contentType);
+
+    const buffer = await upstreamRes.arrayBuffer();
+    return res.status(upstreamRes.status).send(Buffer.from(buffer));
+  } catch (err) {
+    console.error('Universal Proxy Error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+}

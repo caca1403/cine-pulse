@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+    <circle cx="30" cy="30" r="22" fill="#e63946"/>
+    <polygon points="20,22 30,38 40,22" fill="#ffffff"/>
+    <text x="60" y="28" font-family="sans-serif" font-weight="800" font-size="17" fill="#ffffff" letter-spacing="2">VIASAT</text>
+    <text x="60" y="46" font-family="sans-serif" font-weight="700" font-size="14" fill="#fca311" letter-spacing="1.5">HISTORY</text>
+  </svg>

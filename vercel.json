@@ -1,0 +1,124 @@
+{
+  "version": 2,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "same-site"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; media-src 'self' blob: https:; frame-src https:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/hdi/(.*)",
+      "destination": "https://www.hdfilmizle.vip/$1"
+    },
+    {
+      "source": "/api/flz/(.*)",
+      "destination": "https://filmizlech.com/$1"
+    },
+    {
+      "source": "/api/hfd/(.*)",
+      "destination": "https://hdfilmdelisi.one/$1"
+    },
+    {
+      "source": "/api/hdfc/(.*)",
+      "destination": "https://www.hdfilmcehennemi.now/$1"
+    },
+    {
+      "source": "/api/fin/(.*)",
+      "destination": "https://filmizle.now/$1"
+    },
+    {
+      "source": "/api/vidmixi/(.*)",
+      "destination": "https://vidmixi.com/$1"
+    },
+    {
+      "source": "/api/fmk/(.*)",
+      "destination": "https://filmmakinesi.to/$1"
+    },
+    {
+      "source": "/api/snx",
+      "destination": "/api/snx"
+    },
+    {
+      "source": "/api/snx/(.*)",
+      "destination": "/api/snx?path=$1"
+    },
+    {
+      "source": "/api/jet",
+      "destination": "/api/jet"
+    },
+    {
+      "source": "/api/jet/(.*)",
+      "destination": "/api/jet?path=$1"
+    },
+    {
+      "source": "/api/ddz",
+      "destination": "/api/ddz"
+    },
+    {
+      "source": "/api/ddz/(.*)",
+      "destination": "/api/ddz?path=$1"
+    },
+    {
+      "source": "/api/rtv",
+      "destination": "/api/rtv"
+    },
+    {
+      "source": "/api/rtv/(.*)",
+      "destination": "/api/rtv?path=$1"
+    },
+    {
+      "source": "/api/fex/(.*)",
+      "destination": "https://filmekseni.vip/$1"
+    },
+    {
+      "source": "/api/dzy/(.*)",
+      "destination": "https://www.diziyou.one/$1"
+    },
+    {
+      "source": "/api/dzyo/(.*)",
+      "destination": "https://www.diziyo.so/$1"
+    },
+    {
+      "source": "/api/epg",
+      "destination": "/api/epg"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

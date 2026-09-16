@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+    <text x="10" y="42" font-family="'Arial Black', Impact, sans-serif" font-weight="900" font-size="34" fill="#00d2d3" letter-spacing="-1">tivibu</text>
+    <rect x="122" y="16" width="70" height="30" rx="6" fill="#e02424"/>
+    <text x="157" y="37" dominant-baseline="central" text-anchor="middle" font-family="'Arial Black', Impact, sans-serif" font-weight="900" font-size="18" fill="#ffffff" letter-spacing="1">SPOR</text>
+  </svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 60" width="190" height="60">
+    <rect x="8" y="10" width="174" height="40" rx="6" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
+    <text x="22" y="35" dominant-baseline="central" font-family="sans-serif" font-weight="900" font-size="22" fill="#ffffff" letter-spacing="1">DOCU</text>
+    <text x="98" y="35" dominant-baseline="central" font-family="sans-serif" font-weight="900" font-size="22" fill="#10b981" letter-spacing="1">BOX</text>
+  </svg>
