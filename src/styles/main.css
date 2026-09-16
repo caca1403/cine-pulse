@@ -2184,15 +2184,22 @@ img {
   border-radius: var(--radius-full);
   border: 1px solid var(--border-color);
   overflow-x: auto;
+  overflow-y: hidden;
   flex-wrap: nowrap;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
+  user-select: none;
+  scroll-behavior: smooth;
 }
 
 .season-pills-track::-webkit-scrollbar {
   display: none;
+  width: 0;
+  height: 0;
 }
 
 .season-pill {
@@ -2209,6 +2216,7 @@ img {
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: inline-flex;
   align-items: center;
+  touch-action: manipulation;
 }
 
 .season-pill:hover {
@@ -3447,14 +3455,28 @@ img {
 
 .dizisol-season-tabs-rail {
   overflow-x: auto;
-  scrollbar-width: thin;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
   padding-bottom: 0.25rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.dizisol-season-tabs-rail::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .dizisol-season-tabs {
   display: flex;
   gap: 0.5rem;
   flex-wrap: nowrap;
+  touch-action: pan-x;
+  width: max-content;
 }
 
 .dizisol-season-tab {
@@ -4123,8 +4145,25 @@ img {
     font-weight: 700 !important;
     color: #64748b !important;
   }
+  .dizisol-season-tabs-rail {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+    padding-bottom: 4px !important;
+  }
+  .dizisol-season-tabs-rail::-webkit-scrollbar {
+    display: none !important;
+  }
   .dizisol-season-tabs {
+    display: flex !important;
     gap: 8px !important;
+    flex-wrap: nowrap !important;
+    width: max-content !important;
+    touch-action: pan-x !important;
   }
   .dizisol-season-tab {
     padding: 6px 16px !important;
@@ -4132,6 +4171,8 @@ img {
     font-size: 0.82rem !important;
     font-weight: 700 !important;
     flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    touch-action: manipulation !important;
   }
   .dizisol-season-tab.active {
     background: #e50914 !important;

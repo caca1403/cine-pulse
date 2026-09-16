@@ -1602,9 +1602,17 @@ export async function openPlayerModal({
         btn.addEventListener('click', () => {
           const s = parseInt(btn.getAttribute('data-season'), 10);
           drawerSeason = s;
+          btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
           renderDrawerContent();
         });
       });
+
+      const activeTab = tabsContainer.querySelector('.dizisol-season-tab.active');
+      if (activeTab) {
+        setTimeout(() => {
+          activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }, 120);
+      }
     }
 
     const loadingHTML = `

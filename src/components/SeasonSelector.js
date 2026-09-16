@@ -152,12 +152,21 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
           e.preventDefault();
           container.querySelectorAll('.season-pill').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
+          btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
           currentActiveSeason = parseInt(btn.getAttribute('data-season'), 10);
           currentEpCount = parseInt(btn.getAttribute('data-ep-count'), 10) || 10;
           loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual, isAnime);
           updateSeasonBtnVisual();
         });
       });
+
+      // Auto center initially active season pill
+      const initialActivePill = container.querySelector('.season-pill.active');
+      if (initialActivePill) {
+        setTimeout(() => {
+          initialActivePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }, 120);
+      }
 
       const seasonAllBtn = container.querySelector('#btn-mark-season-all');
       if (seasonAllBtn) {
