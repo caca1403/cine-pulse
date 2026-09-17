@@ -86,34 +86,14 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/rtv/, '/api')
       },
       '/api/dbl': {
-        target: 'https://dizibal.com/api',
+        target: 'https://dizibal.org/api',
         changeOrigin: true,
         secure: false,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Referer': 'https://dizibal.com/'
+          'Referer': 'https://dizibal.org/'
         },
         rewrite: (path) => path.replace(/^\/api\/dbl/, '')
-      },
-      '/api/dzp': {
-        target: 'https://dizipal.bid',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Referer': 'https://dizipal.bid/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/dzp/, '')
-      },
-      '/api/dzl': {
-        target: 'https://dizilla.now',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': 'https://dizilla.now/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/dzl/, '')
       },
       '/api/snx': {
         target: 'https://ydfvfdizipanel.ru/public/api',
@@ -136,61 +116,6 @@ export default defineConfig({
           return path.replace(/^\/api\/snx/, '');
         }
       },
-      '/api/flz': {
-        target: 'https://filmizlech.com',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': 'https://filmizlech.com/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/flz/, '')
-      },
-      '/api/hdfc': {
-        target: 'https://www.hdfilmcehennemi.now',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': 'https://www.hdfilmcehennemi.now/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/hdfc/, '')
-      },
-      '/api/fin': {
-        target: 'https://filmizle.now',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': 'https://filmizle.now/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/fin/, ''),
-        configure: (proxy) => {
-          let finCookies = '';
-          proxy.on('proxyReq', (proxyReq) => {
-            if (finCookies) {
-              proxyReq.setHeader('Cookie', finCookies);
-            }
-          });
-          proxy.on('proxyRes', (proxyRes) => {
-            if (proxyRes.headers['set-cookie']) {
-              finCookies = proxyRes.headers['set-cookie']
-                .map(c => c.split(';')[0])
-                .join('; ');
-            }
-          });
-        }
-      },
-      '/api/vidmixi': {
-        target: 'https://vidmixi.com',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': 'https://filmizle.now/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/vidmixi/, '')
-      },
       '/api/dzy': {
         target: 'https://www.diziyou.one',
         changeOrigin: true,
@@ -210,66 +135,6 @@ export default defineConfig({
           'Referer': 'https://www.diziyo.so/'
         },
         rewrite: (path) => path.replace(/^\/api\/dzyo/, '')
-      },
-      '/api/fex': {
-        target: 'https://filmekseni.vip',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Referer': 'https://filmekseni.vip/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/fex/, '')
-      },
-      '/api/hfd': {
-        target: 'https://hdfilmdelisi.one',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Referer': 'https://hdfilmdelisi.one/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/hfd/, '')
-      },
-      '/api/hdi': {
-        target: 'https://www.hdfilmizle.vip',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Referer': 'https://www.hdfilmizle.vip/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/hdi/, '')
-      },
-      '/api/fmk_close': {
-        target: 'https://closeload.filmmakinesi.to',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Referer': 'https://filmmakinesi.to/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/fmk_close/, '')
-      },
-      '/api/fmk_rapid': {
-        target: 'https://rapid.filmmakinesi.to',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Referer': 'https://filmmakinesi.to/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/fmk_rapid/, '')
-      },
-      '/api/fmk': {
-        target: 'https://filmmakinesi.to',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Referer': 'https://filmmakinesi.to/'
-        },
-        rewrite: (path) => path.replace(/^\/api\/fmk/, '')
       },
       '/api/kvip': {
         target: 'https://cizgimax.online',

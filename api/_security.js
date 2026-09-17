@@ -51,8 +51,6 @@ function consumeRateLimit(key, limit, windowMs = 60_000) {
 }
 
 function requestLooksUnsafe(headers, userAgent) {
-  const fetchSite = headers?.get ? headers.get('sec-fetch-site') : headers?.['sec-fetch-site'];
-  if (fetchSite === 'cross-site') return true;
   return !userAgent || AUTOMATION_UA.test(userAgent);
 }
 
