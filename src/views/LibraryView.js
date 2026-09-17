@@ -634,7 +634,8 @@ export function renderLibraryView() {
         renderActiveTabContent();
       }).catch(() => {});
 
-      const onStorageChanged = () => {
+      const onStorageChanged = (e) => {
+        if (e && e.detail && e.detail.isProgressUpdate && document.getElementById('player-modal')) return;
         refreshLibraryStats();
         renderActiveTabContent();
       };

@@ -12,27 +12,39 @@ const STORAGE_KEYS = {
   ANIME_IDS: 'sineflix_anime_ids_v1'
 };
 
+let _animeIdsSet = null;
+
 export function getRegisteredAnimeIds() {
+  if (_animeIdsSet) return _animeIdsSet;
   try {
-    if (typeof window === 'undefined' || !window.localStorage) return new Set();
+    if (typeof window === 'undefined' || !window.localStorage) {
+      _animeIdsSet = new Set();
+      return _animeIdsSet;
+    }
     const raw = localStorage.getItem(STORAGE_KEYS.ANIME_IDS);
-    if (!raw) return new Set();
+    if (!raw) {
+      _animeIdsSet = new Set();
+      return _animeIdsSet;
+    }
     const arr = JSON.parse(raw);
-    return new Set(Array.isArray(arr) ? arr.map(String) : []);
+    _animeIdsSet = new Set(Array.isArray(arr) ? arr.map(String) : []);
+    return _animeIdsSet;
   } catch (_) {
-    return new Set();
+    _animeIdsSet = new Set();
+    return _animeIdsSet;
   }
 }
 
 export function registerAnimeId(id) {
   if (!id) return;
   try {
-    if (typeof window === 'undefined' || !window.localStorage) return;
     const set = getRegisteredAnimeIds();
     const strId = String(id);
     if (!set.has(strId)) {
       set.add(strId);
-      localStorage.setItem(STORAGE_KEYS.ANIME_IDS, JSON.stringify(Array.from(set)));
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(STORAGE_KEYS.ANIME_IDS, JSON.stringify(Array.from(set)));
+      }
     }
   } catch (_) {}
 }
@@ -46,39 +58,62 @@ export function isRegisteredAnimeId(id) {
 let _watchHistoryCache = null;
 let _progressMapCache = null;
 let _favoritesCache = null;
+let _favoritesSet = null;
 let _watchlistCache = null;
+let _watchlistSet = null;
+let _profilesCache = null;
+let _activeProfileCache = null;
+let _userSettingsCache = null;
+let _blockedContentCache = null;
 
 function clearStorageCache() {
   _watchHistoryCache = null;
   _progressMapCache = null;
   _favoritesCache = null;
+  _favoritesSet = null;
   _watchlistCache = null;
+  _watchlistSet = null;
+  _animeIdsSet = null;
+  _profilesCache = null;
+  _activeProfileCache = null;
+  _userSettingsCache = null;
+  _blockedContentCache = null;
 }
 
 export function getProfiles() {
+  if (_profilesCache) return _profilesCache;
   const defaultProfiles = [
     { id: 'prof_1', name: 'Profilim', avatar: 'user-circle', isKid: false, color: '#f59e0b' },
     { id: 'prof_kids', name: 'Çocuk Modu 🎈', avatar: 'baby', isKid: true, color: '#38bdf8' }
   ];
   try {
-    if (typeof window === 'undefined' || !window.localStorage) return defaultProfiles;
+    if (typeof window === 'undefined' || !window.localStorage) {
+      _profilesCache = defaultProfiles;
+      return _profilesCache;
+    }
     const raw = localStorage.getItem('sineflix_profiles_list_v1');
-    if (!raw) return defaultProfiles;
+    if (!raw) {
+      _profilesCache = defaultProfiles;
+      return _profilesCache;
+    }
     let profiles = JSON.parse(raw);
-    // Migration: remove deprecated prof_cinema if it still exists
     const hadCinema = profiles.some(p => p.id === 'prof_cinema');
     if (hadCinema) {
       profiles = profiles.filter(p => p.id !== 'prof_cinema');
       localStorage.setItem('sineflix_profiles_list_v1', JSON.stringify(profiles));
     }
-    return profiles;
+    _profilesCache = profiles;
+    return _profilesCache;
   } catch (_) {
-    return defaultProfiles;
+    _profilesCache = defaultProfiles;
+    return _profilesCache;
   }
 }
 
 export function saveProfiles(profilesList) {
   try {
+    _profilesCache = profilesList;
+    _activeProfileCache = null;
     if (typeof window === 'undefined' || !window.localStorage) return;
     localStorage.setItem('sineflix_profiles_list_v1', JSON.stringify(profilesList));
     window.dispatchEvent(new CustomEvent('sineflix_profiles_updated'));
@@ -149,13 +184,22 @@ export function verifyAdminPin(pin) {
 }
 
 export function getBlockedContent() {
+  if (_blockedContentCache) return _blockedContentCache;
   const defaultBlocked = ['clitoris', 'le clitoris', 'erotik', 'porn'];
   try {
-    if (typeof window === 'undefined' || !window.localStorage) return defaultBlocked;
+    if (typeof window === 'undefined' || !window.localStorage) {
+      _blockedContentCache = defaultBlocked;
+      return defaultBlocked;
+    }
     const raw = localStorage.getItem('cinepulse_blocked_content');
-    if (!raw) return defaultBlocked;
-    return JSON.parse(raw);
+    if (!raw) {
+      _blockedContentCache = defaultBlocked;
+      return defaultBlocked;
+    }
+    _blockedContentCache = JSON.parse(raw);
+    return _blockedContentCache;
   } catch (_) {
+    _blockedContentCache = defaultBlocked;
     return defaultBlocked;
   }
 }
@@ -166,6 +210,7 @@ export function addBlockedContent(entry) {
   const clean = String(entry).trim().toLowerCase();
   if (!list.includes(clean)) {
     list.push(clean);
+    _blockedContentCache = list;
     try {
       localStorage.setItem('cinepulse_blocked_content', JSON.stringify(list));
     } catch (_) {}
@@ -177,6 +222,7 @@ export function removeBlockedContent(entry) {
   let list = getBlockedContent();
   const clean = String(entry).trim().toLowerCase();
   list = list.filter(item => String(item).toLowerCase() !== clean);
+  _blockedContentCache = list;
   try {
     localStorage.setItem('cinepulse_blocked_content', JSON.stringify(list));
   } catch (_) {}
@@ -196,10 +242,14 @@ export function isContentBlocked(item) {
 }
 
 export function getActiveProfile() {
+  if (_activeProfileCache) return _activeProfileCache;
   try {
     const profiles = getProfiles();
-    const activeId = localStorage.getItem('sineflix_active_profile_id') || 'prof_1';
-    return profiles.find(p => p.id === activeId) || profiles[0];
+    const activeId = (typeof window !== 'undefined' && window.localStorage)
+      ? (localStorage.getItem('sineflix_active_profile_id') || 'prof_1')
+      : 'prof_1';
+    _activeProfileCache = profiles.find(p => p.id === activeId) || profiles[0];
+    return _activeProfileCache;
   } catch (_) {
     return { id: 'prof_1', name: 'Profilim', avatar: 'user-circle', isKid: false, color: '#f59e0b' };
   }
@@ -209,6 +259,7 @@ export function setActiveProfile(profileId) {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return;
     localStorage.setItem('sineflix_active_profile_id', profileId);
+    _activeProfileCache = null;
     clearStorageCache();
     window.dispatchEvent(new CustomEvent('sineflix_profile_changed', { detail: { profileId } }));
   } catch (_) {}
@@ -309,13 +360,12 @@ function getLocalItem(key, defaultValue = []) {
   }
 }
 
-function setLocalItem(key, value) {
+function setLocalItem(key, value, options = {}) {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return;
     const namespacedKey = getNamespacedKey(key);
     localStorage.setItem(namespacedKey, JSON.stringify(value));
-    clearStorageCache();
-    window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { key: namespacedKey, value } }));
+    window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { key: namespacedKey, value, ...options } }));
   } catch (err) {
     console.error(`Error saving ${key} to localStorage:`, err);
   }
@@ -422,31 +472,17 @@ export function isMovieRecord(item) {
 
 export function getWatchHistory() {
   if (_watchHistoryCache) return _watchHistoryCache;
-  const history = getLocalItem(STORAGE_KEYS.WATCH_HISTORY, []);
-  let hasChanges = false;
-  for (let i = 0; i < history.length; i++) {
-    const item = history[i];
-    const isAnime = Boolean(item.isAnime || item.type === 'anime' || isRegisteredAnimeId(item.id) || isAnimeRecord(item));
-    if (isAnime && (!item.isAnime || item.type !== 'anime')) {
-      item.isAnime = true;
-      item.type = 'anime';
-      registerAnimeId(item.id);
-      hasChanges = true;
-    }
-    if (item.isSeries === undefined) {
-      if (item.type === 'tv' || item.season > 1 || item.episode > 1 || item.first_air_date || item.number_of_seasons || item.episodesCount) {
-        item.isSeries = true;
-        hasChanges = true;
-      }
-    }
-  }
-  if (hasChanges) {
+  let history = getLocalItem(STORAGE_KEYS.WATCH_HISTORY, []);
+  
+  // Instant storage bloat cleanup: cap to latest 200 items so huge caches never lock up the browser
+  if (history.length > 200) {
+    history = history.slice(0, 200);
     try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem(STORAGE_KEYS.WATCH_HISTORY, JSON.stringify(history));
-      }
+      const namespacedKey = getNamespacedKey(STORAGE_KEYS.WATCH_HISTORY);
+      localStorage.setItem(namespacedKey, JSON.stringify(history));
     } catch (_) {}
   }
+
   _watchHistoryCache = history.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
   return _watchHistoryCache;
 }
@@ -637,10 +673,18 @@ export function saveWatchProgress({
   if (existingIndex >= 0) {
     history[existingIndex] = record;
   } else {
-    history.push(record);
+    history.unshift(record);
+    if (history.length > 200) {
+      history = history.slice(0, 200);
+    }
   }
 
-  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
+  _watchHistoryCache = history;
+  if (_progressMapCache) {
+    _progressMapCache.set(`${id}_${season}_${episode}`, record);
+  }
+
+  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history, { isProgressUpdate: true });
 }
 
 export function removeWatchHistoryItem(id, season = 1, episode = 1) {
@@ -1235,29 +1279,17 @@ export function normalizeStoredItem(item) {
 }
 
 export function getFavorites() {
+  if (_favoritesCache) return _favoritesCache;
   const favs = getLocalItem(STORAGE_KEYS.FAVORITES, []);
-  let hasChanges = false;
-  for (const item of favs) {
-    if (!item.isAnime && (isRegisteredAnimeId(item.id) || isAnimeRecord(item))) {
-      item.isAnime = true;
-      item.type = 'anime';
-      registerAnimeId(item.id);
-      hasChanges = true;
-    }
-  }
-  if (hasChanges) {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favs));
-      }
-    } catch (_) {}
-  }
-  return favs.map(normalizeStoredItem);
+  _favoritesCache = favs.map(normalizeStoredItem);
+  _favoritesSet = new Set(_favoritesCache.map(f => String(f.id)));
+  return _favoritesCache;
 }
 
 export function isFavorite(id) {
-  const favs = getFavorites();
-  return favs.some(item => item.id == id);
+  if (!id) return false;
+  if (!_favoritesSet) getFavorites();
+  return _favoritesSet.has(String(id));
 }
 
 export function toggleFavorite(media) {
@@ -1305,6 +1337,8 @@ export function toggleFavorite(media) {
     added = true;
   }
 
+  _favoritesCache = favs;
+  _favoritesSet = new Set(favs.map(f => String(f.id)));
   setLocalItem(STORAGE_KEYS.FAVORITES, favs);
   return added;
 }
@@ -1312,38 +1346,30 @@ export function toggleFavorite(media) {
 export function removeFavorite(id) {
   let favs = getFavorites();
   favs = favs.filter(item => item.id != id);
+  _favoritesCache = favs;
+  _favoritesSet = new Set(favs.map(f => String(f.id)));
   setLocalItem(STORAGE_KEYS.FAVORITES, favs);
   return favs;
 }
 
 export function clearFavorites() {
+  _favoritesCache = [];
+  _favoritesSet = new Set();
   setLocalItem(STORAGE_KEYS.FAVORITES, []);
 }
 
 export function getWatchlist() {
+  if (_watchlistCache) return _watchlistCache;
   const list = getLocalItem(STORAGE_KEYS.WATCHLIST, []);
-  let hasChanges = false;
-  for (const item of list) {
-    if (!item.isAnime && (isRegisteredAnimeId(item.id) || isAnimeRecord(item))) {
-      item.isAnime = true;
-      item.type = 'anime';
-      registerAnimeId(item.id);
-      hasChanges = true;
-    }
-  }
-  if (hasChanges) {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem(STORAGE_KEYS.WATCHLIST, JSON.stringify(list));
-      }
-    } catch (_) {}
-  }
-  return list.map(normalizeStoredItem);
+  _watchlistCache = list.map(normalizeStoredItem);
+  _watchlistSet = new Set(_watchlistCache.map(w => String(w.id)));
+  return _watchlistCache;
 }
 
 export function isWatchlist(id) {
-  const list = getWatchlist();
-  return list.some(item => item.id == id);
+  if (!id) return false;
+  if (!_watchlistSet) getWatchlist();
+  return _watchlistSet.has(String(id));
 }
 
 export function toggleWatchlist(media) {
@@ -1420,7 +1446,8 @@ export function removeEpisodeFromHistory(id, season = 1, episode = 1) {
    ========================================================================== */
 
 export function getUserSettings() {
-  return getLocalItem(STORAGE_KEYS.USER_SETTINGS, {
+  if (_userSettingsCache) return _userSettingsCache;
+  _userSettingsCache = getLocalItem(STORAGE_KEYS.USER_SETTINGS, {
     autoplayNext: true,
     preferredResolution: '1080p',
     theme: 'dark',
@@ -1429,14 +1456,16 @@ export function getUserSettings() {
     hoverPreviewsEnabled: true,
     trailersEnabled: true
   });
+  return _userSettingsCache;
 }
 
 export function saveUserSettings(settings) {
   const current = getUserSettings();
-  setLocalItem(STORAGE_KEYS.USER_SETTINGS, { ...current, ...settings });
+  _userSettingsCache = { ...current, ...settings };
+  setLocalItem(STORAGE_KEYS.USER_SETTINGS, _userSettingsCache);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cinepulse_settings_changed', {
-      detail: { ...current, ...settings }
+      detail: _userSettingsCache
     }));
   }
 }
@@ -1616,3 +1645,37 @@ export function clearAllData() {
   localStorage.removeItem(STORAGE_KEYS.WATCHLIST);
   window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { cleared: true } }));
 }
+
+/**
+ * Auto-clean bloated localStorage entries (Brave / Chrome cache overflow protection)
+ */
+export function pruneOversizedStorage() {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    // 1. Remove huge stale EPG caches from persistent localStorage (now using sessionStorage)
+    localStorage.removeItem('cinepulse_epg_live_cache');
+    localStorage.removeItem('sineflix_epg_cache_v2');
+
+    // 2. Prune old home rail cache keys if stored in localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('cinepulse_home_fast_') || key.startsWith('sineflix_home_fast_'))) {
+        localStorage.removeItem(key);
+      }
+    }
+
+    // 3. Cap notifications list to 25
+    const notifRaw = localStorage.getItem('sineflix_notifications_v1');
+    if (notifRaw) {
+      try {
+        const notifs = JSON.parse(notifRaw);
+        if (Array.isArray(notifs) && notifs.length > 25) {
+          localStorage.setItem('sineflix_notifications_v1', JSON.stringify(notifs.slice(0, 25)));
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+}
+
+// Auto prune on module initialization
+pruneOversizedStorage();

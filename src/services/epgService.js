@@ -121,7 +121,8 @@ function parseTimeToMinutes(timeStr) {
  */
 function loadLocalCache() {
   try {
-    const raw = localStorage.getItem(STORAGE_CACHE_KEY);
+    const raw = (typeof window !== 'undefined' && window.sessionStorage ? sessionStorage.getItem(STORAGE_CACHE_KEY) : null) ||
+                (typeof window !== 'undefined' && window.localStorage ? localStorage.getItem(STORAGE_CACHE_KEY) : null);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && parsed.channels && (Date.now() - (parsed.updatedAt || 0) < 12 * 3600 * 1000)) {
@@ -134,14 +135,20 @@ function loadLocalCache() {
 }
 
 /**
- * Save fresh schedules to localStorage
+ * Save fresh schedules to sessionStorage to avoid persistent storage bloat in Brave/Chrome
  */
 function saveLocalCache(channels) {
   try {
-    localStorage.setItem(STORAGE_CACHE_KEY, JSON.stringify({
-      updatedAt: Date.now(),
-      channels
-    }));
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      sessionStorage.setItem(STORAGE_CACHE_KEY, JSON.stringify({
+        updatedAt: Date.now(),
+        channels
+      }));
+    }
+    // Clean up from persistent localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(STORAGE_CACHE_KEY);
+    }
   } catch (e) {
     // quota exceeded or private mode
   }

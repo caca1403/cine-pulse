@@ -277,7 +277,8 @@ export async function openPlayerModal({
     simulatedCurrentTime = cur;
 
     const now = Date.now();
-    if (!immediate && (now - lastProgressSaveTimestamp < 3000)) return;
+    // Throttle progress saves to localStorage to at most once per 15s during playback
+    if (!immediate && (now - lastProgressSaveTimestamp < 15000)) return;
     lastProgressSaveTimestamp = now;
 
     const progressPercent = dur > 0 ? Math.min(100, Math.round((cur / dur) * 100)) : 0;
@@ -313,11 +314,11 @@ export async function openPlayerModal({
         }
       } else {
         if (document.visibilityState === 'visible' && hasPlayerStartedPlaying) {
-          simulatedCurrentTime += 5;
+          simulatedCurrentTime += 15;
           persistCurrentProgress(simulatedCurrentTime, estimatedDuration, null, false);
         }
       }
-    }, 4000);
+    }, 15000);
   }
 
   const handleGlobalPageUnload = () => {
@@ -565,7 +566,9 @@ export async function openPlayerModal({
     if (label) {
       label.textContent = `Kaynak: ${getActiveServerName()} (Değiştir)`;
     }
-    renderSourcesPopoverList();
+    if (isSourcesPopoverOpen) {
+      renderSourcesPopoverList();
+    }
   }
 
   function toggleSourcesPopover(forceState) {
@@ -2410,7 +2413,6 @@ export async function openPlayerModal({
       const cur = videoEl.currentTime || 0;
       const dur = videoEl.duration || 0;
       simulatedCurrentTime = Math.round(cur);
-      handleVideoProgressUpdate(false);
 
       if (timeDisplay) {
         timeDisplay.textContent = `${formatSecondsToTime(cur)} / ${formatSecondsToTime(dur)}`;
@@ -3887,9 +3889,27 @@ export async function openPlayerModal({
   const btnOpenSources = document.getElementById('btn-open-sources-drawer');
   const btnCloseSources = document.getElementById('btn-close-sources-popover');
   const backdropSources = document.getElementById('sources-popover-backdrop');
-  if (btnOpenSources) btnOpenSources.addEventListener('click', () => toggleSourcesPopover());
-  if (btnCloseSources) btnCloseSources.addEventListener('click', () => toggleSourcesPopover(false));
-  if (backdropSources) backdropSources.addEventListener('click', () => toggleSourcesPopover(false));
+  if (btnOpenSources) {
+    btnOpenSources.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSourcesPopover();
+    });
+  }
+  if (btnCloseSources) {
+    btnCloseSources.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSourcesPopover(false);
+    });
+  }
+  if (backdropSources) {
+    backdropSources.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSourcesPopover(false);
+    });
+  }
 
   const btnTheater = document.getElementById('btn-player-theater');
   if (btnTheater) {
@@ -4004,7 +4024,13 @@ export async function openPlayerModal({
   };
 
   activeModalClose = closeModal;
-  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeModal();
+    });
+  }
 
   modalContainer.onclick = (e) => {
     if (e.target === modalContainer) closeModal();
@@ -4020,7 +4046,9 @@ export async function openPlayerModal({
     if (document.activeElement?.tagName === 'BUTTON' && (e.code === 'Space' || e.key === 'Enter')) return;
     if (modalContainer.querySelector('.is-screen-locked') && e.key !== 'Escape') return;
     if (e.key === 'Escape') {
-      if (isShortcutsOpen) {
+      if (isSourcesPopoverOpen) {
+        toggleSourcesPopover(false);
+      } else if (isShortcutsOpen) {
         toggleShortcuts(false);
       } else if (isDrawerOpen) {
         toggleDrawer(false);

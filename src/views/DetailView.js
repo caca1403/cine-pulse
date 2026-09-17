@@ -503,7 +503,8 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
       }
 
       // Real-time synchronization on Detail View without page refresh
-      const onDetailDataChanged = () => {
+      const onDetailDataChanged = (e) => {
+        if (e && e.detail && e.detail.isProgressUpdate && document.getElementById('player-modal')) return;
         const isMovieWatched = effectiveType === 'movie' ? isMediaWatched(id, 1, 1) : false;
         const isSeriesAllWatched = effectiveType === 'tv' ? isEntireSeriesWatched(id, media.seasons || []) : false;
         const isWatched = effectiveType === 'movie' ? isMovieWatched : isSeriesAllWatched;

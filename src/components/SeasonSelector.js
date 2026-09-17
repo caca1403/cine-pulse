@@ -93,7 +93,8 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
       loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual, isAnime);
 
       // Instant Real-Time Synchronization with Watch History & Player without page refresh
-      const onDataChanged = () => {
+      const onDataChanged = (e) => {
+        if (e && e.detail && e.detail.isProgressUpdate && document.getElementById('player-modal')) return;
         const gridContainer = container.querySelector('#episode-grid-container');
         if (gridContainer) {
           gridContainer.querySelectorAll('.episode-card').forEach(card => {
