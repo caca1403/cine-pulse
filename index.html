@@ -5,6 +5,73 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>CinePulse - Modern Sinema & Dizi Platformu</title>
   
+  <!-- Anti-Redirect & Origin-Lock Shield: Blocks all external redirects, popups, and top-window hijackings -->
+  <script>
+    (function() {
+      'use strict';
+      const CURRENT_ORIGIN = window.location.origin;
+
+      // 1. Strictly block window.open to any external origin
+      const _origOpen = window.open;
+      window.open = function(url, target, features) {
+        if (!url) return null;
+        try {
+          const parsed = new URL(url, window.location.href);
+          if (parsed.origin === CURRENT_ORIGIN) {
+            return _origOpen.call(window, url, target, features);
+          }
+        } catch (_) {}
+        console.warn('[CinePulse Shield] Dış siteye pencere/sekme açma engellendi:', url);
+        return null;
+      };
+
+      // 2. Block location.assign and location.replace to foreign domains
+      try {
+        const _origAssign = window.location.assign;
+        if (_origAssign) {
+          window.location.assign = function(url) {
+            try {
+              const parsed = new URL(url, window.location.href);
+              if (parsed.origin === CURRENT_ORIGIN) {
+                return _origAssign.call(window.location, url);
+              }
+            } catch (_) {}
+            console.warn('[CinePulse Shield] location.assign dış site yönlendirmesi engellendi:', url);
+          };
+        }
+        const _origReplace = window.location.replace;
+        if (_origReplace) {
+          window.location.replace = function(url) {
+            try {
+              const parsed = new URL(url, window.location.href);
+              if (parsed.origin === CURRENT_ORIGIN) {
+                return _origReplace.call(window.location, url);
+              }
+            } catch (_) {}
+            console.warn('[CinePulse Shield] location.replace dış site yönlendirmesi engellendi:', url);
+          };
+        }
+      } catch (_) {}
+
+      // 3. Block external link clicks at capturing phase
+      document.addEventListener('click', function(e) {
+        const a = e.target && e.target.closest ? e.target.closest('a') : null;
+        if (a && a.href) {
+          try {
+            const parsed = new URL(a.href, window.location.href);
+            if (parsed.origin !== CURRENT_ORIGIN && !a.hasAttribute('data-allow-external')) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              console.warn('[CinePulse Shield] Dış site bağlantısı engellendi:', a.href);
+            }
+          } catch (_) {
+            e.preventDefault();
+          }
+        }
+      }, true);
+    })();
+  </script>
+  
   <!-- PWA & Mobile Web App Meta Tags -->
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#05070d" />

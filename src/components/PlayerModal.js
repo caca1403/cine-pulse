@@ -1248,9 +1248,9 @@ export async function openPlayerModal({
     // referrerpolicy="no-referrer" prevents hotlink detection.
     // BUT: videasy / vidsrc / smashystream need origin header for their fullscreen API — use origin for those.
     const iframeReferrerPolicy = (isVideasy || isVidsrc || isSmashy) ? 'origin' : 'no-referrer';
-    // Sandboxing should ONLY be used for VidMoly to suppress annoying popups.
-    // Sandboxing breaks most embeds!
-    const sandboxAttr = isVidmoly ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-pointer-lock"' : '';
+    // Strict Anti-Redirect Sandbox: Never allow top-navigation or popups to external sites!
+    // allow-scripts + allow-same-origin keeps player functional while blocking tab hijacking.
+    const sandboxAttr = 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-pointer-lock"';
     return `
       <iframe 
         id="video-iframe" 
@@ -3365,6 +3365,15 @@ export async function openPlayerModal({
       const streamUrl = getStreamSafeUrl(srv);
 
       if (videoEl && isAnyP2p) {
+        if (srv?.embedUrl) {
+          srv.type = 'embed';
+          srv.streamUrl = srv.embedUrl;
+          srv.url = srv.embedUrl;
+          srv.isDirectVideo = false;
+          srv.isTorrent = false;
+          updatePlayerContainer();
+          return;
+        }
         // ALWAYS prefer MediaServer HTTP stream over browser WebTorrent
         // Browser WebTorrent (WebRTC) is unreliable - use localhost:4000 instead
         const infoHash = srv.infoHash;

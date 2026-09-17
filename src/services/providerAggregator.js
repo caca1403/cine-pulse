@@ -31,13 +31,12 @@ import { fetchDizibalMovieSources, fetchDizibalEpisodeSources } from './dizibalS
 import { fetchDiziyoMovieSources, fetchDiziyoEpisodeSources } from './diziyoScraper.js';
 import { fetchDizirollEpisodeSources } from './dizirollScraper.js';
 import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
-import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
 import { fetchRecTvSources } from './rectvService.js';
 import { fetchKidsVipSources, fetchKidsVipMovieSources } from './kidsVipScraper.js';
 import { fetchSmashyStreamSources } from './smashyStreamService.js';
 
 // Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
-const CACHE_VERSION = 'v16';
+const CACHE_VERSION = 'v17';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -610,15 +609,6 @@ export async function getStreamingServersProgressive({
       ? fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
-
-    // P2P Sources: Torrentio (both dubbed and subtitled)
-    // Dubbed: searches for Turkish dubbed torrents (TR Dual, Multi, etc.) - 20s fast-fail
-    fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
-
-    // Subtitled: searches all quality torrents + YTS Official
-    fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 1. Dizipal (Movies & Series - Direct AlphaStream HLS 1080p)
     isMovie 
