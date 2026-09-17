@@ -385,6 +385,10 @@ const server = http.createServer(async (req, res) => {
           ref = 'https://dizibal.org/';
         } else if (decodedTarget.includes('vidmoly')) {
           ref = 'https://vidmoly.net/';
+        } else if (decodedTarget.includes('sibnet.ru')) {
+          ref = 'https://video.sibnet.ru/';
+        } else if (decodedTarget.includes('cizgimax')) {
+          ref = 'https://cizgimax.online/';
         } else {
           ref = targetOrigin;
         }

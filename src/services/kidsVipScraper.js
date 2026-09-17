@@ -316,13 +316,13 @@ async function mapServerToSources(s, isDub, seenStreams) {
 
   // 1. Sibnet Video Server
   if (s.type === 'sibnet' && s.videoId) {
-    // A. Native Sibnet embed player (guaranteed 100% playable in iframe, no ads)
+    // Guaranteed 100% playable in iframe, zero ads, zero proxy/payload limits
     const sibnetEmbed = `https://video.sibnet.ru/shell.php?videoid=${encodeURIComponent(s.videoId)}`;
     if (!seenStreams.has(sibnetEmbed)) {
       seenStreams.add(sibnetEmbed);
       sources.push({
         id: `kvip_sib_embed_${s.videoId}_${isDub ? 'dub' : 'sub'}`,
-        name: `Kids VIP - Sibnet Player (${langLabel})`,
+        name: `Kids VIP - 1080p (${langLabel})`,
         displayName: `Kids VIP (${langLabel})`,
         badge: '⚡ Kids VIP',
         category,
@@ -331,47 +331,6 @@ async function mapServerToSources(s, isDub, seenStreams) {
         type: 'embed',
         quality: '1080p',
         getUrl: () => sibnetEmbed
-      });
-    }
-
-    // B. Direct MP4 stream resolution (with Range / timeline scrubbing support)
-    const directMp4 = await resolveDirectMp4(s.videoId);
-    if (directMp4 && !seenStreams.has(directMp4)) {
-      seenStreams.add(directMp4);
-      sources.unshift({
-        id: `kvip_sib_direct_${s.videoId}_${isDub ? 'dub' : 'sub'}`,
-        name: `Kids VIP - 1080p Direct MP4 (${langLabel})`,
-        displayName: `Kids VIP (${langLabel})`,
-        badge: '⚡ Kids VIP 1080p',
-        category,
-        streamUrl: directMp4,
-        url: directMp4,
-        isDirectVideo: true,
-        type: 'mp4',
-        quality: '1080p',
-        getUrl: () => directMp4
-      });
-    }
-
-    // C. Internal stream proxy fallback if available
-    if (s.streamUrl && !seenStreams.has(s.streamUrl)) {
-      seenStreams.add(s.streamUrl);
-      const rawStreamUrl = s.streamUrl.startsWith('http') ? s.streamUrl : `${KV_BASE}${s.streamUrl}`;
-      const playUrl = (typeof window !== 'undefined' && rawStreamUrl.includes(_0xkv))
-        ? rawStreamUrl.replace(KV_BASE, KV_PROXY_PREFIX)
-        : rawStreamUrl;
-
-      sources.push({
-        id: `kvip_stream_${s.embedId || s.videoId}_${isDub ? 'dub' : 'sub'}`,
-        name: `Kids VIP - HD (${langLabel})`,
-        displayName: `Kids VIP (${langLabel})`,
-        badge: '⚡ Kids VIP',
-        category,
-        streamUrl: playUrl,
-        url: playUrl,
-        isDirectVideo: true,
-        type: 'mp4',
-        getUrl: () => playUrl
       });
     }
     return sources;

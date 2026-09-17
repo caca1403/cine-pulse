@@ -202,7 +202,11 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
 
     // 2. Extract direct HLS via Alpha Stream embed
     const embedUrl = `https://x.ag2m4.cfd/embed-${srcCode}.html`;
-    const directStream = await extractAlphaStream(embedUrl).catch(() => null);
+    let directStream = await extractAlphaStream(embedUrl).catch(() => null);
+    if (!directStream) {
+      // Retry once in case of network jitter
+      directStream = await extractAlphaStream(embedUrl).catch(() => null);
+    }
 
     if (directStream && (directStream.streamUrl || directStream.url)) {
       let finalStreamUrl = directStream.streamUrl || directStream.url;
@@ -220,20 +224,6 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
         isDirectVideo: true,
         source: 'DP',
         badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı'
-      });
-    } else {
-      // Fallback: embed
-      sources.push({
-        id: `dzb_embed_s${sNum}e${epNum}`,
-        name: isDub ? 'DP Player VIP (Dublaj)' : 'DP Player VIP (Altyazı)',
-        displayName: 'DP Player VIP',
-        streamUrl: embedUrl,
-        url: embedUrl,
-        subtitles: subtitles,
-        isHls: false,
-        isDirectVideo: false,
-        source: 'DP',
-        badge: '🌐 DP VIP'
       });
     }
   } catch (_) {}
@@ -313,7 +303,10 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
 
   // Alpha stream direct HLS
   const embedUrl = `https://x.ag2m4.cfd/embed-${srcCode}.html`;
-  const directStream = await extractAlphaStream(embedUrl).catch(() => null);
+  let directStream = await extractAlphaStream(embedUrl).catch(() => null);
+  if (!directStream) {
+    directStream = await extractAlphaStream(embedUrl).catch(() => null);
+  }
 
   if (directStream && (directStream.streamUrl || directStream.url)) {
     let finalStreamUrl = directStream.streamUrl || directStream.url;
@@ -331,19 +324,6 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
       isDirectVideo: true,
       source: 'DP',
       badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı'
-    });
-  } else {
-    sources.push({
-      id: 'dzb_embed_movie',
-      name: isDub ? 'DP Player VIP (Dublaj)' : 'DP Player VIP (Altyazı)',
-      displayName: 'DP Player VIP',
-      streamUrl: embedUrl,
-      url: embedUrl,
-      subtitles: subtitles,
-      isHls: false,
-      isDirectVideo: false,
-      source: 'DP',
-      badge: '🌐 DP VIP'
     });
   }
 

@@ -496,6 +496,12 @@ export default async function handler(req, res) {
       customHeaders['X-Requested-With'] = 'XMLHttpRequest';
       customHeaders['Accept'] = 'application/json, text/javascript, */*; q=0.01';
     }
+  } else if (pathname.startsWith('/api/sibnet')) {
+    const subPath = pathname.replace(/^\/api\/sibnet/, '');
+    targetUrl = `https://video.sibnet.ru${subPath}${search}`;
+    customHeaders['Referer'] = 'https://video.sibnet.ru/';
+    customHeaders['Origin'] = 'https://video.sibnet.ru';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
   } else if (pathname.startsWith('/api/dzs')) {
     const pathParam = urlObj.searchParams.get('path');
     const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : pathname.replace(/^\/api\/dzs/, '');

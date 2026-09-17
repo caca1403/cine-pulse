@@ -720,9 +720,10 @@ export async function openPlayerModal({
       console.warn(`[PlayerModal] Server failed: ${currentSrv.name} (${reason})`);
     }
 
-    // Allow at most 1 automatic skip to the immediate next server; if that also fails, stop and show error card!
+    // Allow trying alternative non-failed servers up to 3 times or until activeServers exhausted
     failoverCountInSession++;
-    if (failoverCountInSession > 1) {
+    const maxFailovers = Math.max(3, activeServers.length - 1);
+    if (failoverCountInSession > maxFailovers) {
       console.warn('[PlayerModal] Max automatic failover reached. Showing in-player options.');
       showInPlayerError(reason);
       return;
@@ -732,10 +733,34 @@ export async function openPlayerModal({
     const nextIndex = activeServers.findIndex((s, idx) => idx > currentServerIndex && !s.failed);
     if (nextIndex !== -1) {
       const nextSrv = activeServers[nextIndex];
-      showToast(`⚠️ ${currentSrv?.displayName || currentSrv?.name || 'Mevcut kaynak'} yanıt vermedi. ${nextSrv.displayName || nextSrv.name} hattı deneniyor...`, 'warning');
+      showToast(`⚠️ ${currentSrv?.displayName || currentSrv?.name || 'Mevcut kaynak'} yanıt vermedi. ${nextSrv.displayName || nextSrv.name} deneniyor...`, 'warning');
       currentServerIndex = nextIndex;
       updateActiveSourceLabel();
       updatePlayerContainer();
+      return;
+    }
+
+    // If no next server yet, but discovery is still actively searching:
+    if (isDiscoveryActive) {
+      console.log('[PlayerModal] Active server failed but discovery is still running; waiting for incoming streams...');
+      showToast('⚠️ Seçili hat yanıt vermedi, alternatif hatlar taranıyor...', 'info');
+      const wrapper = document.getElementById('player-iframe-wrapper');
+      if (wrapper) {
+        wrapper.innerHTML = `
+          <div class="player-loading-overlay">
+            <div class="player-loader-core">
+              <div class="player-loader-spinner"></div>
+              <i data-lucide="play" class="player-loader-icon"></i>
+            </div>
+            <div class="player-loader-text">
+              <h3>${cleanSeriesName}</h3>
+              <p class="player-loader-sub">Alternatif Yayın Hatları Taranıyor...</p>
+              <p class="player-loader-hint">Bir önceki hat yanıt vermedi, yeni kaynak bağlanıyor...</p>
+            </div>
+          </div>
+        `;
+        renderPlayerIcons(wrapper);
+      }
       return;
     }
 
@@ -3749,6 +3774,22 @@ export async function openPlayerModal({
           renderSourcesPopoverList();
           updatePlayerContainer();
           return;
+        }
+
+        // If error view or loader is visible and non-failed streams are now available:
+        const isErrorOrWaiting = Boolean(document.querySelector('.player-error-view') || document.querySelector('.player-loading-overlay'));
+        if (isErrorOrWaiting && activeServers.length > 0) {
+          const freshIdx = activeServers.findIndex(s => !s.failed);
+          if (freshIdx !== -1 && (freshIdx !== currentServerIndex || activeServers[currentServerIndex]?.failed)) {
+            console.log('[PlayerModal] Resuming playback from newly arrived server:', activeServers[freshIdx].name);
+            currentServerIndex = freshIdx;
+            failoverCountInSession = 0;
+            updateServerPillsEvents();
+            updateActiveSourceLabel();
+            renderSourcesPopoverList();
+            updatePlayerContainer();
+            return;
+          }
         }
 
         if (!sourceRefreshFrame) {

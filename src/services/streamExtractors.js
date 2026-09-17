@@ -256,16 +256,20 @@ export async function resolveDirectStream(streamObj) {
   if (url.includes('ag2m4') || url.includes('agcdn') || url.includes('liderfilm') || (streamObj.id && streamObj.id.startsWith('dbl'))) {
     const rawUrl = streamObj.url || streamObj.streamUrl || (typeof streamObj.getUrl === 'function' ? streamObj.getUrl() : '');
     const direct = await extractAlphaStream(rawUrl);
-    if (direct && direct.url) {
+    if (direct && (direct.url || direct.streamUrl)) {
+      let finalHlsUrl = direct.url || direct.streamUrl;
+      if (finalHlsUrl.startsWith('http') && !finalHlsUrl.includes('/api/hls_proxy')) {
+        finalHlsUrl = `/api/hls_proxy?url=${encodeURIComponent(finalHlsUrl)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
+      }
       return {
         ...streamObj,
         isHls: true,
         isDirectVideo: true,
         originalEmbedUrl: rawUrl,
-        streamUrl: direct.url,
-        url: direct.url,
+        streamUrl: finalHlsUrl,
+        url: finalHlsUrl,
         subtitles: direct.subtitles,
-        getUrl: () => direct.url
+        getUrl: () => finalHlsUrl
       };
     }
   }
