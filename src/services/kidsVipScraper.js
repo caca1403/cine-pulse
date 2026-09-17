@@ -12,11 +12,12 @@ const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 function decodeBase64(str) {
   if (!str) return '';
   try {
+    const clean = str.replace(/\\/g, '').replace(/[^A-Za-z0-9+/=]/g, '');
     if (typeof Buffer !== 'undefined') {
-      return Buffer.from(str, 'base64').toString('utf-8');
+      return Buffer.from(clean, 'base64').toString('utf-8');
     }
     if (typeof atob !== 'undefined') {
-      const binary = atob(str);
+      const binary = atob(clean);
       try {
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) {
@@ -37,6 +38,7 @@ function decodeBase64(str) {
 const _0xkv = decodeBase64('Y2l6Z2ltYXgub25saW5l');
 const KV_BASE = `https://${_0xkv}`;
 const KV_PROXY_PREFIX = '/api/kvip';
+const SIBNET_PROXY_PREFIX = '/api/sibnet';
 
 function normalizeTitle(t) {
   if (!t) return '';
@@ -57,7 +59,7 @@ function normalizeTitle(t) {
 async function fetchWithProxy(targetUrl, options = {}) {
   const isBrowser = typeof window !== 'undefined';
 
-  // 1. Try local Vite proxy or [...all].js (browser only)
+  // 1. Try local Vite proxy for upstream host
   if (isBrowser && targetUrl.includes(_0xkv)) {
     const u = new URL(targetUrl);
     const proxyUrl = `${KV_PROXY_PREFIX}${u.pathname}${u.search}`;
@@ -70,7 +72,20 @@ async function fetchWithProxy(targetUrl, options = {}) {
     } catch (_) {}
   }
 
-  // 2. Try generic local /api/proxy (browser only)
+  // 2. Try local Vite proxy for Sibnet
+  if (isBrowser && targetUrl.includes('sibnet.ru')) {
+    const u = new URL(targetUrl);
+    const proxyUrl = `${SIBNET_PROXY_PREFIX}${u.pathname}${u.search}`;
+    try {
+      const res = await fetch(proxyUrl, {
+        ...options,
+        signal: AbortSignal.timeout(options.timeout || 8000)
+      }).catch(() => null);
+      if (res && res.ok) return res;
+    } catch (_) {}
+  }
+
+  // 3. Try generic local /api/proxy (browser only)
   if (isBrowser) {
     const localProxy = `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
     try {
@@ -82,13 +97,14 @@ async function fetchWithProxy(targetUrl, options = {}) {
     } catch (_) {}
   }
 
-  // 3. Direct fetch (works in Node.js or CORS-friendly endpoints)
+  // 4. Direct fetch (works in Node.js or CORS-friendly endpoints)
   try {
     const res = await fetch(targetUrl, {
       ...options,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         ...(targetUrl.includes(_0xkv) ? { 'Referer': `${KV_BASE}/` } : {}),
+        ...(targetUrl.includes('sibnet.ru') ? { 'Referer': 'https://video.sibnet.ru/' } : {}),
         ...(options.headers || {})
       },
       signal: AbortSignal.timeout(options.timeout || 8000)
@@ -96,7 +112,7 @@ async function fetchWithProxy(targetUrl, options = {}) {
     if (res && res.ok) return res;
   } catch (_) {}
 
-  // 4. Cloudflare worker proxy fallback
+  // 5. Cloudflare worker proxy fallback
   try {
     const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
     const res = await fetch(workerUrl, {
@@ -110,7 +126,7 @@ async function fetchWithProxy(targetUrl, options = {}) {
 }
 
 /**
- * Searches upstream catalog for matching cartoon or animation series
+ * Searches upstream catalog for matching cartoon or animation series/movies
  */
 async function searchUpstreamCatalog(candidateQueries) {
   const seenIds = new Set();
@@ -130,11 +146,32 @@ async function searchUpstreamCatalog(candidateQueries) {
       if (!data || !Array.isArray(data.animes)) continue;
 
       for (const item of data.animes) {
-        if (!item || !item.url || seenIds.has(item.id)) continue;
-        const itemTitle = item.title || item.name || item.anime_name || item.slug || '';
-        if (!isStrictMediaTitleMatch(itemTitle, candidateQueries)) continue;
-        seenIds.add(item.id);
-        matched.push(item);
+        if (!item || !item.url || seenIds.has(item.id || item.url)) continue;
+        const itemTitle = item.title || item.name || item.anime_name || '';
+        const slugTitle = (item.url || '')
+          .replace(/^\/diziler\//, '')
+          .replace(/^\/filmler\//, '')
+          .replace(/^\/film\//, '')
+          .replace(/-izle\/?$/, '')
+          .replace(/-/g, ' ');
+
+        const candidateNames = [itemTitle, slugTitle].filter(Boolean);
+        const isMatch = candidateNames.some(name =>
+          isStrictMediaTitleMatch(name, candidateQueries, 0.72) ||
+          candidateQueries.some(cand => {
+            const nc = normalizeTitle(cand);
+            const nn = normalizeTitle(name);
+            if (!nc || !nn) return false;
+            return nn === nc || nn.includes(nc) || nc.includes(nn);
+          })
+        );
+
+        if (!isMatch) continue;
+        seenIds.add(item.id || item.url);
+        matched.push({
+          ...item,
+          cleanTitle: itemTitle || slugTitle
+        });
       }
 
       if (matched.length >= 4) break;
@@ -145,7 +182,89 @@ async function searchUpstreamCatalog(candidateQueries) {
 }
 
 /**
- * Resolves high-speed direct MP4 stream
+ * Extracts episode link matching season & episode from series page HTML
+ */
+function findEpisodeLink(html, season, episode) {
+  const sNum = Number(season);
+  const epNum = Number(episode);
+
+  const patterns = [
+    new RegExp(`href=["']?([^"'>]*?${sNum}-sezon-${epNum}-bolum(?:-izle)?\\/?)["'>]`, 'i'),
+    new RegExp(`href=["']?([^"'>]*?sezon-${sNum}[^"'>]*?bolum-${epNum}(?:-izle)?\\/?)["'>]`, 'i'),
+    new RegExp(`href=["']?([^"'>]*?s0?${sNum}e0?${epNum}(?:-izle)?\\/?)["'>]`, 'i')
+  ];
+
+  if (sNum === 1) {
+    patterns.push(new RegExp(`href=["']?([^"'>]*?${epNum}-bolum(?:-izle)?\\/?)["'>]`, 'i'));
+  }
+
+  for (const p of patterns) {
+    const m = html.match(p);
+    if (m && m[1]) return m[1];
+  }
+
+  // Fallback: search all links with bolum-izle
+  const allLinks = [...html.matchAll(/href=["']?([^"'>]*?bolum-izle\/?)["'>]/gi)];
+  for (const match of allLinks) {
+    const link = match[1];
+    const sMatch = link.match(/(\d+)-sezon/i);
+    const eMatch = link.match(/(\d+)-bolum/i);
+    const linkSeason = sMatch ? Number(sMatch[1]) : 1;
+    const linkEp = eMatch ? Number(eMatch[1]) : null;
+    if (linkSeason === sNum && linkEp === epNum) {
+      return link;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parses embedded video servers from episode or movie HTML
+ */
+function extractServersFromHtml(html, isDub) {
+  let servers = [];
+
+  // 1. Try serversByLang first (cleanest language segregation)
+  const mByLang = html.match(/serversByLang\s*=\s*JSON\.parse\(atob\(["']([^"']+)["']\)\)/);
+  if (mByLang) {
+    try {
+      const byLang = JSON.parse(decodeBase64(mByLang[1]));
+      if (byLang) {
+        if (isDub) {
+          servers = [...(byLang.dub || []), ...(byLang.any || [])];
+        } else {
+          servers = [...(byLang.sub || []), ...(byLang.any || [])];
+        }
+      }
+    } catch (_) {}
+  }
+
+  // 2. Fallback to servers array
+  if (servers.length === 0) {
+    const mServers = html.match(/servers\s*=\s*JSON\.parse\(atob\(["']([^"']+)["']\)\)/);
+    if (mServers) {
+      try {
+        const allServers = JSON.parse(decodeBase64(mServers[1]));
+        if (Array.isArray(allServers)) {
+          servers = allServers.filter(s => {
+            const serverLabel = s.label || s.type || 'VIP';
+            const serverLang = (s.lang || '').toLowerCase();
+            const isServerDub = serverLang === 'dub' || serverLabel.toLowerCase().includes('dublaj');
+            const isServerSub = serverLang === 'sub' || serverLabel.toLowerCase().includes('altyaz');
+            if (isDub) return isServerDub || (!isServerDub && !isServerSub);
+            return isServerSub || (!isServerDub && !isServerSub);
+          });
+        }
+      } catch (_) {}
+    }
+  }
+
+  return servers;
+}
+
+/**
+ * Resolves high-speed direct MP4 stream from Sibnet shell
  */
 async function resolveDirectMp4(videoId) {
   if (!videoId) return null;
@@ -153,17 +272,161 @@ async function resolveDirectMp4(videoId) {
     const shellUrl = `https://video.sibnet.ru/shell.php?videoid=${encodeURIComponent(videoId)}`;
     const res = await fetchWithProxy(shellUrl, {
       headers: { 'Referer': 'https://video.sibnet.ru/' },
-      timeout: 4000
+      timeout: 5000
     });
     if (!res) return null;
 
     const html = await res.text();
     const match = html.match(/\/v\/[a-zA-Z0-9_\/]+\.mp4/);
     if (match) {
-      return `https://video.sibnet.ru${match[0]}`;
+      const isBrowser = typeof window !== 'undefined';
+      // In browser, proxy through /api/sibnet to supply Russian CDN referer headers
+      return isBrowser
+        ? `${SIBNET_PROXY_PREFIX}${match[0]}`
+        : `https://video.sibnet.ru${match[0]}`;
     }
   } catch (_) {}
   return null;
+}
+
+/**
+ * Maps server object to CinePulse player stream definitions
+ */
+async function mapServerToSources(s, isDub, seenStreams) {
+  const sources = [];
+  const langLabel = isDub ? 'TR Dublaj' : 'Altyazılı';
+  const category = isDub ? 'dubbed' : 'subtitled';
+  const serverLabel = s.label || s.type || 'VIP';
+
+  // 1. Sibnet Video Server
+  if (s.type === 'sibnet' && s.videoId) {
+    // A. Native Sibnet embed player (guaranteed 100% playable in iframe, no ads)
+    const sibnetEmbed = `https://video.sibnet.ru/shell.php?videoid=${encodeURIComponent(s.videoId)}`;
+    if (!seenStreams.has(sibnetEmbed)) {
+      seenStreams.add(sibnetEmbed);
+      sources.push({
+        id: `kvip_sib_embed_${s.videoId}_${isDub ? 'dub' : 'sub'}`,
+        name: `Kids VIP - Sibnet Player (${langLabel})`,
+        displayName: `Kids VIP (${langLabel})`,
+        badge: '⚡ Kids VIP',
+        category,
+        streamUrl: sibnetEmbed,
+        url: sibnetEmbed,
+        type: 'embed',
+        quality: '1080p',
+        getUrl: () => sibnetEmbed
+      });
+    }
+
+    // B. Direct MP4 stream resolution (with Range / timeline scrubbing support)
+    const directMp4 = await resolveDirectMp4(s.videoId);
+    if (directMp4 && !seenStreams.has(directMp4)) {
+      seenStreams.add(directMp4);
+      sources.unshift({
+        id: `kvip_sib_direct_${s.videoId}_${isDub ? 'dub' : 'sub'}`,
+        name: `Kids VIP - 1080p Direct MP4 (${langLabel})`,
+        displayName: `Kids VIP (${langLabel})`,
+        badge: '⚡ Kids VIP 1080p',
+        category,
+        streamUrl: directMp4,
+        url: directMp4,
+        isDirectVideo: true,
+        type: 'mp4',
+        quality: '1080p',
+        getUrl: () => directMp4
+      });
+    }
+
+    // C. Internal stream proxy fallback if available
+    if (s.streamUrl && !seenStreams.has(s.streamUrl)) {
+      seenStreams.add(s.streamUrl);
+      const rawStreamUrl = s.streamUrl.startsWith('http') ? s.streamUrl : `${KV_BASE}${s.streamUrl}`;
+      const playUrl = (typeof window !== 'undefined' && rawStreamUrl.includes(_0xkv))
+        ? rawStreamUrl.replace(KV_BASE, KV_PROXY_PREFIX)
+        : rawStreamUrl;
+
+      sources.push({
+        id: `kvip_stream_${s.embedId || s.videoId}_${isDub ? 'dub' : 'sub'}`,
+        name: `Kids VIP - HD (${langLabel})`,
+        displayName: `Kids VIP (${langLabel})`,
+        badge: '⚡ Kids VIP',
+        category,
+        streamUrl: playUrl,
+        url: playUrl,
+        isDirectVideo: true,
+        type: 'mp4',
+        getUrl: () => playUrl
+      });
+    }
+    return sources;
+  }
+
+  // 2. Iframe / Dzen player embed
+  if (s.src) {
+    const rawEmbedUrl = s.src.startsWith('http') ? s.src : `${KV_BASE}${s.src}`;
+    const embedUrl = (typeof window !== 'undefined' && rawEmbedUrl.includes(_0xkv))
+      ? rawEmbedUrl.replace(KV_BASE, KV_PROXY_PREFIX)
+      : rawEmbedUrl;
+
+    if (!seenStreams.has(embedUrl)) {
+      seenStreams.add(embedUrl);
+      sources.push({
+        id: `kvip_embed_${s.embedId || Math.random()}_${isDub ? 'dub' : 'sub'}`,
+        name: `Kids VIP - ${serverLabel} (${langLabel})`,
+        displayName: `Kids VIP (${langLabel})`,
+        badge: '⚡ Kids VIP',
+        category,
+        streamUrl: embedUrl,
+        url: embedUrl,
+        type: 'embed',
+        getUrl: () => embedUrl
+      });
+    }
+  }
+
+  // 3. YouTube Embed
+  if (s.type === 'youtube' && s.ytId) {
+    const youtubeEmbed = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(s.ytId)}?autoplay=1&rel=0&playsinline=1`;
+    if (!seenStreams.has(youtubeEmbed)) {
+      seenStreams.add(youtubeEmbed);
+      sources.push({
+        id: `kvip_youtube_${s.ytId}_${isDub ? 'dub' : 'sub'}`,
+        name: `Kids VIP - HD (${langLabel})`,
+        displayName: `Kids VIP (${langLabel})`,
+        badge: '⚡ Kids VIP',
+        category,
+        streamUrl: youtubeEmbed,
+        url: youtubeEmbed,
+        type: 'embed',
+        getUrl: () => youtubeEmbed
+      });
+    }
+  }
+
+  // 4. Generic stream fallback (Rapidvid, Vidmoly, etc.)
+  if (s.streamUrl && !seenStreams.has(s.streamUrl)) {
+    seenStreams.add(s.streamUrl);
+    const rawStreamUrl = s.streamUrl.startsWith('http') ? s.streamUrl : `${KV_BASE}${s.streamUrl}`;
+    const fullStreamUrl = (typeof window !== 'undefined' && rawStreamUrl.includes(_0xkv))
+      ? rawStreamUrl.replace(KV_BASE, KV_PROXY_PREFIX)
+      : rawStreamUrl;
+
+    const isHls = fullStreamUrl.includes('.m3u8') || fullStreamUrl.includes('hls');
+    sources.push({
+      id: `kvip_stream_${s.embedId || Math.random()}_${isDub ? 'dub' : 'sub'}`,
+      name: `Kids VIP - ${serverLabel} (${langLabel})`,
+      displayName: `Kids VIP (${langLabel})`,
+      badge: '⚡ Kids VIP',
+      category,
+      streamUrl: fullStreamUrl,
+      url: fullStreamUrl,
+      isDirectVideo: !isHls,
+      type: isHls ? 'hls' : 'mp4',
+      getUrl: () => fullStreamUrl
+    });
+  }
+
+  return sources;
 }
 
 /**
@@ -200,17 +463,7 @@ export async function fetchKidsVipSources({
       if (!pageRes) continue;
 
       const seriesHtml = await pageRes.text();
-
-      // Look for episode link matching season & episode
-      let epMatch = seriesHtml.match(new RegExp(`href="([^"]*?${season}-sezon-${episode}-bolum-izle\/)"`, 'i'));
-      let epPath = epMatch ? epMatch[1] : null;
-
-      // Fallback for season 1 where "-1-sezon-" might be omitted
-      if (!epPath && Number(season) === 1) {
-        const epFallback = seriesHtml.match(new RegExp(`href="([^"]*?${episode}-bolum-izle\/)"`, 'i'));
-        if (epFallback) epPath = epFallback[1];
-      }
-
+      const epPath = findEpisodeLink(seriesHtml, season, episode);
       if (!epPath) continue;
 
       const fullEpUrl = epPath.startsWith('http') ? epPath : `${KV_BASE}${epPath}`;
@@ -218,94 +471,12 @@ export async function fetchKidsVipSources({
       if (!epRes) continue;
 
       const epHtml = await epRes.text();
-      const serversMatch = epHtml.match(/servers\s*=\s*JSON\.parse\(atob\(["']([^"']+)["']\)\)/);
-      if (!serversMatch) continue;
-
-      let servers = [];
-      try {
-        servers = JSON.parse(decodeBase64(serversMatch[1]));
-      } catch (_) {
-        continue;
-      }
-
+      const servers = extractServersFromHtml(epHtml, isDub);
       if (!Array.isArray(servers) || servers.length === 0) continue;
 
       for (const s of servers) {
-        const serverLabel = s.label || s.type || 'VIP';
-        const serverLang = (s.lang || '').toLowerCase();
-        const isServerDub = serverLang === 'dub' || serverLabel.toLowerCase().includes('dublaj');
-        const isServerSub = serverLang === 'sub' || serverLabel.toLowerCase().includes('altyaz');
-
-        // Check language filter
-        if (isDub && isServerSub && !isServerDub) continue;
-        if (!isDub && isServerDub && !isServerSub) continue;
-
-        // 1. Direct high-speed MP4 stream
-        if (s.type === 'sibnet' && s.videoId) {
-          const directMp4 = await resolveDirectMp4(s.videoId);
-          if (directMp4 && !seenStreams.has(directMp4)) {
-            seenStreams.add(directMp4);
-            sources.push({
-              id: `kvip_sib_${s.videoId}_${isDub ? 'dub' : 'sub'}`,
-              name: `Kids VIP - 1080p (${isDub ? 'TR Dublaj' : 'Altyazılı'})`,
-              displayName: `Kids VIP (${isDub ? 'TR Dublaj' : 'Altyazılı'})`,
-              badge: '⚡ Kids VIP',
-              category: isDub ? 'dubbed' : 'subtitled',
-              streamUrl: directMp4,
-              url: directMp4,
-              isDirectVideo: true,
-              type: 'mp4',
-              quality: '1080p',
-              getUrl: () => directMp4
-            });
-            continue;
-          }
-        }
-
-        // Current KidsVIP episodes may expose a YouTube player instead of
-        // Sibnet. Keep it as an iframe source so it is not sent to the native
-        // HLS/MP4 video element.
-        if (s.type === 'youtube' && s.ytId) {
-          const youtubeEmbed = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(s.ytId)}?autoplay=1&rel=0&playsinline=1`;
-          if (!seenStreams.has(youtubeEmbed)) {
-            seenStreams.add(youtubeEmbed);
-            sources.push({
-              id: `kvip_youtube_${s.ytId}_${isDub ? 'dub' : 'sub'}`,
-              name: `Kids VIP - HD (${isDub ? 'TR Dublaj' : 'AltyazÄ±lÄ±'})`,
-              displayName: `Kids VIP (${isDub ? 'TR Dublaj' : 'AltyazÄ±lÄ±'})`,
-              badge: 'âš¡ Kids VIP',
-              category: isDub ? 'dubbed' : 'subtitled',
-              streamUrl: youtubeEmbed,
-              url: youtubeEmbed,
-              type: 'embed',
-              getUrl: () => youtubeEmbed
-            });
-            continue;
-          }
-        }
-
-        // 2. Generic stream fallback
-        if (s.streamUrl && !seenStreams.has(s.streamUrl)) {
-          seenStreams.add(s.streamUrl);
-          const rawStreamUrl = s.streamUrl.startsWith('http')
-            ? s.streamUrl
-            : `${KV_BASE}${s.streamUrl}`;
-          const fullStreamUrl = (typeof window !== 'undefined' && rawStreamUrl.includes(_0xkv))
-            ? rawStreamUrl.replace(KV_BASE, KV_PROXY_PREFIX)
-            : rawStreamUrl;
-
-          sources.push({
-            id: `kvip_stream_${s.embedId || Math.random()}_${isDub ? 'dub' : 'sub'}`,
-            name: `Kids VIP - HD (${isDub ? 'TR Dublaj' : 'Altyazılı'})`,
-            displayName: `Kids VIP (${isDub ? 'TR Dublaj' : 'Altyazılı'})`,
-            badge: '⚡ Kids VIP',
-            category: isDub ? 'dubbed' : 'subtitled',
-            streamUrl: fullStreamUrl,
-            url: fullStreamUrl,
-            type: 'hls',
-            getUrl: () => fullStreamUrl
-          });
-        }
+        const serverSources = await mapServerToSources(s, isDub, seenStreams);
+        sources.push(...serverSources);
       }
 
       if (sources.length > 0) break;
@@ -344,62 +515,13 @@ export async function fetchKidsVipMovieSources({
       const pageRes = await fetchWithProxy(showPageUrl, { timeout: 8000 });
       if (!pageRes) continue;
 
-      const epHtml = await pageRes.text();
-      const serversMatch = epHtml.match(/servers\s*=\s*JSON\.parse\(atob\(["']([^"']+)["']\)\)/);
-      if (!serversMatch) continue;
-
-      let servers = [];
-      try {
-        servers = JSON.parse(decodeBase64(serversMatch[1]));
-      } catch (_) {
-        continue;
-      }
+      const movieHtml = await pageRes.text();
+      const servers = extractServersFromHtml(movieHtml, isDub);
+      if (!Array.isArray(servers) || servers.length === 0) continue;
 
       for (const s of servers) {
-        const serverLabel = s.label || s.type || 'VIP';
-        const isServerDub = (s.lang === 'dub') || serverLabel.toLowerCase().includes('dublaj');
-        const isServerSub = (s.lang === 'sub') || serverLabel.toLowerCase().includes('altyaz');
-
-        if (isDub && isServerSub && !isServerDub) continue;
-        if (!isDub && isServerDub && !isServerSub) continue;
-
-        if (s.type === 'sibnet' && s.videoId) {
-          const directMp4 = await resolveDirectMp4(s.videoId);
-          if (directMp4 && !seenStreams.has(directMp4)) {
-            seenStreams.add(directMp4);
-            sources.push({
-              id: `kvip_movie_${s.videoId}_${isDub ? 'dub' : 'sub'}`,
-              name: `Kids VIP - 1080p (${isDub ? 'TR Dublaj' : 'Altyazılı'})`,
-              displayName: `Kids VIP (${isDub ? 'TR Dublaj' : 'Altyazılı'})`,
-              badge: '⚡ Kids VIP',
-              category: isDub ? 'dubbed' : 'subtitled',
-              streamUrl: directMp4,
-              url: directMp4,
-              isDirectVideo: true,
-              type: 'mp4',
-              quality: '1080p',
-              getUrl: () => directMp4
-            });
-          }
-        }
-
-        if (s.type === 'youtube' && s.ytId) {
-          const youtubeEmbed = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(s.ytId)}?autoplay=1&rel=0&playsinline=1`;
-          if (!seenStreams.has(youtubeEmbed)) {
-            seenStreams.add(youtubeEmbed);
-            sources.push({
-              id: `kvip_movie_youtube_${s.ytId}_${isDub ? 'dub' : 'sub'}`,
-              name: `Kids VIP - HD (${isDub ? 'TR Dublaj' : 'AltyazÄ±lÄ±'})`,
-              displayName: `Kids VIP (${isDub ? 'TR Dublaj' : 'AltyazÄ±lÄ±'})`,
-              badge: 'âš¡ Kids VIP',
-              category: isDub ? 'dubbed' : 'subtitled',
-              streamUrl: youtubeEmbed,
-              url: youtubeEmbed,
-              type: 'embed',
-              getUrl: () => youtubeEmbed
-            });
-          }
-        }
+        const serverSources = await mapServerToSources(s, isDub, seenStreams);
+        sources.push(...serverSources);
       }
 
       if (sources.length > 0) break;

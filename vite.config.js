@@ -271,6 +271,27 @@ export default defineConfig({
           'Referer': 'https://cizgimax.online/'
         },
         rewrite: (path) => path.replace(/^\/api\/kvip/, '')
+      },
+      '/api/sibnet': {
+        target: 'https://video.sibnet.ru',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Referer': 'https://video.sibnet.ru/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/sibnet/, '')
+      },
+      '/torrent': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false
+      },
+      '/api/torrent': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/torrent/, '/torrent')
       }
     }
   },
