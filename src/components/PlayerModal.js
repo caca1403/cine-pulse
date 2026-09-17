@@ -30,6 +30,7 @@ import {
 } from '../services/storage.js';
 import { showToast } from './Toast.js';
 import { translateToTurkish } from '../services/tmdbApi.js';
+import { startTorrentStream, destroyTorrentStream } from '../services/p2pTorrentService.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -73,6 +74,7 @@ export async function openPlayerModal({
       try { instance?.destroy(); } catch (_) {}
     }
     activeHlsInstance = activeAudioHlsInstance = null;
+    try { destroyTorrentStream(); } catch (_) {}
     modalContainer.querySelectorAll('video, audio').forEach(media => {
       try {
         media.pause();
@@ -915,7 +917,7 @@ export async function openPlayerModal({
     const isDirectLocalTorrent = Boolean(srv.streamUrl && srv.streamUrl.includes(':4000/torrent/'));
     const isTorrentStream = !isDirectLocalTorrent && Boolean(srv.isTorrent || (srv.id && (srv.id.startsWith('cp_global_torrent') || srv.id.startsWith('cp_global_yts') || srv.id.startsWith('yts_'))) || (srv.streamUrl && srv.streamUrl.startsWith('magnet:')));
 
-    if (isTorrentStream) {
+    if (isTorrentStream && srv.forceEmbed) {
       const magnetLink = srv.magnetUrl || (srv.streamUrl?.startsWith('magnet:') ? srv.streamUrl : '');
       const defaultEmbedFallback = tmdbId 
         ? (type === 'movie' 
@@ -934,15 +936,15 @@ export async function openPlayerModal({
         <div class="direct-video-wrapper torrent-video-wrapper" style="display:flex;flex-direction:column;width:100%;height:100%;">
           <div class="torrent-sub-tip-bar" style="background:linear-gradient(90deg, #111827, #1f2937);border-bottom:1px solid rgba(255,255,255,0.12);padding:7px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:#e5e7eb;z-index:10;flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:8px;">
-              <span style="background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);padding:2px 7px;border-radius:4px;font-weight:700;">⚡ YTS / Torrent</span>
-              <span>Altyazı için oynatıcı içindeki <b>CC</b> simgesini kullanabilirsiniz.</span>
+              <span style="background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);padding:2px 7px;border-radius:4px;font-weight:700;">⚡ YTS / Bulut</span>
+              <span>Yedek Bulut Oynatıcı Aktif</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-              <button id="btn-switch-vip-direct" class="btn-primary" style="padding:3px 10px;font-size:11px;border-radius:4px;background:#e11d48;display:inline-flex;align-items:center;gap:4px;" title="Reklamsız VIP Kaynağa Geç">
-                <span>⚡ Reklamsız Kaynak</span>
+              <button id="btn-switch-p2p-mode" class="btn-primary" style="padding:3px 10px;font-size:11px;border-radius:4px;background:#3b82f6;display:inline-flex;align-items:center;gap:4px;" title="P2P WebTorrent Motoruna Dön">
+                <span>⚡ P2P Motoruna Dön</span>
               </button>
               <a href="${subDownloadUrl}" target="_blank" download class="btn-secondary" style="padding:3px 8px;font-size:11px;border-radius:4px;text-decoration:none;color:#fff;" title="Türkçe Altyazıyı İndir">📥 TR Altyazı</a>
-              ${magnetLink ? `<a href="${magnetLink}" class="btn-secondary" style="padding:3px 8px;font-size:11px;border-radius:4px;text-decoration:none;color:#fff;" title="Magnet Linki">🧲 Magnet</a>` : ''}
+              ${magnetLink ? `<button id="btn-copy-magnet" class="btn-secondary" style="padding:3px 8px;font-size:11px;border-radius:4px;color:#fff;cursor:pointer;" data-magnet="${magnetLink}" title="Magnet Linki">🧲 Magnet</button>` : ''}
             </div>
           </div>
           <div class="torrent-webtor-box" style="position:relative;width:100%;flex:1;overflow:hidden">
@@ -961,11 +963,34 @@ export async function openPlayerModal({
     }
 
     if (
+      isTorrentStream ||
       srv.isDirectVideo ||
       srv.isHls ||
       (srv.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
     ) {
       const streamUrl = getStreamSafeUrl(srv);
+      const magnetLink = srv.magnetUrl || (srv.streamUrl?.startsWith('magnet:') ? srv.streamUrl : '');
+
+      const torrentOverlayHTML = isTorrentStream ? `
+        <div class="torrent-player-overlay-bar" id="torrent-player-overlay-bar">
+          <div class="torrent-player-stream-info">
+            <span class="torrent-p2p-badge">⚡ WebTorrent P2P</span>
+            <span id="torrent-p2p-status-text">Swarm ağına bağlanılıyor...</span>
+            <span id="torrent-p2p-speed" style="color:#60a5fa;margin-left:6px;font-weight:700;">0 KB/s</span>
+            <span id="torrent-p2p-peers" style="color:#34d399;margin-left:6px;font-weight:700;">0 Eş</span>
+          </div>
+          <div class="torrent-player-quick-tools">
+            <button class="btn-torrent-overlay-tool" id="btn-p2p-cloud-fallback" title="Yedek Bulut Oynatıcıya Geç">
+              <span>🌐 Bulut Oynatıcı</span>
+            </button>
+            ${magnetLink ? `
+              <button class="btn-torrent-overlay-tool" id="btn-copy-magnet" title="Magnet Linkini Kopyala" data-magnet="${magnetLink}">
+                <span>🧲 Magnet</span>
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      ` : '';
 
       // Dual-Audio Toggle Bar (shown when hybrid dubbed audio is available and separate from main video)
       const isSameStream = srv.dubbedAudioUrl && (streamUrl === srv.dubbedAudioUrl);
@@ -1024,6 +1049,7 @@ export async function openPlayerModal({
             <canvas id="player-ambient-canvas" class="player-ambient-canvas"></canvas>
           </div>
 
+          ${torrentOverlayHTML}
           ${dualAudioBarHTML}
           <video 
             id="hls-video-player" 
@@ -3332,11 +3358,47 @@ export async function openPlayerModal({
       });
     }
 
+    const isDirectLocalTorrent = Boolean(srv?.streamUrl && srv.streamUrl.includes(':4000/torrent/'));
+    const isTorrentStream = !isDirectLocalTorrent && Boolean(srv?.isTorrent || (srv?.id && (srv.id.startsWith('cp_global_torrent') || srv.id.startsWith('cp_global_yts') || srv.id.startsWith('yts_'))) || (srv?.streamUrl && srv.streamUrl.startsWith('magnet:')));
+
+    const btnCloudFallback = document.getElementById('btn-p2p-cloud-fallback');
+    if (btnCloudFallback) {
+      btnCloudFallback.addEventListener('click', () => {
+        try { destroyTorrentStream(); } catch (_) {}
+        if (srv) srv.forceEmbed = true;
+        updatePlayerContainer();
+      });
+    }
+
+    const btnSwitchP2P = document.getElementById('btn-switch-p2p-mode');
+    if (btnSwitchP2P) {
+      btnSwitchP2P.addEventListener('click', () => {
+        if (srv) srv.forceEmbed = false;
+        updatePlayerContainer();
+      });
+    }
+
+    const btnCopyMagnet = document.getElementById('btn-copy-magnet');
+    if (btnCopyMagnet) {
+      btnCopyMagnet.addEventListener('click', () => {
+        const mag = btnCopyMagnet.getAttribute('data-magnet');
+        if (mag && navigator.clipboard) {
+          navigator.clipboard.writeText(mag).then(() => {
+            showToast('🧲 Magnet bağlantısı panoya kopyalandı!', 'success');
+          }).catch(() => {
+            showToast('Magnet kopyalanamadı', 'error');
+          });
+        }
+      });
+    }
+
     if (
+      (isTorrentStream && !srv?.forceEmbed) ||
       srv?.isDirectVideo ||
       srv?.isHls ||
       (srv?.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.txt') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
     ) {
+      try { destroyTorrentStream(); } catch (_) {}
       if (activeHlsInstance) {
         try { activeHlsInstance.destroy(); } catch (_) {}
         activeHlsInstance = null;
@@ -3348,7 +3410,35 @@ export async function openPlayerModal({
 
       const videoEl = document.getElementById('hls-video-player');
       const streamUrl = getStreamSafeUrl(srv);
-      if (videoEl && streamUrl) {
+
+      if (videoEl && isTorrentStream && !srv.forceEmbed) {
+        const magnetLink = srv.magnetUrl || (srv.streamUrl?.startsWith('magnet:') ? srv.streamUrl : '');
+        if (magnetLink) {
+          startTorrentStream({
+            magnetUrl: magnetLink,
+            videoElement: videoEl,
+            onStatusUpdate: (stats) => {
+              const statusTextEl = document.getElementById('torrent-p2p-status-text');
+              const speedEl = document.getElementById('torrent-p2p-speed');
+              const peersEl = document.getElementById('torrent-p2p-peers');
+              if (statusTextEl && stats.message) statusTextEl.textContent = stats.message;
+              if (speedEl && stats.downloadSpeed) speedEl.textContent = stats.downloadSpeed;
+              if (peersEl && typeof stats.peers === 'number') peersEl.textContent = `${stats.peers} Eş`;
+            },
+            onSuccess: (targetFile) => {
+              const statusTextEl = document.getElementById('torrent-p2p-status-text');
+              if (statusTextEl) statusTextEl.textContent = `🎬 Oynatılıyor: ${targetFile.name}`;
+              showToast('⚡ WebTorrent P2P akışı başarıyla bağlandı!', 'success');
+            },
+            onFailover: (reason) => {
+              console.warn('[P2P Failover]:', reason);
+              showToast(reason || 'Bulut oynatıcıya geçiliyor...', 'info');
+              if (srv) srv.forceEmbed = true;
+              updatePlayerContainer();
+            }
+          });
+        }
+      } else if (videoEl && streamUrl) {
         const isHlsStream = streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || srv.isHls;
 
         if (isHlsStream && window.Hls && Hls.isSupported()) {
