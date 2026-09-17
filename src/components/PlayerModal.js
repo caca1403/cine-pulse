@@ -30,7 +30,6 @@ import {
 } from '../services/storage.js';
 import { showToast } from './Toast.js';
 import { translateToTurkish } from '../services/tmdbApi.js';
-import { startTorrentStream, destroyTorrentStream } from '../services/p2pTorrentService.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -912,45 +911,12 @@ export async function openPlayerModal({
       `;
     }
 
-    const isDirectLocalTorrent = Boolean(srv.streamUrl && srv.streamUrl.includes(':4000/torrent/'));
-    const isTorrentStream = !isDirectLocalTorrent && Boolean(srv.isTorrent || (srv.id && (srv.id.startsWith('cp_global_torrent') || srv.id.startsWith('cp_global_yts') || srv.id.startsWith('yts_'))) || (srv.streamUrl && srv.streamUrl.startsWith('magnet:')));
-    // isP2pStream: true when we have an infoHash-based stream (either via MediaServer or browser)
-    const isP2pStream = isDirectLocalTorrent || isTorrentStream || Boolean(srv.infoHash);
-
     if (
-      isTorrentStream ||
       srv.isDirectVideo ||
       srv.isHls ||
       (srv.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
     ) {
       const streamUrl = getStreamSafeUrl(srv);
-      const magnetLink = srv.magnetUrl || (srv.streamUrl?.startsWith('magnet:') ? srv.streamUrl : '');
-
-      const torrentOverlayHTML = isP2pStream ? `
-        <div class="torrent-player-overlay-bar" id="torrent-player-overlay-bar">
-          <div class="torrent-player-stream-info">
-            <span class="torrent-p2p-badge">⚡ P2P Stream</span>
-            <span id="torrent-p2p-status-text">${isDirectLocalTorrent ? '⚡ MediaServer üzerinden bağlanılıyor...' : 'Swarm ağına bağlanılıyor...'}</span>
-            <span id="torrent-p2p-speed" style="color:#60a5fa;margin-left:6px;font-weight:700;"></span>
-            <span id="torrent-p2p-peers" style="color:#34d399;margin-left:6px;font-weight:700;"></span>
-          </div>
-          <div class="torrent-player-quick-tools">
-            ${srv.embedUrl ? `
-              <button class="btn-torrent-overlay-tool" id="btn-switch-embed-direct" title="Beklemeden Hemen Oynat" style="background:#e11d48;color:#fff;border-color:#e11d48;font-weight:700;">
-                <span>⚡ Hemen Oynat</span>
-              </button>
-            ` : ''}
-            <button class="btn-torrent-overlay-tool" id="btn-p2p-reconnect" title="Yeniden Bağlan">
-              <span>🔄 Yenile</span>
-            </button>
-            ${magnetLink ? `
-              <button class="btn-torrent-overlay-tool" id="btn-copy-magnet" title="Magnet Linkini Kopyala" data-magnet="${magnetLink}">
-                <span>🧲 Magnet</span>
-              </button>
-            ` : ''}
-          </div>
-        </div>
-      ` : '';
 
       // Dual-Audio Toggle Bar (shown when hybrid dubbed audio is available and separate from main video)
       const isSameStream = srv.dubbedAudioUrl && (streamUrl === srv.dubbedAudioUrl);
@@ -1009,7 +975,6 @@ export async function openPlayerModal({
             <canvas id="player-ambient-canvas" class="player-ambient-canvas"></canvas>
           </div>
 
-          ${torrentOverlayHTML}
           ${dualAudioBarHTML}
           <video 
             id="hls-video-player" 
@@ -3314,40 +3279,11 @@ export async function openPlayerModal({
       });
     }
 
-    const isDirectLocalTorrent = Boolean(srv?.streamUrl && srv.streamUrl.includes(':4000/torrent/'));
-    const isTorrentStream = !isDirectLocalTorrent && Boolean(srv?.isTorrent || (srv?.id && (srv.id.startsWith('cp_global_torrent') || srv.id.startsWith('cp_global_yts') || srv.id.startsWith('yts_'))) || (srv?.streamUrl && srv.streamUrl.startsWith('magnet:')))
-    // isAnyP2p: covers both MediaServer-served and browser-side torrent streams
-    const isAnyP2p = isDirectLocalTorrent || isTorrentStream || Boolean(srv?.infoHash);
-
-    const btnReconnectTorrent = document.getElementById('btn-p2p-reconnect');
-    if (btnReconnectTorrent) {
-      btnReconnectTorrent.addEventListener('click', () => {
-        updatePlayerContainer();
-      });
-    }
-
-    const btnSwitchEmbed = document.getElementById('btn-switch-embed-direct');
-    if (btnSwitchEmbed) {
-      btnSwitchEmbed.addEventListener('click', () => {
-        if (srv?.embedUrl) {
-          showToast('⚡ Hızlı web yayını açılıyor...', 'success');
-          srv.type = 'embed';
-          srv.streamUrl = srv.embedUrl;
-          srv.url = srv.embedUrl;
-          srv.isDirectVideo = false;
-          srv.isTorrent = false;
-          updatePlayerContainer();
-        }
-      });
-    }
-
     if (
-      isAnyP2p ||
       srv?.isDirectVideo ||
       srv?.isHls ||
       (srv?.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.txt') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
     ) {
-      try { destroyTorrentStream(); } catch (_) {}
       if (activeHlsInstance) {
         try { activeHlsInstance.destroy(); } catch (_) {}
         activeHlsInstance = null;
@@ -3360,114 +3296,7 @@ export async function openPlayerModal({
       const videoEl = document.getElementById('hls-video-player');
       const streamUrl = getStreamSafeUrl(srv);
 
-      if (videoEl && isAnyP2p) {
-        // ALWAYS prefer MediaServer HTTP stream over browser WebTorrent
-        // Browser WebTorrent (WebRTC) is unreliable - use localhost:4000 instead
-        const infoHash = srv.infoHash;
-        const serverStreamUrl = infoHash ? `http://localhost:4000/torrent/${infoHash}` : null;
-
-        if (serverStreamUrl) {
-          const statusTextEl = document.getElementById('torrent-p2p-status-text');
-          const speedEl = document.getElementById('torrent-p2p-speed');
-          const peersEl = document.getElementById('torrent-p2p-peers');
-
-          // --- Smart P2P Loader ---
-          // 1. Kickstart torrent loading via /torrent-check/ (non-blocking prefetch)
-          // 2. Poll every 1s until ready, then attach video src
-          let p2pPollTimer = null;
-          let p2pAttempts = 0;
-          const P2P_MAX_ATTEMPTS = 12; // 12s max wait before auto-failover
-          let p2pVideoAttached = false;
-
-          const attachVideoStream = () => {
-            if (p2pVideoAttached) return;
-            p2pVideoAttached = true;
-            if (p2pPollTimer) { clearInterval(p2pPollTimer); p2pPollTimer = null; }
-
-            if (statusTextEl) statusTextEl.textContent = '🎬 Bağlandı! Başlatılıyor...';
-            videoEl.src = serverStreamUrl + '?t=' + Date.now();
-            videoEl.load();
-            const pp = videoEl.play();
-            if (pp !== undefined) pp.catch(() => { videoEl.muted = true; videoEl.play().catch(() => {}); });
-
-            videoEl.addEventListener('canplay', () => {
-              if (statusTextEl) statusTextEl.textContent = '🎬 P2P Stream aktif';
-              if (speedEl) speedEl.textContent = '';
-              if (peersEl) peersEl.textContent = '';
-              showToast('⚡ P2P akışı başladı!', 'success');
-            }, { once: true });
-
-            videoEl.addEventListener('error', () => {
-              if (statusTextEl) statusTextEl.textContent = '⚠️ Yeniden deneniyor...';
-              setTimeout(() => {
-                if (videoEl && !videoEl.src.includes('localhost')) return;
-                videoEl.src = serverStreamUrl + '?retry=' + Date.now();
-                videoEl.load();
-                videoEl.play().catch(() => {});
-              }, 4000);
-            }, { once: true });
-
-            if (initialTime > 0) {
-              videoEl.addEventListener('loadedmetadata', () => {
-                const dur = videoEl.duration;
-                if (dur && isFinite(dur) && initialTime < dur - 10) videoEl.currentTime = initialTime;
-              }, { once: true });
-            }
-          };
-
-          const pollTorrentReady = async () => {
-            p2pAttempts++;
-            if (p2pAttempts > P2P_MAX_ATTEMPTS) {
-              clearInterval(p2pPollTimer);
-              if (srv?.embedUrl) {
-                if (statusTextEl) statusTextEl.textContent = '⚡ Hızlı web yayınına geçiliyor...';
-                showToast('⚡ P2P eş bulunamadı, hızlı web yayını açılıyor...', 'info');
-                srv.type = 'embed';
-                srv.streamUrl = srv.embedUrl;
-                srv.url = srv.embedUrl;
-                srv.isDirectVideo = false;
-                srv.isTorrent = false;
-                updatePlayerContainer();
-                return;
-              }
-              if (statusTextEl) statusTextEl.textContent = '⚠️ 12s içinde peer bulunamadı.';
-              return;
-            }
-            try {
-              const checkRes = await fetch(`http://localhost:4000/torrent-check/${infoHash}`, { signal: AbortSignal.timeout(1000) });
-              const info = await checkRes.json();
-              if (info.ready) {
-                const peerStr = info.peers > 0 ? `${info.peers} peer` : '';
-                const speedStr = info.downloadSpeed || '';
-                if (statusTextEl) statusTextEl.textContent = `⚡ ${info.videoFile || 'Video'} hazır`;
-                if (speedEl) speedEl.textContent = speedStr;
-                if (peersEl) peersEl.textContent = peerStr;
-                attachVideoStream();
-              } else {
-                const elapsed = p2pAttempts;
-                const peerStr = info.peers > 0 ? ` | ${info.peers} peer` : '';
-                if (statusTextEl) statusTextEl.textContent = `⏳ Peer aranıyor... (${elapsed}s${peerStr})`;
-              }
-            } catch (_) {
-              if (statusTextEl && !p2pVideoAttached) statusTextEl.textContent = `⏳ Peer aranıyor... (${p2pAttempts}s)`;
-            }
-          };
-
-          // Start polling immediately
-          if (statusTextEl) statusTextEl.textContent = '🔍 Torrent peer\'ları aranıyor...';
-          if (speedEl) speedEl.textContent = '';
-          if (peersEl) peersEl.textContent = '';
-
-          // First check immediately (torrent might already be cached)
-          pollTorrentReady();
-          p2pPollTimer = setInterval(pollTorrentReady, 1000);
-
-        } else {
-          // No infoHash available - nothing to play
-          const statusTextEl = document.getElementById('torrent-p2p-status-text');
-          if (statusTextEl) statusTextEl.textContent = '⚠️ Torrent bilgisi eksik';
-        }
-      } else if (videoEl && streamUrl) {
+      if (videoEl && streamUrl) {
         const isHlsStream = streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || srv.isHls;
 
         if (isHlsStream && window.Hls && Hls.isSupported()) {

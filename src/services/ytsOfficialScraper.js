@@ -165,8 +165,11 @@ export async function fetchYtsOfficialSources({
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const magnetUrl = `magnet:?xt=urn:btih:${hit.hash}&dn=${encodeURIComponent(hit.title || query)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz&tr=wss://tracker.webtorrent.dev&tr=wss://tracker.files.fm:7073/announce&tr=wss://spacetrackr.link:443/announce`;
 
-      // 100% Pure P2P Stream URL - Zero third-party ad embeds
-      const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : magnetUrl;
+      const ytsWebEmbedUrl = tmdbId 
+        ? (isMovie ? `https://vidlink.pro/movie/${tmdbId}` : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`)
+        : null;
+
+      const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : (ytsWebEmbedUrl || magnetUrl);
       const sourceLabel = isYtsSpecific ? 'YTS (YIFY)' : 'YTS (Official)';
 
       const sizeStr = formatSize(hit.bytes);
@@ -187,9 +190,9 @@ export async function fetchYtsOfficialSources({
         url: streamUrl,
         streamUrl: streamUrl,
         magnetUrl: magnetUrl,
-        embedUrl: null,
+        embedUrl: ytsWebEmbedUrl,
         infoHash: hit.hash,
-        isTorrent: true,
+        isTorrent: isLocal,
         quality: quality,
         isHls: false,
         isDirectVideo: isLocal,
