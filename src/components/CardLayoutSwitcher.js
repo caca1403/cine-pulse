@@ -1,4 +1,5 @@
 import { getUserSettings, saveUserSettings } from '../services/storage.js';
+import { upgradeLandscapeBackdrops } from './MediaCard.js';
 
 const layoutImageCache = new Map();
 const readyLayoutImages = new Set();
@@ -150,6 +151,11 @@ export function attachCardLayoutSwitcherEvents(container = document) {
       saveUserSettings({ cardLayout: layout });
       switcher.classList.remove('is-switching');
       buttons.forEach(option => { option.disabled = false; });
+
+      // After switching to landscape, upgrade backdrops with best quality images
+      if (layout === 'landscape') {
+        upgradeLandscapeBackdrops(document);
+      }
     });
   });
 }

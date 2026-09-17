@@ -83,7 +83,14 @@ async function isMediaServerAvailable() {
 
 // ============ SOURCE 1: Torrent Engine (Torrentio) ============
 
+/**
+ * Fetches torrent streams from Torrentio.
+ * If isDub=true, only returns Turkish dubbed streams (20s fast-fail).
+ * If no TR dubbed found within 20s → returns [] immediately.
+ */
 async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = false, imdbId = null }) {
+  const FAST_FAIL_MS = 20000; // 20 saniye - türkçe dublaj bulunamazsa dur
+
   const effectiveImdbId = imdbId || await fetchImdbId(type, tmdbId);
   if (!effectiveImdbId) return [];
 
@@ -97,9 +104,12 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
     : `https://torrentio.strem.fun/stream/series/${effectiveImdbId}:${season}:${episode}.json`;
 
   try {
+    // If isDub, use fast-fail timeout of 20s. Otherwise use standard 7.5s.
+    const timeout = isDub ? FAST_FAIL_MS : 7500;
+
     const res = await fetch(streamUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(7500)
+      signal: AbortSignal.timeout(timeout)
     });
 
     if (!res.ok) return [];
@@ -126,6 +136,8 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
       const isMp4 = titleLower.includes('.mp4') || isYts;
 
       const isTrDub = isTurkishDubbed(fullTitle);
+
+      // For dubbed mode: skip non-Turkish dubbed streams
       if (isDub && !isTrDub) {
         continue;
       }
@@ -141,8 +153,9 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
 
       const magnetUrl = `magnet:?xt=urn:btih:${stream.infoHash}&dn=${encodeURIComponent(fullTitle)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz&tr=wss://tracker.webtorrent.dev&tr=wss://tracker.files.fm:7073/announce&tr=wss://spacetrackr.link:443/announce`;
 
-      const finalStreamUrl = serverAvailable 
-        ? `${MEDIA_SERVER_BASE}/torrent/${stream.infoHash}` 
+      // ALWAYS prefer MediaServer URL over magnet (browser WebTorrent is unreliable)
+      const finalStreamUrl = serverAvailable
+        ? `${MEDIA_SERVER_BASE}/torrent/${stream.infoHash}`
         : magnetUrl;
 
       const sizeStr = sizeMatch ? sizeMatch[0] : '';
@@ -159,7 +172,9 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
         : (isYts ? `⚡ YTS ${qualityLabel}` : `⚡ Torrent ${qualityLabel}`);
 
       results.push({
-        id: `cp_global_torrent_${stream.infoHash.substring(0, 10)}`,
+        id: isTrDub
+          ? `cp_global_torrent_dub_${stream.infoHash.substring(0, 10)}`
+          : `cp_global_torrent_${stream.infoHash.substring(0, 10)}`,
         name: displayName,
         displayName: displayName,
         badge,
@@ -175,14 +190,17 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
         isDirectVideo: serverAvailable,
         isYts,
         isMp4,
-        priority: isYts ? 1 : 2,
+        isTrDub,
+        priority: isTrDub ? 0 : (isYts ? 1 : 2),
         subtitles: defaultSubs,
         getUrl: () => finalStreamUrl
       });
     }
 
-    // Sort: YTS / MP4 first, then by quality (1080p -> 720p -> 4K)
+    // Sort: TR Dubbed first, then YTS / MP4, then by quality (1080p -> 720p -> 4K)
     results.sort((a, b) => {
+      if (a.isTrDub && !b.isTrDub) return -1;
+      if (!a.isTrDub && b.isTrDub) return 1;
       if (a.isYts && !b.isYts) return -1;
       if (!a.isYts && b.isYts) return 1;
       if (a.isMp4 && !b.isMp4) return -1;
@@ -191,8 +209,17 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
       return (qOrder[a.quality] ?? 3) - (qOrder[b.quality] ?? 3);
     });
 
+    // If isDub mode and zero TR dubbed results → fast-fail
+    if (isDub && results.length === 0) {
+      console.log('[GlobalStreamEngine] No Turkish dubbed torrents found. Fast-fail triggered.');
+      return [];
+    }
+
     return results.slice(0, 8);
-  } catch (_) {
+  } catch (err) {
+    if (isDub && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      console.log('[GlobalStreamEngine] Dubbed torrent search timed out (20s fast-fail).');
+    }
     return [];
   }
 }
@@ -200,8 +227,10 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
 // ============ MASTER AUTONOMOUS DISCOVERY ============
 
 /**
- * Resolves autonomous global streams from YTS Official (en.yts-official.com) and Torrentio.
- * Fully integrates Turkish subtitles and hybrid audio support.
+ * Resolves autonomous global streams from Torrentio (primary) and YTS Official (secondary).
+ *
+ * - isDub=true  → searches Torrentio for Turkish dubbed releases only (20s fast-fail)
+ * - isDub=false → searches both Torrentio (all quality) + YTS Official (MP4 movies)
  */
 export async function fetchGlobalAutonomousSources({
   type = 'movie',
@@ -215,40 +244,72 @@ export async function fetchGlobalAutonomousSources({
 }) {
   if (!tmdbId) return [];
 
-  // Dubbed torrents are completely disabled as requested by user
-  if (isDub) return [];
-
   try {
     const imdbId = await fetchImdbId(type, tmdbId);
 
-    // Fetch exclusively from YTS Official (en.yts-official.com)
-    const ytsList = await fetchYtsOfficialSources({
-      type,
-      tmdbId,
-      title,
-      originalTitle,
-      year,
-      season,
-      episode,
-      imdbId,
-      isDub: false
-    });
+    if (isDub) {
+      // DUBBED MODE: Search Torrentio for Turkish dubbed torrents (20s fast-fail)
+      const dubResults = await fetchTorrentSources({
+        type,
+        tmdbId,
+        season,
+        episode,
+        isDub: true,
+        imdbId
+      });
 
-    if (!Array.isArray(ytsList) || ytsList.length === 0) return [];
+      return dubResults.map(s => ({
+        ...s,
+        category: 'dubbed'
+      }));
+    }
 
-    const subUrl = imdbId 
+    // SUBTITLED MODE: Run Torrentio + YTS Official in parallel
+    const [torrentResults, ytsResults] = await Promise.allSettled([
+      fetchTorrentSources({ type, tmdbId, season, episode, isDub: false, imdbId }),
+      fetchYtsOfficialSources({ type, tmdbId, title, originalTitle, year, season, episode, imdbId, isDub: false })
+    ]);
+
+    const subUrl = imdbId
       ? (type === 'movie' ? `/api/subtitles?imdbId=${imdbId}` : `/api/subtitles?imdbId=${imdbId}&season=${season}&episode=${episode}`)
       : null;
 
-    return ytsList.map(s => ({
-      ...s,
-      category: 'subtitled',
-      subtitles: (Array.isArray(s.subtitles) && s.subtitles.length > 0)
-        ? s.subtitles
-        : (subUrl ? [{ label: 'Türkçe', src: subUrl }] : [])
-    }));
+    const allResults = [];
+    const seenHashes = new Set();
+
+    // Add Torrentio results
+    if (torrentResults.status === 'fulfilled' && Array.isArray(torrentResults.value)) {
+      for (const s of torrentResults.value) {
+        if (s.infoHash && seenHashes.has(s.infoHash)) continue;
+        if (s.infoHash) seenHashes.add(s.infoHash);
+        allResults.push({
+          ...s,
+          category: 'subtitled',
+          subtitles: (Array.isArray(s.subtitles) && s.subtitles.length > 0)
+            ? s.subtitles
+            : (subUrl ? [{ label: 'Türkçe', src: subUrl }] : [])
+        });
+      }
+    }
+
+    // Add YTS results (dedup by infoHash)
+    if (ytsResults.status === 'fulfilled' && Array.isArray(ytsResults.value)) {
+      for (const s of ytsResults.value) {
+        if (s.infoHash && seenHashes.has(s.infoHash)) continue;
+        if (s.infoHash) seenHashes.add(s.infoHash);
+        allResults.push({
+          ...s,
+          category: 'subtitled',
+          subtitles: (Array.isArray(s.subtitles) && s.subtitles.length > 0)
+            ? s.subtitles
+            : (subUrl ? [{ label: 'Türkçe', src: subUrl }] : [])
+        });
+      }
+    }
+
+    return allResults;
   } catch (err) {
-    console.warn('[GlobalStreamEngine] YTS fetch error:', err.message);
+    console.warn('[GlobalStreamEngine] Error:', err.message);
     return [];
   }
 }

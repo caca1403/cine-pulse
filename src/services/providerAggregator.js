@@ -614,7 +614,12 @@ export async function getStreamingServersProgressive({
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
 
-    // Subtitled Sources: ONLY YTS Official (en.yts-official.com)
+    // P2P Sources: Torrentio (both dubbed and subtitled)
+    // Dubbed: searches for Turkish dubbed torrents (TR Dual, Multi, etc.) - 20s fast-fail
+    fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+
+    // Subtitled: searches all quality torrents + YTS Official
     fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 

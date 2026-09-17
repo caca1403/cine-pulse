@@ -83,14 +83,31 @@ let wtClient = null;
 async function getWTClient() {
   if (wtClient) return wtClient;
   try {
-    const mod = await import('webtorrent');
-    WebTorrent = mod.default || mod;
+    let WebTorrentClass = null;
+
+    // Try ESM import first (webtorrent v3+)
+    try {
+      const mod = await import('webtorrent');
+      WebTorrentClass = mod.default || mod;
+    } catch (esmErr) {
+      console.warn('[MediaServer] ESM import failed, trying CJS require:', esmErr.message);
+      // Fallback to CJS require (webtorrent v1.x)
+      try {
+        const { createRequire } = await import('module');
+        const require = createRequire(import.meta.url);
+        WebTorrentClass = require('webtorrent');
+      } catch (cjsErr) {
+        console.error('[MediaServer] CJS require also failed:', cjsErr.message);
+        return null;
+      }
+    }
+
+    if (!WebTorrentClass) return null;
+
+    WebTorrent = WebTorrentClass;
     wtClient = new WebTorrent({
-      // Maximum connections for faster peer discovery
       maxConns: 100,
-      // Enable DHT for decentralized peer discovery
       dht: true,
-      // Enable uTP for better NAT traversal
       utp: true
     });
 
@@ -98,7 +115,7 @@ async function getWTClient() {
       console.error('[WebTorrent] Client error:', err.message);
     });
 
-    console.log('[MediaServer] WebTorrent engine initialized');
+    console.log('[MediaServer] WebTorrent engine initialized successfully');
     return wtClient;
   } catch (err) {
     console.error('[MediaServer] WebTorrent load failed:', err.message);
@@ -629,25 +646,43 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ============ Torrent Status Check ============
+  // ============ Torrent Status Check (Non-Blocking) ============
   if (reqUrl.pathname.startsWith('/torrent-check/')) {
     const infoHash = decodeURIComponent(reqUrl.pathname.replace('/torrent-check/', '')).trim();
-    try {
-      const { torrent, file } = await getTorrentVideoFile(infoHash);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        ready: true,
-        name: torrent.name,
-        videoFile: file.name,
-        sizeMb: (file.length / 1024 / 1024).toFixed(1),
-        progress: (torrent.progress * 100).toFixed(1) + '%',
-        downloadSpeed: (torrent.downloadSpeed / 1024).toFixed(0) + ' KB/s',
-        peers: torrent.numPeers
-      }));
-    } catch (err) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ready: false, error: err.message }));
+    if (!infoHash || infoHash.length < 10) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ready: false, error: 'Invalid infoHash' }));
+      return;
     }
+
+    // If already in cache and ready, return immediately
+    if (torrentCache.has(infoHash)) {
+      const entry = torrentCache.get(infoHash);
+      entry.lastAccess = Date.now();
+      const videoFile = getLargestVideoFile(entry.torrent);
+      if (videoFile) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          ready: true,
+          name: entry.torrent.name,
+          videoFile: videoFile.name,
+          sizeMb: (videoFile.length / 1024 / 1024).toFixed(1),
+          progress: (entry.torrent.progress * 100).toFixed(1) + '%',
+          downloadSpeed: Math.round(entry.torrent.downloadSpeed / 1024) + ' KB/s',
+          peers: entry.torrent.numPeers
+        }));
+        return;
+      }
+    }
+
+    // Not ready yet - kick off background loading and return status
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ready: false, starting: true, peers: 0, message: 'Torrent başlatılıyor...' }));
+
+    // Start loading in background (fire and forget - cache will be populated)
+    getTorrentVideoFile(infoHash).catch(err => {
+      console.log(`[MediaServer] Background torrent load: ${err.message}`);
+    });
     return;
   }
 

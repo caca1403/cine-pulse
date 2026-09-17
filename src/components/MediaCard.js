@@ -9,6 +9,7 @@ import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK, hasNonLatinCha
 import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime, isRegisteredAnimeId, registerAnimeId, getUserSettings, KNOWN_ANIME_KEYWORDS as STORAGE_ANIME_KEYWORDS } from '../services/storage.js';
 import { openPlayerModal } from './openPlayer.js';
 import { saveAllScrollState } from '../services/scrollManager.js';
+import { getBestBackdrop, prefetchBackdrops } from '../services/fanartService.js';
 
 const KNOWN_ANIME_KEYWORDS = STORAGE_ANIME_KEYWORDS || [
   'anime', 'kimetsu', 'yaiba', 'iblis keser', 'demon slayer', 'naruto', 'boruto', 'shingeki', 'titan'
@@ -218,6 +219,8 @@ export function renderMediaCard(item, options = {}) {
       data-originaltitle="${encodedOrigTitle}"
       data-poster="${encodedPoster}"
       data-backdrop="${encodedBackdrop}"
+      data-tmdbid="${id}"
+      data-mediatype="${mediaType === 'tv' || isSeries ? 'tv' : 'movie'}"
       data-season="${season}" 
       data-episode="${episode}" 
       data-currenttime="${currentTime}"
@@ -291,6 +294,9 @@ export function renderMediaCard(item, options = {}) {
 export function attachMediaCardEvents(container) {
   if (!container || container._hasMediaEventsDelegated) return;
   container._hasMediaEventsDelegated = true;
+
+  // Upgrade backdrop images asynchronously for landscape mode (fire & forget)
+  upgradeLandscapeBackdrops(container);
 
   container.addEventListener('click', (e) => {
     // Don't trigger card navigation if delete button or other child button clicked
@@ -457,5 +463,63 @@ export function attachMediaCardEvents(container) {
       }
       card.classList.remove('preview-active');
     });
+  }
+}
+
+/**
+ * Upgrades landscape card backdrop images with best-quality versions from TMDB images API.
+ * Call after rendering a list of cards in landscape mode.
+ * Uses smooth fade-in transition when upgrading images.
+ * 
+ * @param {HTMLElement} [container=document] - Container to search for cards in
+ */
+export async function upgradeLandscapeBackdrops(container = document) {
+  const isLandscape = getUserSettings().cardLayout === 'landscape';
+  if (!isLandscape) return;
+
+  const cards = container.querySelectorAll('.media-card[data-tmdbid]');
+  if (!cards.length) return;
+
+  const BATCH_SIZE = 6; // Process N cards at a time
+  const cardArray = Array.from(cards);
+
+  for (let i = 0; i < cardArray.length; i += BATCH_SIZE) {
+    const batch = cardArray.slice(i, i + BATCH_SIZE);
+
+    await Promise.allSettled(batch.map(async (card) => {
+      const tmdbId = card.dataset.tmdbid;
+      const mediaType = card.dataset.mediatype || 'movie';
+      if (!tmdbId) return;
+
+      const img = card.querySelector('.card-poster-img');
+      if (!img) return;
+
+      try {
+        const bestUrl = await getBestBackdrop(tmdbId, mediaType);
+        if (!bestUrl || bestUrl === img.src) return;
+
+        // Smooth swap: preload first
+        const preloader = new Image();
+        preloader.onload = () => {
+          // Only apply if still in landscape mode and card still exists
+          if (!document.documentElement.classList.contains('cards-landscape')) return;
+          if (!card.isConnected) return;
+
+          img.style.transition = 'opacity 0.3s ease';
+          img.style.opacity = '0';
+          setTimeout(() => {
+            img.src = bestUrl;
+            img.dataset.backdropSrc = bestUrl;
+            img.style.opacity = '1';
+          }, 150);
+        };
+        preloader.src = bestUrl;
+      } catch (_) {}
+    }));
+
+    // Small pause between batches to avoid overwhelming the browser
+    if (i + BATCH_SIZE < cardArray.length) {
+      await new Promise(r => setTimeout(r, 100));
+    }
   }
 }
