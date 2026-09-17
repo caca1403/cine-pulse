@@ -74,9 +74,18 @@ export async function openPlayerModal({
     }
     activeHlsInstance = activeAudioHlsInstance = null;
     modalContainer.querySelectorAll('video, audio').forEach(media => {
-      media.pause();
-      media.removeAttribute('src');
-      media.load();
+      try {
+        media.pause();
+        media.removeAttribute('src');
+        while (media.firstChild) media.removeChild(media.firstChild);
+        media.load();
+      } catch (_) {}
+    });
+    modalContainer.querySelectorAll('iframe').forEach(iframe => {
+      try {
+        iframe.src = 'about:blank';
+        iframe.remove();
+      } catch (_) {}
     });
   }
 
@@ -256,7 +265,8 @@ export async function openPlayerModal({
         }
       }
     }
-    renderPlayerIcons(modalContainer);
+    const btnList = document.getElementById('btn-toggle-list');
+    if (btnList) renderPlayerIcons(btnList);
   };
 
   let lastProgressSaveTimestamp = 0;
@@ -607,7 +617,9 @@ export async function openPlayerModal({
     }).join('');
 
     listEl.querySelectorAll('.source-list-item').forEach(item => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const idx = parseInt(item.getAttribute('data-index'), 10);
         if (idx === currentServerIndex) return;
         currentServerIndex = idx;
@@ -618,7 +630,7 @@ export async function openPlayerModal({
       });
     });
 
-    renderPlayerIcons(modalContainer);
+    renderPlayerIcons(listEl);
   }
 
   // Alias to prevent any ReferenceError
@@ -661,7 +673,7 @@ export async function openPlayerModal({
         </div>
       </div>
     `;
-    renderPlayerIcons(modalContainer);
+    renderPlayerIcons(wrapper);
 
     document.getElementById('btn-err-try-next')?.addEventListener('click', () => {
       if (hasNext) {
@@ -761,7 +773,7 @@ export async function openPlayerModal({
           for (let i = 0; i < textTracks.length; i++) {
             if (defaultSubIdx >= 0 && i === defaultSubIdx) {
               textTracks[i].mode = 'showing';
-            } else if (defaultSubIdx === -1) {
+            } else {
               textTracks[i].mode = 'disabled';
             }
           }
@@ -808,7 +820,7 @@ export async function openPlayerModal({
   }
 
   function renderPlayerContent() {
-    if (isSearching && (!activeServers || activeServers.length === 0)) {
+    if ((isSearching || isDiscoveryActive) && (!activeServers || activeServers.length === 0)) {
       return `
         <div class="player-loading-overlay">
           <div class="player-loader-core">
@@ -817,7 +829,7 @@ export async function openPlayerModal({
           </div>
           <div class="player-loader-text">
             <h3>${cleanSeriesName}</h3>
-            <p class="player-loader-sub">${isSeries ? `Sezon ${currentSeason} • Bölüm ${currentEpisode}` : '4K Ultra HD Film Yayını'} Başlatılıyor...</p>
+            <p class="player-loader-sub">${currentCategory === 'subtitled' ? '💬 Türkçe Altyazılı' : '🇹🇷 Türkçe Dublaj'} Yayınlar Aranıyor...</p>
             <p class="player-loader-hint">Türkiye ve küresel CDN hatları taranıyor...</p>
           </div>
         </div>
@@ -962,10 +974,10 @@ export async function openPlayerModal({
             <span>Ses Kaynağı:</span>
           </div>
           <div class="dual-audio-toggle">
-            <button id="btn-audio-original" class="dual-audio-btn active" title="Orijinal Ses">
+            <button id="btn-audio-original" class="dual-audio-btn ${currentCategory === 'subtitled' ? 'active' : ''}" title="Orijinal Ses">
               <span>🇬🇧 Orijinal</span>
             </button>
-            <button id="btn-audio-dubbed" class="dual-audio-btn" title="Türkçe Dublaj Sesi">
+            <button id="btn-audio-dubbed" class="dual-audio-btn ${currentCategory === 'dubbed' ? 'active' : ''}" title="Türkçe Dublaj Sesi">
               <span>🇹🇷 TR Dublaj</span>
             </button>
           </div>
@@ -2186,43 +2198,11 @@ export async function openPlayerModal({
     const gestureText = wrapper.querySelector('#gesture-hud-text');
     const gestureFill = wrapper.querySelector('#gesture-hud-fill');
 
-    // Cinema Ambient Mode Glow (YouTube Style)
+    // Cinema Ambient Mode Glow (Pure CSS GPU-free smooth ambient glow)
     const ambientBox = wrapper.querySelector('#player-ambient-glow');
     const ambientCanvas = wrapper.querySelector('#player-ambient-canvas');
-    if (ambientBox && ambientCanvas) {
-      let ambientTimer = null;
-      ambientCanvas.width = 32;
-      ambientCanvas.height = 18;
-      let ctx = null;
-      try {
-        ctx = ambientCanvas.getContext('2d', { willReadFrequently: false });
-      } catch (_) {}
-
-      const updateAmbient = () => {
-        if (!videoEl.isConnected || document.hidden || videoEl.paused || videoEl.ended) return;
-        try {
-          if (ctx && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-            ctx.drawImage(videoEl, 0, 0, 32, 18);
-          }
-        } catch (_) {
-          clearInterval(ambientTimer);
-          // If cross-origin protects video frames, apply CSS ambient glow fallback
-          if (ambientCanvas) ambientCanvas.style.display = 'none';
-          if (ambientBox) ambientBox.style.background = 'radial-gradient(circle at center, rgba(245, 158, 11, 0.22) 0%, rgba(20, 184, 166, 0.14) 50%, transparent 75%)';
-        }
-      };
-
-      on(videoEl, 'play', () => {
-        if (ambientTimer) clearInterval(ambientTimer);
-        ambientTimer = setInterval(updateAmbient, 750);
-      });
-      on(videoEl, 'pause', () => {
-        if (ambientTimer) {
-          clearInterval(ambientTimer);
-          ambientTimer = null;
-        }
-      });
-    }
+    if (ambientCanvas) ambientCanvas.style.display = 'none';
+    if (ambientBox) ambientBox.style.background = 'radial-gradient(circle at center, rgba(245, 158, 11, 0.16) 0%, rgba(20, 184, 166, 0.08) 50%, transparent 75%)';
 
     // Screen Lock State
     let isScreenLocked = false;
@@ -2393,6 +2373,9 @@ export async function openPlayerModal({
         closeOpenControlPopovers();
         return;
       }
+      // A tap on the video reveals controls through pointerdown. Pausing here
+      // made every ordinary mobile tap look like playback had frozen.
+      if (e.pointerType === 'touch' || window.matchMedia('(pointer: coarse)').matches) return;
       togglePlay();
     };
 
@@ -2659,11 +2642,18 @@ export async function openPlayerModal({
       }
     };
 
-    on(wrapper, 'pointerenter', resetHideTimer);
-    on(wrapper, 'pointerdown', resetHideTimer);
+    let lastPointerReset = 0;
+    const throttledResetTimer = () => {
+      const now = Date.now();
+      if (now - lastPointerReset < 300) return;
+      lastPointerReset = now;
+      resetHideTimer();
+    };
+    on(wrapper, 'pointerenter', (e) => {
+      if (e.pointerType === 'mouse') throttledResetTimer();
+    });
+    on(wrapper, 'pointerdown', throttledResetTimer);
     on(modalContainer, 'focusin', resetHideTimer);
-    on(modalContainer, 'pointermove', resetHideTimer);
-    on(wrapper, 'click', resetHideTimer);
     on(wrapper, 'mouseleave', () => {
       if (!videoEl.paused) {
         wrapper.classList.add('hide-controls');
@@ -3145,7 +3135,7 @@ export async function openPlayerModal({
     let gestureHideTimeout = null;
     const showGestureHud = (iconName, text, fillPct) => {
       if (!gestureHud) return;
-      if (gestureIcon) {
+      if (gestureIcon && gestureIcon.getAttribute('data-lucide') !== iconName) {
         gestureIcon.setAttribute('data-lucide', iconName);
         renderPlayerIcons(gestureHud);
         gestureIcon = wrapper.querySelector('#gesture-hud-icon');
@@ -3195,9 +3185,6 @@ export async function openPlayerModal({
         return;
       }
       lastTapTimestamp = now;
-
-      // On single touch on mobile, show/hide controls or reset timer
-      resetHideTimer();
 
       touchStartX = touch.clientX;
       touchStartY = touch.clientY;
@@ -3295,7 +3282,7 @@ export async function openPlayerModal({
     let srv = activeServers[currentServerIndex];
 
     wrapper.innerHTML = renderPlayerContent();
-    renderPlayerIcons(modalContainer);
+    renderPlayerIcons(wrapper);
 
     const popoutBtn = document.getElementById('player-popout-btn');
     if (popoutBtn) {
@@ -3486,21 +3473,29 @@ export async function openPlayerModal({
         const btnDubbed = document.getElementById('btn-audio-dubbed');
 
         if (dubbedAudioEl && srv.dubbedAudioUrl) {
-          let currentAudioTrack = 'dubbed';
-          const dubbedUrl = srv.dubbedAudioUrl;
-          const isAudioHls = dubbedUrl.includes('.m3u8') || srv.dubbedAudioIsHls;
+          let currentAudioTrack = currentCategory === 'dubbed' ? 'dubbed' : 'original';
+          let audioHlsInitialized = false;
 
-          if (isAudioHls && window.Hls && Hls.isSupported()) {
-            const audioHls = new Hls({
-              enableWorker: true,
-              lowLatencyMode: true
-            });
-            activeAudioHlsInstance = audioHls;
-            audioHls.loadSource(dubbedUrl);
-            audioHls.attachMedia(dubbedAudioEl);
-          } else {
-            dubbedAudioEl.src = dubbedUrl;
-          }
+          const ensureDubbedAudioLoaded = () => {
+            if (audioHlsInitialized || !dubbedAudioEl || !srv.dubbedAudioUrl) return;
+            audioHlsInitialized = true;
+            const dubbedUrl = srv.dubbedAudioUrl;
+            const isAudioHls = dubbedUrl.includes('.m3u8') || srv.dubbedAudioIsHls;
+
+            if (isAudioHls && window.Hls && Hls.isSupported()) {
+              const audioHls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true,
+                maxBufferLength: 6,
+                maxMaxBufferLength: 12
+              });
+              activeAudioHlsInstance = audioHls;
+              audioHls.loadSource(dubbedUrl);
+              audioHls.attachMedia(dubbedAudioEl);
+            } else {
+              dubbedAudioEl.src = dubbedUrl;
+            }
+          };
 
           const setAudioTrack = (track, silent = false) => {
             currentAudioTrack = track;
@@ -3516,6 +3511,7 @@ export async function openPlayerModal({
                 return;
               }
 
+              ensureDubbedAudioLoaded();
               videoEl.muted = true;
               dubbedAudioEl.muted = false;
               dubbedAudioEl.volume = videoEl.volume;
@@ -3524,7 +3520,6 @@ export async function openPlayerModal({
               }
               if (!videoEl.paused) {
                 dubbedAudioEl.play().catch(() => {
-                  // Fallback: if dubbed audio play failed/blocked, unmute videoEl so sound is never lost
                   videoEl.muted = false;
                 });
               }
@@ -3545,14 +3540,15 @@ export async function openPlayerModal({
           videoEl._currentAudioTrack = currentAudioTrack;
 
           if (btnOriginal) {
-            btnOriginal.onclick = () => setAudioTrack('original');
+            btnOriginal.onclick = (e) => { e.stopPropagation(); setAudioTrack('original'); };
           }
           if (btnDubbed) {
-            btnDubbed.onclick = () => setAudioTrack('dubbed');
+            btnDubbed.onclick = (e) => { e.stopPropagation(); setAudioTrack('dubbed'); };
           }
 
-          // Initial track setting without spamming toast
-          setAudioTrack('dubbed', true);
+          // Initial track setting matching the user's active category
+          const initialTrack = currentCategory === 'dubbed' ? 'dubbed' : 'original';
+          setAudioTrack(initialTrack, true);
 
           playbackScope.on(videoEl, 'canplay', () => {
             if (currentAudioTrack === 'dubbed') {
@@ -3651,7 +3647,7 @@ export async function openPlayerModal({
     `;
 
     wrapper.appendChild(banner);
-    renderPlayerIcons(modalContainer);
+    renderPlayerIcons(banner);
 
     document.getElementById('btn-switch-to-new-dubbed')?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -3666,11 +3662,16 @@ export async function openPlayerModal({
     });
   }
 
+  let isDiscoveryActive = false;
+  let hasShownDubbedAlert = false;
+
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
     const generation = ++discoveryGeneration;
     let sourceRefreshFrame = 0;
     isSearching = true;
+    isDiscoveryActive = true;
     hasPlayerStartedPlaying = false;
+    hasShownDubbedAlert = false;
     failoverCountInSession = 0;
     categorizedServers = { dubbed: [], subtitled: [] };
     activeServers = [];
@@ -3689,24 +3690,72 @@ export async function openPlayerModal({
       onUpdate: ({ dubbed = [], subtitled = [], isComplete = false, newStream = null, isDubbedStream = false }) => {
         if (closed || generation !== discoveryGeneration) return;
         categorizedServers = { dubbed, subtitled };
+        isDiscoveryActive = !isComplete;
 
-        // Live Dubbed stream alert while user is watching in Subtitled
-        if (currentCategory === 'subtitled' && isDubbedStream && newStream) {
+        // One-time non-intrusive alert if user is watching subtitled and a dubbed stream is discovered
+        if (currentCategory === 'subtitled' && isDubbedStream && newStream && !hasShownDubbedAlert && hasPlayerStartedPlaying) {
+          hasShownDubbedAlert = true;
           showDubbedFoundBanner(newStream);
-          showToast(`🇹🇷 Türkçe Dublaj yayını bulundu: ${newStream.displayName}`, 'success');
         }
 
-        // Play the first available source immediately. Sources discovered later
-        // continue to populate both tabs while the current video is playing.
-        if (!hasPlayerStartedPlaying && (dubbed.length || subtitled.length)) {
-          if (!categorizedServers[currentCategory]?.length) {
-            currentCategory = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
-            document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
-            document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
+        // Play the first available source in the user's SELECTED category immediately.
+        // NEVER auto-flip category while discovery is actively searching!
+        if (!hasPlayerStartedPlaying) {
+          if (categorizedServers[currentCategory]?.length > 0) {
+            hasPlayerStartedPlaying = true;
+            isSearching = false;
+            activeServers = categorizedServers[currentCategory];
+            currentServerIndex = 0;
+            updateServerPillsEvents();
+            updateActiveSourceLabel();
+            renderSourcesPopoverList();
+            updatePlayerContainer();
+            return;
           }
+
+          // If all providers finished and the chosen category is completely empty:
+          if (isComplete) {
+            isSearching = false;
+            const fallbackCategory = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
+            if (categorizedServers[fallbackCategory]?.length > 0) {
+              currentCategory = fallbackCategory;
+              document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
+              document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
+              hasPlayerStartedPlaying = true;
+              activeServers = categorizedServers[currentCategory];
+              currentServerIndex = 0;
+              updateServerPillsEvents();
+              updateActiveSourceLabel();
+              renderSourcesPopoverList();
+              updatePlayerContainer();
+              showToast(currentCategory === 'dubbed' 
+                ? 'ℹ️ Altyazılı yayın bulunamadı, Türkçe Dublaj açıldı.' 
+                : 'ℹ️ Dublaj bulunamadı, Altyazılı yayın açıldı.', 'info');
+              return;
+            }
+
+            updateServerPillsEvents();
+            updateActiveSourceLabel();
+            renderSourcesPopoverList();
+            updatePlayerContainer();
+            return;
+          }
+        }
+
+        // While playing or waiting: update activeServers for currentCategory
+        activeServers = categorizedServers[currentCategory] || [];
+        const currentPlayingSrv = activeServers[currentServerIndex];
+        if (currentPlayingSrv && hasPlayerStartedPlaying) {
+          const reIndex = activeServers.findIndex(s => (s.id && s.id === currentPlayingSrv.id) || (s.url && s.url === currentPlayingSrv.url));
+          if (reIndex !== -1) {
+            currentServerIndex = reIndex;
+          }
+        }
+
+        // If player was waiting on an empty category and streams just arrived:
+        if (!hasPlayerStartedPlaying && activeServers.length > 0) {
           hasPlayerStartedPlaying = true;
           isSearching = false;
-          activeServers = categorizedServers[currentCategory];
           currentServerIndex = 0;
           updateServerPillsEvents();
           updateActiveSourceLabel();
@@ -3715,28 +3764,10 @@ export async function openPlayerModal({
           return;
         }
 
-        const currentPlayingSrv = activeServers[currentServerIndex];
-        activeServers = categorizedServers[currentCategory] || [];
-        if (currentPlayingSrv && hasPlayerStartedPlaying) {
-          const reIndex = activeServers.findIndex(s => (s.id && s.id === currentPlayingSrv.id) || (s.url && s.url === currentPlayingSrv.url));
-          if (reIndex !== -1) {
-            currentServerIndex = reIndex;
-          }
-        }
-
-        if (isComplete && !hasPlayerStartedPlaying) {
-          isSearching = false;
-          updateServerPillsEvents();
-          updateActiveSourceLabel();
-          renderSourcesPopoverList();
-          updatePlayerContainer();
-        } else if (!sourceRefreshFrame) {
-          // Several providers can return in the same frame. Render their
-          // combined result once to keep mobile taps responsive.
+        if (!sourceRefreshFrame) {
           sourceRefreshFrame = requestAnimationFrame(() => {
             sourceRefreshFrame = 0;
             if (closed || generation !== discoveryGeneration) return;
-            updateServerPillsEvents();
             updateActiveSourceLabel();
             renderSourcesPopoverList();
             syncSubtitlesToActivePlayer();
@@ -3811,15 +3842,20 @@ export async function openPlayerModal({
   if (tabDubbed) {
     tabDubbed.addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       if (currentCategory === 'dubbed') return;
       currentCategory = 'dubbed';
       failoverCountInSession = 0;
       try { localStorage.setItem('cp_preferred_category', 'dubbed'); } catch (_) {}
       tabSubtitled.classList.remove('active');
       tabDubbed.classList.add('active');
+      disposePlayback();
       activeServers = categorizedServers['dubbed'] || [];
       currentServerIndex = 0;
+      hasPlayerStartedPlaying = activeServers.length > 0;
       updateServerPillsEvents();
+      updateActiveSourceLabel();
+      renderSourcesPopoverList();
       updatePlayerContainer();
       showToast('🇹🇷 Türkçe Dublaj sunucularına geçildi.', 'info');
     });
@@ -3828,15 +3864,20 @@ export async function openPlayerModal({
   if (tabSubtitled) {
     tabSubtitled.addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       if (currentCategory === 'subtitled') return;
       currentCategory = 'subtitled';
       failoverCountInSession = 0;
       try { localStorage.setItem('cp_preferred_category', 'subtitled'); } catch (_) {}
       tabDubbed.classList.remove('active');
       tabSubtitled.classList.add('active');
+      disposePlayback();
       activeServers = categorizedServers['subtitled'] || [];
       currentServerIndex = 0;
+      hasPlayerStartedPlaying = activeServers.length > 0;
+      updateServerPillsEvents();
       updateActiveSourceLabel();
+      renderSourcesPopoverList();
       updatePlayerContainer();
       showToast('💬 Türkçe Altyazılı VIP sunucularına geçildi.', 'info');
     });
