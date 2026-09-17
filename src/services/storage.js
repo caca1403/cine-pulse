@@ -1617,10 +1617,16 @@ export function removeWatchlist(id) {
 }
 
 export function clearWatchlist() {
+  _watchlistCache = [];
+  _watchlistSet = new Set();
   setLocalItem(STORAGE_KEYS.WATCHLIST, []);
 }
 
 export function clearAllWatchHistory() {
+  _watchHistoryCache = [];
+  _progressMapCache = new Map();
+  _seriesLatestMapCache = new Map();
+  invalidateDerivedHistoryCaches();
   setLocalItem(STORAGE_KEYS.WATCH_HISTORY, []);
 }
 
@@ -1826,10 +1832,17 @@ export function getStorageStats() {
 }
 
 export function clearAllData() {
-  if (typeof window === 'undefined' || !window.localStorage) return;
-  localStorage.removeItem(STORAGE_KEYS.WATCH_HISTORY);
-  localStorage.removeItem(STORAGE_KEYS.FAVORITES);
-  localStorage.removeItem(STORAGE_KEYS.WATCHLIST);
+  clearStorageCache();
+  try {
+    idbSet(getNamespacedKey(STORAGE_KEYS.WATCH_HISTORY), []);
+    idbSet(getNamespacedKey(STORAGE_KEYS.FAVORITES), []);
+    idbSet(getNamespacedKey(STORAGE_KEYS.WATCHLIST), []);
+  } catch (_) {}
+  if (typeof window !== 'undefined' && window.localStorage) {
+    localStorage.removeItem(getNamespacedKey(STORAGE_KEYS.WATCH_HISTORY));
+    localStorage.removeItem(getNamespacedKey(STORAGE_KEYS.FAVORITES));
+    localStorage.removeItem(getNamespacedKey(STORAGE_KEYS.WATCHLIST));
+  }
   window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { cleared: true } }));
 }
 
