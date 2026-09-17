@@ -11,7 +11,8 @@ const WEBRTC_TRACKERS = [
   'wss://tracker.btorrent.xyz',
   'wss://tracker.webtorrent.dev',
   'wss://tracker.files.fm:7073/announce',
-  'wss://spacetrackr.link:443/announce'
+  'wss://spacetrackr.link:443/announce',
+  'wss://tracker.fastcast.nz:443/announce'
 ];
 
 let wtClient = null;
@@ -154,23 +155,22 @@ export async function startTorrentStream({
   try {
     const client = await getWebTorrentClient();
     if (!client) {
-      onFailover('P2P motoru başlatılamadı, bulut oynatıcıya geçiliyor...');
+      onFailover('P2P motoru başlatılamadı.');
       return;
     }
 
-    // Set 12-second watchdog for initial peer discovery
-    let hasReceivedData = false;
+    // Keep user informed about swarm search state without prematurely closing stream
     watchdogTimer = setTimeout(() => {
-      if (!hasReceivedData && activeTorrent && activeTorrent.numPeers === 0) {
-        console.warn('[P2P] 12 saniye içinde WebRTC eşi bulunamadı. Bulut motoruna geçiliyor...');
+      if (activeTorrent && activeTorrent.numPeers === 0) {
         onStatusUpdate({
-          status: 'failing_over',
-          message: 'WebRTC eşi aranıyor / Bulut P2P oynatıcıya aktarılıyor...'
+          status: 'searching',
+          message: '⚡ WebRTC izleyicileri taranıyor... Eşler bağlanırken bekleyin.',
+          peers: 0,
+          downloadSpeed: '0 KB/s',
+          progress: 0
         });
-        destroyTorrentStream();
-        onFailover('Doğrudan WebRTC eşi bulunamadı, kesintisiz bulut oynatıcıya aktarılıyor...');
       }
-    }, 12000);
+    }, 8000);
 
     activeTorrent = client.add(enhancedMagnet, {
       announce: WEBRTC_TRACKERS
@@ -183,7 +183,7 @@ export async function startTorrentStream({
     activeTorrent.on('error', (err) => {
       console.error('[P2P Swarm Error]:', err?.message || err);
       destroyTorrentStream();
-      onFailover('P2P aktarım hatası oluştu, yedek oynatıcıya geçiliyor.');
+      onFailover('P2P aktarım hatası oluştu.');
     });
 
     activeTorrent.on('ready', () => {
@@ -226,10 +226,9 @@ export async function startTorrentStream({
           if (err) {
             console.error('[P2P Render Error]:', err);
             destroyTorrentStream();
-            onFailover('Tarayıcı video akışını çözemedi, alternatif kaynağa geçiliyor.');
+            onFailover('Tarayıcı video akışını çözemedi.');
             return;
           }
-          hasReceivedData = true;
           if (watchdogTimer) {
             clearTimeout(watchdogTimer);
             watchdogTimer = null;
@@ -239,7 +238,7 @@ export async function startTorrentStream({
       } catch (renderErr) {
         console.error('[P2P renderTo Exception]:', renderErr);
         destroyTorrentStream();
-        onFailover('P2P oynatma başlatılamadı, bulut oynatıcıya yönlendiriliyor.');
+        onFailover('P2P video oynatma başlatılamadı.');
       }
     });
 

@@ -917,51 +917,6 @@ export async function openPlayerModal({
     const isDirectLocalTorrent = Boolean(srv.streamUrl && srv.streamUrl.includes(':4000/torrent/'));
     const isTorrentStream = !isDirectLocalTorrent && Boolean(srv.isTorrent || (srv.id && (srv.id.startsWith('cp_global_torrent') || srv.id.startsWith('cp_global_yts') || srv.id.startsWith('yts_'))) || (srv.streamUrl && srv.streamUrl.startsWith('magnet:')));
 
-    if (isTorrentStream && srv.forceEmbed) {
-      const magnetLink = srv.magnetUrl || (srv.streamUrl?.startsWith('magnet:') ? srv.streamUrl : '');
-      const defaultEmbedFallback = tmdbId 
-        ? (type === 'movie' 
-            ? `https://player.videasy.net/movie/${tmdbId}` 
-            : `https://player.videasy.net/tv/${tmdbId}/${currentSeason}/${currentEpisode}`)
-        : '';
-      const finalEmbedUrl = (srv.embedUrl && srv.embedUrl.startsWith('http') && !srv.embedUrl.includes('vidsrc.mov') && !srv.embedUrl.includes('vidsrc.to'))
-        ? srv.embedUrl
-        : ((srv.streamUrl && srv.streamUrl.startsWith('http') && !srv.streamUrl.includes(':4000/torrent/') && !srv.streamUrl.includes('vidsrc.mov') && !srv.streamUrl.includes('vidsrc.to'))
-            ? srv.streamUrl
-            : defaultEmbedFallback);
-
-      const subDownloadUrl = `/api/subtitles?imdbId=${currentImdbId || ''}${isSeries ? `&season=${currentSeason}&episode=${currentEpisode}` : ''}`;
-
-      return `
-        <div class="direct-video-wrapper torrent-video-wrapper" style="display:flex;flex-direction:column;width:100%;height:100%;">
-          <div class="torrent-sub-tip-bar" style="background:linear-gradient(90deg, #111827, #1f2937);border-bottom:1px solid rgba(255,255,255,0.12);padding:7px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:#e5e7eb;z-index:10;flex-shrink:0;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);padding:2px 7px;border-radius:4px;font-weight:700;">⚡ YTS / Bulut</span>
-              <span>Yedek Bulut Oynatıcı Aktif</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <button id="btn-switch-p2p-mode" class="btn-primary" style="padding:3px 10px;font-size:11px;border-radius:4px;background:#3b82f6;display:inline-flex;align-items:center;gap:4px;" title="P2P WebTorrent Motoruna Dön">
-                <span>⚡ P2P Motoruna Dön</span>
-              </button>
-              <a href="${subDownloadUrl}" target="_blank" download class="btn-secondary" style="padding:3px 8px;font-size:11px;border-radius:4px;text-decoration:none;color:#fff;" title="Türkçe Altyazıyı İndir">📥 TR Altyazı</a>
-              ${magnetLink ? `<button id="btn-copy-magnet" class="btn-secondary" style="padding:3px 8px;font-size:11px;border-radius:4px;color:#fff;cursor:pointer;" data-magnet="${magnetLink}" title="Magnet Linki">🧲 Magnet</button>` : ''}
-            </div>
-          </div>
-          <div class="torrent-webtor-box" style="position:relative;width:100%;flex:1;overflow:hidden">
-            <iframe 
-              id="video-iframe" 
-              src="${finalEmbedUrl}" 
-              style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"
-              allowfullscreen="true"
-              webkitallowfullscreen="true"
-              mozallowfullscreen="true"
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen">
-            </iframe>
-          </div>
-        </div>
-      `;
-    }
-
     if (
       isTorrentStream ||
       srv.isDirectVideo ||
@@ -980,8 +935,8 @@ export async function openPlayerModal({
             <span id="torrent-p2p-peers" style="color:#34d399;margin-left:6px;font-weight:700;">0 Eş</span>
           </div>
           <div class="torrent-player-quick-tools">
-            <button class="btn-torrent-overlay-tool" id="btn-p2p-cloud-fallback" title="Yedek Bulut Oynatıcıya Geç">
-              <span>🌐 Bulut Oynatıcı</span>
+            <button class="btn-torrent-overlay-tool" id="btn-p2p-reconnect" title="Swarm Ağını Yenile">
+              <span>🔄 Yenile</span>
             </button>
             ${magnetLink ? `
               <button class="btn-torrent-overlay-tool" id="btn-copy-magnet" title="Magnet Linkini Kopyala" data-magnet="${magnetLink}">
@@ -3361,19 +3316,10 @@ export async function openPlayerModal({
     const isDirectLocalTorrent = Boolean(srv?.streamUrl && srv.streamUrl.includes(':4000/torrent/'));
     const isTorrentStream = !isDirectLocalTorrent && Boolean(srv?.isTorrent || (srv?.id && (srv.id.startsWith('cp_global_torrent') || srv.id.startsWith('cp_global_yts') || srv.id.startsWith('yts_'))) || (srv?.streamUrl && srv.streamUrl.startsWith('magnet:')));
 
-    const btnCloudFallback = document.getElementById('btn-p2p-cloud-fallback');
-    if (btnCloudFallback) {
-      btnCloudFallback.addEventListener('click', () => {
-        try { destroyTorrentStream(); } catch (_) {}
-        if (srv) srv.forceEmbed = true;
-        updatePlayerContainer();
-      });
-    }
-
-    const btnSwitchP2P = document.getElementById('btn-switch-p2p-mode');
-    if (btnSwitchP2P) {
-      btnSwitchP2P.addEventListener('click', () => {
-        if (srv) srv.forceEmbed = false;
+    const btnReconnectTorrent = document.getElementById('btn-p2p-reconnect');
+    if (btnReconnectTorrent) {
+      btnReconnectTorrent.addEventListener('click', () => {
+        showToast('⚡ P2P Swarm ağı yeniden başlatılıyor...', 'info');
         updatePlayerContainer();
       });
     }
@@ -3393,7 +3339,7 @@ export async function openPlayerModal({
     }
 
     if (
-      (isTorrentStream && !srv?.forceEmbed) ||
+      isTorrentStream ||
       srv?.isDirectVideo ||
       srv?.isHls ||
       (srv?.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.txt') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
@@ -3411,7 +3357,7 @@ export async function openPlayerModal({
       const videoEl = document.getElementById('hls-video-player');
       const streamUrl = getStreamSafeUrl(srv);
 
-      if (videoEl && isTorrentStream && !srv.forceEmbed) {
+      if (videoEl && isTorrentStream) {
         const magnetLink = srv.magnetUrl || (srv.streamUrl?.startsWith('magnet:') ? srv.streamUrl : '');
         if (magnetLink) {
           startTorrentStream({
@@ -3432,9 +3378,8 @@ export async function openPlayerModal({
             },
             onFailover: (reason) => {
               console.warn('[P2P Failover]:', reason);
-              showToast(reason || 'Bulut oynatıcıya geçiliyor...', 'info');
-              if (srv) srv.forceEmbed = true;
-              updatePlayerContainer();
+              const statusTextEl = document.getElementById('torrent-p2p-status-text');
+              if (statusTextEl) statusTextEl.textContent = `⚠️ ${reason || 'Eş aranıyor...'}`;
             }
           });
         }

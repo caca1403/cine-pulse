@@ -163,15 +163,10 @@ export async function fetchYtsOfficialSources({
       }
 
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const magnetUrl = `magnet:?xt=urn:btih:${hit.hash}&dn=${encodeURIComponent(hit.title || query)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz`;
+      const magnetUrl = `magnet:?xt=urn:btih:${hit.hash}&dn=${encodeURIComponent(hit.title || query)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz&tr=wss://tracker.webtorrent.dev&tr=wss://tracker.files.fm:7073/announce&tr=wss://spacetrackr.link:443/announce`;
 
-      // High-speed embed player fallback using working Videasy engine
-      const ytsWebEmbedUrl = tmdbId 
-        ? (isMovie ? `https://player.videasy.net/movie/${tmdbId}` : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`)
-        : null;
-
-      // In production / browser: use clean web player embed URL so playback NEVER fails with black screen
-      const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : (ytsWebEmbedUrl || magnetUrl);
+      // 100% Pure P2P Stream URL - Zero third-party ad embeds
+      const streamUrl = isLocal ? `${MEDIA_SERVER_BASE}/torrent/${hit.hash}` : magnetUrl;
       const sourceLabel = isYtsSpecific ? 'YTS (YIFY)' : 'YTS (Official)';
 
       const sizeStr = formatSize(hit.bytes);
@@ -192,9 +187,9 @@ export async function fetchYtsOfficialSources({
         url: streamUrl,
         streamUrl: streamUrl,
         magnetUrl: magnetUrl,
-        embedUrl: ytsWebEmbedUrl,
+        embedUrl: null,
         infoHash: hit.hash,
-        isTorrent: isLocal,
+        isTorrent: true,
         quality: quality,
         isHls: false,
         isDirectVideo: isLocal,
@@ -208,88 +203,8 @@ export async function fetchYtsOfficialSources({
       });
     }
 
-    // High-Speed Global Multi-Embed FastStream Engines (Videasy, VidSrc IN & AutoEmbed)
-    if (tmdbId) {
-      const videasyUrl = isMovie 
-        ? `https://player.videasy.net/movie/${tmdbId}` 
-        : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`;
-
-      const vidsrcInUrl = isMovie 
-        ? `https://vidsrc.in/embed/movie/${tmdbId}` 
-        : `https://vidsrc.in/embed/tv/${tmdbId}/${season}/${episode}`;
-
-      const autoEmbedUrl = isMovie 
-        ? `https://autoembed.co/movie/tmdb/${tmdbId}` 
-        : `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`;
-
-      streams.unshift(
-        {
-          id: `cp_global_embed_videasy`,
-          name: '⚡ Videasy FastStream 1080p',
-          displayName: '⚡ Videasy FastStream 1080p',
-          badge: '⚡ Videasy',
-          source: 'Videasy FastStream',
-          url: videasyUrl,
-          streamUrl: videasyUrl,
-          embedUrl: videasyUrl,
-          quality: '1080p',
-          isHls: false,
-          isDirectVideo: false,
-          isYts: false,
-          isMp4: false,
-          seeds: 9999,
-          subtitles: defaultSubs,
-          priority: 0,
-          getUrl: () => videasyUrl
-        },
-        {
-          id: `cp_global_embed_vidsrc`,
-          name: '⚡ VidSrc Ultra 1080p',
-          displayName: '⚡ VidSrc Ultra 1080p',
-          badge: '⚡ VidSrc Ultra',
-          source: 'VidSrc Ultra',
-          url: vidsrcInUrl,
-          streamUrl: vidsrcInUrl,
-          embedUrl: vidsrcInUrl,
-          quality: '1080p',
-          isHls: false,
-          isDirectVideo: false,
-          isYts: false,
-          isMp4: false,
-          seeds: 9998,
-          subtitles: defaultSubs,
-          priority: 0,
-          getUrl: () => vidsrcInUrl
-        },
-        {
-          id: `cp_global_embed_autoembed`,
-          name: '⚡ AutoEmbed Multi 1080p',
-          displayName: '⚡ AutoEmbed Multi 1080p',
-          badge: '⚡ AutoEmbed',
-          source: 'AutoEmbed Multi',
-          url: autoEmbedUrl,
-          streamUrl: autoEmbedUrl,
-          embedUrl: autoEmbedUrl,
-          quality: '1080p',
-          isHls: false,
-          isDirectVideo: false,
-          isYts: false,
-          isMp4: false,
-          seeds: 9997,
-          subtitles: defaultSubs,
-          priority: 0,
-          getUrl: () => autoEmbedUrl
-        }
-      );
-    }
-
-    // Sort: YTS embeds & top streams first, then by seeds
-    streams.sort((a, b) => {
-      const aPriority = typeof a.priority === 'number' ? a.priority : 1;
-      const bPriority = typeof b.priority === 'number' ? b.priority : 1;
-      if (aPriority !== bPriority) return aPriority - bPriority;
-      return (b.seeds || 0) - (a.seeds || 0);
-    });
+    // Sort by seeds
+    streams.sort((a, b) => (b.seeds || 0) - (a.seeds || 0));
 
     // Deduplicate by id / infoHash and keep top distinct releases
     const unique = [];
