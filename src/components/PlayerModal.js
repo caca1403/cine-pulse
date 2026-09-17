@@ -328,8 +328,6 @@ export async function openPlayerModal({
   let currentServerIndex = 0;
   let categorizedServers = { dubbed: [], subtitled: [] };
   let isSearching = true;
-  let countdownTimer = null;
-  let countdownSeconds = 4;
   let hasPlayerStartedPlaying = false;
   let currentImdbId = null; // Resolved asynchronously when available
 
@@ -548,7 +546,7 @@ export async function openPlayerModal({
 
   function getActiveServerName() {
     const srv = activeServers[currentServerIndex];
-    if (!srv) return isSearching ? `Taranıyor (${countdownSeconds}s)...` : 'Kaynak Bulunamadı';
+    if (!srv) return isSearching ? 'Kaynak aranıyor...' : 'Kaynak Bulunamadı';
     return srv.displayName || srv.name || 'Sunucu';
   }
 
@@ -820,7 +818,7 @@ export async function openPlayerModal({
           <div class="player-loader-text">
             <h3>${cleanSeriesName}</h3>
             <p class="player-loader-sub">${isSeries ? `Sezon ${currentSeason} • Bölüm ${currentEpisode}` : '4K Ultra HD Film Yayını'} Başlatılıyor...</p>
-            <p class="player-loader-hint">Türkiye ve küresel CDN hatları taranıyor... <span class="player-countdown-badge"><span class="server-pulse-dot"></span> Canlı Tarama: ${countdownSeconds}s</span></p>
+            <p class="player-loader-hint">Türkiye ve küresel CDN hatları taranıyor...</p>
           </div>
         </div>
       `;
@@ -1638,7 +1636,7 @@ export async function openPlayerModal({
           scrollLeftPos = rail.scrollLeft;
         });
 
-        window.addEventListener('mousemove', (e) => {
+        modalScope.on(window, 'mousemove', (e) => {
           if (!isDown) return;
           const x = e.pageX - rail.offsetLeft;
           const walk = (x - startX) * 1.5;
@@ -1646,7 +1644,7 @@ export async function openPlayerModal({
           rail.scrollLeft = scrollLeftPos - walk;
         });
 
-        window.addEventListener('mouseup', () => {
+        modalScope.on(window, 'mouseup', () => {
           if (!isDown) return;
           isDown = false;
           setTimeout(() => { hasDragged = false; }, 50);
@@ -3669,9 +3667,8 @@ export async function openPlayerModal({
   }
 
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
-    if (countdownTimer) clearInterval(countdownTimer);
     const generation = ++discoveryGeneration;
-    countdownSeconds = 5;
+    let sourceRefreshFrame = 0;
     isSearching = true;
     hasPlayerStartedPlaying = false;
     failoverCountInSession = 0;
@@ -3680,46 +3677,6 @@ export async function openPlayerModal({
 
     updateServerPillsEvents();
     updatePlayerContainer();
-
-    const updateCountdownDisplay = () => {
-      const hint = document.querySelector('.player-loader-hint');
-      if (hint) {
-        hint.innerHTML = `Türkiye ve küresel CDN hatları taranıyor... <span class="player-countdown-badge"><span class="server-pulse-dot"></span> Canlı Tarama: ${countdownSeconds}s</span>`;
-      }
-      const pillLoading = document.querySelector('.server-pill-loading span:last-child');
-      if (pillLoading) {
-        pillLoading.textContent = `Yayın hatları taranıyor (${countdownSeconds}s)...`;
-      }
-    };
-
-    updateCountdownDisplay();
-    countdownTimer = setInterval(() => {
-      countdownSeconds--;
-      updateCountdownDisplay();
-
-      // When countdown finishes:
-      if (countdownSeconds <= 0) {
-        clearInterval(countdownTimer);
-        countdownTimer = null;
-        isSearching = false;
-
-        // If not started playing yet, pick first available server in current category
-        if (!hasPlayerStartedPlaying && categorizedServers[currentCategory]?.length > 0) {
-          activeServers = categorizedServers[currentCategory];
-          currentServerIndex = 0;
-          hasPlayerStartedPlaying = true;
-          updateServerPillsEvents();
-          updateActiveSourceLabel();
-          renderSourcesPopoverList();
-          updatePlayerContainer();
-        } else {
-          updateServerPillsEvents();
-          updateActiveSourceLabel();
-          renderSourcesPopoverList();
-          if (!hasPlayerStartedPlaying) updatePlayerContainer();
-        }
-      }
-    }, 1000);
 
     getStreamingServersProgressive({
       type,
@@ -3739,15 +3696,17 @@ export async function openPlayerModal({
           showToast(`🇹🇷 Türkçe Dublaj yayını bulundu: ${newStream.displayName}`, 'success');
         }
 
-        // 1. INSTANT PLAY: If Dubbed stream arrives and we are on Dubbed, launch immediately!
-        if (currentCategory === 'dubbed' && dubbed.length > 0 && !hasPlayerStartedPlaying) {
-          if (countdownTimer) {
-            clearInterval(countdownTimer);
-            countdownTimer = null;
+        // Play the first available source immediately. Sources discovered later
+        // continue to populate both tabs while the current video is playing.
+        if (!hasPlayerStartedPlaying && (dubbed.length || subtitled.length)) {
+          if (!categorizedServers[currentCategory]?.length) {
+            currentCategory = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
+            document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
+            document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
           }
           hasPlayerStartedPlaying = true;
           isSearching = false;
-          activeServers = dubbed;
+          activeServers = categorizedServers[currentCategory];
           currentServerIndex = 0;
           updateServerPillsEvents();
           updateActiveSourceLabel();
@@ -3756,24 +3715,6 @@ export async function openPlayerModal({
           return;
         }
 
-        // 2. If user is in subtitled mode and subtitled stream arrives, launch immediately!
-        if (currentCategory === 'subtitled' && subtitled.length > 0 && !hasPlayerStartedPlaying) {
-          if (countdownTimer) {
-            clearInterval(countdownTimer);
-            countdownTimer = null;
-          }
-          hasPlayerStartedPlaying = true;
-          isSearching = false;
-          activeServers = subtitled;
-          currentServerIndex = 0;
-          updateServerPillsEvents();
-          updateActiveSourceLabel();
-          renderSourcesPopoverList();
-          updatePlayerContainer();
-          return;
-        }
-
-        // 3. Keep sources pills, popover list and subtitles continuously updated as more servers arrive
         const currentPlayingSrv = activeServers[currentServerIndex];
         activeServers = categorizedServers[currentCategory] || [];
         if (currentPlayingSrv && hasPlayerStartedPlaying) {
@@ -3783,29 +3724,23 @@ export async function openPlayerModal({
           }
         }
 
-        updateServerPillsEvents();
-        updateActiveSourceLabel();
-        renderSourcesPopoverList();
-        syncSubtitlesToActivePlayer();
-
-        if (isComplete && activeServers.length === 0) {
-          if (currentCategory === 'dubbed' && subtitled.length > 0 && !hasPlayerStartedPlaying) {
-            currentCategory = 'subtitled';
-            const tabDub = document.getElementById('tab-dubbed');
-            const tabSub = document.getElementById('tab-subtitled');
-            if (tabDub && tabSub) {
-              tabDub.classList.remove('active');
-              tabSub.classList.add('active');
-            }
-            activeServers = subtitled;
-            currentServerIndex = 0;
-            hasPlayerStartedPlaying = true;
-          }
+        if (isComplete && !hasPlayerStartedPlaying) {
           isSearching = false;
           updateServerPillsEvents();
           updateActiveSourceLabel();
           renderSourcesPopoverList();
           updatePlayerContainer();
+        } else if (!sourceRefreshFrame) {
+          // Several providers can return in the same frame. Render their
+          // combined result once to keep mobile taps responsive.
+          sourceRefreshFrame = requestAnimationFrame(() => {
+            sourceRefreshFrame = 0;
+            if (closed || generation !== discoveryGeneration) return;
+            updateServerPillsEvents();
+            updateActiveSourceLabel();
+            renderSourcesPopoverList();
+            syncSubtitlesToActivePlayer();
+          });
         }
       }
     });
@@ -3983,10 +3918,6 @@ export async function openPlayerModal({
     disposePlayback();
     modalScope.dispose();
     activeModalClose = null;
-    if (countdownTimer) {
-      clearInterval(countdownTimer);
-      countdownTimer = null;
-    }
     clearInterval(activeProgressInterval);
 
     window.removeEventListener('pagehide', handleGlobalPageUnload);

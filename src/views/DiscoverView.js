@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Ultra-Customized Advanced Discover View
    Features multi-filters: Type (TV/Movie), Genre, Sorting, Min IMDb Rating, Year.
@@ -317,7 +318,7 @@ export async function renderDiscoverView(initialType = 'tv') {
           } else {
             grid.insertAdjacentHTML('beforeend', newCardsHTML);
           }
-          if (window.lucide) window.lucide.createIcons();
+          renderIcons();
           attachMediaCardEvents(grid);
 
           discoverCache.currentPage = pageToFetch + 1;
@@ -335,7 +336,7 @@ export async function renderDiscoverView(initialType = 'tv') {
                 </button>
               </div>
             `;
-            if (window.lucide) window.lucide.createIcons();
+            renderIcons();
             grid.querySelector('#btn-retry-discover')?.addEventListener('click', () => {
               resetAndFetch();
             });
@@ -372,8 +373,9 @@ export async function renderDiscoverView(initialType = 'tv') {
       }
 
       // 1. Infinite scroll observer
+      let observer = null;
       if (sentinel && 'IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
+        observer = new IntersectionObserver((entries) => {
           if (entries[0].isIntersecting) {
             fetchContent();
           }
@@ -394,7 +396,10 @@ export async function renderDiscoverView(initialType = 'tv') {
       };
 
       window.addEventListener('scroll', handleWindowScroll, { passive: true });
-      window.addEventListener('touchmove', handleWindowScroll, { passive: true });
+      window.__discoverCleanup = () => {
+        observer?.disconnect();
+        window.removeEventListener('scroll', handleWindowScroll);
+      };
 
       // Filter listeners
       const setType = (newType) => {

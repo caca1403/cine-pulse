@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Secure Secret Admin Panel (Access Restricted)
    Protected by Master PIN / Passcode. Inaccessible to kids and standard users.
@@ -100,7 +101,7 @@ export async function renderAdminView() {
           }
         });
 
-        if (window.lucide) window.lucide.createIcons({ root: container });
+        renderIcons(container);
       }
     };
   }
@@ -387,7 +388,7 @@ export async function renderAdminView() {
         });
       }
 
-      if (window.lucide) window.lucide.createIcons({ root: container });
+      renderIcons(container);
     }
   };
 }

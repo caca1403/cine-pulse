@@ -7,25 +7,42 @@
 export const scrollMemory = new Map();
 export const railScrollMemory = new Map();
 
-export function saveAllScrollState() {
+let pendingScrollSave = null;
+let lastRecordedHash = null;
+
+function rememberScroll() {
   const currentHash = window.location.hash || '#home';
-  if (!currentHash.startsWith('#detail')) {
-    if (window.scrollY > 0) {
-      scrollMemory.set(currentHash, window.scrollY);
-      try {
-        sessionStorage.setItem(`cinepulse_scroll_${currentHash}`, String(window.scrollY));
-      } catch (_) {}
+  if (currentHash.startsWith('#detail')) return;
+  lastRecordedHash = currentHash;
+  if (window.scrollY > 0) scrollMemory.set(currentHash, window.scrollY);
+}
+
+export function trackScrollState() {
+  rememberScroll();
+  if (pendingScrollSave !== null) return;
+  pendingScrollSave = window.setTimeout(() => {
+    pendingScrollSave = null;
+    flushScrollState();
+  }, 300);
+}
+
+export function flushScrollState() {
+  if (pendingScrollSave !== null) {
+    clearTimeout(pendingScrollSave);
+    pendingScrollSave = null;
+  }
+  if ((window.location.hash || '#home') === lastRecordedHash) rememberScroll();
+  for (const [hash, position] of scrollMemory) {
+    if (position > 0) {
+      try { sessionStorage.setItem(`cinepulse_scroll_${hash}`, String(position)); } catch (_) {}
     }
-    document.querySelectorAll('.card-rail').forEach(rail => {
-      if (rail.id) {
-        railScrollMemory.set(rail.id, rail.scrollLeft);
-        try {
-          sessionStorage.setItem(`cinepulse_rail_${rail.id}`, String(rail.scrollLeft));
-        } catch (_) {}
-      }
-    });
+  }
+  for (const [id, left] of railScrollMemory) {
+    try { sessionStorage.setItem(`cinepulse_rail_${id}`, String(left)); } catch (_) {}
   }
 }
+
+export const saveAllScrollState = flushScrollState;
 
 export function restoreAllScrollState(hash = window.location.hash || '#home') {
   if (hash.startsWith('#detail')) {

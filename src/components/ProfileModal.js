@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - "Kim İzliyor?" Çoklu Profil Yönetimi Modal
    Allows switching between user profiles, kids mode, and managing
@@ -135,7 +136,7 @@ export function openProfileModal() {
       `;
     }
 
-    if (window.lucide) window.lucide.createIcons({ el: modalContainer });
+    renderIcons(modalContainer);
 
     // --- SELECT VIEW EVENTS ---
     const closeBtn = modalContainer.querySelector('#btn-close-profile-modal');
@@ -284,7 +285,7 @@ export function triggerProfileSwitchTransition(profile) {
     </div>
   `;
   document.body.appendChild(curtain);
-  if (window.lucide) window.lucide.createIcons({ el: curtain });
+  renderIcons(curtain);
 
   // Notify router & views to reload data for the new profile
   window.dispatchEvent(new CustomEvent('sineflix_profile_changed', { detail: { profile } }));

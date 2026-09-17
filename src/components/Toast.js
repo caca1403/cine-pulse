@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Pro - Toast Notification Component
    ========================================================================== */
@@ -19,7 +20,7 @@ export function showToast(message, type = 'info', duration = 3500) {
   `;
 
   container.appendChild(toast);
-  if (window.lucide) window.lucide.createIcons();
+  renderIcons();
 
   setTimeout(() => {
     toast.style.opacity = '0';

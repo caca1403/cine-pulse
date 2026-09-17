@@ -98,6 +98,13 @@ try {
   await page.evaluate(() => window.discovery.at(-1).onUpdate({ dubbed: [{ url: 'late', isDirectVideo: true }] }));
   assert.equal(await page.locator('#player-modal').innerHTML(), '', 'late discovery cannot revive a closed player');
   assert.equal(await page.evaluate(() => window.globalListenerCount()), 0);
+  await page.evaluate(async () => {
+    await window.openTestPlayer({ type: 'movie', tmdbId: 777, title: 'Fallback test' });
+    window.discovery.at(-1).onUpdate({ subtitled: [{ id: 'sub-only', url: 'https://player.test/sub', isDirectVideo: true }] });
+  });
+  assert.equal(await page.locator('#hls-video-player').count(), 1, 'available alternate stream starts immediately');
+  assert.equal(await page.locator('#tab-subtitled').evaluate(el => el.classList.contains('active')), true);
+  await page.evaluate(() => document.querySelector('#player-close-btn').click());
   assert.deepEqual(errors, []);
   console.log('PASS: autoplay, header, icons, keyboard, popovers, 20 reopen cycles, episode and close race guards');
 } finally {

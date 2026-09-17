@@ -11897,3 +11897,46 @@ video::cue {
   font-weight: 600;
 }
 
+
+/* Mobile devices cannot cheaply composite blurred fixed bars and every card. */
+@media (max-width: 768px) {
+  .glass-panel,
+  .navbar.scrolled,
+  .apple-bottom-dock,
+  .card-layout-switcher,
+  .badge,
+  .media-card,
+  .notif-backdrop {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .hero-ambient-glow,
+  .card-glass-glow {
+    display: none !important;
+  }
+  .hero-backdrop {
+    filter: none;
+    transform: none;
+  }
+  .rail-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 390px;
+  }
+}
+.route-loading {
+  min-height: 65vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1rem;
+  color: var(--text-sub);
+}
+.route-loading .spin-loader {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(245, 158, 11, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}

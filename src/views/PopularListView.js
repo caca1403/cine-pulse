@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Ultra-Fast Infinite Scrolling View
    Progressive 3-page parallel fetching with instant first-paint rendering.
@@ -142,7 +143,7 @@ export async function renderPopularListView(type = 'tv') {
           grid.insertAdjacentHTML('beforeend', newHTML);
         }
         attachMediaCardEvents(grid);
-        if (window.lucide) window.lucide.createIcons();
+        renderIcons();
       };
 
       // Progressive parallel fetch: fires all 3 pages simultaneously,
@@ -203,12 +204,13 @@ export async function renderPopularListView(type = 'tv') {
         }
       };
 
-      // Initial load: fetch 3 pages in parallel (60 items)
-      fetchBatch(3);
+      // Start with one page; prefetch more only near the visible sentinel.
+      fetchBatch(1);
 
       // IntersectionObserver for infinite scroll
+      let observer = null;
       if (sentinel && 'IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
+        observer = new IntersectionObserver((entries) => {
           if (entries[0].isIntersecting && !isFetching && !cache.isExhausted) {
             fetchBatch(2);
           }
@@ -228,6 +230,10 @@ export async function renderPopularListView(type = 'tv') {
       };
 
       window.addEventListener('scroll', handleScroll, { passive: true });
+      window.__popularListCleanup = () => {
+        observer?.disconnect();
+        window.removeEventListener('scroll', handleScroll);
+      };
     }
   };
 }

@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Cast & Crew Explorer Modal
    Allows users to explore an actor's/director's full filmography, biography,
@@ -31,7 +32,7 @@ export async function openCastExplorerModal(personId, fallbackName = '', fallbac
       </div>
     </div>
   `;
-  if (window.lucide) window.lucide.createIcons({ el: modalContainer });
+  renderIcons(modalContainer);
 
   const closeBtn = modalContainer.querySelector('#btn-close-cast-explorer');
   if (closeBtn) closeBtn.onclick = () => closeCastExplorerModal();
@@ -62,7 +63,7 @@ export async function openCastExplorerModal(personId, fallbackName = '', fallbac
         </div>
       </div>
     `;
-    if (window.lucide) window.lucide.createIcons({ el: modalContainer });
+    renderIcons(modalContainer);
     return;
   }
 
@@ -140,7 +141,7 @@ export async function openCastExplorerModal(personId, fallbackName = '', fallbac
     </div>
   `;
 
-  if (window.lucide) window.lucide.createIcons({ el: modalContainer });
+  renderIcons(modalContainer);
 
   const freshCloseBtn = modalContainer.querySelector('#btn-close-cast-explorer');
   if (freshCloseBtn) freshCloseBtn.onclick = () => closeCastExplorerModal();
@@ -173,7 +174,7 @@ export async function openCastExplorerModal(personId, fallbackName = '', fallbac
         grid.innerHTML = filtered.length > 0
           ? filtered.map(item => renderMediaCard(item)).join('')
           : '<div class="cast-empty-state">Bu kategoride yapım bulunamadı.</div>';
-        if (window.lucide) window.lucide.createIcons({ el: grid });
+        renderIcons(grid);
       }
     };
   });

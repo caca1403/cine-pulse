@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    SineFlix Pro - Data Manager Modal (JSON Backup & Restore System)
    Allows users to export watch history & settings to JSON, or import from another device.
@@ -91,7 +92,7 @@ export function openDataManagerModal() {
 
   modalContainer.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-  if (window.lucide) window.lucide.createIcons();
+  renderIcons();
 
   const closeBtn = document.getElementById('data-close-btn');
   const closeFooterBtn = document.getElementById('data-close-footer-btn');

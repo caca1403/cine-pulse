@@ -1,9 +1,10 @@
+import { renderIcons } from './services/icons.js';
 /* ==========================================================================
    CinePulse Pro - Main Application Router & Entry Point
    ========================================================================== */
 
 import { renderNavbar, attachNavbarEvents } from './components/Navbar.js';
-import { renderHomeView, clearHomeCache } from './views/HomeView.js';
+import { renderHomeView, clearHomeCache, cleanupHomeView } from './views/HomeView.js';
 import { renderDetailView } from './views/DetailView.js';
 import { renderLibraryView } from './views/LibraryView.js';
 import { renderDiscoverView } from './views/DiscoverView.js';
@@ -11,7 +12,7 @@ import { renderPopularListView } from './views/PopularListView.js';
 import { renderLiveTvView } from './views/LiveTvView.js';
 import { renderAdminView } from './views/AdminView.js';
 import { checkAndShowProfileOnboarding } from './components/ProfileOnboardingModal.js';
-import { saveAllScrollState, restoreAllScrollState } from './services/scrollManager.js';
+import { trackScrollState, flushScrollState, restoreAllScrollState } from './services/scrollManager.js';
 import { initPwa } from './services/pwaManager.js';
 import { getUserSettings } from './services/storage.js';
 import { renderCardLayoutSwitcher, attachCardLayoutSwitcherEvents } from './components/CardLayoutSwitcher.js';
@@ -48,10 +49,15 @@ document.documentElement.classList.toggle('cards-landscape', getUserSettings().c
 
 // Record scroll position continuously
 window.addEventListener('scroll', () => {
-  saveAllScrollState();
+  trackScrollState();
 }, { passive: true });
+window.addEventListener('pagehide', flushScrollState);
 
+let routeGeneration = 0;
 async function route() {
+  const generation = ++routeGeneration;
+  cleanupHomeView();
+  flushScrollState();
   const hash = window.location.hash || '#home';
   let viewName = 'home';
   let params = {};
@@ -99,6 +105,11 @@ async function route() {
     viewName = 'admin';
   }
 
+  window.__popularListCleanup?.();
+  window.__popularListCleanup = null;
+  window.__discoverCleanup?.();
+  window.__discoverCleanup = null;
+
   // Clean up any running live TV stream or video before routing or unmounting DOM
   if (window.__LiveTvController && typeof window.__LiveTvController.cleanup === 'function') {
     window.__LiveTvController.cleanup();
@@ -114,6 +125,7 @@ async function route() {
   // Dedicated Full-Screen Admin Screen (NO NAVBAR, NO BOTTOM DOCK, NO FOOTER)
   if (viewName === 'admin') {
     const viewResult = await renderAdminView();
+    if (generation !== routeGeneration) return;
     app.innerHTML = `
       <div class="admin-standalone-wrapper" style="min-height: 100vh; background: #07090e; display: flex; flex-direction: column; width: 100%;">
         ${viewResult ? viewResult.html : ''}
@@ -122,7 +134,7 @@ async function route() {
     if (viewResult && typeof viewResult.init === 'function') {
       viewResult.init(app);
     }
-    if (window.lucide) window.lucide.createIcons();
+    renderIcons();
     return;
   }
 
@@ -130,6 +142,12 @@ async function route() {
   const navbarHTML = renderNavbar(viewName);
   const cardViews = new Set(['home', 'series', 'cartoons', 'movies', 'anime', 'documentary', 'discover', 'library']);
   const cardLayoutSwitcherHTML = cardViews.has(viewName) ? renderCardLayoutSwitcher() : '';
+
+  if (viewName === 'home' || viewName === 'detail') {
+    app.innerHTML = `${navbarHTML}<main class="route-loading" aria-live="polite"><div class="spin-loader"></div><span>İçerikler yükleniyor...</span></main>`;
+    attachNavbarEvents();
+    renderIcons(app);
+  }
 
   let viewResult = null;
   if (viewName === 'home') {
@@ -154,6 +172,7 @@ async function route() {
     viewResult = renderLibraryView();
   }
 
+  if (generation !== routeGeneration) return;
   app.innerHTML = `
     ${navbarHTML}
     ${cardLayoutSwitcherHTML}
@@ -186,7 +205,7 @@ async function route() {
   }
 
   if (window.lucide) {
-    window.lucide.createIcons();
+    renderIcons();
   }
 
   // Restore horizontal and vertical scroll positions
@@ -195,9 +214,7 @@ async function route() {
 
 // Router Event Listeners
 window.addEventListener('hashchange', route);
-window.addEventListener('DOMContentLoaded', route);
-
-// Immediate execution for module script execution
+// Module scripts run after parsing, so one initial route is enough.
 route();
 
 // Check if first-time visitor needs to create their personal profile

@@ -84,17 +84,25 @@ export function attachCardLayoutSwitcherEvents(container = document) {
   // intent also starts the request before the user completes the click.
   const currentLayout = getUserSettings().cardLayout === 'landscape' ? 'landscape' : 'portrait';
   const oppositeLayout = currentLayout === 'landscape' ? 'portrait' : 'landscape';
-  const warmOpposite = () => warmLayoutImages(oppositeLayout);
-  if ('requestIdleCallback' in window) {
-    window.requestIdleCallback(warmOpposite, { timeout: 1400 });
-  } else {
-    window.setTimeout(warmOpposite, 450);
+  const warmOpposite = () => {
+    if (switcher.isConnected) warmLayoutImages(oppositeLayout);
+  };
+  if (window.innerWidth > 768) {
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(warmOpposite, { timeout: 1400 });
+    } else {
+      window.setTimeout(warmOpposite, 450);
+    }
   }
 
   buttons.forEach(button => {
     const requestedLayout = button.dataset.layout === 'landscape' ? 'landscape' : 'portrait';
-    button.addEventListener('pointerenter', () => warmLayoutImages(requestedLayout), { passive: true });
-    button.addEventListener('focus', () => warmLayoutImages(requestedLayout), { passive: true });
+    button.addEventListener('pointerenter', () => {
+      if (switcher.isConnected) warmLayoutImages(requestedLayout);
+    }, { passive: true });
+    button.addEventListener('focus', () => {
+      if (switcher.isConnected) warmLayoutImages(requestedLayout);
+    }, { passive: true });
 
     button.addEventListener('click', async () => {
       const layout = button.dataset.layout === 'landscape' ? 'landscape' : 'portrait';
@@ -105,12 +113,15 @@ export function attachCardLayoutSwitcherEvents(container = document) {
       switcher.classList.add('is-switching');
       buttons.forEach(option => { option.disabled = true; });
 
-      // Keep the old, correctly proportioned cards visible until all artwork in
-      // and near the viewport is decoded. No portrait frame is stretched into 16:9.
-      await Promise.race([
-        warmLayoutImages(layout),
-        new Promise(resolve => window.setTimeout(resolve, 1200))
-      ]);
+      // Mobile taps must not wait for a batch of image downloads or a full-page
+      // view-transition snapshot. Pending artwork loads in its new frame.
+      const isMobile = window.innerWidth <= 768;
+      if (!isMobile) {
+        await Promise.race([
+          warmLayoutImages(layout),
+          new Promise(resolve => window.setTimeout(resolve, 1200))
+        ]);
+      }
       if (token !== layoutChangeToken || !switcher.isConnected) return;
 
       const commitLayout = () => {
@@ -124,7 +135,9 @@ export function attachCardLayoutSwitcherEvents(container = document) {
         });
       };
 
-      if (typeof document.startViewTransition === 'function') {
+      if (isMobile) {
+        commitLayout();
+      } else if (typeof document.startViewTransition === 'function') {
         const transition = document.startViewTransition(commitLayout);
         try { await transition.finished; } catch (_) {}
       } else {

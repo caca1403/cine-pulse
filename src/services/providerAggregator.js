@@ -485,24 +485,18 @@ export async function getStreamingServersProgressive({
       dubbed: hydrateServers(cached.dubbed),
       subtitled: hydrateServers(cached.subtitled)
     };
-    // Defer slightly to let UI finish mounting and avoid synchronous race conditions
-    setTimeout(() => {
-      onUpdate({ ...hydrated, isComplete: true });
-    }, 50);
+    onUpdate({ ...hydrated, isComplete: true });
     return hydrated;
   }
 
   let candidateTitles = resolveCandidateTitlesSync(targetTitle, originalTitle);
   let targetYear = year;
 
-  // Resolve localized/original TMDB aliases before starting providers. Previously
-  // this ran in the background, so most scrapers had already copied the short
-  // title list before Turkish/anime aliases arrived.
-  if (tmdbId) {
-    const enriched = await resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle).catch(() => null);
-    if (enriched?.candidateTitles?.length) candidateTitles = enriched.candidateTitles;
-    if (!targetYear && enriched?.detectedYear) targetYear = enriched.detectedYear;
-  }
+  // Start every provider with titles already on hand. Metadata enrichment runs
+  // independently so a slow TMDB response never delays the first stream.
+  const enrichmentTask = tmdbId
+    ? resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle).catch(() => null)
+    : Promise.resolve(null);
 
   let currentDubbed = [];
   let currentSubtitled = [];
@@ -781,8 +775,28 @@ export async function getStreamingServersProgressive({
       : Promise.resolve([])
   ];
 
-  // Allow all scrapers to complete without aggressive cutoffs so all sources/addons arrive
-  await Promise.allSettled(tasks);
+  // A localized title can reveal extra Turkish sources. Search those aliases
+  // in parallel too, without making the first pass wait for metadata.
+  const aliasTask = enrichmentTask.then(enriched => {
+    if (!enriched?.candidateTitles?.length) return [];
+    const extraTitles = enriched.candidateTitles.filter(t => !candidateTitles.includes(t));
+    if (!extraTitles.length) return [];
+    candidateTitles = enriched.candidateTitles;
+    if (!targetYear && enriched.detectedYear) targetYear = enriched.detectedYear;
+    const aliasSearches = [
+      fetchSinewixSources({ type, titles: extraTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
+        .then(res => addStreams(res, 'dubbed')),
+      isMovie
+        ? fetchDizipalMovieSources({ titles: extraTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed'))
+        : fetchDizipalEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).then(res => addStreams(res, 'dubbed')),
+      isMovie
+        ? fetchDizibalMovieSources({ titles: extraTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed'))
+        : fetchDizibalEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).then(res => addStreams(res, 'dubbed'))
+    ];
+    return Promise.allSettled(aliasSearches);
+  });
+
+  await Promise.allSettled([...tasks, aliasTask]);
 
   // Share available Turkish subtitles (e.g. from Dizipal / OpenSubtitles) across subtitled sources
   const availableSubtitles = currentSubtitled.find(s => Array.isArray(s.subtitles) && s.subtitles.length > 0)?.subtitles || [];

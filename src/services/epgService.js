@@ -12,6 +12,7 @@ const CACHE_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
 let liveSchedules = null;
 let lastFetchTime = 0;
 let isFetching = false;
+let refreshTimer = null;
 
 // Fallback typical schedules for channels without live XMLTV feed
 const FALLBACK_CHANNEL_SCHEDULES = {
@@ -204,10 +205,19 @@ export function initEpgService() {
   // Trigger async fetch in background
   fetchLiveEpg();
 
-  // Background refresh every 30 minutes
-  setInterval(() => {
-    fetchLiveEpg(true);
-  }, CACHE_MAX_AGE_MS);
+  // Keep one refresh timer even if the Live TV view is mounted repeatedly.
+  if (refreshTimer === null) {
+    refreshTimer = setInterval(() => {
+      fetchLiveEpg(true);
+    }, CACHE_MAX_AGE_MS);
+  }
+}
+
+export function stopEpgService() {
+  if (refreshTimer !== null) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
 }
 
 /**
@@ -322,9 +332,4 @@ export function getChannelEpg(channel) {
     remainingMin: 30,
     nextTitle: 'Yayın Akışı Devam Ediyor'
   };
-}
-
-// Auto-initialize when module is loaded
-if (typeof window !== 'undefined') {
-  initEpgService();
 }

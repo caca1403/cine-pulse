@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Home View
    - Dynamic Hero Slider
@@ -13,15 +14,24 @@ import {
 } from '../services/tmdbApi.js';
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
 import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile, isItemKidSafe } from '../services/storage.js';
-import { renderHeroSlider, attachHeroSliderEvents } from '../components/HeroSlider.js';
+import { renderHeroSlider, attachHeroSliderEvents, stopHeroSlider } from '../components/HeroSlider.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
 import { railScrollMemory } from '../services/scrollManager.js';
 
 // Cache home TMDB data & rail state across navigations
 let homeDataCache = null;
+let homeSecondaryPending = null;
+let homeCacheGeneration = 0;
 const railExtraItemsCache = new Map();
+const activeRailObservers = new Set();
 const HOME_CACHE_TTL_MS = 10 * 60 * 1000;
+
+export function cleanupHomeView() {
+  stopHeroSlider();
+  for (const observer of activeRailObservers) observer.disconnect();
+  activeRailObservers.clear();
+}
 
 function getPersistentHomeCache(isKid) {
   try {
@@ -46,6 +56,8 @@ function persistHomeCache(data) {
 
 export function clearHomeCache() {
   homeDataCache = null;
+  homeSecondaryPending = null;
+  homeCacheGeneration++;
   try {
     sessionStorage.removeItem('cinepulse_home_fast_v2_kids');
     sessionStorage.removeItem('cinepulse_home_fast_v2_adult');
@@ -164,7 +176,7 @@ function initInfiniteRails(container) {
       spinner.className = 'rail-loader';
       spinner.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:22px;height:22px;color:var(--text-muted);"></i>`;
       sentinel.before(spinner);
-      if (window.lucide) window.lucide.createIcons();
+      renderIcons(spinner);
 
       try {
         const seenIds = new Set(
@@ -190,7 +202,7 @@ function initInfiniteRails(container) {
         }
         spinner.remove();
 
-        if (newItems.length === 0) {
+        if (newItems.length === 0 || !rail.isConnected) {
           state.loading = false;
           return;
         }
@@ -212,7 +224,7 @@ function initInfiniteRails(container) {
           }
         });
 
-        if (window.lucide) window.lucide.createIcons();
+        renderIcons(rail);
       } catch (err) {
         spinner.remove();
         console.error('Rail load error:', err);
@@ -235,6 +247,7 @@ function initInfiniteRails(container) {
       });
     }, { root: rail, rootMargin: '0px 400px 0px 0px', threshold: 0 });
     obs.observe(sentinel);
+    activeRailObservers.add(obs);
   });
 }
 
@@ -242,60 +255,63 @@ function initInfiniteRails(container) {
    Main render
 -------------------------------------------------------------------------- */
 export async function renderHomeView() {
+  const cacheGeneration = homeCacheGeneration;
   const isKid = isKidProfileActive();
   let trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems, kidsAnimationItems, kidsClassicCartoonItems;
 
   if (!homeDataCache) homeDataCache = getPersistentHomeCache(isKid);
 
+  let secondaryReady = null;
+  let secondarySettled = false;
+  let primarySettled = false;
   if (homeDataCache && homeDataCache.isKid === isKid) {
     ({ trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems, kidsAnimationItems, kidsClassicCartoonItems } = homeDataCache);
-  } else {
-    if (isKid) {
-      [
-        popularTV,
-        popularMovies,
-        kidsAdventures,
-        animeItems,
-        kidsAnimationItems,
-        kidsClassicCartoonItems
-      ] = await Promise.all([
-        fetchKidsPopularSeries(1),
-        fetchKidsPopularMovies(1),
-        fetchKidsAdventures(1),
-        fetchKidsAnime(1),
-        fetchKidsAnimationSeries(1),
-        fetchKidsClassicCartoonSeries(1)
-      ]);
-      const kidsHeroPool = [...(popularMovies || []), ...(popularTV || [])].filter(i => i.backdrop_path && isItemKidSafe(i));
-      trending = kidsHeroPool.slice(0, 10);
+    secondaryReady = homeSecondaryPending;
+    secondarySettled = !secondaryReady;
+  } else if (isKid) {
+    secondaryReady = Promise.all([
+      fetchKidsAdventures(1), fetchKidsAnime(1),
+      fetchKidsAnimationSeries(1), fetchKidsClassicCartoonSeries(1)
+    ]).then(results => {
+      if (cacheGeneration !== homeCacheGeneration) return;
+      [kidsAdventures, animeItems, kidsAnimationItems, kidsClassicCartoonItems] = results;
       homeDataCache = { isKid: true, trending, popularTV, popularMovies, kidsAdventures, animeItems, kidsAnimationItems, kidsClassicCartoonItems };
-      persistHomeCache(homeDataCache);
-    } else {
-      [
-        trending,
-        popularTV,
-        popularMovies,
-        topRatedTV,
-        topRatedMovies,
-        animeItems,
-        docItems,
-        adultAnimationItems,
-        cartoonSeriesItems
-      ] = await Promise.all([
-        fetchTrending('all',   'week', 1),
-        fetchPopularSeries(1),
-        fetchPopularMovies(1),
-        fetchTopRated('tv',    1),
-        fetchTopRated('movie', 1),
-        fetchPopularAnime(1),
-        fetchPopularDocumentaries(1),
-        fetchAdultAnimationSeries(1),
-        fetchCartoonSeries(1)
-      ]);
+      if (primarySettled) persistHomeCache(homeDataCache);
+      secondarySettled = true;
+    }).catch(() => { secondarySettled = true; });
+    homeSecondaryPending = secondaryReady;
+    secondaryReady.then(() => { if (homeSecondaryPending === secondaryReady) homeSecondaryPending = null; });
+    [popularTV, popularMovies] = await Promise.all([
+      fetchKidsPopularSeries(1), fetchKidsPopularMovies(1)
+    ]);
+    trending = [...(popularMovies || []), ...(popularTV || [])]
+      .filter(item => item.backdrop_path && isItemKidSafe(item)).slice(0, 10);
+    if (cacheGeneration !== homeCacheGeneration) return null;
+    if (!secondarySettled) homeDataCache = { isKid: true, trending, popularTV, popularMovies };
+  } else {
+    secondaryReady = Promise.all([
+      fetchTopRated('tv', 1), fetchTopRated('movie', 1),
+      fetchPopularAnime(1), fetchPopularDocumentaries(1),
+      fetchAdultAnimationSeries(1), fetchCartoonSeries(1)
+    ]).then(results => {
+      if (cacheGeneration !== homeCacheGeneration) return;
+      [topRatedTV, topRatedMovies, animeItems, docItems, adultAnimationItems, cartoonSeriesItems] = results;
       homeDataCache = { isKid: false, trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, adultAnimationItems, cartoonSeriesItems };
-      persistHomeCache(homeDataCache);
-    }
+      if (primarySettled) persistHomeCache(homeDataCache);
+      secondarySettled = true;
+    }).catch(() => { secondarySettled = true; });
+    homeSecondaryPending = secondaryReady;
+    secondaryReady.then(() => { if (homeSecondaryPending === secondaryReady) homeSecondaryPending = null; });
+    [trending, popularTV, popularMovies] = await Promise.all([
+      fetchTrending('all', 'week', 1),
+      fetchPopularSeries(1), fetchPopularMovies(1)
+    ]);
+    if (cacheGeneration !== homeCacheGeneration) return null;
+    if (!secondarySettled) homeDataCache = { isKid: false, trending, popularTV, popularMovies };
   }
+  primarySettled = true;
+  if (secondarySettled && homeDataCache) persistHomeCache(homeDataCache);
+  const secondaryInInitialHTML = secondarySettled;
 
   const rawWatchHistory = getUnifiedContinueWatching();
   const watchHistory = filterForActiveProfile(rawWatchHistory);
@@ -459,8 +475,8 @@ export async function renderHomeView() {
       if (sliderItems && sliderItems.length > 0) attachHeroSliderEvents(sliderItems);
       attachMediaCardEvents(container);
 
-      // Restore and track horizontal scroll position for each rail
-      container.querySelectorAll('.card-rail').forEach(rail => {
+      const attachRailScrolling = (root) => {
+      root.querySelectorAll('.card-rail').forEach(rail => {
         const railId = rail.id;
 
         // Restore saved horizontal scroll position
@@ -483,9 +499,6 @@ export async function renderHomeView() {
           // Continuously record horizontal scroll
           rail.addEventListener('scroll', () => {
             railScrollMemory.set(railId, rail.scrollLeft);
-            try {
-              sessionStorage.setItem(`cinepulse_rail_${railId}`, rail.scrollLeft);
-            } catch (_) {}
           }, { passive: true });
         }
 
@@ -496,6 +509,8 @@ export async function renderHomeView() {
           rail.scrollBy({ left: e.deltaY * 2.5, behavior: 'smooth' });
         }, { passive: false });
       });
+      };
+      attachRailScrolling(container);
 
       // Spotlight hero click
       container.querySelectorAll('.spotlight-hero, .spotlight-mini').forEach(el => {
@@ -519,6 +534,32 @@ export async function renderHomeView() {
 
       // Infinite scroll
       initInfiniteRails(container);
+      if (secondaryReady && !secondaryInInitialHTML) {
+        const homeView = container.querySelector('.home-view');
+        secondaryReady.then(() => {
+          ({ topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems, kidsAnimationItems, kidsClassicCartoonItems } = homeDataCache || {});
+          if (!homeView?.isConnected || !(window.location.hash || '#home').startsWith('#home')) return;
+          const extra = document.createElement('div');
+          extra.className = 'home-more-rails';
+          extra.innerHTML = isKid ? `
+            ${renderInfiniteRail({ id: 'rail-kids-animation', icon: 'sparkles', title: 'Çocuk Animasyonları & Yeni Çizgi Diziler', accent: '#fb7185', items: kidsAnimationItems })}
+            ${renderInfiniteRail({ id: 'rail-kids-classics', icon: 'palette', title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler', accent: '#38bdf8', items: kidsClassicCartoonItems })}
+            ${renderInfiniteRail({ id: 'rail-kids-adventures', icon: 'compass', title: '⭐ Aile ve Fantastik Sinema Kuşağı', accent: '#38bdf8', items: kidsAdventures })}
+            ${renderInfiniteRail({ id: 'rail-anime', icon: 'smile', title: '🎌 Çocuk & Genç Anime Dünyası', accent: '#a855f7', items: animeItems })}
+          ` : `
+            ${renderInfiniteRail({ id: 'rail-adult-animation', icon: 'sparkles', title: 'Yetişkin Animasyonları & Çizgi Diziler', accent: '#fb7185', items: adultAnimationItems })}
+            ${renderInfiniteRail({ id: 'rail-cartoon-series', icon: 'wand-sparkles', title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler', accent: '#38bdf8', items: cartoonSeriesItems })}
+            ${renderInfiniteRail({ id: 'rail-top-movies', icon: 'award', title: '⭐ Sinema Tarihinin Başyapıtları (IMDb 8.5+)', accent: '#fbbf24', items: topRatedMovies })}
+            ${renderInfiniteRail({ id: 'rail-top-tv', icon: 'star', title: 'Kült & En Yüksek Puanlı Diziler', accent: '#34d399', items: topRatedTV })}
+            ${renderInfiniteRail({ id: 'rail-anime', icon: 'sparkles', title: '🎌 Popüler Anime Evreni (TR Dublaj & Altyazı)', accent: '#ec4899', items: animeItems })}
+            ${renderInfiniteRail({ id: 'rail-documentary', icon: 'globe', title: '🌍 İlham Veren Kült Belgeseller', accent: '#38bdf8', items: docItems })}
+          `;
+          homeView.append(extra);
+          renderIcons(extra);
+          attachRailScrolling(extra);
+          initInfiniteRails(extra);
+        });
+      }
 
       // Delete from continue watching
       container.querySelectorAll('.btn-delete-history').forEach(btn => {

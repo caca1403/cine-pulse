@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Cinematic Trailer Modal Component
    Ultra-responsive YouTube trailer player with glassmorphic backdrop,
@@ -64,7 +65,7 @@ export function openTrailerModal({ title = 'Fragman', trailerInfo }) {
   modalContainer.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 
-  if (window.lucide) window.lucide.createIcons();
+  renderIcons();
 
   const closeModal = () => {
     modalContainer.innerHTML = '';

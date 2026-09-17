@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Media Card Component
    Ultra-sleek, borderless luxury cards with floating gold star rating badge,
@@ -6,7 +7,7 @@
 
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK, hasNonLatinCharacters, fetchMediaTrailer } from '../services/tmdbApi.js';
 import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime, isRegisteredAnimeId, registerAnimeId, getUserSettings, KNOWN_ANIME_KEYWORDS as STORAGE_ANIME_KEYWORDS } from '../services/storage.js';
-import { openPlayerModal } from './PlayerModal.js';
+import { openPlayerModal } from './openPlayer.js';
 import { saveAllScrollState } from '../services/scrollManager.js';
 
 const KNOWN_ANIME_KEYWORDS = STORAGE_ANIME_KEYWORDS || [
@@ -407,7 +408,7 @@ export function attachMediaCardEvents(container) {
             if (previewMedia && backdropSrc) previewMedia.style.backgroundImage = `url("${backdropSrc}")`;
             card.classList.add('preview-active');
             card.appendChild(previewBox);
-            if (window.lucide) window.lucide.createIcons();
+            renderIcons();
 
             const iframe = previewBox.querySelector('iframe');
             const soundBtn = previewBox.querySelector('.card-preview-sound');
@@ -423,7 +424,7 @@ export function attachMediaCardEvents(container) {
               soundBtn.title = previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç';
               soundBtn.setAttribute('aria-label', soundBtn.title);
               soundBtn.innerHTML = `<i data-lucide="${previewSoundEnabled ? 'volume-2' : 'volume-x'}"></i>`;
-              if (window.lucide) window.lucide.createIcons();
+              renderIcons();
             };
             iframe.addEventListener('load', () => {
               previewBox.classList.add('video-ready');

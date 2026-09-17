@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Season & Episode Selector Component
    Renders season tabs and episode cards with REAL TMDB overviews,
@@ -7,7 +8,7 @@
 
 import { fetchSeasonDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
 import { getMediaProgress, isMediaWatched, toggleEpisodeWatched, markSeasonEpisodesWatched, isSeasonFullyWatched, setMediaHalfway } from '../services/storage.js';
-import { openPlayerModal } from './PlayerModal.js';
+import { openPlayerModal } from './openPlayer.js';
 import { showToast } from './Toast.js';
 
 export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = '', seriesOverview = '', seasons = [], posterPath = '', backdropPath = '', isAnime = false }) {
@@ -86,7 +87,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
           seasonAllBtn.style.borderColor = '';
           seasonAllBtn.style.color = '';
         }
-        if (window.lucide) window.lucide.createIcons();
+        renderIcons();
       };
 
       loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual, isAnime);
@@ -148,7 +149,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
               fillEl.style.background = isCompleted ? 'var(--accent-green)' : '#fbbf24';
             }
           });
-          if (window.lucide) window.lucide.createIcons();
+          renderIcons();
         }
         updateSeasonBtnVisual();
       };
@@ -280,7 +281,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
                 }
               }
             });
-            if (window.lucide) window.lucide.createIcons();
+            renderIcons();
           }
 
           updateSeasonBtnVisual();
@@ -295,7 +296,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
   if (!gridContainer) return;
 
   gridContainer.innerHTML = `<div style="padding: 3rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;"><i data-lucide="loader-2" class="spin-loader" style="width: 24px; height: 24px; margin-bottom: 0.5rem;"></i><div>${seasonNum}. Sezon bölümleri getiriliyor...</div></div>`;
-  if (window.lucide) window.lucide.createIcons();
+  renderIcons();
 
   let seasonData = null;
   try {
@@ -314,7 +315,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
         </button>
       </div>
     `;
-    if (window.lucide) window.lucide.createIcons();
+    renderIcons();
     container.querySelector('#btn-retry-season-episodes')?.addEventListener('click', () => {
       loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath, backdropPath, originalTitle, validSeasons, onStatusChange);
     });
@@ -429,7 +430,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
     `;
   }).join('');
 
-  if (window.lucide) window.lucide.createIcons();
+  renderIcons();
 
   // Attach Devamını Oku (Read More) toggle handlers
   container.querySelectorAll('.btn-toggle-overview').forEach(btn => {
@@ -453,7 +454,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
         if (icon) icon.setAttribute('data-lucide', 'chevron-down');
       }
 
-      if (window.lucide) window.lucide.createIcons();
+      renderIcons();
     });
   });
 
@@ -502,7 +503,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
         }
       }
       if (typeof onStatusChange === 'function') onStatusChange();
-      if (window.lucide) window.lucide.createIcons();
+      renderIcons();
     });
   });
 
@@ -539,7 +540,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
       }
 
       showToast(`S${epSeason} B${epNumber} 20. dakikada yarıda bırakıldı olarak işaretlendi!`, 'info');
-      if (window.lucide) window.lucide.createIcons();
+      renderIcons();
     });
   });
 

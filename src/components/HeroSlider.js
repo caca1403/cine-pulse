@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Apple TV+ & Netflix Luxury Hero Spotlight Component
    Features high-impact full-bleed cinematic ambient backdrop, dynamic metadata,
@@ -13,6 +14,12 @@ let currentSlideIndex = 0;
 let slideInterval = null;
 let heroTransitionToken = 0;
 const heroBackdropCache = new Map();
+
+export function stopHeroSlider() {
+  clearInterval(slideInterval);
+  slideInterval = null;
+  heroTransitionToken++;
+}
 
 function getHeroBackdropUrl(item) {
   const size = window.innerWidth <= 768
@@ -74,7 +81,7 @@ export function renderHeroSlider(items = []) {
   }
   preloadLink.href = backdropUrl;
   preloadLink.fetchPriority = 'high';
-  preloadHeroBackdrop(backdropUrl, 'high');
+  if (window.innerWidth > 768) preloadHeroBackdrop(backdropUrl, 'high');
 
   return `
     <section class="hero-slider is-loading" id="hero-slider-section" aria-busy="true">
@@ -148,8 +155,10 @@ export function attachHeroSliderEvents(items = []) {
       try { await firstBackdrop.decode(); } catch (_) {}
     }
     requestAnimationFrame(() => {
-      heroSection?.classList.remove('is-loading');
-      heroSection?.setAttribute('aria-busy', 'false');
+      if (heroSection?.isConnected) {
+        heroSection.classList.remove('is-loading');
+        heroSection.setAttribute('aria-busy', 'false');
+      }
     });
   };
   revealFirstSlide();
@@ -161,15 +170,15 @@ export function attachHeroSliderEvents(items = []) {
       preloadHeroBackdrop(getHeroBackdropUrl(item));
     });
   };
-  if ('requestIdleCallback' in window) {
+  if (window.innerWidth > 768 && 'requestIdleCallback' in window) {
     window.requestIdleCallback(warmUpcomingBackdrops, { timeout: 1500 });
-  } else {
+  } else if (window.innerWidth > 768) {
     window.setTimeout(warmUpcomingBackdrops, 500);
   }
 
   // Warm the current and next trailer while the hero is visible so opening the
   // modal is normally instant without preloading every slide.
-  slides.slice(0, 2).forEach(item => {
+  if (window.innerWidth > 768) slides.slice(0, 2).forEach(item => {
     const itemType = item.first_air_date || item.media_type === 'tv' ? 'tv' : 'movie';
     fetchMediaTrailer(itemType, item.id).catch(() => null);
   });
@@ -193,7 +202,7 @@ export function attachHeroSliderEvents(items = []) {
       const type = currentItem.first_air_date || currentItem.media_type === 'tv' ? 'tv' : 'movie';
       const originalText = trailerBtn.innerHTML;
       trailerBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:17px;height:17px;"></i> <span>Yükleniyor...</span>`;
-      if (window.lucide) window.lucide.createIcons();
+      renderIcons(trailerBtn);
 
       try {
         const trailerInfo = await fetchMediaTrailer(type, currentItem.id);
@@ -210,7 +219,7 @@ export function attachHeroSliderEvents(items = []) {
         showToast('Fragman yüklenirken hata oluştu.', 'error');
       } finally {
         trailerBtn.innerHTML = originalText;
-        if (window.lucide) window.lucide.createIcons();
+        renderIcons(trailerBtn);
       }
     });
   }
@@ -222,7 +231,7 @@ export function attachHeroSliderEvents(items = []) {
       showToast(added ? 'İzleme listene eklendi!' : 'İzleme listenden çıkarıldı.', added ? 'success' : 'info');
       listBtn.title = added ? 'Listemden Çıkar' : 'Listeme Ekle';
       listBtn.innerHTML = `<i data-lucide="${added ? 'check' : 'plus'}" style="width: 17px; height: 17px; ${added ? 'color: var(--primary);' : ''}"></i>`;
-      if (window.lucide) window.lucide.createIcons();
+      renderIcons(listBtn);
     });
   }
 
@@ -236,6 +245,7 @@ export function attachHeroSliderEvents(items = []) {
 
   // Auto-rotator every 6 seconds for dynamic feel
   clearInterval(slideInterval);
+  if (window.innerWidth <= 768) return;
   slideInterval = setInterval(() => {
     if (slides.length > 0) {
       const nextSlideIndex = (currentSlideIndex + 1) % slides.length;
@@ -277,8 +287,9 @@ async function updateHeroSlide(item, targetSlideIndex = currentSlideIndex) {
 
   const heroContent = document.querySelector('#hero-slider-section .hero-content');
   heroContent?.classList.remove('hero-content-committing');
-  void heroContent?.offsetWidth;
-  heroContent?.classList.add('hero-content-committing');
+  requestAnimationFrame(() => {
+    if (heroContent?.isConnected) heroContent.classList.add('hero-content-committing');
+  });
   if (titleEl) titleEl.textContent = item.title || item.name;
   const slideOverview = (item.overview && item.overview.trim().length > 15)
     ? item.overview
@@ -305,7 +316,7 @@ async function updateHeroSlide(item, targetSlideIndex = currentSlideIndex) {
     listBtn.innerHTML = `<i data-lucide="${inList ? 'check' : 'plus'}" style="width: 17px; height: 17px; ${inList ? 'color: var(--primary);' : ''}"></i>`;
   }
 
-  if (window.lucide) window.lucide.createIcons();
+  renderIcons(document.getElementById('hero-slider-section'));
 
   // Update dots
   document.querySelectorAll('.hero-dot').forEach((dot, idx) => {

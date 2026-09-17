@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Profile Onboarding Modal
    Shown to first-time visitors so every user sets their own profile name & avatar,
@@ -98,7 +99,7 @@ export function checkAndShowProfileOnboarding() {
   document.body.appendChild(overlay);
 
   if (window.lucide) {
-    window.lucide.createIcons({ root: overlay });
+    renderIcons(overlay);
   }
 
   // Handle avatar selections

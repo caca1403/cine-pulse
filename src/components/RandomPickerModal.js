@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - "Ne İzlesem?" Akıllı Çark / Rastgele Öneri Modal
    Interactive smart suggestion reel with genre & rating filters,
@@ -5,7 +6,7 @@
    ========================================================================== */
 
 import { fetchDiscoverMedia, GENRE_MAP_MOVIE, GENRE_MAP_TV, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
-import { openPlayerModal } from './PlayerModal.js';
+import { openPlayerModal } from './openPlayer.js';
 import { showToast } from './Toast.js';
 
 let activeRandomModal = null;
@@ -103,7 +104,7 @@ export async function openRandomPickerModal() {
     </div>
   `;
 
-  if (window.lucide) window.lucide.createIcons({ el: modalContainer });
+  renderIcons(modalContainer);
 
   const closeBtn = modalContainer.querySelector('#btn-close-random-picker');
   if (closeBtn) closeBtn.onclick = () => closeRandomPickerModal();
@@ -200,7 +201,7 @@ export async function openRandomPickerModal() {
           <span>Bu kriterlere uygun yapım bulunamadı. Lütfen filtreleri gevşetip tekrar deneyin.</span>
         </div>
       `;
-      if (window.lucide) window.lucide.createIcons({ el: stage });
+      renderIcons(stage);
       if (spinBtn) {
         spinBtn.disabled = false;
         spinBtn.classList.remove('is-spinning');
@@ -264,7 +265,7 @@ export async function openRandomPickerModal() {
       </div>
     `;
 
-    if (window.lucide) window.lucide.createIcons({ el: stage });
+    renderIcons(stage);
 
     // Winner play action
     const winnerPlayBtn = stage.querySelector('#btn-winner-play');
@@ -305,7 +306,7 @@ export async function openRandomPickerModal() {
       spinBtn.disabled = false;
       spinBtn.classList.remove('is-spinning');
       spinBtn.innerHTML = `<i data-lucide="refresh-cw" style="width: 17px; height: 17px;"></i> <span>Başka Bir Tane Öner</span>`;
-      if (window.lucide) window.lucide.createIcons({ el: spinBtn });
+      renderIcons(spinBtn);
     }
   };
 

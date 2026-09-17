@@ -1,10 +1,11 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Bildirimler & Yeni Bölüm Alarmları Merkezi
    Displays new episode drops, season arrivals, and system news
    with direct one-click navigation to content.
    ========================================================================== */
 
-import { openPlayerModal } from './PlayerModal.js';
+import { openPlayerModal } from './openPlayer.js';
 import { showToast } from './Toast.js';
 
 let activeNotificationModal = null;
@@ -124,7 +125,7 @@ export function openNotificationCenterModal() {
     </div>
   `;
 
-  if (window.lucide) window.lucide.createIcons({ el: modalContainer });
+  renderIcons(modalContainer);
 
   const closeBtn = modalContainer.querySelector('#btn-close-notif');
   if (closeBtn) closeBtn.onclick = () => closeNotificationCenterModal();

@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Media Detail View
    Displays full TMDB metadata, backdrop banner, season/episode list or play movie button
@@ -9,7 +10,7 @@ import { fetchMediaDetails, fetchMediaTrailer, getImageUrl, TMDB_IMAGE_SIZES, SI
 import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway, registerAnimeId, isRegisteredAnimeId } from '../services/storage.js';
 import { renderSeasonSelector } from '../components/SeasonSelector.js';
 import { renderMediaCard, attachMediaCardEvents, isAnimeItem } from '../components/MediaCard.js';
-import { openPlayerModal } from '../components/PlayerModal.js';
+import { openPlayerModal } from '../components/openPlayer.js';
 import { openTrailerModal } from '../components/TrailerModal.js';
 import { openCastExplorerModal } from '../components/CastExplorerModal.js';
 import { showToast } from '../components/Toast.js';
@@ -354,7 +355,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           trailerBtn.disabled = true;
           const origHtml = trailerBtn.innerHTML;
           trailerBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:18px;height:18px"></i> <span>Yükleniyor...</span>`;
-          if (window.lucide) window.lucide.createIcons();
+          renderIcons();
 
           try {
             const trailer = await fetchMediaTrailer(effectiveType, id);
@@ -369,7 +370,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           } finally {
             trailerBtn.disabled = false;
             trailerBtn.innerHTML = origHtml;
-            if (window.lucide) window.lucide.createIcons();
+            renderIcons();
           }
         });
       }
@@ -398,7 +399,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           const text = watchBtn.querySelector('span');
           if (icon && text) {
             icon.setAttribute('data-lucide', added ? 'check' : 'plus');
-            if (window.lucide) window.lucide.createIcons();
+            renderIcons();
             text.textContent = added ? 'Listemde' : 'İzleme Listeme Ekle';
           }
         });
@@ -429,7 +430,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
               <i data-lucide="${nowWatched ? 'check-circle-2' : 'check'}"></i>
               <span>${nowWatched ? 'Film İzlendi' : 'İzlendi Olarak İşaretle'}</span>
             `;
-            if (window.lucide) window.lucide.createIcons();
+            renderIcons();
           } else {
             // TV / Anime / Doc Series Bulk Watched
             const currentAllWatched = isEntireSeriesWatched(id, media.seasons || []);
@@ -454,7 +455,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
               <i data-lucide="${targetState ? 'check-circle-2' : 'check'}"></i>
               <span>${targetState ? 'Tüm Sezonlar İzlendi' : 'Tümünü İzlendi İşaretle'}</span>
             `;
-            if (window.lucide) window.lucide.createIcons();
+            renderIcons();
 
             // Update all episode cards in DOM
             container.querySelectorAll('.episode-card').forEach(card => {
@@ -496,7 +497,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
               }
             }
 
-            if (window.lucide) window.lucide.createIcons();
+            renderIcons();
           }
         });
       }
@@ -541,7 +542,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           }
         }
 
-        if (window.lucide) window.lucide.createIcons();
+        renderIcons();
       };
 
       window.addEventListener('sineflix_data_changed', onDetailDataChanged);

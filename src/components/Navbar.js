@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Apple TV+ & Netflix Luxury Navbar & Floating Dock
    ========================================================================== */
@@ -130,19 +131,26 @@ export function renderNavbar(currentView = 'home') {
   return navbarHTML;
 }
 
+let attachedScrollHandler = null;
+let attachedSearchShortcut = null;
+let attachedOutsideSearchClick = false;
+
 export function attachNavbarEvents(onNavigate) {
   const navbar = document.getElementById('main-navbar');
   const mobileSearchRow = document.getElementById('mobile-search-row');
   const mobileSearchToggleBtn = document.getElementById('btn-mobile-search-toggle');
   const mobileSearchCloseBtn = document.getElementById('btn-mobile-search-close');
 
-  window.addEventListener('scroll', () => {
+  if (attachedScrollHandler) window.removeEventListener('scroll', attachedScrollHandler);
+  attachedScrollHandler = () => {
     if (window.scrollY > 20) {
       navbar?.classList.add('scrolled');
     } else {
       navbar?.classList.remove('scrolled');
     }
-  }, { passive: true });
+  };
+  attachedScrollHandler();
+  window.addEventListener('scroll', attachedScrollHandler, { passive: true });
 
   // Mobile Search Toggle
   if (mobileSearchToggleBtn && mobileSearchRow) {
@@ -151,7 +159,7 @@ export function attachNavbarEvents(onNavigate) {
       if (!mobileSearchRow.classList.contains('hidden')) {
         document.getElementById('mobile-search-input')?.focus();
       }
-      if (window.lucide) window.lucide.createIcons();
+      renderIcons();
     });
   }
 
@@ -197,9 +205,25 @@ export function attachNavbarEvents(onNavigate) {
   // Attach search handlers for both Desktop and Mobile search inputs
   setupSearchInput('nav-search-input', 'search-overlay');
   setupSearchInput('mobile-search-input', 'mobile-search-overlay');
+  if (!attachedOutsideSearchClick) {
+    attachedOutsideSearchClick = true;
+    document.addEventListener('click', (event) => {
+      for (const [inputId, overlayId] of [
+        ['nav-search-input', 'search-overlay'],
+        ['mobile-search-input', 'mobile-search-overlay']
+      ]) {
+        const input = document.getElementById(inputId);
+        const overlay = document.getElementById(overlayId);
+        if (overlay && !input?.contains(event.target) && !overlay.contains(event.target)) {
+          overlay.classList.add('hidden');
+        }
+      }
+    });
+  }
 
   // Keyboard shortcut Ctrl+K / Cmd+K to focus search input
-  document.addEventListener('keydown', (e) => {
+  if (attachedSearchShortcut) document.removeEventListener('keydown', attachedSearchShortcut);
+  attachedSearchShortcut = (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       const isMobile = window.innerWidth <= 992;
@@ -210,7 +234,8 @@ export function attachNavbarEvents(onNavigate) {
         document.getElementById('nav-search-input')?.focus();
       }
     }
-  });
+  };
+  document.addEventListener('keydown', attachedSearchShortcut);
 }
 
 function setupSearchInput(inputId, overlayId) {
@@ -282,12 +307,6 @@ function setupSearchInput(inputId, overlayId) {
           overlay.innerHTML = '<div class="search-no-results">Arama sırasında bir hata oluştu</div>';
         }
       }, 200);
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!input.contains(e.target) && !overlay.contains(e.target)) {
-        overlay.classList.add('hidden');
-      }
     });
 
     input.addEventListener('keydown', (e) => {

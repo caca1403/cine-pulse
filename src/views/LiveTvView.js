@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 import { createPlayerScope } from '../components/playerLifecycle.js';
 /* ==========================================================================
    CinePulse Studio - Cinema IPTV Platform (Full-Width Player + Bottom Grid)
@@ -7,7 +8,7 @@ import { createPlayerScope } from '../components/playerLifecycle.js';
 
 import { LIVE_TV_CATEGORIES, LIVE_TV_CHANNELS, getChannelBadgeSvg } from '../services/liveTvChannels.js';
 import { fetchRecTvLiveChannels, getRecTvChannelStreamUrl } from '../services/rectvService.js';
-import { getChannelEpg } from '../services/epgService.js';
+import { getChannelEpg, initEpgService, stopEpgService } from '../services/epgService.js';
 import { showToast } from '../components/Toast.js';
 import { isKidProfileActive } from '../services/storage.js';
 
@@ -331,6 +332,7 @@ export function renderLiveTvView() {
     html,
     init: (container) => {
       if (!container) return;
+      initEpgService();
       const scope = createPlayerScope();
       const { setTimeout, clearTimeout, setInterval, clearInterval } = scope;
 
@@ -556,7 +558,7 @@ export function renderLiveTvView() {
           videoEl.muted = false;
           if (muteBtn) muteBtn.innerHTML = '<i data-lucide="volume-2" style="width:18px;height:18px;"></i>';
         }
-        if (window.lucide) window.lucide.createIcons();
+        renderIcons();
       }
 
       if (volumeSlider) {
@@ -575,7 +577,7 @@ export function renderLiveTvView() {
             videoEl.muted = true;
             isMuted = true;
             muteBtn.innerHTML = '<i data-lucide="volume-x" style="width:18px;height:18px;color:#ef4444;"></i>';
-            if (window.lucide) window.lucide.createIcons();
+            renderIcons();
             showToast('Sessize alındı', 'info');
           }
         });
@@ -592,7 +594,7 @@ export function renderLiveTvView() {
             videoEl.pause();
             playPauseBtn.innerHTML = '<i data-lucide="play" style="width:18px;height:18px;"></i>';
           }
-          if (window.lucide) window.lucide.createIcons();
+          renderIcons();
         });
       }
 
@@ -622,7 +624,7 @@ export function renderLiveTvView() {
               <span>Kaynak Kalite (${activeChannel.quality || '1080p'})</span>
             </button>
           `;
-          if (window.lucide) window.lucide.createIcons();
+          renderIcons();
           return;
         }
 
@@ -670,7 +672,7 @@ export function renderLiveTvView() {
           });
         });
 
-        if (window.lucide) window.lucide.createIcons();
+        renderIcons();
       }
 
       if (qualityBtn && qualityMenu) {
@@ -1045,7 +1047,7 @@ export function renderLiveTvView() {
               <p class="tv-empty-sub">Arama teriminizi veya kategori filtrenizi değiştirin.</p>
             </div>
           `;
-          if (window.lucide) window.lucide.createIcons();
+          renderIcons();
           return;
         }
 
@@ -1115,7 +1117,7 @@ export function renderLiveTvView() {
           });
         });
 
-        if (window.lucide) window.lucide.createIcons();
+        renderIcons();
       }
 
       function updateActiveChannelCard() {
@@ -1138,7 +1140,7 @@ export function renderLiveTvView() {
       renderAllViews = () => {
         renderBottomChannelGrid();
         updateTopBar();
-        if (window.lucide) window.lucide.createIcons();
+        renderIcons();
       };
 
       // ─── Search Handlers ───
@@ -1246,7 +1248,7 @@ export function renderLiveTvView() {
           fsBtn.innerHTML = isFs
             ? '<i data-lucide="minimize-2" style="width:18px;height:18px;"></i>'
             : '<i data-lucide="maximize-2" style="width:18px;height:18px;"></i>';
-          if (window.lucide) window.lucide.createIcons();
+          renderIcons();
         }
       });
 
@@ -1315,6 +1317,7 @@ export function renderLiveTvView() {
       let tvrRefreshInFlight = false;
       const stopAllPlayback = () => {
         scope.dispose();
+        stopEpgService();
         channelPlaybackToken++;
         clearInterval(epgInterval);
         if (tvrRefreshTimer) clearInterval(tvrRefreshTimer);

@@ -1,3 +1,4 @@
+import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Library & Watch Analytics View
    Displays in-progress continue watching, completed watch history,
@@ -403,7 +404,7 @@ export function renderLibraryView() {
           }
         }
 
-        if (window.lucide) window.lucide.createIcons();
+        renderIcons();
       };
 
       // Filter and Sort Engine for Active Tab
@@ -625,7 +626,7 @@ export function renderLibraryView() {
       // Initial active tab render
       renderActiveTabContent();
       attachMediaCardEvents(container);
-      if (window.lucide) window.lucide.createIcons();
+      renderIcons();
 
       // Background Anime Enrichment: automatically resolves any anime stored as TV series
       syncHistoryAnimeStatus().then(() => {
