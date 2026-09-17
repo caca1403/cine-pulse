@@ -334,9 +334,7 @@ export async function openPlayerModal({
   window.addEventListener('pagehide', handleGlobalPageUnload);
   window.addEventListener('beforeunload', handleGlobalPageUnload);
 
-  let currentCategory = effectiveIsAnime 
-    ? 'subtitled' 
-    : (typeof localStorage !== 'undefined' && localStorage.getItem('cp_preferred_category') ? localStorage.getItem('cp_preferred_category') : 'dubbed');
+  let currentCategory = 'dubbed'; // Her zaman dublaj ile başla
   let activeServers = [];
   let currentServerIndex = 0;
   let categorizedServers = { dubbed: [], subtitled: [] };
