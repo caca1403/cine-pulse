@@ -125,7 +125,16 @@ export default defineConfig({
           'User-Agent': 'EasyPlex (Android 14; SM-A546B; Samsung Galaxy A54 5G; tr)',
           'Accept': 'application/json'
         },
-        rewrite: (path) => path.replace(/^\/api\/snx/, '')
+        rewrite: (path) => {
+          const u = new URL(path, 'http://localhost');
+          const p = u.searchParams.get('path');
+          if (p) {
+            u.searchParams.delete('path');
+            const cleanSearch = u.search ? u.search : '';
+            return `${p.startsWith('/') ? p : '/' + p}${cleanSearch}`;
+          }
+          return path.replace(/^\/api\/snx/, '');
+        }
       },
       '/api/flz': {
         target: 'https://filmizlech.com',

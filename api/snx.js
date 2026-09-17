@@ -13,7 +13,8 @@ export default async function handler(req, res) {
   }
   if (!subPath.startsWith('/')) subPath = '/' + subPath;
 
-  const targetUrl = `https://ydfvfdizipanel.ru/public/api${subPath}`;
+  const cleanSearch = urlObj.search ? urlObj.search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+  const targetUrl = `https://ydfvfdizipanel.ru/public/api${subPath}${cleanSearch}`;
 
   const customHeaders = {
     'hash256': '711bff4afeb47f07ab08a0b07e85d3835e739295e8a6361db77eebd93d96306b',

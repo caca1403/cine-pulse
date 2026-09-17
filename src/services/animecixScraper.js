@@ -112,6 +112,7 @@ export async function fetchAnimecixSources({
         matchedList.push({
           id: `acx_${anime.id}_${v.id || sources.length}_${isDub ? 'dub' : 'sub'}`,
           name: `AX - ${providerName} (${isDub ? '1080p TR Dublaj' : '1080p Altyazılı'})${fansubInfo}`,
+          displayName: `AX - ${providerName} (${isDub ? '1080p TR Dublaj' : '1080p Altyazılı'})`,
           badge: isDub ? '🎌 Dublaj' : `🎌 ${providerName}`,
           category: isDub ? 'dubbed' : 'subtitled',
           providerName,

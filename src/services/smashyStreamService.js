@@ -1,8 +1,9 @@
 /* ==========================================================================
-   CinePulse Studio - SmashyStream & VidLink VIP Source Service
-   Provides 1080p multi-subbed ad-free streams based on TMDB ID:
-   - SmashyStream VIP: https://player.smashystream.com / https://embed.smashystream.com
-   - VidLink Zero-Ad: https://vidlink.pro (Clean, fast, multi-sub)
+   CinePulse Studio - VIP Global Embed Source Service (2Embed & VidSrc)
+   Permanently replaces VidLink and SmashyStream with ultra-stable 1080p:
+   - 2Embed VIP: https://www.2embed.cc (Clean, instant, multi-sub TR)
+   - VidSrc VIP: https://vidsrc.in (Rock-solid, zero x-frame issues)
+   - VidSrc PM: https://vidsrc.pm (Fast 1080p alternative)
    ========================================================================== */
 
 export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, episode = 1 } = {}) {
@@ -12,63 +13,69 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
   const sNum = parseInt(season, 10) || 1;
   const epNum = parseInt(episode, 10) || 1;
 
-  const smashyPlayerUrl = isMovie
-    ? `https://player.smashystream.com/movie/${tmdbId}`
-    : `https://player.smashystream.com/tv/${tmdbId}?s=${sNum}&e=${epNum}`;
+  // 1. 2Embed VIP (High stability, multi-language subtitles including Turkish)
+  const twoEmbedUrl = isMovie
+    ? `https://www.2embed.cc/embed/${tmdbId}`
+    : `https://www.2embed.cc/embedtv/${tmdbId}&s=${sNum}&e=${epNum}`;
 
-  const smashyEmbedUrl = isMovie
-    ? `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}`
-    : `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}&season=${sNum}&episode=${epNum}`;
+  // 2. VidSrc VIP (Fast CDN, high reliability, multi-sub)
+  const vidSrcUrl = isMovie
+    ? `https://vidsrc.in/embed/movie/${tmdbId}`
+    : `https://vidsrc.in/embed/tv/${tmdbId}/${sNum}/${epNum}`;
 
-  const vidlinkUrl = isMovie
-    ? `https://vidlink.pro/movie/${tmdbId}`
-    : `https://vidlink.pro/tv/${tmdbId}/${sNum}/${epNum}`;
+  // 3. VidSrc PM Alternative
+  const vidSrcPmUrl = isMovie
+    ? `https://vidsrc.pm/embed/movie/${tmdbId}`
+    : `https://vidsrc.pm/embed/tv/${tmdbId}/${sNum}/${epNum}`;
 
   return [
     {
-      id: `smashy_player_${tmdbId}_s${sNum}e${epNum}`,
-      name: isMovie ? 'SmashyStream 1080p (TR Altyazı)' : `SmashyStream S${sNum}B${epNum} (TR Altyazı)`,
-      displayName: 'SmashyStream VIP 1080p',
-      badge: '💬 Smashy VIP',
-      source: 'SmashyStream',
-      url: smashyPlayerUrl,
-      streamUrl: smashyPlayerUrl,
+      id: `twoembed_${tmdbId}_s${sNum}e${epNum}`,
+      name: isMovie ? '2Embed VIP 1080p (TR Altyazı)' : `2Embed VIP S${sNum}B${epNum} (TR Altyazı)`,
+      displayName: '2Embed VIP (1080p HD)',
+      badge: '⚡ 2Embed 1080p',
+      source: '2Embed',
+      url: twoEmbedUrl,
+      streamUrl: twoEmbedUrl,
       quality: '1080p HD',
       isHls: false,
       isDirectVideo: false,
       category: 'subtitled',
       type: 'embed',
-      getUrl: () => smashyPlayerUrl
+      getUrl: () => twoEmbedUrl
     },
     {
-      id: `smashy_embed_${tmdbId}_s${sNum}e${epNum}`,
-      name: isMovie ? 'SmashyStream Alternatif (TR Altyazı)' : `SmashyStream S${sNum}B${epNum} (Alternatif)`,
-      displayName: 'SmashyStream Alternatif',
-      badge: '💬 Smashy Alt',
-      source: 'SmashyStream',
-      url: smashyEmbedUrl,
-      streamUrl: smashyEmbedUrl,
+      id: `vidsrc_${tmdbId}_s${sNum}e${epNum}`,
+      name: isMovie ? 'VidSrc VIP 1080p (Multi-Sub)' : `VidSrc VIP S${sNum}B${epNum} (Multi-Sub)`,
+      displayName: 'VidSrc VIP (1080p HD)',
+      badge: '🎬 VidSrc 1080p',
+      source: 'VidSrc',
+      url: vidSrcUrl,
+      streamUrl: vidSrcUrl,
       quality: '1080p HD',
       isHls: false,
       isDirectVideo: false,
       category: 'subtitled',
       type: 'embed',
-      getUrl: () => smashyEmbedUrl
+      getUrl: () => vidSrcUrl
     },
     {
-      id: `vidlink_${tmdbId}_s${sNum}e${epNum}`,
-      name: isMovie ? 'VidLink Hızlı HD (0 Reklam • TR Altyazı)' : `VidLink S${sNum}B${epNum} (0 Reklam)`,
-      displayName: 'VidLink VIP (0 Reklam)',
-      badge: '⚡ VidLink 1080p',
-      source: 'VidLink',
-      url: vidlinkUrl,
-      streamUrl: vidlinkUrl,
+      id: `vidsrc_pm_${tmdbId}_s${sNum}e${epNum}`,
+      name: isMovie ? 'VidSrc Alternatif 1080p' : `VidSrc Alt S${sNum}B${epNum} (1080p)`,
+      displayName: 'VidSrc Alternatif',
+      badge: '⚡ VidSrc Alt',
+      source: 'VidSrc PM',
+      url: vidSrcPmUrl,
+      streamUrl: vidSrcPmUrl,
       quality: '1080p HD',
       isHls: false,
       isDirectVideo: false,
       category: 'subtitled',
       type: 'embed',
-      getUrl: () => vidlinkUrl
+      getUrl: () => vidSrcPmUrl
     }
   ];
 }
+
+// Named alias for semantic clarity
+export const fetchGlobalEmbedSources = fetchSmashyStreamSources;

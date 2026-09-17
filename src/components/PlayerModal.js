@@ -1232,8 +1232,6 @@ export async function openPlayerModal({
     }
 
     const finalIframeUrl = getStreamSafeUrl(srv);
-    const isVidlink = finalIframeUrl.includes('vidlink.pro');
-    const iframeReferrerPolicy = isVidlink ? 'origin' : 'no-referrer';
     return `
       <iframe 
         id="video-iframe" 
@@ -1241,7 +1239,8 @@ export async function openPlayerModal({
         allowfullscreen
         webkitallowfullscreen
         mozallowfullscreen
-        referrerpolicy="${iframeReferrerPolicy}"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+        referrerpolicy="no-referrer"
         allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *; payment *; screen-wake-lock *; web-share *; pointer-lock *; orientation-lock *; xr-spatial-tracking *">
       </iframe>
     `;

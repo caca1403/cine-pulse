@@ -48,11 +48,11 @@ async function performSinewixRequest(endpoint) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const directTarget = `${SINEWIX_API_BASE}${cleanEndpoint}`;
 
-  // 1. Try Vercel Serverless Proxy (/api/snx)
+  // 1. Try Local Vite / Vercel Serverless Proxy (/api/snx)
   try {
     const vercelProxyUrl = `/api/snx?path=${encodeURIComponent(cleanEndpoint)}`;
     const res = await fetch(vercelProxyUrl, {
-      signal: AbortSignal.timeout(2200)
+      signal: AbortSignal.timeout(2500)
     }).catch(() => null);
 
     if (res && res.ok) {
@@ -61,7 +61,21 @@ async function performSinewixRequest(endpoint) {
     }
   } catch (_) {}
 
-  // 2. Direct backend fallback (for Node/native environments)
+  // 2. Try Cloudflare Worker Gateway (High reliability CORS proxy)
+  try {
+    const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(directTarget)}`;
+    const res = await fetch(workerUrl, {
+      headers: SINEWIX_HEADERS,
+      signal: AbortSignal.timeout(2800)
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data) return data;
+    }
+  } catch (_) {}
+
+  // 3. Direct backend fallback (for Node / server-side environments)
   try {
     const res = await fetch(directTarget, {
       headers: SINEWIX_HEADERS,
@@ -129,9 +143,9 @@ export async function fetchSinewixSources({
     const candidatePool = filteredSearchItems.length > 0 ? filteredSearchItems : searchItems;
 
     const targetItem = candidatePool.find(it => {
-      const itemTitle = it.title || it.name || it.original_name || it.original_title || '';
+      const itemTitles = [it.title, it.name, it.original_name, it.original_title].filter(Boolean);
       const itemYear = (it.release_date || it.first_air_date || '').substring(0, 4);
-      return cleanedQueries.some(q => isTitleSimilar(q, itemTitle, year, itemYear));
+      return cleanedQueries.some(q => itemTitles.some(iTitle => isTitleSimilar(q, iTitle, year, itemYear)));
     });
 
     if (!targetItem) {

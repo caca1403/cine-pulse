@@ -97,6 +97,7 @@ function resolveCandidateTitlesSync(targetTitle, originalTitle) {
 async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) {
   const immediateTitles = resolveCandidateTitlesSync(targetTitle, originalTitle);
   let detectedYear = null;
+  let isAnimation = false;
   const tmdbType = (type === 'anime' || type === 'documentary') ? 'tv' : type;
 
   if (tmdbId) {
@@ -115,6 +116,10 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
           if (enData.original_title) immediateTitles.push(cleanTitle(enData.original_title));
           const dateStr = enData.release_date || enData.first_air_date;
           if (dateStr) detectedYear = dateStr.substring(0, 4);
+          const genres = enData.genres || [];
+          if (genres.some(g => g.id === 16 || (g.name || '').toLowerCase().includes('anim') || (g.name || '').toLowerCase().includes('çizgi'))) {
+            isAnimation = true;
+          }
         }
       }
 
@@ -128,7 +133,7 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
     } catch (_) { }
   }
 
-  return { candidateTitles: Array.from(new Set(immediateTitles)).filter(Boolean), detectedYear };
+  return { candidateTitles: Array.from(new Set(immediateTitles)).filter(Boolean), detectedYear, isAnimation };
 }
 
 export function resolveEngineName(s, fallback = 'Fast Stream') {
@@ -145,6 +150,12 @@ export function resolveEngineName(s, fallback = 'Fast Stream') {
   }
   if (id.startsWith('cp_global_') || raw.includes('torrent')) {
     return s.displayName || s.name || '⚡ Torrent 1080p';
+  }
+  if (id.startsWith('twoembed_') || raw.includes('2embed')) {
+    return s.displayName || s.name || '⚡ 2Embed VIP 1080p';
+  }
+  if (id.startsWith('vidsrc_') || raw.includes('vidsrc')) {
+    return s.displayName || s.name || '🎬 VidSrc VIP 1080p';
   }
   if (id.startsWith('dzp_') || (s.source && s.source.toLowerCase().includes('dizipal')) || raw.includes('dizipal')) {
     let base = (s.displayName || s.name || 'DP 1080p').replace(/dizipal/gi, 'DP').trim();
@@ -305,8 +316,8 @@ function isValidStream(s) {
     id.startsWith('tvr_') ||
     id.startsWith('rectv_') ||
     id.startsWith('kvip_') ||
-    id.startsWith('smashy_') ||
-    id.startsWith('vidlink_') ||
+    id.startsWith('twoembed_') ||
+    id.startsWith('vidsrc_') ||
     id.startsWith('dzp_') ||
     id.startsWith('dzs_') ||
     id.startsWith('ybd_') ||
@@ -317,8 +328,9 @@ function isValidStream(s) {
     urlStr.startsWith('magnet:') ||
     urlStr.includes('localhost:4000') ||
     urlStr.includes('hls_proxy') ||
-    urlStr.includes('smashystream') ||
-    urlStr.includes('vidlink.pro')
+    urlStr.includes('2embed.cc') ||
+    urlStr.includes('vidsrc.in') ||
+    urlStr.includes('vidsrc.pm')
   ) {
     return true;
   }
@@ -362,7 +374,7 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('kvip_') || raw.includes('kids vip')) {
     return 0;
   }
-  if (id.startsWith('smashy_') || raw.includes('smashy') || id.startsWith('vidlink_') || raw.includes('vidlink')) {
+  if (id.startsWith('twoembed_') || raw.includes('2embed') || id.startsWith('vidsrc_') || raw.includes('vidsrc')) {
     return 1;
   }
   if (id.startsWith('dzs_') || raw.includes('dizisol')) {
@@ -418,7 +430,6 @@ function getStreamPriorityScore(s) {
 
   // Fallback Global Embeds (Working only)
   if (url.includes('multiembed') || raw.includes('multiembed')) return 21;
-  if (url.includes('vidlink') || raw.includes('vidlink')) return 22;
   if (url.includes('vidbinge') || raw.includes('vidbinge')) return 23;
 
   return 15;
@@ -738,15 +749,28 @@ export async function getStreamingServersProgressive({
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : Promise.resolve([]),
 
-    // Anime Scrapers (ONLY if content is anime)
+    // Anime & Animation Scrapers (AnimeciX supports Anime + Western Cartoons)
     isAnime
       ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : Promise.resolve([]),
+      : enrichmentTask.then(enr => {
+          if (enr?.isAnimation) {
+            return fetchAnimecixSources({ titles: enr.candidateTitles || candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+              .then(res => addStreams(res, 'dubbed')).catch(() => []);
+          }
+          return [];
+        }).catch(() => []),
+
     isAnime
       ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : Promise.resolve([]),
+      : enrichmentTask.then(enr => {
+          if (enr?.isAnimation) {
+            return fetchAnimecixSources({ titles: enr.candidateTitles || candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+              .then(res => addStreams(res, 'subtitled')).catch(() => []);
+          }
+          return [];
+        }).catch(() => []),
 
     isAnime
       ? fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
