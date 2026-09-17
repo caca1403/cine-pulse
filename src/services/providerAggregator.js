@@ -34,9 +34,10 @@ import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchRecTvSources } from './rectvService.js';
 import { fetchKidsVipSources, fetchKidsVipMovieSources } from './kidsVipScraper.js';
 import { fetchSmashyStreamSources } from './smashyStreamService.js';
+import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
 
 // Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
-const CACHE_VERSION = 'v17';
+const CACHE_VERSION = 'v18';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -305,8 +306,8 @@ function isValidStream(s) {
     id.startsWith('rectv_') ||
     id.startsWith('kvip_') ||
     id.startsWith('smashy_') ||
-    id.startsWith('videasy_') ||
-    id.startsWith('vidsrc_') ||
+    id.startsWith('vidlink_') ||
+    id.startsWith('anyembed_') ||
     id.startsWith('dzp_') ||
     id.startsWith('dzs_') ||
     id.startsWith('ybd_') ||
@@ -319,8 +320,7 @@ function isValidStream(s) {
     urlStr.includes('hls_proxy') ||
     urlStr.includes('smashystream') ||
     urlStr.includes('anyembed') ||
-    urlStr.includes('videasy.net') ||
-    urlStr.includes('vidsrc.')
+    urlStr.includes('vidlink.pro')
   ) {
     return true;
   }
@@ -364,7 +364,7 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('kvip_') || raw.includes('kids vip')) {
     return 0;
   }
-  if (id.startsWith('smashy_') || raw.includes('smashy') || id.startsWith('videasy_') || raw.includes('videasy') || id.startsWith('vidsrc_') || raw.includes('vidsrc')) {
+  if (id.startsWith('smashy_') || raw.includes('smashy') || id.startsWith('vidlink_') || raw.includes('vidlink') || id.startsWith('anyembed_')) {
     return 1;
   }
   if (id.startsWith('dzs_') || raw.includes('dizisol')) {
@@ -610,6 +610,13 @@ export async function getStreamingServersProgressive({
       ? fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
+
+    // YTS & High-Speed Torrent Sources (⚡ YTS 1080p, 720p, 4K)
+    fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    fetchGlobalAutonomousSources({ type, tmdbId, title: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
     // 1. Dizipal (Movies & Series - Direct AlphaStream HLS 1080p)
     isMovie 

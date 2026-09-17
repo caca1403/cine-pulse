@@ -1241,14 +1241,11 @@ export async function openPlayerModal({
 
     const finalIframeUrl = getStreamSafeUrl(srv);
     const isVidmoly = finalIframeUrl.includes('vidmoly');
-    const isVideasy = finalIframeUrl.includes('videasy.net');
-    const isVidsrc = finalIframeUrl.includes('vidsrc.');
-    const isSmashy = finalIframeUrl.includes('smashystream') || finalIframeUrl.includes('smashy.stream');
+    const isVidlink = finalIframeUrl.includes('vidlink.pro');
     // All third-party video hosts block playback if the parent Vercel referer is leaked.
     // referrerpolicy="no-referrer" prevents hotlink detection.
-    // BUT: videasy / vidsrc need origin header for their fullscreen API — use origin for those.
-    const iframeReferrerPolicy = (isVideasy || isVidsrc) ? 'origin' : 'no-referrer';
-    // Sandboxing breaks Videasy, VidSrc, and SmashyStream! ONLY use sandbox for VidMoly.
+    const iframeReferrerPolicy = isVidlink ? 'origin' : 'no-referrer';
+    // Sandboxing breaks third party embeds! ONLY use sandbox for VidMoly to suppress annoying popups.
     const sandboxAttr = isVidmoly ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-pointer-lock"' : '';
     return `
       <iframe 
@@ -3364,15 +3361,6 @@ export async function openPlayerModal({
       const streamUrl = getStreamSafeUrl(srv);
 
       if (videoEl && isAnyP2p) {
-        if (srv?.embedUrl) {
-          srv.type = 'embed';
-          srv.streamUrl = srv.embedUrl;
-          srv.url = srv.embedUrl;
-          srv.isDirectVideo = false;
-          srv.isTorrent = false;
-          updatePlayerContainer();
-          return;
-        }
         // ALWAYS prefer MediaServer HTTP stream over browser WebTorrent
         // Browser WebTorrent (WebRTC) is unreliable - use localhost:4000 instead
         const infoHash = srv.infoHash;
