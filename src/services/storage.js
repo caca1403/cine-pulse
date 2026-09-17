@@ -57,6 +57,11 @@ export function isRegisteredAnimeId(id) {
 
 let _watchHistoryCache = null;
 let _progressMapCache = null;
+let _seriesLatestMapCache = null;
+let _cachedGroupedHistory = null;
+let _cachedContinueWatching = null;
+let _cachedCompletedList = null;
+let _cachedTotalWatchStats = null;
 let _favoritesCache = null;
 let _favoritesSet = null;
 let _watchlistCache = null;
@@ -66,9 +71,18 @@ let _activeProfileCache = null;
 let _userSettingsCache = null;
 let _blockedContentCache = null;
 
+function invalidateDerivedHistoryCaches() {
+  _cachedGroupedHistory = null;
+  _cachedContinueWatching = null;
+  _cachedCompletedList = null;
+  _cachedTotalWatchStats = null;
+}
+
 function clearStorageCache() {
   _watchHistoryCache = null;
   _progressMapCache = null;
+  _seriesLatestMapCache = null;
+  invalidateDerivedHistoryCaches();
   _favoritesCache = null;
   _favoritesSet = null;
   _watchlistCache = null;
@@ -360,11 +374,49 @@ function getLocalItem(key, defaultValue = []) {
   }
 }
 
+const _pendingDiskSaves = new Map();
+
+function flushPendingDiskSaves() {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  for (const [namespacedKey, item] of _pendingDiskSaves.entries()) {
+    try {
+      if (item.timer) clearTimeout(item.timer);
+      localStorage.setItem(namespacedKey, JSON.stringify(item.value));
+    } catch (_) {}
+  }
+  _pendingDiskSaves.clear();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', flushPendingDiskSaves);
+  window.addEventListener('pagehide', flushPendingDiskSaves);
+}
+
 function setLocalItem(key, value, options = {}) {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return;
     const namespacedKey = getNamespacedKey(key);
-    localStorage.setItem(namespacedKey, JSON.stringify(value));
+
+    if (options.isProgressUpdate) {
+      // Debounce large disk I/O writes during playback so player UI remains at 60 FPS
+      if (_pendingDiskSaves.has(namespacedKey)) {
+        clearTimeout(_pendingDiskSaves.get(namespacedKey).timer);
+      }
+      const timer = setTimeout(() => {
+        try {
+          localStorage.setItem(namespacedKey, JSON.stringify(value));
+        } catch (_) {}
+        _pendingDiskSaves.delete(namespacedKey);
+      }, 2500);
+      _pendingDiskSaves.set(namespacedKey, { timer, value });
+    } else {
+      if (_pendingDiskSaves.has(namespacedKey)) {
+        clearTimeout(_pendingDiskSaves.get(namespacedKey).timer);
+        _pendingDiskSaves.delete(namespacedKey);
+      }
+      localStorage.setItem(namespacedKey, JSON.stringify(value));
+    }
+
     window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { key: namespacedKey, value, ...options } }));
   } catch (err) {
     console.error(`Error saving ${key} to localStorage:`, err);
@@ -473,16 +525,7 @@ export function isMovieRecord(item) {
 export function getWatchHistory() {
   if (_watchHistoryCache) return _watchHistoryCache;
   let history = getLocalItem(STORAGE_KEYS.WATCH_HISTORY, []);
-  
-  // Instant storage bloat cleanup: cap to latest 200 items so huge caches never lock up the browser
-  if (history.length > 200) {
-    history = history.slice(0, 200);
-    try {
-      const namespacedKey = getNamespacedKey(STORAGE_KEYS.WATCH_HISTORY);
-      localStorage.setItem(namespacedKey, JSON.stringify(history));
-    } catch (_) {}
-  }
-
+  // Keep 100% of user watch history without pruning or data loss
   _watchHistoryCache = history.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
   return _watchHistoryCache;
 }
@@ -491,11 +534,17 @@ export async function syncHistoryAnimeStatus() {
   const history = getWatchHistory();
   let hasChanges = false;
   const tmdbKey = '4e44d9029b1270a757cddc766a1bcb63';
+  let networkChecks = 0;
 
   for (let i = 0; i < history.length; i++) {
     const item = history[i];
     if (item.isAnime || item.type === 'anime') {
       if (item.id) registerAnimeId(item.id);
+      continue;
+    }
+
+    // Skip items that already have isAnime explicitly resolved
+    if (item.isAnime === false && item.type !== 'anime') {
       continue;
     }
 
@@ -507,7 +556,9 @@ export async function syncHistoryAnimeStatus() {
       continue;
     }
 
-    if (item.id && !isNaN(Number(item.id))) {
+    // Cap background TMDB queries to at most 5 per session to avoid thread/network choking
+    if (networkChecks < 5 && item.id && !isNaN(Number(item.id))) {
+      networkChecks++;
       try {
         const res = await fetch(`https://api.themoviedb.org/3/tv/${item.id}?api_key=${tmdbKey}&language=tr-TR`);
         if (res.ok) {
@@ -528,6 +579,7 @@ export async function syncHistoryAnimeStatus() {
   }
 
   if (hasChanges) {
+    invalidateDerivedHistoryCaches();
     setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
   }
 }
@@ -537,11 +589,17 @@ function getProgressMap() {
   if (_progressMapCache) return _progressMapCache;
   const history = getWatchHistory();
   _progressMapCache = new Map();
+  _seriesLatestMapCache = new Map();
+
   for (let i = 0; i < history.length; i++) {
     const item = history[i];
     const key = `${item.id}_${item.season || 1}_${item.episode || 1}`;
     if (!_progressMapCache.has(key)) {
       _progressMapCache.set(key, item);
+    }
+    const idStr = String(item.id);
+    if (!_seriesLatestMapCache.has(idStr)) {
+      _seriesLatestMapCache.set(idStr, item);
     }
   }
   return _progressMapCache;
@@ -674,15 +732,16 @@ export function saveWatchProgress({
     history[existingIndex] = record;
   } else {
     history.unshift(record);
-    if (history.length > 200) {
-      history = history.slice(0, 200);
-    }
   }
 
   _watchHistoryCache = history;
   if (_progressMapCache) {
     _progressMapCache.set(`${id}_${season}_${episode}`, record);
   }
+  if (_seriesLatestMapCache) {
+    _seriesLatestMapCache.set(String(id), record);
+  }
+  invalidateDerivedHistoryCaches();
 
   setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history, { isProgressUpdate: true });
 }
@@ -690,12 +749,18 @@ export function saveWatchProgress({
 export function removeWatchHistoryItem(id, season = 1, episode = 1) {
   let history = getWatchHistory();
   history = history.filter(item => !(item.id == id && item.season == season && item.episode == episode));
+  _watchHistoryCache = history;
+  if (_progressMapCache) _progressMapCache.delete(`${id}_${season}_${episode}`);
+  invalidateDerivedHistoryCaches();
   setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
 }
 
 export function removeSeriesFromHistory(id) {
   let history = getWatchHistory();
   history = history.filter(item => item.id != id);
+  _watchHistoryCache = history;
+  _progressMapCache = null;
+  invalidateDerivedHistoryCaches();
   setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
 }
 
@@ -887,13 +952,13 @@ export function isEntireSeriesWatched(seriesId, seasonsList = []) {
   if (!seasonsList || seasonsList.length === 0) {
     return isMediaWatched(seriesId, 1, 1);
   }
-  const history = getWatchHistory();
+  const map = getProgressMap();
   for (const season of seasonsList) {
     const seasonNum = season.season_number;
     if (seasonNum === 0 && seasonsList.length > 1) continue;
     const count = season.episode_count || 1;
     for (let ep = 1; ep <= count; ep++) {
-      const item = history.find(r => r.id == seriesId && r.season == seasonNum && r.episode == ep);
+      const item = map.get(`${seriesId}_${seasonNum}_${ep}`);
       if (!item || (!item.completed && item.progressPercent < 90)) {
         return false;
       }
@@ -903,9 +968,9 @@ export function isEntireSeriesWatched(seriesId, seasonsList = []) {
 }
 
 export function isSeasonFullyWatched(seriesId, seasonNum, episodeCount = 10) {
-  const history = getWatchHistory();
+  const map = getProgressMap();
   for (let ep = 1; ep <= episodeCount; ep++) {
-    const item = history.find(r => r.id == seriesId && r.season == seasonNum && r.episode == ep);
+    const item = map.get(`${seriesId}_${seasonNum}_${ep}`);
     if (!item || (!item.completed && item.progressPercent < 90)) {
       return false;
     }
@@ -944,9 +1009,15 @@ export function setMediaHalfway(id, season = 1, episode = 1, currentTime = 1500,
 
 
 export function getLastWatchedEpisode(seriesId) {
+  if (!seriesId) return null;
+  if (!_seriesLatestMapCache) {
+    getProgressMap();
+  }
+  if (_seriesLatestMapCache && _seriesLatestMapCache.has(String(seriesId))) {
+    return _seriesLatestMapCache.get(String(seriesId));
+  }
   const history = getWatchHistory();
-  const seriesItems = history.filter(item => item.id == seriesId);
-  return seriesItems.length > 0 ? seriesItems[0] : null;
+  return history.find(item => item.id == seriesId) || null;
 }
 
 export function formatSecondsToTime(seconds) {
@@ -988,6 +1059,7 @@ export function formatTotalWatchTime(totalSeconds) {
 }
 
 export function getTotalWatchStats() {
+  if (_cachedTotalWatchStats) return _cachedTotalWatchStats;
   const history = getWatchHistory();
   let totalSeconds = 0;
   let moviesCount = 0;
@@ -1016,7 +1088,7 @@ export function getTotalWatchStats() {
 
   const formatted = formatTotalWatchTime(totalSeconds);
 
-  return {
+  _cachedTotalWatchStats = {
     totalSeconds,
     totalMinutes: Math.floor(totalSeconds / 60),
     totalHours: (totalSeconds / 3600).toFixed(1),
@@ -1028,11 +1100,13 @@ export function getTotalWatchStats() {
     totalEpisodes: episodesCount,
     totalEntries: history.length
   };
+  return _cachedTotalWatchStats;
 }
 
 
 
 export function getContinueWatchingList() {
+  if (_cachedContinueWatching) return _cachedContinueWatching;
   const history = getWatchHistory();
   const seriesMap = new Map();
 
@@ -1125,10 +1199,12 @@ export function getContinueWatchingList() {
   }
 
   inProgressList.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
-  return inProgressList;
+  _cachedContinueWatching = inProgressList;
+  return _cachedContinueWatching;
 }
 
 export function getCompletedWatchList() {
+  if (_cachedCompletedList) return _cachedCompletedList;
   const history = getWatchHistory();
   const seriesMap = new Map();
 
@@ -1177,10 +1253,12 @@ export function getCompletedWatchList() {
   }
 
   completedList.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
-  return completedList;
+  _cachedCompletedList = completedList;
+  return _cachedCompletedList;
 }
 
 export function getGroupedWatchHistory() {
+  if (_cachedGroupedHistory) return _cachedGroupedHistory;
   const history = getWatchHistory();
   const seriesMap = new Map();
 
@@ -1224,7 +1302,8 @@ export function getGroupedWatchHistory() {
   }
 
   grouped.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
-  return grouped;
+  _cachedGroupedHistory = grouped;
+  return _cachedGroupedHistory;
 }
 
 export function getUnifiedContinueWatching() {

@@ -7,3 +7,5 @@ dist-ssr
 .DS_Store
 scratch/
 media_storage/
+cinepulse_yedek*.json
+*.backup.json

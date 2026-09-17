@@ -127,7 +127,9 @@ function renderInfiniteRail({ id, icon, title, accent, items }) {
 -------------------------------------------------------------------------- */
 function renderContinueWatchingSection(watchHistory) {
   if (!watchHistory || watchHistory.length === 0) return '';
-  const cards = watchHistory.map(item => `
+  // Display top 24 most recent in-progress items on the home rail (all remain accessible in Library)
+  const displayItems = watchHistory.slice(0, 24);
+  const cards = displayItems.map(item => `
     <div class="continue-card-wrapper" data-id="${item.id}" data-season="${item.season || 1}" data-episode="${item.episode || 1}">
       ${renderMediaCard(item, { isContinueSection: true })}
       <button class="btn-delete-history" title="Geçmişten Kaldır" aria-label="Kaldır">
