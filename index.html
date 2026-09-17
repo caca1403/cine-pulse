@@ -69,6 +69,15 @@
           }
         }
       }, true);
+
+      // 4. Trap unauthorized external frame-busting / top-navigation
+      window.addEventListener('beforeunload', function(e) {
+        if (window.__BLOCK_EXTERNAL_REDIRECTS__) {
+          e.preventDefault();
+          e.returnValue = 'Yönlendirme engellendi.';
+          return e.returnValue;
+        }
+      });
     })();
   </script>
   

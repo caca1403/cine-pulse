@@ -318,6 +318,7 @@ function isValidStream(s) {
     urlStr.includes('localhost:4000') ||
     urlStr.includes('hls_proxy') ||
     urlStr.includes('smashystream') ||
+    urlStr.includes('anyembed') ||
     urlStr.includes('videasy.net') ||
     urlStr.includes('vidsrc.')
   ) {

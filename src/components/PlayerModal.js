@@ -1246,11 +1246,10 @@ export async function openPlayerModal({
     const isSmashy = finalIframeUrl.includes('smashystream') || finalIframeUrl.includes('smashy.stream');
     // All third-party video hosts block playback if the parent Vercel referer is leaked.
     // referrerpolicy="no-referrer" prevents hotlink detection.
-    // BUT: videasy / vidsrc / smashystream need origin header for their fullscreen API — use origin for those.
-    const iframeReferrerPolicy = (isVideasy || isVidsrc || isSmashy) ? 'origin' : 'no-referrer';
-    // Strict Anti-Redirect Sandbox: Never allow top-navigation or popups to external sites!
-    // allow-scripts + allow-same-origin keeps player functional while blocking tab hijacking.
-    const sandboxAttr = 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-pointer-lock"';
+    // BUT: videasy / vidsrc need origin header for their fullscreen API — use origin for those.
+    const iframeReferrerPolicy = (isVideasy || isVidsrc) ? 'origin' : 'no-referrer';
+    // Sandboxing breaks Videasy, VidSrc, and SmashyStream! ONLY use sandbox for VidMoly.
+    const sandboxAttr = isVidmoly ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-pointer-lock"' : '';
     return `
       <iframe 
         id="video-iframe" 

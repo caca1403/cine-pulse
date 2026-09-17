@@ -13,11 +13,11 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
   const sNum = parseInt(season, 10) || 1;
   const epNum = parseInt(episode, 10) || 1;
 
-  const playerUrl = isMovie
-    ? `https://player.smashystream.com/movie/${tmdbId}`
-    : `https://player.smashystream.com/tv/${tmdbId}?s=${sNum}&e=${epNum}`;
-
   const embedUrl = isMovie
+    ? `https://anyembed.xyz/embed/tmdb-movie-${tmdbId}`
+    : `https://anyembed.xyz/embed/tmdb-tv-${tmdbId}/${sNum}/${epNum}`;
+
+  const altSmashyUrl = isMovie
     ? `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}`
     : `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}&season=${sNum}&episode=${epNum}`;
 
@@ -30,36 +30,6 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
     : `https://vidsrc.cc/v2/embed/tv/${tmdbId}/${sNum}/${epNum}`;
 
   return [
-    {
-      id: `smashy_player_${tmdbId}_s${sNum}e${epNum}`,
-      name: isMovie ? 'SmashyStream VIP 1080p (TR Altyazı)' : `SmashyStream S${sNum}B${epNum} (TR Altyazı)`,
-      displayName: 'SmashyStream VIP 1080p',
-      badge: '💬 Smashy VIP',
-      source: 'SmashyStream',
-      url: playerUrl,
-      streamUrl: playerUrl,
-      quality: '1080p HD',
-      isHls: false,
-      isDirectVideo: false,
-      category: 'subtitled',
-      type: 'embed',
-      getUrl: () => playerUrl
-    },
-    {
-      id: `smashy_embed_${tmdbId}_s${sNum}e${epNum}`,
-      name: isMovie ? 'SmashyStream Alternatif (TR Altyazı)' : `SmashyStream S${sNum}B${epNum} (Alternatif)`,
-      displayName: 'SmashyStream Alternatif',
-      badge: '💬 Smashy Alt',
-      source: 'SmashyStream',
-      url: embedUrl,
-      streamUrl: embedUrl,
-      quality: '1080p HD',
-      isHls: false,
-      isDirectVideo: false,
-      category: 'subtitled',
-      type: 'embed',
-      getUrl: () => embedUrl
-    },
     {
       id: `videasy_${tmdbId}_s${sNum}e${epNum}`,
       name: isMovie ? 'Videasy Hızlı Akış 1080p (TR Altyazı)' : `Videasy S${sNum}B${epNum} (Hızlı)`,
@@ -76,6 +46,21 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
       getUrl: () => videasyUrl
     },
     {
+      id: `smashy_embed_${tmdbId}_s${sNum}e${epNum}`,
+      name: isMovie ? 'SmashyStream VIP 1080p (TR Altyazı)' : `SmashyStream S${sNum}B${epNum} (TR Altyazı)`,
+      displayName: 'SmashyStream VIP 1080p',
+      badge: '💬 Smashy VIP',
+      source: 'SmashyStream',
+      url: embedUrl,
+      streamUrl: embedUrl,
+      quality: '1080p HD',
+      isHls: false,
+      isDirectVideo: false,
+      category: 'subtitled',
+      type: 'embed',
+      getUrl: () => embedUrl
+    },
+    {
       id: `vidsrc_${tmdbId}_s${sNum}e${epNum}`,
       name: isMovie ? 'VidSrc Global 1080p' : `VidSrc S${sNum}B${epNum}`,
       displayName: 'VidSrc Global 1080p',
@@ -89,6 +74,21 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
       category: 'subtitled',
       type: 'embed',
       getUrl: () => vidsrcUrl
+    },
+    {
+      id: `smashy_alt_${tmdbId}_s${sNum}e${epNum}`,
+      name: isMovie ? 'SmashyStream Alternatif' : `SmashyStream S${sNum}B${epNum} (Alternatif)`,
+      displayName: 'SmashyStream Alternatif',
+      badge: '💬 Smashy Alt',
+      source: 'SmashyStream',
+      url: altSmashyUrl,
+      streamUrl: altSmashyUrl,
+      quality: '1080p HD',
+      isHls: false,
+      isDirectVideo: false,
+      category: 'subtitled',
+      type: 'embed',
+      getUrl: () => altSmashyUrl
     }
   ];
 }
