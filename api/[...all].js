@@ -536,7 +536,16 @@ export default async function handler(req, res) {
     let targetOrigin = '';
     try { targetOrigin = new URL(targetUrl).origin + '/'; } catch (_) {}
 
-    const ref = urlObj.searchParams.get('ref') || req.headers['x-proxy-referer'] || req.headers['referer'] || targetOrigin;
+    let ref = urlObj.searchParams.get('ref') || req.headers['x-proxy-referer'];
+    if (!ref) {
+      if (targetUrl.includes('ag2m4') || targetUrl.includes('dizibal')) {
+        ref = 'https://dizibal.org/';
+      } else if (targetUrl.includes('vidmoly')) {
+        ref = 'https://vidmoly.net/';
+      } else {
+        ref = targetOrigin;
+      }
+    }
     if (ref) customHeaders['Referer'] = decodeURIComponent(ref);
     if (targetOrigin) customHeaders['Origin'] = new URL(targetUrl).origin;
 

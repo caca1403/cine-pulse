@@ -156,10 +156,10 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
         ? (isMovie ? `https://vidlink.pro/movie/${tmdbId}` : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`)
         : null;
 
-      // ALWAYS prefer MediaServer URL over magnet (browser WebTorrent is unreliable)
+      // When MediaServer is available (localhost), stream directly. In cloud/web (Vercel), fallback to clean embed URL so video never fails with error
       const finalStreamUrl = serverAvailable
         ? `${MEDIA_SERVER_BASE}/torrent/${stream.infoHash}`
-        : magnetUrl;
+        : (ytsWebEmbedUrl || magnetUrl);
 
       const sizeStr = sizeMatch ? sizeMatch[0] : '';
       let displayName = isTrDub
@@ -181,13 +181,14 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
         name: displayName,
         displayName: displayName,
         badge,
-        source: isYts ? 'YTS (YIFY)' : 'Torrentio P2P',
+        source: isYts ? 'YTS (YIFY)' : 'Torrentio',
         url: finalStreamUrl,
         streamUrl: finalStreamUrl,
         magnetUrl: magnetUrl,
         embedUrl: ytsWebEmbedUrl,
         infoHash: stream.infoHash,
-        isTorrent: true,
+        isTorrent: serverAvailable,
+        type: serverAvailable ? 'direct' : (ytsWebEmbedUrl ? 'embed' : 'torrent'),
         quality: qualityLabel,
         isHls: false,
         isDirectVideo: serverAvailable,

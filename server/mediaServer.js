@@ -379,7 +379,16 @@ const server = http.createServer(async (req, res) => {
       let targetOrigin = '';
       try { targetOrigin = new URL(decodedTarget).origin + '/'; } catch (_) {}
 
-      const ref = reqUrl.searchParams.get('ref') || req.headers['x-proxy-referer'] || req.headers['referer'] || targetOrigin;
+      let ref = reqUrl.searchParams.get('ref') || req.headers['x-proxy-referer'];
+      if (!ref) {
+        if (decodedTarget.includes('ag2m4') || decodedTarget.includes('dizibal')) {
+          ref = 'https://dizibal.org/';
+        } else if (decodedTarget.includes('vidmoly')) {
+          ref = 'https://vidmoly.net/';
+        } else {
+          ref = targetOrigin;
+        }
+      }
 
       const customHeaders = {
         'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',

@@ -307,7 +307,6 @@ function isValidStream(s) {
     id.startsWith('kvip_') ||
     id.startsWith('smashy_') ||
     id.startsWith('vidlink_') ||
-    id.startsWith('anyembed_') ||
     id.startsWith('dzp_') ||
     id.startsWith('dzs_') ||
     id.startsWith('ybd_') ||
@@ -319,7 +318,6 @@ function isValidStream(s) {
     urlStr.includes('localhost:4000') ||
     urlStr.includes('hls_proxy') ||
     urlStr.includes('smashystream') ||
-    urlStr.includes('anyembed') ||
     urlStr.includes('vidlink.pro')
   ) {
     return true;
@@ -364,7 +362,7 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('kvip_') || raw.includes('kids vip')) {
     return 0;
   }
-  if (id.startsWith('smashy_') || raw.includes('smashy') || id.startsWith('vidlink_') || raw.includes('vidlink') || id.startsWith('anyembed_')) {
+  if (id.startsWith('smashy_') || raw.includes('smashy') || id.startsWith('vidlink_') || raw.includes('vidlink')) {
     return 1;
   }
   if (id.startsWith('dzs_') || raw.includes('dizisol')) {

@@ -911,11 +911,13 @@ export async function openPlayerModal({
       `;
     }
 
-    if (
+    const isDirectPlayable = Boolean(
       srv.isDirectVideo ||
       srv.isHls ||
-      (srv.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
-    ) {
+      (srv.streamUrl && !srv.streamUrl.startsWith('magnet:') && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv') || srv.streamUrl.includes(':4000/torrent/')))
+    );
+
+    if (isDirectPlayable) {
       const streamUrl = getStreamSafeUrl(srv);
 
       // Dual-Audio Toggle Bar (shown when hybrid dubbed audio is available and separate from main video)
@@ -1205,18 +1207,12 @@ export async function openPlayerModal({
     }
 
     const finalIframeUrl = getStreamSafeUrl(srv);
-    const isVidmoly = finalIframeUrl.includes('vidmoly');
     const isVidlink = finalIframeUrl.includes('vidlink.pro');
-    // All third-party video hosts block playback if the parent Vercel referer is leaked.
-    // referrerpolicy="no-referrer" prevents hotlink detection.
     const iframeReferrerPolicy = isVidlink ? 'origin' : 'no-referrer';
-    // Sandboxing breaks third party embeds! ONLY use sandbox for VidMoly to suppress annoying popups.
-    const sandboxAttr = isVidmoly ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-pointer-lock"' : '';
     return `
       <iframe 
         id="video-iframe" 
         src="${finalIframeUrl}" 
-        ${sandboxAttr}
         allowfullscreen
         webkitallowfullscreen
         mozallowfullscreen
@@ -3229,6 +3225,14 @@ export async function openPlayerModal({
     }
 
     let srv = activeServers[currentServerIndex];
+    if (srv && !srv.isDirectVideo && (srv.streamUrl?.includes('ag2m4') || srv.url?.includes('ag2m4'))) {
+      try {
+        const resolved = await resolveDirectStream(srv);
+        if (resolved && resolved.isDirectVideo) {
+          Object.assign(srv, resolved);
+        }
+      } catch (_) {}
+    }
 
     wrapper.innerHTML = renderPlayerContent();
     renderPlayerIcons(wrapper);
@@ -3279,11 +3283,13 @@ export async function openPlayerModal({
       });
     }
 
-    if (
+    const isDirectPlayable = Boolean(
       srv?.isDirectVideo ||
       srv?.isHls ||
-      (srv?.streamUrl && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.txt') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv')))
-    ) {
+      (srv?.streamUrl && !srv.streamUrl.startsWith('magnet:') && (srv.streamUrl.includes('.m3u8') || srv.streamUrl.includes('.txt') || srv.streamUrl.includes('.mp4') || srv.streamUrl.includes('.mkv') || srv.streamUrl.includes(':4000/torrent/')))
+    );
+
+    if (isDirectPlayable) {
       if (activeHlsInstance) {
         try { activeHlsInstance.destroy(); } catch (_) {}
         activeHlsInstance = null;
@@ -3384,7 +3390,7 @@ export async function openPlayerModal({
         } else if (isHlsStream && videoEl.canPlayType('application/vnd.apple.mpegurl')) {
           // iOS Safari Native HLS Engine
           videoEl.src = streamUrl;
-          playbackScope.on(videoEl, 'loadedmetadata', () => {
+          const startIosPlayback = () => {
             if (initialTime > 0) {
               const dur = videoEl.duration;
               if (dur && isFinite(dur) && dur > 10 && initialTime >= dur - 15) {
@@ -3393,15 +3399,24 @@ export async function openPlayerModal({
                 videoEl.currentTime = initialTime;
               }
             }
-            videoEl.play().catch(() => {});
-          });
+            const pp = videoEl.play();
+            if (pp !== undefined) {
+              pp.catch(() => {
+                videoEl.muted = true;
+                videoEl.play().catch(() => {});
+              });
+            }
+          };
+          playbackScope.on(videoEl, 'loadedmetadata', startIosPlayback, { once: true });
+          playbackScope.on(videoEl, 'canplay', startIosPlayback, { once: true });
+          startIosPlayback();
           playbackScope.on(videoEl, 'error', () => {
             triggerAutoFailover('iOS Oynatıcı Hatası');
           });
         } else {
           videoEl.src = streamUrl;
 
-          playbackScope.on(videoEl, 'loadedmetadata', () => {
+          const startDirectPlayback = () => {
             if (initialTime > 0) {
               const dur = videoEl.duration;
               if (dur && isFinite(dur) && dur > 10 && initialTime >= dur - 15) {
@@ -3410,12 +3425,34 @@ export async function openPlayerModal({
                 videoEl.currentTime = initialTime;
               }
             }
-            videoEl.play().catch(() => {});
-          });
+            const playPromise = videoEl.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(() => {
+                // If browser autoplay policy blocks audio, start muted so video plays immediately
+                videoEl.muted = true;
+                videoEl.play().catch(() => {});
+              });
+            }
+          };
+
+          playbackScope.on(videoEl, 'loadedmetadata', startDirectPlayback, { once: true });
+          playbackScope.on(videoEl, 'canplay', startDirectPlayback, { once: true });
+          startDirectPlayback();
+
           playbackScope.on(videoEl, 'error', () => {
             triggerAutoFailover('Video Oynatma Hatası');
           });
         }
+
+        // Unmute on first user interaction if muted by browser autoplay policy
+        const unmuteOnUserInteraction = () => {
+          if (videoEl && videoEl.muted) {
+            videoEl.muted = false;
+          }
+        };
+        playbackScope.on(videoEl, 'click', unmuteOnUserInteraction, { once: true });
+        const controlsBar = document.getElementById('custom-player-controls');
+        if (controlsBar) playbackScope.on(controlsBar, 'click', unmuteOnUserInteraction, { once: true });
 
         // ============ Dual-Audio Synchronization Engine ============
         const dubbedAudioEl = document.getElementById('dubbed-audio-source');

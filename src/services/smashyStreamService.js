@@ -24,10 +24,6 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
     ? `https://vidlink.pro/movie/${tmdbId}`
     : `https://vidlink.pro/tv/${tmdbId}/${sNum}/${epNum}`;
 
-  const anyembedUrl = isMovie
-    ? `https://anyembed.xyz/embed/tmdb-movie-${tmdbId}`
-    : `https://anyembed.xyz/embed/tmdb-tv-${tmdbId}/${sNum}/${epNum}`;
-
   return [
     {
       id: `smashy_player_${tmdbId}_s${sNum}e${epNum}`,
@@ -73,21 +69,6 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
       category: 'subtitled',
       type: 'embed',
       getUrl: () => vidlinkUrl
-    },
-    {
-      id: `anyembed_${tmdbId}_s${sNum}e${epNum}`,
-      name: isMovie ? 'AnyEmbed 1080p (TR Altyazı)' : `AnyEmbed S${sNum}B${epNum} (TR Altyazı)`,
-      displayName: 'AnyEmbed VIP',
-      badge: '🎬 AnyEmbed',
-      source: 'AnyEmbed',
-      url: anyembedUrl,
-      streamUrl: anyembedUrl,
-      quality: '1080p HD',
-      isHls: false,
-      isDirectVideo: false,
-      category: 'subtitled',
-      type: 'embed',
-      getUrl: () => anyembedUrl
     }
   ];
 }
