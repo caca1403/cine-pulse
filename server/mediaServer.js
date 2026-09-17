@@ -106,9 +106,14 @@ async function getWTClient() {
 
     WebTorrent = WebTorrentClass;
     wtClient = new WebTorrent({
-      maxConns: 100,
-      dht: true,
-      utp: true
+      maxConns: 200,        // More peer connections = faster metadata
+      dht: true,            // Distributed Hash Table for peer discovery
+      utp: true,            // uTP for NAT traversal
+      lsd: true,            // Local Service Discovery
+      tracker: {
+        announce: [],       // Will be set per-torrent
+        rtcConfig: {}       // WebRTC config (empty = use defaults)
+      }
     });
 
     wtClient.on('error', (err) => {
@@ -128,7 +133,12 @@ getWTClient().catch(() => {});
 
 // Active torrent cache: infoHash -> { torrent, lastAccess }
 const torrentCache = new Map();
+const pendingTorrents = new Map();
 const TORRENT_TIMEOUT_MS = 30 * 60 * 1000;
+
+process.on('unhandledRejection', (reason) => {
+  console.warn('[MediaServer] Handled unhandled rejection:', reason?.message || reason);
+});
 
 setInterval(() => {
   const now = Date.now();
@@ -171,7 +181,7 @@ async function getTorrentVideoFile(infoHashOrMagnet) {
 
   if (!infoHash) throw new Error('Invalid infoHash');
 
-  // Check cache
+  // Check ready cache
   if (torrentCache.has(infoHash)) {
     const entry = torrentCache.get(infoHash);
     entry.lastAccess = Date.now();
@@ -179,51 +189,93 @@ async function getTorrentVideoFile(infoHashOrMagnet) {
     if (videoFile) return { torrent: entry.torrent, file: videoFile };
   }
 
-  // Check if client already has this torrent
-  const existing = client.get(infoHash);
-  if (existing && existing.files && existing.files.length > 0) {
-    torrentCache.set(infoHash, { torrent: existing, lastAccess: Date.now() });
-    const videoFile = getLargestVideoFile(existing);
-    if (videoFile) return { torrent: existing, file: videoFile };
+  // Deduplicate concurrent requests for the same torrent
+  if (pendingTorrents.has(infoHash)) {
+    return pendingTorrents.get(infoHash);
   }
 
-  // Comprehensive tracker list - both UDP and WebSocket for maximum connectivity
+  // Check if client already has this torrent
+  const existing = client.get(infoHash);
+  if (existing) {
+    if (existing.files && existing.files.length > 0) {
+      torrentCache.set(infoHash, { torrent: existing, lastAccess: Date.now() });
+      const videoFile = getLargestVideoFile(existing);
+      if (videoFile) return { torrent: existing, file: videoFile };
+    }
+    // Existing torrent whose metadata hasn't loaded yet - wait for it
+    const existingPromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        try {
+          if (existing && (!existing.files || existing.files.length === 0)) existing.destroy();
+        } catch (_) {}
+        reject(new Error('Torrent metadata timeout (13s) - no peers found'));
+      }, 13000);
+      existing.once('metadata', () => {
+        clearTimeout(timeout);
+        torrentCache.set(infoHash, { torrent: existing, lastAccess: Date.now() });
+        const videoFile = getLargestVideoFile(existing);
+        if (videoFile) resolve({ torrent: existing, file: videoFile });
+        else reject(new Error('No video file found in torrent'));
+      });
+      existing.once('error', (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
+    pendingTorrents.set(infoHash, existingPromise);
+    existingPromise.catch(() => {}).finally(() => pendingTorrents.delete(infoHash));
+    return existingPromise;
+  }
+
+  // Best public trackers for fast metadata resolution (UDP + HTTP + WSS)
   const trackers = [
-    // WebSocket trackers (work through firewalls/NAT)
-    'wss://tracker.openwebtorrent.com',
-    'wss://tracker.btorrent.xyz',
-    'wss://tracker.files.fm:7073/announce',
-    // UDP trackers (traditional, fast)
     'udp://tracker.opentrackr.org:1337/announce',
     'udp://open.stealth.si:80/announce',
-    'udp://tracker.torrent.eu.org:451/announce',
     'udp://tracker.openbittorrent.com:6969/announce',
-    'udp://exodus.desync.com:6969/announce',
-    'udp://tracker.tiny-vps.com:6969/announce',
     'udp://open.demonii.com:1337/announce',
+    'udp://exodus.desync.com:6969/announce',
+    'udp://tracker.torrent.eu.org:451/announce',
     'udp://tracker.moeking.me:6969/announce',
     'udp://explodie.org:6969/announce',
+    'udp://tracker1.bt.moack.co.kr:80/announce',
     'udp://tracker.theoks.net:6969/announce',
-    // HTTP trackers (most compatible)
+    'udp://tracker.tiny-vps.com:6969/announce',
+    'udp://tracker.auctor.tv:6969/announce',
+    'udp://tracker.bittor.pw:1337/announce',
+    'udp://retracker01-msk-virt.corbina.net:80/announce',
+    'udp://tracker.dler.org:6969/announce',
+    'udp://tracker.leechershaven.org:6969/announce',
+    'udp://tracker2.dler.org:80/announce',
     'http://tracker.opentrackr.org:1337/announce',
-    'http://tracker.openbittorrent.com:80/announce'
+    'http://tracker.openbittorrent.com:80/announce',
+    'http://open.acgnxtracker.com:80/announce',
+    'http://bt.endpot.com:80/announce',
+    'wss://tracker.openwebtorrent.com',
+    'wss://tracker.btorrent.xyz',
+    'wss://tracker.files.fm:7073/announce'
   ];
 
   const trQuery = trackers.map(t => '&tr=' + encodeURIComponent(t)).join('');
   const magnet = `magnet:?xt=urn:btih:${infoHash}${trQuery}`;
 
-  return new Promise((resolve, reject) => {
-    // 60 second timeout for metadata
+  const loadPromise = new Promise((resolve, reject) => {
+    // 13 second timeout for metadata (user can't wait longer)
     const timeout = setTimeout(() => {
-      reject(new Error('Torrent metadata timeout (60s) - try again, peers may need time'));
-    }, 60000);
+      try {
+        const tor = client.get(infoHash);
+        if (tor && (!tor.files || tor.files.length === 0)) tor.destroy();
+      } catch (_) {}
+      reject(new Error('Torrent metadata timeout (13s) - no peers found'));
+    }, 13000);
 
     console.log(`[MediaServer] Adding torrent: ${infoHash.substring(0, 10)}... with ${trackers.length} trackers`);
 
     try {
       client.add(magnet, { 
         path: path.join(MEDIA_DIR, 'torrent_cache'),
-        announce: trackers
+        announce: trackers,
+        maxWebConns: 50,
+        skipVerification: true
       }, (torrent) => {
         clearTimeout(timeout);
         console.log(`[MediaServer] Torrent ready: ${torrent.name} (${torrent.files.length} files)`);
@@ -248,6 +300,10 @@ async function getTorrentVideoFile(infoHashOrMagnet) {
       reject(new Error('Failed to add torrent: ' + addErr.message));
     }
   });
+
+  pendingTorrents.set(infoHash, loadPromise);
+  loadPromise.catch(() => {}).finally(() => pendingTorrents.delete(infoHash));
+  return loadPromise;
 }
 
 // ============ HTTP Server ============
@@ -584,7 +640,7 @@ const server = http.createServer(async (req, res) => {
 
   // ============ Torrent Streaming Endpoint ============
   if (reqUrl.pathname.startsWith('/torrent/')) {
-    const infoHash = decodeURIComponent(reqUrl.pathname.replace('/torrent/', '')).trim();
+    const infoHash = decodeURIComponent(reqUrl.pathname.replace('/torrent/', '')).trim().toLowerCase();
     if (!infoHash || infoHash.length < 10) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       res.end('Invalid infoHash');
@@ -648,7 +704,7 @@ const server = http.createServer(async (req, res) => {
 
   // ============ Torrent Status Check (Non-Blocking) ============
   if (reqUrl.pathname.startsWith('/torrent-check/')) {
-    const infoHash = decodeURIComponent(reqUrl.pathname.replace('/torrent-check/', '')).trim();
+    const infoHash = decodeURIComponent(reqUrl.pathname.replace('/torrent-check/', '')).trim().toLowerCase();
     if (!infoHash || infoHash.length < 10) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ready: false, error: 'Invalid infoHash' }));

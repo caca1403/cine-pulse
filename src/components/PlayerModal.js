@@ -3375,7 +3375,7 @@ export async function openPlayerModal({
           // 2. Poll every 2s until ready, then attach video src
           let p2pPollTimer = null;
           let p2pAttempts = 0;
-          const P2P_MAX_ATTEMPTS = 45; // 45 * 2s = 90s max wait
+          const P2P_MAX_ATTEMPTS = 15; // 15 * 1s = 15s max wait
           let p2pVideoAttached = false;
 
           const attachVideoStream = () => {
@@ -3418,11 +3418,11 @@ export async function openPlayerModal({
             p2pAttempts++;
             if (p2pAttempts > P2P_MAX_ATTEMPTS) {
               clearInterval(p2pPollTimer);
-              if (statusTextEl) statusTextEl.textContent = '⚠️ Peer bulunamadı. Magnet ile deneyin.';
+              if (statusTextEl) statusTextEl.textContent = '⚠️ 15s içinde peer bulunamadı.';
               return;
             }
             try {
-              const checkRes = await fetch(`http://localhost:4000/torrent-check/${infoHash}`, { signal: AbortSignal.timeout(3000) });
+              const checkRes = await fetch(`http://localhost:4000/torrent-check/${infoHash}`, { signal: AbortSignal.timeout(1000) });
               const info = await checkRes.json();
               if (info.ready) {
                 const peerStr = info.peers > 0 ? `${info.peers} peer` : '';
@@ -3432,12 +3432,12 @@ export async function openPlayerModal({
                 if (peersEl) peersEl.textContent = peerStr;
                 attachVideoStream();
               } else {
-                const elapsed = (p2pAttempts * 2);
+                const elapsed = p2pAttempts;
                 const peerStr = info.peers > 0 ? ` | ${info.peers} peer` : '';
-                if (statusTextEl) statusTextEl.textContent = `⏳ Torrent yükleniyor... (${elapsed}s${peerStr})`;
+                if (statusTextEl) statusTextEl.textContent = `⏳ Peer aranıyor... (${elapsed}s${peerStr})`;
               }
             } catch (_) {
-              if (statusTextEl && !p2pVideoAttached) statusTextEl.textContent = `⏳ Peer aranıyor... (${p2pAttempts * 2}s)`;
+              if (statusTextEl && !p2pVideoAttached) statusTextEl.textContent = `⏳ Peer aranıyor... (${p2pAttempts}s)`;
             }
           };
 
@@ -3448,7 +3448,7 @@ export async function openPlayerModal({
 
           // First check immediately (torrent might already be cached)
           pollTorrentReady();
-          p2pPollTimer = setInterval(pollTorrentReady, 2000);
+          p2pPollTimer = setInterval(pollTorrentReady, 1000);
 
         } else {
           // No infoHash available - nothing to play
