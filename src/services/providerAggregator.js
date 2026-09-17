@@ -34,9 +34,10 @@ import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchGlobalAutonomousSources } from './globalStreamEngine.js';
 import { fetchRecTvSources } from './rectvService.js';
 import { fetchKidsVipSources, fetchKidsVipMovieSources } from './kidsVipScraper.js';
+import { fetchSmashyStreamSources } from './smashyStreamService.js';
 
 // Bump this version to invalidate all cached stream results after significant scraper/proxy fixes
-const CACHE_VERSION = 'v15';
+const CACHE_VERSION = 'v16';
 import { resolveDirectStream } from './streamExtractors.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -295,7 +296,7 @@ function isValidStream(s) {
   if (urlStr.includes('pichive') || urlStr.includes('hotlinger') || (urlStr.includes('diziyo.so') && !urlStr.includes('.m3u8'))) return false;
 
   const id = (s.id || '').toLowerCase();
-  // Always allow torrents, P2P, CinePulse autonomous sources, Dizipal direct streams, TVR and HLS proxy streams
+  // Always allow torrents, P2P, CinePulse autonomous sources, Dizipal direct streams, TVR, SmashyStream, Videasy, VidSrc, Kids VIP and HLS proxy streams
   if (
     s.isTorrent ||
     id.startsWith('cp_global_') ||
@@ -304,6 +305,9 @@ function isValidStream(s) {
     id.startsWith('tvr_') ||
     id.startsWith('rectv_') ||
     id.startsWith('kvip_') ||
+    id.startsWith('smashy_') ||
+    id.startsWith('videasy_') ||
+    id.startsWith('vidsrc_') ||
     id.startsWith('dzp_') ||
     id.startsWith('dzs_') ||
     id.startsWith('ybd_') ||
@@ -313,26 +317,16 @@ function isValidStream(s) {
     id.startsWith('fex_') ||
     urlStr.startsWith('magnet:') ||
     urlStr.includes('localhost:4000') ||
-    urlStr.includes('hls_proxy')
+    urlStr.includes('hls_proxy') ||
+    urlStr.includes('smashystream') ||
+    urlStr.includes('videasy.net') ||
+    urlStr.includes('vidsrc.')
   ) {
     return true;
   }
 
   // Block dead, refusing, sandbox-blocked or malicious redirect/ad domains
   const blockedDomains = [
-    'videasy.net',
-    'player.videasy.net',
-    'vidsrc.in',
-    'vidsrc.to',
-    'vidsrc.xyz',
-    'vidsrc.cc',
-    'vidsrc.icu',
-    'vidsrc.me',
-    'autoembed.co',
-    'autoembed.cc',
-    'smashystream.xyz',
-    'smashystream.com',
-    'player.smashystream.com',
     'recaptcha',
     'media.cm',
     'cloudvideo.tv',
@@ -370,7 +364,7 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('kvip_') || raw.includes('kids vip')) {
     return 0;
   }
-  if (id.startsWith('smashy_') || raw.includes('smashy')) {
+  if (id.startsWith('smashy_') || raw.includes('smashy') || id.startsWith('videasy_') || raw.includes('videasy') || id.startsWith('vidsrc_') || raw.includes('vidsrc')) {
     return 1;
   }
   if (id.startsWith('dzs_') || raw.includes('dizisol')) {
@@ -425,7 +419,6 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('ta_') || raw.includes('tr anime') || raw.includes('turkanime')) return 10;
 
   // Fallback Global Embeds (Working only)
-  if (url.includes('smashy') || raw.includes('smashy')) return 20;
   if (url.includes('multiembed') || raw.includes('multiembed')) return 21;
   if (url.includes('vidlink') || raw.includes('vidlink')) return 22;
   if (url.includes('vidbinge') || raw.includes('vidbinge')) return 23;
@@ -596,6 +589,10 @@ export async function getStreamingServersProgressive({
           addStreams(res, 'subtitled');
         }
       }).catch(() => []),
+
+    // SmashyStream VIP Multi-Subbed Source (smashystream.xyz / player.smashystream.com / videasy / vidsrc)
+    Promise.resolve(fetchSmashyStreamSources({ type, tmdbId, season, episode }))
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // Kids VIP Cartoon & Animation Stream Engine (Direct 1080p TR Dublaj & Altyazı)
     fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })

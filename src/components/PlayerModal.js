@@ -935,6 +935,11 @@ export async function openPlayerModal({
             <span id="torrent-p2p-peers" style="color:#34d399;margin-left:6px;font-weight:700;"></span>
           </div>
           <div class="torrent-player-quick-tools">
+            ${srv.embedUrl ? `
+              <button class="btn-torrent-overlay-tool" id="btn-switch-embed-direct" title="Beklemeden Hemen Oynat" style="background:#e11d48;color:#fff;border-color:#e11d48;font-weight:700;">
+                <span>⚡ Hemen Oynat</span>
+              </button>
+            ` : ''}
             <button class="btn-torrent-overlay-tool" id="btn-p2p-reconnect" title="Yeniden Bağlan">
               <span>🔄 Yenile</span>
             </button>
@@ -3321,21 +3326,21 @@ export async function openPlayerModal({
     const btnReconnectTorrent = document.getElementById('btn-p2p-reconnect');
     if (btnReconnectTorrent) {
       btnReconnectTorrent.addEventListener('click', () => {
-        showToast('⚡ P2P Swarm ağı yeniden başlatılıyor...', 'info');
         updatePlayerContainer();
       });
     }
 
-    const btnCopyMagnet = document.getElementById('btn-copy-magnet');
-    if (btnCopyMagnet) {
-      btnCopyMagnet.addEventListener('click', () => {
-        const mag = btnCopyMagnet.getAttribute('data-magnet');
-        if (mag && navigator.clipboard) {
-          navigator.clipboard.writeText(mag).then(() => {
-            showToast('🧲 Magnet bağlantısı panoya kopyalandı!', 'success');
-          }).catch(() => {
-            showToast('Magnet kopyalanamadı', 'error');
-          });
+    const btnSwitchEmbed = document.getElementById('btn-switch-embed-direct');
+    if (btnSwitchEmbed) {
+      btnSwitchEmbed.addEventListener('click', () => {
+        if (srv?.embedUrl) {
+          showToast('⚡ Hızlı web yayını açılıyor...', 'success');
+          srv.type = 'embed';
+          srv.streamUrl = srv.embedUrl;
+          srv.url = srv.embedUrl;
+          srv.isDirectVideo = false;
+          srv.isTorrent = false;
+          updatePlayerContainer();
         }
       });
     }
@@ -3372,10 +3377,10 @@ export async function openPlayerModal({
 
           // --- Smart P2P Loader ---
           // 1. Kickstart torrent loading via /torrent-check/ (non-blocking prefetch)
-          // 2. Poll every 2s until ready, then attach video src
+          // 2. Poll every 1s until ready, then attach video src
           let p2pPollTimer = null;
           let p2pAttempts = 0;
-          const P2P_MAX_ATTEMPTS = 15; // 15 * 1s = 15s max wait
+          const P2P_MAX_ATTEMPTS = 12; // 12s max wait before auto-failover
           let p2pVideoAttached = false;
 
           const attachVideoStream = () => {
@@ -3418,7 +3423,18 @@ export async function openPlayerModal({
             p2pAttempts++;
             if (p2pAttempts > P2P_MAX_ATTEMPTS) {
               clearInterval(p2pPollTimer);
-              if (statusTextEl) statusTextEl.textContent = '⚠️ 15s içinde peer bulunamadı.';
+              if (srv?.embedUrl) {
+                if (statusTextEl) statusTextEl.textContent = '⚡ Hızlı web yayınına geçiliyor...';
+                showToast('⚡ P2P eş bulunamadı, hızlı web yayını açılıyor...', 'info');
+                srv.type = 'embed';
+                srv.streamUrl = srv.embedUrl;
+                srv.url = srv.embedUrl;
+                srv.isDirectVideo = false;
+                srv.isTorrent = false;
+                updatePlayerContainer();
+                return;
+              }
+              if (statusTextEl) statusTextEl.textContent = '⚠️ 12s içinde peer bulunamadı.';
               return;
             }
             try {

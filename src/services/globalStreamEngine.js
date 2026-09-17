@@ -152,6 +152,9 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
       if (sizeMatch && parseFloat(sizeMatch[1]) > 14) continue;
 
       const magnetUrl = `magnet:?xt=urn:btih:${stream.infoHash}&dn=${encodeURIComponent(fullTitle)}&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce&tr=wss://tracker.openwebtorrent.com&tr=wss://tracker.btorrent.xyz&tr=wss://tracker.webtorrent.dev&tr=wss://tracker.files.fm:7073/announce&tr=wss://spacetrackr.link:443/announce`;
+      const ytsWebEmbedUrl = tmdbId 
+        ? (isMovie ? `https://player.videasy.net/movie/${tmdbId}` : `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`)
+        : null;
 
       // ALWAYS prefer MediaServer URL over magnet (browser WebTorrent is unreliable)
       const finalStreamUrl = serverAvailable
@@ -182,7 +185,7 @@ async function fetchTorrentSources({ type, tmdbId, season, episode, isDub = fals
         url: finalStreamUrl,
         streamUrl: finalStreamUrl,
         magnetUrl: magnetUrl,
-        embedUrl: null,
+        embedUrl: ytsWebEmbedUrl,
         infoHash: stream.infoHash,
         isTorrent: true,
         quality: qualityLabel,

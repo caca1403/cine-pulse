@@ -174,6 +174,22 @@ async function searchUpstreamCatalog(candidateQueries) {
         });
       }
 
+      // 2. HTML Fallback: /ara/?q=...
+      if (matched.length === 0) {
+        const htmlRes = await fetchWithProxy(`${KV_BASE}/ara/?q=${encodeURIComponent(q.trim())}`, { timeout: 6000 });
+        if (htmlRes && htmlRes.ok) {
+          const html = await htmlRes.text();
+          const linkMatches = [...html.matchAll(/<a\s+[^>]*href=["'](\/(?:diziler|filmler|film)\/[^"']+)["'][^>]*data-alt-title=["']([^"']*)["']/gi)];
+          for (const m of linkMatches) {
+            const url = m[1];
+            const name = m[2] || '';
+            if (seenIds.has(url)) continue;
+            seenIds.add(url);
+            matched.push({ name, url, cleanTitle: name });
+          }
+        }
+      }
+
       if (matched.length >= 4) break;
     } catch (_) {}
   }

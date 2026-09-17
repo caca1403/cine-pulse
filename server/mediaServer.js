@@ -106,13 +106,22 @@ async function getWTClient() {
 
     WebTorrent = WebTorrentClass;
     wtClient = new WebTorrent({
-      maxConns: 200,        // More peer connections = faster metadata
-      dht: true,            // Distributed Hash Table for peer discovery
-      utp: true,            // uTP for NAT traversal
-      lsd: true,            // Local Service Discovery
+      maxConns: 250,        // More peer connections = faster metadata
+      dht: {
+        bootstrap: [
+          'router.bittorrent.com:6881',
+          'dht.transmissionbt.com:6881',
+          'router.utorrent.com:6881'
+        ]
+      },
+      utp: true,
+      lsd: true,
       tracker: {
-        announce: [],       // Will be set per-torrent
-        rtcConfig: {}       // WebRTC config (empty = use defaults)
+        announce: [
+          'wss://tracker.openwebtorrent.com',
+          'wss://tracker.btorrent.xyz',
+          'http://tracker.opentrackr.org:1337/announce'
+        ]
       }
     });
 
@@ -227,8 +236,22 @@ async function getTorrentVideoFile(infoHashOrMagnet) {
     return existingPromise;
   }
 
-  // Best public trackers for fast metadata resolution (UDP + HTTP + WSS)
+  // Best public trackers for fast metadata resolution (WSS & HTTP first for speed)
   const trackers = [
+    // === WSS TRACKERS (WebSocket - fast, reliable, bypasses ISP UDP filtering) ===
+    'wss://tracker.openwebtorrent.com',
+    'wss://tracker.btorrent.xyz',
+    'wss://tracker.files.fm:7073/announce',
+    'wss://spacetrackr.link:443/announce',
+    'wss://tracker.fastcast.nz:443/announce',
+    // === HTTP / HTTPS TRACKERS ===
+    'http://tracker.opentrackr.org:1337/announce',
+    'http://tracker.openbittorrent.com:80/announce',
+    'http://open.acgnxtracker.com:80/announce',
+    'http://bt.endpot.com:80/announce',
+    'https://tracker.tamersunion.org:443/announce',
+    'https://tracker.nanoha.org:443/announce',
+    // === UDP TRACKERS (High capacity swarm) ===
     'udp://tracker.opentrackr.org:1337/announce',
     'udp://open.stealth.si:80/announce',
     'udp://tracker.openbittorrent.com:6969/announce',
@@ -245,14 +268,7 @@ async function getTorrentVideoFile(infoHashOrMagnet) {
     'udp://retracker01-msk-virt.corbina.net:80/announce',
     'udp://tracker.dler.org:6969/announce',
     'udp://tracker.leechershaven.org:6969/announce',
-    'udp://tracker2.dler.org:80/announce',
-    'http://tracker.opentrackr.org:1337/announce',
-    'http://tracker.openbittorrent.com:80/announce',
-    'http://open.acgnxtracker.com:80/announce',
-    'http://bt.endpot.com:80/announce',
-    'wss://tracker.openwebtorrent.com',
-    'wss://tracker.btorrent.xyz',
-    'wss://tracker.files.fm:7073/announce'
+    'udp://tracker2.dler.org:80/announce'
   ];
 
   const trQuery = trackers.map(t => '&tr=' + encodeURIComponent(t)).join('');
@@ -731,9 +747,18 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // Not ready yet - kick off background loading and return status
+    // Not ready yet - check if client is currently fetching peers
+    const existing = wtClient ? wtClient.get(infoHash) : null;
+    const currentPeers = existing ? (existing.numPeers || 0) : 0;
+    const hasMetadata = Boolean(existing && existing.files && existing.files.length > 0);
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ready: false, starting: true, peers: 0, message: 'Torrent başlatılıyor...' }));
+    res.end(JSON.stringify({ 
+      ready: hasMetadata, 
+      starting: true, 
+      peers: currentPeers, 
+      message: currentPeers > 0 ? `${currentPeers} peer ile bağlanılıyor...` : 'Torrent başlatılıyor...' 
+    }));
 
     // Start loading in background (fire and forget - cache will be populated)
     getTorrentVideoFile(infoHash).catch(err => {
