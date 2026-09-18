@@ -633,6 +633,116 @@ export default async function handler(req, res) {
     customHeaders['User-Agent'] = req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
     if (req.headers['x-hdf-nonce']) customHeaders['X-HDF-Nonce'] = req.headers['x-hdf-nonce'];
     if (req.headers['x-requested-with']) customHeaders['X-Requested-With'] = req.headers['x-requested-with'];
+  } else if (pathname.startsWith('/api/hdfc_stream')) {
+    // HDFilmCehennemi Stream & Subtitle resolver for Vercel
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+    const query = urlObj.searchParams.get('query') || urlObj.searchParams.get('title') || '';
+    const originalTitle = urlObj.searchParams.get('originalTitle') || '';
+    const candidates = [query, originalTitle].filter(Boolean);
+
+    for (const c of candidates) {
+      try {
+        const searchUrl = `https://www.hdfilmcehennemi.nl/search?q=${encodeURIComponent(c)}`;
+        const searchRes = await fetch(searchUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://www.hdfilmcehennemi.nl/',
+            'X-Requested-With': 'fetch',
+            'Content-Type': 'application/json'
+          },
+          signal: AbortSignal.timeout(6000)
+        }).catch(() => null);
+
+        if (!searchRes || !searchRes.ok) continue;
+        const searchData = await searchRes.json().catch(() => null);
+        if (!searchData || !Array.isArray(searchData.results) || searchData.results.length === 0) continue;
+
+        for (const resHtml of searchData.results.slice(0, 2)) {
+          const mLink = resHtml.match(/href=["'](https:\/\/www\.hdfilmcehennemi\.nl\/[^"']+)["']/);
+          if (!mLink) continue;
+          const movieUrl = mLink[1];
+
+          const mRes = await fetch(movieUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Referer': 'https://www.hdfilmcehennemi.nl/'
+            },
+            signal: AbortSignal.timeout(6000)
+          }).catch(() => null);
+
+          if (!mRes || !mRes.ok) continue;
+          const mHtml = await mRes.text().catch(() => '');
+
+          const mIframe = mHtml.match(/<iframe[^>]+(?:data-src|src)=["']([^"']*(?:embed|video|player)[^"']*)["']/i) || mHtml.match(/<iframe[^>]+(?:data-src|src)=["']([^"']+)["']/i);
+          if (!mIframe) continue;
+          let embedUrl = mIframe[1];
+          if (embedUrl.startsWith('//')) embedUrl = 'https:' + embedUrl;
+
+          const eRes = await fetch(embedUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Referer': movieUrl
+            },
+            signal: AbortSignal.timeout(6000)
+          }).catch(() => null);
+
+          if (!eRes || !eRes.ok) continue;
+          const eHtml = await eRes.text().catch(() => '');
+
+          const mSrc = eHtml.match(/sources:\s*\[\{file:\s*([a-zA-Z0-9_]+)/);
+          if (!mSrc) continue;
+          const vname = mSrc[1];
+
+          const regCall = new RegExp('var\\s+' + vname + '\\s*=\\s*([a-zA-Z0-9_]+)\\(\\s*\\[([^\\]]+)\\]\\s*\\);');
+          const mCall = eHtml.match(regCall);
+          if (!mCall) continue;
+          const fname = mCall[1];
+          const arrStr = mCall[2];
+
+          const regFunc = new RegExp('function\\s+' + fname + '\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}');
+          const mFunc = eHtml.match(regFunc);
+          if (!mFunc) continue;
+
+          const funcCode = mFunc[0];
+          const runCode = '(function(){ ' + funcCode + '; return ' + fname + '([' + arrStr + ']); })()';
+          let streamUrl = null;
+          try {
+            streamUrl = eval(runCode);
+          } catch (_) {}
+
+          if (!streamUrl || typeof streamUrl !== 'string' || !streamUrl.startsWith('http')) continue;
+
+          const subs = [];
+          const mTracks = eHtml.match(/tracks:\s*(\[[^\]]+\])/);
+          if (mTracks) {
+            try {
+              const parsedTracks = JSON.parse(mTracks[1]);
+              for (const tr of parsedTracks) {
+                if (tr.file) {
+                  subs.push({
+                    label: (tr.label || 'Altyazı') + ' (HDFC)',
+                    src: tr.file
+                  });
+                }
+              }
+            } catch (_) {}
+          }
+
+          const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(streamUrl)}&ref=${encodeURIComponent('https://hdfilmcehennemi.mobi/')}`;
+          return res.status(200).json({
+            success: true,
+            streamUrl: proxiedUrl,
+            rawStreamUrl: streamUrl,
+            movieUrl,
+            subtitles: subs
+          });
+        }
+      } catch (_) {}
+    }
+
+    return res.status(200).json({ success: false, message: 'No stream found' });
   } else if (pathname.startsWith('/api/subtitles')) {
     // WebVTT Subtitle Proxy & OpenSubtitles resolver for Vercel
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
@@ -652,15 +762,21 @@ export default async function handler(req, res) {
         let imdbId = null;
         const isTmdbId = !String(tmdbIdParam).startsWith('tt');
         if (isTmdbId) {
-          const TMDB_KEY = '4e44d9029b1270a757cddc766a1bcb63';
-          const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
-          const tmdbRes = await fetch(
-            `https://api.themoviedb.org/3/${endpoint}/${tmdbIdParam}/external_ids?api_key=${TMDB_KEY}`,
-            { signal: AbortSignal.timeout(4000) }
-          );
-          if (tmdbRes.ok) {
-            const tmdbData = await tmdbRes.json();
-            imdbId = tmdbData.imdb_id;
+          const TMDB_KEYS = ['4e44d9029b1270a757cddc766a1bcb63', '844dba0bfd8f3a4f3799f6130ef9e335'];
+          for (const key of TMDB_KEYS) {
+            try {
+              const tmdbRes = await fetch(
+                `https://api.themoviedb.org/3/${mediaType}/${tmdbIdParam}/external_ids?api_key=${key}`,
+                { signal: AbortSignal.timeout(3500) }
+              );
+              if (tmdbRes.ok) {
+                const tmdbData = await tmdbRes.json();
+                if (tmdbData.imdb_id) {
+                  imdbId = tmdbData.imdb_id;
+                  break;
+                }
+              }
+            } catch (_) {}
           }
         } else {
           imdbId = tmdbIdParam;
@@ -669,17 +785,17 @@ export default async function handler(req, res) {
         if (imdbId) {
           // Step 2: Search OpenSubtitles with real IMDB ID
           const cleanImdb = String(imdbId).replace(/^tt/, '');
-          let osUrl = `https://rest.opensubtitles.org/search/imdbid-${cleanImdb}/sublanguageid-tur`;
-          if (season && episode) {
-            osUrl += `/season-${season}/episode-${episode}`;
-          }
+          const osUrl = (season && episode)
+            ? `https://rest.opensubtitles.org/search/episode-${episode}/imdbid-${cleanImdb}/season-${season}/sublanguageid-tur`
+            : `https://rest.opensubtitles.org/search/imdbid-${cleanImdb}/sublanguageid-tur`;
+
           const osRes = await fetch(osUrl, {
             headers: { 'User-Agent': 'TemporaryUserAgent', 'Accept': 'application/json' },
             signal: AbortSignal.timeout(5000)
           });
           if (osRes.ok) {
             const items = await osRes.json();
-            if (Array.isArray(items) && items.length > 0) {
+            if (Array.isArray(items) && items.length > 0 && items[0].SubDownloadLink) {
               downloadUrl = items[0].SubDownloadLink;
             }
           }
@@ -696,8 +812,8 @@ export default async function handler(req, res) {
     try {
       const zlib = await import('zlib');
       const subRes = await fetch(downloadUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        signal: AbortSignal.timeout(5000)
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        signal: AbortSignal.timeout(6000)
       });
       const arrayBuf = await subRes.arrayBuffer();
       let rawBuffer = Buffer.from(arrayBuf);
@@ -706,9 +822,28 @@ export default async function handler(req, res) {
           rawBuffer = zlib.gunzipSync(rawBuffer);
         } catch (_) {}
       }
-      let text = rawBuffer.toString('utf-8');
+
+      // Check encoding: Turkish OpenSubtitles are often in windows-1254 (Turkish ANSI)
+      let text = '';
+      const utf8Candidate = rawBuffer.toString('utf-8');
+      if (utf8Candidate.includes('\uFFFD')) {
+        try {
+          const win1254Decoder = new TextDecoder('windows-1254');
+          text = win1254Decoder.decode(rawBuffer);
+        } catch (_) {
+          text = utf8Candidate;
+        }
+      } else {
+        text = utf8Candidate;
+      }
+
+      text = text.replace(/^\uFEFF/, '');
+      text = text.replace(/.*(?:OpenSubtitles|osdb\.link|ai\.OpenSubtitles|VIP\s*üyelik).*\n?/gi, '');
+      text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
       if (!text.startsWith('WEBVTT')) {
-        text = 'WEBVTT\n\n' + text.replace(/(\d\d:\d\d:\d\d),(\d\d\d)/g, '$1.$2');
+        text = text.replace(/(\d\d:\d\d:\d\d),(\d\d\d)/g, '$1.$2');
+        text = 'WEBVTT\n\n' + text.trim();
       }
       return res.status(200).send(text);
     } catch (_) {

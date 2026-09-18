@@ -66,6 +66,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/live_tv_stream/, '/live_tv_stream')
       },
+      '/api/hdfc_stream': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/hdfc_stream/, '/hdfc_stream')
+      },
       '/api/szd': {
         target: 'https://sezonlukdizi.cc',
         changeOrigin: true,

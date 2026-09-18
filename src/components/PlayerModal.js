@@ -789,8 +789,8 @@ export async function openPlayerModal({
 
     // Always provide OpenSubtitles Turkish WebVTT support for dubbed and direct streams
     const subUrl = (type === 'movie')
-      ? `/api/subtitles?imdbId=${tmdbId}&type=movie`
-      : `/api/subtitles?imdbId=${tmdbId}&season=${currentSeason}&episode=${currentEpisode}&type=tv`;
+      ? `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&type=movie`
+      : `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&season=${currentSeason}&episode=${currentEpisode}&type=tv`;
 
     const hasOpenSub = list.some(s => (s.label || '').toLowerCase().includes('opensubtitles') || s.src?.includes('/api/subtitles'));
     if (!hasOpenSub) {

@@ -32,7 +32,7 @@ import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 
 // Cache version
-const CACHE_VERSION = 'v24';
+const CACHE_VERSION = 'v25';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -595,8 +595,8 @@ export async function getStreamingServersProgressive({
 
   // Ensure ALL dubbed and subtitled streams have OpenSubtitles fallback support
   const defaultSubUrl = isMovie
-    ? `/api/subtitles?imdbId=${tmdbId}&type=movie`
-    : `/api/subtitles?imdbId=${tmdbId}&season=${season}&episode=${episode}&type=tv`;
+    ? `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&type=movie`
+    : `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&season=${season}&episode=${episode}&type=tv`;
 
   for (const s of currentDubbed) {
     if (!Array.isArray(s.subtitles) || s.subtitles.length === 0) {
