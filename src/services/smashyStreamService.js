@@ -17,10 +17,10 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
     ? `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`
     : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&season=${sNum}&episode=${epNum}`;
 
-  // 2. SmashyStream VIP - Doğrudan anyembed.xyz (Hatasız TMDB rotası, route not found hatası vermez)
+  // 2. SmashyStream VIP - Doğrudan player.smashystream.com resmi rotası (?s=...&e=...)
   const smashyUrl = isMovie
-    ? `https://anyembed.xyz/embed/tmdb-movie-${tmdbId}`
-    : `https://anyembed.xyz/embed/tmdb-tv-${tmdbId}-${sNum}-${epNum}`;
+    ? `https://player.smashystream.com/movie/${tmdbId}`
+    : `https://player.smashystream.com/tv/${tmdbId}?s=${sNum}&e=${epNum}`;
 
   return [
     {

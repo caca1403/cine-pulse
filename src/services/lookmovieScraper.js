@@ -155,14 +155,28 @@ export async function fetchOfficialLookMovieSources({
     const accessData = await accessRes.json().catch(() => null);
     if (!accessData || !accessData.streams) return [];
 
-    // Select best available video stream
-    const streams = accessData.streams;
-    const rawStreamUrl = streams['1080p'] || streams['1080'] || streams['720p'] || streams['720'] || streams['480p'] || streams['480'] || streams['auto'] || Object.values(streams).find(v => typeof v === 'string' && v.includes('.m3u8'));
+    // Select best available video stream with robust string checking (ignore null/empty values)
+    const streams = accessData.streams || {};
+    const validStreams = Object.entries(streams)
+      .filter(([k, v]) => typeof v === 'string' && v.startsWith('http') && v.includes('.m3u8'))
+      .map(([k, v]) => ({ quality: k, url: v }));
+
+    const qualityOrder = ['1080p', '1080', '720p', '720', '480p', '480', 'auto'];
+    validStreams.sort((a, b) => {
+      const idxA = qualityOrder.indexOf(a.quality);
+      const idxB = qualityOrder.indexOf(b.quality);
+      return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+    });
+
+    const rawStreamUrl = validStreams.length > 0 ? validStreams[0].url : (
+      Object.values(streams).find(v => typeof v === 'string' && v.includes('.m3u8')) || null
+    );
 
     if (!rawStreamUrl) return [];
 
-    // Proxy the HLS stream for direct player playback
-    const finalStreamUrl = `/api/hls_proxy?url=${encodeURIComponent(rawStreamUrl)}&ref=${encodeURIComponent('https://lookmovie2.la/')}`;
+    // LookMovie CDN (srv*.meatort.site) sends native Access-Control-Allow-Origin: * headers.
+    // Directly playing rawStreamUrl provides 0ms proxy overhead and avoids 403 proxy blocks.
+    const finalStreamUrl = rawStreamUrl;
 
     // Extract subtitles safely (handles both string files and array formats without throwing)
     const subtitles = [];

@@ -326,11 +326,9 @@ async function getTorrentVideoFile(infoHashOrMagnet) {
 // ============ HTTP Server ============
 
 const server = http.createServer(async (req, res) => {
-  const requestOrigin = req.headers.origin || '';
-  if (/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(requestOrigin)) {
-    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
-    res.setHeader('Vary', 'Origin');
-  }
+  const requestOrigin = req.headers.origin || '*';
+  res.setHeader('Access-Control-Allow-Origin', requestOrigin === 'null' ? '*' : requestOrigin);
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
@@ -426,6 +424,7 @@ const server = http.createServer(async (req, res) => {
 
   // ============ WebVTT Subtitle Proxy & Auto-Converter ============
   if (reqUrl.pathname === '/subtitles' || reqUrl.pathname === '/api/subtitles') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
 
@@ -450,18 +449,23 @@ const server = http.createServer(async (req, res) => {
 
         // If it's a numeric TMDB ID, resolve to IMDB ID first
         if (!String(rawId).startsWith('tt')) {
-          try {
-            const TMDB_KEY = '4e44d9029b1270a757cddc766a1bcb63';
-            const mediaType = reqUrl.searchParams.get('type') || (season ? 'tv' : 'movie');
-            const tmdbRes = await fetch(
-              `https://api.themoviedb.org/3/${mediaType}/${rawId}/external_ids?api_key=${TMDB_KEY}`,
-              { signal: AbortSignal.timeout(4000) }
-            );
-            if (tmdbRes.ok) {
-              const tmdbData = await tmdbRes.json();
-              if (tmdbData.imdb_id) cleanImdb = tmdbData.imdb_id;
-            }
-          } catch (_) {}
+          const TMDB_KEYS = ['4e44d9029b1270a757cddc766a1bcb63', '844dba0bfd8f3a4f3799f6130ef9e335'];
+          const mediaType = reqUrl.searchParams.get('type') || (season ? 'tv' : 'movie');
+          for (const key of TMDB_KEYS) {
+            try {
+              const tmdbRes = await fetch(
+                `https://api.themoviedb.org/3/${mediaType}/${rawId}/external_ids?api_key=${key}`,
+                { signal: AbortSignal.timeout(3500) }
+              );
+              if (tmdbRes.ok) {
+                const tmdbData = await tmdbRes.json();
+                if (tmdbData.imdb_id) {
+                  cleanImdb = tmdbData.imdb_id;
+                  break;
+                }
+              }
+            } catch (_) {}
+          }
         }
 
         cleanImdb = String(cleanImdb).replace(/^tt/, '');
@@ -472,7 +476,7 @@ const server = http.createServer(async (req, res) => {
         try {
           const osRes = await fetch(osUrl, {
             headers: { 'User-Agent': 'TemporaryUserAgent', 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(4500)
+            signal: AbortSignal.timeout(5000)
           });
           if (osRes.ok) {
             const list = await osRes.json();
@@ -484,13 +488,13 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (!targetUrl) {
-        res.writeHead(200, { 'Content-Type': 'text/vtt; charset=utf-8' });
+        res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'text/vtt; charset=utf-8' });
         res.end('WEBVTT\n\n');
         return;
       }
 
       if (!isSafePublicUrl(targetUrl)) {
-        res.writeHead(403, { 'Content-Type': 'text/vtt; charset=utf-8' });
+        res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'text/vtt; charset=utf-8' });
         res.end('WEBVTT\n\n');
         return;
       }
@@ -500,11 +504,11 @@ const server = http.createServer(async (req, res) => {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
           'Referer': targetUrl
         },
-        signal: AbortSignal.timeout(6000)
+        signal: AbortSignal.timeout(7000)
       });
 
       if (!subRes.ok) {
-        res.writeHead(200, { 'Content-Type': 'text/vtt; charset=utf-8' });
+        res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'text/vtt; charset=utf-8' });
         res.end('WEBVTT\n\n');
         return;
       }
@@ -519,19 +523,42 @@ const server = http.createServer(async (req, res) => {
         } catch (_) {}
       }
 
-      let text = rawBuffer.toString('utf-8');
+      // Check encoding: Turkish OpenSubtitles are often in windows-1254 (Turkish ANSI)
+      let text = '';
+      const utf8Candidate = rawBuffer.toString('utf-8');
+      if (utf8Candidate.includes('\uFFFD')) {
+        try {
+          const win1254Decoder = new TextDecoder('windows-1254');
+          text = win1254Decoder.decode(rawBuffer);
+        } catch (_) {
+          text = utf8Candidate;
+        }
+      } else {
+        text = utf8Candidate;
+      }
+
+      // Remove BOM if present
+      text = text.replace(/^\uFEFF/, '');
+
+      // Remove spam / advertisement lines from subtitle text
+      text = text.replace(/.*(?:OpenSubtitles|osdb\.link|ai\.OpenSubtitles|VIP\s*üyelik).*\n?/gi, '');
+
+      // Standardize line endings
+      text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
       // Convert SRT to WebVTT format if needed
       if (!text.startsWith('WEBVTT')) {
-        text = 'WEBVTT\n\n' + text.replace(/(\d\d:\d\d:\d\d),(\d\d\d)/g, '$1.$2');
+        text = text.replace(/(\d\d:\d\d:\d\d),(\d\d\d)/g, '$1.$2');
+        text = 'WEBVTT\n\n' + text.trim();
       }
 
       res.writeHead(200, {
+        'Access-Control-Allow-Origin': '*',
         'Content-Type': 'text/vtt; charset=utf-8'
       });
       res.end(text);
     } catch (err) {
-      res.writeHead(200, { 'Content-Type': 'text/vtt; charset=utf-8' });
+      res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'text/vtt; charset=utf-8' });
       res.end('WEBVTT\n\n');
     }
     return;
@@ -610,15 +637,24 @@ const server = http.createServer(async (req, res) => {
         res.end('Target blocked');
         return;
       }
-      let refOrigin = 'https://x.ag2m4.cfd';
-      try { refOrigin = new URL(ref).origin; } catch (_) {}
+      const upstreamHeaders = {
+        'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+      };
+
+      if (decodedTarget.includes('meatort') || decodedTarget.includes('lookmovie')) {
+        upstreamHeaders['Referer'] = 'https://lookmovie2.la/';
+      } else if (ref && !ref.includes('ag2m4')) {
+        upstreamHeaders['Referer'] = ref;
+        try {
+          const origin = new URL(ref).origin;
+          if (origin && !origin.includes('ag2m4')) upstreamHeaders['Origin'] = origin;
+        } catch (_) {}
+      } else {
+        upstreamHeaders['Referer'] = ref;
+      }
 
       const upstreamRes = await fetch(decodedTarget, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Referer': ref,
-          'Origin': refOrigin
-        }
+        headers: upstreamHeaders
       });
 
       const contentType = upstreamRes.headers.get('content-type') || '';

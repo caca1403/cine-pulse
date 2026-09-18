@@ -1255,7 +1255,8 @@ export async function openPlayerModal({
         webkitallowfullscreen="true"
         mozallowfullscreen="true"
         loading="eager"
-        allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *"
+        referrerpolicy="no-referrer-when-downgrade"
+        allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *; web-share *"
         style="width:100%;height:100%;border:none;display:block;background:#000;">
       </iframe>
     `;
