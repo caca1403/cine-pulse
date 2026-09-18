@@ -40,7 +40,7 @@ async function searchLookMovie(type, query) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Referer': 'https://lookmovie2.la/'
       },
-      signal: AbortSignal.timeout(4500)
+      signal: AbortSignal.timeout(5000)
     });
 
     if (!res.ok) return null;
@@ -67,10 +67,14 @@ export async function fetchOfficialLookMovieSources({
   const sNum = parseInt(season, 10) || 1;
   const epNum = parseInt(episode, 10) || 1;
 
-  const targetQuery = cleanQuery(title || originalTitle);
-  if (!targetQuery) return [];
+  // Try title, fallback to originalTitle
+  let hit = null;
+  const candidates = [cleanQuery(title), cleanQuery(originalTitle)].filter(Boolean);
+  for (const q of candidates) {
+    hit = await searchLookMovie(type, q);
+    if (hit && hit.slug) break;
+  }
 
-  const hit = await searchLookMovie(type, targetQuery);
   if (!hit || !hit.slug) return [];
 
   try {
@@ -88,7 +92,7 @@ export async function fetchOfficialLookMovieSources({
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': 'https://lookmovie2.la/'
       },
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(5500)
     });
 
     if (!pageRes.ok) return [];
@@ -109,19 +113,22 @@ export async function fetchOfficialLookMovieSources({
       if (!hashMatch || !expiresMatch) return [];
 
       let id_episode = null;
-      // Extract seasons array from show_storage
-      const seasonsStart = html.indexOf("seasons: [");
-      const seasonsEnd = html.indexOf("]", seasonsStart);
-      if (seasonsStart !== -1 && seasonsEnd !== -1) {
-        const rawSeasons = html.substring(seasonsStart + 9, seasonsEnd + 1);
-        try {
-          const parsed = new Function('return ' + rawSeasons)();
-          const target = parsed.find(e => String(e.season) === String(sNum) && String(e.episode) === String(epNum));
-          if (target) id_episode = target.id_episode;
-        } catch (_) {}
+      // Multi-season robust matching: scan object blocks for matching season and episode
+      const blocks = html.split('{');
+      for (const block of blocks) {
+        if (
+          (block.includes(`episode: '${epNum}'`) || block.includes(`episode: "${epNum}"`)) &&
+          (block.includes(`season: '${sNum}'`) || block.includes(`season: "${sNum}"`))
+        ) {
+          const match = block.match(/id_episode:\s*(\d+)/);
+          if (match) {
+            id_episode = match[1];
+            break;
+          }
+        }
       }
 
-      // Regex fallback if needed
+      // Regex fallback
       if (!id_episode) {
         const epRegex = new RegExp(`episode:\\s*["']?${epNum}["']?[\\s\\S]*?id_episode:\\s*(\\d+)[\\s\\S]*?season:\\s*["']?${sNum}["']?`, 'i');
         const epMatch = html.match(epRegex);
@@ -141,7 +148,7 @@ export async function fetchOfficialLookMovieSources({
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': playPageUrl
       },
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(5500)
     });
 
     if (!accessRes.ok) return [];
@@ -157,20 +164,25 @@ export async function fetchOfficialLookMovieSources({
     // Proxy the HLS stream for direct player playback
     const finalStreamUrl = `/api/hls_proxy?url=${encodeURIComponent(rawStreamUrl)}&ref=${encodeURIComponent('https://lookmovie2.la/')}`;
 
-    // Extract subtitles
+    // Extract subtitles safely (handles both string files and array formats without throwing)
     const subtitles = [];
     if (Array.isArray(accessData.subtitles)) {
       accessData.subtitles.forEach(sub => {
-        if (!sub.file) return;
+        if (!sub || !sub.file) return;
         const lang = (sub.language || '').toLowerCase();
-        const isTr = lang.includes('turk') || sub.file.includes('tr_');
-        const isEn = lang.includes('eng') || sub.file.includes('en_');
+        const isTr = lang.includes('turk') || (typeof sub.file === 'string' && sub.file.includes('tr_'));
+        const isEn = lang.includes('eng') || (typeof sub.file === 'string' && sub.file.includes('en_'));
         if (isTr || isEn) {
-          const subFileUrl = sub.file.startsWith('http') ? sub.file : `${LOOKMOVIE_BASE}${sub.file}`;
-          subtitles.push({
-            label: isTr ? 'Türkçe (LookMovie)' : 'English (LookMovie)',
-            src: `/api/proxy?url=${encodeURIComponent(subFileUrl)}&ref=${encodeURIComponent('https://lookmovie2.la/')}`
-          });
+          let subFileUrl = '';
+          if (typeof sub.file === 'string') {
+            subFileUrl = sub.file.startsWith('http') ? sub.file : `${LOOKMOVIE_BASE}${sub.file}`;
+          }
+          if (subFileUrl) {
+            subtitles.push({
+              label: isTr ? 'Türkçe (LookMovie)' : 'English (LookMovie)',
+              src: `/api/proxy?url=${encodeURIComponent(subFileUrl)}&ref=${encodeURIComponent('https://lookmovie2.la/')}`
+            });
+          }
         }
       });
     }

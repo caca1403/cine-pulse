@@ -2,7 +2,7 @@
    CinePulse Studio - VIP Global Embed Source Service
    Only official, stable, verified embeds:
    - VidSrc.me (En kararlı normal VidSrc, TMDB destekli, multi-sub)
-   - SmashyStream VIP (Resmi embed.smashystream.com, multi-sub TR)
+   - SmashyStream VIP (Doğrudan player.smashystream.com - anyembed döngüsüz)
    ========================================================================== */
 
 export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, episode = 1 } = {}) {
@@ -12,15 +12,15 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
   const sNum = parseInt(season, 10) || 1;
   const epNum = parseInt(episode, 10) || 1;
 
-  // 1. VidSrc.me - Normal kararlı VidSrc (vidsrc.xyz kaldırıldı)
+  // 1. VidSrc.me - Normal kararlı VidSrc
   const vidSrcMeUrl = isMovie
     ? `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`
     : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&season=${sNum}&episode=${epNum}`;
 
-  // 2. SmashyStream VIP - Resmi SmashyStream Oynatıcısı
+  // 2. SmashyStream VIP - Doğrudan player.smashystream.com (Döngü ve takılma yapmayan temiz rota)
   const smashyUrl = isMovie
-    ? `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}`
-    : `https://embed.smashystream.com/playere.php?tmdb=${tmdbId}&season=${sNum}&episode=${epNum}`;
+    ? `https://player.smashystream.com/movie/${tmdbId}`
+    : `https://player.smashystream.com/tv/${tmdbId}/${sNum}/${epNum}`;
 
   return [
     {
