@@ -727,7 +727,10 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const cacheKey = `${query.toLowerCase().trim()}__${originalTitle.toLowerCase().trim()}`;
+    const season = reqUrl.searchParams.get('season') || '1';
+    const episode = reqUrl.searchParams.get('episode') || '1';
+    const type = reqUrl.searchParams.get('type') || '';
+    const cacheKey = `${query.toLowerCase().trim()}__${originalTitle.toLowerCase().trim()}__s${season}e${episode}__${type}`;
     if (globalThis._hdfcCache && globalThis._hdfcCache.has(cacheKey)) {
       const cached = globalThis._hdfcCache.get(cacheKey);
       if (Date.now() - cached.time < 30 * 60 * 1000) {
@@ -738,7 +741,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     const scriptPath = path.join(__dirname, 'hdfc_extractor.py');
-    const args = [scriptPath, query, originalTitle];
+    const args = [scriptPath, query, originalTitle, season, episode, type];
 
     execFile('python3', args, { timeout: 25000 }, (err, stdout, stderr) => {
       if (err || !stdout) {

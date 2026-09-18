@@ -58,9 +58,65 @@ def decode_hdfc(arr, jmx, nsr1):
     except Exception:
         return None
 
-def resolve_hdfc_stream(title, original_title=''):
+def extract_from_embed(embed_url, referer):
+    try:
+        req_e = urllib.request.Request(embed_url, headers={'User-Agent': FULL_UA, 'Referer': referer})
+        with urllib.request.urlopen(req_e, timeout=7) as resp_e:
+            ehtml = resp_e.read().decode('utf-8', errors='ignore')
+
+        m_src = re.search(r'sources:\s*\[\{file:\s*([a-zA-Z0-9_]+)', ehtml)
+        if not m_src:
+            return None
+        vname = m_src.group(1)
+        m_call = re.search(r'var\s+' + vname + r'\s*=\s*([a-zA-Z0-9_]+)\(\[(\s*[\"\'][^\]]+)\]\);', ehtml)
+        if not m_call:
+            return None
+        fname = m_call.group(1)
+        arr_json = f"[{m_call.group(2)}]"
+        arr = json.loads(arr_json)
+
+        m_func = re.search(r'function\s+' + fname + r'\s*\([^)]*\)\s*\{([\s\S]*?)\n\}', ehtml)
+        if not m_func:
+            return None
+        func_body = m_func.group(1)
+        m_jmx = re.search(r'var\s+[a-zA-Z0-9_]+\s*=\s*["\']([^"\']+)["\'];\s*var\s+[a-zA-Z0-9_]+\s*=\s*["\']([^"\']+)["\'];', func_body)
+        if not m_jmx:
+            return None
+        jmx = m_jmx.group(1)
+        nsr1 = m_jmx.group(2)
+
+        stream_url = decode_hdfc(arr, jmx, nsr1)
+        if not stream_url or not stream_url.startswith('http'):
+            return None
+
+        subtitles = []
+        m_tracks = re.search(r'tracks:\s*(\[[^\]]+\])', ehtml)
+        if m_tracks:
+            try:
+                tracks_data = json.loads(m_tracks.group(1))
+                for tr in tracks_data:
+                    file_url = tr.get('file')
+                    label = tr.get('label') or 'Altyazı'
+                    if file_url:
+                        subtitles.append({
+                            'label': f"{label} (HDFC)",
+                            'src': file_url
+                        })
+            except Exception:
+                pass
+
+        return {
+            'streamUrl': stream_url,
+            'subtitles': subtitles
+        }
+    except Exception:
+        return None
+
+def resolve_hdfc_stream(title, original_title='', season=1, episode=1, is_tv=False):
+    s_num = int(season or 1)
+    ep_num = int(episode or 1)
+    
     candidates = [title, original_title]
-    # clean candidate titles
     clean_cands = []
     for c in candidates:
         if not c:
@@ -91,77 +147,88 @@ def resolve_hdfc_stream(title, original_title=''):
             if not results:
                 continue
 
-            for res_html in results[:2]:
+            # Sort results: if is_tv is True, prioritize /dizi/ URLs
+            sorted_results = sorted(
+                results[:4],
+                key=lambda r: (1 if '/dizi/' in r else 0) if is_tv else (0 if '/dizi/' in r else 1),
+                reverse=True
+            )
+
+            for res_html in sorted_results:
                 m_link = re.search(r'href=["\'](https://www\.hdfilmcehennemi\.nl/[^"\']+)["\']', res_html)
                 if not m_link:
                     continue
-                movie_url = m_link.group(1)
+                page_url = m_link.group(1)
 
-                req_m = urllib.request.Request(movie_url, headers={'User-Agent': FULL_UA, 'Referer': f"{BASE_URL}/"})
-                with urllib.request.urlopen(req_m, timeout=6) as resp_m:
-                    mhtml = resp_m.read().decode('utf-8', errors='ignore')
+                req_p = urllib.request.Request(page_url, headers={'User-Agent': FULL_UA, 'Referer': f"{BASE_URL}/"})
+                with urllib.request.urlopen(req_p, timeout=6) as resp_p:
+                    p_html = resp_p.read().decode('utf-8', errors='ignore')
 
-                m_iframe = re.search(r'<iframe[^>]+(?:data-src|src)=["\']([^"\']*(?:embed|video|player)[^"\']*)["\']', mhtml, re.I) or re.search(r'<iframe[^>]+(?:data-src|src)=["\']([^"\']+)["\']', mhtml, re.I)
-                if not m_iframe:
-                    continue
-                embed_url = m_iframe.group(1)
-                if embed_url.startswith('//'):
-                    embed_url = 'https:' + embed_url
+                # Check if it is a TV series page
+                if is_tv or '/dizi/' in page_url:
+                    # Look for the specific season and episode link
+                    ep_patterns = [
+                        rf'href=["\'](https://www\.hdfilmcehennemi\.nl/dizi/[^"\']*sezon-{s_num}/bolum-{ep_num}[^"\']*)["\']',
+                        rf'href=["\'](https://www\.hdfilmcehennemi\.nl/[^"\']*sezon-{s_num}/bolum-{ep_num}[^"\']*)["\']',
+                        rf'href=["\']([^"\']*sezon-{s_num}/bolum-{ep_num}[^"\']*)["\']'
+                    ]
+                    ep_target_url = None
+                    for pat in ep_patterns:
+                        m_ep = re.search(pat, p_html, re.I)
+                        if m_ep:
+                            ep_target_url = m_ep.group(1)
+                            if ep_target_url.startswith('/'):
+                                ep_target_url = f"{BASE_URL}{ep_target_url}"
+                            break
 
-                req_e = urllib.request.Request(embed_url, headers={'User-Agent': FULL_UA, 'Referer': movie_url})
-                with urllib.request.urlopen(req_e, timeout=6) as resp_e:
-                    ehtml = resp_e.read().decode('utf-8', errors='ignore')
+                    if not ep_target_url:
+                        continue
 
-                m_src = re.search(r'sources:\s*\[\{file:\s*([a-zA-Z0-9_]+)', ehtml)
-                if not m_src:
-                    continue
-                vname = m_src.group(1)
-                m_call = re.search(r'var\s+' + vname + r'\s*=\s*([a-zA-Z0-9_]+)\(\[(\s*[\"\'][^\]]+)\]\);', ehtml)
-                if not m_call:
-                    continue
-                fname = m_call.group(1)
-                arr_json = f"[{m_call.group(2)}]"
-                arr = json.loads(arr_json)
+                    # Fetch episode page
+                    req_ep = urllib.request.Request(ep_target_url, headers={'User-Agent': FULL_UA, 'Referer': page_url})
+                    with urllib.request.urlopen(req_ep, timeout=6) as resp_ep:
+                        ep_html = resp_ep.read().decode('utf-8', errors='ignore')
 
-                m_func = re.search(r'function\s+' + fname + r'\s*\([^)]*\)\s*\{([\s\S]*?)\n\}', ehtml)
-                if not m_func:
-                    continue
-                func_body = m_func.group(1)
-                m_jmx = re.search(r'var\s+[a-zA-Z0-9_]+\s*=\s*["\']([^"\']+)["\'];\s*var\s+[a-zA-Z0-9_]+\s*=\s*["\']([^"\']+)["\'];', func_body)
-                if not m_jmx:
-                    continue
-                jmx = m_jmx.group(1)
-                nsr1 = m_jmx.group(2)
+                    m_iframe = re.search(r'<iframe[^>]+(?:data-src|src)=["\']([^"\']*(?:embed|video|player)[^"\']*)["\']', ep_html, re.I) or re.search(r'<iframe[^>]+(?:data-src|src)=["\']([^"\']+)["\']', ep_html, re.I)
+                    if not m_iframe:
+                        continue
+                    embed_url = m_iframe.group(1)
+                    if embed_url.startswith('//'):
+                        embed_url = 'https:' + embed_url
 
-                stream_url = decode_hdfc(arr, jmx, nsr1)
-                if not stream_url or not stream_url.startswith('http'):
-                    continue
+                    extracted = extract_from_embed(embed_url, ep_target_url)
+                    if extracted and extracted.get('streamUrl'):
+                        raw_stream = extracted['streamUrl']
+                        proxied_url = f"/api/hls_proxy?url={urllib.parse.quote(raw_stream)}&ref={urllib.parse.quote('https://hdfilmcehennemi.mobi/')}"
+                        return {
+                            'success': True,
+                            'streamUrl': proxied_url,
+                            'rawStreamUrl': raw_stream,
+                            'movieUrl': ep_target_url,
+                            'embedUrl': embed_url,
+                            'subtitles': extracted.get('subtitles', [])
+                        }
+                else:
+                    # Movie page
+                    m_iframe = re.search(r'<iframe[^>]+(?:data-src|src)=["\']([^"\']*(?:embed|video|player)[^"\']*)["\']', p_html, re.I) or re.search(r'<iframe[^>]+(?:data-src|src)=["\']([^"\']+)["\']', p_html, re.I)
+                    if not m_iframe:
+                        continue
+                    embed_url = m_iframe.group(1)
+                    if embed_url.startswith('//'):
+                        embed_url = 'https:' + embed_url
 
-                subtitles = []
-                m_tracks = re.search(r'tracks:\s*(\[[^\]]+\])', ehtml)
-                if m_tracks:
-                    try:
-                        tracks_data = json.loads(m_tracks.group(1))
-                        for tr in tracks_data:
-                            file_url = tr.get('file')
-                            label = tr.get('label') or 'Altyazı'
-                            if file_url:
-                                subtitles.append({
-                                    'label': f"{label} (HDFC)",
-                                    'src': file_url
-                                })
-                    except Exception:
-                        pass
-
-                proxied_url = f"/api/hls_proxy?url={urllib.parse.quote(stream_url)}&ref={urllib.parse.quote('https://hdfilmcehennemi.mobi/')}"
-                return {
-                    'success': True,
-                    'streamUrl': proxied_url,
-                    'rawStreamUrl': stream_url,
-                    'movieUrl': movie_url,
-                    'embedUrl': embed_url,
-                    'subtitles': subtitles
-                }
+                    extracted = extract_from_embed(embed_url, page_url)
+                    if extracted and extracted.get('streamUrl'):
+                        raw_stream = extracted['streamUrl']
+                        proxied_url = f"/api/hls_proxy?url={urllib.parse.quote(raw_stream)}&ref={urllib.parse.quote('https://hdfilmcehennemi.mobi/')}"
+                        return {
+                            'success': True,
+                            'streamUrl': proxied_url,
+                            'rawStreamUrl': raw_stream,
+                            'movieUrl': page_url,
+                            'embedUrl': embed_url,
+                            'subtitles': extracted.get('subtitles', [])
+                        }
         except Exception:
             continue
 
@@ -174,8 +241,12 @@ class handler(BaseHTTPRequestHandler):
 
         query = params.get('query', [''])[0] or params.get('title', [''])[0]
         original_title = params.get('originalTitle', [''])[0]
+        season = params.get('season', ['1'])[0]
+        episode = params.get('episode', ['1'])[0]
+        req_type = params.get('type', [''])[0]
+        is_tv = (req_type == 'tv' or bool(params.get('season') and params.get('episode')))
 
-        result = resolve_hdfc_stream(query, original_title)
+        result = resolve_hdfc_stream(query, original_title, season=season, episode=episode, is_tv=is_tv)
 
         body = json.dumps(result).encode('utf-8')
         self.send_response(200)

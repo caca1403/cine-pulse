@@ -25,7 +25,7 @@ export async function fetchHdfilmcehennemiSources({
     const searchOriginal = cleanTitle(originalTitle);
     const origin = (typeof window !== 'undefined' && window.location?.origin) ? '' : 'http://localhost:4000';
 
-    const apiUrl = `${origin}/api/hdfc_stream?query=${encodeURIComponent(searchTitle)}&originalTitle=${encodeURIComponent(searchOriginal)}&tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&season=${sNum}&episode=${epNum}`;
+    const apiUrl = `${origin}/api/hdfc_stream?query=${encodeURIComponent(searchTitle)}&originalTitle=${encodeURIComponent(searchOriginal)}&tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&season=${sNum}&episode=${epNum}&type=${type || (isMovie ? 'movie' : 'tv')}`;
     
     const res = await fetch(apiUrl, {
       signal: AbortSignal.timeout(22000)
