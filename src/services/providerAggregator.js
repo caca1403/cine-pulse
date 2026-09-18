@@ -561,12 +561,19 @@ export async function getStreamingServersProgressive({
       .then(res => {
         if (!Array.isArray(res) || res.length === 0) return [];
         for (const s of res) {
-          const text = `${s.name || ''} ${s.displayName || ''} ${s.rawStreamUrl || s.streamUrl || ''} ${s.url || ''}`.toLowerCase();
-          const isDualOrDub = text.includes('trdual') || text.includes('dublaj') || text.includes('dual') || text.includes('tr-dub');
-          if (isDualOrDub) {
-            addStreams([s], 'dubbed');
-          }
-          addStreams([s], 'subtitled');
+          addStreams([{
+            ...s,
+            id: `${s.id}_dub`,
+            badge: '⚡ TR Dublaj (HDFC 1080p)',
+            category: 'dubbed'
+          }], 'dubbed');
+
+          addStreams([{
+            ...s,
+            id: `${s.id}_sub`,
+            badge: '💬 TR Altyazı (HDFC 1080p)',
+            category: 'subtitled'
+          }], 'subtitled');
         }
       }).catch(() => [])
   ];
