@@ -37,7 +37,17 @@ def clean_title(title):
     t = re.sub(r'\s*-\s*S\d+E\d+.*$', '', title, flags=re.I)
     t = re.sub(r'\s*-\s*S\d+.*$', '', t, flags=re.I)
     t = re.sub(r'\s*\(\d{4}\).*$', '', t)
-    return t.strip()
+    t = t.strip()
+    return t
+
+def get_candidates(title):
+    raw = clean_title(title)
+    cand = [raw]
+    # Remove leading 'The ' or 'A '
+    no_art = re.sub(r'^(the|a|an)\s+', '', raw, flags=re.I).strip()
+    if no_art and no_art != raw:
+        cand.insert(0, no_art)
+    return cand
 
 def search_hdfc(query):
     try:
@@ -138,10 +148,9 @@ def main():
         sys.exit(1)
 
     query = sys.argv[1]
-    candidates = [clean_title(query), query]
+    candidates = get_candidates(query)
     if len(sys.argv) > 2 and sys.argv[2]:
-        candidates.insert(0, clean_title(sys.argv[2]))
-        candidates.insert(1, sys.argv[2])
+        candidates.extend(get_candidates(sys.argv[2]))
 
     candidates = list(dict.fromkeys(c for c in candidates if c))
     
@@ -150,7 +159,7 @@ def main():
         if not results:
             continue
 
-        for res_html in results[:3]:
+        for res_html in results[:2]:
             m_link = re.search(r'href=[\"\'](https://www\.hdfilmcehennemi\.nl/[^\"\']+)[\"\']', res_html)
             if not m_link:
                 continue

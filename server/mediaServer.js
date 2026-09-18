@@ -586,10 +586,20 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    const cacheKey = `${query.toLowerCase().trim()}__${originalTitle.toLowerCase().trim()}`;
+    if (globalThis._hdfcCache && globalThis._hdfcCache.has(cacheKey)) {
+      const cached = globalThis._hdfcCache.get(cacheKey);
+      if (Date.now() - cached.time < 30 * 60 * 1000) {
+        res.writeHead(200);
+        res.end(JSON.stringify(cached.data));
+        return;
+      }
+    }
+
     const scriptPath = path.join(__dirname, 'hdfc_extractor.py');
     const args = [scriptPath, query, originalTitle];
 
-    execFile('python3', args, { timeout: 14000 }, (err, stdout, stderr) => {
+    execFile('python3', args, { timeout: 25000 }, (err, stdout, stderr) => {
       if (err || !stdout) {
         res.writeHead(200);
         res.end(JSON.stringify({ success: false, error: err?.message || 'Extraction failed' }));
@@ -599,14 +609,17 @@ const server = http.createServer(async (req, res) => {
         const data = JSON.parse(stdout.trim());
         if (data.success && data.streamUrl) {
           const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(data.streamUrl)}&ref=${encodeURIComponent('https://hdfilmcehennemi.mobi/')}`;
-          res.writeHead(200);
-          res.end(JSON.stringify({
+          const resultData = {
             success: true,
             streamUrl: proxiedUrl,
             rawStreamUrl: data.streamUrl,
             movieUrl: data.movieUrl,
             subtitles: data.subtitles || []
-          }));
+          };
+          if (!globalThis._hdfcCache) globalThis._hdfcCache = new Map();
+          globalThis._hdfcCache.set(cacheKey, { time: Date.now(), data: resultData });
+          res.writeHead(200);
+          res.end(JSON.stringify(resultData));
         } else {
           res.writeHead(200);
           res.end(JSON.stringify({ success: false, message: data.message || 'Stream not found' }));
