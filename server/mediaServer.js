@@ -17,6 +17,7 @@ import path from 'path';
 import zlib from 'zlib';
 import { Readable } from 'stream';
 import { fileURLToPath } from 'url';
+import { execFile } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -561,6 +562,60 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'text/vtt; charset=utf-8' });
       res.end('WEBVTT\n\n');
     }
+    return;
+  }
+
+  // ============ HDFilmCehennemi Direct Stream & Subtitle Resolver ============
+  if (reqUrl.pathname === '/hdfc_stream' || reqUrl.pathname === '/api/hdfc_stream') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const query = reqUrl.searchParams.get('query') || reqUrl.searchParams.get('title') || '';
+    const originalTitle = reqUrl.searchParams.get('originalTitle') || '';
+
+    if (!query && !originalTitle) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ success: false, error: 'Query or title required' }));
+      return;
+    }
+
+    const scriptPath = path.join(__dirname, 'hdfc_extractor.py');
+    const args = [scriptPath, query, originalTitle];
+
+    execFile('python3', args, { timeout: 14000 }, (err, stdout, stderr) => {
+      if (err || !stdout) {
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: false, error: err?.message || 'Extraction failed' }));
+        return;
+      }
+      try {
+        const data = JSON.parse(stdout.trim());
+        if (data.success && data.streamUrl) {
+          const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(data.streamUrl)}&ref=${encodeURIComponent('https://hdfilmcehennemi.mobi/')}`;
+          res.writeHead(200);
+          res.end(JSON.stringify({
+            success: true,
+            streamUrl: proxiedUrl,
+            rawStreamUrl: data.streamUrl,
+            movieUrl: data.movieUrl,
+            subtitles: data.subtitles || []
+          }));
+        } else {
+          res.writeHead(200);
+          res.end(JSON.stringify({ success: false, message: data.message || 'Stream not found' }));
+        }
+      } catch (parseErr) {
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: false, error: 'Invalid JSON output from extractor' }));
+      }
+    });
     return;
   }
 

@@ -29,6 +29,7 @@ import { fetchKidsVipSources, fetchKidsVipMovieSources } from './kidsVipScraper.
 import { fetchSmashyStreamSources } from './smashyStreamService.js';
 import { fetchTorrentStreamSources } from './torrentStreamService.js';
 import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
+import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 
 // Cache version
 const CACHE_VERSION = 'v23';
@@ -570,6 +571,14 @@ export async function getStreamingServersProgressive({
 
     // 12. VIP P2P Streams (2-3 high-seed torrent streams with multi-sub / OpenSubtitles)
     fetchTorrentStreamSources({ type, tmdbId, season, episode })
+      .then(res => {
+        if (Array.isArray(res) && res.length > 0) {
+          addStreams(res, 'subtitled');
+        }
+      }).catch(() => []),
+
+    // 13. HDFilmCehennemi VIP (Direct 1080p HLS + TR Subtitles)
+    fetchHdfilmcehennemiSources({ type, tmdbId, imdbId, title: targetTitle, originalTitle, season, episode })
       .then(res => {
         if (Array.isArray(res) && res.length > 0) {
           addStreams(res, 'subtitled');
