@@ -32,7 +32,7 @@ import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 
 // Cache version
-const CACHE_VERSION = 'v23';
+const CACHE_VERSION = 'v24';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -480,7 +480,7 @@ export async function getStreamingServersProgressive({
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 6. Diziyou (FastCDN 1080p HLS - Subtitled only)
-    (!isMovie && !isAnime)
+    !isMovie
       ? fetchDiziyouSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => {
             if (Array.isArray(res) && res.length > 0) {
@@ -506,38 +506,18 @@ export async function getStreamingServersProgressive({
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : Promise.resolve([]),
 
-    // 9. Kids VIP (Cartoons & Animations - Only for Animation / Anime genre)
-    isAnime
+    // 9. Kids VIP (Cartoons & Animations - Direct High-Speed)
+    !isMovie
       ? fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : enrichmentTask.then(enr => {
-          if (enr?.isAnimation) {
-            return fetchKidsVipSources({ titles: enr.candidateTitles || candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-              .then(res => addStreams(res, 'dubbed')).catch(() => []);
-          }
-          return [];
-        }).catch(() => []),
+      : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
-    isAnime
+    !isMovie
       ? fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : enrichmentTask.then(enr => {
-          if (enr?.isAnimation) {
-            return fetchKidsVipSources({ titles: enr.candidateTitles || candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-              .then(res => addStreams(res, 'subtitled')).catch(() => []);
-          }
-          return [];
-        }).catch(() => []),
-
-    isMovie
-      ? enrichmentTask.then(enr => {
-          if (enr?.isAnimation) {
-            return fetchKidsVipMovieSources({ titles: enr.candidateTitles || candidateTitles, title: targetTitle, originalTitle, isDub: true })
-              .then(res => addStreams(res, 'dubbed')).catch(() => []);
-          }
-          return [];
-        }).catch(() => [])
-      : Promise.resolve([]),
+      : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 10. Clean Global VIP Embeds: VidSrc, SmashyStream, 2Embed, SuperEmbed, EmbedSu
     Promise.resolve(fetchSmashyStreamSources({ type, tmdbId, season, episode }))
@@ -548,27 +528,15 @@ export async function getStreamingServersProgressive({
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 11. Anime & Cartoons: AnimeciX, TürkAnime, AnimeTR
-    isAnime
+    !isMovie
       ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : enrichmentTask.then(enr => {
-          if (enr?.isAnimation) {
-            return fetchAnimecixSources({ titles: enr.candidateTitles || candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-              .then(res => addStreams(res, 'dubbed')).catch(() => []);
-          }
-          return [];
-        }).catch(() => []),
+      : Promise.resolve([]),
 
-    isAnime
+    !isMovie
       ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : enrichmentTask.then(enr => {
-          if (enr?.isAnimation) {
-            return fetchAnimecixSources({ titles: enr.candidateTitles || candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-              .then(res => addStreams(res, 'subtitled')).catch(() => []);
-          }
-          return [];
-        }).catch(() => []),
+      : Promise.resolve([]),
 
     isAnime
       ? fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
@@ -577,7 +545,8 @@ export async function getStreamingServersProgressive({
 
     isAnime
       ? fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => []):
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : Promise.resolve([]),
 
     // 12. VIP P2P Streams (2-3 high-seed torrent streams with multi-sub / OpenSubtitles)
     fetchTorrentStreamSources({ type, tmdbId, season, episode })
@@ -587,11 +556,17 @@ export async function getStreamingServersProgressive({
         }
       }).catch(() => []),
 
-    // 13. HDFilmCehennemi VIP (Direct 1080p HLS + TR Subtitles)
+    // 13. HDFilmCehennemi VIP (Direct 1080p HLS + TR Subtitles & Dubbed/Dual)
     fetchHdfilmcehennemiSources({ type, tmdbId, imdbId, title: targetTitle, originalTitle, season, episode })
       .then(res => {
-        if (Array.isArray(res) && res.length > 0) {
-          addStreams(res, 'subtitled');
+        if (!Array.isArray(res) || res.length === 0) return [];
+        for (const s of res) {
+          const text = `${s.name || ''} ${s.displayName || ''} ${s.rawStreamUrl || s.streamUrl || ''} ${s.url || ''}`.toLowerCase();
+          const isDualOrDub = text.includes('trdual') || text.includes('dublaj') || text.includes('dual') || text.includes('tr-dub');
+          if (isDualOrDub) {
+            addStreams([s], 'dubbed');
+          }
+          addStreams([s], 'subtitled');
         }
       }).catch(() => [])
   ];

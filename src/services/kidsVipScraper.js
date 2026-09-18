@@ -339,26 +339,34 @@ async function mapServerToSources(s, isDub, seenStreams) {
     return sources;
   }
 
-  // 2. Iframe / Dzen player embed
+  // 2. Iframe / Third-party player embed
   if (s.src) {
     const rawEmbedUrl = s.src.startsWith('http') ? s.src : `${KV_BASE}${s.src}`;
-    const embedUrl = (typeof window !== 'undefined' && rawEmbedUrl.includes(_0xkv))
-      ? rawEmbedUrl.replace(KV_BASE, KV_PROXY_PREFIX)
-      : rawEmbedUrl;
+    
+    // Upstream cizgimax.online blocks cross-origin iframe embedding (X-Frame-Options: SAMEORIGIN / CSP frame-ancestors).
+    // Firefox blocks it with "Firefox bu sayfayı açamıyor - cine-pulse-drab.vercel.app güvenliğinizi korumak için...".
+    // Only allow external embed players that support framing (vidmoly, ok.ru, sibnet, mail.ru, etc.).
+    const isUpstreamBlockedEmbed = rawEmbedUrl.includes('cizgimax.online') || rawEmbedUrl.includes(_0xkv) || rawEmbedUrl.includes('/oynat/');
+    
+    if (!isUpstreamBlockedEmbed) {
+      const embedUrl = (typeof window !== 'undefined' && rawEmbedUrl.includes(_0xkv))
+        ? rawEmbedUrl.replace(KV_BASE, KV_PROXY_PREFIX)
+        : rawEmbedUrl;
 
-    if (!seenStreams.has(embedUrl)) {
-      seenStreams.add(embedUrl);
-      sources.push({
-        id: `kvip_embed_${s.embedId || Math.random()}_${isDub ? 'dub' : 'sub'}`,
-        name: `Kids VIP - ${serverLabel} (${langLabel})`,
-        displayName: `Kids VIP (${langLabel})`,
-        badge: '⚡ Kids VIP',
-        category,
-        streamUrl: embedUrl,
-        url: embedUrl,
-        type: 'embed',
-        getUrl: () => embedUrl
-      });
+      if (!seenStreams.has(embedUrl)) {
+        seenStreams.add(embedUrl);
+        sources.push({
+          id: `kvip_embed_${s.embedId || Math.random()}_${isDub ? 'dub' : 'sub'}`,
+          name: `Kids VIP - ${serverLabel} (${langLabel})`,
+          displayName: `Kids VIP (${langLabel})`,
+          badge: '⚡ Kids VIP',
+          category,
+          streamUrl: embedUrl,
+          url: embedUrl,
+          type: 'embed',
+          getUrl: () => embedUrl
+        });
+      }
     }
   }
 

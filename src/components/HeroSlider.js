@@ -22,10 +22,11 @@ export function stopHeroSlider() {
 }
 
 function getHeroBackdropUrl(item) {
+  const path = item?.backdrop_path || item?.poster_path;
   const size = window.innerWidth <= 768
     ? TMDB_IMAGE_SIZES.BACKDROP_LARGE
     : TMDB_IMAGE_SIZES.BACKDROP_XLARGE;
-  return getImageUrl(item?.backdrop_path, size);
+  return getImageUrl(path, size);
 }
 
 function preloadHeroBackdrop(url, priority = 'auto') {

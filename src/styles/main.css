@@ -8794,6 +8794,11 @@ video::cue {
   .detail-hero-banner {
     padding: 5rem 1rem 2.5rem 1rem;
   }
+  .detail-backdrop-img {
+    transform: none !important;
+    background-position: top center !important;
+    -webkit-backface-visibility: hidden;
+  }
   .detail-layout {
     grid-template-columns: 1fr;
     gap: 1.5rem;
