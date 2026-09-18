@@ -877,6 +877,10 @@ const server = http.createServer(async (req, res) => {
         'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
       };
 
+      if (req.headers.range) {
+        upstreamHeaders['Range'] = req.headers.range;
+      }
+
       if (decodedTarget.includes('meatort') || decodedTarget.includes('lookmovie')) {
         upstreamHeaders['Referer'] = 'https://lookmovie2.la/';
       } else if (ref && !ref.includes('ag2m4')) {
@@ -895,6 +899,8 @@ const server = http.createServer(async (req, res) => {
 
       const contentType = upstreamRes.headers.get('content-type') || '';
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
 
       if (decodedTarget.includes('.m3u8') || decodedTarget.includes('.txt') || contentType.includes('mpegurl') || contentType.includes('application/x-mpegURL') || contentType.includes('text/plain')) {
         const text = await upstreamRes.text();
@@ -944,12 +950,18 @@ const server = http.createServer(async (req, res) => {
         res.end(rewritten);
       } else {
         const headers = {
-          'Content-Type': contentType || 'video/mp2t',
+          'Content-Type': contentType || 'video/mp4',
           'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Range, Content-Type, Authorization',
+          'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
+          'Accept-Ranges': upstreamRes.headers.get('accept-ranges') || 'bytes',
           'Cache-Control': 'public, max-age=86400, immutable'
         };
         const contentLength = upstreamRes.headers.get('content-length');
         if (contentLength) headers['Content-Length'] = contentLength;
+        const contentRange = upstreamRes.headers.get('content-range');
+        if (contentRange) headers['Content-Range'] = contentRange;
+
         res.writeHead(upstreamRes.status, headers);
         if (upstreamRes.body) {
           const stream = Readable.fromWeb(upstreamRes.body);

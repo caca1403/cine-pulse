@@ -384,7 +384,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           renderIcons();
 
           try {
-            const trailer = await fetchMediaTrailer(effectiveType, id);
+            const trailer = await fetchMediaTrailer(effectiveType, id, title);
             if (trailer) {
               openTrailerModal({ title, trailerInfo: trailer });
             } else {

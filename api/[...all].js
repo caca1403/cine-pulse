@@ -238,6 +238,9 @@ export default async function handler(req, res) {
       const upstreamHeaders = {
         'User-Agent': ua
       };
+      if (req.headers.range) {
+        upstreamHeaders['Range'] = req.headers.range;
+      }
       if (!isRecTv) {
         upstreamHeaders['Referer'] = ref;
         upstreamHeaders['Origin'] = targetOrigin;
@@ -249,6 +252,8 @@ export default async function handler(req, res) {
 
       const contentType = upstreamRes.headers.get('content-type') || '';
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
 
       const lowerTarget = decodedTarget.toLowerCase();
       const lowerCt = contentType.toLowerCase();
@@ -319,9 +324,12 @@ export default async function handler(req, res) {
         // Stream TS/video bytes immediately; buffering a complete 6-10 second
         // segment made TVR channel startup feel unnecessarily slow.
         res.statusCode = upstreamRes.status;
-        res.setHeader('Content-Type', contentType || 'video/mp2t');
+        res.setHeader('Content-Type', contentType || 'video/mp4');
+        res.setHeader('Accept-Ranges', upstreamRes.headers.get('accept-ranges') || 'bytes');
         const contentLength = upstreamRes.headers.get('content-length');
         if (contentLength) res.setHeader('Content-Length', contentLength);
+        const contentRange = upstreamRes.headers.get('content-range');
+        if (contentRange) res.setHeader('Content-Range', contentRange);
         if (!upstreamRes.body) return res.end();
         await new Promise((resolve, reject) => {
           const stream = Readable.fromWeb(upstreamRes.body);

@@ -88,7 +88,7 @@ function toProxiedDizisolSubUrl(rawUrl) {
 function isValidDizisolStreamUrl(url) {
   if (!url || typeof url !== 'string') return false;
   if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
-  if (url.includes('picturebox.cloud')) return false;
+  if (url.includes('picturebox.cloud') || url.includes('s5.dizisol.com') || url.includes('rapidrame')) return false;
   return true;
 }
 
@@ -97,12 +97,16 @@ function getDizisolStreamPriority(url, provider = '') {
   const lowUrl = (url || '').toLowerCase();
   const lowProv = (provider || '').toLowerCase();
 
-  if (lowUrl.includes('plus.dizisol.com')) score += 50;
-  else if (lowUrl.includes('dizisol.com')) score += 40;
+  // Ultra-fast instant CDN providers (< 1s playback start, 100% 200 OK)
+  if (lowProv === 'vidmixi') score += 100;
+  else if (lowProv === 'imagestoo') score += 90;
+  else if (lowProv === 'vidrame') score += 80;
+  else if (lowProv === 'cortina') score += 70;
+  else if (lowProv === 'pal-vds') score += 20; // 9s slow connection
+  else if (lowProv === 'vip') score += 15;
 
-  if (lowProv === 'pal-vds' || lowProv === 'rapidrame') score += 30;
-  else if (lowProv === 'vidmixi' || lowProv === 'vidrame') score += 20;
-  else if (lowProv === 'cortina' || lowProv === 'imagestoo') score += 15;
+  if (lowUrl.includes('dizisol.com')) score += 30;
+  else if (lowUrl.includes('plus.dizisol.com')) score += 10;
 
   return score;
 }

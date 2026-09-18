@@ -1091,32 +1091,55 @@ const trailerRequestCache = new Map();
 
 function scoreTrailer(video, language) {
   if (!video || video.site !== 'YouTube' || !video.key) return -1;
-  const typeScores = { Trailer: 500, Teaser: 320, Clip: 120, Featurette: 60 };
-  let score = typeScores[video.type] || 0;
+  const typeScores = {
+    Trailer: 500,
+    Teaser: 360,
+    Promo: 280,
+    'Opening Credits': 240,
+    Clip: 160,
+    Featurette: 100
+  };
+  let score = typeScores[video.type] || 50;
   if (video.official === true) score += 1000;
-  if (language === 'tr') score += 35;
-  if (/official|resmi|final trailer/i.test(video.name || '')) score += 80;
+  if (language === 'tr') score += 50;
+  else if (language === 'en') score += 25;
+  else if (language === 'ja') score += 15;
+  if (/official|resmi|final trailer|main trailer|tanıtım|fragman/i.test(video.name || '')) score += 80;
   if (/fan|concept|reaction|breakdown/i.test(video.name || '')) score -= 800;
   return score;
 }
 
-export function fetchMediaTrailer(type = 'tv', id) {
+export function fetchMediaTrailer(type = 'tv', id, fallbackTitle = '') {
   if (getUserSettings().trailersEnabled === false) return Promise.resolve(null);
   const cacheKey = `${type}:${id}`;
   if (trailerRequestCache.has(cacheKey)) return trailerRequestCache.get(cacheKey);
 
   const request = (async () => {
     try {
-      // Fetch both languages together. An official global trailer is safer than
-      // an unofficial Turkish upload that may require a YouTube sign-in.
-      const [trRes, enRes] = await Promise.all([
+      // Fetch Turkish, English, Japanese (anime), Korean, and universal (null) videos together
+      const [trRes, enRes, multiRes] = await Promise.all([
         tmdbFetch(`/${type}/${id}/videos`, { language: 'tr-TR' }).catch(() => null),
-        tmdbFetch(`/${type}/${id}/videos`, { language: 'en-US' }).catch(() => null)
+        tmdbFetch(`/${type}/${id}/videos`, { language: 'en-US' }).catch(() => null),
+        tmdbFetch(`/${type}/${id}/videos`, { include_video_language: 'tr,en,ja,ko,null' }).catch(() => null)
       ]);
-      const candidates = [
-        ...((trRes?.results || []).map(video => ({ video, language: 'tr' }))),
-        ...((enRes?.results || []).map(video => ({ video, language: 'en' })))
-      ];
+
+      const seenKeys = new Set();
+      const candidates = [];
+
+      const addVideos = (list, lang) => {
+        if (!Array.isArray(list)) return;
+        for (const v of list) {
+          if (v && v.key && !seenKeys.has(v.key)) {
+            seenKeys.add(v.key);
+            candidates.push({ video: v, language: lang || v.iso_639_1 || 'en' });
+          }
+        }
+      };
+
+      addVideos(trRes?.results, 'tr');
+      addVideos(enRes?.results, 'en');
+      addVideos(multiRes?.results, '');
+
       candidates.sort((a, b) => scoreTrailer(b.video, b.language) - scoreTrailer(a.video, a.language));
       const trailer = candidates.find(entry => scoreTrailer(entry.video, entry.language) >= 0)?.video;
 
@@ -1128,8 +1151,22 @@ export function fetchMediaTrailer(type = 'tv', id) {
           name: trailer.name || 'Resmi Fragman',
           site: trailer.site,
           type: trailer.type,
-          embedUrl: `https://www.youtube-nocookie.com/embed/${encodedKey}?autoplay=1&rel=0&modestbranding=1&playsinline=1`,
+          embedUrl: `https://www.youtube.com/embed/${encodedKey}?autoplay=1&rel=0&modestbranding=1&playsinline=1`,
           watchUrl: `https://www.youtube.com/watch?v=${encodedKey}`
+        };
+      }
+
+      // Fallback for animations/cartoons with no TMDB video records (e.g. Ben 10)
+      if (fallbackTitle && typeof fallbackTitle === 'string' && fallbackTitle.trim().length > 1) {
+        const cleanTitle = fallbackTitle.trim();
+        const searchQ = `${cleanTitle} Fragman`;
+        return {
+          key: '',
+          name: `${cleanTitle} Tanıtım`,
+          site: 'YouTube',
+          type: 'Trailer',
+          embedUrl: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(searchQ)}&autoplay=1&rel=0`,
+          watchUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQ)}`
         };
       }
     } catch (err) {

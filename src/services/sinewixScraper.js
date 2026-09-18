@@ -213,9 +213,9 @@ export async function fetchSinewixSources({
       const isDirect = (lowerLink.includes('.mp4') || lowerLink.includes('.webm')) && !isMkv;
       const isHls = lowerLink.includes('.m3u8');
 
-      // Use Cloudflare VOD worker proxy to provide Range requests and CORS headers (*), so Chrome can play smoothly
-      const proxiedLink = ((isDirect || isMkv) && rawLink.startsWith('http'))
-        ? `https://wild-credit-e1ae.cagatayca07.workers.dev?url=${encodeURIComponent(rawLink)}`
+      // Use high-speed proxy with HTTP Range & CORS support for instant video startup
+      const proxiedLink = ((isDirect || isMkv || isHls) && rawLink.startsWith('http'))
+        ? `/api/hls_proxy?url=${encodeURIComponent(rawLink)}`
         : rawLink;
 
       const serverTitle = isDirect ? 'SWX Direct 1080p' : (isMkv ? 'SWX MKV 1080p' : 'SWX VIP 1080p');
