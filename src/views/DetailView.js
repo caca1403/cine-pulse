@@ -307,45 +307,71 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
 
       const playMovieBtn = container.querySelector('#btn-play-movie');
       if (playMovieBtn) {
-        playMovieBtn.addEventListener('click', () => {
-          const progress = getMediaProgress(id, 1, 1);
-          openPlayerModal({
-            type: isAnime ? 'anime' : 'movie',
-            isAnime,
-            tmdbId: id,
-            title: title,
-            seriesTitle: title,
-            originalTitle: originalTitle,
-            posterPath: media.poster_path,
-            backdropPath: media.backdrop_path,
-            duration: movieDurationSec,
-            currentTime: progress ? progress.currentTime : 0
-          });
+        playMovieBtn.addEventListener('click', async () => {
+          playMovieBtn.disabled = true;
+          const origHTML = playMovieBtn.innerHTML;
+          playMovieBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:18px;height:18px;fill:currentColor"></i> <span>Yükleniyor...</span>`;
+          renderIcons();
+          try {
+            const progress = getMediaProgress(id, 1, 1);
+            await openPlayerModal({
+              type: isAnime ? 'anime' : 'movie',
+              isAnime,
+              tmdbId: id,
+              title: title,
+              seriesTitle: title,
+              originalTitle: originalTitle,
+              posterPath: media.poster_path,
+              backdropPath: media.backdrop_path,
+              duration: movieDurationSec,
+              currentTime: progress ? progress.currentTime : 0
+            });
+          } catch (err) {
+            console.error('[CinePulse] Film oynatılamadı:', err);
+            showToast('Film açılırken hata oluştu, lütfen tekrar deneyin.', 'error');
+          } finally {
+            playMovieBtn.disabled = false;
+            playMovieBtn.innerHTML = origHTML;
+            renderIcons();
+          }
         });
       }
 
       const resumeSeriesBtn = container.querySelector('#btn-resume-series');
       if (resumeSeriesBtn) {
-        resumeSeriesBtn.addEventListener('click', () => {
-          const lastWatched = getLastWatchedEpisode(id);
-          const seasonNum = lastWatched ? lastWatched.season : 1;
-          const episodeNum = lastWatched ? lastWatched.episode : 1;
-          const currentTime = lastWatched ? lastWatched.currentTime : 0;
-
-          openPlayerModal({
-            type: isAnime ? 'anime' : 'tv',
-            isAnime,
-            tmdbId: id,
-            title: `${title} - S${seasonNum}E${episodeNum}`,
-            seriesTitle: title,
-            originalTitle: originalTitle,
-            season: seasonNum,
-            episode: episodeNum,
-            posterPath: media.poster_path,
-            backdropPath: media.backdrop_path,
-            currentTime,
-            seasonsList: media.seasons || []
-          });
+        resumeSeriesBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          resumeSeriesBtn.disabled = true;
+          const origHTML = resumeSeriesBtn.innerHTML;
+          resumeSeriesBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:18px;height:18px;fill:currentColor"></i> <span>Yükleniyor...</span>`;
+          renderIcons();
+          try {
+            const lastWatched = getLastWatchedEpisode(id);
+            const seasonNum = lastWatched ? lastWatched.season : 1;
+            const episodeNum = lastWatched ? lastWatched.episode : 1;
+            const currentTime = lastWatched ? lastWatched.currentTime : 0;
+            await openPlayerModal({
+              type: isAnime ? 'anime' : 'tv',
+              isAnime,
+              tmdbId: id,
+              title: `${title} - S${seasonNum}E${episodeNum}`,
+              seriesTitle: title,
+              originalTitle: originalTitle,
+              season: seasonNum,
+              episode: episodeNum,
+              posterPath: media.poster_path,
+              backdropPath: media.backdrop_path,
+              currentTime,
+              seasonsList: media.seasons || []
+            });
+          } catch (err) {
+            console.error('[CinePulse] Dizi oynatılamadı:', err);
+            showToast('İçerik açılırken hata oluştu, lütfen tekrar deneyin.', 'error');
+          } finally {
+            resumeSeriesBtn.disabled = false;
+            resumeSeriesBtn.innerHTML = origHTML;
+            renderIcons();
+          }
         });
       }
 

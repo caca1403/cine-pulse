@@ -361,9 +361,10 @@ export async function getStreamingServersProgressive({
     for (const raw of valid) {
       let targetCat = category;
 
-      // Authoritative TR Dublaj Shield: Verify genuine dubbing evidence
+      // Authoritative TR Dublaj Shield: Only divert if stream EXPLICITLY signals subtitle-only
       if (targetCat === 'dubbed') {
         const text = `${raw.name || ''} ${raw.displayName || ''} ${raw.badge || ''} ${raw.id || ''} ${raw.url || ''} ${raw.streamUrl || ''}`.toLowerCase();
+        
         const hasDubSignal = text.includes('dublaj') || 
                              text.includes('trdub') || 
                              text.includes('tr-dub') || 
@@ -373,14 +374,18 @@ export async function getStreamingServersProgressive({
                              text.includes('türkçe dublaj') ||
                              text.includes('turkce dublaj');
 
-        const hasSubOnlySignal = (text.includes('altyaz') || text.includes('subtitled') || text.includes('trsub')) && !hasDubSignal;
+        // Only divert to subtitled if the stream EXPLICITLY says subtitle-only
+        // AND has NO dubbing signal at all
+        const isExplicitSubOnly = (text.includes('altyaz') || text.includes('subtitled') || text.includes('trsub')) && !hasDubSignal;
         const isKvip = (raw.id || '').startsWith('kvip_');
 
-        if ((hasSubOnlySignal || !hasDubSignal) && !isKvip) {
-          // Divert fake dub to subtitled category
+        // Don't divert unless stream explicitly declares itself subtitle-only
+        // Streams from dubbed providers without any label → trust the provider
+        if (isExplicitSubOnly && !isKvip) {
           targetCat = 'subtitled';
         }
       }
+
 
       const formatted = formatStreamItem(raw, targetCat, targetCat === 'dubbed' ? 'VIP 1080p' : 'VIP Altyazılı');
       if (targetCat === 'subtitled' && category === 'dubbed') {
