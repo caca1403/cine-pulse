@@ -359,47 +359,13 @@ export async function getStreamingServersProgressive({
     const added = [];
 
     for (const raw of valid) {
-      let targetCat = category;
-
-      // Authoritative TR Dublaj Shield: Only divert if stream EXPLICITLY signals subtitle-only
-      if (targetCat === 'dubbed') {
-        const text = `${raw.name || ''} ${raw.displayName || ''} ${raw.badge || ''} ${raw.id || ''} ${raw.url || ''} ${raw.streamUrl || ''}`.toLowerCase();
-        
-        const hasDubSignal = text.includes('dublaj') || 
-                             text.includes('trdub') || 
-                             text.includes('tr-dub') || 
-                             text.includes('dual audio') || 
-                             text.includes('dual ses') || 
-                             text.includes('seslendirme') ||
-                             text.includes('türkçe dublaj') ||
-                             text.includes('turkce dublaj');
-
-        // Only divert to subtitled if the stream EXPLICITLY says subtitle-only
-        // AND has NO dubbing signal at all
-        const isExplicitSubOnly = (text.includes('altyaz') || text.includes('subtitled') || text.includes('trsub')) && !hasDubSignal;
-        const isKvip = (raw.id || '').startsWith('kvip_');
-
-        // Don't divert unless stream explicitly declares itself subtitle-only
-        // Streams from dubbed providers without any label → trust the provider
-        if (isExplicitSubOnly && !isKvip) {
-          targetCat = 'subtitled';
-        }
-      }
-
-
-      const formatted = formatStreamItem(raw, targetCat, targetCat === 'dubbed' ? 'VIP 1080p' : 'VIP Altyazılı');
-      if (targetCat === 'subtitled' && category === 'dubbed') {
-        formatted.name = (formatted.name || '').replace(/\(TR Dublaj\)/gi, '(TR Altyazı)').replace(/Dublaj/gi, 'Altyazı');
-        formatted.displayName = (formatted.displayName || '').replace(/\(TR Dublaj\)/gi, '(TR Altyazı)').replace(/Dublaj/gi, 'Altyazı');
-        formatted.badge = (formatted.badge || '').replace(/⚡.*?Dublaj.*?/gi, '💬 TR Altyazı').replace(/Dublaj/gi, 'Altyazı');
-      }
-
+      const formatted = formatStreamItem(raw, category, category === 'dubbed' ? 'VIP 1080p' : 'VIP Altyazılı');
       const urlStr = (formatted.streamUrl || formatted.url || '').trim().toLowerCase();
       const id = (formatted.id || '').toLowerCase();
       const providerPrefix = id.split('_').slice(0, 2).join('_');
       const urlKey = `${providerPrefix}||${urlStr}`;
 
-      if (targetCat === 'dubbed') {
+      if (category === 'dubbed') {
         if (!seenDubUrls.has(urlKey)) {
           seenDubUrls.add(urlKey);
           currentDubbed.push(formatted);
@@ -444,6 +410,9 @@ export async function getStreamingServersProgressive({
   };
 
   const isAnime = type === 'anime';
+
+
+
 
   const tasks = [
     // 1. RecTV VIP (1080p VIP direct streams)
