@@ -665,16 +665,29 @@ const server = http.createServer(async (req, res) => {
         }).join('\n');
 
         res.writeHead(upstreamRes.status, {
-          'Content-Type': 'application/vnd.apple.mpegurl'
+          'Content-Type': 'application/vnd.apple.mpegurl',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache'
         });
         res.end(rewritten);
       } else {
-        const headers = { 'Content-Type': contentType || 'video/mp2t' };
+        const headers = {
+          'Content-Type': contentType || 'video/mp2t',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, max-age=86400, immutable'
+        };
         const contentLength = upstreamRes.headers.get('content-length');
         if (contentLength) headers['Content-Length'] = contentLength;
         res.writeHead(upstreamRes.status, headers);
         if (upstreamRes.body) {
-          Readable.fromWeb(upstreamRes.body).pipe(res);
+          const stream = Readable.fromWeb(upstreamRes.body);
+          stream.on('error', () => {
+            if (!res.writableEnded) res.end();
+          });
+          req.on('close', () => {
+            stream.destroy();
+          });
+          stream.pipe(res);
         } else {
           res.end();
         }

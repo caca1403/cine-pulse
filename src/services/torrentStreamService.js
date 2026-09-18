@@ -21,8 +21,8 @@ export async function fetchTorrentStreamSources({
 
   // Videasy VIP (Torrentio / Stremio Web Player - Very high speed, multi-sub including Turkish)
   const videasyUrl = isMovie
-    ? `https://player.videasy.net/movie/${tmdbId}`
-    : `https://player.videasy.net/tv/${tmdbId}/${sNum}/${epNum}`;
+    ? `https://player.videasy.to/movie/${tmdbId}`
+    : `https://player.videasy.to/tv/${tmdbId}/${sNum}/${epNum}`;
 
   const defaultSubUrl = `/api/subtitles?imdbId=${tmdbId}&season=${sNum}&episode=${epNum}&type=${type}`;
   const autoSubs = [{ label: 'OpenSubtitles (Türkçe)', src: defaultSubUrl }];

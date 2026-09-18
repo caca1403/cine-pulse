@@ -258,17 +258,17 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('dzs_') || raw.includes('dizisol') || raw.includes('ds 1080p')) return 0;
   if (id.startsWith('snx') || raw.includes('sinewix') || raw.includes('swx')) return 0;
 
-  // Priority 1: High quality secondary platforms & High-Seed VIP P2P Streams
+  // Priority 1: High quality secondary platforms, Direct Native HLS (LookMovie VIP) & High-Seed VIP P2P Streams
+  if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) return 1;
   if (id.startsWith('torrent_p2p_')) return 1;
   if (id.startsWith('dzy_') || raw.includes('diziyo')) return 1;
   if (id.startsWith('dyu_') || raw.includes('diziyou')) return 1;
   if (id.startsWith('szd_') || raw.includes('sezonluk')) return 1;
   if (id.startsWith('hdfb_') || raw.includes('hdfilmizle')) return 1;
 
-  // Priority 2: LookMovie VIP, 2Embed VIP, VidSrc VIP
-  if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) return 2;
-  if (id.startsWith('twoembed_') || raw.includes('2embed')) return 2;
+  // Priority 2: Embed Players (VidSrc VIP, SmashyStream VIP)
   if (id.startsWith('vidsrc_') || raw.includes('vidsrc')) return 2;
+  if (id.startsWith('smashystream_') || raw.includes('smashy')) return 2;
 
   // Priority 3: Anime & Cartoons
   if (id.startsWith('kvip_') || raw.includes('kids vip')) return 3;

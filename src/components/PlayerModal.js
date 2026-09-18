@@ -3354,14 +3354,22 @@ export async function openPlayerModal({
         if (isHlsStream && window.Hls && Hls.isSupported()) {
           const hls = new Hls({
             enableWorker: true,
-            lowLatencyMode: true,
-            maxBufferLength: 10,
-            maxMaxBufferLength: 20,
-            startPosition: -1,
-            backBufferLength: 15,
-            highBufferWatchdogPeriod: 1,
+            lowLatencyMode: false,
+            backBufferLength: 30,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            maxBufferSize: 60 * 1000 * 1000,
+            maxBufferHole: 0.5,
+            highBufferWatchdogPeriod: 3,
             nudgeOffset: 0.1,
-            nudgeMaxRetry: 5
+            nudgeMaxRetry: 8,
+            progressive: true,
+            fragLoadingTimeOut: 25000,
+            manifestLoadingTimeOut: 15000,
+            levelLoadingTimeOut: 15000,
+            fragLoadingMaxRetry: 4,
+            manifestLoadingMaxRetry: 3,
+            levelLoadingMaxRetry: 3
           });
           activeHlsInstance = hls;
 
@@ -3403,6 +3411,7 @@ export async function openPlayerModal({
           playbackScope.on(videoEl, 'loadedmetadata', applySafeSeek, { once: true });
 
           let networkErrorCount = 0;
+          let mediaErrorCount = 0;
           hls.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal) {
               if (data.response && data.response.code >= 400) {
@@ -3423,7 +3432,17 @@ export async function openPlayerModal({
                   }
                   break;
                 case Hls.ErrorTypes.MEDIA_ERROR:
-                  hls.recoverMediaError();
+                  mediaErrorCount++;
+                  if (mediaErrorCount === 1) {
+                    hls.recoverMediaError();
+                  } else if (mediaErrorCount === 2) {
+                    try { hls.swapAudioCodec(); } catch (_) {}
+                    hls.recoverMediaError();
+                  } else {
+                    try { hls.destroy(); } catch (_) {}
+                    activeHlsInstance = null;
+                    triggerAutoFailover('Medya Çözümleme Hatası');
+                  }
                   break;
                 default:
                   try { hls.destroy(); } catch (_) {}
@@ -3518,9 +3537,12 @@ export async function openPlayerModal({
             if (isAudioHls && window.Hls && Hls.isSupported()) {
               const audioHls = new Hls({
                 enableWorker: true,
-                lowLatencyMode: true,
-                maxBufferLength: 6,
-                maxMaxBufferLength: 12
+                lowLatencyMode: false,
+                backBufferLength: 30,
+                maxBufferLength: 30,
+                maxMaxBufferLength: 60,
+                maxBufferSize: 30 * 1000 * 1000,
+                fragLoadingTimeOut: 25000
               });
               activeAudioHlsInstance = audioHls;
               audioHls.loadSource(dubbedUrl);
