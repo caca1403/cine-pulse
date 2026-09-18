@@ -51,6 +51,35 @@ async function fetchDizisolApi(endpoint, options = {}) {
   return null;
 }
 
+const dizisolCache = new Map();
+
+async function fetchDizisolJson(endpoint, options = {}) {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const now = Date.now();
+  const cached = dizisolCache.get(cleanEndpoint);
+  if (cached) {
+    if (cached.data && (now - cached.timestamp < 120000)) {
+      return cached.data;
+    }
+    if (cached.promise) {
+      return cached.promise;
+    }
+  }
+
+  const p = (async () => {
+    const res = await fetchDizisolApi(cleanEndpoint, options);
+    if (!res) return null;
+    const data = await res.json().catch(() => null);
+    if (data) {
+      dizisolCache.set(cleanEndpoint, { data, timestamp: Date.now() });
+    }
+    return data;
+  })();
+
+  dizisolCache.set(cleanEndpoint, { promise: p, timestamp: now });
+  return p;
+}
+
 /**
  * Searches Dizisol catalog by query
  */
@@ -58,9 +87,7 @@ export async function searchDizisol(query) {
   if (!query || typeof query !== 'string' || query.trim().length < 2) return [];
 
   try {
-    const res = await fetchDizisolApi(`/movies/search?q=${encodeURIComponent(query.trim())}`, { timeout: 3500 });
-    if (!res) return [];
-    const data = await res.json().catch(() => null);
+    const data = await fetchDizisolJson(`/movies/search?q=${encodeURIComponent(query.trim())}`, { timeout: 3500 });
     return Array.isArray(data) ? data : [];
   } catch (_) {
     return [];
@@ -147,10 +174,7 @@ export async function fetchDizisolMovieSources({
 
     if (!targetTmdbId) return [];
 
-    const res = await fetchDizisolApi(`/movies/by-tmdb/${targetTmdbId}`, { timeout: 4000 });
-    if (!res) return [];
-
-    const data = await res.json().catch(() => null);
+    const data = await fetchDizisolJson(`/movies/by-tmdb/${targetTmdbId}`, { timeout: 4000 });
     if (!data) return [];
 
     const subtitles = [];
@@ -251,10 +275,7 @@ export async function fetchDizisolEpisodeSources({
 
     if (!targetTmdbId) return [];
 
-    const res = await fetchDizisolApi(`/movies/by-tmdb/${targetTmdbId}/episodes`, { timeout: 4500 });
-    if (!res) return [];
-
-    const episodes = await res.json().catch(() => null);
+    const episodes = await fetchDizisolJson(`/movies/by-tmdb/${targetTmdbId}/episodes`, { timeout: 4500 });
     if (!Array.isArray(episodes) || episodes.length === 0) return [];
 
     const targetEp = episodes.find(e => Number(e.season) === Number(season) && Number(e.episode) === Number(episode));

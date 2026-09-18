@@ -215,8 +215,15 @@ export default async function handler(req, res) {
   }
 
   if (pathname.startsWith('/api/hls_proxy')) {
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
+      return res.status(200).end();
+    }
+
     const rawTarget = urlObj.searchParams.get('url') || '';
-    const ref = urlObj.searchParams.get('ref') || 'https://hdplayersystem.com/';
+    let ref = urlObj.searchParams.get('ref') || '';
     if (!rawTarget) {
       return res.status(400).send('Missing url param');
     }
@@ -224,6 +231,19 @@ export default async function handler(req, res) {
     try {
       const decodedTarget = decodeURIComponent(rawTarget);
       if (!isSafePublicUrl(decodedTarget)) return res.status(403).send('Target blocked');
+
+      if (!ref) {
+        if (decodedTarget.includes('dizisol.com')) {
+          ref = 'https://dizisol.com/';
+        } else if (decodedTarget.includes('prectv') || decodedTarget.includes('mariuannastluisborg') || decodedTarget.includes('moveonjoy')) {
+          ref = 'https://a.prectv70.lol/';
+        } else if (decodedTarget.includes('hdfilmcehennemi')) {
+          ref = 'https://hdfilmcehennemi.mobi/';
+        } else {
+          ref = 'https://hdplayersystem.com/';
+        }
+      }
+
       let targetOrigin = 'https://hdplayersystem.com';
       try {
         if (ref) targetOrigin = new URL(ref).origin;
@@ -251,6 +271,7 @@ export default async function handler(req, res) {
       });
 
       const contentType = upstreamRes.headers.get('content-type') || '';
+      res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
       res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
@@ -298,6 +319,18 @@ export default async function handler(req, res) {
                 const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
                 fullU = `${baseOrigin}${dir}${u}`;
               }
+
+              // Direct CDN bypass for Dizisol audio / sub-manifests and CORS CDNs
+              if (
+                fullU.includes('dizisol.com') ||
+                fullU.includes('superadjacentsoddenly.xyz') ||
+                fullU.includes('photour.org') ||
+                fullU.includes('cdnimages') ||
+                fullU.includes('nodedatastream')
+              ) {
+                return `URI="${fullU}"`;
+              }
+
               return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(ref)}"`;
             });
           }
@@ -315,6 +348,23 @@ export default async function handler(req, res) {
             const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
             fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
           }
+
+          // Direct high-speed CDN bypass for Dizisol & CDN segments (instant 0s start without proxy delay/403)
+          const isDirectCdn = (
+            fullLineUrl.includes('dizisol.com') ||
+            fullLineUrl.includes('superadjacentsoddenly.xyz') ||
+            fullLineUrl.includes('photour.org') ||
+            fullLineUrl.includes('cdnimages') ||
+            fullLineUrl.includes('vidmixi') ||
+            fullLineUrl.includes('nodedatastream') ||
+            fullLineUrl.includes('.jpg') ||
+            fullLineUrl.includes('.png') ||
+            fullLineUrl.includes('ts?')
+          );
+          if (isDirectCdn) {
+            return fullLineUrl;
+          }
+
           return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(ref)}`;
         }).join('\n');
 

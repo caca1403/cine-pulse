@@ -3695,7 +3695,8 @@ export async function openPlayerModal({
             levelLoadingTimeOut: 20000,
             fragLoadingMaxRetry: 6,
             manifestLoadingMaxRetry: 4,
-            levelLoadingMaxRetry: 4
+            levelLoadingMaxRetry: 4,
+            startFragPrefetch: true
           });
           activeHlsInstance = hls;
 
