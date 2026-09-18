@@ -8,53 +8,65 @@ from http.server import BaseHTTPRequestHandler
 FULL_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 BASE_URL = 'https://www.hdfilmcehennemi.nl'
 
-def decode_hdfc(arr, jmx, nsr1):
+def atob(s):
     try:
-        m2mj = "".join(arr)
-        sxio0 = 0
-        vqc3v = 0
-        for jnhzs, char in enumerate(jmx):
-            pshql = ord(char)
-            sxio0 = (sxio0 * 31 + pshql) % 251
-            vqc3v = (vqc3v ^ (pshql + jnhzs)) & 255
-        w5gx = (sxio0 + vqc3v) % 256
-        mvcr5 = (sxio0 % 13) + 3
-        vrxi = ((sxio0 * 256 + vqc3v) % 65521) + 1
-        for mbr in reversed(nsr1):
-            if mbr == 'b':
-                m2mj = base64.b64decode(m2mj).decode('latin1')
-            elif mbr == 'v':
-                m2mj = m2mj[::-1]
+        return base64.b64decode(s).decode('latin1')
+    except Exception:
+        return ''
+
+def decode_hdfc(arr, w601, f82d):
+    try:
+        r0yqa = ''.join(arr)
+        nkrz = 0
+        g8crq = 0
+        for h8r in range(len(w601)):
+            vo1hk = ord(w601[h8r])
+            nkrz = (nkrz * 31 + vo1hk) % 251
+            g8crq = (g8crq ^ (vo1hk + h8r)) & 255
+        jm6 = (nkrz + g8crq) % 256
+        czpfq = (nkrz % 13) + 3
+        ajn = ((nkrz * 256 + g8crq) % 65521) + 1
+
+        for h8r in range(len(f82d) - 1, -1, -1):
+            kvyuu = f82d[h8r]
+            if kvyuu == 'b':
+                r0yqa = atob(r0yqa)
+            elif kvyuu == 'v':
+                r0yqa = r0yqa[::-1]
             else:
-                iec = (26 - ((ord(mbr) - 64) % 26)) % 26
+                fyt4f = (26 - ((ord(kvyuu) - 64) % 26)) % 26
                 res = []
-                for ch in m2mj:
+                for ch in r0yqa:
                     c = ord(ch)
                     if 65 <= c <= 90:
-                        res.append(chr((c - 65 + iec) % 26 + 65))
+                        res.append(chr((c - 65 + fyt4f) % 26 + 65))
                     elif 97 <= c <= 122:
-                        res.append(chr((c - 97 + iec) % 26 + 97))
+                        res.append(chr((c - 97 + fyt4f) % 26 + 97))
                     else:
                         res.append(ch)
-                m2mj = "".join(res)
-        lpc7k = len(m2mj)
-        ekhwp = [0] * lpc7k
-        for jnhzs in range(lpc7k - 1, 0, -1):
-            vrxi = (vrxi * 75 + 74) % 65537
-            ekhwp[jnhzs] = vrxi % (jnhzs + 1)
-        q0dkd = list(m2mj)
-        for jnhzs in range(1, lpc7k):
-            qcct = ekhwp[jnhzs]
-            q0dkd[jnhzs], q0dkd[qcct] = q0dkd[qcct], q0dkd[jnhzs]
-        m2mj = "".join(q0dkd)
-        yog3 = w5gx
-        l28 = []
-        for char in m2mj:
-            pshql = ord(char)
-            yog3 = (yog3 + mvcr5) % 256
-            l28.append(chr(pshql ^ yog3))
-            yog3 = (yog3 + pshql) % 256
-        return "".join(l28)
+                r0yqa = ''.join(res)
+
+        xshzt = len(r0yqa)
+        xz5u = [0] * xshzt
+        for h8r in range(xshzt - 1, 0, -1):
+            ajn = (ajn * 75 + 74) % 65537
+            xz5u[h8r] = ajn % (h8r + 1)
+
+        se2c = list(r0yqa)
+        for h8r in range(1, xshzt):
+            qu01d = xz5u[h8r]
+            se2c[h8r], se2c[qu01d] = se2c[qu01d], se2c[h8r]
+        r0yqa = ''.join(se2c)
+
+        xa0i = jm6
+        x90xa = []
+        for h8r in range(len(r0yqa)):
+            vo1hk = ord(r0yqa[h8r])
+            xa0i = (xa0i + czpfq) % 256
+            x90xa.append(chr(vo1hk ^ xa0i))
+            xa0i = (xa0i + vo1hk) % 256
+
+        return ''.join(x90xa)
     except Exception:
         return None
 
@@ -79,13 +91,12 @@ def extract_from_embed(embed_url, referer):
         if not m_func:
             return None
         func_body = m_func.group(1)
-        m_jmx = re.search(r'var\s+[a-zA-Z0-9_]+\s*=\s*["\']([^"\']+)["\'];\s*var\s+[a-zA-Z0-9_]+\s*=\s*["\']([^"\']+)["\'];', func_body)
-        if not m_jmx:
+        strings = re.findall(r'var\s+[a-zA-Z0-9_]+\s*=\s*[\"\']([^\"\']+)[\"\'];', func_body)
+        if len(strings) < 2:
             return None
-        jmx = m_jmx.group(1)
-        nsr1 = m_jmx.group(2)
+        w601, f82d = strings[0], strings[1]
 
-        stream_url = decode_hdfc(arr, jmx, nsr1)
+        stream_url = decode_hdfc(arr, w601, f82d)
         if not stream_url or not stream_url.startswith('http'):
             return None
 
