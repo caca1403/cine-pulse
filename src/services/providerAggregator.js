@@ -28,9 +28,10 @@ import { fetchRecTvSources } from './rectvService.js';
 import { fetchKidsVipSources, fetchKidsVipMovieSources } from './kidsVipScraper.js';
 import { fetchSmashyStreamSources } from './smashyStreamService.js';
 import { fetchTorrentStreamSources } from './torrentStreamService.js';
+import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 
 // Cache version
-const CACHE_VERSION = 'v21';
+const CACHE_VERSION = 'v22';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -527,8 +528,12 @@ export async function getStreamingServersProgressive({
         }).catch(() => [])
       : Promise.resolve([]),
 
-    // 10. Clean Global VIP Embeds: LookMovie VIP, 2Embed VIP, VidSrc VIP
+    // 10. Clean Global VIP Embeds: VidSrc, SmashyStream, 2Embed, SuperEmbed, EmbedSu
     Promise.resolve(fetchSmashyStreamSources({ type, tmdbId, season, episode }))
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    // 10b. Official LookMovie2.la VIP Player
+    fetchOfficialLookMovieSources({ type, title: targetTitle, originalTitle, season, episode })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 11. Anime & Cartoons: AnimeciX, TürkAnime, AnimeTR

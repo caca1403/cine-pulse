@@ -4708,16 +4708,17 @@ img {
   cursor: none !important;
 }
 
-/* Auto-hide top cinema bar & extra control overlays when idle during playback */
+/* Top cinema bar (Dubbed / Subtitled switcher) remains ALWAYS visible per user request */
 .player-modal-content.hide-controls .player-cinema-bar {
-  opacity: 0;
-  transform: translateY(-100%);
-  pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
 }
 
 .player-cinema-bar {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transition: none;
 }
 
 .direct-video-wrapper.hide-controls .custom-screen-lock-btn,
@@ -11634,14 +11635,16 @@ video::cue {
   box-shadow: 0 0 8px #10b981;
 }
 
-/* Keep all playback chrome in sync, including fullscreen and screen lock. */
+/* Keep playback controls hiding while preserving the top cinema bar */
 .direct-video-wrapper.hide-controls .custom-screen-lock-btn,
-.direct-video-wrapper.hide-controls .dual-audio-bar,
-#cinema-modal-box:has(.direct-video-wrapper.hide-controls) .player-cinema-bar {
+.direct-video-wrapper.hide-controls .dual-audio-bar {
   opacity: 0;
   pointer-events: none;
 }
-.player-cinema-bar,
+.player-cinema-bar {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
 .custom-screen-lock-btn,
 .dual-audio-bar {
   transition: opacity 180ms ease;

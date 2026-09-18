@@ -1251,11 +1251,12 @@ export async function openPlayerModal({
         id="video-iframe"
         name="player_${iframeName}"
         src="${finalIframeUrl}" 
-        allowfullscreen
-        webkitallowfullscreen
-        mozallowfullscreen
+        allowfullscreen="true"
+        webkitallowfullscreen="true"
+        mozallowfullscreen="true"
         loading="eager"
-        allow="autoplay; encrypted-media; fullscreen; picture-in-picture; accelerometer; gyroscope; clipboard-write; payment; screen-wake-lock; web-share; pointer-lock; orientation-lock; xr-spatial-tracking"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+        allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *"
         style="width:100%;height:100%;border:none;display:block;background:#000;">
       </iframe>
     `;
@@ -1358,7 +1359,6 @@ export async function openPlayerModal({
           
           <div class="player-title-box">
             <span id="player-modal-title" class="player-header-title">${cleanSeriesName}</span>
-            <span class="player-media-badge">${type === 'tv' ? `S${currentSeason} B${currentEpisode}` : '4K UHD'}</span>
             ${initialTime > 5 ? `
               <span id="player-resume-time-badge" class="player-resume-badge" title="Kaldığın Süre">
                 <i data-lucide="clock" style="width: 11px; height: 11px;"></i>
@@ -1953,10 +1953,20 @@ export async function openPlayerModal({
   if (btnFullscreen) {
     btnFullscreen.addEventListener('click', () => {
       const modalBox = document.getElementById('cinema-modal-box') || document.documentElement;
+      const iframeEl = document.getElementById('video-iframe');
+      const videoEl = document.getElementById('hls-video-player');
+      const target = iframeEl || videoEl || modalBox;
       if (!document.fullscreenElement) {
-        modalBox.requestFullscreen().catch(() => {});
+        if (target && target.requestFullscreen) {
+          target.requestFullscreen().catch(() => modalBox.requestFullscreen().catch(() => {}));
+        } else if (target && target.webkitRequestFullscreen) {
+          target.webkitRequestFullscreen();
+        } else if (modalBox.requestFullscreen) {
+          modalBox.requestFullscreen().catch(() => {});
+        }
       } else {
-        document.exitFullscreen().catch(() => {});
+        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
       }
     });
   }

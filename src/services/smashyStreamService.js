@@ -1,12 +1,11 @@
 /* ==========================================================================
    CinePulse Studio - VIP Global Embed Source Service
    Low-ad, ultra-stable 1080p streaming embeds:
-   - VidSrc.me  (En kararlı, TMDB destekli, multi-sub)
-   - VidSrc.xyz (Fast CDN, multi-sub TR)
+   - VidSrc.me (En kararlı normal VidSrc, TMDB destekli, multi-sub)
+   - SmashyStream VIP (Resmi player.smashystream.com, multi-sub TR)
    - 2Embed VIP (Clean, instant, multi-sub TR)
-   - SuperEmbed  (Aggregate player, yüksek uyumluluk)
-   - EmbedSu    (Yeni nesil, hızlı CDN)
-   - MultiEmbed (LookMovie CDN)
+   - SuperEmbed (Multi-source aggregate player)
+   - EmbedSu (Hızlı CDN)
    ========================================================================== */
 
 export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, episode = 1 } = {}) {
@@ -16,17 +15,17 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
   const sNum = parseInt(season, 10) || 1;
   const epNum = parseInt(episode, 10) || 1;
 
-  // 1. VidSrc.me - En kararlı embed (TMDB ID direkt destekli)
+  // 1. VidSrc.me - Normal kararlı VidSrc (vidsrc.xyz kaldırıldı)
   const vidSrcMeUrl = isMovie
     ? `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`
     : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&season=${sNum}&episode=${epNum}`;
 
-  // 2. VidSrc.xyz (Hızlı CDN)
-  const vidSrcXyzUrl = isMovie
-    ? `https://vidsrc.xyz/embed/movie/${tmdbId}`
-    : `https://vidsrc.xyz/embed/tv/${tmdbId}?s=${sNum}&e=${epNum}`;
+  // 2. SmashyStream VIP - Resmi SmashyStream Oynatıcısı
+  const smashyUrl = isMovie
+    ? `https://player.smashystream.com/movie/${tmdbId}`
+    : `https://player.smashystream.com/tv/${tmdbId}/${sNum}/${epNum}`;
 
-  // 3. 2Embed VIP - URL formatı düzeltildi (?s= ile)
+  // 3. 2Embed VIP (Multi-sub TR)
   const twoEmbedUrl = isMovie
     ? `https://www.2embed.cc/embed/${tmdbId}`
     : `https://www.2embed.cc/embedtv/${tmdbId}?s=${sNum}&e=${epNum}`;
@@ -36,15 +35,10 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
     ? `https://multiembed.mov/directstream.php?video_id=${tmdbId}&tmdb=1`
     : `https://multiembed.mov/directstream.php?video_id=${tmdbId}&tmdb=1&s=${sNum}&e=${epNum}`;
 
-  // 5. EmbedSu (Yeni nesil embed player)
+  // 5. EmbedSu (Hızlı CDN)
   const embedSuUrl = isMovie
     ? `https://embed.su/embed/movie/${tmdbId}`
     : `https://embed.su/embed/tv/${tmdbId}/${sNum}/${epNum}`;
-
-  // 6. MultiEmbed (LookMovie CDN)
-  const lookMovieUrl = isMovie
-    ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
-    : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${sNum}&e=${epNum}`;
 
   return [
     {
@@ -63,19 +57,19 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
       getUrl: () => vidSrcMeUrl
     },
     {
-      id: `vidsrc_xyz_${tmdbId}_s${sNum}e${epNum}`,
-      name: isMovie ? 'VidSrc XYZ 1080p' : `VidSrc XYZ S${sNum}B${epNum}`,
-      displayName: 'VidSrc XYZ (1080p)',
-      badge: '⚡ VidSrc XYZ',
-      source: 'VidSrc XYZ',
-      url: vidSrcXyzUrl,
-      streamUrl: vidSrcXyzUrl,
+      id: `smashystream_${tmdbId}_s${sNum}e${epNum}`,
+      name: isMovie ? 'SmashyStream VIP (1080p)' : `SmashyStream S${sNum}B${epNum}`,
+      displayName: 'SmashyStream (1080p)',
+      badge: '⚡ SmashyStream',
+      source: 'SmashyStream',
+      url: smashyUrl,
+      streamUrl: smashyUrl,
       quality: '1080p HD',
       isHls: false,
       isDirectVideo: false,
       category: 'subtitled',
       type: 'embed',
-      getUrl: () => vidSrcXyzUrl
+      getUrl: () => smashyUrl
     },
     {
       id: `twoembed_${tmdbId}_s${sNum}e${epNum}`,
@@ -121,24 +115,8 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
       category: 'subtitled',
       type: 'embed',
       getUrl: () => embedSuUrl
-    },
-    {
-      id: `lookmovie_${tmdbId}_s${sNum}e${epNum}`,
-      name: isMovie ? 'LookMovie VIP 1080p' : `LookMovie VIP S${sNum}B${epNum}`,
-      displayName: 'LookMovie VIP (1080p HD)',
-      badge: '🎬 LookMovie 1080p',
-      source: 'LookMovie',
-      url: lookMovieUrl,
-      streamUrl: lookMovieUrl,
-      quality: '1080p HD',
-      isHls: false,
-      isDirectVideo: false,
-      category: 'subtitled',
-      type: 'embed',
-      getUrl: () => lookMovieUrl
     }
   ];
 }
 
-// Named alias for semantic clarity
 export const fetchGlobalEmbedSources = fetchSmashyStreamSources;
