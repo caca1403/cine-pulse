@@ -134,11 +134,11 @@ function getDizisolStreamPriority(url, provider = '') {
   const lowProv = (provider || '').toLowerCase();
 
   // Ultra-fast instant CDN providers (< 1s playback start, 100% 200 OK & high bandwidth)
-  if (lowProv === 'vidrame') score += 100;
+  if (lowProv === 'cortina') score += 100;
   else if (lowProv === 'vidmixi') score += 95;
-  else if (lowProv === 'cortina') score += 90;
-  else if (lowProv === 'imagestoo') score += 85;
-  else if (lowProv === 'fullhd') score += 80;
+  else if (lowProv === 'vidrame') score += 85;
+  else if (lowProv === 'imagestoo') score += 80;
+  else if (lowProv === 'fullhd') score += 75;
   else if (lowProv === 'filmekseni') score += 60;
   else if (lowProv === 'vip') score += 20;
 

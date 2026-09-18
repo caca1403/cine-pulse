@@ -705,9 +705,10 @@ export async function openPlayerModal({
       return;
     }
 
-    // Rate-limit failover to prevent rapid flickering loop (max 1 per 2.5s)
+    // Rate-limit failover for transient media errors, but allow instant 0ms failover on definitive HTTP errors
     const now = Date.now();
-    if (now - lastFailoverTimestamp < 2500) {
+    const isDefinitiveHttpError = reason && /HTTP\s+(403|404|500|502|503)/i.test(reason);
+    if (!isDefinitiveHttpError && now - lastFailoverTimestamp < 2500) {
       console.warn(`[PlayerModal] Failover throttled to prevent loop: ${reason}`);
       return;
     }
