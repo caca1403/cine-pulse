@@ -773,6 +773,33 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ============ Dizisol API Proxy ============
+  if (reqUrl.pathname.startsWith('/api/dzs') || reqUrl.pathname.startsWith('/dzs')) {
+    const subPath = reqUrl.pathname.replace(/^(\/api)?\/dzs/, '') || '/';
+    const targetUrl = `https://dizisol.com/api${subPath}${reqUrl.search}`;
+    try {
+      const upstreamRes = await fetch(targetUrl, {
+        method: req.method,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://dizisol.com/',
+          'Accept': 'application/json, text/plain, */*'
+        }
+      });
+      const data = await upstreamRes.text();
+      res.writeHead(upstreamRes.status, {
+        'Content-Type': upstreamRes.headers.get('content-type') || 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(data);
+      return;
+    } catch (err) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+      return;
+    }
+  }
+
   // ============ Live TV Dynamic Stream Resolver (DMAX, TLC) ============
   if (reqUrl.pathname === '/live_tv_stream' || reqUrl.pathname === '/api/live_tv_stream') {
     const channel = (reqUrl.searchParams.get('channel') || '').toLowerCase();

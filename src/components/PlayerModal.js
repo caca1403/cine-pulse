@@ -1185,6 +1185,18 @@ export async function openPlayerModal({
                 <i data-lucide="chevron-right" style="width: 15px; height: 15px; color: #94a3b8;"></i>
               </div>
 
+              <!-- Item 2.5: Altyazı Stili & Boyutu -->
+              <div class="custom-menu-item" id="custom-menu-item-sub-style">
+                <div class="custom-menu-item-icon">
+                  <i data-lucide="palette" style="width: 17px; height: 17px; color: #ec4899;"></i>
+                </div>
+                <div class="custom-menu-item-body">
+                  <span class="custom-menu-item-title">Altyazı Stili & Ayarları</span>
+                  <span class="custom-menu-item-sub" id="custom-menu-active-sub-style">Özelleştir</span>
+                </div>
+                <i data-lucide="chevron-right" style="width: 15px; height: 15px; color: #94a3b8;"></i>
+              </div>
+
               <!-- Item 3: Oynatma hızı -->
               <div class="custom-menu-item" id="custom-menu-item-speed">
                 <div class="custom-menu-item-icon">
@@ -2740,6 +2752,12 @@ export async function openPlayerModal({
         subLabelEl.textContent = activeSub;
       }
 
+      const subStyleLabelEl = wrapper.querySelector('#custom-menu-active-sub-style');
+      if (subStyleLabelEl) {
+        const sizeNames = { small: 'Küçük', medium: 'Normal', large: 'Büyük', xlarge: 'Çok Büyük' };
+        subStyleLabelEl.textContent = sizeNames[currentSubStyle?.fontSize] || 'Özelleştir';
+      }
+
       const speedLabelEl = wrapper.querySelector('#custom-menu-active-speed');
       if (speedLabelEl) {
         const rate = videoEl.playbackRate || 1;
@@ -2903,6 +2921,255 @@ export async function openPlayerModal({
             showMainMenu();
           };
         });
+      }
+    };
+
+    // =========================================================================
+    // SUBTITLE CUSTOMIZATION & PERSISTENCE (Fonts, Sizes, Colors, Opacity, Position)
+    // =========================================================================
+    const DEFAULT_SUB_STYLE = {
+      fontSize: 'medium', // small | medium | large | xlarge
+      color: '#ffffff',   // #ffffff | #facc15 | #4ade80 | #38bdf8
+      fontFamily: 'sans', // sans | serif | mono
+      bg: 'semi',         // trans | semi | solid
+      position: 'bottom'  // bottom | middle | top
+    };
+
+    let currentSubStyle = { ...DEFAULT_SUB_STYLE };
+    try {
+      const savedSubStyle = localStorage.getItem('cinepulse_subtitle_style');
+      if (savedSubStyle) {
+        currentSubStyle = { ...DEFAULT_SUB_STYLE, ...JSON.parse(savedSubStyle) };
+      }
+    } catch (_) {}
+
+    const applySubtitleStyle = (style = currentSubStyle) => {
+      let styleEl = document.getElementById('cinepulse-sub-custom-style');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'cinepulse-sub-custom-style';
+        document.head.appendChild(styleEl);
+      }
+
+      const fontSizes = {
+        small: '14px',
+        medium: '19px',
+        large: '25px',
+        xlarge: '33px'
+      };
+
+      const fontFamilies = {
+        sans: 'Inter, system-ui, -apple-system, sans-serif',
+        serif: 'Georgia, Cambria, serif',
+        mono: '"JetBrains Mono", Consolas, monospace'
+      };
+
+      const backgrounds = {
+        trans: 'transparent',
+        semi: 'rgba(0, 0, 0, 0.75)',
+        solid: 'rgba(0, 0, 0, 0.95)'
+      };
+
+      const textShadow = style.bg === 'trans'
+        ? '0 0 4px #000, 0 0 6px #000, 2px 2px 2px #000, -2px -2px 2px #000'
+        : '0 2px 4px rgba(0,0,0,0.85)';
+
+      styleEl.textContent = `
+        video::cue {
+          font-family: ${fontFamilies[style.fontFamily] || fontFamilies.sans} !important;
+          font-size: ${fontSizes[style.fontSize] || fontSizes.medium} !important;
+          color: ${style.color || '#ffffff'} !important;
+          background-color: ${backgrounds[style.bg] || backgrounds.semi} !important;
+          text-shadow: ${textShadow} !important;
+          line-height: 1.35 !important;
+        }
+        #custom-html5-video::cue {
+          font-family: ${fontFamilies[style.fontFamily] || fontFamilies.sans} !important;
+          font-size: ${fontSizes[style.fontSize] || fontSizes.medium} !important;
+          color: ${style.color || '#ffffff'} !important;
+          background-color: ${backgrounds[style.bg] || backgrounds.semi} !important;
+          text-shadow: ${textShadow} !important;
+          line-height: 1.35 !important;
+        }
+      `;
+
+      if (videoEl && videoEl.textTracks) {
+        try {
+          const numLine = style.position === 'top' ? 2 : style.position === 'middle' ? 8 : -2;
+          for (let i = 0; i < videoEl.textTracks.length; i++) {
+            const track = videoEl.textTracks[i];
+            if (track.cues) {
+              for (let j = 0; j < track.cues.length; j++) {
+                track.cues[j].line = numLine;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+    };
+
+    // Apply subtitle style immediately on player load
+    applySubtitleStyle(currentSubStyle);
+
+    // ITEM 2.5: ALTYAZI STİLİ VE AYARLARI CLICK
+    const itemSubStyle = wrapper.querySelector('#custom-menu-item-sub-style');
+    if (itemSubStyle) {
+      itemSubStyle.onclick = (e) => {
+        e.stopPropagation();
+        renderSubsStyleSubmenu();
+      };
+    }
+
+    const renderSubsStyleSubmenu = () => {
+      const getPreviewStyle = () => {
+        const fontFamilies = {
+          sans: 'Inter, sans-serif',
+          serif: 'Georgia, serif',
+          mono: 'monospace'
+        };
+        const fontSizes = {
+          small: '12px',
+          medium: '15px',
+          large: '18px',
+          xlarge: '22px'
+        };
+        const backgrounds = {
+          trans: 'transparent',
+          semi: 'rgba(0, 0, 0, 0.75)',
+          solid: 'rgba(0, 0, 0, 0.95)'
+        };
+        const shadow = currentSubStyle.bg === 'trans'
+          ? '0 0 3px #000, 1px 1px 1px #000'
+          : '0 1px 3px rgba(0,0,0,0.8)';
+
+        return `
+          font-family: ${fontFamilies[currentSubStyle.fontFamily]};
+          font-size: ${fontSizes[currentSubStyle.fontSize]};
+          color: ${currentSubStyle.color};
+          background-color: ${backgrounds[currentSubStyle.bg]};
+          text-shadow: ${shadow};
+          padding: 4px 8px;
+          border-radius: 4px;
+          display: inline-block;
+          transition: all 0.15s ease;
+        `;
+      };
+
+      const html = `
+        <div class="custom-sub-settings-panel">
+          <!-- Canlı Önizleme -->
+          <div class="sub-preview-box">
+            <span id="sub-preview-text" style="${getPreviewStyle()}">
+              Örnek Altyazı Metni
+            </span>
+          </div>
+
+          <!-- 1. Yazı Boyutu -->
+          <div>
+            <div class="sub-style-group-label">Yazı Boyutu</div>
+            <div class="sub-style-btn-grid">
+              <button class="sub-style-btn ${currentSubStyle.fontSize === 'small' ? 'active' : ''}" data-sub-key="fontSize" data-sub-val="small">Küçük</button>
+              <button class="sub-style-btn ${currentSubStyle.fontSize === 'medium' ? 'active' : ''}" data-sub-key="fontSize" data-sub-val="medium">Normal</button>
+              <button class="sub-style-btn ${currentSubStyle.fontSize === 'large' ? 'active' : ''}" data-sub-key="fontSize" data-sub-val="large">Büyük</button>
+              <button class="sub-style-btn ${currentSubStyle.fontSize === 'xlarge' ? 'active' : ''}" data-sub-key="fontSize" data-sub-val="xlarge">Çok Büyük</button>
+            </div>
+          </div>
+
+          <!-- 2. Yazı Rengi -->
+          <div>
+            <div class="sub-style-group-label">Yazı Rengi</div>
+            <div class="sub-style-btn-grid">
+              <button class="sub-style-btn ${currentSubStyle.color === '#ffffff' ? 'active' : ''}" data-sub-key="color" data-sub-val="#ffffff">
+                <span style="display:inline-block;width:9px;height:9px;background:#ffffff;border-radius:50%;"></span> Beyaz
+              </button>
+              <button class="sub-style-btn ${currentSubStyle.color === '#facc15' ? 'active' : ''}" data-sub-key="color" data-sub-val="#facc15">
+                <span style="display:inline-block;width:9px;height:9px;background:#facc15;border-radius:50%;"></span> Sarı
+              </button>
+              <button class="sub-style-btn ${currentSubStyle.color === '#4ade80' ? 'active' : ''}" data-sub-key="color" data-sub-val="#4ade80">
+                <span style="display:inline-block;width:9px;height:9px;background:#4ade80;border-radius:50%;"></span> Yeşil
+              </button>
+              <button class="sub-style-btn ${currentSubStyle.color === '#38bdf8' ? 'active' : ''}" data-sub-key="color" data-sub-val="#38bdf8">
+                <span style="display:inline-block;width:9px;height:9px;background:#38bdf8;border-radius:50%;"></span> Mavi
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. Yazı Tipi -->
+          <div>
+            <div class="sub-style-group-label">Yazı Tipi</div>
+            <div class="sub-style-btn-grid" style="grid-template-columns: repeat(3, 1fr);">
+              <button class="sub-style-btn ${currentSubStyle.fontFamily === 'sans' ? 'active' : ''}" data-sub-key="fontFamily" data-sub-val="sans">Sans-Serif</button>
+              <button class="sub-style-btn ${currentSubStyle.fontFamily === 'serif' ? 'active' : ''}" data-sub-key="fontFamily" data-sub-val="serif">Serif</button>
+              <button class="sub-style-btn ${currentSubStyle.fontFamily === 'mono' ? 'active' : ''}" data-sub-key="fontFamily" data-sub-val="mono">Monospace</button>
+            </div>
+          </div>
+
+          <!-- 4. Arka Plan Opaklığı -->
+          <div>
+            <div class="sub-style-group-label">Arka Plan Opaklığı</div>
+            <div class="sub-style-btn-grid" style="grid-template-columns: repeat(3, 1fr);">
+              <button class="sub-style-btn ${currentSubStyle.bg === 'trans' ? 'active' : ''}" data-sub-key="bg" data-sub-val="trans">Saydam</button>
+              <button class="sub-style-btn ${currentSubStyle.bg === 'semi' ? 'active' : ''}" data-sub-key="bg" data-sub-val="semi">Yarı Saydam</button>
+              <button class="sub-style-btn ${currentSubStyle.bg === 'solid' ? 'active' : ''}" data-sub-key="bg" data-sub-val="solid">Katı Siyah</button>
+            </div>
+          </div>
+
+          <!-- 5. Dikey Konum -->
+          <div>
+            <div class="sub-style-group-label">Dikey Konum</div>
+            <div class="sub-style-btn-grid" style="grid-template-columns: repeat(3, 1fr);">
+              <button class="sub-style-btn ${currentSubStyle.position === 'bottom' ? 'active' : ''}" data-sub-key="position" data-sub-val="bottom">Alt (Standart)</button>
+              <button class="sub-style-btn ${currentSubStyle.position === 'middle' ? 'active' : ''}" data-sub-key="position" data-sub-val="middle">Orta</button>
+              <button class="sub-style-btn ${currentSubStyle.position === 'top' ? 'active' : ''}" data-sub-key="position" data-sub-val="top">Üst</button>
+            </div>
+          </div>
+
+          <!-- Sıfırla Butonu -->
+          <button id="sub-style-reset-btn" class="sub-style-btn" style="width:100%;margin-top:4px;color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(239,68,68,0.1);">
+            <i data-lucide="rotate-ccw" style="width:13px;height:13px;"></i> Varsayılan Ayarlara Sıfırla
+          </button>
+        </div>
+      `;
+
+      showSubView('Altyazı Stili & Ayarları', html);
+
+      if (subviewList) {
+        subviewList.querySelectorAll('.sub-style-btn[data-sub-key]').forEach(btn => {
+          btn.onclick = (ev) => {
+            ev.stopPropagation();
+            const key = btn.getAttribute('data-sub-key');
+            const val = btn.getAttribute('data-sub-val');
+            currentSubStyle[key] = val;
+            try {
+              localStorage.setItem('cinepulse_subtitle_style', JSON.stringify(currentSubStyle));
+            } catch (_) {}
+            applySubtitleStyle(currentSubStyle);
+
+            // Update active states in button group
+            btn.parentElement.querySelectorAll('.sub-style-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Update live preview
+            const previewEl = subviewList.querySelector('#sub-preview-text');
+            if (previewEl) {
+              previewEl.style.cssText = getPreviewStyle();
+            }
+          };
+        });
+
+        const resetBtn = subviewList.querySelector('#sub-style-reset-btn');
+        if (resetBtn) {
+          resetBtn.onclick = (ev) => {
+            ev.stopPropagation();
+            currentSubStyle = { ...DEFAULT_SUB_STYLE };
+            try {
+              localStorage.setItem('cinepulse_subtitle_style', JSON.stringify(currentSubStyle));
+            } catch (_) {}
+            applySubtitleStyle(currentSubStyle);
+            renderSubsStyleSubmenu();
+            showToast('Altyazı stili varsayılana sıfırlandı', 'info');
+          };
+        }
       }
     };
 
@@ -3131,13 +3398,15 @@ export async function openPlayerModal({
     }
 
     // 7. Touch Gestures on Mobile / Tablet (Brightness, Volume, Double-Tap Skip)
+    const gestureWrap = wrapper.querySelector('#gesture-hud-icon-wrap');
+    let currentHudIcon = '';
     let gestureHideTimeout = null;
     const showGestureHud = (iconName, text, fillPct) => {
       if (!gestureHud) return;
-      if (gestureIcon && gestureIcon.getAttribute('data-lucide') !== iconName) {
-        gestureIcon.setAttribute('data-lucide', iconName);
-        renderPlayerIcons(gestureHud);
-        gestureIcon = wrapper.querySelector('#gesture-hud-icon');
+      if (gestureWrap && currentHudIcon !== iconName) {
+        currentHudIcon = iconName;
+        gestureWrap.innerHTML = `<i data-lucide="${iconName}" style="width: 24px; height: 24px;"></i>`;
+        renderPlayerIcons(gestureWrap);
       }
       if (gestureText) gestureText.textContent = text;
       if (gestureFill) gestureFill.style.height = `${Math.max(0, Math.min(100, fillPct))}%`;

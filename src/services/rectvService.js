@@ -492,6 +492,8 @@ const LIVE_CHANNEL_URL_TTL_MS = 2 * 60 * 1000;
 export async function getRecTvChannelStreamUrl(chId, { forceRefresh = false } = {}) {
   if (!chId) return null;
   const cleanId = String(chId).replace(/^tvr_ch_/, '');
+  if (cleanId === '81') return '/api/live_tv_stream?channel=dmax';
+  if (cleanId === '83') return '/api/live_tv_stream?channel=tlc';
   const cached = liveChannelUrlCache.get(cleanId);
   if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.url;
   if (liveChannelUrlPending.has(cleanId)) return liveChannelUrlPending.get(cleanId);

@@ -101,6 +101,16 @@ export default defineConfig({
         },
         rewrite: (path) => path.replace(/^\/api\/dbl/, '')
       },
+      '/api/dzs': {
+        target: 'https://dizisol.com/api',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://dizisol.com/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/dzs/, '')
+      },
       '/api/snx': {
         target: 'https://ydfvfdizipanel.ru/public/api',
         changeOrigin: true,
