@@ -31,7 +31,7 @@ function isSafePublicUrl(rawUrl) {
     const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
     if (!['http:', 'https:'].includes(parsed.protocol)) return false;
     if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return false;
-    if (host.includes('moolightlabel') || host.includes('moonlightlabel') || host.includes('vidsrc.in') || host.includes('adsterra') || host.includes('popads')) return false;
+    if (host.includes('moolightlabel') || host.includes('moonlightlabel') || host.includes('vidsrc.in') || host.includes('adsterra') || host.includes('popads') || host.includes('cricketpivot') || host.includes('bohemo') || host.includes('newsboydurance')) return false;
     if (host === 'metadata.google.internal' || host === '169.254.169.254') return false;
     const ipv4 = host.split('.').map(Number);
     if (ipv4.length === 4 && ipv4.every(value => Number.isInteger(value) && value >= 0 && value <= 255)) {
