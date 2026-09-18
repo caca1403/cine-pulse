@@ -773,18 +773,31 @@ export async function openPlayerModal({
   }
 
   function resolveEffectiveSubtitles(srv) {
+    const list = [];
     if (Array.isArray(srv?.subtitles) && srv.subtitles.length > 0) {
-      return srv.subtitles;
+      list.push(...srv.subtitles);
     }
     const pool = [...(activeServers || []), ...(categorizedServers?.subtitled || []), ...(categorizedServers?.dubbed || [])];
     const found = pool.find(s => Array.isArray(s.subtitles) && s.subtitles.length > 0);
     if (found && Array.isArray(found.subtitles) && found.subtitles.length > 0) {
-      return found.subtitles;
+      found.subtitles.forEach(s => {
+        if (!list.some(x => x.src === s.src || (x.label && x.label === s.label))) {
+          list.push(s);
+        }
+      });
     }
+
+    // Always provide OpenSubtitles Turkish WebVTT support for dubbed and direct streams
     const subUrl = (type === 'movie')
-      ? `/api/subtitles?imdbId=${tmdbId}`
-      : `/api/subtitles?imdbId=${tmdbId}&season=${currentSeason}&episode=${currentEpisode}`;
-    return [{ label: 'Türkçe', src: subUrl }];
+      ? `/api/subtitles?imdbId=${tmdbId}&type=movie`
+      : `/api/subtitles?imdbId=${tmdbId}&season=${currentSeason}&episode=${currentEpisode}&type=tv`;
+
+    const hasOpenSub = list.some(s => (s.label || '').toLowerCase().includes('opensubtitles') || s.src?.includes('/api/subtitles'));
+    if (!hasOpenSub) {
+      list.push({ label: 'OpenSubtitles (Türkçe)', src: subUrl });
+    }
+
+    return list;
   }
 
   function attachSubtitleControls(videoEl, srv) {
@@ -1231,15 +1244,19 @@ export async function openPlayerModal({
       `;
     }
 
+    const finalIframeUrl = getStreamSafeUrl(srv);
+    const iframeName = (srv.displayName || srv.name || 'Kaynak').replace(/[^a-z0-9]/gi, '_');
     return `
       <iframe 
-        id="video-iframe" 
+        id="video-iframe"
+        name="player_${iframeName}"
         src="${finalIframeUrl}" 
         allowfullscreen
         webkitallowfullscreen
         mozallowfullscreen
-        referrerpolicy="no-referrer"
-        allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *; accelerometer *; gyroscope *; clipboard-write *; payment *; screen-wake-lock *; web-share *; pointer-lock *; orientation-lock *; xr-spatial-tracking *">
+        loading="eager"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture; accelerometer; gyroscope; clipboard-write; payment; screen-wake-lock; web-share; pointer-lock; orientation-lock; xr-spatial-tracking"
+        style="width:100%;height:100%;border:none;display:block;background:#000;">
       </iframe>
     `;
   }
@@ -2868,6 +2885,10 @@ export async function openPlayerModal({
               }
             }
             showToast(idx === -1 ? 'Altyazı kapatıldı' : `✓ Altyazı: ${tracks[idx]?.label || 'Açık'}`, 'info');
+            const activeSubSpan = wrapper.querySelector('#custom-menu-active-sub');
+            if (activeSubSpan) {
+              activeSubSpan.textContent = idx === -1 ? 'Kapalı' : (tracks[idx]?.label || 'Açık');
+            }
             showMainMenu();
           };
         });
@@ -3247,14 +3268,8 @@ export async function openPlayerModal({
     }
 
     let srv = activeServers[currentServerIndex];
-    if (srv && !srv.isDirectVideo && (srv.streamUrl?.includes('ag2m4') || srv.url?.includes('ag2m4'))) {
-      try {
-        const resolved = await resolveDirectStream(srv);
-        if (resolved && resolved.isDirectVideo) {
-          Object.assign(srv, resolved);
-        }
-      } catch (_) {}
-    }
+    // Note: DiziBal streams are now resolved server-side in dizibalScraper.js
+    // No client-side resolveDirectStream needed here
 
     wrapper.innerHTML = renderPlayerContent();
     renderPlayerIcons(wrapper);

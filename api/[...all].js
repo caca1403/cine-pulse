@@ -133,6 +133,87 @@ export default async function handler(req, res) {
     }
   }
 
+  // DiziBal AlphaStream (ag2m4) server-side HLS extractor
+  // Fetches x.ag2m4.cfd embed page and extracts the real m3u8 URL
+  if (pathname.startsWith('/api/dzb_stream')) {
+    const srcCode = urlObj.searchParams.get('code') || '';
+    if (!srcCode) return res.status(400).json({ error: 'Missing code param' });
+
+    try {
+      const embedUrl = `https://x.ag2m4.cfd/embed-${srcCode}.html`;
+      const embedRes = await fetch(embedUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://dizibal.org/',
+          'Origin': 'https://dizibal.org'
+        },
+        signal: AbortSignal.timeout(6000)
+      });
+
+      if (!embedRes.ok) {
+        return res.status(embedRes.status).json({ error: 'Embed page fetch failed' });
+      }
+
+      const html = await embedRes.text();
+
+      // Extract /dl?op=get_stream&view_id=...&hash=... endpoint
+      const dlMatch = html.match(/fetch\(['"](\/dl\?op=get_stream[^'"]+)['"]\)/i);
+      if (!dlMatch) {
+        return res.status(404).json({ error: 'Stream endpoint not found in embed page' });
+      }
+
+      const dlEndpoint = `https://x.ag2m4.cfd${dlMatch[1]}`;
+      const dlRes = await fetch(dlEndpoint, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': embedUrl,
+          'Origin': 'https://x.ag2m4.cfd',
+          'Accept': '*/*'
+        },
+        signal: AbortSignal.timeout(6000)
+      });
+
+      if (!dlRes.ok) {
+        return res.status(dlRes.status).json({ error: 'DL endpoint failed' });
+      }
+
+      const dlJson = await dlRes.json().catch(() => null);
+      if (!dlJson || !dlJson.url) {
+        return res.status(404).json({ error: 'No stream URL in response' });
+      }
+
+      let m3u8Url = dlJson.url;
+      if (m3u8Url.startsWith('//')) m3u8Url = `https:${m3u8Url}`;
+
+      // Proxy the HLS stream to avoid CDN Referer checks
+      const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(m3u8Url)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
+
+      // Extract subtitles if present
+      const subtitles = [];
+      const subMatch = html.match(/"subtitle"\s*:\s*"([^"]+)"/i);
+      if (subMatch && subMatch[1]) {
+        const parts = subMatch[1].split(',');
+        for (const p of parts) {
+          const langMatch = p.match(/\[(.*?)\](.*)/);
+          if (langMatch) {
+            subtitles.push({ label: langMatch[1], src: langMatch[2] });
+          }
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        streamUrl: proxiedUrl,
+        rawUrl: m3u8Url,
+        isHls: true,
+        subtitles
+      });
+    } catch (err) {
+      console.error('[dzb_stream] Error:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   if (pathname.startsWith('/api/hls_proxy')) {
     const rawTarget = urlObj.searchParams.get('url') || '';
     const ref = urlObj.searchParams.get('ref') || 'https://hdplayersystem.com/';
@@ -557,28 +638,50 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
 
-    const imdbId = urlObj.searchParams.get('imdbId');
+    const tmdbIdParam = urlObj.searchParams.get('imdbId') || urlObj.searchParams.get('tmdbId');
     const directUrl = urlObj.searchParams.get('url');
     const season = urlObj.searchParams.get('season');
     const episode = urlObj.searchParams.get('episode');
+    const mediaType = urlObj.searchParams.get('type') || (season ? 'tv' : 'movie');
 
     let downloadUrl = directUrl;
 
-    if (!downloadUrl && imdbId) {
+    if (!downloadUrl && tmdbIdParam) {
       try {
-        const cleanImdb = imdbId.replace(/^tt/, '');
-        let osUrl = `https://rest.opensubtitles.org/search/imdbid-${cleanImdb}/sublanguageid-tur`;
-        if (season && episode) {
-          osUrl += `/season-${season}/episode-${episode}`;
+        // Step 1: Resolve TMDB ID → IMDB ID (OpenSubtitles needs imdb ID)
+        let imdbId = null;
+        const isTmdbId = !String(tmdbIdParam).startsWith('tt');
+        if (isTmdbId) {
+          const TMDB_KEY = '4e44d9029b1270a757cddc766a1bcb63';
+          const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
+          const tmdbRes = await fetch(
+            `https://api.themoviedb.org/3/${endpoint}/${tmdbIdParam}/external_ids?api_key=${TMDB_KEY}`,
+            { signal: AbortSignal.timeout(4000) }
+          );
+          if (tmdbRes.ok) {
+            const tmdbData = await tmdbRes.json();
+            imdbId = tmdbData.imdb_id;
+          }
+        } else {
+          imdbId = tmdbIdParam;
         }
-        const osRes = await fetch(osUrl, {
-          headers: { 'User-Agent': 'TemporaryUserAgent', 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(4000)
-        });
-        if (osRes.ok) {
-          const items = await osRes.json();
-          if (Array.isArray(items) && items.length > 0) {
-            downloadUrl = items[0].SubDownloadLink;
+
+        if (imdbId) {
+          // Step 2: Search OpenSubtitles with real IMDB ID
+          const cleanImdb = String(imdbId).replace(/^tt/, '');
+          let osUrl = `https://rest.opensubtitles.org/search/imdbid-${cleanImdb}/sublanguageid-tur`;
+          if (season && episode) {
+            osUrl += `/season-${season}/episode-${episode}`;
+          }
+          const osRes = await fetch(osUrl, {
+            headers: { 'User-Agent': 'TemporaryUserAgent', 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(5000)
+          });
+          if (osRes.ok) {
+            const items = await osRes.json();
+            if (Array.isArray(items) && items.length > 0) {
+              downloadUrl = items[0].SubDownloadLink;
+            }
           }
         }
       } catch (_) {}

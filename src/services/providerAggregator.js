@@ -27,9 +27,10 @@ import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchRecTvSources } from './rectvService.js';
 import { fetchKidsVipSources, fetchKidsVipMovieSources } from './kidsVipScraper.js';
 import { fetchSmashyStreamSources } from './smashyStreamService.js';
+import { fetchTorrentStreamSources } from './torrentStreamService.js';
 
 // Cache version
-const CACHE_VERSION = 'v19';
+const CACHE_VERSION = 'v20';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -209,8 +210,16 @@ function isValidStream(s) {
   const id = (s.id || '').toLowerCase();
   const raw = (s.displayName || s.name || '').toLowerCase();
 
-  // Purge any torrent or YTS headers per user request
-  if (s.isTorrent || id.includes('torrent') || id.includes('yts') || raw.includes('torrent') || raw.includes('yts') || urlStr.includes('torrent')) {
+  // Allow clean torrent_p2p_ streams from torrentStreamService
+  if (id.startsWith('torrent_p2p_')) {
+    return true;
+  }
+
+  // Purge any raw legacy torrent or YTS headers per user request
+  if (s.isTorrent && !id.startsWith('torrent_p2p_')) {
+    return false;
+  }
+  if (id.includes('yts') || raw.includes('yts') || urlStr.includes('yts.mx')) {
     return false;
   }
 
@@ -249,7 +258,8 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('snx') || raw.includes('sinewix') || raw.includes('swx')) return 0;
   if (id.startsWith('kvip_') || raw.includes('kids vip')) return 0;
 
-  // Priority 1: High quality secondary platforms (Diziyo, Diziyou, SezonlukDizi, HDFilmizle)
+  // Priority 1: High quality secondary platforms & High-Seed VIP P2P Streams
+  if (id.startsWith('torrent_p2p_')) return 1;
   if (id.startsWith('dzy_') || raw.includes('diziyo')) return 1;
   if (id.startsWith('dyu_') || raw.includes('diziyou')) return 1;
   if (id.startsWith('szd_') || raw.includes('sezonluk')) return 1;
@@ -530,8 +540,15 @@ export async function getStreamingServersProgressive({
 
     isAnime
       ? fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : Promise.resolve([])
+          .then(res => addStreams(res, 'dubbed')).catch(() => []):
+
+    // 12. VIP P2P Streams (2-3 high-seed torrent streams with multi-sub / OpenSubtitles)
+    fetchTorrentStreamSources({ type, tmdbId, season, episode })
+      .then(res => {
+        if (Array.isArray(res) && res.length > 0) {
+          addStreams(res, 'subtitled');
+        }
+      }).catch(() => [])
   ];
 
   // Alias expansion task
@@ -553,6 +570,25 @@ export async function getStreamingServersProgressive({
   });
 
   await Promise.allSettled([...tasks, aliasTask]);
+
+  // Ensure ALL dubbed and subtitled streams have OpenSubtitles fallback support
+  const defaultSubUrl = isMovie
+    ? `/api/subtitles?imdbId=${tmdbId}&type=movie`
+    : `/api/subtitles?imdbId=${tmdbId}&season=${season}&episode=${episode}&type=tv`;
+
+  for (const s of currentDubbed) {
+    if (!Array.isArray(s.subtitles) || s.subtitles.length === 0) {
+      s.subtitles = [{ label: 'OpenSubtitles (Türkçe)', src: defaultSubUrl }];
+    } else if (!s.subtitles.some(x => (x.label || '').includes('Türkçe') || x.src?.includes('/api/subtitles'))) {
+      s.subtitles.push({ label: 'OpenSubtitles (Türkçe)', src: defaultSubUrl });
+    }
+  }
+
+  for (const s of currentSubtitled) {
+    if (!Array.isArray(s.subtitles) || s.subtitles.length === 0) {
+      s.subtitles = [{ label: 'OpenSubtitles (Türkçe)', src: defaultSubUrl }];
+    }
+  }
 
   // Clean deduplication
   const dedupeServers = (list) => {

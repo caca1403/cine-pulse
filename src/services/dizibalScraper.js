@@ -1,11 +1,26 @@
 /* ==========================================================================
    CinePulse Studio - DiziBal Scraper (Movies & TV Series Engine)
    Extracts direct Alpha Stream HLS 1080p (.m3u8) streams and multi-language
-   subtitles from dizibal.org public REST API & x.ag2m4.cfd player.
+   subtitles from dizibal.org public REST API via server-side /api/dzb_stream.
+   (No browser-side fetch to x.ag2m4.cfd - avoids CORS completely)
    ========================================================================== */
 
-import { extractAlphaStream } from './streamExtractors.js';
 import { isStrictMediaTitleMatch } from './mediaMatcher.js';
+
+// Server-side AlphaStream extractor - no CORS issues
+async function resolveAlphaStreamViaApi(srcCode) {
+  try {
+    const res = await fetch(`/api/dzb_stream?code=${encodeURIComponent(srcCode)}`, {
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) return null;
+    const json = await res.json().catch(() => null);
+    if (json && json.success && json.streamUrl) return json;
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const DIZIBAL_API_BASE = 'https://dizibal.org/api';
@@ -200,19 +215,11 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
       }
     } catch (_) {}
 
-    // 2. Extract direct HLS via Alpha Stream embed
-    const embedUrl = `https://x.ag2m4.cfd/embed-${srcCode}.html`;
-    let directStream = await extractAlphaStream(embedUrl).catch(() => null);
-    if (!directStream) {
-      // Retry once in case of network jitter
-      directStream = await extractAlphaStream(embedUrl).catch(() => null);
-    }
+    // 2. Server-side AlphaStream extraction (CORS-free via /api/dzb_stream)
+    const directStream = await resolveAlphaStreamViaApi(srcCode);
 
-    if (directStream && (directStream.streamUrl || directStream.url)) {
-      let finalStreamUrl = directStream.streamUrl || directStream.url;
-      if (finalStreamUrl.startsWith('http') && !finalStreamUrl.includes('/api/hls_proxy')) {
-        finalStreamUrl = `/api/hls_proxy?url=${encodeURIComponent(finalStreamUrl)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
-      }
+    if (directStream && directStream.streamUrl) {
+      const finalStreamUrl = directStream.streamUrl;
       sources.push({
         id: `dzb_direct_s${sNum}e${epNum}`,
         name: isDub ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',
@@ -301,18 +308,11 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
     }
   } catch (_) {}
 
-  // Alpha stream direct HLS
-  const embedUrl = `https://x.ag2m4.cfd/embed-${srcCode}.html`;
-  let directStream = await extractAlphaStream(embedUrl).catch(() => null);
-  if (!directStream) {
-    directStream = await extractAlphaStream(embedUrl).catch(() => null);
-  }
+  // Server-side AlphaStream extraction (CORS-free)
+  const directStream = await resolveAlphaStreamViaApi(srcCode);
 
-  if (directStream && (directStream.streamUrl || directStream.url)) {
-    let finalStreamUrl = directStream.streamUrl || directStream.url;
-    if (finalStreamUrl.startsWith('http') && !finalStreamUrl.includes('/api/hls_proxy')) {
-      finalStreamUrl = `/api/hls_proxy?url=${encodeURIComponent(finalStreamUrl)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
-    }
+  if (directStream && directStream.streamUrl) {
+    const finalStreamUrl = directStream.streamUrl;
     sources.push({
       id: 'dzb_direct_movie',
       name: isDub ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',

@@ -442,17 +442,36 @@ const server = http.createServer(async (req, res) => {
     let targetUrl = subUrl ? decodeURIComponent(subUrl) : null;
 
     try {
-      // If imdbId is given without a direct url, search for Turkish subtitles
-      if (!targetUrl && imdbId) {
-        const cleanImdb = imdbId.replace(/^tt/, '');
+      // If imdbId/tmdbId is given without a direct url, search for Turkish subtitles
+      if (!targetUrl && (imdbId || reqUrl.searchParams.get('tmdbId'))) {
+        const rawId = imdbId || reqUrl.searchParams.get('tmdbId');
+        let cleanImdb = rawId;
+
+        // If it's a numeric TMDB ID, resolve to IMDB ID first
+        if (!String(rawId).startsWith('tt')) {
+          try {
+            const TMDB_KEY = '4e44d9029b1270a757cddc766a1bcb63';
+            const mediaType = reqUrl.searchParams.get('type') || (season ? 'tv' : 'movie');
+            const tmdbRes = await fetch(
+              `https://api.themoviedb.org/3/${mediaType}/${rawId}/external_ids?api_key=${TMDB_KEY}`,
+              { signal: AbortSignal.timeout(4000) }
+            );
+            if (tmdbRes.ok) {
+              const tmdbData = await tmdbRes.json();
+              if (tmdbData.imdb_id) cleanImdb = tmdbData.imdb_id;
+            }
+          } catch (_) {}
+        }
+
+        cleanImdb = String(cleanImdb).replace(/^tt/, '');
         const osUrl = (season && episode)
           ? `https://rest.opensubtitles.org/search/episode-${episode}/imdbid-${cleanImdb}/season-${season}/sublanguageid-tur`
           : `https://rest.opensubtitles.org/search/imdbid-${cleanImdb}/sublanguageid-tur`;
         
         try {
           const osRes = await fetch(osUrl, {
-            headers: { 'User-Agent': 'CinePulse/1.0' },
-            signal: AbortSignal.timeout(3500)
+            headers: { 'User-Agent': 'TemporaryUserAgent', 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(4500)
           });
           if (osRes.ok) {
             const list = await osRes.json();
