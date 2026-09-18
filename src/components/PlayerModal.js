@@ -333,12 +333,7 @@ export async function openPlayerModal({
   window.addEventListener('pagehide', handleGlobalPageUnload);
   window.addEventListener('beforeunload', handleGlobalPageUnload);
 
-  let savedCategory = 'dubbed';
-  try {
-    const pref = localStorage.getItem('cp_preferred_category');
-    if (pref === 'subtitled' || pref === 'dubbed') savedCategory = pref;
-  } catch (_) {}
-  let currentCategory = savedCategory;
+  let currentCategory = 'dubbed'; // Her zaman dublaj ile başla
   let activeServers = [];
   let currentServerIndex = 0;
   let categorizedServers = { dubbed: [], subtitled: [] };
@@ -3728,7 +3723,6 @@ export async function openPlayerModal({
 
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
     const generation = ++discoveryGeneration;
-    const discoveryStartTime = Date.now();
     let sourceRefreshFrame = 0;
     isSearching = true;
     isDiscoveryActive = true;
@@ -3740,25 +3734,6 @@ export async function openPlayerModal({
 
     updateServerPillsEvents();
     updatePlayerContainer();
-
-    // Fast fallback timer: if after 2.2 seconds 0 dubbed streams found, but subtitled streams already exist, auto-switch smoothly to subtitled
-    setTimeout(() => {
-      if (closed || generation !== discoveryGeneration) return;
-      if (!hasPlayerStartedPlaying && currentCategory === 'dubbed' && categorizedServers.dubbed.length === 0 && categorizedServers.subtitled.length > 0) {
-        currentCategory = 'subtitled';
-        document.getElementById('tab-dubbed')?.classList.toggle('active', false);
-        document.getElementById('tab-subtitled')?.classList.toggle('active', true);
-        hasPlayerStartedPlaying = true;
-        isSearching = false;
-        activeServers = categorizedServers[currentCategory];
-        currentServerIndex = 0;
-        updateServerPillsEvents();
-        updateActiveSourceLabel();
-        renderSourcesPopoverList();
-        updatePlayerContainer();
-        showToast('ℹ️ İçerik orijinal altyazılıdır, Altyazılı yayın açıldı.', 'info');
-      }
-    }, 2200);
 
     getStreamingServersProgressive({
       type,
@@ -3794,15 +3769,8 @@ export async function openPlayerModal({
             return;
           }
 
-          // If looking for dubbed, but after primary sources have reported 0 dubbed while subtitled sources exist
-          const timeElapsed = Date.now() - discoveryStartTime;
-          const shouldFastFallback = currentCategory === 'dubbed' && 
-                                     categorizedServers.dubbed.length === 0 && 
-                                     categorizedServers.subtitled.length >= 2 && 
-                                     timeElapsed > 2000;
-
-          // If all providers finished or fast fallback triggered and the chosen category is completely empty:
-          if (isComplete || shouldFastFallback) {
+          // If all providers finished and the chosen category is completely empty:
+          if (isComplete) {
             isSearching = false;
             const fallbackCategory = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
             if (categorizedServers[fallbackCategory]?.length > 0) {
@@ -3822,13 +3790,11 @@ export async function openPlayerModal({
               return;
             }
 
-            if (isComplete) {
-              updateServerPillsEvents();
-              updateActiveSourceLabel();
-              renderSourcesPopoverList();
-              updatePlayerContainer();
-              return;
-            }
+            updateServerPillsEvents();
+            updateActiveSourceLabel();
+            renderSourcesPopoverList();
+            updatePlayerContainer();
+            return;
           }
         }
 

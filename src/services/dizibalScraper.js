@@ -190,12 +190,6 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
     const ep = seasonJson.data.episodes.find(e => parseInt(e.episode_number, 10) === epNum);
     if (!ep || !ep.src) return [];
 
-    const epTitle = (ep.title || ep.name || '').toLowerCase();
-    const isDubbedEp = epTitle.includes('dublaj') || epTitle.includes('trdub') || (ep.src && ep.src.toLowerCase().includes('dub'));
-    if (isDub && !isDubbedEp) {
-      return []; // DiziBal foreign episodes are subbed only, never return as fake dub
-    }
-
     const srcCode = ep.src;
 
     // 1. Get subtitles from dizibal stream metadata endpoint
@@ -228,7 +222,7 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
       const finalStreamUrl = directStream.streamUrl;
       sources.push({
         id: `dzb_direct_s${sNum}e${epNum}`,
-        name: isDubbedEp ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',
+        name: isDub ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',
         displayName: 'DP 1080p',
         streamUrl: finalStreamUrl,
         url: finalStreamUrl,
@@ -236,7 +230,7 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
         isHls: true,
         isDirectVideo: true,
         source: 'DP',
-        badge: isDubbedEp ? '⚡ TR Dublaj' : '💬 TR Altyazı'
+        badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı'
       });
     }
   } catch (_) {}
@@ -289,12 +283,6 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
 
   if (!matchedMovie || !matchedMovie.src) return [];
 
-  const movieTitle = `${matchedMovie.title || ''} ${matchedMovie.title_tr || ''} ${matchedMovie.title_en || ''} ${matchedMovie.slug || ''}`.toLowerCase();
-  const isDubbedMovie = movieTitle.includes('dublaj') || movieTitle.includes('trdub');
-  if (isDub && !isDubbedMovie) {
-    return []; // DiziBal foreign movies are subbed only unless explicitly dubbed
-  }
-
   const srcCode = matchedMovie.src;
 
   // Subtitles
@@ -327,7 +315,7 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
     const finalStreamUrl = directStream.streamUrl;
     sources.push({
       id: 'dzb_direct_movie',
-      name: isDubbedMovie ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',
+      name: isDub ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',
       displayName: 'DP 1080p',
       streamUrl: finalStreamUrl,
       url: finalStreamUrl,
@@ -335,7 +323,7 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
       isHls: true,
       isDirectVideo: true,
       source: 'DP',
-      badge: isDubbedMovie ? '⚡ TR Dublaj' : '💬 TR Altyazı'
+      badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı'
     });
   }
 

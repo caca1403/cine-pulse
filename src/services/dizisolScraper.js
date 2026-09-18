@@ -85,17 +85,6 @@ function toProxiedDizisolSubUrl(rawUrl) {
   return rawUrl;
 }
 
-function isDizisolDubbed(item, s) {
-  const combined = `${item?.title || ''} ${item?.titleTr || ''} ${item?.seriesName || ''} ${item?.sourceUrl || ''} ${s?.provider || ''} ${s?.sourceUrl || ''} ${s?.m3u8Url || ''}`.toLowerCase();
-  return combined.includes('dublaj') || 
-         combined.includes('trdub') || 
-         combined.includes('tr-dub') || 
-         combined.includes('turkce dub') || 
-         combined.includes('türkçe dub') || 
-         combined.includes('dual audio') ||
-         combined.includes('dual-ses');
-}
-
 /**
  * Extracts Movie streams from Dizisol
  */
@@ -134,41 +123,32 @@ export async function fetchDizisolMovieSources({
     if (data.subtitleTr) subtitles.push({ label: 'Türkçe', src: toProxiedDizisolSubUrl(data.subtitleTr) });
     if (data.subtitleEn) subtitles.push({ label: 'İngilizce', src: toProxiedDizisolSubUrl(data.subtitleEn) });
 
-    const isPrimaryDubbed = isDizisolDubbed(data, null);
-
     // Primary HLS Stream
     if (data.m3u8Url && data.m3u8Url.startsWith('http')) {
-      const shouldAddPrimary = isDub ? isPrimaryDubbed : (!isPrimaryDubbed || subtitles.length > 0);
-      if (shouldAddPrimary) {
-        const proxiedUrl = toProxiedDizisolStreamUrl(data.m3u8Url);
-        streams.push({
-          id: `dzs_mov_${targetTmdbId}_primary`,
-          name: isPrimaryDubbed ? 'DS 1080p (TR Dublaj)' : 'DS 1080p (TR Altyazı)',
-          displayName: 'DS 1080p (HLS)',
-          badge: isPrimaryDubbed ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-          source: 'DS',
-          url: proxiedUrl,
-          streamUrl: proxiedUrl,
-          originalEmbedUrl: data.m3u8Url,
-          quality: '1080p',
-          isHls: true,
-          isDirectVideo: true,
-          type: 'hls',
-          subtitles,
-          isDub: isPrimaryDubbed,
-          getUrl: () => proxiedUrl
-        });
-      }
+      const proxiedUrl = toProxiedDizisolStreamUrl(data.m3u8Url);
+      streams.push({
+        id: `dzs_mov_${targetTmdbId}_primary`,
+        name: 'DS 1080p (HLS)',
+        displayName: 'DS 1080p (HLS)',
+        badge: isDub ? '⚡ TR Dublaj (Dual)' : '💬 TR Altyazı',
+        source: 'DS',
+        url: proxiedUrl,
+        streamUrl: proxiedUrl,
+        originalEmbedUrl: data.m3u8Url,
+        quality: '1080p',
+        isHls: true,
+        isDirectVideo: true,
+        type: 'hls',
+        subtitles,
+        isDub,
+        getUrl: () => proxiedUrl
+      });
     }
 
     // Additional sources from Dizisol
     if (Array.isArray(data.sources)) {
       for (const s of data.sources) {
         if (!s || !s.m3u8Url || !s.m3u8Url.startsWith('http') || s.m3u8Url === data.m3u8Url) continue;
-        const isSrcDubbed = isDizisolDubbed(data, s);
-        if (isDub && !isSrcDubbed) continue;
-        if (!isDub && isSrcDubbed && !s.subtitleTr && !s.subtitleEn) continue;
-
         const providerName = (s.provider || 'VIP').toUpperCase();
         const srcSubs = [];
         if (s.subtitleTr) srcSubs.push({ label: 'Türkçe', src: toProxiedDizisolSubUrl(s.subtitleTr) });
@@ -177,9 +157,9 @@ export async function fetchDizisolMovieSources({
         const proxiedUrl = toProxiedDizisolStreamUrl(s.m3u8Url);
         streams.push({
           id: `dzs_mov_${targetTmdbId}_${s.id || s.provider || Math.random().toString(36).substring(7)}`,
-          name: isSrcDubbed ? `DS ${providerName} (TR Dublaj)` : `DS ${providerName} 1080p`,
+          name: `DS ${providerName} 1080p`,
           displayName: `DS ${providerName} 1080p`,
-          badge: isSrcDubbed ? '⚡ TR Dublaj' : '💬 TR Altyazı',
+          badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
           source: 'DS',
           url: proxiedUrl,
           streamUrl: proxiedUrl,
@@ -189,7 +169,7 @@ export async function fetchDizisolMovieSources({
           isDirectVideo: true,
           type: 'hls',
           subtitles: srcSubs.length > 0 ? srcSubs : subtitles,
-          isDub: isSrcDubbed,
+          isDub,
           getUrl: () => proxiedUrl
         });
       }
@@ -245,41 +225,32 @@ export async function fetchDizisolEpisodeSources({
     if (targetEp.subtitleTr) subtitles.push({ label: 'Türkçe', src: toProxiedDizisolSubUrl(targetEp.subtitleTr) });
     if (targetEp.subtitleEn) subtitles.push({ label: 'İngilizce', src: toProxiedDizisolSubUrl(targetEp.subtitleEn) });
 
-    const isPrimaryDubbed = isDizisolDubbed(targetEp, null);
-
     // Primary HLS Stream
     if (targetEp.m3u8Url && targetEp.m3u8Url.startsWith('http')) {
-      const shouldAddPrimary = isDub ? isPrimaryDubbed : (!isPrimaryDubbed || subtitles.length > 0);
-      if (shouldAddPrimary) {
-        const proxiedUrl = toProxiedDizisolStreamUrl(targetEp.m3u8Url);
-        streams.push({
-          id: `dzs_tv_${targetTmdbId}_s${season}_e${episode}_primary`,
-          name: isPrimaryDubbed ? `DS 1080p (TR Dublaj)` : `DS 1080p (S${season}B${episode})`,
-          displayName: `DS 1080p (S${season}B${episode})`,
-          badge: isPrimaryDubbed ? '⚡ TR Dublaj' : '💬 TR Altyazı',
-          source: 'DS',
-          url: proxiedUrl,
-          streamUrl: proxiedUrl,
-          originalEmbedUrl: targetEp.m3u8Url,
-          quality: '1080p',
-          isHls: true,
-          isDirectVideo: true,
-          type: 'hls',
-          subtitles,
-          isDub: isPrimaryDubbed,
-          getUrl: () => proxiedUrl
-        });
-      }
+      const proxiedUrl = toProxiedDizisolStreamUrl(targetEp.m3u8Url);
+      streams.push({
+        id: `dzs_tv_${targetTmdbId}_s${season}_e${episode}_primary`,
+        name: `DS 1080p (S${season}B${episode})`,
+        displayName: `DS 1080p (S${season}B${episode})`,
+        badge: isDub ? '⚡ TR Dublaj (Dual)' : '💬 TR Altyazı',
+        source: 'DS',
+        url: proxiedUrl,
+        streamUrl: proxiedUrl,
+        originalEmbedUrl: targetEp.m3u8Url,
+        quality: '1080p',
+        isHls: true,
+        isDirectVideo: true,
+        type: 'hls',
+        subtitles,
+        isDub,
+        getUrl: () => proxiedUrl
+      });
     }
 
     // Additional sources for the episode
     if (Array.isArray(targetEp.sources)) {
       for (const s of targetEp.sources) {
         if (!s || !s.m3u8Url || !s.m3u8Url.startsWith('http') || s.m3u8Url === targetEp.m3u8Url) continue;
-        const isSrcDubbed = isDizisolDubbed(targetEp, s);
-        if (isDub && !isSrcDubbed) continue;
-        if (!isDub && isSrcDubbed && !s.subtitleTr && !s.subtitleEn) continue;
-
         const providerName = (s.provider || 'VIP').toUpperCase();
         const srcSubs = [];
         if (s.subtitleTr) srcSubs.push({ label: 'Türkçe', src: toProxiedDizisolSubUrl(s.subtitleTr) });
@@ -288,9 +259,9 @@ export async function fetchDizisolEpisodeSources({
         const proxiedUrl = toProxiedDizisolStreamUrl(s.m3u8Url);
         streams.push({
           id: `dzs_tv_${targetTmdbId}_s${season}_e${episode}_${s.id || s.provider || Math.random().toString(36).substring(7)}`,
-          name: isSrcDubbed ? `DS ${providerName} (TR Dublaj)` : `DS ${providerName} (S${season}B${episode})`,
+          name: `DS ${providerName} (S${season}B${episode})`,
           displayName: `DS ${providerName} (S${season}B${episode})`,
-          badge: isSrcDubbed ? '⚡ TR Dublaj' : '💬 TR Altyazı',
+          badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
           source: 'DS',
           url: proxiedUrl,
           streamUrl: proxiedUrl,
@@ -300,7 +271,7 @@ export async function fetchDizisolEpisodeSources({
           isDirectVideo: true,
           type: 'hls',
           subtitles: srcSubs.length > 0 ? srcSubs : subtitles,
-          isDub: isSrcDubbed,
+          isDub,
           getUrl: () => proxiedUrl
         });
       }

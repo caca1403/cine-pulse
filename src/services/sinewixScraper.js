@@ -199,27 +199,15 @@ export async function fetchSinewixSources({
         continue;
       }
 
-      const isDubbedVideo = lowerLink.includes('dub') || 
-                            lowerLink.includes('trdub') || 
-                            lowerLink.includes('tr-dub') || 
-                            lowerLink.includes('dual') || 
-                            (v.lang && v.lang.toLowerCase().includes('dub'));
+      const isSubtitledVideo = lowerLink.includes('trsub') || lowerLink.includes('.sub.') || lowerLink.includes('altyazi') || (v.lang && v.lang.toLowerCase().includes('sub'));
 
-      const isSubtitledVideo = lowerLink.includes('trsub') || 
-                               lowerLink.includes('.sub.') || 
-                               lowerLink.includes('altyazi') || 
-                               (v.lang && v.lang.toLowerCase().includes('sub')) || 
-                               !isDubbedVideo;
-
-      if (isDub && !isDubbedVideo) {
-        continue; // Never return non-dubbed video when dubbing requested
-      }
-
-      if (!isDub && isDubbedVideo && !lowerLink.includes('dual')) {
+      if (isDub && isSubtitledVideo) {
         continue;
       }
 
-      const isActualDub = isDubbedVideo && !lowerLink.includes('trsub');
+      if (!isDub && !isSubtitledVideo && lowerLink.includes('dub')) {
+        continue;
+      }
 
       const isMkv = lowerLink.includes('.mkv');
       const isDirect = (lowerLink.includes('.mp4') || lowerLink.includes('.webm')) && !isMkv;
@@ -233,10 +221,10 @@ export async function fetchSinewixSources({
       const serverTitle = isDirect ? 'SWX Direct 1080p' : (isMkv ? 'SWX MKV 1080p' : 'SWX VIP 1080p');
       streams.push({
         id: `snx_${v.id || Math.random().toString(36).substring(7)}`,
-        name: isActualDub ? `${serverTitle} (TR Dublaj)` : `${serverTitle} (TR Altyazı)`,
+        name: serverTitle,
         displayName: serverTitle,
-        badge: isActualDub ? (isMkv ? '⚡ SWX MKV Dublaj' : '⚡ VIP Dublaj') : (isMkv ? '💬 SWX MKV Altyazı' : '💬 TR Altyazı'),
-        category: isActualDub ? 'dubbed' : 'subtitled',
+        badge: isSubtitledVideo ? '💬 TR Altyazı 1080p' : (isMkv ? '⚡ SWX MKV' : '⚡ VIP 1080p'),
+        category: isSubtitledVideo ? 'subtitled' : 'dubbed',
         streamUrl: proxiedLink,
         url: proxiedLink,
         originalEmbedUrl: rawLink,
