@@ -24,7 +24,9 @@ export async function fetchTorrentStreamSources({
     ? `https://player.videasy.to/movie/${tmdbId}`
     : `https://player.videasy.to/tv/${tmdbId}/${sNum}/${epNum}`;
 
-  const defaultSubUrl = `/api/subtitles?imdbId=${tmdbId}&season=${sNum}&episode=${epNum}&type=${type}`;
+  const defaultSubUrl = isMovie
+    ? `/api/subtitles?tmdbId=${tmdbId || ''}&title=${encodeURIComponent(title || '')}&type=movie`
+    : `/api/subtitles?tmdbId=${tmdbId || ''}&title=${encodeURIComponent(title || '')}&season=${sNum}&episode=${epNum}&type=tv`;
   const autoSubs = [{ label: 'OpenSubtitles (Türkçe)', src: defaultSubUrl }];
 
   return [

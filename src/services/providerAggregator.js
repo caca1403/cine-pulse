@@ -594,9 +594,10 @@ export async function getStreamingServersProgressive({
   await Promise.allSettled([...tasks, aliasTask]);
 
   // Ensure ALL dubbed and subtitled streams have OpenSubtitles fallback support
+  const cleanMediaTitle = targetTitle || originalTitle || '';
   const defaultSubUrl = isMovie
-    ? `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&type=movie`
-    : `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&season=${season}&episode=${episode}&type=tv`;
+    ? `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&title=${encodeURIComponent(cleanMediaTitle)}&type=movie`
+    : `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&title=${encodeURIComponent(cleanMediaTitle)}&season=${season}&episode=${episode}&type=tv`;
 
   for (const s of currentDubbed) {
     if (!Array.isArray(s.subtitles) || s.subtitles.length === 0) {

@@ -53,10 +53,11 @@ export async function fetchHdfilmcehennemiSources({
 
     // Add fallback OpenSubtitles if no Turkish sub present
     const hasTr = subs.some(s => (s.label || '').toLowerCase().includes('türk') || (s.label || '').toLowerCase().includes('tr'));
-    if (!hasTr && (imdbId || tmdbId)) {
+    if (!hasTr && (imdbId || tmdbId || title)) {
+      const cleanTitle = encodeURIComponent(title || originalTitle || '');
       const defaultSubUrl = isMovie
-        ? `/api/subtitles?imdbId=${imdbId || tmdbId}&type=movie`
-        : `/api/subtitles?imdbId=${imdbId || tmdbId}&season=${sNum}&episode=${epNum}&type=tv`;
+        ? `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&title=${cleanTitle}&type=movie`
+        : `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&title=${cleanTitle}&season=${sNum}&episode=${epNum}&type=tv`;
       subs.unshift({ label: 'OpenSubtitles (Türkçe)', src: defaultSubUrl });
     }
 
