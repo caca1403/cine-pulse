@@ -88,7 +88,16 @@ function toProxiedDizisolSubUrl(rawUrl) {
 function isValidDizisolStreamUrl(url) {
   if (!url || typeof url !== 'string') return false;
   if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
-  if (url.includes('picturebox.cloud') || url.includes('s5.dizisol.com') || url.includes('rapidrame')) return false;
+  if (
+    url.includes('picturebox.cloud') ||
+    url.includes('s5.dizisol.com') ||
+    url.includes('rapidrame') ||
+    url.includes('pal-vds') ||
+    url.includes('hdfilmdelisi') ||
+    url.includes('plus.dizisol.com')
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -97,16 +106,16 @@ function getDizisolStreamPriority(url, provider = '') {
   const lowUrl = (url || '').toLowerCase();
   const lowProv = (provider || '').toLowerCase();
 
-  // Ultra-fast instant CDN providers (< 1s playback start, 100% 200 OK)
-  if (lowProv === 'vidmixi') score += 100;
-  else if (lowProv === 'imagestoo') score += 90;
-  else if (lowProv === 'vidrame') score += 80;
-  else if (lowProv === 'cortina') score += 70;
-  else if (lowProv === 'pal-vds') score += 20; // 9s slow connection
-  else if (lowProv === 'vip') score += 15;
+  // Ultra-fast instant CDN providers (< 1s playback start, 100% 200 OK & high bandwidth)
+  if (lowProv === 'vidrame') score += 100;
+  else if (lowProv === 'vidmixi') score += 95;
+  else if (lowProv === 'cortina') score += 90;
+  else if (lowProv === 'imagestoo') score += 85;
+  else if (lowProv === 'fullhd') score += 80;
+  else if (lowProv === 'filmekseni') score += 60;
+  else if (lowProv === 'vip') score += 20;
 
-  if (lowUrl.includes('dizisol.com')) score += 30;
-  else if (lowUrl.includes('plus.dizisol.com')) score += 10;
+  if (lowUrl.includes('dizisol.com')) score += 10;
 
   return score;
 }

@@ -3626,21 +3626,21 @@ export async function openPlayerModal({
           const hls = new Hls({
             enableWorker: true,
             lowLatencyMode: false,
-            backBufferLength: 30,
-            maxBufferLength: 30,
-            maxMaxBufferLength: 60,
-            maxBufferSize: 60 * 1000 * 1000,
-            maxBufferHole: 0.5,
-            highBufferWatchdogPeriod: 3,
-            nudgeOffset: 0.1,
-            nudgeMaxRetry: 8,
+            backBufferLength: 60,
+            maxBufferLength: 60,
+            maxMaxBufferLength: 120,
+            maxBufferSize: 120 * 1000 * 1000,
+            maxBufferHole: 0.8,
+            highBufferWatchdogPeriod: 2,
+            nudgeOffset: 0.2,
+            nudgeMaxRetry: 10,
             progressive: true,
-            fragLoadingTimeOut: 25000,
-            manifestLoadingTimeOut: 15000,
-            levelLoadingTimeOut: 15000,
-            fragLoadingMaxRetry: 4,
-            manifestLoadingMaxRetry: 3,
-            levelLoadingMaxRetry: 3
+            fragLoadingTimeOut: 30000,
+            manifestLoadingTimeOut: 20000,
+            levelLoadingTimeOut: 20000,
+            fragLoadingMaxRetry: 6,
+            manifestLoadingMaxRetry: 4,
+            levelLoadingMaxRetry: 4
           });
           activeHlsInstance = hls;
 

@@ -167,6 +167,10 @@ function formatStreamName(s) {
   if (id.startsWith('snx') || raw.includes('sinewix')) {
     return s.displayName || s.name || 'SWX Direct 1080p';
   }
+  if (id.startsWith('hdfc_') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) {
+    if (category === 'dubbed' || raw.includes('dub')) return 'HDFilmCehennemi Dublaj 1080p';
+    return 'HDFilmCehennemi Altyazı 1080p';
+  }
   if (id.startsWith('szd_')) {
     if (url.includes('vidmoly')) return 'SZ VidMoly 1080p';
     if (url.includes('sibnet')) return 'SZ Sibnet HD';
@@ -178,11 +182,13 @@ function formatStreamName(s) {
 
 function formatStreamItem(s, category, fallbackName) {
   const streamUrl = s.streamUrl || s.url || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '';
-  const finalDisplayName = formatStreamName(s) || fallbackName;
+  const finalDisplayName = formatStreamName(s, category) || fallbackName;
 
   let badge = s.badge || (category === 'dubbed' ? '⚡ TR Dublaj' : '💬 TR Altyazı');
-  const lowerName = finalDisplayName.toLowerCase();
-  if (lowerName.includes('lookmovie')) badge = '🎬 LookMovie 1080p';
+  const lowerName = (finalDisplayName || '').toLowerCase();
+  if (lowerName.includes('hdfc') || lowerName.includes('hdfilmcehennemi')) {
+    badge = category === 'dubbed' ? '🔥 HDFC Dublaj 1080p' : '💬 HDFC Altyazı 1080p';
+  } else if (lowerName.includes('lookmovie')) badge = '🎬 LookMovie 1080p';
   else if (lowerName.includes('2embed')) badge = '⚡ 2Embed 1080p';
   else if (lowerName.includes('vidsrc')) badge = '🎬 VidSrc 1080p';
   else if (lowerName.includes('dp')) badge = category === 'dubbed' ? '⚡ DP Dublaj' : '💬 DP Altyazı';
@@ -564,14 +570,18 @@ export async function getStreamingServersProgressive({
           addStreams([{
             ...s,
             id: `${s.id}_dub`,
-            badge: '⚡ TR Dublaj (HDFC 1080p)',
+            name: isMovie ? 'HDFilmCehennemi Dublaj 1080p' : `HDFilmCehennemi Dublaj S${season}B${episode}`,
+            displayName: isMovie ? 'HDFilmCehennemi Dublaj (1080p)' : `HDFilmCehennemi Dublaj (S${season}B${episode})`,
+            badge: '🔥 HDFC Dublaj 1080p',
             category: 'dubbed'
           }], 'dubbed');
 
           addStreams([{
             ...s,
             id: `${s.id}_sub`,
-            badge: '💬 TR Altyazı (HDFC 1080p)',
+            name: isMovie ? 'HDFilmCehennemi Altyazı 1080p' : `HDFilmCehennemi Altyazı S${season}B${episode}`,
+            displayName: isMovie ? 'HDFilmCehennemi Altyazı (1080p)' : `HDFilmCehennemi Altyazı (S${season}B${episode})`,
+            badge: '💬 HDFC Altyazı 1080p',
             category: 'subtitled'
           }], 'subtitled');
         }

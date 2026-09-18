@@ -939,6 +939,18 @@ const server = http.createServer(async (req, res) => {
             const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
             fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
           }
+
+          // If the segment or sub-manifest allows direct CORS (*), bypass local proxy for zero-lag streaming
+          if (
+            fullLineUrl.includes('dizisol.com/m3u8?u=') ||
+            fullLineUrl.includes('superadjacentsoddenly.xyz') ||
+            fullLineUrl.includes('photour.org') ||
+            fullLineUrl.includes('cdnimages') ||
+            fullLineUrl.includes('vidmixi.com/m3u')
+          ) {
+            return fullLineUrl;
+          }
+
           return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(ref)}`;
         }).join('\n');
 

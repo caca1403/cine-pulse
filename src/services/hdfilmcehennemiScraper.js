@@ -28,7 +28,7 @@ export async function fetchHdfilmcehennemiSources({
     const apiUrl = `${origin}/api/hdfc_stream?query=${encodeURIComponent(searchTitle)}&originalTitle=${encodeURIComponent(searchOriginal)}&tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&season=${sNum}&episode=${epNum}`;
     
     const res = await fetch(apiUrl, {
-      signal: AbortSignal.timeout(9000)
+      signal: AbortSignal.timeout(22000)
     }).catch(() => null);
 
     if (!res || !res.ok) return [];
