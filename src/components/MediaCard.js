@@ -339,114 +339,147 @@ export function attachMediaCardEvents(container) {
     }
   });
 
-  // Desktop Hover Video Preview (Netflix Experience)
+  // Preconnect to YouTube for faster iframe loading
+  if (!document.querySelector('link[rel=preconnect][href*=youtube-nocookie]')) {
+    ['https://www.youtube-nocookie.com', 'https://i.ytimg.com'].forEach(origin => {
+      const lnk = document.createElement('link');
+      lnk.rel = 'preconnect'; lnk.href = origin; lnk.crossOrigin = 'anonymous';
+      document.head.appendChild(lnk);
+    });
+  }
+
   const isFinePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-  if (isFinePointer && getUserSettings().hoverPreviewsEnabled !== false && getUserSettings().trailersEnabled !== false) {
-    const hoverTimers = new WeakMap();
+  const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+  const settings = getUserSettings();
+  const previewsAllowed = settings.hoverPreviewsEnabled !== false && settings.trailersEnabled !== false;
+
+  // --- Shared helper: show trailer preview popup on a card ---
+  function showTrailerPreview(card, trailerPromise) {
+    if (card.querySelector('.card-hover-video-preview')) return;
     let previewSoundEnabled = sessionStorage.getItem('cinepulse_preview_sound') === 'on';
+
+    trailerPromise.then(trailer => {
+      if (!trailer || !trailer.key || !trailer.key.trim()) return;
+      if (!card.isConnected) return;
+      // On desktop check hover is still active
+      if (isFinePointer && !card.matches(':hover')) return;
+
+      const title = decodeURIComponent(card.getAttribute('data-title') || 'Fragman');
+      const typeLabel = card.querySelector('.card-type-tag')?.textContent?.trim() || '';
+      const year = card.querySelector('.card-year-tag')?.textContent?.trim() || '';
+      const rating = card.querySelector('.card-rating-pill span')?.textContent?.trim() || '';
+      const safeKey = encodeURIComponent(trailer.key);
+      const previewBox = document.createElement('div');
+      previewBox.className = 'card-hover-video-preview';
+      previewBox.innerHTML = `
+        <div class="card-preview-media">
+          <iframe
+            src="https://www.youtube-nocookie.com/embed/${safeKey}?autoplay=1&mute=1&controls=0&disablekb=1&modestbranding=1&loop=1&playlist=${safeKey}&rel=0&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}"
+            frameborder="0"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            tabindex="-1"
+            title="${escapePreviewText(title)} fragmanı">
+          </iframe>
+          <div class="card-preview-cinematic-shade"></div>
+          <span class="card-preview-badge">FRAGMAN</span>
+          ${isTouchDevice ? '<button class="card-preview-close-btn" type="button" aria-label="Kapat"><i data-lucide="x"></i></button>' : ''}
+        </div>
+        <div class="card-preview-details">
+          <div class="card-preview-copy">
+            <strong class="card-preview-title">${escapePreviewText(title)}</strong>
+            <div class="card-preview-meta">
+              ${rating ? `<span class="card-preview-match">${escapePreviewText(rating)} IMDb</span>` : ''}
+              ${year ? `<span>${escapePreviewText(year)}</span>` : ''}
+              ${typeLabel ? `<span>${escapePreviewText(typeLabel)}</span>` : ''}
+            </div>
+          </div>
+          <div class="card-preview-actions">
+            <span class="card-preview-open" aria-hidden="true"><i data-lucide="play"></i></span>
+            <button class="card-preview-sound ${previewSoundEnabled ? 'is-on' : ''}" type="button" aria-label="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}" title="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}">
+              <i data-lucide="${previewSoundEnabled ? 'volume-2' : 'volume-x'}"></i>
+            </button>
+          </div>
+        </div>
+      `;
+      const rect = card.getBoundingClientRect();
+      const edgeTop = window.innerHeight < 520 ? 12 : 76;
+      const idealPreviewWidth = Math.min(460, Math.max(isTouchDevice ? 320 : 390, rect.width * 2.2), window.innerWidth - 32);
+      const maxWidthByHeight = Math.max(240, ((window.innerHeight - edgeTop - 94) * 16) / 9);
+      const previewWidth = Math.max(240, Math.min(idealPreviewWidth, maxWidthByHeight));
+      const previewHeight = (previewWidth * 9 / 16) + 82;
+      const left = Math.max(16, Math.min(window.innerWidth - previewWidth - 16, rect.left + (rect.width - previewWidth) / 2));
+      const top = Math.max(edgeTop, Math.min(window.innerHeight - previewHeight - 12, rect.top + (rect.height - previewHeight) / 2));
+      previewBox.style.left = `${left}px`;
+      previewBox.style.top = `${top}px`;
+      previewBox.style.width = `${previewWidth}px`;
+      card.classList.add('preview-active');
+      card.appendChild(previewBox);
+      renderIcons();
+
+      const iframe = previewBox.querySelector('iframe');
+
+      const soundBtn = previewBox.querySelector('.card-preview-sound');
+      const closeBtn = previewBox.querySelector('.card-preview-close-btn');
+      const sendPlayerCommand = (command, args = []) => {
+        iframe?.contentWindow?.postMessage(JSON.stringify({
+          event: 'command', func: command, args
+        }), '*');
+      };
+      const applySoundState = () => {
+        sendPlayerCommand(previewSoundEnabled ? 'unMute' : 'mute');
+        if (previewSoundEnabled) sendPlayerCommand('setVolume', [75]);
+        soundBtn.classList.toggle('is-on', previewSoundEnabled);
+        soundBtn.title = previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç';
+        soundBtn.setAttribute('aria-label', soundBtn.title);
+        soundBtn.innerHTML = `<i data-lucide="${previewSoundEnabled ? 'volume-2' : 'volume-x'}"></i>`;
+        renderIcons();
+      };
+      const removePreview = () => {
+        try { previewBox.remove(); } catch (_) {}
+        card.classList.remove('preview-active');
+      };
+      // YouTube cross-origin iframes often skip the 'load' event — force show after 1.5s
+      const forceShowTimer = window.setTimeout(() => {
+        previewBox.classList.add('video-ready');
+      }, 1500);
+      iframe.addEventListener('load', () => {
+        window.clearTimeout(forceShowTimer);
+        previewBox.classList.add('video-ready');
+        if (previewSoundEnabled) window.setTimeout(applySoundState, 180);
+      }, { once: true });
+      soundBtn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        previewSoundEnabled = !previewSoundEnabled;
+        sessionStorage.setItem('cinepulse_preview_sound', previewSoundEnabled ? 'on' : 'off');
+        applySoundState();
+        window.setTimeout(applySoundState, 180);
+      });
+      if (closeBtn) {
+        closeBtn.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          removePreview();
+        });
+      }
+    }).catch(() => {});
+  }
+
+  // --- Desktop: hover pointer device ---
+  if (isFinePointer && previewsAllowed) {
+    const hoverTimers = new WeakMap();
 
     container.addEventListener('pointerover', (e) => {
       const card = e.target.closest('.media-card');
       if (!card) return;
       if (e.relatedTarget && card.contains(e.relatedTarget)) return;
 
-      // Start the network request immediately, then reveal the lightweight
-      // landscape preview after a short intent delay.
+      // Pre-fetch trailer immediately on hover intent
       const id = card.getAttribute('data-id');
       const type = card.getAttribute('data-type') || 'movie';
       const trailerPromise = fetchMediaTrailer(type === 'tv' ? 'tv' : 'movie', id);
-      const timer = setTimeout(async () => {
-        if (!card.matches(':hover')) return;
-        if (card.querySelector('.card-hover-video-preview')) return;
-
-        try {
-          const trailer = await trailerPromise;
-          if (trailer && trailer.key && trailer.key.trim() && card.matches(':hover')) {
-            const title = decodeURIComponent(card.getAttribute('data-title') || 'Fragman');
-            const typeLabel = card.querySelector('.card-type-tag')?.textContent?.trim() || '';
-            const year = card.querySelector('.card-year-tag')?.textContent?.trim() || '';
-            const rating = card.querySelector('.card-rating-pill span')?.textContent?.trim() || '';
-            const safeKey = encodeURIComponent(trailer.key);
-            const previewBox = document.createElement('div');
-            previewBox.className = 'card-hover-video-preview';
-            previewBox.innerHTML = `
-              <div class="card-preview-media">
-                <iframe
-                  src="https://www.youtube-nocookie.com/embed/${safeKey}?autoplay=1&mute=1&controls=0&disablekb=1&modestbranding=1&loop=1&playlist=${safeKey}&rel=0&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}"
-                  frameborder="0"
-                  allow="autoplay; encrypted-media"
-                  tabindex="-1"
-                  title="${escapePreviewText(title)} fragmanı">
-                </iframe>
-                <div class="card-preview-cinematic-shade"></div>
-                <span class="card-preview-badge">FRAGMAN</span>
-              </div>
-              <div class="card-preview-details">
-                <div class="card-preview-copy">
-                  <strong class="card-preview-title">${escapePreviewText(title)}</strong>
-                  <div class="card-preview-meta">
-                    ${rating ? `<span class="card-preview-match">${escapePreviewText(rating)} IMDb</span>` : ''}
-                    ${year ? `<span>${escapePreviewText(year)}</span>` : ''}
-                    ${typeLabel ? `<span>${escapePreviewText(typeLabel)}</span>` : ''}
-                  </div>
-                </div>
-                <div class="card-preview-actions">
-                  <span class="card-preview-open" aria-hidden="true"><i data-lucide="play"></i></span>
-                  <button class="card-preview-sound ${previewSoundEnabled ? 'is-on' : ''}" type="button" aria-label="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}" title="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}">
-                    <i data-lucide="${previewSoundEnabled ? 'volume-2' : 'volume-x'}"></i>
-                  </button>
-                </div>
-              </div>
-            `;
-            const rect = card.getBoundingClientRect();
-            const edgeTop = window.innerHeight < 520 ? 12 : 76;
-            const idealPreviewWidth = Math.min(460, Math.max(390, rect.width * 2.2), window.innerWidth - 32);
-            const maxWidthByHeight = Math.max(240, ((window.innerHeight - edgeTop - 94) * 16) / 9);
-            const previewWidth = Math.max(240, Math.min(idealPreviewWidth, maxWidthByHeight));
-            const previewHeight = (previewWidth * 9 / 16) + 82;
-            const left = Math.max(16, Math.min(window.innerWidth - previewWidth - 16, rect.left + (rect.width - previewWidth) / 2));
-            const top = Math.max(edgeTop, Math.min(window.innerHeight - previewHeight - 12, rect.top + (rect.height - previewHeight) / 2));
-            previewBox.style.left = `${left}px`;
-            previewBox.style.top = `${top}px`;
-            previewBox.style.width = `${previewWidth}px`;
-            const previewMedia = previewBox.querySelector('.card-preview-media');
-            const backdropSrc = card.querySelector('.card-poster-img')?.dataset?.backdropSrc;
-            if (previewMedia && backdropSrc) previewMedia.style.backgroundImage = `url("${backdropSrc}")`;
-            card.classList.add('preview-active');
-            card.appendChild(previewBox);
-            renderIcons();
-
-            const iframe = previewBox.querySelector('iframe');
-            const soundBtn = previewBox.querySelector('.card-preview-sound');
-            const sendPlayerCommand = (command, args = []) => {
-              iframe?.contentWindow?.postMessage(JSON.stringify({
-                event: 'command', func: command, args
-              }), '*');
-            };
-            const applySoundState = () => {
-              sendPlayerCommand(previewSoundEnabled ? 'unMute' : 'mute');
-              if (previewSoundEnabled) sendPlayerCommand('setVolume', [75]);
-              soundBtn.classList.toggle('is-on', previewSoundEnabled);
-              soundBtn.title = previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç';
-              soundBtn.setAttribute('aria-label', soundBtn.title);
-              soundBtn.innerHTML = `<i data-lucide="${previewSoundEnabled ? 'volume-2' : 'volume-x'}"></i>`;
-              renderIcons();
-            };
-            iframe.addEventListener('load', () => {
-              previewBox.classList.add('video-ready');
-              if (previewSoundEnabled) window.setTimeout(applySoundState, 180);
-            }, { once: true });
-            soundBtn.addEventListener('click', e => {
-              e.preventDefault();
-              e.stopPropagation();
-              previewSoundEnabled = !previewSoundEnabled;
-              sessionStorage.setItem('cinepulse_preview_sound', previewSoundEnabled ? 'on' : 'off');
-              applySoundState();
-              window.setTimeout(applySoundState, 180);
-            });
-          }
-        } catch (_) {}
-      }, 600);
+      // Reduced from 600ms → 350ms for snappier response
+      const timer = setTimeout(() => showTrailerPreview(card, trailerPromise), 350);
       hoverTimers.set(card, timer);
     });
 
@@ -463,6 +496,47 @@ export function attachMediaCardEvents(container) {
       }
       card.classList.remove('preview-active');
     });
+  }
+
+  // --- Mobile: long-press on card to show trailer preview ---
+  if (isTouchDevice && previewsAllowed) {
+    const LONG_PRESS_MS = 600;
+    const touchTimers = new WeakMap();
+
+    container.addEventListener('touchstart', (e) => {
+      const card = e.target.closest('.media-card');
+      if (!card) return;
+      // Don't interfere with scroll
+      const id = card.getAttribute('data-id');
+      const type = card.getAttribute('data-type') || 'movie';
+      const trailerPromise = fetchMediaTrailer(type === 'tv' ? 'tv' : 'movie', id);
+      const timer = setTimeout(() => {
+        // Haptic feedback if available
+        try { navigator.vibrate?.(40); } catch (_) {}
+        showTrailerPreview(card, trailerPromise);
+      }, LONG_PRESS_MS);
+      touchTimers.set(card, timer);
+    }, { passive: true });
+
+    const cancelLongPress = (e) => {
+      const card = e.target.closest('.media-card');
+      if (!card) return;
+      const timer = touchTimers.get(card);
+      if (timer) clearTimeout(timer);
+      touchTimers.delete(card);
+    };
+    container.addEventListener('touchend', cancelLongPress, { passive: true });
+    container.addEventListener('touchmove', cancelLongPress, { passive: true });
+    container.addEventListener('touchcancel', cancelLongPress, { passive: true });
+
+    // Tap on preview backdrop closes it
+    container.addEventListener('touchend', (e) => {
+      if (e.target.closest('.card-hover-video-preview')) return;
+      document.querySelectorAll('.card-hover-video-preview').forEach(p => {
+        try { p.remove(); } catch (_) {}
+        p.closest?.('.media-card')?.classList.remove('preview-active');
+      });
+    }, { passive: true });
   }
 }
 

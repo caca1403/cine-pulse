@@ -9568,10 +9568,12 @@ video::cue {
   border: none;
   pointer-events: none;
   transform: scale(1.015);
-  opacity: 0;
-  transition: opacity .35s ease;
+  /* Start visible — dark card-preview-media bg acts as loading placeholder */
+  opacity: 1;
+  transition: opacity .3s ease;
 }
 
+/* video-ready kept for compat but opacity is already 1 */
 .card-hover-video-preview.video-ready iframe {
   opacity: 1;
 }
@@ -9600,6 +9602,30 @@ video::cue {
   line-height: 1;
   font-weight: 900;
   letter-spacing: .11em;
+}
+
+/* Mobile close button for trailer preview */
+.card-preview-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+.card-preview-close-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .card-preview-details {
