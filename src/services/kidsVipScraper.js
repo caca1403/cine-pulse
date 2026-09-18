@@ -157,12 +157,12 @@ async function searchUpstreamCatalog(candidateQueries) {
 
         const candidateNames = [itemTitle, slugTitle].filter(Boolean);
         const isMatch = candidateNames.some(name =>
-          isStrictMediaTitleMatch(name, candidateQueries, 0.72) ||
+          isStrictMediaTitleMatch(name, candidateQueries, 0.82) ||
           candidateQueries.some(cand => {
             const nc = normalizeTitle(cand);
             const nn = normalizeTitle(name);
             if (!nc || !nn) return false;
-            return nn === nc || nn.includes(nc) || nc.includes(nn);
+            return nn === nc;
           })
         );
 
@@ -184,6 +184,9 @@ async function searchUpstreamCatalog(candidateQueries) {
             const url = m[1];
             const name = m[2] || '';
             if (seenIds.has(url)) continue;
+            const isMatch = isStrictMediaTitleMatch(name, candidateQueries, 0.82) ||
+              candidateQueries.some(cand => normalizeTitle(cand) === normalizeTitle(name));
+            if (!isMatch) continue;
             seenIds.add(url);
             matched.push({ name, url, cleanTitle: name });
           }

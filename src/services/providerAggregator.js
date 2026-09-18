@@ -30,7 +30,7 @@ import { fetchSmashyStreamSources } from './smashyStreamService.js';
 import { fetchTorrentStreamSources } from './torrentStreamService.js';
 
 // Cache version
-const CACHE_VERSION = 'v20';
+const CACHE_VERSION = 'v21';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -251,12 +251,11 @@ function getStreamPriorityScore(s) {
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
-  // Priority 0: TVR, DP (DiziBal), DS (Dizisol), Sinewix, Kids VIP (Ultra-reliable 1080p)
+  // Priority 0: TVR, DP (DiziBal), DS (Dizisol), Sinewix (Ultra-reliable 1080p)
   if (id.startsWith('tvr_') || raw.includes('tvr') || raw.includes('rectv')) return 0;
   if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dp 1080p') || raw.includes('dizibal')) return 0;
   if (id.startsWith('dzs_') || raw.includes('dizisol') || raw.includes('ds 1080p')) return 0;
   if (id.startsWith('snx') || raw.includes('sinewix') || raw.includes('swx')) return 0;
-  if (id.startsWith('kvip_') || raw.includes('kids vip')) return 0;
 
   // Priority 1: High quality secondary platforms & High-Seed VIP P2P Streams
   if (id.startsWith('torrent_p2p_')) return 1;
@@ -271,6 +270,7 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('vidsrc_') || raw.includes('vidsrc')) return 2;
 
   // Priority 3: Anime & Cartoons
+  if (id.startsWith('kvip_') || raw.includes('kids vip')) return 3;
   if (id.startsWith('acx_') || raw.includes('animecix')) return 3;
   if (id.startsWith('ta_') || raw.includes('turkanime')) return 3;
   if (id.startsWith('atr_') || raw.includes('animetr')) return 3;
@@ -494,16 +494,37 @@ export async function getStreamingServersProgressive({
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : Promise.resolve([]),
 
-    // 9. Kids VIP (Cartoons & Animations - Direct 1080p Sibnet)
-    fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    // 9. Kids VIP (Cartoons & Animations - Only for Animation / Anime genre)
+    isAnime
+      ? fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : enrichmentTask.then(enr => {
+          if (enr?.isAnimation) {
+            return fetchKidsVipSources({ titles: enr.candidateTitles || candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+              .then(res => addStreams(res, 'dubbed')).catch(() => []);
+          }
+          return [];
+        }).catch(() => []),
 
-    fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+    isAnime
+      ? fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      : enrichmentTask.then(enr => {
+          if (enr?.isAnimation) {
+            return fetchKidsVipSources({ titles: enr.candidateTitles || candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+              .then(res => addStreams(res, 'subtitled')).catch(() => []);
+          }
+          return [];
+        }).catch(() => []),
 
     isMovie
-      ? fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      ? enrichmentTask.then(enr => {
+          if (enr?.isAnimation) {
+            return fetchKidsVipMovieSources({ titles: enr.candidateTitles || candidateTitles, title: targetTitle, originalTitle, isDub: true })
+              .then(res => addStreams(res, 'dubbed')).catch(() => []);
+          }
+          return [];
+        }).catch(() => [])
       : Promise.resolve([]),
 
     // 10. Clean Global VIP Embeds: LookMovie VIP, 2Embed VIP, VidSrc VIP
