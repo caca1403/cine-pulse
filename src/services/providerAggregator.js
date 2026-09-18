@@ -286,6 +286,7 @@ function getStreamPriorityScore(s) {
 export async function getStreamingServersProgressive({
   type = 'movie',
   tmdbId = null,
+  imdbId = null,
   title = '',
   originalTitle = '',
   seriesTitle = '',
@@ -358,13 +359,42 @@ export async function getStreamingServersProgressive({
     const added = [];
 
     for (const raw of valid) {
-      const formatted = formatStreamItem(raw, category, category === 'dubbed' ? 'VIP 1080p' : 'VIP Altyazılı');
+      let targetCat = category;
+
+      // Authoritative TR Dublaj Shield: Verify genuine dubbing evidence
+      if (targetCat === 'dubbed') {
+        const text = `${raw.name || ''} ${raw.displayName || ''} ${raw.badge || ''} ${raw.id || ''} ${raw.url || ''} ${raw.streamUrl || ''}`.toLowerCase();
+        const hasDubSignal = text.includes('dublaj') || 
+                             text.includes('trdub') || 
+                             text.includes('tr-dub') || 
+                             text.includes('dual audio') || 
+                             text.includes('dual ses') || 
+                             text.includes('seslendirme') ||
+                             text.includes('türkçe dublaj') ||
+                             text.includes('turkce dublaj');
+
+        const hasSubOnlySignal = (text.includes('altyaz') || text.includes('subtitled') || text.includes('trsub')) && !hasDubSignal;
+        const isKvip = (raw.id || '').startsWith('kvip_');
+
+        if ((hasSubOnlySignal || !hasDubSignal) && !isKvip) {
+          // Divert fake dub to subtitled category
+          targetCat = 'subtitled';
+        }
+      }
+
+      const formatted = formatStreamItem(raw, targetCat, targetCat === 'dubbed' ? 'VIP 1080p' : 'VIP Altyazılı');
+      if (targetCat === 'subtitled' && category === 'dubbed') {
+        formatted.name = (formatted.name || '').replace(/\(TR Dublaj\)/gi, '(TR Altyazı)').replace(/Dublaj/gi, 'Altyazı');
+        formatted.displayName = (formatted.displayName || '').replace(/\(TR Dublaj\)/gi, '(TR Altyazı)').replace(/Dublaj/gi, 'Altyazı');
+        formatted.badge = (formatted.badge || '').replace(/⚡.*?Dublaj.*?/gi, '💬 TR Altyazı').replace(/Dublaj/gi, 'Altyazı');
+      }
+
       const urlStr = (formatted.streamUrl || formatted.url || '').trim().toLowerCase();
       const id = (formatted.id || '').toLowerCase();
       const providerPrefix = id.split('_').slice(0, 2).join('_');
       const urlKey = `${providerPrefix}||${urlStr}`;
 
-      if (category === 'dubbed') {
+      if (targetCat === 'dubbed') {
         if (!seenDubUrls.has(urlKey)) {
           seenDubUrls.add(urlKey);
           currentDubbed.push(formatted);
@@ -415,19 +445,26 @@ export async function getStreamingServersProgressive({
     fetchRecTvSources({ type, title: targetTitle, originalTitle, season, episode, year: targetYear })
       .then(res => {
         if (!Array.isArray(res) || res.length === 0) return [];
-        const dubs = res.filter(s => (s.name || '').toLowerCase().includes('dublaj'));
-        const subs = res.filter(s => !(s.name || '').toLowerCase().includes('dublaj'));
+        const dubs = res.filter(s => {
+          const text = `${s.name || ''} ${s.badge || ''}`.toLowerCase();
+          return text.includes('dublaj') || text.includes('tr dub');
+        });
+        const subs = res.filter(s => {
+          const text = `${s.name || ''} ${s.badge || ''}`.toLowerCase();
+          return !text.includes('dublaj') && !text.includes('tr dub');
+        });
         if (dubs.length > 0) addStreams(dubs, 'dubbed');
         if (subs.length > 0) addStreams(subs, 'subtitled');
-        if (dubs.length === 0 && subs.length === 0) {
-          addStreams(res, 'dubbed');
+        if (dubs.length === 0 && subs.length === 0 && res.length > 0) {
           addStreams(res, 'subtitled');
         }
       }).catch(() => []),
 
-    // 2. Sinewix VIP (Direct 1080p MKV Dubbed)
+    // 2. Sinewix VIP (Direct 1080p MKV Dubbed & Subtitled)
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 3. DiziBal (DP 1080p AlphaStream direct HLS)
     isMovie
@@ -468,13 +505,12 @@ export async function getStreamingServersProgressive({
       : fetchDiziyoEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // 6. Diziyou (FastCDN 1080p HLS)
+    // 6. Diziyou (FastCDN 1080p HLS - Subtitled only)
     (!isMovie && !isAnime)
       ? fetchDiziyouSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => {
             if (Array.isArray(res) && res.length > 0) {
               addStreams(res, 'subtitled');
-              addStreams(res, 'dubbed');
             }
           }).catch(() => [])
       : Promise.resolve([]),
@@ -597,9 +633,11 @@ export async function getStreamingServersProgressive({
     const aliasSearches = [
       fetchSinewixSources({ type, titles: extraTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
         .then(res => addStreams(res, 'dubbed')),
+      fetchSinewixSources({ type, titles: extraTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
+        .then(res => addStreams(res, 'subtitled')),
       isMovie
-        ? fetchDizibalMovieSources({ titles: extraTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed'))
-        : fetchDizibalEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).then(res => addStreams(res, 'dubbed'))
+        ? fetchDizibalMovieSources({ titles: extraTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled'))
+        : fetchDizibalEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled'))
     ];
     return Promise.allSettled(aliasSearches);
   });

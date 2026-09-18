@@ -144,16 +144,25 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
             iframeUrl = 'https:' + iframeUrl;
           }
 
+          const itemText = `${item.baslik || ''} ${item.dil || ''} ${item.tur || ''} ${iframeUrl}`.toLowerCase();
+          const isItemDubbed = itemText.includes('dublaj') || itemText.includes('trdub') || itemText.includes('tr-dub') || itemText.includes('dual');
+          if (isDub && !isItemDubbed) {
+            continue; // Do NOT return non-dubbed SezonlukDizi server when dubbing requested
+          }
+          if (!isDub && isItemDubbed && !itemText.includes('altyaz') && !itemText.includes('dual')) {
+            continue;
+          }
+
           const isVidmoly = item.baslik === 'VidMoly' || iframeUrl.includes('vidmoly');
           const finalUrl = iframeUrl;
           const serverName = isVidmoly ? 'VidMoly 1080p' : `${item.baslik} HD`;
 
           extractedSources.push({
             id: `szd_${item.id}`,
-            name: serverName,
+            name: isItemDubbed ? `${serverName} (TR Dublaj)` : `${serverName} (TR Altyazı)`,
             displayName: serverName,
-            badge: `⚡ ${item.baslik}`,
-            category: isDub ? 'dubbed' : 'subtitled',
+            badge: isItemDubbed ? `⚡ ${item.baslik} Dublaj` : `💬 ${item.baslik}`,
+            category: isItemDubbed ? 'dubbed' : 'subtitled',
             url: finalUrl,
             streamUrl: finalUrl,
             isHls: false,

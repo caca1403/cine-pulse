@@ -294,14 +294,21 @@ export async function fetchDiziyoEpisodeSources({ titles = [], seriesTitle, orig
     for (const match of playerMatches) {
       const playerUrl = match[1];
       const lang = (match[2] || '').toLowerCase();
-      if (isDub && (lang.includes('dublaj') || lang.includes('turkce') || lang.includes('tr'))) {
+      const isDubLang = lang.includes('dublaj') || lang.includes('turkce dub') || lang.includes('türkçe dub') || lang.includes('dual');
+      const isSubLang = lang.includes('altyaz') || lang.includes('sub');
+
+      if (isDub && isDubLang && !isSubLang) {
         selectedPlayer = playerUrl;
         break;
       }
-      if (!isDub && (lang.includes('altyaz') || lang.includes('sub'))) {
+      if (!isDub && (isSubLang || (!isDubLang && !lang.includes('dublaj')))) {
         selectedPlayer = playerUrl;
         break;
       }
+    }
+
+    if (isDub && !selectedPlayer) {
+      return []; // Do NOT fallback to subtitled player when dubbing requested
     }
 
     if (!selectedPlayer) {
@@ -410,14 +417,21 @@ export async function fetchDiziyoMovieSources({ titles = [], title, originalTitl
     for (const match of playerMatches) {
       const playerUrl = match[1];
       const lang = (match[2] || '').toLowerCase();
-      if (isDub && (lang.includes('dublaj') || lang.includes('tr'))) {
+      const isDubLang = lang.includes('dublaj') || lang.includes('turkce dub') || lang.includes('türkçe dub') || lang.includes('dual');
+      const isSubLang = lang.includes('altyaz') || lang.includes('sub');
+
+      if (isDub && isDubLang && !isSubLang) {
         selectedPlayer = playerUrl;
         break;
       }
-      if (!isDub && (lang.includes('altyaz') || lang.includes('sub'))) {
+      if (!isDub && (isSubLang || (!isDubLang && !lang.includes('dublaj')))) {
         selectedPlayer = playerUrl;
         break;
       }
+    }
+
+    if (isDub && !selectedPlayer) {
+      return [];
     }
 
     if (!selectedPlayer) selectedPlayer = playerMatches[0][1];
