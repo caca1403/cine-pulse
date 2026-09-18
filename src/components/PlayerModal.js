@@ -2932,7 +2932,8 @@ export async function openPlayerModal({
       color: '#ffffff',   // #ffffff | #facc15 | #4ade80 | #38bdf8
       fontFamily: 'sans', // sans | serif | mono
       bg: 'semi',         // trans | semi | solid
-      position: 'bottom'  // bottom | middle | top
+      position: 'bottom', // bottom | middle | top
+      bottomOffset: 25    // px from bottom (0 to 150)
     };
 
     let currentSubStyle = { ...DEFAULT_SUB_STYLE };
@@ -2974,6 +2975,8 @@ export async function openPlayerModal({
         ? '0 0 4px #000, 0 0 6px #000, 2px 2px 2px #000, -2px -2px 2px #000'
         : '0 2px 4px rgba(0,0,0,0.85)';
 
+      const bOffset = typeof style.bottomOffset === 'number' ? style.bottomOffset : 25;
+
       styleEl.textContent = `
         video::cue {
           font-family: ${fontFamilies[style.fontFamily] || fontFamilies.sans} !important;
@@ -2982,6 +2985,7 @@ export async function openPlayerModal({
           background-color: ${backgrounds[style.bg] || backgrounds.semi} !important;
           text-shadow: ${textShadow} !important;
           line-height: 1.35 !important;
+          transform: translateY(-${bOffset}px) !important;
         }
         #custom-html5-video::cue {
           font-family: ${fontFamilies[style.fontFamily] || fontFamilies.sans} !important;
@@ -2990,12 +2994,13 @@ export async function openPlayerModal({
           background-color: ${backgrounds[style.bg] || backgrounds.semi} !important;
           text-shadow: ${textShadow} !important;
           line-height: 1.35 !important;
+          transform: translateY(-${bOffset}px) !important;
         }
       `;
 
       if (videoEl && videoEl.textTracks) {
         try {
-          const numLine = style.position === 'top' ? 2 : style.position === 'middle' ? 8 : -2;
+          const numLine = style.position === 'top' ? 2 : style.position === 'middle' ? 8 : -Math.max(1, Math.round(bOffset / 18) + 1);
           for (let i = 0; i < videoEl.textTracks.length; i++) {
             const track = videoEl.textTracks[i];
             if (track.cues) {
@@ -3124,8 +3129,21 @@ export async function openPlayerModal({
             </div>
           </div>
 
+          <!-- 6. Manuel Yükseklik / Alt Boşluk (Height Adjustment) -->
+          <div>
+            <div class="sub-style-group-label" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>Altyazı Yüksekliği (Alt Mesafe)</span>
+              <span id="sub-bottom-offset-display" style="color:#60a5fa;font-weight:600;font-size:0.85rem;">${currentSubStyle.bottomOffset || 25}px</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+              <button id="btn-sub-offset-dec" class="sub-style-btn" style="padding:4px 10px;font-size:1.1rem;font-weight:bold;line-height:1;min-width:32px;">-</button>
+              <input type="range" id="sub-offset-slider" min="0" max="150" step="5" value="${currentSubStyle.bottomOffset || 25}" style="flex:1;accent-color:#3b82f6;cursor:pointer;height:6px;border-radius:3px;">
+              <button id="btn-sub-offset-inc" class="sub-style-btn" style="padding:4px 10px;font-size:1.1rem;font-weight:bold;line-height:1;min-width:32px;">+</button>
+            </div>
+          </div>
+
           <!-- Sıfırla Butonu -->
-          <button id="sub-style-reset-btn" class="sub-style-btn" style="width:100%;margin-top:4px;color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(239,68,68,0.1);">
+          <button id="sub-style-reset-btn" class="sub-style-btn" style="width:100%;margin-top:8px;color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(239,68,68,0.1);">
             <i data-lucide="rotate-ccw" style="width:13px;height:13px;"></i> Varsayılan Ayarlara Sıfırla
           </button>
         </div>
@@ -3156,6 +3174,42 @@ export async function openPlayerModal({
             }
           };
         });
+
+        // Subtitle Bottom Offset (Height) Slider & Buttons
+        const offsetSlider = subviewList.querySelector('#sub-offset-slider');
+        const offsetDisplay = subviewList.querySelector('#sub-bottom-offset-display');
+        const btnDec = subviewList.querySelector('#btn-sub-offset-dec');
+        const btnInc = subviewList.querySelector('#btn-sub-offset-inc');
+
+        const updateOffset = (newVal) => {
+          const val = Math.max(0, Math.min(150, parseInt(newVal, 10) || 25));
+          currentSubStyle.bottomOffset = val;
+          if (offsetSlider) offsetSlider.value = val;
+          if (offsetDisplay) offsetDisplay.textContent = `${val}px`;
+          try {
+            localStorage.setItem('cinepulse_subtitle_style', JSON.stringify(currentSubStyle));
+          } catch (_) {}
+          applySubtitleStyle(currentSubStyle);
+        };
+
+        if (offsetSlider) {
+          offsetSlider.oninput = (ev) => {
+            ev.stopPropagation();
+            updateOffset(ev.target.value);
+          };
+        }
+        if (btnDec) {
+          btnDec.onclick = (ev) => {
+            ev.stopPropagation();
+            updateOffset((currentSubStyle.bottomOffset || 25) - 5);
+          };
+        }
+        if (btnInc) {
+          btnInc.onclick = (ev) => {
+            ev.stopPropagation();
+            updateOffset((currentSubStyle.bottomOffset || 25) + 5);
+          };
+        }
 
         const resetBtn = subviewList.querySelector('#sub-style-reset-btn');
         if (resetBtn) {
@@ -3624,7 +3678,7 @@ export async function openPlayerModal({
 
         if (isHlsStream && window.Hls && Hls.isSupported()) {
           const hls = new Hls({
-            enableWorker: true,
+            enableWorker: false,
             lowLatencyMode: false,
             backBufferLength: 60,
             maxBufferLength: 60,
@@ -3634,7 +3688,8 @@ export async function openPlayerModal({
             highBufferWatchdogPeriod: 2,
             nudgeOffset: 0.2,
             nudgeMaxRetry: 10,
-            progressive: true,
+            progressive: false,
+            defaultAudioCodec: 'mp4a.40.2',
             fragLoadingTimeOut: 30000,
             manifestLoadingTimeOut: 20000,
             levelLoadingTimeOut: 20000,
@@ -3704,9 +3759,10 @@ export async function openPlayerModal({
                   break;
                 case Hls.ErrorTypes.MEDIA_ERROR:
                   mediaErrorCount++;
-                  if (mediaErrorCount === 1) {
+                  console.warn('[PlayerModal] Hls Media Error, recovering...', mediaErrorCount, data);
+                  if (mediaErrorCount <= 2) {
                     hls.recoverMediaError();
-                  } else if (mediaErrorCount === 2) {
+                  } else if (mediaErrorCount <= 4) {
                     try { hls.swapAudioCodec(); } catch (_) {}
                     hls.recoverMediaError();
                   } else {
