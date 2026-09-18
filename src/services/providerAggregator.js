@@ -32,7 +32,7 @@ import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 
 // Cache version
-const CACHE_VERSION = 'v25';
+const CACHE_VERSION = 'v26';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -259,7 +259,8 @@ function getStreamPriorityScore(s) {
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
-  // Priority 0: TVR, DP (DiziBal), DS (Dizisol), Sinewix (Ultra-reliable 1080p)
+  // Priority 0: TVR, DP (DiziBal), DS (Dizisol), Sinewix, HDFilmCehennemi (Ultra-reliable 1080p)
+  if (id.startsWith('hdfc_') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) return 0;
   if (id.startsWith('tvr_') || raw.includes('tvr') || raw.includes('rectv')) return 0;
   if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dp 1080p') || raw.includes('dizibal')) return 0;
   if (id.startsWith('dzs_') || raw.includes('dizisol') || raw.includes('ds 1080p')) return 0;
