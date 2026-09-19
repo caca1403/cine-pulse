@@ -26,9 +26,10 @@ function createLobby() {
       <div class="decision-room-icon"><i data-lucide="users-round"></i></div>
       <h2>Birlikte Seç</h2>
       <p>Arkadaşlarınla aynı adaylara oy verin, herkesin istediği içeriği birlikte açın.</p>
-      <button id="btn-create-decision-room" class="decision-room-create"><i data-lucide="plus"></i> Yeni Oda Oluştur</button>
+      <button id="btn-create-decision-room" class="decision-room-create"><i data-lucide="crown"></i> Moderatör Olarak Oda Oluştur</button>
+      <small class="decision-room-role-note">Adayları sen yenilersin ve katılan anonim kişileri görürsün.</small>
       <div class="decision-room-join">
-        <label for="decision-room-code-input">Oda kodun var mı?</label>
+        <label for="decision-room-code-input">Katılımcı olarak odaya katıl</label>
         <div><input id="decision-room-code-input" inputmode="numeric" maxlength="6" placeholder="6 haneli kod" autocomplete="one-time-code" /><button id="btn-join-decision-room">Katıl</button></div>
       </div>
     </section>`;
@@ -66,10 +67,18 @@ function voteSummary(card, state) {
 function renderRoomState(root, state, statusText = '') {
   const status = root.querySelector('#decision-room-status');
   const peers = root.querySelector('#decision-room-peers');
+  const memberCount = root.querySelector('#decision-room-member-count');
+  const moderatorPanel = root.querySelector('#decision-room-moderator-panel');
   const deck = root.querySelector('#decision-room-deck');
   const link = root.querySelector('#decision-room-link');
   if (status) status.textContent = statusText || (state.peerCount ? 'Arkadaşların bağlandı, oylar anlık geliyor.' : 'Oda eşleştiriliyor. Arkadaşına bağlantıyı gönder.');
-  if (peers) peers.innerHTML = state.participants.map(person => `<span class="decision-room-person"><i data-lucide="circle-user-round"></i>${escapeHtml(person.nickname)}</span>`).join('');
+  if (memberCount) memberCount.textContent = `${state.participants.length} kişi`;
+  if (moderatorPanel) moderatorPanel.hidden = !state.isHost;
+  if (peers) {
+    peers.innerHTML = state.isHost
+      ? state.participants.map(person => `<span class="decision-room-person ${person.role === 'moderator' ? 'is-moderator' : ''}"><i data-lucide="${person.role === 'moderator' ? 'crown' : 'circle-user-round'}"></i>${escapeHtml(person.nickname)}${person.id === state.selfId ? ' (Sen)' : ''}</span>`).join('')
+      : '';
+  }
   if (link) link.value = buildRoomUrl(state.roomCode);
 
   if (deck) {
@@ -165,21 +174,33 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), i
         <button id="btn-copy-decision-room"><i data-lucide="copy"></i> Kodu Kopyala</button>
         <small>Arkadaşın “Birlikte Seç” ekranında bu kodu yazsın.</small>
       </div>
-      <div class="decision-room-live"><span class="decision-room-live-dot"></span><span id="decision-room-status">Oda hazırlanıyor…</span></div>
-      <div id="decision-room-peers" class="decision-room-peers"></div>
+      <div class="decision-room-live"><span class="decision-room-live-dot"></span><span id="decision-room-status">Oda hazırlanıyor…</span><strong id="decision-room-member-count" class="decision-room-member-count">1 kişi</strong></div>
+      <section id="decision-room-moderator-panel" class="decision-room-moderator-panel" hidden>
+        <div><i data-lucide="crown"></i><strong>Moderatör paneli</strong><span>Katılanlar anonim kalır; yalnızca bu odadaki takma adları görünür.</span></div>
+        <div id="decision-room-peers" class="decision-room-peers"></div>
+      </section>
       <div id="decision-room-deck" class="decision-room-deck"></div>
       <footer class="decision-room-footer"><span>Oda kapanınca oylar silinir.</span><button id="btn-refresh-decision-cards"><i data-lucide="refresh-cw"></i> Yeni adaylar</button></footer>
     </section>`;
 
-  activeRoom = new AnonymousDecisionRoom({ roomCode: joinedRoomCode, nickname, isHost });
-  unsubscribe = activeRoom.subscribe(state => renderRoomState(root, state));
-  await activeRoom.connect();
-  if (isHost) loadCandidates(activeRoom, root);
-
-  root.querySelector('#btn-close-decision-room').onclick = () => closeDecisionRoomModal(true);
+  // Bağlantı kurulurken tracker yavaş kalırsa bile kullanıcı pencereyi hemen
+  // kapatabilsin. Dinleyiciyi await sonrasına bırakmak mobilde kapatma tuşunu
+  // geçici olarak tepkisiz bırakıyordu.
+  const closeRoom = () => closeDecisionRoomModal(true);
+  root.querySelector('#btn-close-decision-room').addEventListener('click', closeRoom);
   root.addEventListener('click', event => {
-    if (event.target === root) closeDecisionRoomModal(true);
+    if (event.target === root) closeRoom();
   });
+
+  const room = new AnonymousDecisionRoom({ roomCode: joinedRoomCode, nickname, isHost });
+  activeRoom = room;
+  unsubscribe = room.subscribe(state => renderRoomState(root, state));
+  await room.connect();
+  // Kullanıcı bağlantı kurulurken kapattıysa artık DOM'a ya da kapatılmış
+  // odaya işlem yapma.
+  if (activeRoom !== room || activeRoomModal !== root) return;
+  if (isHost) loadCandidates(room, root);
+
   root.querySelector('#btn-copy-decision-room').onclick = async () => {
     try {
       await navigator.clipboard.writeText(joinedRoomCode);

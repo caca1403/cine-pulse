@@ -74,7 +74,11 @@ export class AnonymousDecisionRoom {
     this.selfId = randomHex(10);
     this.client = null;
     this.peers = new Map();
-    this.participants = new Map([[this.selfId, { id: this.selfId, nickname: this.nickname }]]);
+    this.participants = new Map([[this.selfId, {
+      id: this.selfId,
+      nickname: this.nickname,
+      role: this.isHost ? 'moderator' : 'participant'
+    }]]);
     this.listeners = new Set();
     this.receivedIds = new Set();
     this.cards = [];
@@ -136,7 +140,15 @@ export class AnonymousDecisionRoom {
       if (this.destroyed) return;
       peerKey = peer.id || peerKey;
       this.peers.set(peerKey, peer);
-      this.sendTo(peer, { type: 'hello', participant: { id: this.selfId, nickname: this.nickname }, wantsState: true });
+      this.sendTo(peer, {
+        type: 'hello',
+        participant: {
+          id: this.selfId,
+          nickname: this.nickname,
+          role: this.isHost ? 'moderator' : 'participant'
+        },
+        wantsState: true
+      });
       this.emit();
     };
     const onData = data => this.receive(data, peer);
@@ -188,9 +200,21 @@ export class AnonymousDecisionRoom {
 
     if (message.type === 'hello' && message.participant?.id) {
       this.participants.set(message.participant.id, message.participant);
-      this.sendTo(sourcePeer, { type: 'hello', participant: { id: this.selfId, nickname: this.nickname } });
-      if (message.wantsState && this.cards.length) {
-        this.sendTo(sourcePeer, { type: 'state', cards: this.cards, votes: this.votes });
+      this.sendTo(sourcePeer, {
+        type: 'hello',
+        participant: {
+          id: this.selfId,
+          nickname: this.nickname,
+          role: this.isHost ? 'moderator' : 'participant'
+        }
+      });
+      if (message.wantsState) {
+        this.sendTo(sourcePeer, {
+          type: 'state',
+          cards: this.cards,
+          votes: this.votes,
+          participants: Array.from(this.participants.values())
+        });
       }
       this.emit();
     }
@@ -198,6 +222,11 @@ export class AnonymousDecisionRoom {
     if (message.type === 'state' && Array.isArray(message.cards)) {
       this.cards = message.cards.slice(0, 12);
       this.votes = message.votes || {};
+      if (Array.isArray(message.participants)) {
+        message.participants.forEach(person => {
+          if (person?.id && person?.nickname) this.participants.set(person.id, person);
+        });
+      }
       this.emit();
     }
 
