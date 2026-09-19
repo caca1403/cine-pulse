@@ -25,10 +25,21 @@ if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
 
-// Register PWA Service Worker for Mobile Web App capabilities
+// Register PWA Service Worker for Mobile Web App capabilities.
+// Explicitly check for a new worker on every launch: mobile browsers otherwise
+// may keep a previous JavaScript bundle for up to a day after deployment.
 if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    const workerBuild = '20260920-mobile-preview-2';
+    const reloadMarker = `cinepulse-sw-reloaded-${workerBuild}`;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (sessionStorage.getItem(reloadMarker)) return;
+      sessionStorage.setItem(reloadMarker, '1');
+      window.location.reload();
+    });
+    navigator.serviceWorker.register(`/sw.js?build=${workerBuild}`, { updateViaCache: 'none' })
+      .then((registration) => registration.update())
+      .catch(() => {});
   });
 }
 

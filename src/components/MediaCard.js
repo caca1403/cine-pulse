@@ -377,7 +377,11 @@ export function attachMediaCardEvents(container) {
       const safeKey = encodeURIComponent(trailer.key);
       const previewBox = document.createElement('div');
       previewBox.className = 'card-hover-video-preview';
-      const useMobileSheet = isTouchDevice && window.innerWidth <= 700;
+      // Screen width is the dependable signal here. Some Android browsers
+      // report a non-coarse pointer even though they are running in a narrow
+      // phone viewport; using the pointer media query hid the mobile close
+      // control in exactly that case.
+      const useMobileSheet = window.innerWidth <= 700;
       if (useMobileSheet) {
         // A card-relative popover is too easy to clip behind the bottom
         // navigation on phones. Keep one compact preview sheet above it.

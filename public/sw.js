@@ -1,5 +1,5 @@
 // CinePulse Service Worker for PWA Offline Caching & Instant Loading
-const CACHE_NAME = 'cinepulse-v1.0.8';
+const CACHE_NAME = 'cinepulse-v1.0.9-mobile-preview';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

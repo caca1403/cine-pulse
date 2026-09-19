@@ -9910,11 +9910,14 @@ video::cue {
 @media (max-width: 700px) {
   .card-hover-video-preview.is-mobile-sheet {
     left: 50% !important;
-    top: auto !important;
-    bottom: calc(76px + env(safe-area-inset-bottom));
+    top: 50% !important;
+    bottom: auto !important;
     width: min(calc(100vw - 24px), 460px) !important;
     max-width: none;
-    transform: translateX(-50%);
+    /* This is a floating player window, not a card attached to the page.
+       Keeping it in the visual viewport prevents its top edge being hidden
+       by the hero, browser toolbar, or fixed bottom navigation. */
+    transform: translate(-50%, -50%);
     border-radius: 16px;
   }
   .card-hover-video-preview.is-mobile-sheet .card-preview-details {
