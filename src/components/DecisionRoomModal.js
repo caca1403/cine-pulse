@@ -81,6 +81,7 @@ function roomControlsHTML() {
       <small id="decision-room-signal-status" class="decision-room-signal-status">Katılım sinyali bekleniyor…</small>
       <div id="decision-room-peers" class="decision-room-peers"></div>
       <section id="decision-room-sync-mode" class="decision-room-sync-mode"><strong>İzleme senkronu</strong><label><input type="radio" name="room-sync-mode" value="smooth" /> Akıcı mod</label><label><input type="radio" name="room-sync-mode" value="strict" /> Herkesle senkron</label><small id="decision-room-sync-help"></small></section>
+      <label class="decision-room-silent-toggle"><input id="decision-room-silent-voting" type="checkbox" /> <span><b>Sessiz oylama</b><small>Puanları yalnız moderatör ortak sonuç olarak görür.</small></span></label>
       <section id="decision-room-silent-vote-summary" class="decision-room-silent-vote-summary"></section>
       <section id="decision-room-suggestions" class="decision-room-suggestions"></section>
       <form id="decision-room-content-form" class="decision-room-content-form"><label for="decision-room-content-search">Film veya dizi ekle</label><div><input id="decision-room-content-search" minlength="2" placeholder="İçerik ara" /><button type="submit"><i data-lucide="search"></i> Ara</button></div></form>
@@ -103,6 +104,7 @@ function renderRoomState(root, state, statusText = '') {
   const suggestions = root.querySelector('#decision-room-suggestions');
   const silentVoteSummary = root.querySelector('#decision-room-silent-vote-summary');
   const syncMode = root.querySelector('#decision-room-sync-mode');
+  const silentVotingToggle = root.querySelector('#decision-room-silent-voting');
   const deck = root.querySelector('#decision-room-deck');
   const link = root.querySelector('#decision-room-link');
   if (status) status.textContent = statusText || (state.peerCount ? 'Arkadaşların bağlandı, oylar anlık geliyor.' : 'Oda eşleştiriliyor. Arkadaşına bağlantıyı gönder.');
@@ -133,6 +135,10 @@ function renderRoomState(root, state, statusText = '') {
       input.onchange = () => activeRoom?.setSyncMode(input.value);
     });
   }
+  if (silentVotingToggle && state.isHost) {
+    silentVotingToggle.checked = state.silentVoting === true;
+    silentVotingToggle.onchange = () => activeRoom?.setSilentVoting(silentVotingToggle.checked);
+  }
   if (suggestions && state.isHost) {
     suggestions.innerHTML = state.suggestions?.length ? `<strong>Katılımcı önerileri</strong>${state.suggestions.map(item => `<div class="decision-room-suggestion"><span><b>${escapeHtml(item.card.title || item.card.name || 'İsimsiz içerik')}</b><small>${escapeHtml(item.nickname)} önerdi</small></span><button data-accept-suggestion="${escapeHtml(item.id)}">Ekle</button><button data-dismiss-suggestion="${escapeHtml(item.id)}" aria-label="Reddet">×</button></div>`).join('')}` : '';
     suggestions.querySelectorAll('[data-accept-suggestion]').forEach(button => {
@@ -143,7 +149,7 @@ function renderRoomState(root, state, statusText = '') {
     });
   }
 
-  if (silentVoteSummary && state.isHost) {
+  if (silentVoteSummary && state.isHost && state.silentVoting) {
     const ranked = state.cards
       .map(card => ({ card, rating: ratingSummary(card, state) }))
       .filter(item => item.rating.count > 0)
@@ -152,13 +158,15 @@ function renderRoomState(root, state, statusText = '') {
     silentVoteSummary.innerHTML = ranked.length
       ? `<strong><i data-lucide="shield-check"></i> Sessiz oylama özeti</strong>${ranked.map(({ card, rating }, index) => `<div><b>${index + 1}</b><span>${escapeHtml(card.title || card.name || 'İsimsiz içerik')}</span><em>★ ${rating.average.toFixed(1)} · ${rating.count} gizli oy</em></div>`).join('')}`
       : `<strong><i data-lucide="shield-check"></i> Sessiz oylama</strong><small>Katılımcıların yıldızları yalnızca burada ortak sonuç olarak görünür.</small>`;
+  } else if (silentVoteSummary) {
+    silentVoteSummary.innerHTML = '';
   }
 
   if (deck) {
     if (!state.cards.length) {
       deck.innerHTML = `<div class="decision-room-empty"><i data-lucide="sparkles"></i><strong>Adaylar hazırlanıyor</strong><span>Oda sahibi ortak izleme listesi oluşturuyor.</span></div>`;
     } else {
-      const cards = state.isHost
+      const cards = state.isHost && state.silentVoting
         ? [...state.cards].sort((a, b) => ratingSummary(b, state).average - ratingSummary(a, state).average)
         : state.cards;
       deck.innerHTML = cards.map(card => {
@@ -176,7 +184,7 @@ function renderRoomState(root, state, statusText = '') {
             <span>${meta} · ★ ${(Number(card.vote_average) || 0).toFixed(1)}</span>
             <strong>${escapeHtml(title)}</strong>
             <small>${vote.matched ? 'Herkes izlemek istiyor!' : `${vote.yes}/${vote.needed} kişi izlemek istiyor`}</small>
-            <div class="decision-room-rating"><span>${state.isHost ? (rating.count ? `Gizli puan ${rating.average.toFixed(1)} · ${rating.count} oy` : 'Gizli oy bekleniyor') : (rating.mine ? 'Puanın kaydedildi' : 'Gizli puan ver')}</span><div>${stars}</div></div>
+            <div class="decision-room-rating"><span>${state.silentVoting ? (state.isHost ? (rating.count ? `Gizli puan ${rating.average.toFixed(1)} · ${rating.count} oy` : 'Gizli oy bekleniyor') : (rating.mine ? 'Puanın kaydedildi' : 'Gizli puan ver')) : (rating.count ? `Ortak puan ${rating.average.toFixed(1)} · ${rating.count} oy` : 'Puan ver')}</span><div>${stars}</div></div>
             <div class="decision-room-votes">
               <button data-room-vote="yes" data-card-id="${card.id}" class="${myVote === 'yes' ? 'active-yes' : ''}"><i data-lucide="heart"></i> İzle</button>
               <button data-room-vote="no" data-card-id="${card.id}" class="${myVote === 'no' ? 'active-no' : ''}"><i data-lucide="skip-forward"></i> Geç</button>

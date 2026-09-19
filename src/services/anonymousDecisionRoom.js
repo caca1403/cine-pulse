@@ -142,6 +142,7 @@ export class AnonymousDecisionRoom {
     this.ratings = {};
     this.suggestions = [];
     this.syncMode = 'smooth';
+    this.silentVoting = false;
     this.sharedPlayback = null;
     this.lastPlayerSync = null;
     this.roomFinish = null;
@@ -323,6 +324,7 @@ export class AnonymousDecisionRoom {
       ratings: this.ratings,
       suggestions: this.suggestions,
       syncMode: this.syncMode,
+      silentVoting: this.silentVoting,
       chatMessages: this.chatMessages,
       roomSummary: this.roomSummary
     };
@@ -346,6 +348,7 @@ export class AnonymousDecisionRoom {
         peerCount: state.peerCount,
         chatMessages: state.chatMessages,
         syncMode: state.syncMode,
+        silentVoting: state.silentVoting,
         roomSummary: state.roomSummary
       };
       window.__cinepulseDecisionRoomPresence = presence;
@@ -484,6 +487,7 @@ export class AnonymousDecisionRoom {
             ratings: this.ratings,
             suggestions: this.suggestions,
             syncMode: this.syncMode,
+            silentVoting: this.silentVoting,
             participants: Array.from(this.participants.values()),
             sharedPlayback: this.sharedPlayback,
             lastPlayerSync: this.lastPlayerSync,
@@ -501,6 +505,7 @@ export class AnonymousDecisionRoom {
       this.ratings = message.ratings || {};
       this.suggestions = Array.isArray(message.suggestions) ? message.suggestions.slice(-20) : [];
       this.syncMode = message.syncMode === 'strict' ? 'strict' : 'smooth';
+      this.silentVoting = message.silentVoting === true;
       if (Array.isArray(message.participants)) {
         message.participants.forEach(person => {
           if (person?.id && person?.nickname) this.participants.set(person.id, person);
@@ -546,6 +551,11 @@ export class AnonymousDecisionRoom {
 
     if (message.type === 'sync-mode' && !this.isHost) {
       this.syncMode = message.syncMode === 'strict' ? 'strict' : 'smooth';
+      this.emit();
+    }
+
+    if (message.type === 'silent-voting' && !this.isHost) {
+      this.silentVoting = message.enabled === true;
       this.emit();
     }
 
@@ -716,6 +726,13 @@ export class AnonymousDecisionRoom {
     this.emit();
   }
 
+  setSilentVoting(enabled) {
+    if (!this.isHost) return;
+    this.silentVoting = enabled === true;
+    this.broadcast({ type: 'silent-voting', enabled: this.silentVoting });
+    this.emit();
+  }
+
   removeCard(cardId) {
     if (!this.isHost || !cardId) return false;
     const nextCards = this.cards.filter(card => String(card.id) !== String(cardId));
@@ -770,6 +787,7 @@ export class AnonymousDecisionRoom {
         ratings: this.ratings,
         suggestions: this.suggestions,
         syncMode: this.syncMode,
+        silentVoting: this.silentVoting,
         participants: Array.from(this.participants.values()),
         sharedPlayback: this.sharedPlayback,
         lastPlayerSync: this.lastPlayerSync,
