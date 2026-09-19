@@ -192,6 +192,18 @@ export class AnonymousDecisionRoom {
       }});
     };
     window.addEventListener('cinepulse:room-playback-health', this.onRoomPlaybackHealth);
+    this.onRoomPlaybackFinished = event => {
+      const finished = event.detail;
+      if (!finished || safeRoomCode(finished.roomCode) !== this.roomCode) return;
+      this.broadcast({ type: 'playback-finished', finished: {
+        mediaId: String(finished.mediaId || ''),
+        type: finished.type === 'tv' ? 'tv' : 'movie',
+        season: Math.max(1, Number(finished.season) || 1),
+        episode: Math.max(1, Number(finished.episode) || 1),
+        nickname: this.nickname
+      }});
+    };
+    window.addEventListener('cinepulse:room-playback-finished', this.onRoomPlaybackFinished);
     this.destroyed = false;
   }
 
@@ -474,6 +486,12 @@ export class AnonymousDecisionRoom {
       }));
     }
 
+    if (message.type === 'playback-finished' && message.finished?.mediaId) {
+      window.dispatchEvent(new CustomEvent('cinepulse:room-playback-finished-remote', {
+        detail: { ...message.finished, roomCode: this.roomCode, senderId: message.senderId }
+      }));
+    }
+
     if (message.type === 'vote' && message.cardId && message.senderId) {
       this.votes = { ...this.votes, [message.cardId]: { ...(this.votes[message.cardId] || {}), [message.senderId]: message.vote === 'yes' ? 'yes' : 'no' } };
       this.emit();
@@ -640,6 +658,7 @@ export class AnonymousDecisionRoom {
     window.removeEventListener('cinepulse:room-reaction', this.onRoomReaction);
     window.removeEventListener('cinepulse:room-chat-send', this.onRoomChatSend);
     window.removeEventListener('cinepulse:room-playback-health', this.onRoomPlaybackHealth);
+    window.removeEventListener('cinepulse:room-playback-finished', this.onRoomPlaybackFinished);
     if (this.announceTimer) window.clearInterval(this.announceTimer);
     this.announceTimer = null;
     this.peers.forEach(peer => {

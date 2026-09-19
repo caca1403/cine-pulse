@@ -729,6 +729,13 @@ export async function openPlayerModal({
         video.play().catch(() => {});
       }
     });
+    modalScope.on(window, 'cinepulse:room-playback-finished-remote', event => {
+      const finished = event.detail;
+      if (!finished || roomSyncMode !== 'smooth' || finished.roomCode !== roomSync.roomCode
+        || String(finished.mediaId) !== String(roomSync.mediaId) || finished.type !== roomSync.type) return;
+      const episodeLabel = finished.type === 'tv' ? `S${finished.season} B${finished.episode}` : 'filmi';
+      showToast(`🎬 ${finished.nickname || 'Bir katılımcı'} ${episodeLabel} bitirdi. Sen akıcı izlemeye devam ediyorsun.`, 'info');
+    });
     modalScope.on(window, 'cinepulse:decision-room-close-player', event => {
       if (event.detail?.roomCode === roomSync.roomCode) activeModalClose?.();
     });
@@ -3099,6 +3106,11 @@ export async function openPlayerModal({
     on(videoEl, 'ended', () => {
       updatePlayState();
       persistCurrentProgress(videoEl.duration || videoEl.currentTime, videoEl.duration, true, true);
+      if (roomSync?.roomCode && roomSyncMode === 'smooth') {
+        window.dispatchEvent(new CustomEvent('cinepulse:room-playback-finished', {
+          detail: { roomCode: roomSync.roomCode, mediaId: roomSync.mediaId, type: roomSync.type, season: currentSeason, episode: currentEpisode }
+        }));
+      }
       startRoomFinishDecision();
     });
     on(videoEl, 'seeking', () => emitRoomSync('seek'));
