@@ -6,6 +6,12 @@
    ========================================================================== */
 
 import TrackerClient from 'bittorrent-tracker/client';
+import { Buffer as BrowserBuffer } from 'buffer';
+
+// bittorrent-tracker tarayıcı sürümü, kimlik paketlerini üretirken Buffer'ın
+// global olarak bulunacağını varsayıyor. Vite Node global'lerini eklemediği
+// için bu uyumluluğu yalnız oda modülü yüklendiğinde sağlıyoruz.
+if (!globalThis.Buffer) globalThis.Buffer = BrowserBuffer;
 
 const TRACKERS = [
   'wss://tracker.openwebtorrent.com',
