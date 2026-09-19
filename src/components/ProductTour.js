@@ -24,6 +24,13 @@ const TOUR_STEPS = [
     hint: 'İzleme ilerlemen de aynı tarayıcıda otomatik hatırlanır.'
   },
   {
+    icon: 'shield-check',
+    eyebrow: 'Spoilersız keşif',
+    title: 'Diziyi güvenle incele',
+    text: 'Dizi detayında “Spoilersız keşfet” seçeneğini açarsan, izleme ilerlemenin sonrasındaki bölüm başlıkları, görselleri ve özetleri gizlenir.',
+    hint: 'İzlediğin bölüme ve sıradaki bölüme kadar detay görürsün; ilerledikçe yeni bölümler açılır.'
+  },
+  {
     icon: 'users-round',
     eyebrow: 'Birlikte Seç',
     title: 'Arkadaşınla aynı odada izle',

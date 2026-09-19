@@ -557,21 +557,13 @@ export function attachMediaCardEvents(container) {
     container.addEventListener('touchmove', cancelLongPress, { passive: true });
     container.addEventListener('touchcancel', cancelLongPress, { passive: true });
 
-    // A later tap outside the sheet closes it. The long-press release above is
-    // deliberately ignored so the preview remains open and muted by default.
+    // Mobile preview is persistent once opened: only its visible × button
+    // dismisses it. This leaves enough time to enable sound or use YouTube.
+    // A new long press still replaces an older preview in showTrailerPreview.
     container.addEventListener('touchend', (e) => {
-      if (e.target.closest('.card-hover-video-preview')) return;
       const card = e.target.closest('.media-card');
       const session = card && touchSessions.get(card);
-      if (session?.opened) {
-        touchSessions.delete(card);
-        return;
-      }
-      suppressCardNavigationUntil = Date.now() + 600;
-      document.querySelectorAll('.card-hover-video-preview').forEach(p => {
-        try { p.remove(); } catch (_) {}
-        p.closest?.('.media-card')?.classList.remove('preview-active');
-      });
+      if (session?.opened) touchSessions.delete(card);
     }, { passive: true });
   }
 }
