@@ -235,8 +235,16 @@ export async function fetchSinewixSources({
       const isHls = lowerLink.includes('.m3u8');
 
       // Use high-speed proxy with HTTP Range & CORS support for instant video startup
-      const proxiedLink = ((isDirect || isMkv || isHls) && rawLink.startsWith('http'))
-        ? apiUrl(`/api/hls_proxy?url=${encodeURIComponent(rawLink)}`)
+      // HLS playlists need the playlist rewriter, while MP4/MKV files must
+      // use the byte/range proxy. Sending a progressive file through the HLS
+      // rewriter makes the source appear in the list but the player cannot
+      // seek or start it.
+      const proxiedLink = rawLink.startsWith('http')
+        ? (isHls
+          ? apiUrl(`/api/hls_proxy?url=${encodeURIComponent(rawLink)}`)
+          : (isDirect || isMkv)
+            ? apiUrl(`/api/proxy?url=${encodeURIComponent(rawLink)}&ref=${encodeURIComponent('https://ydfvfdizipanel.ru/')}`)
+            : rawLink)
         : rawLink;
 
       const serverTitle = isDirect ? (isMkv ? 'SWX 1080p (MKV)' : 'SWX 1080p Direct') : 'SWX VIP 1080p';
