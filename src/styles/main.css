@@ -12160,7 +12160,7 @@ video::cue {
 }
 
 /* Anonymous room: lightweight reactions and end-of-watch vote */
-.room-reaction-dock { position:absolute; z-index:28; top:16px; right:16px; display:flex; gap:6px; pointer-events:auto; }
+.room-reaction-dock { position:absolute; z-index:28; top:16px; right:16px; display:flex; gap:6px; pointer-events:auto; padding:5px; border:1px solid rgba(45,212,191,.26); border-radius:999px; background:rgba(2,6,23,.48); }
 .room-reaction-dock button { width:34px; height:34px; border:1px solid rgba(255,255,255,.2); border-radius:50%; background:rgba(15,23,42,.82); color:#fff; font-size:17px; cursor:pointer; }
 .room-reaction-burst { position:absolute; z-index:29; bottom:18%; font-size:38px; pointer-events:none; animation:roomReactionFloat 1.8s ease-out forwards; filter:drop-shadow(0 4px 12px #000); }
 @keyframes roomReactionFloat { from { transform:translateY(0) scale(.65); opacity:0; } 15% { opacity:1; transform:translateY(-12px) scale(1.1); } to { transform:translateY(-120px) scale(1); opacity:0; } }

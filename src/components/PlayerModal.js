@@ -4077,6 +4077,9 @@ export async function openPlayerModal({
 
     wrapper.innerHTML = renderPlayerContent();
     renderPlayerIcons(wrapper);
+    // Kaynak değişimi oynatıcı alanını yeniden oluşturur; oda tepkileri de
+    // her yeni alana tekrar takılmalı.
+    renderRoomReactionDock();
 
     const popoutBtn = document.getElementById('player-popout-btn');
     if (popoutBtn) {
