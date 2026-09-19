@@ -82,6 +82,14 @@
       "destination": "/api/snx?path=$1"
     },
     {
+      "source": "/api/szd",
+      "destination": "/api/szd"
+    },
+    {
+      "source": "/api/szd/(.*)",
+      "destination": "/api/szd?path=$1"
+    },
+    {
       "source": "/api/jet",
       "destination": "/api/jet"
     },
