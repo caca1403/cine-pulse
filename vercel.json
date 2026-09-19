@@ -98,6 +98,38 @@
       "destination": "/api/jet?path=$1"
     },
     {
+      "source": "/api/dzs",
+      "destination": "/api/dzs"
+    },
+    {
+      "source": "/api/dzs/(.*)",
+      "destination": "/api/dzs?path=$1"
+    },
+    {
+      "source": "/api/dzb",
+      "destination": "/api/dzb"
+    },
+    {
+      "source": "/api/dzb/(.*)",
+      "destination": "/api/dzb?path=$1"
+    },
+    {
+      "source": "/api/kvip",
+      "destination": "/api/kvip"
+    },
+    {
+      "source": "/api/kvip/(.*)",
+      "destination": "/api/kvip?path=$1"
+    },
+    {
+      "source": "/api/czm",
+      "destination": "/api/czm"
+    },
+    {
+      "source": "/api/czm/(.*)",
+      "destination": "/api/czm?path=$1"
+    },
+    {
       "source": "/api/ddz",
       "destination": "/api/ddz"
     },

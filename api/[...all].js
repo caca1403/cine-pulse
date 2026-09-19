@@ -576,13 +576,17 @@ export default async function handler(req, res) {
     customHeaders['Referer'] = 'https://dramadizilerim.com/';
     customHeaders['Origin'] = 'https://dramadizilerim.com';
   } else if (pathname.startsWith('/api/dzs')) {
-    const subPath = pathname.replace(/^\/api\/dzs/, '');
-    targetUrl = `https://dizisol.com/api${subPath}${search}`;
+    const pathParam = urlObj.searchParams.get('path');
+    const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : pathname.replace(/^\/api\/dzs/, '');
+    const cleanSearch = search ? search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+    targetUrl = `https://dizisol.com/api${subPath}${cleanSearch}`;
     customHeaders['Referer'] = 'https://dizisol.com/';
     customHeaders['Origin'] = 'https://dizisol.com';
   } else if (pathname.startsWith('/api/dzb')) {
-    const subPath = pathname.replace(/^\/api\/dzb/, '');
-    targetUrl = `https://dizibal.org/api${subPath}${search}`;
+    const pathParam = urlObj.searchParams.get('path');
+    const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : pathname.replace(/^\/api\/dzb/, '');
+    const cleanSearch = search ? search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+    targetUrl = `https://dizibal.org/api${subPath}${cleanSearch}`;
     customHeaders['Referer'] = 'https://dizibal.org/';
     customHeaders['Origin'] = 'https://dizibal.org';
   } else if (pathname.startsWith('/api/dzyo')) {
@@ -625,6 +629,15 @@ export default async function handler(req, res) {
       customHeaders['X-Requested-With'] = 'XMLHttpRequest';
       customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
     }
+  } else if (pathname.startsWith('/api/kvip') || pathname.startsWith('/api/czm')) {
+    const prefix = pathname.startsWith('/api/kvip') ? /^\/api\/kvip/ : /^\/api\/czm/;
+    const pathParam = urlObj.searchParams.get('path');
+    const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : pathname.replace(prefix, '');
+    const cleanSearch = search ? search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+    targetUrl = `https://cizgimax.online${subPath}${cleanSearch}`;
+    customHeaders['Referer'] = 'https://cizgimax.online/';
+    customHeaders['Origin'] = 'https://cizgimax.online';
+    customHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36';
   } else if (pathname.startsWith('/api/hdm')) {
     const subPath = pathname.replace(/^\/api\/hdm/, '');
     targetUrl = `https://hdmomplayer.com${subPath}${search}`;
