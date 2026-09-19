@@ -339,6 +339,53 @@ export function closeDecisionRoomModal(removeLink = true) {
   if (removeLink) removeRoomCodeFromUrl();
 }
 
+// Oynatıcı açıldığında pencereyi gizliyoruz, odayı ise kapatmıyoruz. Bu
+// fonksiyon aynı canlı odayı yeniden gösterir; yeniden tracker'a bağlanıp
+// ikinci bir WebRTC oturumu başlatmaz.
+export function returnToDecisionRoomModal() {
+  if (activeRoomModal) return;
+  if (!activeRoom) {
+    createLobby();
+    return;
+  }
+
+  const room = activeRoom;
+  const root = document.createElement('div');
+  root.id = 'decision-room-modal-root';
+  root.className = 'decision-room-backdrop';
+  document.body.appendChild(root);
+  activeRoomModal = root;
+  root.innerHTML = `
+    <section class="decision-room-dialog" role="dialog" aria-modal="true" aria-label="Ortak Karar Odası">
+      <button id="btn-close-decision-room" class="decision-room-close" aria-label="Kapat"><i data-lucide="x"></i></button>
+      <header class="decision-room-header"><div class="decision-room-icon"><i data-lucide="users-round"></i></div><div><h2>Birlikte Seç</h2><p>Odan hâlâ açık. Adayları ve katılımcıları buradan gör.</p></div></header>
+      <div class="decision-room-code-panel"><span>ODA KODU</span><strong id="decision-room-code">${escapeHtml(room.roomCode)}</strong><button id="btn-copy-decision-room"><i data-lucide="copy"></i> Kodu Kopyala</button><small>Arkadaşın “Birlikte Seç” ekranında bu kodu yazsın.</small></div>
+      <div class="decision-room-live"><span class="decision-room-live-dot"></span><span id="decision-room-status">Odaya dönüldü.</span><strong id="decision-room-member-count" class="decision-room-member-count">1 kişi</strong></div>
+      <section id="decision-room-moderator-panel" class="decision-room-moderator-panel" hidden><div><i data-lucide="crown"></i><strong>Moderatör paneli</strong><span>Katılanlar anonim kalır; yalnızca bu odadaki takma adları görünür.</span></div><small id="decision-room-signal-status" class="decision-room-signal-status"></small><div id="decision-room-peers" class="decision-room-peers"></div><form id="decision-room-content-form" class="decision-room-content-form"><label for="decision-room-content-search">Film veya dizi ekle</label><div><input id="decision-room-content-search" minlength="2" placeholder="İçerik ara" /><button type="submit"><i data-lucide="search"></i> Ara</button></div></form><div id="decision-room-content-results" class="decision-room-content-results"></div></section>
+      <div id="decision-room-deck" class="decision-room-deck"></div>
+      <footer class="decision-room-footer"><span>Oda kapanınca oylar silinir.</span><button id="btn-refresh-decision-cards"><i data-lucide="refresh-cw"></i> Yeni adaylar</button></footer>
+    </section>`;
+
+  const closeRoom = () => closeDecisionRoomModal(true);
+  root.querySelector('#btn-close-decision-room').onclick = closeRoom;
+  root.addEventListener('click', event => { if (event.target === root) closeRoom(); });
+  const closeForSharedPlayback = () => hideDecisionRoomModalForPlayback();
+  window.addEventListener('cinepulse:decision-room-open', closeForSharedPlayback, { once: true });
+  removeSharedOpenListener = () => window.removeEventListener('cinepulse:decision-room-open', closeForSharedPlayback);
+  unsubscribe = room.subscribe(state => renderRoomState(root, state));
+  setupModeratorContentSearch(root, room);
+  root.querySelector('#btn-copy-decision-room').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(room.roomCode);
+      showToast('Oda kodu kopyalandı.', 'success');
+    } catch (_) {
+      showToast(`Oda kodu: ${room.roomCode}`, 'info');
+    }
+  };
+  root.querySelector('#btn-refresh-decision-cards').onclick = () => loadCandidates(room, root);
+  renderIcons(root);
+}
+
 function hideDecisionRoomModalForPlayback() {
   removeSharedOpenListener?.();
   removeSharedOpenListener = null;

@@ -30,6 +30,7 @@ import {
 } from '../services/storage.js';
 import { showToast } from './Toast.js';
 import { translateToTurkish } from '../services/tmdbApi.js';
+import { returnToDecisionRoomModal } from './DecisionRoomModal.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -350,6 +351,8 @@ export async function openPlayerModal({
   let currentImdbId = null; // Resolved asynchronously when available
   let applyingRoomSync = false;
   let pendingRoomPlayback = null;
+  let lastRoomSyncIssuedAt = 0;
+  let roomCatchupTimer = null;
 
   function applyRemoteRoomPlayback(sync) {
     if (!roomSync || !sync || sync.roomCode !== roomSync.roomCode || String(sync.mediaId) !== String(roomSync.mediaId) || sync.type !== roomSync.type) return;
@@ -359,7 +362,11 @@ export async function openPlayerModal({
       showRemoteFullscreenRequest();
       return;
     }
-    if (sync.source) {
+    const issuedAt = Number(sync.issuedAt) || 0;
+    // Eski bir heartbeat'in yeni duraklat/atla komutundan sonra gelmesi,
+    // özellikle yavaş WebRTC bağlantısında oynatıcıyı geri zıplatıyordu.
+    if (issuedAt && issuedAt < lastRoomSyncIssuedAt) return;
+    if (sync.source && sync.action !== 'state') {
       requiredRoomSource = sync.source;
       const sourceChanged = applyRequiredRoomSource();
       // Kaynak henüz bu cihazın taramasına düşmediyse yerel sıradan bir
@@ -386,16 +393,40 @@ export async function openPlayerModal({
     }
 
     // Anlık komutlar (oynat/duraklat/sarma) doğrudan uygulanır. "state"
-    // paketi ise yalnızca düşük sıklıklı drift düzeltmesidir; mobilde her
-    // yarım saniye play(), ses ve filtre yazmak video akışını taktırıyordu.
+    // paketi ise yalnızca nabız bilgisidir: yavaş cihazı henüz indirmediği
+    // bir saniyeye zorla sarmak, her iki saniyede yeniden buffer'a düşürür.
     const isHeartbeat = sync.action === 'state';
     const targetTime = Number(sync.time);
-    const driftLimit = isHeartbeat ? 1.25 : 0.25;
-    const shouldSeek = Number.isFinite(targetTime) && Math.abs(video.currentTime - targetTime) > driftLimit;
-    const shouldPlaybackChange = typeof sync.playing === 'boolean' && sync.playing === video.paused;
+    const drift = Number.isFinite(targetTime) ? targetTime - video.currentTime : 0;
+    const isTargetBuffered = () => {
+      try {
+        for (let index = 0; index < video.buffered.length; index += 1) {
+          if (video.buffered.start(index) <= targetTime + 0.15 && video.buffered.end(index) >= targetTime + 1) return true;
+        }
+      } catch (_) {}
+      return false;
+    };
+    // Heartbeat asla play/pause yapmaz. Büyük farkta da yalnız hazır olan
+    // tamponun içindeki bir noktaya sıçrar; diğer durumda çok küçük hız farkı
+    // ile doğal biçimde yakalar.
+    const shouldSeek = !isHeartbeat && Number.isFinite(targetTime) && Math.abs(drift) > 0.25
+      || (isHeartbeat && Math.abs(drift) > 9 && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA && isTargetBuffered());
+    const shouldPlaybackChange = !isHeartbeat && typeof sync.playing === 'boolean' && sync.playing === video.paused;
     const shouldApplySettings = Boolean(sync.settings) && !isHeartbeat;
     const shouldApplyAudio = Boolean(sync.audioTrack && typeof video._setAudioTrack === 'function') && !isHeartbeat;
-    if (!shouldSeek && !shouldPlaybackChange && !shouldApplySettings && !shouldApplyAudio) return;
+    if (!shouldSeek && !shouldPlaybackChange && !shouldApplySettings && !shouldApplyAudio) {
+      if (isHeartbeat && Number.isFinite(targetTime) && !video.paused && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+        const normalSpeed = roomPlaybackSettings.speed || 1;
+        const catchupSpeed = drift > 2.25 ? Math.min(1.08, normalSpeed + 0.08) : (drift < -2.25 ? Math.max(0.92, normalSpeed - 0.08) : normalSpeed);
+        if (Math.abs(video.playbackRate - catchupSpeed) > 0.01) video.playbackRate = catchupSpeed;
+        if (roomCatchupTimer) clearTimeout(roomCatchupTimer);
+        roomCatchupTimer = window.setTimeout(() => {
+          if (video && !video.paused) video.playbackRate = roomPlaybackSettings.speed || 1;
+        }, 2800);
+      }
+      if (issuedAt) lastRoomSyncIssuedAt = Math.max(lastRoomSyncIssuedAt, issuedAt);
+      return;
+    }
 
     applyingRoomSync = true;
     if (shouldSeek) {
@@ -414,6 +445,7 @@ export async function openPlayerModal({
       if (sync.playing) video.play().catch(() => {});
       else video.pause();
     }
+    if (issuedAt) lastRoomSyncIssuedAt = Math.max(lastRoomSyncIssuedAt, issuedAt);
     window.setTimeout(() => { applyingRoomSync = false; }, 120);
   }
 
@@ -427,12 +459,26 @@ export async function openPlayerModal({
   }
 
   const roomPlaybackSettings = { brightness: 100, speed: 1 };
+  let roomUnreadMessages = 0;
+  const roomChatHistory = [];
+
+  function updateRoomChatBadge() {
+    const badge = modalContainer.querySelector('#room-chat-unread');
+    if (!badge) return;
+    badge.hidden = roomUnreadMessages < 1;
+    badge.textContent = roomUnreadMessages > 9 ? '9+' : String(roomUnreadMessages);
+  }
 
   function appendRoomChatMessage(message, mine = false) {
+    if (!message?.text) return;
+    const fingerprint = `${message.senderId || (mine ? 'self' : 'guest')}:${message.sentAt || ''}:${message.text}`;
+    if (!roomChatHistory.some(item => item.fingerprint === fingerprint)) roomChatHistory.push({ ...message, fingerprint, mine });
     const list = modalContainer.querySelector('#room-chat-messages');
-    if (!list || !message?.text) return;
+    if (!list || Array.from(list.children).some(item => item.dataset?.roomChatId === fingerprint)) return;
+    list.querySelector('p')?.remove();
     const row = document.createElement('div');
     row.className = `room-chat-message${mine ? ' mine' : ''}`;
+    row.dataset.roomChatId = fingerprint;
     const who = document.createElement('strong');
     who.textContent = mine ? 'Sen' : (message.nickname || 'Misafir');
     const text = document.createElement('span');
@@ -464,10 +510,15 @@ export async function openPlayerModal({
         input.value = '';
       };
       (modalContainer.querySelector('#cinema-modal-box') || modalContainer).appendChild(panel);
+      roomChatHistory.forEach(item => appendRoomChatMessage(item, item.mine));
     }
     const open = typeof force === 'boolean' ? force : (created || panel.classList.contains('hidden'));
     panel.classList.toggle('hidden', !open);
-    if (open) panel.querySelector('input')?.focus();
+    if (open) {
+      roomUnreadMessages = 0;
+      updateRoomChatBadge();
+      panel.querySelector('input')?.focus();
+    }
   }
 
   function configureMediaSession(videoEl) {
@@ -636,7 +687,7 @@ export async function openPlayerModal({
     window.dispatchEvent(new CustomEvent('cinepulse:player-sync', { detail: {
       roomCode: roomSync.roomCode, mediaId: roomSync.mediaId, type: roomSync.type,
       season: currentSeason, episode: currentEpisode, action: 'fullscreen-request',
-      requestFullscreen: true
+      requestFullscreen: true, issuedAt: Date.now()
     }}));
   }
 
@@ -644,7 +695,14 @@ export async function openPlayerModal({
     modalScope.on(window, 'cinepulse:room-finish-remote', event => renderRoomFinishOverlay(event.detail));
     modalScope.on(window, 'cinepulse:room-finish-vote-remote', event => renderRoomFinishOverlay(event.detail));
     modalScope.on(window, 'cinepulse:room-reaction-remote', event => showRoomReaction(event.detail));
-    modalScope.on(window, 'cinepulse:room-chat-remote', event => appendRoomChatMessage(event.detail));
+    modalScope.on(window, 'cinepulse:room-chat-remote', event => {
+      appendRoomChatMessage(event.detail);
+      const panel = modalContainer.querySelector('#room-chat-panel');
+      if (!panel || panel.classList.contains('hidden')) {
+        roomUnreadMessages += 1;
+        updateRoomChatBadge();
+      }
+    });
     modalScope.on(window, 'cinepulse:decision-room-close-player', event => {
       if (event.detail?.roomCode === roomSync.roomCode) activeModalClose?.();
     });
@@ -755,7 +813,8 @@ export async function openPlayerModal({
         audioTrack: video?._currentAudioTrack || null,
         settings: { ...roomPlaybackSettings, volume: video?.volume ?? 1, muted: Boolean(video?.muted) },
         time: Number.isFinite(video?.currentTime) ? video.currentTime : 0,
-        playing: Boolean(video && !video.paused)
+        playing: Boolean(video && !video.paused),
+        issuedAt: Date.now()
       }
     }));
   }
@@ -1819,7 +1878,10 @@ export async function openPlayerModal({
         <span class="room-player-live-dot"></span>
         <div><strong>Birlikte İzleme</strong><small id="room-player-status">Oda eşitleniyor…</small><small id="room-player-episode">${isSeries ? `S${currentSeason} · B${currentEpisode}` : 'Film'}</small><small id="room-player-source">Ortak kaynak aranıyor…</small></div>
         <div id="room-player-members" class="room-player-members"></div>
-        <button id="btn-room-return" class="room-player-return" type="button">Odaya dön</button>
+        <div class="room-player-actions">
+          <button id="btn-room-return" class="room-player-return" type="button"><i data-lucide="users-round"></i><span>Odaya dön</span></button>
+          <button id="btn-room-chat" class="room-player-chat" type="button" aria-label="Oda sohbeti"><i data-lucide="message-circle"></i><span class="room-chat-label">Sohbet</span><b id="room-chat-unread" hidden>0</b></button>
+        </div>
       </aside>` : ''}
       
       <!-- Top Cinematic Glassmorphism Bar -->
@@ -2029,6 +2091,9 @@ export async function openPlayerModal({
 
   const renderRoomPlayerHud = (presence = window.__cinepulseDecisionRoomPresence) => {
     if (!roomSync || !presence || presence.roomCode !== roomSync.roomCode) return;
+    if (Array.isArray(presence.chatMessages)) {
+      presence.chatMessages.forEach(message => appendRoomChatMessage(message));
+    }
     const status = modalContainer.querySelector('#room-player-status');
     const members = modalContainer.querySelector('#room-player-members');
     const episode = modalContainer.querySelector('#room-player-episode');
@@ -2049,7 +2114,11 @@ export async function openPlayerModal({
   };
   if (roomSync) {
     renderRoomPlayerHud();
-    modalContainer.querySelector('#btn-room-return')?.addEventListener('click', () => toggleRoomChatPanel());
+    modalContainer.querySelector('#btn-room-return')?.addEventListener('click', () => {
+      closeModal();
+      window.setTimeout(() => returnToDecisionRoomModal(), 0);
+    });
+    modalContainer.querySelector('#btn-room-chat')?.addEventListener('click', () => toggleRoomChatPanel());
     modalScope.on(window, 'cinepulse:decision-room-presence', event => renderRoomPlayerHud(event.detail));
   }
 
@@ -2686,6 +2755,31 @@ export async function openPlayerModal({
     const brightBadge = wrapper.querySelector('#custom-brightness-badge');
     const brightPopover = wrapper.querySelector('#custom-brightness-popover');
 
+    // Katılımcı kendi ekranındaki görüntü ve ses konforunu değiştirebilir;
+    // akışı, zaman çizgisini, kaynakları ve bölüm seçimini yalnız moderatör
+    // yönetir. Capture aşaması doğrudan video tıklaması ve mobil jestleri de
+    // aynı noktada durdurur.
+    if (roomSync && !isRoomModerator()) {
+      wrapper.classList.add('room-participant-locked');
+      let lastLockNotice = 0;
+      const isLocalOnlyControl = target => Boolean(target.closest(
+        '#custom-volume-wrap, #custom-brightness-wrap, #custom-btn-fullscreen'
+      ));
+      const preventParticipantPlaybackControl = event => {
+        if (isLocalOnlyControl(event.target)) return;
+        if (!event.target.closest('video, button, input, .custom-timeline-container, .custom-player-menu, .custom-binge-card, .dual-audio-bar')) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (Date.now() - lastLockNotice > 1800) {
+          lastLockNotice = Date.now();
+          showToast('Oynatma kontrolü moderatörde. Ses, parlaklık ve tam ekran sana açık.', 'info');
+        }
+      };
+      wrapper.addEventListener('pointerdown', preventParticipantPlaybackControl, true);
+      wrapper.addEventListener('click', preventParticipantPlaybackControl, true);
+      wrapper.addEventListener('dblclick', preventParticipantPlaybackControl, true);
+    }
+
     // Faz 2 Elements
     const lockBtn = wrapper.querySelector('#custom-btn-screen-lock');
     const unlockBadge = wrapper.querySelector('#custom-btn-screen-unlock');
@@ -2888,7 +2982,8 @@ export async function openPlayerModal({
           audioTrack: videoEl._currentAudioTrack || null,
           settings: { ...roomPlaybackSettings, volume: videoEl.volume, muted: videoEl.muted },
           time: Number.isFinite(overrides.time) ? overrides.time : (videoEl.currentTime || 0),
-          playing: typeof overrides.playing === 'boolean' ? overrides.playing : !videoEl.paused
+          playing: typeof overrides.playing === 'boolean' ? overrides.playing : !videoEl.paused,
+          issuedAt: Date.now()
         }
       }));
     };
@@ -4842,7 +4937,8 @@ export async function openPlayerModal({
           source: getRoomSourceDescriptor(),
           audioTrack: modalContainer.querySelector('#hls-video-player')?._currentAudioTrack || null,
           time: 0,
-          playing: true
+          playing: true,
+          issuedAt: Date.now()
         }
       }));
     }
@@ -5106,6 +5202,13 @@ export async function openPlayerModal({
 
     if (document.activeElement?.tagName === 'BUTTON' && (e.code === 'Space' || e.key === 'Enter')) return;
     if (modalContainer.querySelector('.is-screen-locked') && e.key !== 'Escape') return;
+    if (roomSync && !isRoomModerator()) {
+      const localOnlyKeys = ['Escape', 'f', 'F', 'm', 'M'];
+      if (!localOnlyKeys.includes(e.key)) {
+        e.preventDefault();
+        return;
+      }
+    }
     if (e.key === 'Escape') {
       if (isSourcesPopoverOpen) {
         toggleSourcesPopover(false);

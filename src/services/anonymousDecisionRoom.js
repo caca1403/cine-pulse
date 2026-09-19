@@ -215,7 +215,8 @@ export class AnonymousDecisionRoom {
       participants: Array.from(this.participants.values()),
       cards: this.cards,
       votes: this.votes,
-      ratings: this.ratings
+      ratings: this.ratings,
+      chatMessages: this.chatMessages
     };
   }
 
@@ -233,7 +234,8 @@ export class AnonymousDecisionRoom {
         roomCode: this.roomCode,
         isHost: this.isHost,
         participants: state.participants,
-        peerCount: state.peerCount
+        peerCount: state.peerCount,
+        chatMessages: state.chatMessages
       };
       window.__cinepulseDecisionRoomPresence = presence;
       window.dispatchEvent(new CustomEvent('cinepulse:decision-room-presence', { detail: presence }));
