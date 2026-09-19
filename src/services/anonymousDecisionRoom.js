@@ -134,6 +134,7 @@ export class AnonymousDecisionRoom {
     this.ratings = {};
     this.sharedPlayback = null;
     this.lastPlayerSync = null;
+    this.roomFinish = null;
     this.onPlayerSync = event => {
       const sync = event.detail;
       if (!this.isHost || !sync || safeRoomCode(sync.roomCode) !== this.roomCode || !this.sharedPlayback) return;
@@ -142,7 +143,55 @@ export class AnonymousDecisionRoom {
       this.broadcast({ type: 'player-sync', sync });
     };
     window.addEventListener('cinepulse:player-sync', this.onPlayerSync);
+    this.onRoomFinish = event => {
+      const finish = event.detail;
+      if (!this.isHost || !finish || safeRoomCode(finish.roomCode) !== this.roomCode) return;
+      this.roomFinish = finish;
+      this.broadcast({ type: 'room-finish', finish });
+    };
+    this.onRoomFinishVote = event => {
+      const vote = event.detail;
+      if (!vote || safeRoomCode(vote.roomCode) !== this.roomCode || !vote.optionId) return;
+      this.broadcast({ type: 'room-finish-vote', vote });
+    };
+    this.onRoomFinishChoice = event => {
+      const choice = event.detail;
+      if (!this.isHost || !choice || safeRoomCode(choice.roomCode) !== this.roomCode) return;
+      this.broadcast({ type: 'room-finish-choice', choice });
+      this.applyRoomFinishChoice(choice);
+    };
+    this.onRoomReaction = event => {
+      const reaction = event.detail;
+      if (!reaction || safeRoomCode(reaction.roomCode) !== this.roomCode || !reaction.emoji) return;
+      this.broadcast({ type: 'room-reaction', reaction });
+    };
+    window.addEventListener('cinepulse:room-finish', this.onRoomFinish);
+    window.addEventListener('cinepulse:room-finish-vote', this.onRoomFinishVote);
+    window.addEventListener('cinepulse:room-finish-choice', this.onRoomFinishChoice);
+    window.addEventListener('cinepulse:room-reaction', this.onRoomReaction);
     this.destroyed = false;
+  }
+
+  applyRoomFinishChoice(choice) {
+    this.roomFinish = null;
+    if (choice.action === 'open' && choice.card?.id) {
+      this.sharedPlayback = {
+        id: choice.card.id,
+        type: choice.card.type === 'tv' ? 'tv' : 'movie',
+        season: Math.max(1, Number(choice.card.season) || 1),
+        episode: Math.max(1, Number(choice.card.episode) || 1)
+      };
+      this.lastPlayerSync = null;
+      this.emit();
+      openSharedContent(choice.card, this.roomCode);
+      return;
+    }
+    if (choice.action === 'close') {
+      this.sharedPlayback = null;
+      this.lastPlayerSync = null;
+      window.dispatchEvent(new CustomEvent('cinepulse:decision-room-close-player', { detail: { roomCode: this.roomCode } }));
+    }
+    this.emit();
   }
 
   snapshot() {
@@ -312,7 +361,8 @@ export class AnonymousDecisionRoom {
             ratings: this.ratings,
             participants: Array.from(this.participants.values()),
             sharedPlayback: this.sharedPlayback,
-            lastPlayerSync: this.lastPlayerSync
+            lastPlayerSync: this.lastPlayerSync,
+            roomFinish: this.roomFinish
           });
         }
       }
@@ -340,6 +390,7 @@ export class AnonymousDecisionRoom {
           || this.sharedPlayback.type !== playback.type;
         this.sharedPlayback = playback;
         this.lastPlayerSync = message.lastPlayerSync || null;
+        this.roomFinish = message.roomFinish || null;
         if (shouldOpen) {
           openSharedContent(playback, this.roomCode, this.lastPlayerSync);
         } else if (this.lastPlayerSync) {
@@ -385,6 +436,31 @@ export class AnonymousDecisionRoom {
       if (!this.sharedPlayback || String(sync.mediaId) !== String(this.sharedPlayback.id) || sync.type !== this.sharedPlayback.type) return;
       this.lastPlayerSync = sync;
       window.dispatchEvent(new CustomEvent('cinepulse:player-sync-remote', { detail: sync }));
+    }
+
+    if (message.type === 'room-finish' && message.finish && !this.isHost) {
+      this.roomFinish = message.finish;
+      window.dispatchEvent(new CustomEvent('cinepulse:room-finish-remote', { detail: message.finish }));
+      this.emit();
+    }
+
+    if (message.type === 'room-finish-vote' && message.vote) {
+      const vote = message.vote;
+      if (this.roomFinish?.id !== vote.finishId) return;
+      this.roomFinish = {
+        ...this.roomFinish,
+        votes: { ...(this.roomFinish.votes || {}), [message.senderId]: vote.optionId }
+      };
+      window.dispatchEvent(new CustomEvent('cinepulse:room-finish-vote-remote', { detail: this.roomFinish }));
+      this.emit();
+    }
+
+    if (message.type === 'room-finish-choice' && message.choice && !this.isHost) {
+      this.applyRoomFinishChoice(message.choice);
+    }
+
+    if (message.type === 'room-reaction' && message.reaction) {
+      window.dispatchEvent(new CustomEvent('cinepulse:room-reaction-remote', { detail: message.reaction }));
     }
   }
 
@@ -449,6 +525,10 @@ export class AnonymousDecisionRoom {
   destroy() {
     this.destroyed = true;
     window.removeEventListener('cinepulse:player-sync', this.onPlayerSync);
+    window.removeEventListener('cinepulse:room-finish', this.onRoomFinish);
+    window.removeEventListener('cinepulse:room-finish-vote', this.onRoomFinishVote);
+    window.removeEventListener('cinepulse:room-finish-choice', this.onRoomFinishChoice);
+    window.removeEventListener('cinepulse:room-reaction', this.onRoomReaction);
     if (this.announceTimer) window.clearInterval(this.announceTimer);
     this.announceTimer = null;
     this.peers.forEach(peer => {

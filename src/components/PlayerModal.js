@@ -166,7 +166,7 @@ export async function openPlayerModal({
     const isMovie = (!isSeries && type === 'movie');
     const tmdbEndpoint = isMovie 
       ? `https://api.themoviedb.org/3/movie/${tmdbId}?append_to_response=credits,similar,recommendations&api_key=${TMDB_API_KEY}&language=tr-TR`
-      : `https://api.themoviedb.org/3/tv/${tmdbId}?append_to_response=credits&api_key=${TMDB_API_KEY}&language=tr-TR`;
+      : `https://api.themoviedb.org/3/tv/${tmdbId}?append_to_response=credits,similar,recommendations&api_key=${TMDB_API_KEY}&language=tr-TR`;
 
     fetch(tmdbEndpoint)
       .then(res => res.json())
@@ -199,6 +199,11 @@ export async function openPlayerModal({
 
             renderMovieInfoSection();
           }
+
+          const recs = (data.recommendations?.results?.length > 0)
+            ? data.recommendations.results
+            : (data.similar?.results || []);
+          if (recs.length > 0) movieSimilar = recs.filter(item => item.poster_path).slice(0, 12);
 
           updateHeroMetaUI();
 
@@ -378,6 +383,15 @@ export async function openPlayerModal({
     if (Number.isFinite(Number(sync.time)) && Math.abs(video.currentTime - Number(sync.time)) > 0.8) {
       try { video.currentTime = Math.max(0, Number(sync.time)); } catch (_) {}
     }
+    if (sync.settings) {
+      roomPlaybackSettings.brightness = Math.max(30, Math.min(150, Number(sync.settings.brightness) || 100));
+      roomPlaybackSettings.speed = Math.max(0.5, Math.min(2, Number(sync.settings.speed) || 1));
+      video.style.filter = `brightness(${roomPlaybackSettings.brightness / 100})`;
+      video.playbackRate = roomPlaybackSettings.speed;
+      if (Number.isFinite(Number(sync.settings.volume))) video.volume = Math.max(0, Math.min(1, Number(sync.settings.volume)));
+      if (typeof sync.settings.muted === 'boolean') video.muted = sync.settings.muted;
+    }
+    if (sync.requestFullscreen) showRemoteFullscreenRequest();
     if (sync.audioTrack && typeof video._setAudioTrack === 'function') {
       video._setAudioTrack(sync.audioTrack, true);
     }
@@ -393,6 +407,155 @@ export async function openPlayerModal({
     // Sonradan katılan kişi, sayfa geçişi sırasında kaçırdığı son moderatör
     // komutunu kaynak taraması başlar başlamaz yeniden uygular.
     window.setTimeout(() => applyRemoteRoomPlayback(roomSync.initialSync), 0);
+  }
+
+  const roomPlaybackSettings = { brightness: 100, speed: 1 };
+
+  function showRoomReaction(reaction) {
+    if (!roomSync || reaction?.roomCode !== roomSync.roomCode) return;
+    const stage = modalContainer.querySelector('#player-iframe-wrapper');
+    if (!stage) return;
+    const burst = document.createElement('span');
+    burst.className = 'room-reaction-burst';
+    burst.textContent = reaction.emoji;
+    burst.style.left = `${22 + Math.random() * 56}%`;
+    stage.appendChild(burst);
+    window.setTimeout(() => burst.remove(), 1800);
+  }
+
+  function renderRoomReactionDock() {
+    if (!roomSync) return;
+    const stage = modalContainer.querySelector('#player-iframe-wrapper');
+    if (!stage || stage.querySelector('#room-reaction-dock')) return;
+    const dock = document.createElement('div');
+    dock.id = 'room-reaction-dock';
+    dock.className = 'room-reaction-dock';
+    dock.innerHTML = ['🎬', '😂', '😱', '❤️'].map(emoji =>
+      `<button type="button" aria-label="${emoji} tepki gönder">${emoji}</button>`
+    ).join('');
+    dock.querySelectorAll('button').forEach(button => {
+      button.onclick = event => {
+        event.stopPropagation();
+        const reaction = { roomCode: roomSync.roomCode, emoji: button.textContent };
+        showRoomReaction(reaction);
+        window.dispatchEvent(new CustomEvent('cinepulse:room-reaction', { detail: reaction }));
+      };
+    });
+    stage.appendChild(dock);
+  }
+
+  function getRoomFinishOptions() {
+    let next = null;
+    if (isSeries) {
+      const count = getSeasonEpisodeCount(currentSeason);
+      if (count && currentEpisode < count) {
+        next = { id: tmdbId, type: 'tv', season: currentSeason, episode: currentEpisode + 1, title: `Sonraki bölüm · S${currentSeason} B${currentEpisode + 1}` };
+      } else if (currentSeasonsList.some(item => item.season_number === currentSeason + 1)) {
+        next = { id: tmdbId, type: 'tv', season: currentSeason + 1, episode: 1, title: `Sonraki sezon · S${currentSeason + 1} B1` };
+      }
+    }
+    if (!next) {
+      next = { id: tmdbId, type: isSeries ? 'tv' : 'movie', season: currentSeason, episode: currentEpisode, title: isSeries ? 'Bu bölümü yeniden izle' : 'Filmi yeniden izle' };
+    }
+    const suggested = movieSimilar[0];
+    const similar = suggested
+      ? { id: suggested.id, type: isSeries ? 'tv' : 'movie', season: 1, episode: 1, title: suggested.title || suggested.name || 'Benzer yapım' }
+      : { ...next, title: 'Benzer yapım hazırlanıyor' };
+    return [
+      { id: 'next', icon: '⏭', label: next.title, card: next },
+      { id: 'similar', icon: '✨', label: similar.title, card: similar },
+      { id: 'close', icon: '👋', label: 'Odayı kapat', card: null }
+    ];
+  }
+
+  function renderRoomFinishOverlay(finish) {
+    if (!roomSync || !finish || finish.roomCode !== roomSync.roomCode) return;
+    const stage = modalContainer.querySelector('#player-iframe-wrapper');
+    if (!stage) return;
+    stage.querySelector('#room-finish-overlay')?.remove();
+    const votes = finish.votes || {};
+    const voteCount = optionId => Object.values(votes).filter(value => value === optionId).length;
+    const moderator = isRoomModerator();
+    const overlay = document.createElement('section');
+    overlay.id = 'room-finish-overlay';
+    overlay.className = 'room-finish-overlay';
+    overlay.innerHTML = `
+      <div class="room-finish-panel">
+        <span class="room-finish-kicker">BİRLİKTE SEÇ</span>
+        <h3>${isSeries ? 'Bölüm bitti. Sırada ne var?' : 'Film bitti. Sırada ne var?'}</h3>
+        <p>${moderator ? 'Bir seçeneğe dokun; herkeste aynı anda açılacak.' : 'Seçimini oylayabilirsin. Moderatör herkese açar.'}</p>
+        <div class="room-finish-options">
+          ${(finish.options || []).map(option => `<button type="button" class="room-finish-option" data-option="${option.id}">
+            <b>${option.icon}</b><span>${option.label}</span><small>${moderator ? 'Herkese aç' : `${voteCount(option.id)} oy`}</small>
+          </button>`).join('')}
+        </div>
+      </div>`;
+    overlay.querySelectorAll('[data-option]').forEach(button => {
+      button.onclick = event => {
+        event.stopPropagation();
+        const option = (finish.options || []).find(item => item.id === button.dataset.option);
+        if (!option) return;
+        if (moderator) {
+          window.dispatchEvent(new CustomEvent('cinepulse:room-finish-choice', {
+            detail: { roomCode: roomSync.roomCode, action: option.id === 'close' ? 'close' : 'open', card: option.card }
+          }));
+        } else {
+          window.dispatchEvent(new CustomEvent('cinepulse:room-finish-vote', {
+            detail: { roomCode: roomSync.roomCode, finishId: finish.id, optionId: option.id }
+          }));
+          button.classList.add('voted');
+        }
+      };
+    });
+    stage.appendChild(overlay);
+  }
+
+  function startRoomFinishDecision() {
+    if (!roomSync || !isRoomModerator()) return;
+    const finish = {
+      id: `${roomSync.mediaId}-${Date.now()}`,
+      roomCode: roomSync.roomCode,
+      options: getRoomFinishOptions(),
+      votes: {}
+    };
+    renderRoomFinishOverlay(finish);
+    window.dispatchEvent(new CustomEvent('cinepulse:room-finish', { detail: finish }));
+  }
+
+  function showRemoteFullscreenRequest() {
+    if (!roomSync || isRoomModerator()) return;
+    const existing = modalContainer.querySelector('#room-fullscreen-invite');
+    existing?.remove();
+    const invite = document.createElement('button');
+    invite.id = 'room-fullscreen-invite';
+    invite.className = 'room-fullscreen-invite';
+    invite.type = 'button';
+    invite.textContent = 'Moderatör tam ekran önerdi · Aç';
+    invite.onclick = () => {
+      const target = modalContainer.querySelector('#direct-video-wrapper, #cinema-modal-box');
+      target?.requestFullscreen?.().catch(() => {});
+      invite.remove();
+    };
+    modalContainer.appendChild(invite);
+    window.setTimeout(() => invite.remove(), 9000);
+  }
+
+  function requestRoomFullscreen() {
+    if (!roomSync?.roomCode || !isRoomModerator()) return;
+    window.dispatchEvent(new CustomEvent('cinepulse:player-sync', { detail: {
+      roomCode: roomSync.roomCode, mediaId: roomSync.mediaId, type: roomSync.type,
+      season: currentSeason, episode: currentEpisode, action: 'fullscreen-request',
+      source: getRoomSourceDescriptor(), requestFullscreen: true, time: 0, playing: false
+    }}));
+  }
+
+  if (roomSync) {
+    modalScope.on(window, 'cinepulse:room-finish-remote', event => renderRoomFinishOverlay(event.detail));
+    modalScope.on(window, 'cinepulse:room-finish-vote-remote', event => renderRoomFinishOverlay(event.detail));
+    modalScope.on(window, 'cinepulse:room-reaction-remote', event => showRoomReaction(event.detail));
+    modalScope.on(window, 'cinepulse:decision-room-close-player', event => {
+      if (event.detail?.roomCode === roomSync.roomCode) activeModalClose?.();
+    });
   }
 
   function getSeasonEpisodeCount(sNum) {
@@ -498,6 +661,7 @@ export async function openPlayerModal({
         action: 'source',
         source,
         audioTrack: video?._currentAudioTrack || null,
+        settings: { ...roomPlaybackSettings, volume: video?.volume ?? 1, muted: Boolean(video?.muted) },
         time: Number.isFinite(video?.currentTime) ? video.currentTime : 0,
         playing: Boolean(video && !video.paused)
       }
@@ -1768,6 +1932,7 @@ export async function openPlayerModal({
   modalContainer.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   renderPlayerIcons(modalContainer);
+  renderRoomReactionDock();
 
   const renderRoomPlayerHud = (presence = window.__cinepulseDecisionRoomPresence) => {
     if (!roomSync || !presence || presence.roomCode !== roomSync.roomCode) return;
@@ -2197,6 +2362,7 @@ export async function openPlayerModal({
   const btnFullscreen = document.getElementById('btn-player-fullscreen');
   if (btnFullscreen) {
     btnFullscreen.addEventListener('click', () => {
+      requestRoomFullscreen();
       const modalBox = document.getElementById('cinema-modal-box') || document.documentElement;
       const iframeEl = document.getElementById('video-iframe');
       const videoEl = document.getElementById('hls-video-player');
@@ -2561,14 +2727,16 @@ export async function openPlayerModal({
     if (forwardBtn) forwardBtn.onclick = (e) => { e.stopPropagation(); skipTime(10); };
 
     // Brightness Control
-    let currentBrightness = 100;
-    const setBrightness = (pct) => {
+    let currentBrightness = roomPlaybackSettings.brightness;
+    const setBrightness = (pct, publish = true) => {
       currentBrightness = Math.max(30, Math.min(150, pct));
+      roomPlaybackSettings.brightness = currentBrightness;
       videoEl.style.filter = `brightness(${currentBrightness / 100})`;
       if (brightSlider) brightSlider.value = currentBrightness;
       if (brightBadge) brightBadge.textContent = `%${currentBrightness}`;
       const brightMenuSub = wrapper.querySelector('#custom-menu-active-brightness');
       if (brightMenuSub) brightMenuSub.textContent = `%${currentBrightness}`;
+      if (publish && typeof emitRoomSync === 'function') emitRoomSync('settings');
     };
 
     if (brightPopover) {
@@ -2621,11 +2789,15 @@ export async function openPlayerModal({
           action,
           source: getRoomSourceDescriptor(),
           audioTrack: videoEl._currentAudioTrack || null,
+          settings: { ...roomPlaybackSettings, volume: videoEl.volume, muted: videoEl.muted },
           time: videoEl.currentTime || 0,
           playing: !videoEl.paused
         }
       }));
     };
+
+    videoEl.playbackRate = roomPlaybackSettings.speed;
+    setBrightness(roomPlaybackSettings.brightness, false);
 
     // Oda komutu video hazır olmadan gelirse, kaynak kurulunca aynen uygula.
     if (pendingRoomPlayback) {
@@ -2663,11 +2835,17 @@ export async function openPlayerModal({
     on(videoEl, 'ended', () => {
       updatePlayState();
       persistCurrentProgress(videoEl.duration || videoEl.currentTime, videoEl.duration, true, true);
+      startRoomFinishDecision();
     });
     on(videoEl, 'seeked', () => {
       handleVideoProgressUpdate(true);
       emitRoomSync('seek');
     });
+    on(videoEl, 'ratechange', () => {
+      roomPlaybackSettings.speed = videoEl.playbackRate || 1;
+      emitRoomSync('settings');
+    });
+    on(videoEl, 'volumechange', () => emitRoomSync('settings'));
 
     const handleVideoProgressUpdate = (force = false) => {
       if (!videoEl) return;
@@ -2852,7 +3030,7 @@ export async function openPlayerModal({
       }
     };
 
-    if (fsBtn) fsBtn.onclick = (e) => { e.stopPropagation(); toggleFullscreen(); };
+    if (fsBtn) fsBtn.onclick = (e) => { e.stopPropagation(); requestRoomFullscreen(); toggleFullscreen(); };
     videoEl.ondblclick = (e) => {
       e.stopPropagation();
       const rect = videoEl.getBoundingClientRect();
@@ -3530,6 +3708,8 @@ export async function openPlayerModal({
             ev.stopPropagation();
             const sp = parseFloat(el.getAttribute('data-speed'));
             videoEl.playbackRate = sp;
+            roomPlaybackSettings.speed = sp;
+            emitRoomSync('settings');
             showToast(`Oynatma Hızı: ${sp === 1 ? 'Normal' : `${sp}x`}`, 'info');
             showMainMenu();
           };

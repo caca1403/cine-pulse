@@ -12158,3 +12158,16 @@ video::cue {
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
+
+/* Anonymous room: lightweight reactions and end-of-watch vote */
+.room-reaction-dock { position:absolute; z-index:28; top:16px; right:16px; display:flex; gap:6px; pointer-events:auto; }
+.room-reaction-dock button { width:34px; height:34px; border:1px solid rgba(255,255,255,.2); border-radius:50%; background:rgba(15,23,42,.82); color:#fff; font-size:17px; cursor:pointer; }
+.room-reaction-burst { position:absolute; z-index:29; bottom:18%; font-size:38px; pointer-events:none; animation:roomReactionFloat 1.8s ease-out forwards; filter:drop-shadow(0 4px 12px #000); }
+@keyframes roomReactionFloat { from { transform:translateY(0) scale(.65); opacity:0; } 15% { opacity:1; transform:translateY(-12px) scale(1.1); } to { transform:translateY(-120px) scale(1); opacity:0; } }
+.room-finish-overlay { position:absolute; z-index:32; inset:0; display:grid; place-items:center; padding:20px; background:linear-gradient(135deg,rgba(2,6,23,.9),rgba(15,23,42,.72)); }
+.room-finish-panel { width:min(620px,100%); border:1px solid rgba(45,212,191,.36); border-radius:22px; padding:24px; color:#f8fafc; background:rgba(15,23,42,.96); box-shadow:0 24px 70px rgba(0,0,0,.42); }
+.room-finish-kicker { color:#2dd4bf; font-size:.7rem; font-weight:900; letter-spacing:.16em; }
+.room-finish-panel h3 { margin:8px 0 5px; font-size:1.45rem; }.room-finish-panel p { margin:0 0 18px; color:#94a3b8; }
+.room-finish-options { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }.room-finish-option { min-height:112px; border:1px solid rgba(148,163,184,.22); border-radius:15px; background:#182235; color:#e2e8f0; padding:12px; text-align:left; cursor:pointer; display:flex; flex-direction:column; gap:7px; }.room-finish-option:hover,.room-finish-option.voted { border-color:#2dd4bf; background:#12343a; }.room-finish-option b { font-size:1.35rem; }.room-finish-option span { font-weight:800; line-height:1.2; }.room-finish-option small { color:#94a3b8; margin-top:auto; }
+.room-fullscreen-invite { position:fixed; z-index:9999; bottom:28px; left:50%; transform:translateX(-50%); border:1px solid #2dd4bf; border-radius:999px; background:#12343a; color:#ecfeff; padding:11px 16px; font-weight:800; cursor:pointer; }
+@media (max-width:600px) { .room-finish-panel { padding:18px; }.room-finish-options { grid-template-columns:1fr; }.room-finish-option { min-height:74px; flex-direction:row; align-items:center; }.room-finish-option small { margin:0 0 0 auto; }.room-reaction-dock { top:10px; right:10px; } }
