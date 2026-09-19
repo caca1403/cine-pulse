@@ -10,7 +10,10 @@ import TrackerClient from 'bittorrent-tracker/client';
 const TRACKERS = [
   'wss://tracker.openwebtorrent.com',
   'wss://tracker.btorrent.xyz',
-  'wss://tracker.webtorrent.dev'
+  'wss://tracker.webtorrent.dev',
+  'wss://tracker.files.fm:7073/announce',
+  'wss://spacetrackr.link:443/announce',
+  'wss://tracker.fastcast.nz:443/announce'
 ];
 
 const MAX_RECENT_MESSAGES = 160;
@@ -74,6 +77,8 @@ export class AnonymousDecisionRoom {
     this.selfId = randomHex(10);
     this.client = null;
     this.peers = new Map();
+    this.trackerPeerCount = 1;
+    this.announceTimer = null;
     this.participants = new Map([[this.selfId, {
       id: this.selfId,
       nickname: this.nickname,
@@ -83,6 +88,7 @@ export class AnonymousDecisionRoom {
     this.receivedIds = new Set();
     this.cards = [];
     this.votes = {};
+    this.ratings = {};
     this.destroyed = false;
   }
 
@@ -93,9 +99,11 @@ export class AnonymousDecisionRoom {
       selfId: this.selfId,
       isHost: this.isHost,
       peerCount: this.peers.size,
+      trackerPeerCount: this.trackerPeerCount,
       participants: Array.from(this.participants.values()),
       cards: this.cards,
-      votes: this.votes
+      votes: this.votes,
+      ratings: this.ratings
     };
   }
 
@@ -129,8 +137,20 @@ export class AnonymousDecisionRoom {
     });
 
     this.client.on('peer', peer => this.attachPeer(peer));
+    this.client.on('update', data => {
+      const announced = Number(data?.complete || 0) + Number(data?.incomplete || 0);
+      this.trackerPeerCount = Math.max(1, announced || 1);
+      this.emit();
+    });
     this.client.on('warning', () => this.emit());
-    this.client.start({ numwant: 8 });
+    // Bir tracker hata verdiğinde diğer tracker'ların çalışmasına izin ver.
+    this.client.on('error', () => this.emit());
+    this.client.start({ numwant: 5, left: 1 });
+    // Public tracker'lar uzun duyuru aralığı verebilir. Kısa ömürlü odalarda
+    // bu tekrar denemesi, sonradan katılan telefonun hızlı görünmesini sağlar.
+    this.announceTimer = window.setInterval(() => {
+      try { this.client?.update({ numwant: 5, left: 1 }); } catch (_) {}
+    }, 15000);
     this.emit();
   }
 
@@ -213,6 +233,7 @@ export class AnonymousDecisionRoom {
           type: 'state',
           cards: this.cards,
           votes: this.votes,
+          ratings: this.ratings,
           participants: Array.from(this.participants.values())
         });
       }
@@ -222,6 +243,7 @@ export class AnonymousDecisionRoom {
     if (message.type === 'state' && Array.isArray(message.cards)) {
       this.cards = message.cards.slice(0, 12);
       this.votes = message.votes || {};
+      this.ratings = message.ratings || {};
       if (Array.isArray(message.participants)) {
         message.participants.forEach(person => {
           if (person?.id && person?.nickname) this.participants.set(person.id, person);
@@ -232,12 +254,20 @@ export class AnonymousDecisionRoom {
 
     if (message.type === 'cards' && Array.isArray(message.cards)) {
       this.cards = message.cards.slice(0, 12);
-      this.votes = {};
+      this.votes = message.votes || {};
+      this.ratings = message.ratings || {};
       this.emit();
     }
 
     if (message.type === 'vote' && message.cardId && message.senderId) {
       this.votes = { ...this.votes, [message.cardId]: { ...(this.votes[message.cardId] || {}), [message.senderId]: message.vote === 'yes' ? 'yes' : 'no' } };
+      this.emit();
+    }
+
+    if (message.type === 'rating' && message.cardId && message.senderId) {
+      const rating = Math.max(1, Math.min(5, Number(message.rating) || 0));
+      if (!rating) return;
+      this.ratings = { ...this.ratings, [message.cardId]: { ...(this.ratings[message.cardId] || {}), [message.senderId]: rating } };
       this.emit();
     }
 
@@ -247,16 +277,35 @@ export class AnonymousDecisionRoom {
   }
 
   setCards(cards) {
+    if (!this.isHost) return;
     this.cards = Array.isArray(cards) ? cards.slice(0, 12) : [];
     this.votes = {};
-    this.broadcast({ type: 'cards', cards: this.cards });
+    this.ratings = {};
+    this.broadcast({ type: 'cards', cards: this.cards, votes: this.votes, ratings: this.ratings });
     this.emit();
+  }
+
+  addCard(card) {
+    if (!this.isHost || !card?.id || this.cards.length >= 12 || this.cards.some(item => String(item.id) === String(card.id) && item.type === card.type)) return false;
+    this.cards = [...this.cards, card];
+    this.broadcast({ type: 'cards', cards: this.cards, votes: this.votes, ratings: this.ratings });
+    this.emit();
+    return true;
   }
 
   vote(cardId, vote) {
     if (!cardId) return;
     this.votes = { ...this.votes, [cardId]: { ...(this.votes[cardId] || {}), [this.selfId]: vote === 'yes' ? 'yes' : 'no' } };
     this.broadcast({ type: 'vote', cardId, vote: vote === 'yes' ? 'yes' : 'no' });
+    this.emit();
+  }
+
+  rate(cardId, rating) {
+    if (!cardId) return;
+    const value = Math.max(1, Math.min(5, Number(rating) || 0));
+    if (!value) return;
+    this.ratings = { ...this.ratings, [cardId]: { ...(this.ratings[cardId] || {}), [this.selfId]: value } };
+    this.broadcast({ type: 'rating', cardId, rating: value });
     this.emit();
   }
 
@@ -268,6 +317,8 @@ export class AnonymousDecisionRoom {
 
   destroy() {
     this.destroyed = true;
+    if (this.announceTimer) window.clearInterval(this.announceTimer);
+    this.announceTimer = null;
     this.peers.forEach(peer => {
       try { peer.destroy(); } catch (_) {}
     });

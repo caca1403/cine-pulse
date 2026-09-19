@@ -1,5 +1,5 @@
 import { renderIcons } from '../services/icons.js';
-import { fetchTrending, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
+import { fetchTrending, getImageUrl, searchMulti, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
 import {
   AnonymousDecisionRoom,
   buildRoomUrl,
@@ -64,16 +64,30 @@ function voteSummary(card, state) {
   return { yes, needed, matched: yes >= needed };
 }
 
+function ratingSummary(card, state) {
+  const values = Object.values(state.ratings?.[card.id] || {}).map(Number).filter(value => value >= 1 && value <= 5);
+  const mine = state.ratings?.[card.id]?.[state.selfId] || 0;
+  const average = values.length ? values.reduce((total, value) => total + value, 0) / values.length : 0;
+  return { average, count: values.length, mine };
+}
+
 function renderRoomState(root, state, statusText = '') {
   const status = root.querySelector('#decision-room-status');
   const peers = root.querySelector('#decision-room-peers');
   const memberCount = root.querySelector('#decision-room-member-count');
   const moderatorPanel = root.querySelector('#decision-room-moderator-panel');
+  const signalStatus = root.querySelector('#decision-room-signal-status');
   const deck = root.querySelector('#decision-room-deck');
   const link = root.querySelector('#decision-room-link');
   if (status) status.textContent = statusText || (state.peerCount ? 'Arkadaşların bağlandı, oylar anlık geliyor.' : 'Oda eşleştiriliyor. Arkadaşına bağlantıyı gönder.');
-  if (memberCount) memberCount.textContent = `${state.participants.length} kişi`;
+  const observedCount = Math.max(state.participants.length, state.trackerPeerCount || 1);
+  if (memberCount) memberCount.textContent = `${observedCount} kişi`;
   if (moderatorPanel) moderatorPanel.hidden = !state.isHost;
+  if (signalStatus && state.isHost) {
+    signalStatus.textContent = observedCount > state.participants.length
+      ? `${observedCount} kişi tracker tarafından görüldü; doğrudan bağlantı hazırlanıyor.`
+      : `${observedCount} kişi aktif bağlantıda.`;
+  }
   if (peers) {
     peers.innerHTML = state.isHost
       ? state.participants.map(person => `<span class="decision-room-person ${person.role === 'moderator' ? 'is-moderator' : ''}"><i data-lucide="${person.role === 'moderator' ? 'crown' : 'circle-user-round'}"></i>${escapeHtml(person.nickname)}${person.id === state.selfId ? ' (Sen)' : ''}</span>`).join('')
@@ -90,12 +104,15 @@ function renderRoomState(root, state, statusText = '') {
         const meta = card.type === 'tv' ? 'Dizi' : 'Film';
         const vote = voteSummary(card, state);
         const myVote = state.votes[card.id]?.[state.selfId];
+        const rating = ratingSummary(card, state);
+        const stars = [1, 2, 3, 4, 5].map(value => `<button data-room-rating="${value}" data-card-id="${card.id}" class="${rating.mine >= value ? 'active-star' : ''}" aria-label="${value} yıldız"><i data-lucide="star"></i></button>`).join('');
         return `<article class="decision-room-card ${vote.matched ? 'matched' : ''}">
           <img src="${getImageUrl(card.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL)}" alt="" loading="lazy" />
           <div class="decision-room-card-body">
             <span>${meta} · ★ ${(Number(card.vote_average) || 0).toFixed(1)}</span>
             <strong>${escapeHtml(title)}</strong>
             <small>${vote.matched ? 'Herkes izlemek istiyor!' : `${vote.yes}/${vote.needed} kişi izlemek istiyor`}</small>
+            <div class="decision-room-rating"><span>${rating.count ? `Ortak puan ${rating.average.toFixed(1)} · ${rating.count} oy` : 'Puan ver'}</span><div>${stars}</div></div>
             <div class="decision-room-votes">
               <button data-room-vote="yes" data-card-id="${card.id}" class="${myVote === 'yes' ? 'active-yes' : ''}"><i data-lucide="heart"></i> İzle</button>
               <button data-room-vote="no" data-card-id="${card.id}" class="${myVote === 'no' ? 'active-no' : ''}"><i data-lucide="skip-forward"></i> Geç</button>
@@ -109,6 +126,9 @@ function renderRoomState(root, state, statusText = '') {
     deck.querySelectorAll('[data-room-vote]').forEach(button => {
       button.onclick = () => activeRoom?.vote(button.dataset.cardId, button.dataset.roomVote);
     });
+    deck.querySelectorAll('[data-room-rating]').forEach(button => {
+      button.onclick = () => activeRoom?.rate(button.dataset.cardId, button.dataset.roomRating);
+    });
     deck.querySelectorAll('[data-room-open]').forEach(button => {
       button.onclick = () => {
         const card = state.cards.find(item => String(item.id) === button.dataset.roomOpen);
@@ -119,6 +139,51 @@ function renderRoomState(root, state, statusText = '') {
   renderIcons(root);
 }
 
+function toRoomCard(item) {
+  return {
+    id: item.id,
+    type: item.type || item.media_type || (item.first_air_date ? 'tv' : 'movie'),
+    title: item.title,
+    name: item.name,
+    poster_path: item.poster_path,
+    vote_average: item.vote_average
+  };
+}
+
+function setupModeratorContentSearch(root, room) {
+  const form = root.querySelector('#decision-room-content-form');
+  const input = root.querySelector('#decision-room-content-search');
+  const results = root.querySelector('#decision-room-content-results');
+  if (!form || !input || !results || !room.isHost) return;
+
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const query = input.value.trim();
+    if (query.length < 2) return;
+    results.innerHTML = '<span class="decision-room-search-status">Aranıyor…</span>';
+    const items = await searchMulti(query).catch(() => []);
+    const matches = items.filter(item => item?.id && (item.type === 'movie' || item.type === 'tv')).slice(0, 5);
+    results.innerHTML = matches.length ? matches.map(item => {
+      const card = toRoomCard(item);
+      return `<button type="button" data-add-room-card="${card.id}" data-add-room-type="${card.type}" title="Odaya ekle"><img src="${getImageUrl(card.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL)}" alt="" /><span><strong>${escapeHtml(card.title || card.name || 'İsimsiz içerik')}</strong><small>${card.type === 'tv' ? 'Dizi' : 'Film'} · ★ ${(Number(card.vote_average) || 0).toFixed(1)}</small></span><i data-lucide="plus"></i></button>`;
+    }).join('') : '<span class="decision-room-search-status">Sonuç bulunamadı.</span>';
+    results.querySelectorAll('[data-add-room-card]').forEach(button => {
+      button.onclick = () => {
+        const item = matches.find(candidate => String(candidate.id) === button.dataset.addRoomCard && (candidate.type || candidate.media_type) === button.dataset.addRoomType);
+        if (!item) return;
+        if (room.addCard(toRoomCard(item))) {
+          input.value = '';
+          results.innerHTML = '';
+          showToast('İçerik odaya eklendi.', 'success');
+        } else {
+          showToast('Bu içerik zaten listede veya oda dolu.', 'warning');
+        }
+      };
+    });
+    renderIcons(results);
+  };
+}
+
 async function loadCandidates(room, root) {
   const status = root.querySelector('#decision-room-status');
   if (status) status.textContent = 'Ortak adaylar hazırlanıyor…';
@@ -127,14 +192,7 @@ async function loadCandidates(room, root) {
     const candidates = (list || [])
       .filter(item => item?.id && (item.media_type === 'movie' || item.media_type === 'tv' || item.type === 'movie' || item.type === 'tv'))
       .slice(0, 8)
-      .map(item => ({
-        id: item.id,
-        type: item.type || item.media_type || (item.first_air_date ? 'tv' : 'movie'),
-        title: item.title,
-        name: item.name,
-        poster_path: item.poster_path,
-        vote_average: item.vote_average
-      }));
+      .map(toRoomCard);
     if (!candidates.length) throw new Error('Aday bulunamadı.');
     room.setCards(candidates);
   } catch (_) {
@@ -177,7 +235,10 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), i
       <div class="decision-room-live"><span class="decision-room-live-dot"></span><span id="decision-room-status">Oda hazırlanıyor…</span><strong id="decision-room-member-count" class="decision-room-member-count">1 kişi</strong></div>
       <section id="decision-room-moderator-panel" class="decision-room-moderator-panel" hidden>
         <div><i data-lucide="crown"></i><strong>Moderatör paneli</strong><span>Katılanlar anonim kalır; yalnızca bu odadaki takma adları görünür.</span></div>
+        <small id="decision-room-signal-status" class="decision-room-signal-status">Katılım sinyali bekleniyor…</small>
         <div id="decision-room-peers" class="decision-room-peers"></div>
+        <form id="decision-room-content-form" class="decision-room-content-form"><label for="decision-room-content-search">Film veya dizi ekle</label><div><input id="decision-room-content-search" minlength="2" placeholder="İçerik ara" /><button type="submit"><i data-lucide="search"></i> Ara</button></div></form>
+        <div id="decision-room-content-results" class="decision-room-content-results"></div>
       </section>
       <div id="decision-room-deck" class="decision-room-deck"></div>
       <footer class="decision-room-footer"><span>Oda kapanınca oylar silinir.</span><button id="btn-refresh-decision-cards"><i data-lucide="refresh-cw"></i> Yeni adaylar</button></footer>
@@ -200,6 +261,7 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), i
   // odaya işlem yapma.
   if (activeRoom !== room || activeRoomModal !== root) return;
   if (isHost) loadCandidates(room, root);
+  setupModeratorContentSearch(root, room);
 
   root.querySelector('#btn-copy-decision-room').onclick = async () => {
     try {
