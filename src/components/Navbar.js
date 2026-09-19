@@ -49,7 +49,7 @@ export function renderNavbar(currentView = 'home') {
             <span class="live-pulse-dot"></span>
             <span>CANLI</span>
           </a>
-          <button id="btn-open-decision-room" class="btn-decision-room-shortcut" title="Arkadaşlarınla anonim ortak seçim yap">
+          <button data-open-decision-room class="btn-decision-room-shortcut" title="Arkadaşlarınla anonim ortak seçim yap">
             <i data-lucide="users-round"></i><span>Birlikte Seç</span>
           </button>
           ` : ''}
@@ -76,6 +76,10 @@ export function renderNavbar(currentView = 'home') {
           <button id="btn-mobile-search-toggle" class="btn-action-icon mobile-only" aria-label="Arama Yap">
             <i data-lucide="search"></i>
           </button>
+          ${!activeProfile.isKid ? `
+          <button data-open-decision-room class="btn-action-icon mobile-only" aria-label="Birlikte Seç" title="Birlikte Seç">
+            <i data-lucide="users-round"></i>
+          </button>` : ''}
         </div>
       </div>
 
@@ -193,13 +197,12 @@ export function attachNavbarEvents(onNavigate) {
     });
   }
 
-  const decisionRoomBtn = document.getElementById('btn-open-decision-room');
-  if (decisionRoomBtn) {
+  document.querySelectorAll('[data-open-decision-room]').forEach((decisionRoomBtn) => {
     decisionRoomBtn.addEventListener('click', async () => {
       const room = await import('./DecisionRoomModal.js');
       room.openDecisionRoomModal();
     });
-  }
+  });
 
   // Kids Mode Quick Exit Pill
   const exitKidsBtn = document.getElementById('btn-exit-kids-mode');
