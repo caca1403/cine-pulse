@@ -405,11 +405,15 @@ export default async function handler(req, res) {
         // otherwise valid HLS data.
         const isHdfTransportStream = /\.cfd\/hdfilm\//i.test(decodedTarget)
           && /\.(?:png|jpg)(?:$|\?)/i.test(decodedTarget);
-        // Do not label a Matroska container as MP4. Desktop Chromium often
-        // sniffs through that mismatch, while Android media stacks select the
-        // MP4 extractor and reject the very same byte stream. Supplying the
-        // native MIME type lets Android select its Matroska extractor.
-        res.setHeader('Content-Type', isMkv ? 'video/x-matroska' : (isHdfTransportStream ? 'video/mp2t' : (contentType || 'video/mp4')));
+        // Chromium desktop accepts SWX's legacy compatibility MIME, whereas
+        // Android selects an MP4 extractor from it and rejects Matroska bytes.
+        // Keep the proven desktop behavior and expose the native MIME only to
+        // Android so each platform chooses the correct container extractor.
+        const isAndroidClient = /android/i.test(req.headers['user-agent'] || '');
+        if (isMkv) res.setHeader('Vary', 'User-Agent');
+        res.setHeader('Content-Type', isMkv
+          ? (isAndroidClient ? 'video/x-matroska' : 'video/mp4')
+          : (isHdfTransportStream ? 'video/mp2t' : (contentType || 'video/mp4')));
         // HDF's VOD segments are immutable, but its CDN requires the original
         // site Referer. Cache the already-authorized proxy response at Vercel
         // so repeat playback does not pay for a full upstream fetch per chunk.
