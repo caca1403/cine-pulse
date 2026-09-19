@@ -33,7 +33,7 @@ import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
 
 // Cache version
-const CACHE_VERSION = 'v33';
+const CACHE_VERSION = 'v34';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -218,7 +218,7 @@ function formatStreamItem(s, category, fallbackName) {
     url: streamUrl,
     badge,
     category,
-    isHls: Boolean(s.isHls || streamUrl.includes('.m3u8') || streamUrl.includes('/hls_proxy')),
+    isHls: Boolean(s.isHls || streamUrl.includes('.m3u8')),
     isDirectVideo: Boolean(s.isDirectVideo || s.isHls || streamUrl.includes('.m3u8') || streamUrl.includes('.mp4') || streamUrl.includes('.mkv')),
     getUrl: () => streamUrl
   };

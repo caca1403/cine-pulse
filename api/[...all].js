@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     const rawTarget = urlObj.searchParams.get('url') || '';
     if (!rawTarget) return res.status(400).send('Missing url');
     try {
-      const decodedTarget = decodeURIComponent(rawTarget);
+    const decodedTarget = rawTarget;
       if (!isSafePublicUrl(decodedTarget)) return res.status(403).send('Target blocked');
       const imgRes = await fetch(decodedTarget, {
         headers: {
@@ -238,7 +238,7 @@ export default async function handler(req, res) {
     }
 
     try {
-      const decodedTarget = decodeURIComponent(rawTarget);
+      const decodedTarget = rawTarget;
       if (!isSafePublicUrl(decodedTarget)) return res.status(403).send('Target blocked');
 
       if (!ref) {
@@ -356,7 +356,7 @@ export default async function handler(req, res) {
 
           // Direct CDN bypass for video segments and sub-playlists with open CORS
           // Bypasses proxy for 10x faster playback (<200ms start)
-          const needsProxy = /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi)/i.test(fullLineUrl);
+          const needsProxy = /(?:hdfilmizle\.best)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi)/i.test(fullLineUrl);
           if (
             !needsProxy && (
             /\.(ts|jpg|jpeg|png|m4s|mp4)($|\?)/i.test(fullLineUrl) ||
@@ -665,7 +665,7 @@ export default async function handler(req, res) {
   } else if (pathname.startsWith('/api/fmk_proxy')) {
     const rawTarget = urlObj.searchParams.get('url') || '';
     if (!rawTarget) return res.status(400).send('Missing url param');
-    targetUrl = decodeURIComponent(rawTarget);
+    targetUrl = rawTarget;
     if (!isSafePublicUrl(targetUrl)) return res.status(403).send('Target blocked');
     customHeaders['Referer'] = 'https://filmmakinesi.to/';
     customHeaders['Origin'] = 'https://filmmakinesi.to';
@@ -994,6 +994,9 @@ export default async function handler(req, res) {
 
   try {
     let body = undefined;
+    if (pathname.startsWith('/api/proxy') && req.headers.range) {
+      customHeaders['Range'] = req.headers.range;
+    }
     if (req.method === 'POST') {
       if (req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
         customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
@@ -1040,6 +1043,24 @@ export default async function handler(req, res) {
 
     const contentType = upstreamRes.headers.get('content-type') || 'text/html';
     res.setHeader('Content-Type', contentType);
+
+    if (pathname.startsWith('/api/proxy')) {
+      res.statusCode = upstreamRes.status;
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+      for (const header of ['content-length', 'content-range', 'accept-ranges']) {
+        const value = upstreamRes.headers.get(header);
+        if (value && (header !== 'content-length' || !upstreamRes.headers.get('content-encoding'))) res.setHeader(header, value);
+      }
+      if (!upstreamRes.body || req.method === 'HEAD') return res.end();
+      await new Promise((resolve, reject) => {
+        const stream = Readable.fromWeb(upstreamRes.body);
+        stream.on('error', reject);
+        res.on('finish', resolve);
+        res.on('close', () => { stream.destroy(); resolve(); });
+        stream.pipe(res);
+      });
+      return;
+    }
 
     const buffer = await upstreamRes.arrayBuffer();
     return res.status(upstreamRes.status).send(Buffer.from(buffer));
