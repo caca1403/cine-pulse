@@ -486,6 +486,18 @@ export default async function handler(req, res) {
     customHeaders['X-Requested-With'] = 'XMLHttpRequest';
     if (req.method === 'POST') {
       customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+      // SezonlukDizi's AJAX endpoints require the session cookie issued by
+      // the episode page. Vercel does not keep cookies between proxy calls,
+      // so obtain a short-lived session cookie before forwarding the POST.
+      if (!req.headers.cookie) {
+        try {
+          const sessionRes = await fetch('https://sezonlukdizi.cc/', {
+            headers: { 'User-Agent': customHeaders['User-Agent'] }
+          });
+          const setCookie = sessionRes.headers.get('set-cookie');
+          if (setCookie) customHeaders['Cookie'] = setCookie.split(';')[0];
+        } catch (_) {}
+      }
     }
   } else if (pathname.startsWith('/api/dbl')) {
     const subPath = pathname.replace(/^\/api\/dbl/, '');
