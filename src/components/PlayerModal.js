@@ -1387,7 +1387,7 @@ export async function openPlayerModal({
     <div class="modal-content player-modal-content" id="cinema-modal-box">
       ${roomSync ? `<aside id="room-player-hud" class="room-player-hud" aria-live="polite">
         <span class="room-player-live-dot"></span>
-        <div><strong>Birlikte İzleme</strong><small id="room-player-status">Oda eşitleniyor…</small></div>
+        <div><strong>Birlikte İzleme</strong><small id="room-player-status">Oda eşitleniyor…</small><small id="room-player-episode">${isSeries ? `S${currentSeason} · B${currentEpisode}` : 'Film'}</small></div>
         <div id="room-player-members" class="room-player-members"></div>
       </aside>` : ''}
       
@@ -1599,6 +1599,7 @@ export async function openPlayerModal({
     if (!roomSync || !presence || presence.roomCode !== roomSync.roomCode) return;
     const status = modalContainer.querySelector('#room-player-status');
     const members = modalContainer.querySelector('#room-player-members');
+    const episode = modalContainer.querySelector('#room-player-episode');
     if (status) status.textContent = presence.isHost
       ? `${presence.participants.length} kişi bağlı · Kontrol sende`
       : `${presence.participants.length} kişi bağlı · Moderatör eşitliyor`;
@@ -1607,6 +1608,7 @@ export async function openPlayerModal({
         .map(person => `<span title="${person.nickname}">${person.role === 'moderator' ? '♛' : '●'} ${person.nickname}</span>`)
         .join('');
     }
+    if (episode) episode.textContent = isSeries ? `S${currentSeason} · B${currentEpisode}` : 'Film';
   };
   if (roomSync) {
     renderRoomPlayerHud();
@@ -4335,6 +4337,7 @@ export async function openPlayerModal({
     disposePlayback();
     currentSeason = newSeason;
     currentEpisode = newEpisode;
+    renderRoomPlayerHud();
     if (roomSync?.roomCode) {
       window.dispatchEvent(new CustomEvent('cinepulse:player-sync', {
         detail: {
