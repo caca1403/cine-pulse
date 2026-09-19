@@ -16,6 +16,7 @@ import { createPlayerScope, renderPlayerIcons } from './playerLifecycle.js';
 
 import { getStreamingServers, getStreamingServersProgressive } from '../services/providerAggregator.js';
 import { resolveDirectStream } from '../services/streamExtractors.js';
+import { rankSourcesForDevice, rememberFailedSource, rememberWorkingSource, sourceMatchesDescriptor as sourceReliabilityMatchesDescriptor } from '../services/sourceReliability.js';
 import {
   saveWatchProgress,
   getMediaProgress,
@@ -345,6 +346,7 @@ export async function openPlayerModal({
   let currentCategory = 'dubbed'; // Her zaman dublaj ile başla
   let activeServers = [];
   let currentServerIndex = 0;
+  const getSourceContentKey = () => `${type}:${tmdbId || cleanSeriesName}:s${currentSeason}:e${currentEpisode}`;
   let categorizedServers = { dubbed: [], subtitled: [] };
   let isSearching = true;
   let hasPlayerStartedPlaying = false;
@@ -952,7 +954,8 @@ export async function openPlayerModal({
     const targetId = normalized(descriptor.id);
     // Bir sağlayıcının aynı isimli birden çok 1080p hattı olabilir. Kimlik
     // varsa doğrudan onu, yoksa sağlayıcı + görünen ad ikilisini eşleştir.
-    if (srvId && targetId) return srvId === targetId;
+    if (srvId && targetId && srvId === targetId) return true;
+    if (sourceReliabilityMatchesDescriptor(srv, descriptor)) return true;
     const srvProvider = normalized(srv.source);
     const targetProvider = normalized(descriptor.provider);
     const srvName = normalized(srv.displayName || srv.name);
@@ -1366,8 +1369,10 @@ export async function openPlayerModal({
   function triggerAutoFailover(reason = 'Bağlantı yanıt vermedi') {
     if (closed) return;
     // Zaman aşımı (timeout) kaynaklı otomatik kaynak atlamaları devre dışı
-    if (reason && /zaman aşımı|timeout/i.test(reason)) {
-      console.warn(`[PlayerModal] Zaman aşımı kaynaklı failover engellendi: ${reason}`);
+    if (roomSync && !isRoomModerator()) {
+      // Katılımcı kendi başına başka hatta ayrılmaz; moderatörün yeni seçimi
+      // kısa süre içinde odaya yayılır ve herkes aynı hatta kalır.
+      showToast('Moderatör alternatif yayına geçiyor…', 'info');
       return;
     }
 
@@ -1384,6 +1389,7 @@ export async function openPlayerModal({
     if (currentSrv) {
       currentSrv.failed = true;
       currentSrv.failReason = reason;
+      rememberFailedSource({ category: currentCategory, source: currentSrv });
       console.warn(`[PlayerModal] Server failed: ${currentSrv.name} (${reason})`);
     }
 
@@ -4990,6 +4996,42 @@ export async function openPlayerModal({
           });
         }
 
+        // A source is healthy only after actual frames start flowing. This avoids
+        // probing every URL (which would consume mobile data and trigger CORS).
+        let hasRecordedWorkingSource = false;
+        let stallTimer = null;
+        const clearSourceStallTimer = () => {
+          if (stallTimer) clearTimeout(stallTimer);
+          stallTimer = null;
+        };
+        const markSourceWorking = () => {
+          clearSourceStallTimer();
+          if (hasRecordedWorkingSource || closed || playbackRun !== playbackGeneration) return;
+          hasRecordedWorkingSource = true;
+          rememberWorkingSource({ contentKey: getSourceContentKey(), category: currentCategory, source: srv });
+        };
+        const armSourceStallFailover = () => {
+          clearSourceStallTimer();
+          if (videoEl.paused || videoEl.ended) return;
+          stallTimer = playbackScope.setTimeout(() => {
+            if (closed || playbackRun !== playbackGeneration || videoEl.paused || videoEl.ended) return;
+            if (videoEl.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
+              triggerAutoFailover('Akış uzun süre buffer’da kaldı');
+            }
+          }, 16000);
+        };
+        playbackScope.on(videoEl, 'playing', markSourceWorking);
+        playbackScope.on(videoEl, 'timeupdate', markSourceWorking);
+        playbackScope.on(videoEl, 'canplay', clearSourceStallTimer);
+        playbackScope.on(videoEl, 'waiting', armSourceStallFailover);
+        playbackScope.on(videoEl, 'stalled', armSourceStallFailover);
+        playbackScope.on(videoEl, 'error', () => {
+          clearSourceStallTimer();
+          rememberFailedSource({ category: currentCategory, source: srv });
+        });
+        playbackScope.on(videoEl, 'pause', clearSourceStallTimer);
+        armSourceStallFailover();
+
         // ============ Subtitle Control Engine for Torrent, Sinewix & Direct Streams ============
         attachSubtitleControls(videoEl, srv);
         initCustomPlayerControls(videoEl, srv);
@@ -5083,7 +5125,10 @@ export async function openPlayerModal({
       episode: currentEpisode,
       onUpdate: ({ dubbed = [], subtitled = [], isComplete = false, newStream = null, isDubbedStream = false }) => {
         if (closed || generation !== discoveryGeneration) return;
-        categorizedServers = { dubbed, subtitled };
+        categorizedServers = {
+          dubbed: rankSourcesForDevice(dubbed, { contentKey: getSourceContentKey(), category: 'dubbed' }),
+          subtitled: rankSourcesForDevice(subtitled, { contentKey: getSourceContentKey(), category: 'subtitled' })
+        };
         updateCategoryCounts();
         isDiscoveryActive = !isComplete;
 
