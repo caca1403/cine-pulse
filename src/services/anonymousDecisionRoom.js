@@ -56,7 +56,15 @@ function openSharedContent(card, roomCode = '', initialSync = null) {
   // Oda penceresi, detay ekranı ve oynatıcı arasında üst üste kalmamalı.
   // Bu olay hem moderatörün hem de katılımcının kendi penceresini kapatır.
   window.dispatchEvent(new CustomEvent('cinepulse:decision-room-open'));
-  window.location.hash = `#detail?type=${type}&id=${card.id}`;
+  const targetHash = `#detail?type=${type}&id=${card.id}`;
+  // Aynı dizinin farklı bölümü seçildiğinde hash değişmez. Bu durumda router
+  // doğal hashchange üretmez ve katılımcıdaki tek kullanımlık oda komutu
+  // tüketilmeden kalır; rotayı kendimiz yeniden çalıştırıyoruz.
+  if (window.location.hash === targetHash) {
+    window.dispatchEvent(new Event('hashchange'));
+  } else {
+    window.location.hash = targetHash;
+  }
 }
 
 async function roomInfoHash(roomCode) {
@@ -463,7 +471,9 @@ export class AnonymousDecisionRoom {
         };
         const shouldOpen = !this.sharedPlayback
           || String(this.sharedPlayback.id) !== String(playback.id)
-          || this.sharedPlayback.type !== playback.type;
+          || this.sharedPlayback.type !== playback.type
+          || Number(this.sharedPlayback.season) !== Number(playback.season)
+          || Number(this.sharedPlayback.episode) !== Number(playback.episode);
         this.sharedPlayback = playback;
         this.lastPlayerSync = message.lastPlayerSync || null;
         this.roomFinish = message.roomFinish || null;
@@ -688,6 +698,28 @@ export class AnonymousDecisionRoom {
     };
     this.emit();
     this.broadcast({ type: 'open', card });
+    // WebRTC data channels can briefly be connected while a peer's first
+    // packet is still being negotiated. Repeat the authoritative state so a
+    // participant never remains on the room screen if that one `open` packet
+    // was lost. Late joiners receive the same state through their hello flow.
+    const publishPlaybackState = () => {
+      if (this.destroyed || !this.sharedPlayback) return;
+      this.broadcast({
+        type: 'state',
+        cards: this.cards,
+        votes: this.votes,
+        ratings: this.ratings,
+        suggestions: this.suggestions,
+        syncMode: this.syncMode,
+        participants: Array.from(this.participants.values()),
+        sharedPlayback: this.sharedPlayback,
+        lastPlayerSync: this.lastPlayerSync,
+        roomFinish: this.roomFinish,
+        chatMessages: this.chatMessages
+      });
+    };
+    window.setTimeout(publishPlaybackState, 350);
+    window.setTimeout(publishPlaybackState, 1400);
     openSharedContent(card, this.roomCode);
   }
 
