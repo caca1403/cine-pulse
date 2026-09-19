@@ -156,6 +156,10 @@ export default async function handler(req, res) {
 
       const html = await embedRes.text();
 
+      // Extract cookies from HTML
+      const cookieMatches = [...html.matchAll(/\$\.cookie\(['"]([^'"]+)['"],\s*['"]([^'"]+)['"]/g)];
+      const cookieHeader = cookieMatches.map(m => `${m[1]}=${m[2]}`).join('; ');
+
       // Extract /dl?op=get_stream&view_id=...&hash=... endpoint
       const dlMatch = html.match(/fetch\(['"](\/dl\?op=get_stream[^'"]+)['"]\)/i);
       if (!dlMatch) {
@@ -168,9 +172,11 @@ export default async function handler(req, res) {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           'Referer': embedUrl,
           'Origin': 'https://x.ag2m4.cfd',
+          'Cookie': cookieHeader,
+          'X-Requested-With': 'XMLHttpRequest',
           'Accept': '*/*'
         },
-        signal: AbortSignal.timeout(6000)
+        signal: AbortSignal.timeout(7000)
       });
 
       if (!dlRes.ok) {
@@ -235,16 +241,20 @@ export default async function handler(req, res) {
       if (!ref) {
         if (decodedTarget.includes('dizisol.com')) {
           ref = 'https://dizisol.com/';
+        } else if (decodedTarget.includes('ag2m4') || decodedTarget.includes('uk-traffic-076') || decodedTarget.includes('dizibal')) {
+          ref = 'https://x.ag2m4.cfd/';
         } else if (decodedTarget.includes('prectv') || decodedTarget.includes('mariuannastluisborg') || decodedTarget.includes('moveonjoy')) {
           ref = 'https://a.prectv70.lol/';
         } else if (decodedTarget.includes('hdfilmcehennemi')) {
           ref = 'https://hdfilmcehennemi.mobi/';
-        } else {
-          ref = 'https://hdplayersystem.com/';
+        } else if (decodedTarget.includes('meatort') || decodedTarget.includes('lookmovie')) {
+          ref = 'https://lookmovie2.la/';
+        } else if (decodedTarget.includes('4astras') || decodedTarget.includes('saf45sfa') || decodedTarget.includes('4sa') || decodedTarget.includes('7862564') || decodedTarget.includes('959565') || decodedTarget.includes('45464654')) {
+          ref = '';
         }
       }
 
-      let targetOrigin = 'https://hdplayersystem.com';
+      let targetOrigin = '';
       try {
         if (ref) targetOrigin = new URL(ref).origin;
       } catch (_) {}
@@ -253,7 +263,7 @@ export default async function handler(req, res) {
                       decodedTarget.includes('mariuannastluisborg') || 
                       decodedTarget.includes('moveonjoy') || 
                       (ref && ref.includes('prectv'));
-      const ua = isRecTv ? 'okhttp/4.12.0' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+      const ua = isRecTv ? 'okhttp/4.12.0' : (req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
 
       const upstreamHeaders = {
         'User-Agent': ua
@@ -261,9 +271,11 @@ export default async function handler(req, res) {
       if (req.headers.range) {
         upstreamHeaders['Range'] = req.headers.range;
       }
-      if (!isRecTv) {
+      if (ref) {
         upstreamHeaders['Referer'] = ref;
-        upstreamHeaders['Origin'] = targetOrigin;
+        if (targetOrigin && !isRecTv && !ref.includes('ag2m4')) {
+          upstreamHeaders['Origin'] = targetOrigin;
+        }
       }
 
       const upstreamRes = await fetch(decodedTarget, {
@@ -320,18 +332,8 @@ export default async function handler(req, res) {
                 fullU = `${baseOrigin}${dir}${u}`;
               }
 
-              // Direct CDN bypass for Dizisol audio / sub-manifests and CORS CDNs
-              if (
-                fullU.includes('dizisol.com') ||
-                fullU.includes('superadjacentsoddenly.xyz') ||
-                fullU.includes('photour.org') ||
-                fullU.includes('cdnimages') ||
-                fullU.includes('nodedatastream')
-              ) {
-                return `URI="${fullU}"`;
-              }
-
-              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(ref)}"`;
+              const childRef = fullU.includes('dizisol.com') ? 'https://dizisol.com/' : (fullU.includes('ag2m4') || fullU.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : ref);
+              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(childRef)}"`;
             });
           }
 
@@ -349,23 +351,23 @@ export default async function handler(req, res) {
             fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
           }
 
-          // Direct high-speed CDN bypass for Dizisol & CDN segments (instant 0s start without proxy delay/403)
-          const isDirectCdn = (
-            fullLineUrl.includes('dizisol.com') ||
-            fullLineUrl.includes('superadjacentsoddenly.xyz') ||
-            fullLineUrl.includes('photour.org') ||
-            fullLineUrl.includes('cdnimages') ||
-            fullLineUrl.includes('vidmixi') ||
-            fullLineUrl.includes('nodedatastream') ||
-            fullLineUrl.includes('.jpg') ||
-            fullLineUrl.includes('.png') ||
-            fullLineUrl.includes('ts?')
-          );
-          if (isDirectCdn) {
+          // Direct CDN bypass ONLY for third-party open-CORS video segments
+          // (NEVER bypass *.dizisol.com or *.uk-traffic-076.com which require specific Referer)
+          if (
+            !fullLineUrl.includes('dizisol.com') &&
+            !fullLineUrl.includes('uk-traffic-076.com') &&
+            !fullLineUrl.includes('ag2m4') &&
+            (
+              fullLineUrl.includes('superadjacentsoddenly.xyz') ||
+              fullLineUrl.includes('cdnimages') ||
+              fullLineUrl.includes('vidmixi.com/m3u')
+            )
+          ) {
             return fullLineUrl;
           }
 
-          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(ref)}`;
+          const childRef = fullLineUrl.includes('dizisol.com') ? 'https://dizisol.com/' : (fullLineUrl.includes('ag2m4') || fullLineUrl.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : ref);
+          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(childRef)}`;
         }).join('\n');
 
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
@@ -374,7 +376,8 @@ export default async function handler(req, res) {
         // Stream TS/video bytes immediately; buffering a complete 6-10 second
         // segment made TVR channel startup feel unnecessarily slow.
         res.statusCode = upstreamRes.status;
-        res.setHeader('Content-Type', contentType || 'video/mp4');
+        const isMkv = contentType.includes('matroska') || decodedTarget.includes('.mkv');
+        res.setHeader('Content-Type', isMkv ? 'video/mp4' : (contentType || 'video/mp4'));
         res.setHeader('Accept-Ranges', upstreamRes.headers.get('accept-ranges') || 'bytes');
         const contentLength = upstreamRes.headers.get('content-length');
         if (contentLength) res.setHeader('Content-Length', contentLength);
@@ -465,8 +468,8 @@ export default async function handler(req, res) {
     }
   } else if (pathname.startsWith('/api/dbl')) {
     const subPath = pathname.replace(/^\/api\/dbl/, '');
-    targetUrl = `https://dizibal.com/api${subPath}${search}`;
-    customHeaders['Referer'] = 'https://dizibal.com/';
+    targetUrl = `https://dizibal.org/api${subPath}${search}`;
+    customHeaders['Referer'] = 'https://dizibal.org/';
   } else if (pathname.startsWith('/api/rtv')) {
     const subPath = pathname.replace(/^\/api\/rtv/, '');
     targetUrl = `https://a.prectv70.lol/api${subPath}${search}`;

@@ -136,9 +136,9 @@ function formatStreamName(s) {
     return s.displayName || s.name || '🎬 VidSrc VIP 1080p';
   }
   if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dizibal') || raw.includes('dizipal')) {
-    let base = (s.displayName || s.name || 'DP 1080p').replace(/dizibal/gi, 'DP').replace(/dizipal/gi, 'DP').trim();
-    if (!base.startsWith('DP')) base = `DP ${base}`;
-    return base;
+    const rawName = s.displayName || s.name || 'DiziBal 1080p';
+    if (/dizibal/i.test(rawName)) return rawName;
+    return rawName.replace(/^DP\b/i, 'DiziBal').trim() || 'DiziBal 1080p';
   }
   if (id.startsWith('dzs_') || raw.includes('dizisol')) {
     let base = (s.displayName || s.name || 'DS 1080p (HLS)').replace(/dizisol/gi, 'DS').trim();
@@ -191,7 +191,7 @@ function formatStreamItem(s, category, fallbackName) {
   } else if (lowerName.includes('lookmovie')) badge = '🎬 LookMovie 1080p';
   else if (lowerName.includes('2embed')) badge = '⚡ 2Embed 1080p';
   else if (lowerName.includes('vidsrc')) badge = '🎬 VidSrc 1080p';
-  else if (lowerName.includes('dp')) badge = category === 'dubbed' ? '⚡ DP Dublaj' : '💬 DP Altyazı';
+  else if (lowerName.includes('dizibal') || lowerName.includes('dzb') || lowerName.includes('dp')) badge = category === 'dubbed' ? '⚡ DiziBal Dublaj' : '💬 DiziBal Altyazı';
   else if (lowerName.includes('ds')) badge = category === 'dubbed' ? '⚡ DS Dublaj' : '💬 DS Altyazı';
   else if (lowerName.includes('swx')) badge = '⚡ SWX 1080p';
   else if (lowerName.includes('tvr')) badge = '⚡ TVR 1080p';

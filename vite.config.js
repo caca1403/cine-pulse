@@ -72,6 +72,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/hdfc_stream/, '/hdfc_stream')
       },
+      '/api/dzb_stream': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/dzb_stream/, '/api/dzb_stream')
+      },
       '/api/szd': {
         target: 'https://sezonlukdizi.cc',
         changeOrigin: true,
@@ -90,6 +96,16 @@ export default defineConfig({
           'User-Agent': 'okhttp/4.12.0'
         },
         rewrite: (path) => path.replace(/^\/api\/rtv/, '/api')
+      },
+      '/api/dzb': {
+        target: 'https://dizibal.org/api',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://dizibal.org/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/dzb/, '')
       },
       '/api/dbl': {
         target: 'https://dizibal.org/api',

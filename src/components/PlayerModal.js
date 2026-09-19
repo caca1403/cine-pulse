@@ -731,7 +731,15 @@ export async function openPlayerModal({
     }
 
     // Find next available non-failed server in active category
-    const nextIndex = activeServers.findIndex((s, idx) => idx > currentServerIndex && !s.failed);
+    const isCurrentDirect = currentSrv && (currentSrv.isDirectVideo || currentSrv.isHls || currentSrv.isMkv || !currentSrv.isTorrent);
+    const nextIndex = activeServers.findIndex((s, idx) => {
+      if (idx <= currentServerIndex || s.failed) return false;
+      if (isCurrentDirect) {
+        const isTor = s.isTorrent || s.id?.includes('torrent') || s.streamUrl?.startsWith('magnet:') || s.streamUrl?.includes(':4000/torrent/');
+        if (isTor) return false;
+      }
+      return true;
+    });
     if (nextIndex !== -1) {
       const nextSrv = activeServers[nextIndex];
       showToast(`⚠️ ${currentSrv?.displayName || currentSrv?.name || 'Mevcut kaynak'} yanıt vermedi. ${nextSrv.displayName || nextSrv.name} deneniyor...`, 'warning');
@@ -3679,7 +3687,7 @@ export async function openPlayerModal({
 
         if (isHlsStream && window.Hls && Hls.isSupported()) {
           const hls = new Hls({
-            enableWorker: false,
+            enableWorker: true,
             lowLatencyMode: false,
             backBufferLength: 60,
             maxBufferLength: 60,
@@ -3690,7 +3698,6 @@ export async function openPlayerModal({
             nudgeOffset: 0.2,
             nudgeMaxRetry: 10,
             progressive: false,
-            defaultAudioCodec: 'mp4a.40.2',
             fragLoadingTimeOut: 30000,
             manifestLoadingTimeOut: 20000,
             levelLoadingTimeOut: 20000,

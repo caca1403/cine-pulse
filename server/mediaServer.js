@@ -803,6 +803,167 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // ============ DiziBal AlphaStream Extractor ============
+  if (reqUrl.pathname === '/dzb_stream' || reqUrl.pathname === '/api/dzb_stream') {
+    const srcCode = reqUrl.searchParams.get('code') || '';
+    if (!srcCode) {
+      res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ error: 'Missing code param' }));
+      return;
+    }
+
+    try {
+      const embedUrl = `https://x.ag2m4.cfd/embed-${srcCode}.html`;
+      const embedRes = await fetch(embedUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://dizibal.org/',
+          'Origin': 'https://dizibal.org'
+        },
+        signal: AbortSignal.timeout(7000)
+      });
+
+      if (!embedRes.ok) {
+        res.writeHead(embedRes.status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ error: 'Embed fetch failed' }));
+        return;
+      }
+
+      const html = await embedRes.text();
+
+      // Extract cookies from HTML
+      const cookieMatches = [...html.matchAll(/\$\.cookie\(['"]([^'"]+)['"],\s*['"]([^'"]+)['"]/g)];
+      const cookieHeader = cookieMatches.map(m => `${m[1]}=${m[2]}`).join('; ');
+
+      const dlMatch = html.match(/fetch\(['"](\/dl\?op=get_stream[^'"]+)['"]\)/i);
+      if (!dlMatch) {
+        res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ error: 'Stream endpoint not found in embed' }));
+        return;
+      }
+
+      const dlUrl = `https://x.ag2m4.cfd${dlMatch[1]}`;
+      const dlRes = await fetch(dlUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': embedUrl,
+          'Origin': 'https://x.ag2m4.cfd',
+          'Cookie': cookieHeader,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': '*/*'
+        },
+        signal: AbortSignal.timeout(7000)
+      });
+
+      if (!dlRes.ok) {
+        res.writeHead(dlRes.status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ error: 'DL request failed' }));
+        return;
+      }
+
+      const dlJson = await dlRes.json().catch(() => null);
+      if (!dlJson || !dlJson.url) {
+        res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ error: 'No stream URL returned' }));
+        return;
+      }
+
+      let m3u8Url = dlJson.url;
+      if (m3u8Url.startsWith('//')) m3u8Url = `https:${m3u8Url}`;
+
+      const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(m3u8Url)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
+
+      // Extract subtitles if present
+      const subtitles = [];
+      const subMatch = html.match(/"subtitle"\s*:\s*"([^"]+)"/i);
+      if (subMatch && subMatch[1]) {
+        const parts = subMatch[1].split(',');
+        for (const p of parts) {
+          const langMatch = p.match(/\[(.*?)\](.*)/);
+          if (langMatch) {
+            subtitles.push({ label: langMatch[1], src: langMatch[2] });
+          }
+        }
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({
+        success: true,
+        streamUrl: proxiedUrl,
+        rawUrl: m3u8Url,
+        isHls: true,
+        subtitles
+      }));
+      return;
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ error: err.message }));
+      return;
+    }
+  }
+
+  // ============ DiziBal API Proxy ============
+  if (
+    reqUrl.pathname === '/api/dzb' || reqUrl.pathname.startsWith('/api/dzb/') ||
+    reqUrl.pathname === '/dzb' || reqUrl.pathname.startsWith('/dzb/') ||
+    reqUrl.pathname === '/api/dbl' || reqUrl.pathname.startsWith('/api/dbl/') ||
+    reqUrl.pathname === '/dbl' || reqUrl.pathname.startsWith('/dbl/')
+  ) {
+    const subPath = reqUrl.pathname.replace(/^(\/api)?\/(dzb|dbl)/, '') || '/';
+    const targetUrl = `https://dizibal.org/api${subPath}${reqUrl.search}`;
+    try {
+      const upstreamRes = await fetch(targetUrl, {
+        method: req.method,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://dizibal.org/',
+          'Accept': 'application/json, text/plain, */*'
+        }
+      });
+      const data = await upstreamRes.text();
+      res.writeHead(upstreamRes.status, {
+        'Content-Type': upstreamRes.headers.get('content-type') || 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(data);
+      return;
+    } catch (err) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+      return;
+    }
+  }
+
+  // ============ Sinewix API Proxy ============
+  if (reqUrl.pathname.startsWith('/api/snx') || reqUrl.pathname.startsWith('/snx')) {
+    const pathParam = reqUrl.searchParams.get('path');
+    const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : reqUrl.pathname.replace(/^(\/api)?\/snx/, '');
+    const cleanSearch = reqUrl.search ? reqUrl.search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+    const targetUrl = `https://ydfvfdizipanel.ru/public/api${subPath}${cleanSearch}`;
+    try {
+      const upstreamRes = await fetch(targetUrl, {
+        method: req.method,
+        headers: {
+          'hash256': '711bff4afeb47f07ab08a0b07e85d3835e739295e8a6361db77eebd93d96306b',
+          'signature': '3082058830820370a00302010202145bbfbba9791db758ad12295636e094ab4b07dc24300d06092a864886f70d01010b05003074310b3009060355040613025553311330110603550408130a43616c69666f726e6961311630140603550407130d4d6f756e7461696e205669657731143012060355040a130b476f6f676c6520496e632e3110300e060355040b1307416e64726f69643110300e06035504031307416e64726f69643020170d3231313231353232303433335a180f32303531313231353232303433335a3074310b3009060355040613025553311330110603550408130a43616c69666f726e6961311630140603550407130d4d6f756e7461696e205669657731143012060355040a130b476f6f676c6520496e632e3110300e060355040b1307416e64726f69643110300e06035504031307416e64726f696430820222300d06092a864886f70d01010105000382020f003082020a0282020100a5106a24bb3f9c0aaf3a2b228f794b5eaf1757ba758b19736a39d1bdc73fc983a7237b8d5ca5156cfa999c1dab3418bbc2be0920e0ee001c8aa4812d1dae75d080f09e91e0abda83ff9a76e8384a4429f4849248069a59505b12ac2c14ba2e4d1a13afcdaf54e508697ff928a9f738e6f4a6fc27409c55329eb149b5ff89c5a2d7c06bf9e62086f955cad17d7be2623ee9d5ec56068eadc23cb0965a13ff97d49fe10ef41afc6eeca36b4ace9582097faff89f590bc831cdb3a69eec5d15b67c3f2cad49e37ed053733e3d2d400c47755b932bdbe15d749fd6ad1dce30ba5e66094dfb6ee6f64cafb807e11b19a990c5d078c6d6701cda0bdeb21e99404ff166074f4c89b04c418f4e7940db5c78647c475bcfb85d4c4e836ee7d7c1d53e9e736b5d96d4b4d8b98209064b729ac6a682d55a6a930e518d849898bb28329ca0aaa133b5e5270a9d5940cac6af4802a57fd971efda91abb602882dd6aa6ce2b236b57b52ee2481498f0cacbcc2c36c238bc84becad7eaaf1125b9a1ca9ded6c79f3f283a52050377809b2a9995d66e1636b0ed426fdd8685c47cb18e82077f4aefcc07887e1dc58b4d64be1632f0e7b4625da6f40c65a8512a6454a4b96963e7f876136e6c0069a519a79ad632078ed965aa12482458060c030ed50db706d854f88cb004630b49285d8af8b471ff8f6070687826412287b50049bcb7d1b6b62ef90203010001a310300e300c0603551d13040530030101ff300d06092a864886f70d01010b0500038202010051c0b7bd793181dc29ca777d3773f928a366c8469ecf2fa3cfb076e8831970d19bb2b96e44e8ccc647cf0696bb824ac61c23d958525d283cab26037b04d58aa79bf92192db843adf5c26a980f081d2f0e14f759fc5ff4c5bb3dce0860299bfe7b349a8155a2efaf731ba25ce796a80c1442c7bf80f8c1a7912ff0b6f6592264315337251a846460194fa594f81f38f9e5233a63201e931ad9cab5bf119f24025613f307194eaa6eb39a83f3c05a49ba34455b1aff7c6839bbb657d9392ffdf397432af6e56ba9534a8b07d7060fe09691c6cf07cb5324f67b3cc0871a8c621d81fe71d71085c55206a4f57e25f774fd4b979b299e8bb076b50fca42fa57da2d519fd35a4a7c0137babaed4345f8031b63b6a71f5e8268f709d658ccd7c2a58849379d25bfa598c3f4a2c3d9b7d89285fefeb7f0ec65137d38b08ce432a15688b624a179e6a4a505ebc3bcdfbc4d4330508ee2d8d0f016924dcec21a6838ef7d834c6f43bde4a5201ed0b3bb4e9bd377b470e36bcf5bc3d56169dbd8e39567aa7dce4d1a8a8a54a5e1aa6fb1a8aab0062669a966f96e15ccce6fe12ea5e6a8b8c8823bdc94988ca39759fd1cc8fd8ae5c3d74db50b174cf7d77655016c075c91d439ed01cc0a9f695c99fad3b5495fb6cb1e01a5fa020cc6022a85c07ec55f9eba89719f86e49d34ab5bd208c5f70cced2b7b7963c014f8404432979b506de29e',
+          'User-Agent': 'EasyPlex (Android 14; SM-A546B; Samsung Galaxy A54 5G; tr)',
+          'Accept': 'application/json'
+        }
+      });
+      const data = await upstreamRes.text();
+      res.writeHead(upstreamRes.status, {
+        'Content-Type': upstreamRes.headers.get('content-type') || 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(data);
+      return;
+    } catch (err) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+      return;
+    }
+  }
+
   // ============ Live TV Dynamic Stream Resolver (DMAX, TLC) ============
   if (reqUrl.pathname === '/live_tv_stream' || reqUrl.pathname === '/api/live_tv_stream') {
     const channel = (reqUrl.searchParams.get('channel') || '').toLowerCase();
@@ -859,10 +1020,10 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // ============ HLS Proxy Endpoint (Bypasses Referer & Origin Blocks) ============
+  // ============ HLS & Video Proxy Endpoint (Bypasses Referer & Origin Blocks) ============
   if (reqUrl.pathname === '/hls_proxy' || reqUrl.pathname === '/api/hls_proxy') {
     const rawTarget = reqUrl.searchParams.get('url') || '';
-    const ref = reqUrl.searchParams.get('ref') || 'https://x.ag2m4.cfd/';
+    const rawRef = reqUrl.searchParams.get('ref') || '';
     if (!rawTarget) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       res.end('Missing url param');
@@ -876,24 +1037,48 @@ const server = http.createServer(async (req, res) => {
         res.end('Target blocked');
         return;
       }
+
+      let ref = rawRef;
+      if (!ref) {
+        if (decodedTarget.includes('dizisol.com')) {
+          ref = 'https://dizisol.com/';
+        } else if (decodedTarget.includes('ag2m4') || decodedTarget.includes('uk-traffic-076') || decodedTarget.includes('dizibal')) {
+          ref = 'https://x.ag2m4.cfd/';
+        } else if (decodedTarget.includes('prectv') || decodedTarget.includes('mariuannastluisborg') || decodedTarget.includes('moveonjoy')) {
+          ref = 'https://a.prectv70.lol/';
+        } else if (decodedTarget.includes('hdfilmcehennemi')) {
+          ref = 'https://hdfilmcehennemi.mobi/';
+        } else if (decodedTarget.includes('meatort') || decodedTarget.includes('lookmovie')) {
+          ref = 'https://lookmovie2.la/';
+        } else if (decodedTarget.includes('4astras') || decodedTarget.includes('saf45sfa') || decodedTarget.includes('4sa') || decodedTarget.includes('7862564') || decodedTarget.includes('959565') || decodedTarget.includes('45464654')) {
+          ref = '';
+        }
+      }
+
+      let targetOrigin = '';
+      try {
+        if (ref) targetOrigin = new URL(ref).origin;
+      } catch (_) {}
+
+      const isRecTv = decodedTarget.includes('prectv') || 
+                      decodedTarget.includes('mariuannastluisborg') || 
+                      decodedTarget.includes('moveonjoy') || 
+                      (ref && ref.includes('prectv'));
+      const ua = isRecTv ? 'okhttp/4.12.0' : (req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+
       const upstreamHeaders = {
-        'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        'User-Agent': ua
       };
 
       if (req.headers.range) {
         upstreamHeaders['Range'] = req.headers.range;
       }
 
-      if (decodedTarget.includes('meatort') || decodedTarget.includes('lookmovie')) {
-        upstreamHeaders['Referer'] = 'https://lookmovie2.la/';
-      } else if (ref && !ref.includes('ag2m4')) {
+      if (ref) {
         upstreamHeaders['Referer'] = ref;
-        try {
-          const origin = new URL(ref).origin;
-          if (origin && !origin.includes('ag2m4')) upstreamHeaders['Origin'] = origin;
-        } catch (_) {}
-      } else {
-        upstreamHeaders['Referer'] = ref;
+        if (targetOrigin && !isRecTv && !ref.includes('ag2m4')) {
+          upstreamHeaders['Origin'] = targetOrigin;
+        }
       }
 
       const upstreamRes = await fetch(decodedTarget, {
@@ -901,6 +1086,7 @@ const server = http.createServer(async (req, res) => {
       });
 
       const contentType = upstreamRes.headers.get('content-type') || '';
+      res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
       res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
@@ -925,7 +1111,8 @@ const server = http.createServer(async (req, res) => {
                 const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
                 fullU = `${baseOrigin}${dir}${u}`;
               }
-              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(ref)}"`;
+              const childRef = fullU.includes('dizisol.com') ? 'https://dizisol.com/' : (fullU.includes('ag2m4') || fullU.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : ref);
+              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(childRef)}"`;
             });
           }
 
@@ -943,18 +1130,23 @@ const server = http.createServer(async (req, res) => {
             fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
           }
 
-          // If the segment or sub-manifest allows direct CORS (*), bypass local proxy for zero-lag streaming
+          // Direct CDN bypass ONLY for third-party open-CORS video segments
+          // (NEVER bypass *.dizisol.com or *.uk-traffic-076.com which require specific Referer)
           if (
-            fullLineUrl.includes('dizisol.com/m3u8?u=') ||
-            fullLineUrl.includes('superadjacentsoddenly.xyz') ||
-            fullLineUrl.includes('photour.org') ||
-            fullLineUrl.includes('cdnimages') ||
-            fullLineUrl.includes('vidmixi.com/m3u')
+            !fullLineUrl.includes('dizisol.com') &&
+            !fullLineUrl.includes('uk-traffic-076.com') &&
+            !fullLineUrl.includes('ag2m4') &&
+            (
+              fullLineUrl.includes('superadjacentsoddenly.xyz') ||
+              fullLineUrl.includes('cdnimages') ||
+              fullLineUrl.includes('vidmixi.com/m3u')
+            )
           ) {
             return fullLineUrl;
           }
 
-          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(ref)}`;
+          const childRef = fullLineUrl.includes('dizisol.com') ? 'https://dizisol.com/' : (fullLineUrl.includes('ag2m4') || fullLineUrl.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : ref);
+          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(childRef)}`;
         }).join('\n');
 
         res.writeHead(upstreamRes.status, {
@@ -964,8 +1156,10 @@ const server = http.createServer(async (req, res) => {
         });
         res.end(rewritten);
       } else {
+        const isMkv = contentType.includes('matroska') || decodedTarget.includes('.mkv');
+        const finalContentType = isMkv ? 'video/mp4' : (contentType || 'video/mp4');
         const headers = {
-          'Content-Type': contentType || 'video/mp4',
+          'Content-Type': finalContentType,
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Headers': 'Range, Content-Type, Authorization',
           'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',

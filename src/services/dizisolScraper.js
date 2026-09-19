@@ -4,7 +4,6 @@
    Supports instant TMDB lookup & keyword search.
    ========================================================================== */
 
-const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const DIZISOL_API_BASE = 'https://dizisol.com/api';
 
 async function fetchDizisolApi(endpoint, options = {}) {
@@ -21,32 +20,22 @@ async function fetchDizisolApi(endpoint, options = {}) {
         'Accept': 'application/json, text/plain, */*',
         ...(options.headers || {})
       },
-      signal: AbortSignal.timeout(options.timeout || 3500)
+      signal: AbortSignal.timeout(options.timeout || 4500)
     }).catch(() => null);
     if (res && res.ok) return res;
   } catch (_) {}
 
-  // 2. Vercel / Local proxy fallback
+  // 2. Vercel / Local proxy fallback (/api/dzs)
   if (isBrowser) {
     try {
       const proxyUrl = `/api/dzs${cleanEndpoint}`;
       const res = await fetch(proxyUrl, {
         ...options,
-        signal: AbortSignal.timeout(options.timeout || 3500)
+        signal: AbortSignal.timeout(options.timeout || 4500)
       }).catch(() => null);
       if (res && res.ok) return res;
     } catch (_) {}
   }
-
-  // 3. Cloudflare Worker fallback
-  try {
-    const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(`${DIZISOL_API_BASE}${cleanEndpoint}`)}`;
-    const res = await fetch(workerUrl, {
-      ...options,
-      signal: AbortSignal.timeout(options.timeout || 4000)
-    }).catch(() => null);
-    if (res && res.ok) return res;
-  } catch (_) {}
 
   return null;
 }
@@ -118,6 +107,7 @@ function isValidDizisolStreamUrl(url) {
   if (
     url.includes('picturebox.cloud') ||
     url.includes('s5.dizisol.com') ||
+    url.includes('s6.dizisol.com') ||
     url.includes('rapidrame') ||
     url.includes('pal-vds') ||
     url.includes('hdfilmdelisi') ||

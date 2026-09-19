@@ -22,7 +22,6 @@ async function resolveAlphaStreamViaApi(srcCode) {
   }
 }
 
-const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const DIZIBAL_API_BASE = 'https://dizibal.org/api';
 
 async function fetchDizibal(endpointOrUrl, options = {}) {
@@ -40,33 +39,23 @@ async function fetchDizibal(endpointOrUrl, options = {}) {
         'Accept': 'application/json, text/plain, */*',
         ...(options.headers || {})
       },
-      signal: AbortSignal.timeout(options.timeout || 4000)
+      signal: AbortSignal.timeout(options.timeout || 4500)
     }).catch(() => null);
     if (res && res.ok) return res;
   } catch (_) {}
 
-  // 2. Vercel / Local proxy fallback
+  // 2. Vercel / Local proxy fallback (/api/dzb)
   if (isBrowser && !endpointOrUrl.startsWith('http')) {
     try {
       const cleanPath = endpointOrUrl.startsWith('/') ? endpointOrUrl : `/${endpointOrUrl}`;
       const proxyUrl = `/api/dzb${cleanPath}`;
       const res = await fetch(proxyUrl, {
         ...options,
-        signal: AbortSignal.timeout(options.timeout || 4000)
+        signal: AbortSignal.timeout(options.timeout || 4500)
       }).catch(() => null);
       if (res && res.ok) return res;
     } catch (_) {}
   }
-
-  // 3. Cloudflare Worker fallback
-  try {
-    const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(fullUrl)}`;
-    const res = await fetch(workerUrl, {
-      ...options,
-      signal: AbortSignal.timeout(options.timeout || 4500)
-    }).catch(() => null);
-    if (res && res.ok) return res;
-  } catch (_) {}
 
   return null;
 }
@@ -222,14 +211,14 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
       const finalStreamUrl = directStream.streamUrl;
       sources.push({
         id: `dzb_direct_s${sNum}e${epNum}`,
-        name: isDub ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',
-        displayName: 'DP 1080p',
+        name: isDub ? 'DiziBal 1080p (TR Dublaj)' : 'DiziBal 1080p (TR Altyazı)',
+        displayName: 'DiziBal 1080p',
         streamUrl: finalStreamUrl,
         url: finalStreamUrl,
         subtitles: subtitles.length > 0 ? subtitles : (directStream.subtitles || []),
         isHls: true,
         isDirectVideo: true,
-        source: 'DP',
+        source: 'DiziBal',
         badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı'
       });
     }
@@ -315,14 +304,14 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
     const finalStreamUrl = directStream.streamUrl;
     sources.push({
       id: 'dzb_direct_movie',
-      name: isDub ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',
-      displayName: 'DP 1080p',
+      name: isDub ? 'DiziBal 1080p (TR Dublaj)' : 'DiziBal 1080p (TR Altyazı)',
+      displayName: 'DiziBal 1080p',
       streamUrl: finalStreamUrl,
       url: finalStreamUrl,
       subtitles: subtitles.length > 0 ? subtitles : (directStream.subtitles || []),
       isHls: true,
       isDirectVideo: true,
-      source: 'DP',
+      source: 'DiziBal',
       badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı'
     });
   }

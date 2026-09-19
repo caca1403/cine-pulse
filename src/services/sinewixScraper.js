@@ -8,7 +8,6 @@
 
 import { isStrictMediaTitleMatch } from './mediaMatcher.js';
 
-const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const SINEWIX_API_BASE = 'https://ydfvfdizipanel.ru/public/api';
 const SINEWIX_TOKEN = '9iQNC5HQwPlaFuJDkhncJ5XTJ8feGXOJatAA';
 
@@ -52,7 +51,7 @@ async function performSinewixRequest(endpoint) {
   try {
     const vercelProxyUrl = `/api/snx?path=${encodeURIComponent(cleanEndpoint)}`;
     const res = await fetch(vercelProxyUrl, {
-      signal: AbortSignal.timeout(2500)
+      signal: AbortSignal.timeout(6000)
     }).catch(() => null);
 
     if (res && res.ok) {
@@ -61,25 +60,11 @@ async function performSinewixRequest(endpoint) {
     }
   } catch (_) {}
 
-  // 2. Try Cloudflare Worker Gateway (High reliability CORS proxy)
-  try {
-    const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(directTarget)}`;
-    const res = await fetch(workerUrl, {
-      headers: SINEWIX_HEADERS,
-      signal: AbortSignal.timeout(2800)
-    }).catch(() => null);
-
-    if (res && res.ok) {
-      const data = await res.json().catch(() => null);
-      if (data) return data;
-    }
-  } catch (_) {}
-
-  // 3. Direct backend fallback (for Node / server-side environments)
+  // 2. Direct backend fallback (for Node / server-side environments)
   try {
     const res = await fetch(directTarget, {
       headers: SINEWIX_HEADERS,
-      signal: AbortSignal.timeout(2500)
+      signal: AbortSignal.timeout(6000)
     }).catch(() => null);
 
     if (res && res.ok) {
