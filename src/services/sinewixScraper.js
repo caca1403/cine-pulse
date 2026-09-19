@@ -242,7 +242,11 @@ export async function fetchSinewixSources({
       const proxiedLink = rawLink.startsWith('http')
         ? (isHls
           ? apiUrl(`/api/hls_proxy?url=${encodeURIComponent(rawLink)}`)
-          : (isDirect || isMkv)
+          // Keep SWX Matroska files on the media proxy path that supplies
+          // range support and a video-compatible response for Chromium.
+          : isMkv
+            ? apiUrl(`/api/hls_proxy?url=${encodeURIComponent(rawLink)}`)
+            : isDirect
             ? apiUrl(`/api/proxy?url=${encodeURIComponent(rawLink)}&ref=${encodeURIComponent('https://ydfvfdizipanel.ru/')}`)
             : rawLink)
         : rawLink;

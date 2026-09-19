@@ -33,7 +33,7 @@ import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
 
 // Cache version
-const CACHE_VERSION = 'v38';
+const CACHE_VERSION = 'v39';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
