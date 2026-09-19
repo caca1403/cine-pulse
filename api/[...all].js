@@ -1063,7 +1063,11 @@ export default async function handler(req, res) {
     // URL has no file extension, so browsers otherwise cannot identify the
     // media container and leave the <video> element stuck at metadata.
     const contentType = /\.mkv(?:$|[?#])/i.test(targetUrl)
-      ? 'video/x-matroska'
+      // SWX's progressive server sends a Matroska file with no usable MIME.
+      // The native video element performs container sniffing when it is served
+      // as a video stream; its Matroska MIME path is rejected before decoding
+      // on several Chromium builds.
+      ? 'video/mp4'
       : (upstreamContentType || 'text/html');
     res.setHeader('Content-Type', contentType);
 
