@@ -186,11 +186,12 @@ export async function fetchSinewixSources({
       const isSubtitledVideo = lowerLink.includes('trsub') || lowerLink.includes('.sub.') || lowerLink.includes('altyazi') || (v.lang && v.lang.toLowerCase().includes('sub'));
       const isDualAudio = lowerLink.includes('dual') || lowerLink.includes('trdub') || (v.lang && (v.lang.toLowerCase().includes('dual') || v.lang.toLowerCase().includes('tr')));
 
-      if (isDub && isSubtitledVideo && !isDualAudio) {
+      const filterLanguage = typeof isDub === 'boolean';
+      if (filterLanguage && isDub && isSubtitledVideo && !isDualAudio) {
         continue;
       }
 
-      if (!isDub && !isSubtitledVideo && !isDualAudio && lowerLink.includes('dub')) {
+      if (filterLanguage && !isDub && !isSubtitledVideo && !isDualAudio && lowerLink.includes('dub')) {
         continue;
       }
 
@@ -210,7 +211,7 @@ export async function fetchSinewixSources({
         name: serverTitle,
         displayName: serverTitle,
         badge,
-        category: isSubtitledVideo ? 'subtitled' : (isDub ? 'dubbed' : 'subtitled'),
+        category: isSubtitledVideo ? 'subtitled' : (isDualAudio ? 'dubbed' : (isDub === false ? 'subtitled' : 'dubbed')),
         streamUrl: proxiedLink,
         url: proxiedLink,
         originalEmbedUrl: rawLink,

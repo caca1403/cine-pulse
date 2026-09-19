@@ -32,7 +32,7 @@ import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 
 // Cache version
-const CACHE_VERSION = 'v32';
+const CACHE_VERSION = 'v33';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -468,18 +468,15 @@ export async function getStreamingServersProgressive({
         }
       }).catch(() => []),
 
-    // 2. Sinewix VIP (Direct 1080p MKV Dubbed & Subtitled)
-    fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
+    // 2. Sinewix VIP: one API search/detail request, then split its results.
+    fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: null })
       .then(res => {
         if (!Array.isArray(res) || res.length === 0) return;
-        addStreams(res, 'dubbed');
-        const duals = res.filter(s => (s.badge || '').includes('Dual') || (s.url || '').toLowerCase().includes('dual'));
-        if (duals.length > 0) {
-          addStreams(duals.map(d => ({ ...d, id: `${d.id}_sub`, category: 'subtitled' })), 'subtitled');
-        }
+        const subs = res.filter(s => s.category === 'subtitled' || (s.badge || '').includes('Altyazı'));
+        const dubs = res.filter(s => !subs.includes(s));
+        addStreams(dubs, 'dubbed');
+        addStreams(subs, 'subtitled');
       }).catch(() => []),
-    fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 3. DiziBal's own AlphaStream player (avoids expiring direct-CDN URLs)
     (isMovie
@@ -672,10 +669,6 @@ export async function getStreamingServersProgressive({
     if (!targetYear && enriched.detectedYear) targetYear = enriched.detectedYear;
 
     const aliasSearches = [
-      fetchSinewixSources({ type, titles: extraTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-        .then(res => addStreams(res, 'dubbed')),
-      fetchSinewixSources({ type, titles: extraTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
-        .then(res => addStreams(res, 'subtitled')),
       isMovie
         ? fetchDizibalMovieSources({ titles: extraTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled'))
         : fetchDizibalEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')),

@@ -1,4 +1,5 @@
 import { extractPageMediaTitle, isStrictMediaTitleMatch } from './mediaMatcher.js';
+import { apiUrl } from './apiOrigin.js';
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
@@ -26,7 +27,7 @@ async function fetchWithWorkerFallback(targetUrl, options = {}) {
   if (isBrowser) {
     try {
       const u = new URL(targetUrl);
-      const res = await fetch(`/api/szd${u.pathname}${u.search}`, {
+      const res = await fetch(apiUrl(`/api/szd${u.pathname}${u.search}`), {
         ...options,
         headers: {
           ...(options.headers || {}),
