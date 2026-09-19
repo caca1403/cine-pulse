@@ -30,6 +30,7 @@ import { fetchSmashyStreamSources } from './smashyStreamService.js';
 import { fetchTorrentStreamSources } from './torrentStreamService.js';
 import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
+import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
 
 // Cache version
 const CACHE_VERSION = 'v33';
@@ -583,6 +584,24 @@ export async function getStreamingServersProgressive({
       ? fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : Promise.resolve([]),
+
+    isMovie
+      ? fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      : Promise.resolve([]),
+
+    // 8b. FilmEkseni/JetFilm player (movie and series fallback)
+    isMovie
+      ? fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => []),
+
+    isMovie
+      ? fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 9. Kids VIP (Cartoons & Animations - Direct High-Speed)
     !isMovie
