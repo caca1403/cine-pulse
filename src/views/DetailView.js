@@ -324,8 +324,8 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
       if (seasonSelectorObj) seasonSelectorObj.init(container);
 
       const playMovieBtn = container.querySelector('#btn-play-movie');
-      if (playMovieBtn) {
-        playMovieBtn.addEventListener('click', async () => {
+      const openMovie = async () => {
+        if (!playMovieBtn || playMovieBtn.disabled) return;
           playMovieBtn.disabled = true;
           const origHTML = playMovieBtn.innerHTML;
           playMovieBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:18px;height:18px;fill:currentColor"></i> <span>Yükleniyor...</span>`;
@@ -353,13 +353,14 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
             playMovieBtn.innerHTML = origHTML;
             renderIcons();
           }
-        });
+      };
+      if (playMovieBtn) {
+        playMovieBtn.addEventListener('click', openMovie);
       }
 
       const resumeSeriesBtn = container.querySelector('#btn-resume-series');
-      if (resumeSeriesBtn) {
-        resumeSeriesBtn.addEventListener('click', async (e) => {
-          e.preventDefault();
+      const openSeries = async () => {
+        if (!resumeSeriesBtn || resumeSeriesBtn.disabled) return;
           resumeSeriesBtn.disabled = true;
           const origHTML = resumeSeriesBtn.innerHTML;
           resumeSeriesBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:18px;height:18px;fill:currentColor"></i> <span>Yükleniyor...</span>`;
@@ -394,15 +395,26 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
             resumeSeriesBtn.innerHTML = origHTML;
             renderIcons();
           }
+      };
+      if (resumeSeriesBtn) {
+        resumeSeriesBtn.addEventListener('click', event => {
+          event.preventDefault();
+          openSeries();
         });
       }
 
       // Moderatör “Birlikte Aç” dediğinde her cihaz detay sayfasına uğramadan
       // doğrudan kendi oynatıcısını açar. Olay sessionStorage'da tek kullanımlık
       // tutulur; normal detay ziyaretleri otomatik oynatılmaz.
-      const autoPlayButton = effectiveType === 'movie' ? playMovieBtn : resumeSeriesBtn;
-      if (autoPlayButton && decisionRoomAutoplay) {
-        window.setTimeout(() => autoPlayButton.click(), 0);
+      if (decisionRoomAutoplay) {
+        // Programatik .click(), bazı mobil tarayıcılarda etkileşim olarak
+        // değerlendirilmediği için hiç çalışmayabiliyor. Oynatıcı akışını
+        // doğrudan çağırmak, oda sahibi içeriği açtığı anda her cihazda
+        // pencerenin kesin açılmasını sağlar.
+        window.setTimeout(() => {
+          if (effectiveType === 'movie') openMovie();
+          else openSeries();
+        }, 0);
       }
 
       const trailerBtn = container.querySelector('#btn-watch-trailer');
