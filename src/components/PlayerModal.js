@@ -361,6 +361,9 @@ export async function openPlayerModal({
   const roomParticipantHealth = new Map();
   const roomParticipantProgress = new Map();
   const roomHeldParticipants = new Map();
+  const roomRhythmLastSent = new Map();
+  let latestRoomSummary = null;
+  let activeRoomFinish = null;
 
   function applyRemoteRoomPlayback(sync) {
     if (!roomSync || !sync || sync.roomCode !== roomSync.roomCode || String(sync.mediaId) !== String(roomSync.mediaId) || sync.type !== roomSync.type) return;
@@ -521,8 +524,9 @@ export async function openPlayerModal({
         const selfId = window.__cinepulseDecisionRoomPresence?.selfId || 'self';
         // Show the sender's own text immediately. The same id travels through
         // the room, so an echoed transport packet cannot create a second row.
-        appendRoomChatMessage({ id, text, senderId: selfId, nickname: 'Sen', sentAt }, true);
-        window.dispatchEvent(new CustomEvent('cinepulse:room-chat-send', { detail: { roomCode: roomSync.roomCode, id, sentAt, text } }));
+        const at = Number(modalContainer.querySelector('#hls-video-player')?.currentTime) || 0;
+        appendRoomChatMessage({ id, text, senderId: selfId, nickname: 'Sen', sentAt, at }, true);
+        window.dispatchEvent(new CustomEvent('cinepulse:room-chat-send', { detail: { roomCode: roomSync.roomCode, id, sentAt, at, text } }));
         input.value = '';
       };
       (modalContainer.querySelector('#cinema-modal-box') || modalContainer).appendChild(panel);
@@ -598,7 +602,13 @@ export async function openPlayerModal({
     dock.querySelectorAll('button').forEach(button => {
       button.onclick = event => {
         event.stopPropagation();
-        const reaction = { roomCode: roomSync.roomCode, emoji: button.textContent };
+        const reaction = {
+          roomCode: roomSync.roomCode,
+          emoji: button.textContent,
+          mediaId: roomSync.mediaId,
+          type: roomSync.type,
+          at: Number(modalContainer.querySelector('#hls-video-player')?.currentTime) || 0
+        };
         showRoomReaction(reaction);
         window.dispatchEvent(new CustomEvent('cinepulse:room-reaction', { detail: reaction }));
       };
@@ -638,6 +648,18 @@ export async function openPlayerModal({
     const votes = finish.votes || {};
     const voteCount = optionId => Object.values(votes).filter(value => value === optionId).length;
     const moderator = isRoomModerator();
+    activeRoomFinish = finish;
+    const summary = latestRoomSummary && String(latestRoomSummary.mediaId) === String(roomSync.mediaId)
+      ? latestRoomSummary : null;
+    const minuteLabel = seconds => {
+      const total = Math.max(0, Math.floor(Number(seconds) || 0));
+      return `${Math.floor(total / 60)} dk`;
+    };
+    const momentLabel = seconds => {
+      if (!Number.isFinite(Number(seconds))) return '—';
+      const total = Math.max(0, Math.floor(Number(seconds)));
+      return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+    };
     const overlay = document.createElement('section');
     overlay.id = 'room-finish-overlay';
     overlay.className = 'room-finish-overlay';
@@ -646,6 +668,7 @@ export async function openPlayerModal({
         <span class="room-finish-kicker">BİRLİKTE SEÇ</span>
         <h3>${isSeries ? 'Bölüm bitti. Sırada ne var?' : 'Film bitti. Sırada ne var?'}</h3>
         <p>${moderator ? 'Bir seçeneğe dokun; herkeste aynı anda açılacak.' : 'Seçimini oylayabilirsin. Moderatör herkese açar.'}</p>
+        ${summary ? `<section class="room-watch-summary"><strong><i data-lucide="sparkles"></i> Oda özeti</strong><span><b>${summary.participants || 1} kişi</b><small>${minuteLabel(summary.watchedSeconds)} birlikte</small></span><span><b>${summary.topReaction ? `${summary.topReaction.emoji} ${summary.topReaction.count}` : '—'}</b><small>en çok tepki</small></span><span><b>${momentLabel(summary.topTalkSecond)}</b><small>en çok konuşulan an</small></span></section>` : ''}
         <div class="room-finish-options">
           ${(finish.options || []).map(option => `<button type="button" class="room-finish-option" data-option="${option.id}">
             <b>${option.icon}</b><span>${option.label}</span><small>${moderator ? 'Herkese aç' : `${voteCount(option.id)} oy`}</small>
@@ -680,6 +703,10 @@ export async function openPlayerModal({
       options: getRoomFinishOptions(),
       votes: {}
     };
+    const video = modalContainer.querySelector('#hls-video-player');
+    window.dispatchEvent(new CustomEvent('cinepulse:room-summary', {
+      detail: { roomCode: roomSync.roomCode, mediaId: roomSync.mediaId, type: roomSync.type, seconds: video?.duration || video?.currentTime || 0 }
+    }));
     renderRoomFinishOverlay(finish);
     window.dispatchEvent(new CustomEvent('cinepulse:room-finish', { detail: finish }));
   }
@@ -722,6 +749,12 @@ export async function openPlayerModal({
     modalScope.on(window, 'cinepulse:room-finish-remote', event => renderRoomFinishOverlay(event.detail));
     modalScope.on(window, 'cinepulse:room-finish-vote-remote', event => renderRoomFinishOverlay(event.detail));
     modalScope.on(window, 'cinepulse:room-reaction-remote', event => showRoomReaction(event.detail));
+    modalScope.on(window, 'cinepulse:room-summary-remote', event => {
+      const summary = event.detail;
+      if (!summary || summary.roomCode !== roomSync.roomCode || String(summary.mediaId) !== String(roomSync.mediaId)) return;
+      latestRoomSummary = summary;
+      if (activeRoomFinish) renderRoomFinishOverlay(activeRoomFinish);
+    });
     modalScope.on(window, 'cinepulse:room-chat-remote', event => {
       const message = event.detail;
       const mine = message?.senderId === window.__cinepulseDecisionRoomPresence?.selfId;
@@ -756,6 +789,22 @@ export async function openPlayerModal({
       const fresh = Array.from(roomParticipantProgress.values()).filter(item => Date.now() - item.reportedAt < 25000);
       const maximumLag = fresh.reduce((largest, item) => Math.max(largest, video.currentTime - item.time), 0);
       const participantLead = progress.time - video.currentTime;
+      fresh.forEach(item => {
+        const drift = video.currentTime - item.time;
+        if (Math.abs(drift) < 45) return;
+        const lastSent = roomRhythmLastSent.get(item.senderId) || 0;
+        if (Date.now() - lastSent < 12000) return;
+        roomRhythmLastSent.set(item.senderId, Date.now());
+        window.dispatchEvent(new CustomEvent('cinepulse:room-rhythm', {
+          detail: {
+            roomCode: roomSync.roomCode,
+            targetId: item.senderId,
+            mediaId: roomSync.mediaId,
+            type: roomSync.type,
+            drift
+          }
+        }));
+      });
       // Akıcı modun güvenlik şeridi: küçük farklara karışmaz. Fark 1,5
       // dakikaya ulaşırsa yalnız moderatör yerelde bekler; gerideki cihaz
       // oynatmaya devam ederek yakalar. Bu pause paketi odaya yayınlanmaz.
@@ -794,6 +843,25 @@ export async function openPlayerModal({
         video.play().catch(() => {});
         showToast('Moderatör yakaladı; akıcı izleme devam ediyor.', 'success');
       }
+    });
+    modalScope.on(window, 'cinepulse:room-rhythm-remote', event => {
+      const rhythm = event.detail;
+      const selfId = window.__cinepulseDecisionRoomPresence?.selfId;
+      if (!rhythm || rhythm.roomCode !== roomSync.roomCode || rhythm.targetId !== selfId
+        || String(rhythm.mediaId) !== String(roomSync.mediaId) || rhythm.type !== roomSync.type) return;
+      const stage = modalContainer.querySelector('#player-iframe-wrapper');
+      if (!stage) return;
+      stage.querySelector('#room-rhythm-card')?.remove();
+      const seconds = Math.round(Math.abs(Number(rhythm.drift) || 0));
+      const card = document.createElement('aside');
+      card.id = 'room-rhythm-card';
+      card.className = 'room-rhythm-card';
+      card.innerHTML = Number(rhythm.drift) > 0
+        ? `<i data-lucide="clock-3"></i><span><b>${Math.ceil(seconds / 60)} dk geridesin</b><small>Akıcı izlemeye devam et; oda seni bekliyor.</small></span>`
+        : `<i data-lucide="clock-3"></i><span><b>Öndesin</b><small>Diğer izleyici sana yaklaşıyor.</small></span>`;
+      stage.appendChild(card);
+      renderPlayerIcons(card);
+      window.setTimeout(() => card.remove(), 8500);
     });
     modalScope.on(window, 'cinepulse:room-playback-finished-remote', event => {
       const finished = event.detail;

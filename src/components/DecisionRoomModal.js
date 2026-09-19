@@ -81,6 +81,7 @@ function roomControlsHTML() {
       <small id="decision-room-signal-status" class="decision-room-signal-status">Katılım sinyali bekleniyor…</small>
       <div id="decision-room-peers" class="decision-room-peers"></div>
       <section id="decision-room-sync-mode" class="decision-room-sync-mode"><strong>İzleme senkronu</strong><label><input type="radio" name="room-sync-mode" value="smooth" /> Akıcı mod</label><label><input type="radio" name="room-sync-mode" value="strict" /> Herkesle senkron</label><small id="decision-room-sync-help"></small></section>
+      <section id="decision-room-silent-vote-summary" class="decision-room-silent-vote-summary"></section>
       <section id="decision-room-suggestions" class="decision-room-suggestions"></section>
       <form id="decision-room-content-form" class="decision-room-content-form"><label for="decision-room-content-search">Film veya dizi ekle</label><div><input id="decision-room-content-search" minlength="2" placeholder="İçerik ara" /><button type="submit"><i data-lucide="search"></i> Ara</button></div></form>
       <div id="decision-room-content-results" class="decision-room-content-results"></div>
@@ -100,6 +101,7 @@ function renderRoomState(root, state, statusText = '') {
   const signalStatus = root.querySelector('#decision-room-signal-status');
   const suggestionPanel = root.querySelector('#decision-room-suggestion-panel');
   const suggestions = root.querySelector('#decision-room-suggestions');
+  const silentVoteSummary = root.querySelector('#decision-room-silent-vote-summary');
   const syncMode = root.querySelector('#decision-room-sync-mode');
   const deck = root.querySelector('#decision-room-deck');
   const link = root.querySelector('#decision-room-link');
@@ -141,11 +143,25 @@ function renderRoomState(root, state, statusText = '') {
     });
   }
 
+  if (silentVoteSummary && state.isHost) {
+    const ranked = state.cards
+      .map(card => ({ card, rating: ratingSummary(card, state) }))
+      .filter(item => item.rating.count > 0)
+      .sort((a, b) => b.rating.average - a.rating.average || b.rating.count - a.rating.count)
+      .slice(0, 3);
+    silentVoteSummary.innerHTML = ranked.length
+      ? `<strong><i data-lucide="shield-check"></i> Sessiz oylama özeti</strong>${ranked.map(({ card, rating }, index) => `<div><b>${index + 1}</b><span>${escapeHtml(card.title || card.name || 'İsimsiz içerik')}</span><em>★ ${rating.average.toFixed(1)} · ${rating.count} gizli oy</em></div>`).join('')}`
+      : `<strong><i data-lucide="shield-check"></i> Sessiz oylama</strong><small>Katılımcıların yıldızları yalnızca burada ortak sonuç olarak görünür.</small>`;
+  }
+
   if (deck) {
     if (!state.cards.length) {
       deck.innerHTML = `<div class="decision-room-empty"><i data-lucide="sparkles"></i><strong>Adaylar hazırlanıyor</strong><span>Oda sahibi ortak izleme listesi oluşturuyor.</span></div>`;
     } else {
-      deck.innerHTML = state.cards.map(card => {
+      const cards = state.isHost
+        ? [...state.cards].sort((a, b) => ratingSummary(b, state).average - ratingSummary(a, state).average)
+        : state.cards;
+      deck.innerHTML = cards.map(card => {
         const title = card.title || card.name || 'İsimsiz içerik';
         const meta = card.type === 'tv'
           ? `Dizi · S${Math.max(1, Number(card.season) || 1)} B${Math.max(1, Number(card.episode) || 1)}`
@@ -160,7 +176,7 @@ function renderRoomState(root, state, statusText = '') {
             <span>${meta} · ★ ${(Number(card.vote_average) || 0).toFixed(1)}</span>
             <strong>${escapeHtml(title)}</strong>
             <small>${vote.matched ? 'Herkes izlemek istiyor!' : `${vote.yes}/${vote.needed} kişi izlemek istiyor`}</small>
-            <div class="decision-room-rating"><span>${rating.count ? `Ortak puan ${rating.average.toFixed(1)} · ${rating.count} oy` : 'Puan ver'}</span><div>${stars}</div></div>
+            <div class="decision-room-rating"><span>${state.isHost ? (rating.count ? `Gizli puan ${rating.average.toFixed(1)} · ${rating.count} oy` : 'Gizli oy bekleniyor') : (rating.mine ? 'Puanın kaydedildi' : 'Gizli puan ver')}</span><div>${stars}</div></div>
             <div class="decision-room-votes">
               <button data-room-vote="yes" data-card-id="${card.id}" class="${myVote === 'yes' ? 'active-yes' : ''}"><i data-lucide="heart"></i> İzle</button>
               <button data-room-vote="no" data-card-id="${card.id}" class="${myVote === 'no' ? 'active-no' : ''}"><i data-lucide="skip-forward"></i> Geç</button>

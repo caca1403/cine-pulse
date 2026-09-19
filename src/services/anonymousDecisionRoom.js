@@ -146,6 +146,9 @@ export class AnonymousDecisionRoom {
     this.lastPlayerSync = null;
     this.roomFinish = null;
     this.chatMessages = [];
+    this.roomSummary = null;
+    this.playbackStartedAt = 0;
+    this.roomActivity = { reactions: [], chats: [] };
     this.onPlayerSync = event => {
       const sync = event.detail;
       if (!this.isHost || !sync || safeRoomCode(sync.roomCode) !== this.roomCode || !this.sharedPlayback) return;
@@ -174,7 +177,9 @@ export class AnonymousDecisionRoom {
     this.onRoomReaction = event => {
       const reaction = event.detail;
       if (!reaction || safeRoomCode(reaction.roomCode) !== this.roomCode || !reaction.emoji) return;
-      this.broadcast({ type: 'room-reaction', reaction });
+      const enriched = { ...reaction, senderId: this.selfId, sentAt: Date.now() };
+      this.recordRoomReaction(enriched);
+      this.broadcast({ type: 'room-reaction', reaction: enriched });
     };
     window.addEventListener('cinepulse:room-finish', this.onRoomFinish);
     window.addEventListener('cinepulse:room-finish-vote', this.onRoomFinishVote);
@@ -189,9 +194,11 @@ export class AnonymousDecisionRoom {
         text,
         nickname: this.nickname,
         senderId: this.selfId,
-        sentAt: Number(message.sentAt) || Date.now()
+        sentAt: Number(message.sentAt) || Date.now(),
+        at: Math.max(0, Number(message.at) || 0)
       };
       this.chatMessages = [...this.chatMessages, chat].slice(-60);
+      this.recordRoomChat(chat);
       this.broadcast({ type: 'room-chat', chat });
     };
     window.addEventListener('cinepulse:room-chat-send', this.onRoomChatSend);
@@ -242,6 +249,38 @@ export class AnonymousDecisionRoom {
       }});
     };
     window.addEventListener('cinepulse:room-playback-finished', this.onRoomPlaybackFinished);
+    this.onRoomSummary = event => {
+      const details = event.detail;
+      if (!this.isHost || !details || safeRoomCode(details.roomCode) !== this.roomCode) return;
+      const reactionCounts = new Map();
+      this.roomActivity.reactions.forEach(item => reactionCounts.set(item.emoji, (reactionCounts.get(item.emoji) || 0) + 1));
+      const topReaction = Array.from(reactionCounts.entries()).sort((a, b) => b[1] - a[1])[0] || null;
+      const talkBuckets = new Map();
+      this.roomActivity.chats.forEach(item => {
+        const bucket = Math.floor(Math.max(0, Number(item.at) || 0) / 60) * 60;
+        talkBuckets.set(bucket, (talkBuckets.get(bucket) || 0) + 1);
+      });
+      const topTalk = Array.from(talkBuckets.entries()).sort((a, b) => b[1] - a[1])[0] || null;
+      this.roomSummary = {
+        roomCode: this.roomCode,
+        mediaId: String(details.mediaId || this.sharedPlayback?.id || ''),
+        type: details.type === 'tv' ? 'tv' : 'movie',
+        participants: this.participants.size,
+        watchedSeconds: Math.max(0, Number(details.seconds) || 0),
+        topReaction: topReaction ? { emoji: topReaction[0], count: topReaction[1] } : null,
+        topTalkSecond: topTalk ? topTalk[0] : null,
+        chatCount: this.roomActivity.chats.length
+      };
+      this.broadcast({ type: 'room-summary', summary: this.roomSummary });
+      window.dispatchEvent(new CustomEvent('cinepulse:room-summary-remote', { detail: this.roomSummary }));
+    };
+    this.onRoomRhythm = event => {
+      const rhythm = event.detail;
+      if (!this.isHost || !rhythm || safeRoomCode(rhythm.roomCode) !== this.roomCode || !rhythm.targetId) return;
+      this.broadcast({ type: 'room-rhythm', rhythm });
+    };
+    window.addEventListener('cinepulse:room-summary', this.onRoomSummary);
+    window.addEventListener('cinepulse:room-rhythm', this.onRoomRhythm);
     this.destroyed = false;
   }
 
@@ -255,6 +294,9 @@ export class AnonymousDecisionRoom {
         episode: Math.max(1, Number(choice.card.episode) || 1)
       };
       this.lastPlayerSync = null;
+      this.playbackStartedAt = Date.now();
+      this.roomSummary = null;
+      this.roomActivity = { reactions: [], chats: [] };
       this.emit();
       openSharedContent(choice.card, this.roomCode);
       return;
@@ -281,7 +323,8 @@ export class AnonymousDecisionRoom {
       ratings: this.ratings,
       suggestions: this.suggestions,
       syncMode: this.syncMode,
-      chatMessages: this.chatMessages
+      chatMessages: this.chatMessages,
+      roomSummary: this.roomSummary
     };
   }
 
@@ -302,7 +345,8 @@ export class AnonymousDecisionRoom {
         participants: state.participants,
         peerCount: state.peerCount,
         chatMessages: state.chatMessages,
-        syncMode: state.syncMode
+        syncMode: state.syncMode,
+        roomSummary: state.roomSummary
       };
       window.__cinepulseDecisionRoomPresence = presence;
       window.dispatchEvent(new CustomEvent('cinepulse:decision-room-presence', { detail: presence }));
@@ -596,13 +640,25 @@ export class AnonymousDecisionRoom {
     }
 
     if (message.type === 'room-reaction' && message.reaction) {
+      this.recordRoomReaction(message.reaction);
       window.dispatchEvent(new CustomEvent('cinepulse:room-reaction-remote', { detail: message.reaction }));
     }
 
     if (message.type === 'room-chat' && message.chat?.text) {
       const chat = { ...message.chat, senderId: message.senderId || message.chat.senderId };
       this.chatMessages = [...this.chatMessages, chat].slice(-60);
+      this.recordRoomChat(chat);
       window.dispatchEvent(new CustomEvent('cinepulse:room-chat-remote', { detail: chat }));
+    }
+
+    if (message.type === 'room-summary' && message.summary) {
+      this.roomSummary = message.summary;
+      window.dispatchEvent(new CustomEvent('cinepulse:room-summary-remote', { detail: message.summary }));
+      this.emit();
+    }
+
+    if (message.type === 'room-rhythm' && message.rhythm?.targetId) {
+      window.dispatchEvent(new CustomEvent('cinepulse:room-rhythm-remote', { detail: { ...message.rhythm, roomCode: this.roomCode } }));
     }
   }
 
@@ -696,6 +752,9 @@ export class AnonymousDecisionRoom {
       season: Math.max(1, Number(card.season) || 1),
       episode: Math.max(1, Number(card.episode) || 1)
     };
+    this.playbackStartedAt = Date.now();
+    this.roomSummary = null;
+    this.roomActivity = { reactions: [], chats: [] };
     this.emit();
     this.broadcast({ type: 'open', card });
     // WebRTC data channels can briefly be connected while a peer's first
@@ -723,6 +782,23 @@ export class AnonymousDecisionRoom {
     openSharedContent(card, this.roomCode);
   }
 
+  recordRoomReaction(reaction) {
+    if (!reaction?.emoji) return;
+    this.roomActivity.reactions = [...this.roomActivity.reactions, {
+      emoji: String(reaction.emoji),
+      at: Math.max(0, Number(reaction.at) || 0),
+      senderId: reaction.senderId || ''
+    }].slice(-240);
+  }
+
+  recordRoomChat(chat) {
+    if (!chat?.text) return;
+    this.roomActivity.chats = [...this.roomActivity.chats, {
+      at: Math.max(0, Number(chat.at) || 0),
+      senderId: chat.senderId || ''
+    }].slice(-120);
+  }
+
   destroy() {
     this.destroyed = true;
     window.removeEventListener('cinepulse:player-sync', this.onPlayerSync);
@@ -735,6 +811,8 @@ export class AnonymousDecisionRoom {
     window.removeEventListener('cinepulse:room-playback-progress', this.onRoomPlaybackProgress);
     window.removeEventListener('cinepulse:room-playback-checkpoint', this.onRoomPlaybackCheckpoint);
     window.removeEventListener('cinepulse:room-playback-finished', this.onRoomPlaybackFinished);
+    window.removeEventListener('cinepulse:room-summary', this.onRoomSummary);
+    window.removeEventListener('cinepulse:room-rhythm', this.onRoomRhythm);
     if (this.announceTimer) window.clearInterval(this.announceTimer);
     this.announceTimer = null;
     this.peers.forEach(peer => {
