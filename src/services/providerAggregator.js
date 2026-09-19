@@ -619,18 +619,27 @@ export async function getStreamingServersProgressive({
     fetchOfficialLookMovieSources({ type, title: targetTitle, originalTitle, season, episode })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // 11. Anime & Cartoons: AnimeciX, TürkAnime, AnimeTR
-    fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    // 11. Anime catalogues are genre-specific. Searching them for every film
+    // can return a similarly named episode and attach it to the wrong title.
+    isAnime
+      ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : Promise.resolve([]),
 
-    fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => []),
+    isAnime
+      ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      : Promise.resolve([]),
 
-    fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    isAnime
+      ? fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : Promise.resolve([]),
 
-    fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    isAnime
+      ? fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : Promise.resolve([]),
 
     // 12. VIP P2P Streams (2-3 high-seed torrent streams with multi-sub / OpenSubtitles)
     fetchTorrentStreamSources({ type, tmdbId, season, episode })
@@ -701,8 +710,7 @@ export async function getStreamingServersProgressive({
     fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
     fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode }).then(res => addStreams(res, 'subtitled')).catch(() => []),
     fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => [])
+    fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => [])
   ] : [
     fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
     fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
