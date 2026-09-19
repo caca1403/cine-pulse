@@ -112,6 +112,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
   const castList = media.credits && media.credits.cast ? media.credits.cast.slice(0, 10) : [];
 
   let seasonSelectorObj = null;
+  let spoilerFreeEnabled = false;
   if (effectiveType === 'tv' && media.seasons) {
     seasonSelectorObj = await renderSeasonSelector({
       tvId: id,
@@ -121,7 +122,8 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
       seasons: media.seasons,
       posterPath: media.poster_path,
       backdropPath: media.backdrop_path,
-      isAnime
+      isAnime,
+      spoilerFree: spoilerFreeEnabled
     });
   }
 
@@ -201,6 +203,8 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                 <p class="detail-storyline truncated" id="detail-storyline-text">${overview}</p>
                 ${overview.length > 120 ? '<button class="btn-storyline-expand" id="btn-expand-storyline"><span>Devamını Oku</span><i data-lucide="chevron-down" style="width:14px;height:14px"></i></button>' : ''}
               </div>
+
+              ${effectiveType === 'tv' ? `<label class="spoiler-discovery-toggle"><input id="detail-spoiler-free-toggle" type="checkbox" /><span><i data-lucide="shield-check"></i><b>Spoilersız keşfet</b><small>İzleme ilerlemenin sonrasındaki bölüm başlıkları, görselleri ve özetleri gizlenir.</small></span></label>` : ''}
 
               <!-- Oyuncular & Sanatçılar (Letterboxd & Pentagram Style Carousel with PC Mouse Scroll & Nav Buttons) -->
               ${castList.length > 0 ? `
@@ -322,6 +326,15 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
       }
 
       if (seasonSelectorObj) seasonSelectorObj.init(container);
+      const spoilerToggle = container.querySelector('#detail-spoiler-free-toggle');
+      if (spoilerToggle) {
+        spoilerToggle.checked = spoilerFreeEnabled;
+        spoilerToggle.addEventListener('change', () => {
+          spoilerFreeEnabled = spoilerToggle.checked;
+          seasonSelectorObj?.setSpoilerSafe(spoilerFreeEnabled);
+          showToast(spoilerFreeEnabled ? 'Spoilersız keşif açıldı. Sonraki bölüm detayları gizlendi.' : 'Spoilersız keşif kapatıldı.', 'info');
+        });
+      }
 
       const playMovieBtn = container.querySelector('#btn-play-movie');
       const openMovie = async () => {

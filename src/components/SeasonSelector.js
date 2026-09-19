@@ -7,17 +7,19 @@ import { renderIcons } from '../services/icons.js';
    ========================================================================== */
 
 import { fetchSeasonDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { getMediaProgress, isMediaWatched, toggleEpisodeWatched, markSeasonEpisodesWatched, isSeasonFullyWatched, setMediaHalfway } from '../services/storage.js';
+import { getMediaProgress, getWatchHistory, isMediaWatched, toggleEpisodeWatched, markSeasonEpisodesWatched, isSeasonFullyWatched, setMediaHalfway } from '../services/storage.js';
 import { openPlayerModal } from './openPlayer.js';
 import { showToast } from './Toast.js';
 
-export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = '', seriesOverview = '', seasons = [], posterPath = '', backdropPath = '', isAnime = false }) {
+export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = '', seriesOverview = '', seasons = [], posterPath = '', backdropPath = '', isAnime = false, spoilerFree = false }) {
   const validSeasons = seasons.filter(s => s.season_number > 0);
   if (validSeasons.length === 0 && seasons.length > 0) validSeasons.push(seasons[0]);
 
   const activeSeasonNumber = validSeasons.length > 0 ? validSeasons[0].season_number : 1;
   const initialEpCount = validSeasons.length > 0 ? (validSeasons[0].episode_count || 10) : 10;
   const isInitialSeasonWatched = isSeasonFullyWatched(tvId, activeSeasonNumber, initialEpCount);
+  let spoilerSafeEnabled = Boolean(spoilerFree);
+  let refreshSpoilerSafe = null;
 
   const html = `
     <div class="season-selector-wrapper">
@@ -90,7 +92,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
         renderIcons();
       };
 
-      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual, isAnime);
+      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual, isAnime, spoilerSafeEnabled);
 
       // Instant Real-Time Synchronization with Watch History & Player without page refresh
       const onDataChanged = (e) => {
@@ -165,7 +167,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
           btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
           currentActiveSeason = parseInt(btn.getAttribute('data-season'), 10);
           currentEpCount = parseInt(btn.getAttribute('data-ep-count'), 10) || 10;
-          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual, isAnime);
+          loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual, isAnime, spoilerSafeEnabled);
           updateSeasonBtnVisual();
         });
       });
@@ -288,11 +290,29 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
           updateSeasonBtnVisual();
         });
       }
+      refreshSpoilerSafe = (enabled) => {
+        spoilerSafeEnabled = Boolean(enabled);
+        loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, currentActiveSeason, container, posterPath, backdropPath, originalTitle, validSeasons, updateSeasonBtnVisual, isAnime, spoilerSafeEnabled);
+      };
+    },
+    setSpoilerSafe(enabled) {
+      spoilerSafeEnabled = Boolean(enabled);
+      refreshSpoilerSafe?.(spoilerSafeEnabled);
     }
   };
 }
 
-async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath = '', backdropPath = '', originalTitle = '', validSeasons = [], onStatusChange = null, isAnime = false) {
+function getSpoilerBoundary(tvId) {
+  const entries = getWatchHistory()
+    .filter(item => String(item?.id) === String(tvId) && (Number(item.currentTime) > 0 || item.completed || Number(item.progressPercent) > 0));
+  if (!entries.length) return { season: 1, episode: 1 };
+  return entries.reduce((latest, item) => {
+    const candidate = { season: Math.max(1, Number(item.season) || 1), episode: Math.max(1, Number(item.episode) || 1) };
+    return candidate.season > latest.season || (candidate.season === latest.season && candidate.episode > latest.episode) ? candidate : latest;
+  }, { season: 1, episode: 1 });
+}
+
+async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath = '', backdropPath = '', originalTitle = '', validSeasons = [], onStatusChange = null, isAnime = false, spoilerSafe = false) {
   const gridContainer = container.querySelector('#episode-grid-container');
   if (!gridContainer) return;
 
@@ -318,12 +338,22 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
     `;
     renderIcons();
     container.querySelector('#btn-retry-season-episodes')?.addEventListener('click', () => {
-      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath, backdropPath, originalTitle, validSeasons, onStatusChange);
+      loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath, backdropPath, originalTitle, validSeasons, onStatusChange, isAnime, spoilerSafe);
     });
     return;
   }
 
-  gridContainer.innerHTML = seasonData.episodes.map(ep => {
+  const spoilerBoundary = spoilerSafe ? getSpoilerBoundary(tvId) : null;
+  const visibleEpisodes = spoilerSafe
+    ? seasonData.episodes.filter(ep => seasonNum < spoilerBoundary.season || (seasonNum === spoilerBoundary.season && Number(ep.episode_number) <= spoilerBoundary.episode + 1))
+    : seasonData.episodes;
+  if (spoilerSafe && visibleEpisodes.length === 0) {
+    gridContainer.innerHTML = `<div class="spoiler-safe-locked"><i data-lucide="shield-check"></i><strong>Bu sezon spoiler korumasında</strong><span>Önceki sezona ilerledikçe bölüm detayları burada açılır.</span></div>`;
+    renderIcons();
+    return;
+  }
+  const spoilerNotice = spoilerSafe ? `<div class="spoiler-safe-notice"><i data-lucide="shield-check"></i><span>Spoilersız keşif açık · S${spoilerBoundary.season} B${spoilerBoundary.episode + 1} sonrasının detayları gizli.</span></div>` : '';
+  gridContainer.innerHTML = spoilerNotice + visibleEpisodes.map(ep => {
     const epNum = ep.episode_number;
     const epTitle = ep.name || `${epNum}. Bölüm`;
     
