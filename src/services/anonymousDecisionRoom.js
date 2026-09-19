@@ -135,6 +135,7 @@ export class AnonymousDecisionRoom {
     this.sharedPlayback = null;
     this.lastPlayerSync = null;
     this.roomFinish = null;
+    this.chatMessages = [];
     this.onPlayerSync = event => {
       const sync = event.detail;
       if (!this.isHost || !sync || safeRoomCode(sync.roomCode) !== this.roomCode || !this.sharedPlayback) return;
@@ -169,6 +170,15 @@ export class AnonymousDecisionRoom {
     window.addEventListener('cinepulse:room-finish-vote', this.onRoomFinishVote);
     window.addEventListener('cinepulse:room-finish-choice', this.onRoomFinishChoice);
     window.addEventListener('cinepulse:room-reaction', this.onRoomReaction);
+    this.onRoomChatSend = event => {
+      const message = event.detail;
+      const text = String(message?.text || '').trim().slice(0, 240);
+      if (!message || safeRoomCode(message.roomCode) !== this.roomCode || !text) return;
+      const chat = { text, nickname: this.nickname, senderId: this.selfId, sentAt: Date.now() };
+      this.chatMessages = [...this.chatMessages, chat].slice(-60);
+      this.broadcast({ type: 'room-chat', chat });
+    };
+    window.addEventListener('cinepulse:room-chat-send', this.onRoomChatSend);
     this.destroyed = false;
   }
 
@@ -362,7 +372,8 @@ export class AnonymousDecisionRoom {
             participants: Array.from(this.participants.values()),
             sharedPlayback: this.sharedPlayback,
             lastPlayerSync: this.lastPlayerSync,
-            roomFinish: this.roomFinish
+            roomFinish: this.roomFinish,
+            chatMessages: this.chatMessages
           });
         }
       }
@@ -391,6 +402,7 @@ export class AnonymousDecisionRoom {
         this.sharedPlayback = playback;
         this.lastPlayerSync = message.lastPlayerSync || null;
         this.roomFinish = message.roomFinish || null;
+        this.chatMessages = Array.isArray(message.chatMessages) ? message.chatMessages.slice(-60) : [];
         if (shouldOpen) {
           openSharedContent(playback, this.roomCode, this.lastPlayerSync);
         } else if (this.lastPlayerSync) {
@@ -462,6 +474,12 @@ export class AnonymousDecisionRoom {
     if (message.type === 'room-reaction' && message.reaction) {
       window.dispatchEvent(new CustomEvent('cinepulse:room-reaction-remote', { detail: message.reaction }));
     }
+
+    if (message.type === 'room-chat' && message.chat?.text) {
+      const chat = { ...message.chat, senderId: message.senderId || message.chat.senderId };
+      this.chatMessages = [...this.chatMessages, chat].slice(-60);
+      window.dispatchEvent(new CustomEvent('cinepulse:room-chat-remote', { detail: chat }));
+    }
   }
 
   setCards(cards) {
@@ -529,6 +547,7 @@ export class AnonymousDecisionRoom {
     window.removeEventListener('cinepulse:room-finish-vote', this.onRoomFinishVote);
     window.removeEventListener('cinepulse:room-finish-choice', this.onRoomFinishChoice);
     window.removeEventListener('cinepulse:room-reaction', this.onRoomReaction);
+    window.removeEventListener('cinepulse:room-chat-send', this.onRoomChatSend);
     if (this.announceTimer) window.clearInterval(this.announceTimer);
     this.announceTimer = null;
     this.peers.forEach(peer => {

@@ -428,6 +428,80 @@ export async function openPlayerModal({
 
   const roomPlaybackSettings = { brightness: 100, speed: 1 };
 
+  function appendRoomChatMessage(message, mine = false) {
+    const list = modalContainer.querySelector('#room-chat-messages');
+    if (!list || !message?.text) return;
+    const row = document.createElement('div');
+    row.className = `room-chat-message${mine ? ' mine' : ''}`;
+    const who = document.createElement('strong');
+    who.textContent = mine ? 'Sen' : (message.nickname || 'Misafir');
+    const text = document.createElement('span');
+    text.textContent = String(message.text).slice(0, 240);
+    row.append(who, text);
+    list.appendChild(row);
+    while (list.children.length > 60) list.firstElementChild?.remove();
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function toggleRoomChatPanel(force) {
+    if (!roomSync) return;
+    let panel = modalContainer.querySelector('#room-chat-panel');
+    let created = false;
+    if (!panel) {
+      created = true;
+      panel = document.createElement('aside');
+      panel.id = 'room-chat-panel';
+      panel.className = 'room-chat-panel';
+      panel.innerHTML = `<header><strong>Odaya dön</strong><button type="button" aria-label="Kapat">×</button></header><div id="room-chat-messages" class="room-chat-messages"><p>Oda sohbeti yalnızca bu oturumda kalır.</p></div><form><input maxlength="240" autocomplete="off" placeholder="Mesaj yaz…" /><button type="submit">Gönder</button></form>`;
+      panel.querySelector('header button').onclick = () => toggleRoomChatPanel(false);
+      panel.querySelector('form').onsubmit = event => {
+        event.preventDefault();
+        const input = panel.querySelector('input');
+        const text = input.value.trim();
+        if (!text) return;
+        appendRoomChatMessage({ text }, true);
+        window.dispatchEvent(new CustomEvent('cinepulse:room-chat-send', { detail: { roomCode: roomSync.roomCode, text } }));
+        input.value = '';
+      };
+      (modalContainer.querySelector('#cinema-modal-box') || modalContainer).appendChild(panel);
+    }
+    const open = typeof force === 'boolean' ? force : (created || panel.classList.contains('hidden'));
+    panel.classList.toggle('hidden', !open);
+    if (open) panel.querySelector('input')?.focus();
+  }
+
+  function configureMediaSession(videoEl) {
+    if (!videoEl || !('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
+    const artworkPath = posterPath || backdropPath;
+    const artworkUrl = artworkPath
+      ? (artworkPath.startsWith('http') ? artworkPath : `https://image.tmdb.org/t/p/w500${artworkPath}`)
+      : '';
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: getDisplayTitle(),
+      artist: isSeries ? `${cleanSeriesName} · Sezon ${currentSeason}, Bölüm ${currentEpisode}` : cleanSeriesName,
+      album: 'CinePulse',
+      artwork: artworkUrl ? [{ src: artworkUrl, sizes: '500x750', type: 'image/jpeg' }] : []
+    });
+    const applyPosition = () => {
+      const duration = Number(videoEl.duration);
+      const position = Number(videoEl.currentTime);
+      if (Number.isFinite(duration) && duration > 0 && Number.isFinite(position)) {
+        try { navigator.mediaSession.setPositionState({ duration, position: Math.min(position, duration), playbackRate: videoEl.playbackRate || 1 }); } catch (_) {}
+      }
+    };
+    ['play', 'pause', 'seeked', 'loadedmetadata'].forEach(event => videoEl.addEventListener(event, () => {
+      navigator.mediaSession.playbackState = videoEl.paused ? 'paused' : 'playing';
+      applyPosition();
+    }));
+    const bind = (action, handler) => { try { navigator.mediaSession.setActionHandler(action, handler); } catch (_) {} };
+    bind('play', () => videoEl.play().catch(() => {}));
+    bind('pause', () => videoEl.pause());
+    bind('seekbackward', details => { videoEl.currentTime = Math.max(0, videoEl.currentTime - (details.seekOffset || 10)); });
+    bind('seekforward', details => { videoEl.currentTime = Math.min(videoEl.duration || Infinity, videoEl.currentTime + (details.seekOffset || 10)); });
+    bind('seekto', details => { if (Number.isFinite(details.seekTime)) videoEl.currentTime = details.seekTime; });
+    applyPosition();
+  }
+
   function showRoomReaction(reaction) {
     if (!roomSync || reaction?.roomCode !== roomSync.roomCode) return;
     const stage = modalContainer.querySelector('#player-iframe-wrapper');
@@ -570,6 +644,7 @@ export async function openPlayerModal({
     modalScope.on(window, 'cinepulse:room-finish-remote', event => renderRoomFinishOverlay(event.detail));
     modalScope.on(window, 'cinepulse:room-finish-vote-remote', event => renderRoomFinishOverlay(event.detail));
     modalScope.on(window, 'cinepulse:room-reaction-remote', event => showRoomReaction(event.detail));
+    modalScope.on(window, 'cinepulse:room-chat-remote', event => appendRoomChatMessage(event.detail));
     modalScope.on(window, 'cinepulse:decision-room-close-player', event => {
       if (event.detail?.roomCode === roomSync.roomCode) activeModalClose?.();
     });
@@ -1744,6 +1819,7 @@ export async function openPlayerModal({
         <span class="room-player-live-dot"></span>
         <div><strong>Birlikte İzleme</strong><small id="room-player-status">Oda eşitleniyor…</small><small id="room-player-episode">${isSeries ? `S${currentSeason} · B${currentEpisode}` : 'Film'}</small><small id="room-player-source">Ortak kaynak aranıyor…</small></div>
         <div id="room-player-members" class="room-player-members"></div>
+        <button id="btn-room-return" class="room-player-return" type="button">Odaya dön</button>
       </aside>` : ''}
       
       <!-- Top Cinematic Glassmorphism Bar -->
@@ -1973,6 +2049,7 @@ export async function openPlayerModal({
   };
   if (roomSync) {
     renderRoomPlayerHud();
+    modalContainer.querySelector('#btn-room-return')?.addEventListener('click', () => toggleRoomChatPanel());
     modalScope.on(window, 'cinepulse:decision-room-presence', event => renderRoomPlayerHud(event.detail));
   }
 
@@ -4523,6 +4600,7 @@ export async function openPlayerModal({
         // ============ Subtitle Control Engine for Torrent, Sinewix & Direct Streams ============
         attachSubtitleControls(videoEl, srv);
         initCustomPlayerControls(videoEl, srv);
+        configureMediaSession(videoEl);
       }
     }
   }
