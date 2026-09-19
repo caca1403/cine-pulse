@@ -57,7 +57,6 @@ async function performSinewixRequest(endpoint) {
   try {
     const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(directTarget)}`;
     const res = await fetch(workerUrl, {
-      headers: SINEWIX_HEADERS,
       signal: AbortSignal.timeout(6000)
     }).catch(() => null);
 
