@@ -553,8 +553,7 @@ export async function getStreamingServersProgressive({
 
     // 6. Diziyou exposes one episode player. Keep it reachable from both tabs;
     // the player itself owns the available audio/subtitle tracks.
-    !isMovie
-      ? fetchDiziyouSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+    fetchDiziyouSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => {
             if (Array.isArray(res) && res.length > 0) {
               addStreams(res, 'subtitled');
@@ -566,18 +565,14 @@ export async function getStreamingServersProgressive({
               })), 'dubbed');
             }
           }).catch(() => [])
-      : Promise.resolve([]),
+      ,
 
     // 7. SezonlukDizi (1080p VIP)
-    !isMovie
-      ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : Promise.resolve([]),
+    fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
-    !isMovie
-      ? fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : Promise.resolve([]),
+    fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 8. HDFilmizle Best (Movies)
     isMovie
@@ -625,25 +620,17 @@ export async function getStreamingServersProgressive({
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 11. Anime & Cartoons: AnimeciX, TürkAnime, AnimeTR
-    !isMovie
-      ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : Promise.resolve([]),
+    fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
-    !isMovie
-      ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : Promise.resolve([]),
+    fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    isAnime
-      ? fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : Promise.resolve([]),
+    fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
-    isAnime
-      ? fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : Promise.resolve([]),
+    fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
     // 12. VIP P2P Streams (2-3 high-seed torrent streams with multi-sub / OpenSubtitles)
     fetchTorrentStreamSources({ type, tmdbId, season, episode })
@@ -705,7 +692,28 @@ export async function getStreamingServersProgressive({
     return Promise.allSettled(aliasSearches);
   });
 
-  await Promise.allSettled([...tasks, aliasTask]);
+  // Providers are independent of the catalog type. Some upstreams expose a
+  // movie endpoint while others expose the same title through an episode
+  // player, so probe the opposite endpoint as a fallback too. Empty results
+  // are ignored by each scraper and do not delay the rest of the list.
+  const crossTypeTasks = isMovie ? [
+    fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
+    fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => [])
+  ] : [
+    fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
+    fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
+    fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => [])
+  ];
+
+  await Promise.allSettled([...tasks, ...crossTypeTasks, aliasTask]);
 
   // Ensure ALL dubbed and subtitled streams have OpenSubtitles fallback support
   const cleanMediaTitle = targetTitle || originalTitle || '';
