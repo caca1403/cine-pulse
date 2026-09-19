@@ -15,6 +15,7 @@ import { showToast } from './Toast.js';
 let activeRoomModal = null;
 let activeRoom = null;
 let unsubscribe = null;
+let removeSharedOpenListener = null;
 
 function createLobby() {
   closeDecisionRoomModal(false);
@@ -103,7 +104,9 @@ function renderRoomState(root, state, statusText = '') {
     } else {
       deck.innerHTML = state.cards.map(card => {
         const title = card.title || card.name || 'İsimsiz içerik';
-        const meta = card.type === 'tv' ? 'Dizi' : 'Film';
+        const meta = card.type === 'tv'
+          ? `Dizi · S${Math.max(1, Number(card.season) || 1)} B${Math.max(1, Number(card.episode) || 1)}`
+          : 'Film';
         const vote = voteSummary(card, state);
         const myVote = state.votes[card.id]?.[state.selfId];
         const rating = ratingSummary(card, state);
@@ -154,7 +157,9 @@ function toRoomCard(item) {
     title: item.title,
     name: item.name,
     poster_path: item.poster_path,
-    vote_average: item.vote_average
+    vote_average: item.vote_average,
+    season: item.type === 'tv' || item.media_type === 'tv' ? Math.max(1, Number(item.season) || 1) : null,
+    episode: item.type === 'tv' || item.media_type === 'tv' ? Math.max(1, Number(item.episode) || 1) : null
   };
 }
 
@@ -164,22 +169,34 @@ function setupModeratorContentSearch(root, room) {
   const results = root.querySelector('#decision-room-content-results');
   if (!form || !input || !results || !room.isHost) return;
 
-  form.onsubmit = async event => {
-    event.preventDefault();
+  let debounceTimer = null;
+  let requestId = 0;
+  const runSearch = async () => {
     const query = input.value.trim();
-    if (query.length < 2) return;
+    if (query.length < 2) {
+      results.innerHTML = '';
+      return;
+    }
+    const currentRequest = ++requestId;
     results.innerHTML = '<span class="decision-room-search-status">Aranıyor…</span>';
     const items = await searchMulti(query).catch(() => []);
+    if (currentRequest !== requestId || input.value.trim() !== query) return;
     const matches = items.filter(item => item?.id && (item.type === 'movie' || item.type === 'tv')).slice(0, 5);
     results.innerHTML = matches.length ? matches.map(item => {
       const card = toRoomCard(item);
-      return `<button type="button" data-add-room-card="${card.id}" data-add-room-type="${card.type}" title="Odaya ekle"><img src="${getImageUrl(card.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL)}" alt="" /><span><strong>${escapeHtml(card.title || card.name || 'İsimsiz içerik')}</strong><small>${card.type === 'tv' ? 'Dizi' : 'Film'} · ★ ${(Number(card.vote_average) || 0).toFixed(1)}</small></span><i data-lucide="plus"></i></button>`;
+      const episodeChoice = card.type === 'tv'
+        ? `<span class="decision-room-episode-choice" aria-label="Bölüm seçimi"><label>Sezon <input data-add-season type="number" min="1" value="1" inputmode="numeric" /></label><label>Bölüm <input data-add-episode type="number" min="1" value="1" inputmode="numeric" /></label></span>`
+        : '';
+      return `<div class="decision-room-search-result"><button type="button" data-add-room-card="${card.id}" data-add-room-type="${card.type}" title="Odaya ekle"><img src="${getImageUrl(card.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL)}" alt="" /><span><strong>${escapeHtml(card.title || card.name || 'İsimsiz içerik')}</strong><small>${card.type === 'tv' ? 'Dizi' : 'Film'} · ★ ${(Number(card.vote_average) || 0).toFixed(1)}</small></span><i data-lucide="plus"></i></button>${episodeChoice}</div>`;
     }).join('') : '<span class="decision-room-search-status">Sonuç bulunamadı.</span>';
     results.querySelectorAll('[data-add-room-card]').forEach(button => {
       button.onclick = () => {
         const item = matches.find(candidate => String(candidate.id) === button.dataset.addRoomCard && (candidate.type || candidate.media_type) === button.dataset.addRoomType);
         if (!item) return;
-        if (room.addCard(toRoomCard(item))) {
+        const result = button.closest('.decision-room-search-result');
+        const season = Number(result?.querySelector('[data-add-season]')?.value) || 1;
+        const episode = Number(result?.querySelector('[data-add-episode]')?.value) || 1;
+        if (room.addCard(toRoomCard({ ...item, season, episode }))) {
           input.value = '';
           results.innerHTML = '';
           showToast('İçerik odaya eklendi.', 'success');
@@ -189,6 +206,20 @@ function setupModeratorContentSearch(root, room) {
       };
     });
     renderIcons(results);
+  };
+  form.onsubmit = event => {
+    event.preventDefault();
+    window.clearTimeout(debounceTimer);
+    runSearch();
+  };
+  input.oninput = () => {
+    window.clearTimeout(debounceTimer);
+    if (input.value.trim().length < 2) {
+      requestId += 1;
+      results.innerHTML = '';
+      return;
+    }
+    debounceTimer = window.setTimeout(runSearch, 220);
   };
 }
 
@@ -264,6 +295,9 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), i
   root.addEventListener('click', event => {
     if (event.target === root) closeRoom();
   });
+  const closeForSharedPlayback = () => hideDecisionRoomModalForPlayback();
+  window.addEventListener('cinepulse:decision-room-open', closeForSharedPlayback, { once: true });
+  removeSharedOpenListener = () => window.removeEventListener('cinepulse:decision-room-open', closeForSharedPlayback);
 
   const room = new AnonymousDecisionRoom({ roomCode: joinedRoomCode, nickname, isHost: roomOwner });
   activeRoom = room;
@@ -294,6 +328,8 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), i
 }
 
 export function closeDecisionRoomModal(removeLink = true) {
+  removeSharedOpenListener?.();
+  removeSharedOpenListener = null;
   unsubscribe?.();
   unsubscribe = null;
   activeRoom?.destroy();
@@ -301,4 +337,15 @@ export function closeDecisionRoomModal(removeLink = true) {
   activeRoomModal?.remove();
   activeRoomModal = null;
   if (removeLink) removeRoomCodeFromUrl();
+}
+
+function hideDecisionRoomModalForPlayback() {
+  removeSharedOpenListener?.();
+  removeSharedOpenListener = null;
+  unsubscribe?.();
+  unsubscribe = null;
+  // WebRTC veri kanalı oynatıcı açıkken yaşamaya devam eder. Böylece
+  // moderatörün süre, oynat/durdur ve sarma komutları diğer cihaza gider.
+  activeRoomModal?.remove();
+  activeRoomModal = null;
 }

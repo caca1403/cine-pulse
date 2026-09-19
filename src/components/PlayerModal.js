@@ -53,7 +53,8 @@ export async function openPlayerModal({
   currentTime = 0,
   duration = 0,
   seasonsList = [],
-  maxEpisodes = 0
+  maxEpisodes = 0,
+  roomSync = null
 }) {
   const modalContainer = document.getElementById('player-modal');
   if (!modalContainer) return;
@@ -1384,6 +1385,11 @@ export async function openPlayerModal({
     <div class="player-ambient-backdrop" ${backdropPath ? `style="background-image: url('${backdropPath}');"` : ''}></div>
     
     <div class="modal-content player-modal-content" id="cinema-modal-box">
+      ${roomSync ? `<aside id="room-player-hud" class="room-player-hud" aria-live="polite">
+        <span class="room-player-live-dot"></span>
+        <div><strong>Birlikte İzleme</strong><small id="room-player-status">Oda eşitleniyor…</small></div>
+        <div id="room-player-members" class="room-player-members"></div>
+      </aside>` : ''}
       
       <!-- Top Cinematic Glassmorphism Bar -->
       <div class="player-cinema-bar">
@@ -1588,6 +1594,24 @@ export async function openPlayerModal({
   modalContainer.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   renderPlayerIcons(modalContainer);
+
+  const renderRoomPlayerHud = (presence = window.__cinepulseDecisionRoomPresence) => {
+    if (!roomSync || !presence || presence.roomCode !== roomSync.roomCode) return;
+    const status = modalContainer.querySelector('#room-player-status');
+    const members = modalContainer.querySelector('#room-player-members');
+    if (status) status.textContent = presence.isHost
+      ? `${presence.participants.length} kişi bağlı · Kontrol sende`
+      : `${presence.participants.length} kişi bağlı · Moderatör eşitliyor`;
+    if (members) {
+      members.innerHTML = presence.participants.slice(0, 4)
+        .map(person => `<span title="${person.nickname}">${person.role === 'moderator' ? '♛' : '●'} ${person.nickname}</span>`)
+        .join('');
+    }
+  };
+  if (roomSync) {
+    renderRoomPlayerHud();
+    modalScope.on(window, 'cinepulse:decision-room-presence', event => renderRoomPlayerHud(event.detail));
+  }
 
   // --- DRAWER CONTROLS & SEASON EPISODE FETCHING ---
   async function fetchSeasonEpisodes(sNum) {
@@ -2398,6 +2422,40 @@ export async function openPlayerModal({
       setTimeout(() => centerIndicator.classList.remove('animate'), 350);
     };
 
+    let applyingRoomSync = false;
+    let lastRoomSyncHeartbeat = 0;
+    const emitRoomSync = (action) => {
+      if (!roomSync?.roomCode || applyingRoomSync || !Number.isFinite(videoEl.currentTime)) return;
+      window.dispatchEvent(new CustomEvent('cinepulse:player-sync', {
+        detail: {
+          roomCode: roomSync.roomCode,
+          mediaId: roomSync.mediaId,
+          type: roomSync.type,
+          season: currentSeason,
+          episode: currentEpisode,
+          action,
+          time: videoEl.currentTime || 0,
+          playing: !videoEl.paused
+        }
+      }));
+    };
+    playbackScope.on(window, 'cinepulse:player-sync-remote', event => {
+      const sync = event.detail;
+      if (!roomSync || !sync || sync.roomCode !== roomSync.roomCode || String(sync.mediaId) !== String(roomSync.mediaId) || sync.type !== roomSync.type) return;
+      applyingRoomSync = true;
+      const finish = () => { applyingRoomSync = false; };
+      if (sync.type === 'tv' && (Number(sync.season) !== currentSeason || Number(sync.episode) !== currentEpisode)) {
+        switchEpisodeInPlayer(Number(sync.season) || 1, Number(sync.episode) || 1).finally(finish);
+        return;
+      }
+      if (Number.isFinite(Number(sync.time)) && Math.abs(videoEl.currentTime - Number(sync.time)) > 0.8) {
+        try { videoEl.currentTime = Math.max(0, Number(sync.time)); } catch (_) {}
+      }
+      if (sync.playing) videoEl.play().catch(() => {});
+      else videoEl.pause();
+      window.setTimeout(finish, 250);
+    });
+
     if (playBtn) playBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
     videoEl.onclick = (e) => {
       if (isScreenLocked) return;
@@ -2417,11 +2475,13 @@ export async function openPlayerModal({
     on(videoEl, 'play', () => {
       updatePlayState();
       resetHideTimer();
+      emitRoomSync('play');
     });
     on(videoEl, 'playing', () => resetHideTimer());
     on(videoEl, 'pause', () => {
       updatePlayState();
       handleVideoProgressUpdate(true);
+      emitRoomSync('pause');
     });
     on(videoEl, 'ended', () => {
       updatePlayState();
@@ -2429,6 +2489,7 @@ export async function openPlayerModal({
     });
     on(videoEl, 'seeked', () => {
       handleVideoProgressUpdate(true);
+      emitRoomSync('seek');
     });
 
     const handleVideoProgressUpdate = (force = false) => {
@@ -2497,6 +2558,13 @@ export async function openPlayerModal({
     };
 
     on(videoEl, 'timeupdate', updateTimeAndTimeline);
+    playbackScope.on(videoEl, 'timeupdate', () => {
+      const now = Date.now();
+      if (now - lastRoomSyncHeartbeat > 3000) {
+        lastRoomSyncHeartbeat = now;
+        emitRoomSync('state');
+      }
+    });
     on(videoEl, 'durationchange', updateTimeAndTimeline);
     on(videoEl, 'loadedmetadata', updateTimeAndTimeline);
     on(videoEl, 'canplay', updateTimeAndTimeline);
@@ -4267,6 +4335,20 @@ export async function openPlayerModal({
     disposePlayback();
     currentSeason = newSeason;
     currentEpisode = newEpisode;
+    if (roomSync?.roomCode) {
+      window.dispatchEvent(new CustomEvent('cinepulse:player-sync', {
+        detail: {
+          roomCode: roomSync.roomCode,
+          mediaId: roomSync.mediaId,
+          type: roomSync.type,
+          season: currentSeason,
+          episode: currentEpisode,
+          action: 'episode',
+          time: 0,
+          playing: true
+        }
+      }));
+    }
 
     const titleEl = document.getElementById('player-modal-title');
     if (titleEl) titleEl.textContent = getDisplayTitle();

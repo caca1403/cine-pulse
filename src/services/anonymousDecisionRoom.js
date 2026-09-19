@@ -26,6 +26,7 @@ const TRACKERS = [
 
 const MAX_RECENT_MESSAGES = 160;
 const ROOM_OWNER_KEY_PREFIX = 'cinepulse.decision-room.owner.';
+export const DECISION_ROOM_AUTOPLAY_KEY = 'cinepulse.decision-room.autoplay';
 
 function randomHex(byteLength = 12) {
   const bytes = new Uint8Array(byteLength);
@@ -36,6 +37,25 @@ function randomHex(byteLength = 12) {
 function safeRoomCode(value = '') {
   const code = String(value).replace(/\D/g, '');
   return code.length === 6 ? code : '';
+}
+
+function openSharedContent(card, roomCode = '') {
+  if (!card?.id) return;
+  const type = card.type === 'tv' ? 'tv' : 'movie';
+  try {
+    sessionStorage.setItem(DECISION_ROOM_AUTOPLAY_KEY, JSON.stringify({
+      id: String(card.id),
+      type,
+      roomCode: safeRoomCode(roomCode),
+      season: type === 'tv' ? Math.max(1, Number(card.season) || 1) : null,
+      episode: type === 'tv' ? Math.max(1, Number(card.episode) || 1) : null,
+      createdAt: Date.now()
+    }));
+  } catch (_) {}
+  // Oda penceresi, detay ekranı ve oynatıcı arasında üst üste kalmamalı.
+  // Bu olay hem moderatörün hem de katılımcının kendi penceresini kapatır.
+  window.dispatchEvent(new CustomEvent('cinepulse:decision-room-open'));
+  window.location.hash = `#detail?type=${type}&id=${card.id}`;
 }
 
 async function roomInfoHash(roomCode) {
@@ -111,6 +131,14 @@ export class AnonymousDecisionRoom {
     this.cards = [];
     this.votes = {};
     this.ratings = {};
+    this.sharedPlayback = null;
+    this.onPlayerSync = event => {
+      const sync = event.detail;
+      if (!this.isHost || !sync || safeRoomCode(sync.roomCode) !== this.roomCode || !this.sharedPlayback) return;
+      if (String(sync.mediaId) !== String(this.sharedPlayback.id) || sync.type !== this.sharedPlayback.type) return;
+      this.broadcast({ type: 'player-sync', sync });
+    };
+    window.addEventListener('cinepulse:player-sync', this.onPlayerSync);
     this.destroyed = false;
   }
 
@@ -138,6 +166,16 @@ export class AnonymousDecisionRoom {
   emit() {
     const state = this.snapshot();
     this.listeners.forEach(listener => listener(state));
+    if (this.sharedPlayback) {
+      const presence = {
+        roomCode: this.roomCode,
+        isHost: this.isHost,
+        participants: state.participants,
+        peerCount: state.peerCount
+      };
+      window.__cinepulseDecisionRoomPresence = presence;
+      window.dispatchEvent(new CustomEvent('cinepulse:decision-room-presence', { detail: presence }));
+    }
   }
 
   async connect() {
@@ -308,7 +346,20 @@ export class AnonymousDecisionRoom {
     }
 
     if (message.type === 'open' && message.card?.id) {
-      window.location.hash = `#detail?type=${message.card.type === 'tv' ? 'tv' : 'movie'}&id=${message.card.id}`;
+      this.sharedPlayback = {
+        id: message.card.id,
+        type: message.card.type === 'tv' ? 'tv' : 'movie',
+        season: Math.max(1, Number(message.card.season) || 1),
+        episode: Math.max(1, Number(message.card.episode) || 1)
+      };
+      this.emit();
+      openSharedContent(message.card, this.roomCode);
+    }
+
+    if (message.type === 'player-sync' && message.sync && !this.isHost) {
+      const sync = message.sync;
+      if (!this.sharedPlayback || String(sync.mediaId) !== String(this.sharedPlayback.id) || sync.type !== this.sharedPlayback.type) return;
+      window.dispatchEvent(new CustomEvent('cinepulse:player-sync-remote', { detail: sync }));
     }
   }
 
@@ -359,12 +410,20 @@ export class AnonymousDecisionRoom {
 
   openForEveryone(card) {
     if (!card?.id) return;
+    this.sharedPlayback = {
+      id: card.id,
+      type: card.type === 'tv' ? 'tv' : 'movie',
+      season: Math.max(1, Number(card.season) || 1),
+      episode: Math.max(1, Number(card.episode) || 1)
+    };
+    this.emit();
     this.broadcast({ type: 'open', card });
-    window.location.hash = `#detail?type=${card.type === 'tv' ? 'tv' : 'movie'}&id=${card.id}`;
+    openSharedContent(card, this.roomCode);
   }
 
   destroy() {
     this.destroyed = true;
+    window.removeEventListener('cinepulse:player-sync', this.onPlayerSync);
     if (this.announceTimer) window.clearInterval(this.announceTimer);
     this.announceTimer = null;
     this.peers.forEach(peer => {

@@ -15,6 +15,23 @@ import { openTrailerModal } from '../components/TrailerModal.js';
 import { openCastExplorerModal } from '../components/CastExplorerModal.js';
 import { showToast } from '../components/Toast.js';
 
+const DECISION_ROOM_AUTOPLAY_KEY = 'cinepulse.decision-room.autoplay';
+
+function consumeDecisionRoomAutoplay(type, id) {
+  try {
+    const pending = JSON.parse(sessionStorage.getItem(DECISION_ROOM_AUTOPLAY_KEY) || 'null');
+    sessionStorage.removeItem(DECISION_ROOM_AUTOPLAY_KEY);
+    return (
+      pending
+      && String(pending.id) === String(id)
+      && pending.type === type
+      && Date.now() - Number(pending.createdAt || 0) < 15000
+    ) ? pending : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function formatMediaRuntime(minutes) {
   if (!minutes || minutes <= 0) return '';
   const hrs = Math.floor(minutes / 60);
@@ -290,6 +307,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
     html,
     init: (container) => {
       if (!container) return;
+      let decisionRoomAutoplay = consumeDecisionRoomAutoplay(effectiveType, id);
 
       const backBtn = container.querySelector('#btn-detail-back');
       if (backBtn) {
@@ -324,7 +342,8 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
               posterPath: media.poster_path,
               backdropPath: media.backdrop_path,
               duration: movieDurationSec,
-              currentTime: progress ? progress.currentTime : 0
+              currentTime: progress ? progress.currentTime : 0,
+              roomSync: decisionRoomAutoplay ? { roomCode: decisionRoomAutoplay.roomCode, mediaId: id, type: effectiveType, season: 1, episode: 1 } : null
             });
           } catch (err) {
             console.error('[CinePulse] Film oynatılamadı:', err);
@@ -346,10 +365,12 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           resumeSeriesBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:18px;height:18px;fill:currentColor"></i> <span>Yükleniyor...</span>`;
           renderIcons();
           try {
+            const selectedByRoom = decisionRoomAutoplay;
+            decisionRoomAutoplay = null;
             const lastWatched = getLastWatchedEpisode(id);
-            const seasonNum = lastWatched ? lastWatched.season : 1;
-            const episodeNum = lastWatched ? lastWatched.episode : 1;
-            const currentTime = lastWatched ? lastWatched.currentTime : 0;
+            const seasonNum = selectedByRoom?.season || (lastWatched ? lastWatched.season : 1);
+            const episodeNum = selectedByRoom?.episode || (lastWatched ? lastWatched.episode : 1);
+            const currentTime = selectedByRoom ? 0 : (lastWatched ? lastWatched.currentTime : 0);
             await openPlayerModal({
               type: isAnime ? 'anime' : 'tv',
               isAnime,
@@ -362,7 +383,8 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
               posterPath: media.poster_path,
               backdropPath: media.backdrop_path,
               currentTime,
-              seasonsList: media.seasons || []
+              seasonsList: media.seasons || [],
+              roomSync: selectedByRoom ? { roomCode: selectedByRoom.roomCode, mediaId: id, type: effectiveType, season: seasonNum, episode: episodeNum } : null
             });
           } catch (err) {
             console.error('[CinePulse] Dizi oynatılamadı:', err);
@@ -373,6 +395,14 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
             renderIcons();
           }
         });
+      }
+
+      // Moderatör “Birlikte Aç” dediğinde her cihaz detay sayfasına uğramadan
+      // doğrudan kendi oynatıcısını açar. Olay sessionStorage'da tek kullanımlık
+      // tutulur; normal detay ziyaretleri otomatik oynatılmaz.
+      const autoPlayButton = effectiveType === 'movie' ? playMovieBtn : resumeSeriesBtn;
+      if (autoPlayButton && decisionRoomAutoplay) {
+        window.setTimeout(() => autoPlayButton.click(), 0);
       }
 
       const trailerBtn = container.querySelector('#btn-watch-trailer');
