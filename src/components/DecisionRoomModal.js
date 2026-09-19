@@ -126,7 +126,7 @@ function renderRoomState(root, state, statusText = '') {
     const help = syncMode.querySelector('#decision-room-sync-help');
     if (help) help.textContent = strict
       ? 'Yavaş bağlantı buffer’a düşünce herkes kısa süre bekler; süreler birlikte kalır.'
-      : 'Yavaş bağlantı kendi hızında ilerler; hızlı bağlantılı kişiler beklemez.';
+      : 'İlk açılışta en fazla 2 dakika fark için bir kez hizalar; sonra süre ve sarma eşitlenmez, herkes akıcı izler.';
     syncMode.querySelectorAll('input[name="room-sync-mode"]').forEach(input => {
       input.onchange = () => activeRoom?.setSyncMode(input.value);
     });
