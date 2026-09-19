@@ -371,6 +371,16 @@ export function attachMediaCardEvents(container) {
       const safeKey = encodeURIComponent(trailer.key);
       const previewBox = document.createElement('div');
       previewBox.className = 'card-hover-video-preview';
+      const useMobileSheet = isTouchDevice && window.innerWidth <= 700;
+      if (useMobileSheet) {
+        // A card-relative popover is too easy to clip behind the bottom
+        // navigation on phones. Keep one compact preview sheet above it.
+        document.querySelectorAll('.card-hover-video-preview').forEach(existing => {
+          existing.closest?.('.media-card')?.classList.remove('preview-active');
+          existing.remove();
+        });
+        previewBox.classList.add('is-mobile-sheet');
+      }
       previewBox.innerHTML = `
         <div class="card-preview-media">
           <iframe
@@ -401,17 +411,19 @@ export function attachMediaCardEvents(container) {
           </div>
         </div>
       `;
-      const rect = card.getBoundingClientRect();
-      const edgeTop = window.innerHeight < 520 ? 12 : 76;
-      const idealPreviewWidth = Math.min(460, Math.max(isTouchDevice ? 320 : 390, rect.width * 2.2), window.innerWidth - 32);
-      const maxWidthByHeight = Math.max(240, ((window.innerHeight - edgeTop - 94) * 16) / 9);
-      const previewWidth = Math.max(240, Math.min(idealPreviewWidth, maxWidthByHeight));
-      const previewHeight = (previewWidth * 9 / 16) + 82;
-      const left = Math.max(16, Math.min(window.innerWidth - previewWidth - 16, rect.left + (rect.width - previewWidth) / 2));
-      const top = Math.max(edgeTop, Math.min(window.innerHeight - previewHeight - 12, rect.top + (rect.height - previewHeight) / 2));
-      previewBox.style.left = `${left}px`;
-      previewBox.style.top = `${top}px`;
-      previewBox.style.width = `${previewWidth}px`;
+      if (!useMobileSheet) {
+        const rect = card.getBoundingClientRect();
+        const edgeTop = window.innerHeight < 520 ? 12 : 76;
+        const idealPreviewWidth = Math.min(460, Math.max(390, rect.width * 2.2), window.innerWidth - 32);
+        const maxWidthByHeight = Math.max(240, ((window.innerHeight - edgeTop - 94) * 16) / 9);
+        const previewWidth = Math.max(240, Math.min(idealPreviewWidth, maxWidthByHeight));
+        const previewHeight = (previewWidth * 9 / 16) + 82;
+        const left = Math.max(16, Math.min(window.innerWidth - previewWidth - 16, rect.left + (rect.width - previewWidth) / 2));
+        const top = Math.max(edgeTop, Math.min(window.innerHeight - previewHeight - 12, rect.top + (rect.height - previewHeight) / 2));
+        previewBox.style.left = `${left}px`;
+        previewBox.style.top = `${top}px`;
+        previewBox.style.width = `${previewWidth}px`;
+      }
       card.classList.add('preview-active');
       card.appendChild(previewBox);
       renderIcons();

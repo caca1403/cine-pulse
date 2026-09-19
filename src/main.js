@@ -12,6 +12,7 @@ import { renderPopularListView } from './views/PopularListView.js';
 import { renderLiveTvView } from './views/LiveTvView.js';
 import { renderAdminView } from './views/AdminView.js';
 import { checkAndShowProfileOnboarding } from './components/ProfileOnboardingModal.js';
+import { checkAndShowProductTour } from './components/ProductTour.js';
 import { trackScrollState, flushScrollState, restoreAllScrollState } from './services/scrollManager.js';
 import { initPwa } from './services/pwaManager.js';
 import { getUserSettings } from './services/storage.js';
@@ -234,6 +235,12 @@ setTimeout(async () => {
 setTimeout(() => {
   checkAndShowProfileOnboarding();
 }, 400);
+
+// Profile setup is completed before this guide; it then explains the core
+// parts of the product once and stores completion locally.
+setTimeout(() => {
+  checkAndShowProductTour();
+}, 1200);
 
 // Data change event listeners (Only reload whole route when backup data is imported or cleared)
 const onExternalDataImport = (e) => {

@@ -143,6 +143,22 @@ export function isProfileSetupComplete() {
   }
 }
 
+export function hasCompletedProductTour() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return true;
+    return localStorage.getItem('cinepulse_product_tour_completed') === 'true';
+  } catch (_) {
+    return true;
+  }
+}
+
+export function completeProductTour() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    localStorage.setItem('cinepulse_product_tour_completed', 'true');
+  } catch (_) {}
+}
+
 export function completeProfileSetup({ name, avatar = 'user-circle', color = '#f59e0b', isKid = false }) {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return;

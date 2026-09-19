@@ -9905,6 +9905,55 @@ video::cue {
   height: 17px;
 }
 
+/* Phone preview: keep the trailer clear of browser chrome and the fixed
+   bottom navigation, rather than centering a desktop-sized popover on a card. */
+@media (max-width: 700px) {
+  .card-hover-video-preview.is-mobile-sheet {
+    left: 50% !important;
+    top: auto !important;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    width: min(calc(100vw - 24px), 460px) !important;
+    max-width: none;
+    transform: translateX(-50%);
+    border-radius: 16px;
+  }
+  .card-hover-video-preview.is-mobile-sheet .card-preview-details {
+    min-height: 60px;
+    padding: 10px 12px 11px;
+    gap: 10px;
+  }
+  .card-hover-video-preview.is-mobile-sheet .card-preview-copy {
+    gap: 4px;
+  }
+  .card-hover-video-preview.is-mobile-sheet .card-preview-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: .92rem;
+    line-height: 1.2;
+    white-space: normal;
+  }
+  .card-hover-video-preview.is-mobile-sheet .card-preview-meta {
+    font-size: .62rem;
+    gap: 5px;
+  }
+  .card-hover-video-preview.is-mobile-sheet .card-preview-meta > span:not(:last-child)::after {
+    margin-left: 5px;
+  }
+  .card-hover-video-preview.is-mobile-sheet .card-preview-open,
+  .card-hover-video-preview.is-mobile-sheet .card-preview-sound {
+    width: 34px;
+    height: 34px;
+  }
+  .card-hover-video-preview.is-mobile-sheet .card-preview-actions {
+    gap: 7px;
+  }
+  .card-hover-video-preview.is-mobile-sheet .card-preview-badge {
+    top: 10px;
+    left: 10px;
+  }
+}
+
 @keyframes cardLandscapePreviewIn {
   from { opacity: 0; transform: scale(.82) translateY(14px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
@@ -12178,3 +12227,14 @@ video::cue {
 .room-player-actions { display:flex; align-items:center; gap:6px; margin-left:auto; flex:none; }.room-player-return,.room-player-chat { display:inline-flex; align-items:center; gap:5px; position:relative; flex:none; border:1px solid rgba(45,212,191,.45); border-radius:8px; padding:6px 8px; color:#ccfbf1; background:rgba(13,148,136,.14); font:inherit; font-size:.65rem; font-weight:800; cursor:pointer; }.room-player-return i,.room-player-chat i { width:13px; height:13px; }.room-player-chat { border-color:rgba(96,165,250,.5); color:#dbeafe; background:rgba(37,99,235,.16); }.room-player-chat b { position:absolute; top:-7px; right:-7px; display:grid; min-width:16px; height:16px; place-items:center; border:2px solid #07101d; border-radius:999px; padding:0 3px; color:#fff; background:#ef4444; font-size:.56rem; line-height:1; }
 .room-chat-panel { position:absolute; z-index:50; top:72px; right:18px; width:min(330px,calc(100% - 30px)); max-height:calc(100% - 94px); display:grid; grid-template-rows:auto minmax(74px,150px) auto; border:1px solid rgba(45,212,191,.42); border-radius:16px; overflow:hidden; color:#e2e8f0; background:rgba(8,15,29,.96); box-shadow:0 18px 50px rgba(0,0,0,.46); }.room-chat-panel.hidden { display:none; }.room-chat-panel header { display:flex; justify-content:space-between; align-items:center; padding:11px 13px; border-bottom:1px solid rgba(148,163,184,.17); }.room-chat-panel header button { border:0; color:#94a3b8; background:transparent; font-size:1.4rem; cursor:pointer; }.room-chat-messages { display:flex; flex-direction:column; gap:7px; overflow:auto; padding:11px; }.room-chat-messages p { color:#94a3b8; font-size:.72rem; text-align:center; }.room-chat-message { display:grid; gap:2px; align-self:flex-start; max-width:86%; padding:7px 9px; border-radius:10px 10px 10px 2px; background:#1e293b; font-size:.74rem; }.room-chat-message.mine { align-self:flex-end; border-radius:10px 10px 2px 10px; background:#115e59; }.room-chat-message strong { color:#99f6e4; font-size:.64rem; }.room-chat-panel form { display:flex; gap:7px; padding:10px; border-top:1px solid rgba(148,163,184,.17); }.room-chat-panel input { min-width:0; flex:1; border:1px solid #334155; border-radius:8px; padding:8px; color:#f8fafc; background:#0f172a; font:inherit; font-size:.75rem; }.room-chat-panel form button { border:0; border-radius:8px; padding:0 10px; color:#fff; background:#0d9488; font:inherit; font-size:.72rem; font-weight:800; cursor:pointer; }
 @media (max-width:620px) { .room-player-hud { gap:6px; }.room-player-hud > div:nth-child(2) { min-width:0; }.room-player-hud > div:nth-child(2) small#room-player-source { display:none; }.room-player-actions { gap:4px; }.room-player-return,.room-player-chat { padding:6px; }.room-player-return span,.room-chat-label { display:none; }.room-player-return i,.room-player-chat i { width:16px; height:16px; }.room-chat-panel { top:58px; right:10px; width:calc(100% - 20px); max-height:calc(100% - 70px); grid-template-rows:auto minmax(70px,130px) auto; } }
+
+/* First-run product tour */
+.product-tour-overlay { position:fixed; inset:0; z-index:100500; display:grid; place-items:center; padding:20px; color:#f8fafc; background:rgba(2,6,15,.84); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); animation:productTourIn .2s ease-out; }
+.product-tour-overlay.is-leaving { animation:productTourOut .18s ease-in forwards; }
+.product-tour-card { position:relative; width:min(100%,490px); padding:32px; border:1px solid rgba(251,191,36,.36); border-radius:24px; background:linear-gradient(145deg,#101a2c,#080d18 72%); box-shadow:0 28px 80px rgba(0,0,0,.58),0 0 46px rgba(245,158,11,.12); }
+.product-tour-skip { position:absolute; top:14px; right:14px; display:inline-flex; align-items:center; gap:4px; border:0; padding:7px 8px; border-radius:8px; color:#94a3b8; background:transparent; font:inherit; font-size:.73rem; font-weight:800; cursor:pointer; }.product-tour-skip:hover { color:#fff; background:rgba(255,255,255,.07); }.product-tour-skip svg { width:14px; height:14px; }
+.product-tour-icon { display:grid; width:52px; height:52px; place-items:center; margin-bottom:18px; border:1px solid rgba(251,191,36,.45); border-radius:16px; color:#fbbf24; background:rgba(245,158,11,.13); box-shadow:0 0 26px rgba(245,158,11,.14); }.product-tour-icon svg { width:26px; height:26px; }
+.product-tour-eyebrow { margin:0 0 7px; color:#fbbf24; font-size:.68rem; font-weight:900; letter-spacing:.16em; text-transform:uppercase; }.product-tour-card h2 { margin:0; color:#fff; font-size:1.55rem; line-height:1.13; }.product-tour-text { margin:14px 0 0; color:#cbd5e1; font-size:.94rem; line-height:1.65; }.product-tour-hint { display:flex; gap:8px; margin-top:18px; padding:11px 12px; border:1px solid rgba(56,189,248,.23); border-radius:12px; color:#bae6fd; background:rgba(14,116,144,.13); font-size:.78rem; line-height:1.45; }.product-tour-hint svg { width:16px; height:16px; flex:none; color:#38bdf8; }
+.product-tour-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:25px; }.product-tour-progress { display:flex; gap:6px; }.product-tour-progress span { width:7px; height:7px; border-radius:99px; background:#334155; transition:width .18s ease,background .18s ease; }.product-tour-progress .is-active { width:22px; background:#fbbf24; }.product-tour-actions { display:flex; gap:8px; }.product-tour-actions button { display:inline-flex; align-items:center; gap:6px; border-radius:10px; padding:10px 13px; font:inherit; font-size:.78rem; font-weight:900; cursor:pointer; }.product-tour-back { border:1px solid rgba(148,163,184,.34); color:#cbd5e1; background:transparent; }.product-tour-next { border:1px solid #fbbf24; color:#111827; background:#fbbf24; }.product-tour-next svg { width:15px; height:15px; }
+@keyframes productTourIn { from { opacity:0; transform:scale(.98); } to { opacity:1; transform:scale(1); } } @keyframes productTourOut { to { opacity:0; } }
+@media (max-width:560px) { .product-tour-overlay { align-items:end; padding:12px; padding-bottom:max(12px,env(safe-area-inset-bottom)); }.product-tour-card { padding:25px 20px 19px; border-radius:20px; }.product-tour-card h2 { font-size:1.3rem; }.product-tour-text { font-size:.87rem; line-height:1.55; }.product-tour-footer { align-items:flex-start; flex-direction:column; }.product-tour-actions { width:100%; }.product-tour-actions button { justify-content:center; flex:1; }.product-tour-hint { margin-top:14px; } }
