@@ -1041,7 +1041,13 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', setCookies.filter(Boolean));
     }
 
-    const contentType = upstreamRes.headers.get('content-type') || 'text/html';
+    const upstreamContentType = upstreamRes.headers.get('content-type') || '';
+    // The SWX CDN returns MKV files as application/octet-stream. Our proxy
+    // URL has no file extension, so browsers otherwise cannot identify the
+    // media container and leave the <video> element stuck at metadata.
+    const contentType = /\.mkv(?:$|[?#])/i.test(targetUrl)
+      ? 'video/x-matroska'
+      : (upstreamContentType || 'text/html');
     res.setHeader('Content-Type', contentType);
 
     if (pathname.startsWith('/api/proxy')) {
