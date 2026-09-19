@@ -12231,8 +12231,33 @@ video::cue {
 /* Keep the skip action and room chat in separate touch zones on phones. */
 @media (max-width:620px) {
   .room-chat-panel {
+    top: auto;
     bottom: 124px;
-    max-height: calc(100% - 182px);
+    height: min(292px, calc(100% - 182px));
+    max-height: min(292px, calc(100% - 182px));
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .room-chat-panel header {
+    padding: 9px 11px;
+  }
+  .room-chat-messages {
+    min-height: 0;
+    padding: 9px 11px;
+  }
+  .room-chat-panel form {
+    align-items: center;
+    padding: 8px 10px;
+  }
+  .room-chat-panel input,
+  .room-chat-panel form button {
+    height: 38px;
+  }
+  .room-chat-panel input {
+    padding: 7px 9px;
+  }
+  .room-chat-panel form button {
+    flex: none;
+    padding: 0 11px;
   }
   .custom-skip-intro-btn {
     right: auto;
