@@ -17,6 +17,7 @@ const TRACKERS = [
 ];
 
 const MAX_RECENT_MESSAGES = 160;
+const ROOM_OWNER_KEY_PREFIX = 'cinepulse.decision-room.owner.';
 
 function randomHex(byteLength = 12) {
   const bytes = new Uint8Array(byteLength);
@@ -39,6 +40,18 @@ export function createRoomCode() {
   const value = new Uint32Array(1);
   crypto.getRandomValues(value);
   return String(100000 + (value[0] % 900000));
+}
+
+export function rememberRoomOwner(roomCode) {
+  const safeCode = safeRoomCode(roomCode);
+  if (!safeCode) return;
+  try { sessionStorage.setItem(`${ROOM_OWNER_KEY_PREFIX}${safeCode}`, '1'); } catch (_) {}
+}
+
+export function isRememberedRoomOwner(roomCode) {
+  const safeCode = safeRoomCode(roomCode);
+  if (!safeCode) return false;
+  try { return sessionStorage.getItem(`${ROOM_OWNER_KEY_PREFIX}${safeCode}`) === '1'; } catch (_) { return false; }
 }
 
 export function getRoomCodeFromUrl() {
@@ -77,6 +90,7 @@ export class AnonymousDecisionRoom {
     this.selfId = randomHex(10);
     this.client = null;
     this.peers = new Map();
+    this.peerParticipantIds = new WeakMap();
     this.trackerPeerCount = 1;
     this.announceTimer = null;
     this.participants = new Map([[this.selfId, {
@@ -174,6 +188,12 @@ export class AnonymousDecisionRoom {
     const onData = data => this.receive(data, peer);
     const onClose = () => {
       this.peers.delete(peerKey);
+      const participantId = this.peerParticipantIds.get(peer);
+      if (participantId) {
+        const hasAnotherConnection = Array.from(this.peers.values())
+          .some(connectedPeer => this.peerParticipantIds.get(connectedPeer) === participantId);
+        if (!hasAnotherConnection) this.participants.delete(participantId);
+      }
       this.emit();
     };
     const onError = () => onClose();
@@ -220,27 +240,35 @@ export class AnonymousDecisionRoom {
 
     if (message.type === 'hello' && message.participant?.id) {
       this.participants.set(message.participant.id, message.participant);
-      this.sendTo(sourcePeer, {
-        type: 'hello',
-        participant: {
-          id: this.selfId,
-          nickname: this.nickname,
-          role: this.isHost ? 'moderator' : 'participant'
-        }
-      });
+      this.peerParticipantIds.set(sourcePeer, message.participant.id);
+      // İlk "hello" karşılıklı olduğu için her hello'ya tekrar hello vermek,
+      // iki cihaz arasında sonsuz mesaj döngüsü oluşturuyordu. Bu hem mobilde
+      // kasmaya hem de bazı tarayıcılarda bağlantının kopmasına yol açıyordu.
       if (message.wantsState) {
         this.sendTo(sourcePeer, {
-          type: 'state',
-          cards: this.cards,
-          votes: this.votes,
-          ratings: this.ratings,
-          participants: Array.from(this.participants.values())
+          type: 'hello',
+          participant: {
+            id: this.selfId,
+            nickname: this.nickname,
+            role: this.isHost ? 'moderator' : 'participant'
+          }
         });
+        // Listeyi yalnız oda sahibi dağıtır. Katılımcının boş ilk durumu oda
+        // sahibinin adaylarını ezmemeli.
+        if (this.isHost) {
+          this.sendTo(sourcePeer, {
+            type: 'state',
+            cards: this.cards,
+            votes: this.votes,
+            ratings: this.ratings,
+            participants: Array.from(this.participants.values())
+          });
+        }
       }
       this.emit();
     }
 
-    if (message.type === 'state' && Array.isArray(message.cards)) {
+    if (message.type === 'state' && Array.isArray(message.cards) && !this.isHost) {
       this.cards = message.cards.slice(0, 12);
       this.votes = message.votes || {};
       this.ratings = message.ratings || {};
@@ -252,7 +280,7 @@ export class AnonymousDecisionRoom {
       this.emit();
     }
 
-    if (message.type === 'cards' && Array.isArray(message.cards)) {
+    if (message.type === 'cards' && Array.isArray(message.cards) && !this.isHost) {
       this.cards = message.cards.slice(0, 12);
       this.votes = message.votes || {};
       this.ratings = message.ratings || {};

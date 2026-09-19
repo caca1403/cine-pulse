@@ -6,6 +6,8 @@ import {
   createRoomCode,
   createAnonymousNickname,
   getRoomCodeFromUrl,
+  isRememberedRoomOwner,
+  rememberRoomOwner,
   removeRoomCodeFromUrl
 } from '../services/anonymousDecisionRoom.js';
 import { showToast } from './Toast.js';
@@ -207,6 +209,10 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), i
   }
   closeDecisionRoomModal(false);
   const joinedRoomCode = roomCode;
+  if (isHost) rememberRoomOwner(joinedRoomCode);
+  // Aynı cihazdaki moderatör sayfayı yenilese bile oda sahibi olarak kalır.
+  // Davet bağlantısıyla gelen başka bir cihaz bu işareti taşımaz.
+  const roomOwner = Boolean(isHost || isRememberedRoomOwner(joinedRoomCode));
   const nickname = createAnonymousNickname();
 
   const root = document.createElement('div');
@@ -215,7 +221,7 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), i
   document.body.appendChild(root);
   activeRoomModal = root;
 
-  if (isHost) {
+  if (roomOwner) {
     try { history.replaceState(history.state, '', buildRoomUrl(joinedRoomCode)); } catch (_) {}
   }
 
@@ -253,14 +259,14 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), i
     if (event.target === root) closeRoom();
   });
 
-  const room = new AnonymousDecisionRoom({ roomCode: joinedRoomCode, nickname, isHost });
+  const room = new AnonymousDecisionRoom({ roomCode: joinedRoomCode, nickname, isHost: roomOwner });
   activeRoom = room;
   unsubscribe = room.subscribe(state => renderRoomState(root, state));
   await room.connect();
   // Kullanıcı bağlantı kurulurken kapattıysa artık DOM'a ya da kapatılmış
   // odaya işlem yapma.
   if (activeRoom !== room || activeRoomModal !== root) return;
-  if (isHost) loadCandidates(room, root);
+  if (roomOwner) loadCandidates(room, root);
   setupModeratorContentSearch(root, room);
 
   root.querySelector('#btn-copy-decision-room').onclick = async () => {
