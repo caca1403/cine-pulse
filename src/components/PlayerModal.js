@@ -368,6 +368,89 @@ export async function openPlayerModal({
     return srv.streamUrl || srv.url || srv.originalEmbedUrl || '';
   }
 
+  // Oda üyeleri aynı yayın hattını kullanır. URL'yi paylaşmıyoruz: bazı
+  // sağlayıcılar kısa ömürlü veya cihaza bağlı adres üretebiliyor. Bunun yerine
+  // sağlayıcı kimliğini gönderip her tarayıcının kendi taramasından aynı hattı
+  // seçiyoruz.
+  let requiredRoomSource = null;
+  function getRoomSourceDescriptor(srv = activeServers[currentServerIndex]) {
+    if (!srv) return null;
+    return {
+      category: currentCategory,
+      id: String(srv.id || ''),
+      provider: String(srv.source || ''),
+      name: String(srv.displayName || srv.name || ''),
+      quality: String(srv.quality || '')
+    };
+  }
+
+  function sourceMatchesRoomDescriptor(srv, descriptor) {
+    if (!srv || !descriptor) return false;
+    const normalized = value => String(value || '').trim().toLocaleLowerCase('tr-TR');
+    const srvId = normalized(srv.id);
+    const targetId = normalized(descriptor.id);
+    if (srvId && targetId && srvId === targetId) return true;
+    const srvProvider = normalized(srv.source);
+    const targetProvider = normalized(descriptor.provider);
+    const srvName = normalized(srv.displayName || srv.name);
+    const targetName = normalized(descriptor.name);
+    return Boolean(
+      srvProvider && targetProvider && srvProvider === targetProvider
+      && (!targetName || srvName === targetName)
+    ) || Boolean(srvName && targetName && srvName === targetName);
+  }
+
+  function broadcastRoomSource() {
+    const source = getRoomSourceDescriptor();
+    if (!roomSync?.roomCode || !source) return;
+    const video = modalContainer.querySelector('#hls-video-player');
+    window.dispatchEvent(new CustomEvent('cinepulse:player-sync', {
+      detail: {
+        roomCode: roomSync.roomCode,
+        mediaId: roomSync.mediaId,
+        type: roomSync.type,
+        season: currentSeason,
+        episode: currentEpisode,
+        action: 'source',
+        source,
+        time: Number.isFinite(video?.currentTime) ? video.currentTime : 0,
+        playing: Boolean(video && !video.paused)
+      }
+    }));
+  }
+
+  function applyRequiredRoomSource() {
+    if (!roomSync || !requiredRoomSource) return false;
+    const categories = [requiredRoomSource.category, 'dubbed', 'subtitled']
+      .filter((category, index, all) => (category === 'dubbed' || category === 'subtitled') && all.indexOf(category) === index);
+    for (const category of categories) {
+      const servers = categorizedServers[category] || [];
+      const index = servers.findIndex(server => sourceMatchesRoomDescriptor(server, requiredRoomSource));
+      if (index < 0) continue;
+      const hasChanged = currentCategory !== category
+        || activeServers[currentServerIndex] !== servers[index];
+      currentCategory = category;
+      activeServers = servers;
+      currentServerIndex = index;
+      hasPlayerStartedPlaying = true;
+      document.getElementById('tab-dubbed')?.classList.toggle('active', category === 'dubbed');
+      document.getElementById('tab-subtitled')?.classList.toggle('active', category === 'subtitled');
+      updateServerPillsEvents();
+      updateActiveSourceLabel();
+      renderSourcesPopoverList();
+      if (hasChanged) updatePlayerContainer();
+      return hasChanged;
+    }
+    return false;
+  }
+
+  function hasRequiredRoomSource() {
+    if (!requiredRoomSource) return false;
+    return ['dubbed', 'subtitled'].some(category =>
+      (categorizedServers[category] || []).some(server => sourceMatchesRoomDescriptor(server, requiredRoomSource))
+    );
+  }
+
   function updateHeroMetaUI() {
     const genresEl = document.getElementById('dizisol-genre-chips');
     if (genresEl && Array.isArray(mediaGenres) && mediaGenres.length > 0) {
@@ -571,6 +654,7 @@ export async function openPlayerModal({
     if (isSourcesPopoverOpen) {
       renderSourcesPopoverList();
     }
+    if (roomSync) renderRoomPlayerHud();
   }
 
   function updateCategoryCounts() {
@@ -1387,7 +1471,7 @@ export async function openPlayerModal({
     <div class="modal-content player-modal-content" id="cinema-modal-box">
       ${roomSync ? `<aside id="room-player-hud" class="room-player-hud" aria-live="polite">
         <span class="room-player-live-dot"></span>
-        <div><strong>Birlikte İzleme</strong><small id="room-player-status">Oda eşitleniyor…</small><small id="room-player-episode">${isSeries ? `S${currentSeason} · B${currentEpisode}` : 'Film'}</small></div>
+        <div><strong>Birlikte İzleme</strong><small id="room-player-status">Oda eşitleniyor…</small><small id="room-player-episode">${isSeries ? `S${currentSeason} · B${currentEpisode}` : 'Film'}</small><small id="room-player-source">Ortak kaynak aranıyor…</small></div>
         <div id="room-player-members" class="room-player-members"></div>
       </aside>` : ''}
       
@@ -1600,6 +1684,7 @@ export async function openPlayerModal({
     const status = modalContainer.querySelector('#room-player-status');
     const members = modalContainer.querySelector('#room-player-members');
     const episode = modalContainer.querySelector('#room-player-episode');
+    const source = modalContainer.querySelector('#room-player-source');
     if (status) status.textContent = presence.isHost
       ? `${presence.participants.length} kişi bağlı · Kontrol sende`
       : `${presence.participants.length} kişi bağlı · Moderatör eşitliyor`;
@@ -1609,6 +1694,10 @@ export async function openPlayerModal({
         .join('');
     }
     if (episode) episode.textContent = isSeries ? `S${currentSeason} · B${currentEpisode}` : 'Film';
+    if (source) {
+      const descriptor = getRoomSourceDescriptor();
+      source.textContent = descriptor?.name ? `Ortak kaynak: ${descriptor.name}` : 'Ortak kaynak aranıyor…';
+    }
   };
   if (roomSync) {
     renderRoomPlayerHud();
@@ -2436,6 +2525,7 @@ export async function openPlayerModal({
           season: currentSeason,
           episode: currentEpisode,
           action,
+          source: getRoomSourceDescriptor(),
           time: videoEl.currentTime || 0,
           playing: !videoEl.paused
         }
@@ -2444,6 +2534,10 @@ export async function openPlayerModal({
     playbackScope.on(window, 'cinepulse:player-sync-remote', event => {
       const sync = event.detail;
       if (!roomSync || !sync || sync.roomCode !== roomSync.roomCode || String(sync.mediaId) !== String(roomSync.mediaId) || sync.type !== roomSync.type) return;
+      if (sync.source) {
+        requiredRoomSource = sync.source;
+        applyRequiredRoomSource();
+      }
       applyingRoomSync = true;
       const finish = () => { applyingRoomSync = false; };
       if (sync.type === 'tv' && (Number(sync.season) !== currentSeason || Number(sync.episode) !== currentEpisode)) {
@@ -3703,6 +3797,10 @@ export async function openPlayerModal({
     // Note: DiziBal streams are now resolved server-side in dizibalScraper.js
     // No client-side resolveDirectStream needed here
 
+    // İlk seçilen hat, kullanıcı el ile kaynak değiştirdiğinde ve otomatik
+    // failover sonrasında moderatör tarafından diğer odaya bildirilir.
+    broadcastRoomSource();
+
     wrapper.innerHTML = renderPlayerContent();
     renderPlayerIcons(wrapper);
 
@@ -4219,6 +4317,23 @@ export async function openPlayerModal({
         categorizedServers = { dubbed, subtitled };
         updateCategoryCounts();
         isDiscoveryActive = !isComplete;
+
+        // Katılımcı, moderatörün hattı kendi taramasında görünene kadar
+        // yerel öncelik sırasından başka bir sunucuyu başlatmaz. Eşleşen
+        // sağlayıcı görünür görünmez aynı kategori ve kaynak seçilir.
+        if (requiredRoomSource) {
+          const sourceChanged = applyRequiredRoomSource();
+          if (sourceChanged) return;
+          if (!hasRequiredRoomSource()) {
+            if (isComplete) {
+              isSearching = false;
+              updateServerPillsEvents();
+              updateActiveSourceLabel();
+              showInPlayerError(`${requiredRoomSource.name || 'Moderatörün seçtiği kaynak'} bu cihazda bulunamadı`);
+            }
+            return;
+          }
+        }
 
         // One-time non-intrusive alert if user is watching subtitled and a dubbed stream is discovered
         if (currentCategory === 'subtitled' && isDubbedStream && newStream && !hasShownDubbedAlert && hasPlayerStartedPlaying) {
