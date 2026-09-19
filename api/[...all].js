@@ -384,7 +384,13 @@ export default async function handler(req, res) {
           }
 
           const childRef = fullLineUrl.includes('dizisol.com') ? 'https://dizisol.com/' : (fullLineUrl.includes('ag2m4') || fullLineUrl.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : ref);
-          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(childRef)}`;
+          // Version the HDF transport cache key after correcting its MIME type;
+          // otherwise CDN-cached image/png responses linger for a full day.
+          const hdfTransportVersion = /\.cfd\/hdfilm\//i.test(fullLineUrl)
+            && /\.(?:png|jpg)(?:$|\?)/i.test(fullLineUrl)
+            ? '&hdf_ts=2'
+            : '';
+          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(childRef)}${hdfTransportVersion}`;
         }).join('\n');
 
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
