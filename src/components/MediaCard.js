@@ -398,8 +398,8 @@ export function attachMediaCardEvents(container) {
           </iframe>
           <div class="card-preview-cinematic-shade"></div>
           <span class="card-preview-badge">FRAGMAN</span>
-          ${isTouchDevice ? '<button class="card-preview-close-btn" type="button" aria-label="Kapat"><i data-lucide="x"></i></button>' : ''}
         </div>
+        <button class="card-preview-close-btn" type="button" aria-label="Fragmanı kapat" title="Fragmanı kapat"><i data-lucide="x"></i></button>
         <div class="card-preview-details">
           <div class="card-preview-copy">
             <strong class="card-preview-title">${escapePreviewText(title)}</strong>
