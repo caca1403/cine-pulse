@@ -4,6 +4,8 @@
    Bypasses Cloudflare & SAMEORIGIN without 403 Forbidden errors
    ========================================================================== */
 
+import { apiUrl } from './apiOrigin.js';
+
 export async function fetchHdfilmcehennemiSources({
   type = 'movie',
   tmdbId = null,
@@ -23,11 +25,9 @@ export async function fetchHdfilmcehennemiSources({
   try {
     const searchTitle = cleanTitle(query);
     const searchOriginal = cleanTitle(originalTitle);
-    const origin = (typeof window !== 'undefined' && window.location?.origin) ? '' : 'http://localhost:4000';
-
-    const apiUrl = `${origin}/api/hdfc_stream?query=${encodeURIComponent(searchTitle)}&originalTitle=${encodeURIComponent(searchOriginal)}&tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&season=${sNum}&episode=${epNum}&type=${type || (isMovie ? 'movie' : 'tv')}`;
+    const endpoint = apiUrl(`/api/hdfc_stream?query=${encodeURIComponent(searchTitle)}&originalTitle=${encodeURIComponent(searchOriginal)}&tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&season=${sNum}&episode=${epNum}&type=${type || (isMovie ? 'movie' : 'tv')}`);
     
-    const res = await fetch(apiUrl, {
+    const res = await fetch(endpoint, {
       signal: AbortSignal.timeout(22000)
     }).catch(() => null);
 
@@ -67,8 +67,8 @@ export async function fetchHdfilmcehennemiSources({
       displayName: 'HDFilmCehennemi (1080p)',
       badge: '🔥 HDFC 1080p HLS',
       source: 'HDFilmCehennemi',
-      url: data.streamUrl,
-      streamUrl: data.streamUrl,
+      url: apiUrl(data.streamUrl),
+      streamUrl: apiUrl(data.streamUrl),
       rawStreamUrl: data.rawStreamUrl,
       movieUrl: data.movieUrl,
       quality: '1080p HD',
@@ -77,7 +77,7 @@ export async function fetchHdfilmcehennemiSources({
       category: 'subtitled',
       type: 'direct',
       subtitles: subs,
-      getUrl: () => data.streamUrl
+      getUrl: () => apiUrl(data.streamUrl)
     });
 
     return sources;

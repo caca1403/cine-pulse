@@ -143,7 +143,7 @@ def resolve_hdfc_stream(title, original_title='', season=1, episode=1, is_tv=Fal
 
     for query in clean_cands:
         try:
-            search_url = f"{BASE_URL}/search?q={urllib.parse.quote(query)}"
+            search_url = f"{BASE_URL}/search/?q={urllib.parse.quote(query)}"
             headers = {
                 'User-Agent': FULL_UA,
                 'Referer': f"{BASE_URL}/",
@@ -265,7 +265,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', '*')
-        self.send_header('Cache-Control', 'public, max-age=3600')
+        self.send_header('Cache-Control', 'public, max-age=900' if result.get('success') else 'no-store')
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)

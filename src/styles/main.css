@@ -3145,6 +3145,24 @@ img {
   box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
 }
 
+.tab-source-count {
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.67rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cinema-tab-btn.active .tab-source-count {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 /* VIP Server Strip with Fluid Scroll & Touch Drag */
 .server-toolbar {
   display: flex;

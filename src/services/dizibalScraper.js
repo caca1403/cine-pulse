@@ -6,12 +6,12 @@
    ========================================================================== */
 
 import { isStrictMediaTitleMatch } from './mediaMatcher.js';
+import { apiUrl } from './apiOrigin.js';
 
 // Server-side AlphaStream extractor - no CORS issues
 async function resolveAlphaStreamViaApi(srcCode) {
   try {
-    const baseUrl = typeof window !== 'undefined' ? '' : 'http://127.0.0.1:4000';
-    const res = await fetch(`${baseUrl}/api/dzb_stream?code=${encodeURIComponent(srcCode)}`, {
+    const res = await fetch(apiUrl(`/api/dzb_stream?code=${encodeURIComponent(srcCode)}`), {
       signal: AbortSignal.timeout(8000)
     });
     if (!res.ok) return null;
@@ -196,7 +196,7 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
     const directStream = await resolveAlphaStreamViaApi(srcCode);
 
     if (directStream && directStream.streamUrl) {
-      const finalStreamUrl = directStream.streamUrl;
+      const finalStreamUrl = apiUrl(directStream.streamUrl);
       const subs = Array.isArray(directStream.subtitles) ? directStream.subtitles.map(s => ({
         label: s.label || 'Türkçe',
         srclang: s.srclang || 'tr',

@@ -7,6 +7,7 @@
    ========================================================================== */
 
 import { isStrictMediaTitleMatch } from './mediaMatcher.js';
+import { apiUrl } from './apiOrigin.js';
 
 const SINEWIX_API_BASE = 'https://ydfvfdizipanel.ru/public/api';
 const SINEWIX_TOKEN = '9iQNC5HQwPlaFuJDkhncJ5XTJ8feGXOJatAA';
@@ -49,7 +50,7 @@ async function performSinewixRequest(endpoint) {
 
   // 1. Try Local Vite / Vercel Serverless Proxy (/api/snx)
   try {
-    const vercelProxyUrl = `/api/snx?path=${encodeURIComponent(cleanEndpoint)}`;
+    const vercelProxyUrl = apiUrl(`/api/snx?path=${encodeURIComponent(cleanEndpoint)}`);
     const res = await fetch(vercelProxyUrl, {
       signal: AbortSignal.timeout(6000)
     }).catch(() => null);
@@ -199,7 +200,7 @@ export async function fetchSinewixSources({
 
       // Use high-speed proxy with HTTP Range & CORS support for instant video startup
       const proxiedLink = ((isDirect || isMkv || isHls) && rawLink.startsWith('http'))
-        ? `/api/hls_proxy?url=${encodeURIComponent(rawLink)}`
+        ? apiUrl(`/api/hls_proxy?url=${encodeURIComponent(rawLink)}`)
         : rawLink;
 
       const serverTitle = isDirect ? (isMkv ? 'SWX 1080p (MKV)' : 'SWX 1080p Direct') : 'SWX VIP 1080p';

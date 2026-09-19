@@ -61,10 +61,12 @@ export async function openPlayerModal({
   activeModalClose?.();
   let closed = false;
   let discoveryGeneration = 0;
+  let playbackGeneration = 0;
   let playbackScope = createPlayerScope();
   const modalScope = createPlayerScope();
   const { setTimeout, clearTimeout, setInterval, clearInterval } = modalScope;
   function disposePlayback() {
+    playbackGeneration++;
     const video = modalContainer.querySelector('#hls-video-player');
     video?._persistProgress?.(true);
     playbackScope.dispose();
@@ -568,6 +570,13 @@ export async function openPlayerModal({
     if (isSourcesPopoverOpen) {
       renderSourcesPopoverList();
     }
+  }
+
+  function updateCategoryCounts() {
+    const dubCount = document.getElementById('tab-dubbed-count');
+    const subCount = document.getElementById('tab-subtitled-count');
+    if (dubCount) dubCount.textContent = String(categorizedServers.dubbed?.length || 0);
+    if (subCount) subCount.textContent = String(categorizedServers.subtitled?.length || 0);
   }
 
   function toggleSourcesPopover(forceState) {
@@ -1395,10 +1404,12 @@ export async function openPlayerModal({
           <button id="tab-dubbed" class="cinema-tab-btn ${currentCategory === 'dubbed' ? 'active' : ''}">
             <span class="tab-flag">🇹🇷</span>
             <span>Dublaj</span>
+            <span class="tab-source-count" id="tab-dubbed-count">0</span>
           </button>
           <button id="tab-subtitled" class="cinema-tab-btn ${currentCategory === 'subtitled' ? 'active' : ''}">
             <span class="tab-flag">💬</span>
             <span>Altyazılı</span>
+            <span class="tab-source-count" id="tab-subtitled-count">0</span>
           </button>
         </div>
 
@@ -3602,6 +3613,7 @@ export async function openPlayerModal({
   async function updatePlayerContainer() {
     if (closed) return;
     disposePlayback();
+    const playbackRun = playbackGeneration;
     const wrapper = document.getElementById('player-iframe-wrapper');
     if (!wrapper) return;
 
@@ -3754,6 +3766,7 @@ export async function openPlayerModal({
           let networkErrorCount = 0;
           let mediaErrorCount = 0;
           hls.on(Hls.Events.ERROR, (event, data) => {
+            if (closed || playbackRun !== playbackGeneration || activeHlsInstance !== hls) return;
             if (data.fatal) {
               if (data.response && data.response.code >= 400) {
                 try { hls.destroy(); } catch (_) {}
@@ -3818,6 +3831,7 @@ export async function openPlayerModal({
           playbackScope.on(videoEl, 'canplay', startIosPlayback, { once: true });
           startIosPlayback();
           playbackScope.on(videoEl, 'error', () => {
+            if (closed || playbackRun !== playbackGeneration) return;
             triggerAutoFailover('iOS Oynatıcı Hatası');
           });
         } else {
@@ -3847,6 +3861,7 @@ export async function openPlayerModal({
           startDirectPlayback();
 
           playbackScope.on(videoEl, 'error', () => {
+            if (closed || playbackRun !== playbackGeneration) return;
             triggerAutoFailover('Video Oynatma Hatası');
           });
         }
@@ -4107,6 +4122,7 @@ export async function openPlayerModal({
       onUpdate: ({ dubbed = [], subtitled = [], isComplete = false, newStream = null, isDubbedStream = false }) => {
         if (closed || generation !== discoveryGeneration) return;
         categorizedServers = { dubbed, subtitled };
+        updateCategoryCounts();
         isDiscoveryActive = !isComplete;
 
         // One-time non-intrusive alert if user is watching subtitled and a dubbed stream is discovered
@@ -4163,8 +4179,8 @@ export async function openPlayerModal({
         }
 
         // While playing or waiting: update activeServers for currentCategory
-        activeServers = categorizedServers[currentCategory] || [];
         const currentPlayingSrv = activeServers[currentServerIndex];
+        activeServers = categorizedServers[currentCategory] || [];
         if (currentPlayingSrv && hasPlayerStartedPlaying) {
           const reIndex = activeServers.findIndex(s => (s.id && s.id === currentPlayingSrv.id) || (s.url && s.url === currentPlayingSrv.url));
           if (reIndex !== -1) {
