@@ -223,11 +223,8 @@ setTimeout(async () => {
   try {
     // Do this small URL check before importing the WebRTC code. It keeps the
     // room transport out of every normal page load.
-    const roomCode = String(new URL(window.location.href).searchParams.get('oda') || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '')
-      .slice(0, 18);
-    if (!roomCode) return;
+    const roomCode = String(new URL(window.location.href).searchParams.get('oda') || '').replace(/\D/g, '');
+    if (!/^\d{6}$/.test(roomCode)) return;
     const { openDecisionRoomModal } = await import('./components/DecisionRoomModal.js');
     openDecisionRoomModal({ roomCode });
   } catch (_) {}

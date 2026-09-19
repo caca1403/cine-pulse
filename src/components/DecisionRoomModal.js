@@ -14,6 +14,42 @@ let activeRoomModal = null;
 let activeRoom = null;
 let unsubscribe = null;
 
+function createLobby() {
+  closeDecisionRoomModal(false);
+  const root = document.createElement('div');
+  root.className = 'decision-room-backdrop';
+  document.body.appendChild(root);
+  activeRoomModal = root;
+  root.innerHTML = `
+    <section class="decision-room-lobby" role="dialog" aria-modal="true" aria-label="Birlikte Seç">
+      <button id="btn-close-decision-room" class="decision-room-close" aria-label="Kapat"><i data-lucide="x"></i></button>
+      <div class="decision-room-icon"><i data-lucide="users-round"></i></div>
+      <h2>Birlikte Seç</h2>
+      <p>Arkadaşlarınla aynı adaylara oy verin, herkesin istediği içeriği birlikte açın.</p>
+      <button id="btn-create-decision-room" class="decision-room-create"><i data-lucide="plus"></i> Yeni Oda Oluştur</button>
+      <div class="decision-room-join">
+        <label for="decision-room-code-input">Oda kodun var mı?</label>
+        <div><input id="decision-room-code-input" inputmode="numeric" maxlength="6" placeholder="6 haneli kod" autocomplete="one-time-code" /><button id="btn-join-decision-room">Katıl</button></div>
+      </div>
+    </section>`;
+  root.querySelector('#btn-close-decision-room').onclick = () => closeDecisionRoomModal(false);
+  root.addEventListener('click', event => { if (event.target === root) closeDecisionRoomModal(false); });
+  root.querySelector('#btn-create-decision-room').onclick = () => openDecisionRoomModal({ roomCode: createRoomCode(), isHost: true });
+  const join = () => {
+    const input = root.querySelector('#decision-room-code-input');
+    const roomCode = String(input?.value || '').replace(/\D/g, '').slice(0, 6);
+    if (roomCode.length !== 6) {
+      input?.focus();
+      showToast('6 haneli oda kodunu yaz.', 'warning');
+      return;
+    }
+    openDecisionRoomModal({ roomCode, isHost: false });
+  };
+  root.querySelector('#btn-join-decision-room').onclick = join;
+  root.querySelector('#decision-room-code-input').onkeydown = event => { if (event.key === 'Enter') join(); };
+  renderIcons(root);
+}
+
 function escapeHtml(value = '') {
   const node = document.createElement('div');
   node.textContent = String(value);
@@ -97,10 +133,13 @@ async function loadCandidates(room, root) {
   }
 }
 
-export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl() } = {}) {
+export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), isHost = false } = {}) {
+  if (!roomCode) {
+    createLobby();
+    return;
+  }
   closeDecisionRoomModal(false);
-  const joinedRoomCode = roomCode || createRoomCode();
-  const isHost = !roomCode;
+  const joinedRoomCode = roomCode;
   const nickname = createAnonymousNickname();
 
   const root = document.createElement('div');
@@ -118,17 +157,18 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl() } 
       <button id="btn-close-decision-room" class="decision-room-close" aria-label="Kapat"><i data-lucide="x"></i></button>
       <header class="decision-room-header">
         <div class="decision-room-icon"><i data-lucide="users-round"></i></div>
-        <div><h2>Ortak Karar Odası</h2><p>Hesapsız, anonim ve geçici ortak izleme seçimi.</p></div>
+        <div><h2>Birlikte Seç</h2><p>Herkesin istediği içeriği birlikte bulun.</p></div>
       </header>
-      <div class="decision-room-privacy"><i data-lucide="shield-check"></i><span>Oda verileri kaydedilmez. Oylar yalnızca açık odadaki kişiler arasında iletilir.</span></div>
-      <div class="decision-room-share">
-        <label for="decision-room-link">Arkadaşına gönder</label>
-        <div><input id="decision-room-link" readonly /><button id="btn-copy-decision-room"><i data-lucide="copy"></i> Kopyala</button></div>
+      <div class="decision-room-code-panel">
+        <span>ODA KODU</span>
+        <strong id="decision-room-code">${escapeHtml(joinedRoomCode)}</strong>
+        <button id="btn-copy-decision-room"><i data-lucide="copy"></i> Kodu Kopyala</button>
+        <small>Arkadaşın “Birlikte Seç” ekranında bu kodu yazsın.</small>
       </div>
       <div class="decision-room-live"><span class="decision-room-live-dot"></span><span id="decision-room-status">Oda hazırlanıyor…</span></div>
       <div id="decision-room-peers" class="decision-room-peers"></div>
       <div id="decision-room-deck" class="decision-room-deck"></div>
-      <footer class="decision-room-footer"><span>Takma adın: <strong>${escapeHtml(nickname)}</strong></span><button id="btn-refresh-decision-cards"><i data-lucide="refresh-cw"></i> Yeni adaylar</button></footer>
+      <footer class="decision-room-footer"><span>Oda kapanınca oylar silinir.</span><button id="btn-refresh-decision-cards"><i data-lucide="refresh-cw"></i> Yeni adaylar</button></footer>
     </section>`;
 
   activeRoom = new AnonymousDecisionRoom({ roomCode: joinedRoomCode, nickname, isHost });
@@ -141,14 +181,18 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl() } 
     if (event.target === root) closeDecisionRoomModal(true);
   });
   root.querySelector('#btn-copy-decision-room').onclick = async () => {
-    const link = root.querySelector('#decision-room-link')?.value;
     try {
-      await navigator.clipboard.writeText(link);
-      showToast('Oda bağlantısı kopyalandı.', 'success');
+      await navigator.clipboard.writeText(joinedRoomCode);
+      showToast('Oda kodu kopyalandı.', 'success');
     } catch (_) {
-      root.querySelector('#decision-room-link')?.select();
+      const code = root.querySelector('#decision-room-code');
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(range);
       document.execCommand('copy');
-      showToast('Oda bağlantısı kopyalandı.', 'success');
+      window.getSelection()?.removeAllRanges();
+      showToast('Oda kodu kopyalandı.', 'success');
     }
   };
   root.querySelector('#btn-refresh-decision-cards').onclick = () => loadCandidates(activeRoom, root);

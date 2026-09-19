@@ -22,7 +22,8 @@ function randomHex(byteLength = 12) {
 }
 
 function safeRoomCode(value = '') {
-  return String(value).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 18);
+  const code = String(value).replace(/\D/g, '');
+  return code.length === 6 ? code : '';
 }
 
 async function roomInfoHash(roomCode) {
@@ -32,7 +33,9 @@ async function roomInfoHash(roomCode) {
 }
 
 export function createRoomCode() {
-  return randomHex(7);
+  const value = new Uint32Array(1);
+  crypto.getRandomValues(value);
+  return String(100000 + (value[0] % 900000));
 }
 
 export function getRoomCodeFromUrl() {
