@@ -4278,8 +4278,13 @@ export async function openPlayerModal({
     updateWatchedUI(isWatched);
     updateNavButtons();
     if (isSeries) {
+      // Keep all episode metadata in sync with the newly selected stream.
+      // Playback used to switch correctly while the badge, summary and
+      // quick-episode rail remained on the previous episode.
+      updateHeroMetaUI();
       renderDrawerContent();
       updateEpisodeOverview(newSeason, newEpisode);
+      renderQuickEpisodesRail();
     }
 
     startWatchProgressLoop();
