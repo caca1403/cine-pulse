@@ -3860,6 +3860,23 @@ export async function openPlayerModal({
           playbackScope.on(videoEl, 'canplay', startDirectPlayback, { once: true });
           startDirectPlayback();
 
+          // Chromium can accept an MKV response, expose its dimensions and still
+          // never decode a frame. Treat a source as playable only after its clock
+          // moves; otherwise the player would remain on a frozen first frame.
+          if (srv.isMkv) {
+            const expectedStartTime = initialTime > 0 ? initialTime : 0;
+            let hasAdvanced = false;
+            playbackScope.on(videoEl, 'timeupdate', () => {
+              if (videoEl.currentTime > expectedStartTime + 0.25) hasAdvanced = true;
+            });
+            playbackScope.setTimeout(() => {
+              if (closed || playbackRun !== playbackGeneration || hasAdvanced) return;
+              if (videoEl.currentTime <= expectedStartTime + 0.25) {
+                triggerAutoFailover('MKV akışı tarayıcıda çözümlenemedi');
+              }
+            }, 9000);
+          }
+
           playbackScope.on(videoEl, 'error', () => {
             if (closed || playbackRun !== playbackGeneration) return;
             triggerAutoFailover('Video Oynatma Hatası');
