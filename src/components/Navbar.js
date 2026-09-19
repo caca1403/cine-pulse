@@ -77,7 +77,7 @@ export function renderNavbar(currentView = 'home') {
             <i data-lucide="search"></i>
           </button>
           ${!activeProfile.isKid ? `
-          <button data-open-decision-room class="btn-action-icon mobile-only" aria-label="Birlikte Seç" title="Birlikte Seç">
+          <button data-open-decision-room class="btn-action-icon mobile-only btn-decision-room-mobile" aria-label="Birlikte Seç" title="Birlikte Seç">
             <i data-lucide="users-round"></i>
           </button>` : ''}
         </div>
