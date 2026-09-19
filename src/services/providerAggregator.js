@@ -32,7 +32,7 @@ import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 
 // Cache version
-const CACHE_VERSION = 'v30';
+const CACHE_VERSION = 'v31';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -123,16 +123,14 @@ function formatStreamName(s, category = '') {
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
-  if (id.startsWith('hdfc_alpha_')) {
-    return category === 'dubbed'
-      ? 'HDFC AlphaStream Yedek (TR Dublaj)'
-      : 'HDFC AlphaStream Yedek (TR Altyazı)';
-  }
   if (id.startsWith('hdfc_') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) {
     if (category === 'dubbed' || raw.includes('dub')) return 'HDFilmCehennemi Dublaj 1080p';
     return 'HDFilmCehennemi Altyazı 1080p';
   }
   if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dizibal') || raw.includes('dizipal') || raw.includes('dp')) {
+    if (raw.includes('player')) {
+      return category === 'dubbed' ? 'DP DiziBal Player (TR Dublaj)' : 'DP DiziBal Player (TR Altyazı)';
+    }
     if (category === 'dubbed' || raw.includes('dub')) return 'DP 1080p (TR Dublaj)';
     if (category === 'subtitled' || raw.includes('alt') || raw.includes('sub')) return 'DP 1080p (TR Altyazı)';
     return 'DP 1080p';
@@ -483,7 +481,7 @@ export async function getStreamingServersProgressive({
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // 3. DiziBal (DP 1080p AlphaStream direct HLS - Instant Dual TR Dub & Sub)
+    // 3. DiziBal's own AlphaStream player (avoids expiring direct-CDN URLs)
     (isMovie
       ? fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle })
       : fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode })
@@ -493,42 +491,21 @@ export async function getStreamingServersProgressive({
         addStreams([{
           ...s,
           id: `${s.id}_dub`,
-          name: isMovie ? 'DP 1080p (TR Dublaj)' : `DP 1080p Dublaj S${season}B${episode}`,
-          displayName: isMovie ? 'DP 1080p (TR Dublaj)' : `DP 1080p Dublaj (S${season}B${episode})`,
-          badge: '⚡ DP Dublaj',
+          name: isMovie ? 'DP DiziBal Player (TR Dublaj)' : `DP DiziBal Player Dublaj S${season}B${episode}`,
+          displayName: isMovie ? 'DP DiziBal Player (TR Dublaj)' : `DP DiziBal Player Dublaj (S${season}B${episode})`,
+          badge: '🌐 DiziBal Orijinal Player',
           category: 'dubbed'
         }], 'dubbed');
 
         addStreams([{
           ...s,
           id: `${s.id}_sub`,
-          name: isMovie ? 'DP 1080p (TR Altyazı)' : `DP 1080p Altyazı S${season}B${episode}`,
-          displayName: isMovie ? 'DP 1080p (TR Altyazı)' : `DP 1080p Altyazı (S${season}B${episode})`,
-          badge: '💬 DP Altyazı',
+          name: isMovie ? 'DP DiziBal Player (TR Altyazı)' : `DP DiziBal Player Altyazı S${season}B${episode}`,
+          displayName: isMovie ? 'DP DiziBal Player (TR Altyazı)' : `DP DiziBal Player Altyazı (S${season}B${episode})`,
+          badge: '🌐 DiziBal Orijinal Player',
           category: 'subtitled'
         }], 'subtitled');
 
-        // HDFC blocks common serverless egress ranges intermittently. Keep a
-        // clearly labelled AlphaStream mirror available so production never
-        // loses the HDFC slot or falls back to a broken player.
-        addStreams([{
-          ...s,
-          id: `hdfc_alpha_${s.id}_dub`,
-          name: 'HDFC AlphaStream Yedek (TR Dublaj)',
-          displayName: 'HDFC AlphaStream Yedek (TR Dublaj)',
-          badge: '🔥 HDFC • AlphaStream Yedek',
-          source: 'HDFC AlphaStream Mirror',
-          category: 'dubbed'
-        }], 'dubbed');
-        addStreams([{
-          ...s,
-          id: `hdfc_alpha_${s.id}_sub`,
-          name: 'HDFC AlphaStream Yedek (TR Altyazı)',
-          displayName: 'HDFC AlphaStream Yedek (TR Altyazı)',
-          badge: '🔥 HDFC • AlphaStream Yedek',
-          source: 'HDFC AlphaStream Mirror',
-          category: 'subtitled'
-        }], 'subtitled');
       }
     }).catch(() => []),
 
@@ -572,12 +549,19 @@ export async function getStreamingServersProgressive({
       : fetchDiziyoEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // 6. Diziyou (FastCDN 1080p HLS - Subtitled only)
+    // 6. Diziyou exposes one episode player. Keep it reachable from both tabs;
+    // the player itself owns the available audio/subtitle tracks.
     !isMovie
       ? fetchDiziyouSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => {
             if (Array.isArray(res) && res.length > 0) {
               addStreams(res, 'subtitled');
+              addStreams(res.map(s => ({
+                ...s,
+                id: `${s.id}_dub`,
+                name: (s.name || 'Diziyou').replace(/\s*\(TR Altyazı\)/i, ''),
+                category: 'dubbed'
+              })), 'dubbed');
             }
           }).catch(() => [])
       : Promise.resolve([]),

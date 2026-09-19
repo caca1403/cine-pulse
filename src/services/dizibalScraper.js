@@ -1,22 +1,20 @@
 /* ==========================================================================
    CinePulse Studio - DiziBal Scraper (Movies & TV Series Engine)
-   Extracts direct Alpha Stream HLS 1080p (.m3u8) streams and multi-language
-   subtitles from dizibal.org public REST API via server-side /api/dzb_stream.
-   (No browser-side fetch to x.ag2m4.cfd - avoids CORS completely)
+   Resolves DiziBal's own AlphaStream player through its public REST API.
    ========================================================================== */
 
 import { isStrictMediaTitleMatch } from './mediaMatcher.js';
-import { apiUrl } from './apiOrigin.js';
 
-// Server-side AlphaStream extractor - no CORS issues
-async function resolveAlphaStreamViaApi(srcCode) {
+// Use DiziBal's own player URL. Direct CDN links are short lived and reject
+// requests when the browser/CDN session no longer matches (the production 403).
+async function resolveDizibalPlayer(srcCode) {
   try {
-    const res = await fetch(apiUrl(`/api/dzb_stream?code=${encodeURIComponent(srcCode)}`), {
-      signal: AbortSignal.timeout(8000)
+    const res = await fetch(`https://dizibal.org/api/stream/embed?code=${encodeURIComponent(srcCode)}&autoplay=1`, {
+      signal: AbortSignal.timeout(6000)
     });
     if (!res.ok) return null;
     const json = await res.json().catch(() => null);
-    if (json && json.success && json.streamUrl) return json;
+    if (json?.success && json.embedUrl) return json.embedUrl;
     return null;
   } catch (_) {
     return null;
@@ -192,31 +190,20 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
 
     const srcCode = ep.src;
 
-    // Server-side AlphaStream extraction (CORS-free via /api/dzb_stream - instant & carries subtitles)
-    const directStream = await resolveAlphaStreamViaApi(srcCode);
-
-    if (directStream && directStream.streamUrl) {
-      const finalStreamUrl = apiUrl(directStream.streamUrl);
-      const subs = Array.isArray(directStream.subtitles) ? directStream.subtitles.map(s => ({
-        label: s.label || 'Türkçe',
-        srclang: s.srclang || 'tr',
-        src: s.src,
-        file: s.src,
-        kind: 'subtitles',
-        default: true
-      })) : [];
-
+    const playerUrl = await resolveDizibalPlayer(srcCode)
+      || `https://x.ag2m4.cfd/embed-${srcCode}.html?autoplay=1`;
+    if (playerUrl) {
       sources.push({
-        id: `dzb_direct_s${sNum}e${epNum}`,
-        name: isDub ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',
-        displayName: 'DP 1080p',
-        streamUrl: finalStreamUrl,
-        url: finalStreamUrl,
-        subtitles: subs,
-        isHls: true,
-        isDirectVideo: true,
+        id: `dzb_player_s${sNum}e${epNum}`,
+        name: isDub ? 'DP DiziBal Player (TR Dublaj)' : 'DP DiziBal Player (TR Altyazı)',
+        displayName: 'DP DiziBal Player',
+        streamUrl: playerUrl,
+        url: playerUrl,
+        subtitles: [],
+        isHls: false,
+        isDirectVideo: false,
         source: 'DP',
-        badge: isDub ? '⚡ DP Dublaj' : '💬 DP Altyazı'
+        badge: '🌐 DiziBal Orijinal Player'
       });
     }
   } catch (_) {}
@@ -271,31 +258,20 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
 
   const srcCode = matchedMovie.src;
 
-  // Server-side AlphaStream extraction (CORS-free via /api/dzb_stream - instant & carries subtitles)
-  const directStream = await resolveAlphaStreamViaApi(srcCode);
-
-  if (directStream && directStream.streamUrl) {
-    const finalStreamUrl = directStream.streamUrl;
-    const subs = Array.isArray(directStream.subtitles) ? directStream.subtitles.map(s => ({
-      label: s.label || 'Türkçe',
-      srclang: s.srclang || 'tr',
-      src: s.src,
-      file: s.src,
-      kind: 'subtitles',
-      default: true
-    })) : [];
-
+  const playerUrl = await resolveDizibalPlayer(srcCode)
+    || `https://x.ag2m4.cfd/embed-${srcCode}.html?autoplay=1`;
+  if (playerUrl) {
     sources.push({
-      id: 'dzb_direct_movie',
-      name: isDub ? 'DP 1080p (TR Dublaj)' : 'DP 1080p (TR Altyazı)',
-      displayName: 'DP 1080p',
-      streamUrl: finalStreamUrl,
-      url: finalStreamUrl,
-      subtitles: subs,
-      isHls: true,
-      isDirectVideo: true,
+      id: 'dzb_player_movie',
+      name: isDub ? 'DP DiziBal Player (TR Dublaj)' : 'DP DiziBal Player (TR Altyazı)',
+      displayName: 'DP DiziBal Player',
+      streamUrl: playerUrl,
+      url: playerUrl,
+      subtitles: [],
+      isHls: false,
+      isDirectVideo: false,
       source: 'DP',
-      badge: isDub ? '⚡ DP Dublaj' : '💬 DP Altyazı'
+      badge: '🌐 DiziBal Orijinal Player'
     });
   }
 
