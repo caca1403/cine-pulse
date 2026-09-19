@@ -38,10 +38,8 @@ function epgDevPlugin() {
 export default defineConfig({
   plugins: [epgDevPlugin()],
   // bittorrent-tracker'ın tarayıcı istemcisi, Node ortamını ayırt etmek için
-  // process.browser okur. Vite 5 bu eski globali otomatik eklemediği için
-  // üretimde oda bağlantısı daha kurulmadan hata veriyordu.
+  // global nesneleri kullanır. Vite 5 bunları otomatik eklemez.
   define: {
-    'process.browser': 'true',
     global: 'globalThis'
   },
   base: './',
