@@ -2875,8 +2875,8 @@ export async function openPlayerModal({
 
     // Katılımcı kendi ekranındaki görüntü ve ses konforunu değiştirebilir;
     // akışı, zaman çizgisini, kaynakları ve bölüm seçimini yalnız moderatör
-    // yönetir. Capture aşaması doğrudan video tıklaması ve mobil jestleri de
-    // aynı noktada durdurur.
+    // yönetir. Video alanına dokunmak kontrolleri göstermeye devam eder;
+    // yalnız oynatma veya çift tıkla 10 saniye sarma çalışmaz.
     if (roomSync && !isRoomModerator()) {
       wrapper.classList.add('room-participant-locked');
       let lastLockNotice = 0;
@@ -2885,6 +2885,8 @@ export async function openPlayerModal({
       ));
       const preventParticipantPlaybackControl = event => {
         if (isLocalOnlyControl(event.target)) return;
+        const touchedVideo = event.target.closest('video');
+        if (touchedVideo && event.type !== 'dblclick') return;
         if (!event.target.closest('video, button, input, .custom-timeline-container, .custom-player-menu, .custom-binge-card, .dual-audio-bar')) return;
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -3135,6 +3137,7 @@ export async function openPlayerModal({
     if (playBtn) playBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
     videoEl.onclick = (e) => {
       if (isScreenLocked) return;
+      if (roomSync && !isRoomModerator()) return;
       const hadOpen = (brightWrap && brightWrap.classList.contains('is-open')) ||
                       (volWrap && volWrap.classList.contains('is-open')) ||
                       (menu && !menu.classList.contains('hidden'));
