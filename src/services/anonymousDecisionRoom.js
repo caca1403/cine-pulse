@@ -176,7 +176,13 @@ export class AnonymousDecisionRoom {
       const message = event.detail;
       const text = String(message?.text || '').trim().slice(0, 240);
       if (!message || safeRoomCode(message.roomCode) !== this.roomCode || !text) return;
-      const chat = { text, nickname: this.nickname, senderId: this.selfId, sentAt: Date.now() };
+      const chat = {
+        id: String(message.id || `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        text,
+        nickname: this.nickname,
+        senderId: this.selfId,
+        sentAt: Number(message.sentAt) || Date.now()
+      };
       this.chatMessages = [...this.chatMessages, chat].slice(-60);
       this.broadcast({ type: 'room-chat', chat });
     };

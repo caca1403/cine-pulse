@@ -482,7 +482,7 @@ export async function openPlayerModal({
 
   function appendRoomChatMessage(message, mine = false) {
     if (!message?.text) return;
-    const fingerprint = `${message.senderId || (mine ? 'self' : 'guest')}:${message.sentAt || ''}:${message.text}`;
+    const fingerprint = message.id || `${message.senderId || (mine ? 'self' : 'guest')}:${message.sentAt || ''}:${message.text}`;
     if (!roomChatHistory.some(item => item.fingerprint === fingerprint)) roomChatHistory.push({ ...message, fingerprint, mine });
     const list = modalContainer.querySelector('#room-chat-messages');
     if (!list || Array.from(list.children).some(item => item.dataset?.roomChatId === fingerprint)) return;
@@ -516,7 +516,13 @@ export async function openPlayerModal({
         const input = panel.querySelector('input');
         const text = input.value.trim();
         if (!text) return;
-        window.dispatchEvent(new CustomEvent('cinepulse:room-chat-send', { detail: { roomCode: roomSync.roomCode, text } }));
+        const sentAt = Date.now();
+        const id = `chat-${sentAt}-${Math.random().toString(36).slice(2, 8)}`;
+        const selfId = window.__cinepulseDecisionRoomPresence?.selfId || 'self';
+        // Show the sender's own text immediately. The same id travels through
+        // the room, so an echoed transport packet cannot create a second row.
+        appendRoomChatMessage({ id, text, senderId: selfId, nickname: 'Sen', sentAt }, true);
+        window.dispatchEvent(new CustomEvent('cinepulse:room-chat-send', { detail: { roomCode: roomSync.roomCode, id, sentAt, text } }));
         input.value = '';
       };
       (modalContainer.querySelector('#cinema-modal-box') || modalContainer).appendChild(panel);
@@ -717,9 +723,11 @@ export async function openPlayerModal({
     modalScope.on(window, 'cinepulse:room-finish-vote-remote', event => renderRoomFinishOverlay(event.detail));
     modalScope.on(window, 'cinepulse:room-reaction-remote', event => showRoomReaction(event.detail));
     modalScope.on(window, 'cinepulse:room-chat-remote', event => {
-      appendRoomChatMessage(event.detail);
+      const message = event.detail;
+      const mine = message?.senderId === window.__cinepulseDecisionRoomPresence?.selfId;
+      appendRoomChatMessage(message, mine);
       const panel = modalContainer.querySelector('#room-chat-panel');
-      if (!panel || panel.classList.contains('hidden')) {
+      if (!mine && (!panel || panel.classList.contains('hidden'))) {
         roomUnreadMessages += 1;
         updateRoomChatBadge();
       }
