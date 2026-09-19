@@ -698,8 +698,15 @@ export async function openPlayerModal({
     invite.type = 'button';
     invite.textContent = 'Moderatör tam ekran önerdi · Aç';
     invite.onclick = () => {
-      const target = modalContainer.querySelector('#direct-video-wrapper, #cinema-modal-box');
-      target?.requestFullscreen?.().catch(() => {});
+      const video = modalContainer.querySelector('#hls-video-player');
+      const iframe = modalContainer.querySelector('#video-iframe');
+      const wrapper = modalContainer.querySelector('#direct-video-wrapper');
+      const mobile = window.matchMedia('(pointer: coarse)').matches;
+      // Mobilde mümkünse gerçek video tam ekranı, iframe kaynağında iframe
+      // tam ekranı kullanılır. Böylece uygulamanın başlık çubuğu taşınmaz.
+      const target = mobile && video ? video : (iframe || wrapper || video || modalContainer.querySelector('#cinema-modal-box'));
+      if (mobile && video?.webkitEnterFullscreen) video.webkitEnterFullscreen();
+      else target?.requestFullscreen?.().catch(() => {});
       invite.remove();
     };
     modalContainer.appendChild(invite);
@@ -2578,9 +2585,13 @@ export async function openPlayerModal({
       const modalBox = document.getElementById('cinema-modal-box') || document.documentElement;
       const iframeEl = document.getElementById('video-iframe');
       const videoEl = document.getElementById('hls-video-player');
-      const target = iframeEl || videoEl || modalBox;
+      const wrapper = document.getElementById('direct-video-wrapper');
+      const mobile = window.matchMedia('(pointer: coarse)').matches;
+      const target = mobile ? (videoEl || iframeEl || wrapper || modalBox) : (iframeEl || wrapper || videoEl || modalBox);
       if (!document.fullscreenElement) {
-        if (target && target.requestFullscreen) {
+        if (mobile && videoEl?.webkitEnterFullscreen) {
+          videoEl.webkitEnterFullscreen();
+        } else if (target && target.requestFullscreen) {
           target.requestFullscreen().catch(() => modalBox.requestFullscreen().catch(() => {}));
         } else if (target && target.webkitRequestFullscreen) {
           target.webkitRequestFullscreen();
@@ -3300,10 +3311,13 @@ export async function openPlayerModal({
     // 4. Fullscreen & Video Gestures (Double click left: -10s, right: +10s, middle: fullscreen)
     const toggleFullscreen = () => {
       if (!document.fullscreenElement) {
-        // Wrapper'ı değil video öğesini tam ekrana al: oda HUD'ı, emojiler,
-        // sohbet ve özel kontrol katmanları gerçek tam ekranda görünmez.
-        if (videoEl.requestFullscreen) videoEl.requestFullscreen().catch(() => wrapper.requestFullscreen?.());
+        const isMobile = window.matchMedia('(pointer: coarse)').matches;
+        // Masaüstünde video sahnesi tam ekrana çıkar: İntroyu Atla gibi
+        // yararlı katmanlar kalır, oda/emoji katmanları CSS ile gizlenir.
+        // Mobilde native video tam ekranı tercih edilir.
+        if (!isMobile && wrapper.requestFullscreen) wrapper.requestFullscreen();
         else if (videoEl.webkitEnterFullscreen) videoEl.webkitEnterFullscreen();
+        else if (videoEl.requestFullscreen) videoEl.requestFullscreen().catch(() => wrapper.requestFullscreen?.());
         else if (videoEl.webkitRequestFullscreen) videoEl.webkitRequestFullscreen();
         else if (wrapper.requestFullscreen) wrapper.requestFullscreen();
         else if (wrapper.webkitRequestFullscreen) wrapper.webkitRequestFullscreen();
