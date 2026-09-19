@@ -239,8 +239,8 @@ def main():
     original_title = sys.argv[2] if len(sys.argv) > 2 else ''
     season = int(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3].isdigit() else 1
     episode = int(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4].isdigit() else 1
-    req_type = sys.argv[5] if len(sys.argv) > 5 else ''
-    is_tv = (req_type == 'tv' or len(sys.argv) > 3)
+    req_type = (sys.argv[5] if len(sys.argv) > 5 else '').lower().strip()
+    is_tv = req_type in ['tv', 'series', 'anime', 'show']
 
     result = resolve_hdfc_stream(query, original_title, season=season, episode=episode, is_tv=is_tv)
     print(json.dumps(result))

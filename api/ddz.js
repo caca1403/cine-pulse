@@ -1,12 +1,13 @@
 import { guardNodeRequest } from './_security.js';
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  if (guardNodeRequest(req, res, { limit: 180, bucket: 'ddz' })) return;
-
+  res.setHeader('Access-Control-Allow-Headers', '*');
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
+  if (guardNodeRequest(req, res, { limit: 180, bucket: 'ddz' })) return;
 
   try {
     const urlObj = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
@@ -49,6 +50,7 @@ export default async function handler(req, res) {
     });
 
     const contentType = upstreamRes.headers.get('content-type') || 'text/html; charset=utf-8';
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', contentType);
 
     const buffer = await upstreamRes.arrayBuffer();

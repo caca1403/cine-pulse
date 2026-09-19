@@ -11,7 +11,9 @@ export default async function handler(request) {
     return new Response(null, {
       status: 200,
       headers: {
+        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': '*'
       }
     });
   }
@@ -63,7 +65,9 @@ export default async function handler(request) {
     }
 
     const responseHeaders = new Headers();
+    responseHeaders.set('Access-Control-Allow-Origin', '*');
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    responseHeaders.set('Access-Control-Allow-Headers', '*');
     responseHeaders.set('Content-Type', upstreamRes.headers.get('content-type') || 'text/html; charset=utf-8');
 
     return new Response(upstreamRes.body, {

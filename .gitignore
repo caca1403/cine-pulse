@@ -9,3 +9,5 @@ scratch/
 media_storage/
 cinepulse_yedek*.json
 *.backup.json
+__pycache__/
+*.pyc

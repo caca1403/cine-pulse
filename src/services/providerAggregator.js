@@ -118,11 +118,32 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
   return { candidateTitles: deduped, detectedYear, isAnimation };
 }
 
-function formatStreamName(s) {
+function formatStreamName(s, category = '') {
   const url = (s.url || s.streamUrl || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
+  if (id.startsWith('hdfc_') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) {
+    if (category === 'dubbed' || raw.includes('dub')) return 'HDFilmCehennemi Dublaj 1080p';
+    return 'HDFilmCehennemi Altyazı 1080p';
+  }
+  if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dizibal') || raw.includes('dizipal') || raw.includes('dp')) {
+    if (category === 'dubbed' || raw.includes('dub')) return 'DP 1080p (TR Dublaj)';
+    if (category === 'subtitled' || raw.includes('alt') || raw.includes('sub')) return 'DP 1080p (TR Altyazı)';
+    return 'DP 1080p';
+  }
+  if (id.startsWith('dzs_') || raw.includes('dizisol')) {
+    let base = (s.displayName || s.name || 'DS 1080p (HLS)').replace(/dizisol/gi, 'DS').trim();
+    if (!base.startsWith('DS')) base = `DS ${base}`;
+    return base;
+  }
+  if (id.startsWith('snx') || raw.includes('sinewix') || raw.includes('swx')) {
+    if (raw.includes('mkv')) return 'SWX 1080p (MKV)';
+    return 'SWX 1080p Direct';
+  }
+  if (id.startsWith('tvr_') || id.startsWith('rectv_') || raw.includes('rectv') || raw.includes('tvr')) {
+    return s.displayName || s.name || '⚡ TVR VIP 1080p';
+  }
   if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) {
     return s.displayName || s.name || '🎬 LookMovie VIP 1080p';
   }
@@ -135,16 +156,6 @@ function formatStreamName(s) {
   if (id.startsWith('vidsrc_') || raw.includes('vidsrc')) {
     return s.displayName || s.name || '🎬 VidSrc VIP 1080p';
   }
-  if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dizibal') || raw.includes('dizipal')) {
-    const rawName = s.displayName || s.name || 'DiziBal 1080p';
-    if (/dizibal/i.test(rawName)) return rawName;
-    return rawName.replace(/^DP\b/i, 'DiziBal').trim() || 'DiziBal 1080p';
-  }
-  if (id.startsWith('dzs_') || raw.includes('dizisol')) {
-    let base = (s.displayName || s.name || 'DS 1080p (HLS)').replace(/dizisol/gi, 'DS').trim();
-    if (!base.startsWith('DS')) base = `DS ${base}`;
-    return base;
-  }
   if (id.startsWith('dzy_') || raw.includes('diziyo')) {
     if (url.includes('vidmoly')) return 'Diziyo VidMoly 1080p';
     return s.displayName || s.name || 'Diziyo 1080p';
@@ -155,21 +166,11 @@ function formatStreamName(s) {
   if (id.startsWith('hdfb_') || raw.includes('hdfilmizle')) {
     return s.displayName || s.name || 'HDF 1080p';
   }
-  if (id.startsWith('tvr_') || id.startsWith('rectv_') || raw.includes('rectv') || raw.includes('tvr')) {
-    return s.displayName || s.name || '⚡ TVR VIP 1080p';
-  }
   if (id.startsWith('kvip_') || raw.includes('kids vip')) {
     return s.displayName || s.name || '⚡ Kids VIP Direct 1080p';
   }
   if (id.startsWith('acx_') || raw.includes('animecix')) {
     return s.displayName || s.name || 'AX Tau Direct 1080p';
-  }
-  if (id.startsWith('snx') || raw.includes('sinewix')) {
-    return s.displayName || s.name || 'SWX Direct 1080p';
-  }
-  if (id.startsWith('hdfc_') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) {
-    if (category === 'dubbed' || raw.includes('dub')) return 'HDFilmCehennemi Dublaj 1080p';
-    return 'HDFilmCehennemi Altyazı 1080p';
   }
   if (id.startsWith('szd_')) {
     if (url.includes('vidmoly')) return 'SZ VidMoly 1080p';
@@ -188,13 +189,21 @@ function formatStreamItem(s, category, fallbackName) {
   const lowerName = (finalDisplayName || '').toLowerCase();
   if (lowerName.includes('hdfc') || lowerName.includes('hdfilmcehennemi')) {
     badge = category === 'dubbed' ? '🔥 HDFC Dublaj 1080p' : '💬 HDFC Altyazı 1080p';
-  } else if (lowerName.includes('lookmovie')) badge = '🎬 LookMovie 1080p';
-  else if (lowerName.includes('2embed')) badge = '⚡ 2Embed 1080p';
-  else if (lowerName.includes('vidsrc')) badge = '🎬 VidSrc 1080p';
-  else if (lowerName.includes('dizibal') || lowerName.includes('dzb') || lowerName.includes('dp')) badge = category === 'dubbed' ? '⚡ DiziBal Dublaj' : '💬 DiziBal Altyazı';
-  else if (lowerName.includes('ds')) badge = category === 'dubbed' ? '⚡ DS Dublaj' : '💬 DS Altyazı';
-  else if (lowerName.includes('swx')) badge = '⚡ SWX 1080p';
-  else if (lowerName.includes('tvr')) badge = '⚡ TVR 1080p';
+  } else if (lowerName.includes('dzb') || lowerName.includes('dizibal') || lowerName.includes('dp')) {
+    badge = category === 'dubbed' ? '⚡ DP Dublaj' : '💬 DP Altyazı';
+  } else if (lowerName.includes('ds')) {
+    badge = category === 'dubbed' ? '⚡ DS Dublaj' : '💬 DS Altyazı';
+  } else if (lowerName.includes('swx')) {
+    badge = '⚡ SWX 1080p';
+  } else if (lowerName.includes('tvr')) {
+    badge = '⚡ TVR 1080p';
+  } else if (lowerName.includes('lookmovie')) {
+    badge = '🎬 LookMovie 1080p';
+  } else if (lowerName.includes('2embed')) {
+    badge = '⚡ 2Embed 1080p';
+  } else if (lowerName.includes('vidsrc')) {
+    badge = '🎬 VidSrc 1080p';
+  }
 
   return {
     ...s,
@@ -259,32 +268,47 @@ function getStreamPriorityScore(s) {
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
-  // Priority 0: TVR, DP (DiziBal), DS (Dizisol), Sinewix, HDFilmCehennemi (Ultra-reliable 1080p)
+  // 1. HDFilmCehennemi (En yüksek stabilite, Türkçe Dublaj + Altyazı + Orijinal Ses)
   if (id.startsWith('hdfc_') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) return 0;
-  if (id.startsWith('tvr_') || raw.includes('tvr') || raw.includes('rectv')) return 0;
-  if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dp 1080p') || raw.includes('dizibal')) return 0;
-  if (id.startsWith('dzs_') || raw.includes('dizisol') || raw.includes('ds 1080p')) return 0;
-  if (id.startsWith('snx') || raw.includes('sinewix') || raw.includes('swx')) return 0;
 
-  // Priority 1: High quality secondary platforms, Direct Native HLS (LookMovie VIP) & High-Seed VIP P2P Streams
-  if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) return 1;
-  if (id.startsWith('torrent_p2p_')) return 1;
-  if (id.startsWith('dzy_') || raw.includes('diziyo')) return 1;
-  if (id.startsWith('dyu_') || raw.includes('diziyou')) return 1;
-  if (id.startsWith('szd_') || raw.includes('sezonluk')) return 1;
-  if (id.startsWith('hdfb_') || raw.includes('hdfilmizle')) return 1;
+  // 2. DP (DiziBal AlphaStream HLS - Doğrudan 1080p)
+  if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dp 1080p') || raw.includes('dp ') || raw.includes('dizibal')) return 1;
 
-  // Priority 2: Embed Players (VidSrc VIP, SmashyStream VIP)
-  if (id.startsWith('vidsrc_') || raw.includes('vidsrc')) return 2;
-  if (id.startsWith('smashystream_') || raw.includes('smashy')) return 2;
+  // 3. DS (Dizisol HLS - Doğrudan 1080p Dual Ses)
+  if (id.startsWith('dzs_') || raw.includes('dizisol') || raw.includes('ds 1080p') || raw.includes('ds ')) return 2;
 
-  // Priority 3: Anime & Cartoons
-  if (id.startsWith('kvip_') || raw.includes('kids vip')) return 3;
-  if (id.startsWith('acx_') || raw.includes('animecix')) return 3;
-  if (id.startsWith('ta_') || raw.includes('turkanime')) return 3;
-  if (id.startsWith('atr_') || raw.includes('animetr')) return 3;
+  // 4. SWX (Sinewix Direct - HLS/MP4 priority 3, MKV fallback priority 9)
+  if (id.startsWith('snx') || raw.includes('sinewix') || raw.includes('swx')) {
+    return (s.isMkv || raw.includes('mkv')) ? 9 : 3;
+  }
 
-  return 5;
+  // 5. TVR VIP (RecTV 1080p HLS)
+  if (id.startsWith('tvr_') || raw.includes('tvr') || raw.includes('rectv')) return 4;
+
+  // 6. LookMovie VIP (1080p HLS)
+  if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) return 5;
+
+  // 7. İkincil Yerli Sağlayıcılar (Diziyo, Diziyou, SezonlukDizi, HDF)
+  if (id.startsWith('dzy_') || raw.includes('diziyo')) return 6;
+  if (id.startsWith('dyu_') || raw.includes('diziyou')) return 7;
+  if (id.startsWith('szd_') || raw.includes('sezonluk')) return 8;
+  if (id.startsWith('hdfb_') || raw.includes('hdfilmizle') || raw.includes('hdf ')) return 9;
+
+  // 8. VIP P2P Torrent Akışları
+  if (id.startsWith('torrent_p2p_')) return 10;
+
+  // 9. Embed Oynatıcılar (VidSrc, 2Embed, SmashyStream)
+  if (id.startsWith('vidsrc_') || raw.includes('vidsrc')) return 11;
+  if (id.startsWith('twoembed_') || raw.includes('2embed')) return 12;
+  if (id.startsWith('smashystream_') || raw.includes('smashy')) return 13;
+
+  // 10. Anime & Çocuk
+  if (id.startsWith('kvip_') || raw.includes('kids vip')) return 14;
+  if (id.startsWith('acx_') || raw.includes('animecix')) return 15;
+  if (id.startsWith('ta_') || raw.includes('turkanime')) return 16;
+  if (id.startsWith('atr_') || raw.includes('animetr')) return 17;
+
+  return 20;
 }
 
 /**
@@ -443,35 +467,70 @@ export async function getStreamingServersProgressive({
 
     // 2. Sinewix VIP (Direct 1080p MKV Dubbed & Subtitled)
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+      .then(res => {
+        if (!Array.isArray(res) || res.length === 0) return;
+        addStreams(res, 'dubbed');
+        const duals = res.filter(s => (s.badge || '').includes('Dual') || (s.url || '').toLowerCase().includes('dual'));
+        if (duals.length > 0) {
+          addStreams(duals.map(d => ({ ...d, id: `${d.id}_sub`, category: 'subtitled' })), 'subtitled');
+        }
+      }).catch(() => []),
     fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // 3. DiziBal (DP 1080p AlphaStream direct HLS)
-    isMovie
-      ? fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    // 3. DiziBal (DP 1080p AlphaStream direct HLS - Instant Dual TR Dub & Sub)
+    (isMovie
+      ? fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle })
+      : fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode })
+    ).then(res => {
+      if (!Array.isArray(res) || res.length === 0) return;
+      for (const s of res) {
+        addStreams([{
+          ...s,
+          id: `${s.id}_dub`,
+          name: isMovie ? 'DP 1080p (TR Dublaj)' : `DP 1080p Dublaj S${season}B${episode}`,
+          displayName: isMovie ? 'DP 1080p (TR Dublaj)' : `DP 1080p Dublaj (S${season}B${episode})`,
+          badge: '⚡ DP Dublaj',
+          category: 'dubbed'
+        }], 'dubbed');
 
-    isMovie
-      ? fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => []),
+        addStreams([{
+          ...s,
+          id: `${s.id}_sub`,
+          name: isMovie ? 'DP 1080p (TR Altyazı)' : `DP 1080p Altyazı S${season}B${episode}`,
+          displayName: isMovie ? 'DP 1080p (TR Altyazı)' : `DP 1080p Altyazı (S${season}B${episode})`,
+          badge: '💬 DP Altyazı',
+          category: 'subtitled'
+        }], 'subtitled');
+      }
+    }).catch(() => []),
 
-    // 4. Dizisol (DS 1080p HLS)
-    isMovie
-      ? fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => []),
+    // 4. Dizisol (DS 1080p HLS - Instant Dual TR Dub & Sub)
+    (isMovie
+      ? fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear })
+      : fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode })
+    ).then(res => {
+      if (!Array.isArray(res) || res.length === 0) return;
+      for (const s of res) {
+        addStreams([{
+          ...s,
+          id: `${s.id}_dub`,
+          name: s.name ? s.name.replace(/\(Altyazı\)/i, '(TR Dublaj)') : 'DS 1080p (TR Dublaj)',
+          displayName: s.displayName ? s.displayName.replace(/\(Altyazı\)/i, '(TR Dublaj)') : 'DS 1080p (TR Dublaj)',
+          badge: '⚡ TR Dublaj',
+          category: 'dubbed'
+        }], 'dubbed');
 
-    isMovie
-      ? fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => []),
+        addStreams([{
+          ...s,
+          id: `${s.id}_sub`,
+          name: s.name ? s.name.replace(/\(Dublaj\)/i, '(TR Altyazı)') : 'DS 1080p (TR Altyazı)',
+          displayName: s.displayName ? s.displayName.replace(/\(Dublaj\)/i, '(TR Altyazı)') : 'DS 1080p (TR Altyazı)',
+          badge: '💬 TR Altyazı',
+          category: 'subtitled'
+        }], 'subtitled');
+      }
+    }).catch(() => []),
 
     // 5. Diziyo (Direct 1080p HLS)
     isMovie
@@ -566,6 +625,7 @@ export async function getStreamingServersProgressive({
     // 13. HDFilmCehennemi VIP (Direct 1080p HLS + TR Subtitles & Dubbed/Dual)
     fetchHdfilmcehennemiSources({ type, tmdbId, imdbId, title: targetTitle, originalTitle, season, episode })
       .then(res => {
+        console.log('[providerAggregator] HDFC fetched, count:', Array.isArray(res) ? res.length : res);
         if (!Array.isArray(res) || res.length === 0) return [];
         for (const s of res) {
           addStreams([{
@@ -586,7 +646,10 @@ export async function getStreamingServersProgressive({
             category: 'subtitled'
           }], 'subtitled');
         }
-      }).catch(() => [])
+      }).catch(err => {
+        console.error('[providerAggregator] HDFC error:', err);
+        return [];
+      })
   ];
 
   // Alias expansion task
@@ -647,8 +710,8 @@ export async function getStreamingServersProgressive({
     return result;
   };
 
-  const finalDubbed = dedupeServers(currentDubbed);
-  const finalSubtitled = dedupeServers(currentSubtitled);
+  const finalDubbed = dedupeServers(currentDubbed).sort((a, b) => getStreamPriorityScore(a) - getStreamPriorityScore(b));
+  const finalSubtitled = dedupeServers(currentSubtitled).sort((a, b) => getStreamPriorityScore(a) - getStreamPriorityScore(b));
 
   const payload = {
     dubbed: finalDubbed,

@@ -3689,22 +3689,28 @@ export async function openPlayerModal({
           const hls = new Hls({
             enableWorker: true,
             lowLatencyMode: false,
-            backBufferLength: 60,
-            maxBufferLength: 60,
-            maxMaxBufferLength: 120,
-            maxBufferSize: 120 * 1000 * 1000,
-            maxBufferHole: 0.8,
+            startFragPrefetch: true,
+            progressive: true,
+            backBufferLength: 30,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 600,
+            maxBufferSize: 300 * 1024 * 1024,
+            maxBufferHole: 0.5,
             highBufferWatchdogPeriod: 2,
             nudgeOffset: 0.2,
-            nudgeMaxRetry: 10,
-            progressive: false,
-            fragLoadingTimeOut: 30000,
-            manifestLoadingTimeOut: 20000,
-            levelLoadingTimeOut: 20000,
+            nudgeMaxRetry: 6,
+            abrEwmaDefaultEstimate: 5000000,
+            abrEwmaFastVoD: 3,
+            abrBandWidthFactor: 0.92,
+            fragLoadingTimeOut: 20000,
+            manifestLoadingTimeOut: 15000,
+            levelLoadingTimeOut: 15000,
             fragLoadingMaxRetry: 6,
             manifestLoadingMaxRetry: 4,
             levelLoadingMaxRetry: 4,
-            startFragPrefetch: true
+            xhrSetup: (xhr) => {
+              try { xhr.referrerPolicy = 'no-referrer'; } catch (_) {}
+            }
           });
           activeHlsInstance = hls;
 
@@ -4058,6 +4064,7 @@ export async function openPlayerModal({
 
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
     const generation = ++discoveryGeneration;
+    const discoveryStartTime = Date.now();
     let sourceRefreshFrame = 0;
     isSearching = true;
     isDiscoveryActive = true;
@@ -4069,6 +4076,25 @@ export async function openPlayerModal({
 
     updateServerPillsEvents();
     updatePlayerContainer();
+
+    // Fast 1.8s fallback: if user's category has 0 streams but alternative has ready streams, start immediately
+    const fastPlaybackTimer = setTimeout(() => {
+      if (closed || generation !== discoveryGeneration || hasPlayerStartedPlaying) return;
+      const fallbackCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
+      if ((categorizedServers[currentCategory] || []).length === 0 && (categorizedServers[fallbackCat] || []).length > 0) {
+        currentCategory = fallbackCat;
+        document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
+        document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
+        hasPlayerStartedPlaying = true;
+        isSearching = false;
+        activeServers = categorizedServers[currentCategory];
+        currentServerIndex = 0;
+        updateServerPillsEvents();
+        updateActiveSourceLabel();
+        renderSourcesPopoverList();
+        updatePlayerContainer();
+      }
+    }, 1800);
 
     getStreamingServersProgressive({
       type,
@@ -4090,9 +4116,9 @@ export async function openPlayerModal({
         }
 
         // Play the first available source in the user's SELECTED category immediately.
-        // NEVER auto-flip category while discovery is actively searching!
         if (!hasPlayerStartedPlaying) {
           if (categorizedServers[currentCategory]?.length > 0) {
+            clearTimeout(fastPlaybackTimer);
             hasPlayerStartedPlaying = true;
             isSearching = false;
             activeServers = categorizedServers[currentCategory];
@@ -4104,27 +4130,30 @@ export async function openPlayerModal({
             return;
           }
 
-          // If all providers finished and the chosen category is completely empty:
-          if (isComplete) {
-            isSearching = false;
-            const fallbackCategory = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
-            if (categorizedServers[fallbackCategory]?.length > 0) {
-              currentCategory = fallbackCategory;
-              document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
-              document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
-              hasPlayerStartedPlaying = true;
-              activeServers = categorizedServers[currentCategory];
-              currentServerIndex = 0;
-              updateServerPillsEvents();
-              updateActiveSourceLabel();
-              renderSourcesPopoverList();
-              updatePlayerContainer();
-              showToast(currentCategory === 'dubbed' 
-                ? 'ℹ️ Altyazılı yayın bulunamadı, Türkçe Dublaj açıldı.' 
-                : 'ℹ️ Dublaj bulunamadı, Altyazılı yayın açıldı.', 'info');
-              return;
-            }
+          // If after 1.8s the chosen category is still empty, or if all providers completed:
+          const timeSinceStart = Date.now() - discoveryStartTime;
+          const fallbackCategory = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
+          const fallbackStreams = categorizedServers[fallbackCategory] || [];
 
+          if ((isComplete || timeSinceStart >= 1800) && fallbackStreams.length > 0) {
+            clearTimeout(fastPlaybackTimer);
+            currentCategory = fallbackCategory;
+            document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
+            document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
+            hasPlayerStartedPlaying = true;
+            isSearching = false;
+            activeServers = fallbackStreams;
+            currentServerIndex = 0;
+            updateServerPillsEvents();
+            updateActiveSourceLabel();
+            renderSourcesPopoverList();
+            updatePlayerContainer();
+            return;
+          }
+
+          if (isComplete) {
+            clearTimeout(fastPlaybackTimer);
+            isSearching = false;
             updateServerPillsEvents();
             updateActiveSourceLabel();
             renderSourcesPopoverList();

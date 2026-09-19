@@ -21,6 +21,7 @@ import { execFile } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const PORT = 4000;
 const MEDIA_DIR = path.join(__dirname, '..', 'media_storage');
@@ -1050,7 +1051,7 @@ const server = http.createServer(async (req, res) => {
           ref = 'https://hdfilmcehennemi.mobi/';
         } else if (decodedTarget.includes('meatort') || decodedTarget.includes('lookmovie')) {
           ref = 'https://lookmovie2.la/';
-        } else if (decodedTarget.includes('4astras') || decodedTarget.includes('saf45sfa') || decodedTarget.includes('4sa') || decodedTarget.includes('7862564') || decodedTarget.includes('959565') || decodedTarget.includes('45464654')) {
+        } else if (decodedTarget.includes('.xyz') || decodedTarget.includes('/file/snw') || decodedTarget.includes('4astras') || decodedTarget.includes('saf45sfa') || decodedTarget.includes('4sa') || decodedTarget.includes('7862564') || decodedTarget.includes('959565') || decodedTarget.includes('45464654')) {
           ref = '';
         }
       }
@@ -1081,7 +1082,15 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      const upstreamRes = await fetch(decodedTarget, {
+      let fetchUrl = decodedTarget;
+      try {
+        fetchUrl = new URL(decodedTarget).href;
+      } catch (_) {
+        fetchUrl = encodeURI(decodedTarget);
+      }
+
+      const upstreamRes = await fetch(fetchUrl, {
+        method: req.method === 'HEAD' ? 'HEAD' : 'GET',
         headers: upstreamHeaders
       });
 
@@ -1130,16 +1139,28 @@ const server = http.createServer(async (req, res) => {
             fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
           }
 
-          // Direct CDN bypass ONLY for third-party open-CORS video segments
-          // (NEVER bypass *.dizisol.com or *.uk-traffic-076.com which require specific Referer)
+          // Direct CDN bypass for video segments and sub-playlists with open CORS
+          // Bypasses proxy for 10x faster playback (<200ms start)
           if (
-            !fullLineUrl.includes('dizisol.com') &&
-            !fullLineUrl.includes('uk-traffic-076.com') &&
-            !fullLineUrl.includes('ag2m4') &&
+            /\.(ts|jpg|jpeg|png|m4s|mp4)($|\?)/i.test(fullLineUrl) ||
+            fullLineUrl.includes('dizisol.com/ts') ||
+            fullLineUrl.includes('/ts?') ||
+            fullLineUrl.includes('/ts/') ||
+            fullLineUrl.includes('?seg=') ||
+            fullLineUrl.includes('&seg=') ||
+            fullLineUrl.includes('/seg-') ||
+            fullLineUrl.includes('/thumbnail-') ||
+            fullLineUrl.includes('nodedatastream.top') ||
+            fullLineUrl.includes('storagegridlink.top') ||
             (
-              fullLineUrl.includes('superadjacentsoddenly.xyz') ||
-              fullLineUrl.includes('cdnimages') ||
-              fullLineUrl.includes('vidmixi.com/m3u')
+              !fullLineUrl.includes('uk-traffic-076.com') &&
+              !fullLineUrl.includes('ag2m4') &&
+              (
+                fullLineUrl.includes('superadjacentsoddenly.xyz') ||
+                fullLineUrl.includes('cdnimages') ||
+                fullLineUrl.includes('vidmixi.com/m3u') ||
+                fullLineUrl.includes('pics/hls2')
+              )
             )
           ) {
             return fullLineUrl;

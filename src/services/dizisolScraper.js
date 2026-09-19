@@ -9,10 +9,10 @@ const DIZISOL_API_BASE = 'https://dizisol.com/api';
 async function fetchDizisolApi(endpoint, options = {}) {
   const isBrowser = typeof window !== 'undefined';
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const directUrl = `${DIZISOL_API_BASE}${cleanEndpoint}`;
+  const timeoutMs = options.timeout || 3500;
 
-  // 1. Direct fetch (Dizisol Express API supports direct CORS)
-  try {
-    const directUrl = `${DIZISOL_API_BASE}${cleanEndpoint}`;
+  const fetchDirect = async () => {
     const res = await fetch(directUrl, {
       ...options,
       headers: {
@@ -20,24 +20,36 @@ async function fetchDizisolApi(endpoint, options = {}) {
         'Accept': 'application/json, text/plain, */*',
         ...(options.headers || {})
       },
-      signal: AbortSignal.timeout(options.timeout || 4500)
-    }).catch(() => null);
+      signal: AbortSignal.timeout(timeoutMs)
+    });
     if (res && res.ok) return res;
-  } catch (_) {}
+    throw new Error('Direct fetch failed');
+  };
 
-  // 2. Vercel / Local proxy fallback (/api/dzs)
+  const fetchProxy = async () => {
+    if (!isBrowser) throw new Error('No proxy needed');
+    const proxyUrl = `/api/dzs${cleanEndpoint}`;
+    const res = await fetch(proxyUrl, {
+      ...options,
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+    if (res && res.ok) return res;
+    throw new Error('Proxy fetch failed');
+  };
+
   if (isBrowser) {
     try {
-      const proxyUrl = `/api/dzs${cleanEndpoint}`;
-      const res = await fetch(proxyUrl, {
-        ...options,
-        signal: AbortSignal.timeout(options.timeout || 4500)
-      }).catch(() => null);
-      if (res && res.ok) return res;
-    } catch (_) {}
+      return await Promise.any([fetchProxy(), fetchDirect()]);
+    } catch (_) {
+      return null;
+    }
   }
 
-  return null;
+  try {
+    return await fetchDirect();
+  } catch (_) {
+    return null;
+  }
 }
 
 const dizisolCache = new Map();
@@ -104,15 +116,7 @@ function toProxiedDizisolSubUrl(rawUrl) {
 function isValidDizisolStreamUrl(url) {
   if (!url || typeof url !== 'string') return false;
   if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
-  if (
-    url.includes('picturebox.cloud') ||
-    url.includes('s5.dizisol.com') ||
-    url.includes('s6.dizisol.com') ||
-    url.includes('rapidrame') ||
-    url.includes('pal-vds') ||
-    url.includes('hdfilmdelisi') ||
-    url.includes('plus.dizisol.com')
-  ) {
+  if (url.includes('picturebox.cloud')) {
     return false;
   }
   return true;
@@ -123,14 +127,18 @@ function getDizisolStreamPriority(url, provider = '') {
   const lowUrl = (url || '').toLowerCase();
   const lowProv = (provider || '').toLowerCase();
 
-  // Ultra-fast instant CDN providers (< 1s playback start, 100% 200 OK & high bandwidth)
+  // Ultra-fast instant CDN providers (< 200ms start, 100% 200 OK & high bandwidth)
   if (lowProv === 'cortina') score += 100;
   else if (lowProv === 'vidmixi') score += 95;
-  else if (lowProv === 'vidrame') score += 85;
-  else if (lowProv === 'imagestoo') score += 80;
-  else if (lowProv === 'fullhd') score += 75;
+  else if (lowProv === 'filmmakinesi') score += 90;
+  else if (lowProv === 'rapidrame') score += 88;
+  else if (lowProv === 'hdfilmdelisi') score += 85;
+  else if (lowProv === 'pal-vds') score += 80;
+  else if (lowProv === 'vidrame') score += 75;
+  else if (lowProv === 'imagestoo') score += 70;
+  else if (lowProv === 'fullhd') score += 65;
   else if (lowProv === 'filmekseni') score += 60;
-  else if (lowProv === 'vip') score += 20;
+  else if (lowProv === 'vip') score += 50;
 
   if (lowUrl.includes('dizisol.com')) score += 10;
 

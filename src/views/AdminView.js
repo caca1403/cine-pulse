@@ -210,7 +210,7 @@ export async function renderAdminView() {
                 <div style="display: flex; align-items: center; gap: 0.6rem;">
                   <span class="status-indicator-dot online"></span>
                   <div>
-                    <div style="font-weight: 700; font-size: 0.9rem; color: #fff;">DiziBal & Dizisol Hibrit</div>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: #fff;">DP & DS VIP Hibrit</div>
                     <div style="font-size: 0.75rem; color: #94a3b8;">AlphaStream ve yerel ters proxy altyapısı</div>
                   </div>
                 </div>

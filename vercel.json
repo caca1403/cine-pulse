@@ -57,6 +57,10 @@
       "destination": "https://www.hdfilmcehennemi.now/$1"
     },
     {
+      "source": "/api/hdfc_stream",
+      "destination": "/api/hdfc_stream.py"
+    },
+    {
       "source": "/api/fin/(.*)",
       "destination": "https://filmizle.now/$1"
     },

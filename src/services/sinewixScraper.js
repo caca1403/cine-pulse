@@ -103,35 +103,33 @@ export async function fetchSinewixSources({
 
     if (cleanedQueries.length === 0) return [];
 
-    let searchItems = [];
+    let targetItem = null;
     for (const q of cleanedQueries) {
       const searchData = await performSinewixRequest(`/search/${encodeURIComponent(q)}/${SINEWIX_TOKEN}`);
       const items = searchData?.search || searchData?.data || [];
-      if (Array.isArray(items) && items.length > 0) {
-        searchItems = items;
+      if (!Array.isArray(items) || items.length === 0) continue;
+
+      const filteredSearchItems = items.filter(it => {
+        if (isMovie) {
+          return it.type === 'movie' || it.type === 'film';
+        } else {
+          return it.type === 'serie' || it.type === 'series' || it.type === 'tv' || it.type === 'anime';
+        }
+      });
+
+      const candidatePool = filteredSearchItems.length > 0 ? filteredSearchItems : items;
+
+      const matched = candidatePool.find(it => {
+        const itemTitles = [it.title, it.name, it.original_name, it.original_title].filter(Boolean);
+        const itemYear = (it.release_date || it.first_air_date || '').substring(0, 4);
+        return cleanedQueries.some(candidateQuery => itemTitles.some(iTitle => isTitleSimilar(candidateQuery, iTitle, year, itemYear)));
+      });
+
+      if (matched) {
+        targetItem = matched;
         break;
       }
     }
-
-    if (searchItems.length === 0) return [];
-
-    // Filter candidate items by requested type (movie vs tv/anime)
-    const filteredSearchItems = searchItems.filter(it => {
-      if (isMovie) {
-        return it.type === 'movie' || it.type === 'film';
-      } else {
-        // Sinewix returns type='anime' for anime content, which is tv-type in our system
-        return it.type === 'serie' || it.type === 'series' || it.type === 'tv' || it.type === 'anime';
-      }
-    });
-
-    const candidatePool = filteredSearchItems.length > 0 ? filteredSearchItems : searchItems;
-
-    const targetItem = candidatePool.find(it => {
-      const itemTitles = [it.title, it.name, it.original_name, it.original_title].filter(Boolean);
-      const itemYear = (it.release_date || it.first_air_date || '').substring(0, 4);
-      return cleanedQueries.some(q => itemTitles.some(iTitle => isTitleSimilar(q, iTitle, year, itemYear)));
-    });
 
     if (!targetItem) {
       return [];
@@ -185,17 +183,18 @@ export async function fetchSinewixSources({
       }
 
       const isSubtitledVideo = lowerLink.includes('trsub') || lowerLink.includes('.sub.') || lowerLink.includes('altyazi') || (v.lang && v.lang.toLowerCase().includes('sub'));
+      const isDualAudio = lowerLink.includes('dual') || lowerLink.includes('trdub') || (v.lang && (v.lang.toLowerCase().includes('dual') || v.lang.toLowerCase().includes('tr')));
 
-      if (isDub && isSubtitledVideo) {
+      if (isDub && isSubtitledVideo && !isDualAudio) {
         continue;
       }
 
-      if (!isDub && !isSubtitledVideo && lowerLink.includes('dub')) {
+      if (!isDub && !isSubtitledVideo && !isDualAudio && lowerLink.includes('dub')) {
         continue;
       }
 
       const isMkv = lowerLink.includes('.mkv');
-      const isDirect = (lowerLink.includes('.mp4') || lowerLink.includes('.webm')) && !isMkv;
+      const isDirect = lowerLink.includes('.mp4') || lowerLink.includes('.webm') || isMkv;
       const isHls = lowerLink.includes('.m3u8');
 
       // Use high-speed proxy with HTTP Range & CORS support for instant video startup
@@ -203,19 +202,21 @@ export async function fetchSinewixSources({
         ? `/api/hls_proxy?url=${encodeURIComponent(rawLink)}`
         : rawLink;
 
-      const serverTitle = isDirect ? 'SWX Direct 1080p' : (isMkv ? 'SWX MKV 1080p' : 'SWX VIP 1080p');
+      const serverTitle = isDirect ? (isMkv ? 'SWX 1080p (MKV)' : 'SWX 1080p Direct') : 'SWX VIP 1080p';
+      const badge = isSubtitledVideo ? '💬 TR Altyazı 1080p' : (isDualAudio ? '⚡ SWX Dual 1080p' : '⚡ SWX 1080p');
       streams.push({
         id: `snx_${v.id || Math.random().toString(36).substring(7)}`,
         name: serverTitle,
         displayName: serverTitle,
-        badge: isSubtitledVideo ? '💬 TR Altyazı 1080p' : (isMkv ? '⚡ SWX MKV' : '⚡ VIP 1080p'),
-        category: isSubtitledVideo ? 'subtitled' : 'dubbed',
+        badge,
+        category: isSubtitledVideo ? 'subtitled' : (isDub ? 'dubbed' : 'subtitled'),
         streamUrl: proxiedLink,
         url: proxiedLink,
         originalEmbedUrl: rawLink,
         isHls: isHls,
-        isDirectVideo: isDirect,
+        isDirectVideo: true,
         isMkv: isMkv,
+        source: 'SWX',
         getUrl: () => proxiedLink
       });
     }
