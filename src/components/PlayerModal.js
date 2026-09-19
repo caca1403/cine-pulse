@@ -374,7 +374,10 @@ export async function openPlayerModal({
     // Eski bir heartbeat'in yeni duraklat/atla komutundan sonra gelmesi,
     // özellikle yavaş WebRTC bağlantısında oynatıcıyı geri zıplatıyordu.
     if (issuedAt && issuedAt < lastRoomSyncIssuedAt) return;
-    if (sync.source && sync.action !== 'state') {
+    // Düzenli heartbeat'lerde kaynak taramasını tekrar yapmayız; fakat
+    // sonradan katılan cihazın ilk state paketi kaynak kimliğini taşıdığı
+    // için ilk kez burada mutlaka uygularız.
+    if (sync.source && (sync.action !== 'state' || !requiredRoomSource)) {
       requiredRoomSource = sync.source;
       const sourceChanged = applyRequiredRoomSource();
       // Kaynak henüz bu cihazın taramasına düşmediyse yerel sıradan bir
@@ -418,15 +421,16 @@ export async function openPlayerModal({
     // Akıcı modda yalnız ilk açılışta, fark iki dakikayı geçmiyorsa tek bir
     // hizalama denemesi yapılır. Sonrasında zaman/sarma/hız paketi cihazın
     // kendi tamponuna hiç müdahale etmez; iki taraf da takılmadan izler.
-    const canAlignOnJoin = isSmoothRoom && !hasTriedSmoothInitialAlignment && isHeartbeat
+    const isFirstSmoothHeartbeat = isSmoothRoom && !hasTriedSmoothInitialAlignment && isHeartbeat;
+    const canAlignOnJoin = isFirstSmoothHeartbeat
       && Number.isFinite(targetTime) && Math.abs(drift) <= 120;
     if (isSmoothRoom && isHeartbeat) hasTriedSmoothInitialAlignment = true;
     const shouldSeek = isSmoothRoom
       ? (canAlignOnJoin && Math.abs(drift) > 0.25)
       : (!isHeartbeat && Number.isFinite(targetTime) && Math.abs(drift) > 0.25
         || (isHeartbeat && Math.abs(drift) > 18 && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA && isTargetBuffered()));
-    const shouldPlaybackChange = !isHeartbeat && typeof sync.playing === 'boolean' && sync.playing === video.paused
-      && (!isSmoothRoom || sync.action === 'play' || sync.action === 'pause');
+    const shouldPlaybackChange = typeof sync.playing === 'boolean' && sync.playing === video.paused
+      && ((!isHeartbeat && (!isSmoothRoom || sync.action === 'play' || sync.action === 'pause')) || isFirstSmoothHeartbeat);
     const shouldApplySettings = Boolean(sync.settings) && !isHeartbeat && !isSmoothRoom;
     const shouldApplyAudio = Boolean(sync.audioTrack && typeof video._setAudioTrack === 'function') && !isHeartbeat && !isSmoothRoom;
     if (!shouldSeek && !shouldPlaybackChange && !shouldApplySettings && !shouldApplyAudio) {
