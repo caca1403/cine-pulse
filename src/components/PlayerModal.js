@@ -353,6 +353,12 @@ export async function openPlayerModal({
 
   function applyRemoteRoomPlayback(sync) {
     if (!roomSync || !sync || sync.roomCode !== roomSync.roomCode || String(sync.mediaId) !== String(roomSync.mediaId) || sync.type !== roomSync.type) return;
+    // Tam ekran komutu oynatma komutu değildir. Önceki sürüm bunu 0. saniye
+    // ve "duraklat" olarak işlediği için katılımcıda donmuş kare görünüyordu.
+    if (sync.action === 'fullscreen-request' || sync.requestFullscreen) {
+      showRemoteFullscreenRequest();
+      return;
+    }
     if (sync.source) {
       requiredRoomSource = sync.source;
       const sourceChanged = applyRequiredRoomSource();
@@ -380,7 +386,7 @@ export async function openPlayerModal({
     }
 
     applyingRoomSync = true;
-    if (Number.isFinite(Number(sync.time)) && Math.abs(video.currentTime - Number(sync.time)) > 0.8) {
+    if (Number.isFinite(Number(sync.time)) && Math.abs(video.currentTime - Number(sync.time)) > 0.25) {
       try { video.currentTime = Math.max(0, Number(sync.time)); } catch (_) {}
     }
     if (sync.settings) {
@@ -391,7 +397,6 @@ export async function openPlayerModal({
       if (Number.isFinite(Number(sync.settings.volume))) video.volume = Math.max(0, Math.min(1, Number(sync.settings.volume)));
       if (typeof sync.settings.muted === 'boolean') video.muted = sync.settings.muted;
     }
-    if (sync.requestFullscreen) showRemoteFullscreenRequest();
     if (sync.audioTrack && typeof video._setAudioTrack === 'function') {
       video._setAudioTrack(sync.audioTrack, true);
     }
@@ -545,7 +550,7 @@ export async function openPlayerModal({
     window.dispatchEvent(new CustomEvent('cinepulse:player-sync', { detail: {
       roomCode: roomSync.roomCode, mediaId: roomSync.mediaId, type: roomSync.type,
       season: currentSeason, episode: currentEpisode, action: 'fullscreen-request',
-      source: getRoomSourceDescriptor(), requestFullscreen: true, time: 0, playing: false
+      requestFullscreen: true
     }}));
   }
 
@@ -2719,6 +2724,9 @@ export async function openPlayerModal({
       const dur = videoEl.duration || Infinity;
       const target = Math.max(0, Math.min(dur, cur + seconds));
       videoEl.currentTime = target;
+      // seeked olayı bazı HLS kaynaklarında geç düşer; hedef zamanı anında
+      // odaya ilet ki diğer oynatıcı beklemesin.
+      emitRoomSync?.('seek', { time: target });
       showCenterAnimation(seconds > 0 ? 'rotate-cw' : 'rotate-ccw');
       showToast(seconds > 0 ? '⏩ +10 saniye' : '⏪ -10 saniye', 'info');
     };
@@ -2777,7 +2785,7 @@ export async function openPlayerModal({
     };
 
     let lastRoomSyncHeartbeat = 0;
-    const emitRoomSync = (action) => {
+    const emitRoomSync = (action, overrides = {}) => {
       if (!roomSync?.roomCode || applyingRoomSync || !Number.isFinite(videoEl.currentTime)) return;
       window.dispatchEvent(new CustomEvent('cinepulse:player-sync', {
         detail: {
@@ -2790,8 +2798,8 @@ export async function openPlayerModal({
           source: getRoomSourceDescriptor(),
           audioTrack: videoEl._currentAudioTrack || null,
           settings: { ...roomPlaybackSettings, volume: videoEl.volume, muted: videoEl.muted },
-          time: videoEl.currentTime || 0,
-          playing: !videoEl.paused
+          time: Number.isFinite(overrides.time) ? overrides.time : (videoEl.currentTime || 0),
+          playing: typeof overrides.playing === 'boolean' ? overrides.playing : !videoEl.paused
         }
       }));
     };
@@ -2837,6 +2845,7 @@ export async function openPlayerModal({
       persistCurrentProgress(videoEl.duration || videoEl.currentTime, videoEl.duration, true, true);
       startRoomFinishDecision();
     });
+    on(videoEl, 'seeking', () => emitRoomSync('seek'));
     on(videoEl, 'seeked', () => {
       handleVideoProgressUpdate(true);
       emitRoomSync('seek');
@@ -2915,7 +2924,7 @@ export async function openPlayerModal({
     on(videoEl, 'timeupdate', updateTimeAndTimeline);
     playbackScope.on(videoEl, 'timeupdate', () => {
       const now = Date.now();
-      if (now - lastRoomSyncHeartbeat > 3000) {
+      if (now - lastRoomSyncHeartbeat > 500) {
         lastRoomSyncHeartbeat = now;
         emitRoomSync('state');
       }
@@ -2952,7 +2961,11 @@ export async function openPlayerModal({
         tooltip.style.left = `${ratio * 100}%`;
       });
       on(timelineContainer, 'pointerup', (e) => {
-        if (pendingSeek !== null) videoEl.currentTime = pendingSeek;
+        const committedSeek = pendingSeek;
+        if (committedSeek !== null) {
+          videoEl.currentTime = committedSeek;
+          emitRoomSync('seek', { time: committedSeek });
+        }
         pendingSeek = null;
         if (timelineContainer.hasPointerCapture(e.pointerId)) timelineContainer.releasePointerCapture(e.pointerId);
         resetHideTimer();
