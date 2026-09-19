@@ -498,14 +498,13 @@ export async function openPlayerModal({
       panel = document.createElement('aside');
       panel.id = 'room-chat-panel';
       panel.className = 'room-chat-panel';
-      panel.innerHTML = `<header><strong>Odaya dön</strong><button type="button" aria-label="Kapat">×</button></header><div id="room-chat-messages" class="room-chat-messages"><p>Oda sohbeti yalnızca bu oturumda kalır.</p></div><form><input maxlength="240" autocomplete="off" placeholder="Mesaj yaz…" /><button type="submit">Gönder</button></form>`;
+      panel.innerHTML = `<header><strong>Oda sohbeti</strong><button type="button" aria-label="Kapat">×</button></header><div id="room-chat-messages" class="room-chat-messages"><p>Oda sohbeti yalnızca bu oturumda kalır.</p></div><form><input maxlength="240" autocomplete="off" placeholder="Mesaj yaz…" /><button type="submit">Gönder</button></form>`;
       panel.querySelector('header button').onclick = () => toggleRoomChatPanel(false);
       panel.querySelector('form').onsubmit = event => {
         event.preventDefault();
         const input = panel.querySelector('input');
         const text = input.value.trim();
         if (!text) return;
-        appendRoomChatMessage({ text }, true);
         window.dispatchEvent(new CustomEvent('cinepulse:room-chat-send', { detail: { roomCode: roomSync.roomCode, text } }));
         input.value = '';
       };
@@ -2092,7 +2091,9 @@ export async function openPlayerModal({
   const renderRoomPlayerHud = (presence = window.__cinepulseDecisionRoomPresence) => {
     if (!roomSync || !presence || presence.roomCode !== roomSync.roomCode) return;
     if (Array.isArray(presence.chatMessages)) {
-      presence.chatMessages.forEach(message => appendRoomChatMessage(message));
+      presence.chatMessages
+        .filter(message => message?.senderId !== presence.selfId)
+        .forEach(message => appendRoomChatMessage(message));
     }
     const status = modalContainer.querySelector('#room-player-status');
     const members = modalContainer.querySelector('#room-player-members');

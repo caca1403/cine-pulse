@@ -233,6 +233,7 @@ export class AnonymousDecisionRoom {
       const presence = {
         roomCode: this.roomCode,
         isHost: this.isHost,
+        selfId: this.selfId,
         participants: state.participants,
         peerCount: state.peerCount,
         chatMessages: state.chatMessages
