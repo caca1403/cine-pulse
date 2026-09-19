@@ -86,7 +86,8 @@ export async function fetchSinewixSources({
   year = null,
   season = 1,
   episode = 1,
-  isDub = true
+  isDub = true,
+  imdbId = ''
 }) {
   const isMovie = type === 'movie';
 
@@ -105,6 +106,15 @@ export async function fetchSinewixSources({
     if (cleanedQueries.length === 0) return [];
 
     let targetItem = null;
+    // APK 2.5.2 uses the IMDb episode route and no longer relies solely on
+    // free-text title search. Prefer that route when an IMDb id is known.
+    let directEpisodeData = null;
+    if (!isMovie && imdbId) {
+      const direct = await performSinewixRequest(`/search/episode-${Number(episode)}/imdbid-${encodeURIComponent(imdbId)}/season-${Number(season)}/${SINEWIX_TOKEN}`);
+      if (direct && (direct.videos || direct.streams || direct.seasons || direct.data)) {
+        directEpisodeData = direct;
+      }
+    }
     for (const q of cleanedQueries) {
       const searchData = await performSinewixRequest(`/search/${encodeURIComponent(q)}/${SINEWIX_TOKEN}`);
       const items = searchData?.search || searchData?.data || [];
@@ -132,15 +142,22 @@ export async function fetchSinewixSources({
       }
     }
 
-    if (!targetItem) {
+    if (!targetItem && !directEpisodeData) {
       return [];
     }
 
-    const itemId = targetItem.id;
-    const isAnime = targetItem.type === 'anime';
+    const itemId = targetItem?.id;
+    const isAnime = targetItem?.type === 'anime';
     let videoList = [];
 
-    if (isMovie) {
+    if (directEpisodeData) {
+      videoList = directEpisodeData.videos || directEpisodeData.streams || directEpisodeData.data || [];
+      if (!Array.isArray(videoList) && typeof videoList === 'object') videoList = Object.values(videoList);
+    }
+
+    if (directEpisodeData) {
+      // already resolved by the APK-compatible episode endpoint
+    } else if (isMovie) {
       const movieData = await performSinewixRequest(`/media/detail/${itemId}/${SINEWIX_TOKEN}`);
       videoList = movieData?.videos || [];
     } else if (isAnime) {

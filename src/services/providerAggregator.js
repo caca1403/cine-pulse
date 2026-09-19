@@ -473,7 +473,7 @@ export async function getStreamingServersProgressive({
       }).catch(() => []),
 
     // 2. Sinewix VIP: one API search/detail request, then split its results.
-    fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, isDub: null })
+    fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, imdbId, isDub: null })
       .then(res => {
         if (!Array.isArray(res) || res.length === 0) return;
         const subs = res.filter(s => s.category === 'subtitled' || (s.badge || '').includes('Altyazı'));
