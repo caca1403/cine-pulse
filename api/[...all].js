@@ -475,8 +475,12 @@ export default async function handler(req, res) {
     targetUrl = `https://vidmixi.com${subPath}${search}`;
     customHeaders['Referer'] = 'https://filmizle.now/';
   } else if (pathname.startsWith('/api/szd')) {
-    const subPath = pathname.replace(/^\/api\/szd/, '');
-    targetUrl = `https://sezonlukdizi.cc${subPath}${search}`;
+    const pathParam = urlObj.searchParams.get('path');
+    const subPath = pathParam
+      ? (pathParam.startsWith('/') ? pathParam : `/${pathParam}`)
+      : pathname.replace(/^\/api\/szd/, '');
+    const cleanSearch = search ? search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+    targetUrl = `https://sezonlukdizi.cc${subPath}${cleanSearch}`;
     customHeaders['Referer'] = 'https://sezonlukdizi.cc/';
     customHeaders['Origin'] = 'https://sezonlukdizi.cc';
     customHeaders['X-Requested-With'] = 'XMLHttpRequest';
