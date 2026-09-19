@@ -294,11 +294,17 @@ export function renderMediaCard(item, options = {}) {
 export function attachMediaCardEvents(container) {
   if (!container || container._hasMediaEventsDelegated) return;
   container._hasMediaEventsDelegated = true;
+  let suppressCardNavigationUntil = 0;
 
   // Upgrade backdrop images asynchronously for landscape mode (fire & forget)
   upgradeLandscapeBackdrops(container);
 
   container.addEventListener('click', (e) => {
+    if (Date.now() < suppressCardNavigationUntil) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     // Don't trigger card navigation if delete button or other child button clicked
     if (e.target.closest('.btn-lib-delete') || e.target.closest('.btn-delete-history')) {
       return;
@@ -404,7 +410,7 @@ export function attachMediaCardEvents(container) {
             </div>
           </div>
           <div class="card-preview-actions">
-            <span class="card-preview-open" aria-hidden="true"><i data-lucide="play"></i></span>
+            <a class="card-preview-open" href="${escapePreviewText(trailer.watchUrl || `https://www.youtube.com/watch?v=${safeKey}`)}" target="_blank" rel="noopener noreferrer" title="YouTube'da aç" aria-label="Fragmanı YouTube'da aç"><i data-lucide="external-link"></i></a>
             <button class="card-preview-sound ${previewSoundEnabled ? 'is-on' : ''}" type="button" aria-label="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}" title="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}">
               <i data-lucide="${previewSoundEnabled ? 'volume-2' : 'volume-x'}"></i>
             </button>
@@ -429,6 +435,9 @@ export function attachMediaCardEvents(container) {
       renderIcons();
 
       const iframe = previewBox.querySelector('iframe');
+      // Preview actions must not trigger the card's normal detail navigation.
+      previewBox.addEventListener('click', event => event.stopPropagation());
+      previewBox.addEventListener('touchend', event => event.stopPropagation(), { passive: true });
 
       const soundBtn = previewBox.querySelector('.card-preview-sound');
       const closeBtn = previewBox.querySelector('.card-preview-close-btn');
@@ -513,37 +522,52 @@ export function attachMediaCardEvents(container) {
   // --- Mobile: long-press on card to show trailer preview ---
   if (isTouchDevice && previewsAllowed) {
     const LONG_PRESS_MS = 600;
-    const touchTimers = new WeakMap();
+    const touchSessions = new WeakMap();
 
     container.addEventListener('touchstart', (e) => {
+      if (e.target.closest('.card-hover-video-preview')) return;
       const card = e.target.closest('.media-card');
       if (!card) return;
-      // Don't interfere with scroll
+      const session = { opened: false, timer: null };
       const id = card.getAttribute('data-id');
       const type = card.getAttribute('data-type') || 'movie';
       const trailerPromise = fetchMediaTrailer(type === 'tv' ? 'tv' : 'movie', id);
-      const timer = setTimeout(() => {
-        // Haptic feedback if available
+      session.timer = setTimeout(() => {
+        session.timer = null;
+        session.opened = true;
+        suppressCardNavigationUntil = Date.now() + 900;
         try { navigator.vibrate?.(40); } catch (_) {}
         showTrailerPreview(card, trailerPromise);
       }, LONG_PRESS_MS);
-      touchTimers.set(card, timer);
+      touchSessions.set(card, session);
     }, { passive: true });
 
     const cancelLongPress = (e) => {
       const card = e.target.closest('.media-card');
-      if (!card) return;
-      const timer = touchTimers.get(card);
-      if (timer) clearTimeout(timer);
-      touchTimers.delete(card);
+      const session = card && touchSessions.get(card);
+      if (!session) return;
+      if (session.timer) clearTimeout(session.timer);
+      session.timer = null;
+      // Releasing the same finger that opened a preview is not a dismissal.
+      // The previous handler removed the sheet immediately, so it stayed muted
+      // and the user could neither see its close button nor enable audio.
+      if (!session.opened || e.type !== 'touchend') touchSessions.delete(card);
     };
     container.addEventListener('touchend', cancelLongPress, { passive: true });
     container.addEventListener('touchmove', cancelLongPress, { passive: true });
     container.addEventListener('touchcancel', cancelLongPress, { passive: true });
 
-    // Tap on preview backdrop closes it
+    // A later tap outside the sheet closes it. The long-press release above is
+    // deliberately ignored so the preview remains open and muted by default.
     container.addEventListener('touchend', (e) => {
       if (e.target.closest('.card-hover-video-preview')) return;
+      const card = e.target.closest('.media-card');
+      const session = card && touchSessions.get(card);
+      if (session?.opened) {
+        touchSessions.delete(card);
+        return;
+      }
+      suppressCardNavigationUntil = Date.now() + 600;
       document.querySelectorAll('.card-hover-video-preview').forEach(p => {
         try { p.remove(); } catch (_) {}
         p.closest?.('.media-card')?.classList.remove('preview-active');
