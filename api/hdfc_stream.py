@@ -3,10 +3,15 @@ import json
 import re
 import urllib.parse
 import urllib.request
+import unicodedata
 from http.server import BaseHTTPRequestHandler
 
 FULL_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 BASE_URL = 'https://www.hdfilmcehennemi.nl'
+
+def slugify(value):
+    normalized = unicodedata.normalize('NFKD', value or '').encode('ascii', 'ignore').decode('ascii').lower()
+    return re.sub(r'-+', '-', re.sub(r'[^a-z0-9]+', '-', normalized)).strip('-')
 
 def atob(s):
     try:
@@ -140,6 +145,40 @@ def resolve_hdfc_stream(title, original_title='', season=1, episode=1, is_tv=Fal
             no_art = re.sub(r'^(the|a|an)\s+', '', raw, flags=re.I).strip()
             if no_art and no_art not in clean_cands:
                 clean_cands.append(no_art)
+
+    # The search endpoint is occasionally challenged on datacenter IPs. For
+    # series, try the stable episode URL convention first so production does
+    # not lose an otherwise valid HDFC stream.
+    if is_tv:
+        for candidate in clean_cands:
+            slug = slugify(candidate)
+            if not slug:
+                continue
+            for suffix in ('-3', ''):
+                episode_url = f"{BASE_URL}/dizi/{slug}-izle{suffix}/sezon-{s_num}/bolum-{ep_num}/"
+                try:
+                    req_ep = urllib.request.Request(episode_url, headers={'User-Agent': FULL_UA, 'Referer': f"{BASE_URL}/"})
+                    with urllib.request.urlopen(req_ep, timeout=6) as resp_ep:
+                        ep_html = resp_ep.read().decode('utf-8', errors='ignore')
+                    m_iframe = re.search(r'<iframe[^>]+(?:data-src|src)=["\']([^"\']*(?:embed|video|player)[^"\']*)["\']', ep_html, re.I) or re.search(r'<iframe[^>]+(?:data-src|src)=["\']([^"\']+)["\']', ep_html, re.I)
+                    if not m_iframe:
+                        continue
+                    embed_url = m_iframe.group(1)
+                    if embed_url.startswith('//'):
+                        embed_url = 'https:' + embed_url
+                    extracted = extract_from_embed(embed_url, episode_url)
+                    if extracted and extracted.get('streamUrl'):
+                        raw_stream = extracted['streamUrl']
+                        return {
+                            'success': True,
+                            'streamUrl': f"/api/hls_proxy?url={urllib.parse.quote(raw_stream)}&ref={urllib.parse.quote('https://hdfilmcehennemi.mobi/')}",
+                            'rawStreamUrl': raw_stream,
+                            'movieUrl': episode_url,
+                            'embedUrl': embed_url,
+                            'subtitles': extracted.get('subtitles', [])
+                        }
+                except Exception:
+                    continue
 
     for query in clean_cands:
         try:
