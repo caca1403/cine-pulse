@@ -132,6 +132,8 @@ export class AnonymousDecisionRoom {
     this.cards = [];
     this.votes = {};
     this.ratings = {};
+    this.suggestions = [];
+    this.syncMode = 'smooth';
     this.sharedPlayback = null;
     this.lastPlayerSync = null;
     this.roomFinish = null;
@@ -179,6 +181,17 @@ export class AnonymousDecisionRoom {
       this.broadcast({ type: 'room-chat', chat });
     };
     window.addEventListener('cinepulse:room-chat-send', this.onRoomChatSend);
+    this.onRoomPlaybackHealth = event => {
+      const health = event.detail;
+      if (!health || safeRoomCode(health.roomCode) !== this.roomCode || health.senderId === this.selfId) return;
+      this.broadcast({ type: 'playback-health', health: {
+        senderId: this.selfId,
+        status: health.status === 'buffering' ? 'buffering' : 'ready',
+        bufferedAhead: Math.max(0, Number(health.bufferedAhead) || 0),
+        reportedAt: Date.now()
+      }});
+    };
+    window.addEventListener('cinepulse:room-playback-health', this.onRoomPlaybackHealth);
     this.destroyed = false;
   }
 
@@ -216,6 +229,8 @@ export class AnonymousDecisionRoom {
       cards: this.cards,
       votes: this.votes,
       ratings: this.ratings,
+      suggestions: this.suggestions,
+      syncMode: this.syncMode,
       chatMessages: this.chatMessages
     };
   }
@@ -236,7 +251,8 @@ export class AnonymousDecisionRoom {
         selfId: this.selfId,
         participants: state.participants,
         peerCount: state.peerCount,
-        chatMessages: state.chatMessages
+        chatMessages: state.chatMessages,
+        syncMode: state.syncMode
       };
       window.__cinepulseDecisionRoomPresence = presence;
       window.dispatchEvent(new CustomEvent('cinepulse:decision-room-presence', { detail: presence }));
@@ -372,6 +388,8 @@ export class AnonymousDecisionRoom {
             cards: this.cards,
             votes: this.votes,
             ratings: this.ratings,
+            suggestions: this.suggestions,
+            syncMode: this.syncMode,
             participants: Array.from(this.participants.values()),
             sharedPlayback: this.sharedPlayback,
             lastPlayerSync: this.lastPlayerSync,
@@ -387,6 +405,8 @@ export class AnonymousDecisionRoom {
       this.cards = message.cards.slice(0, 12);
       this.votes = message.votes || {};
       this.ratings = message.ratings || {};
+      this.suggestions = Array.isArray(message.suggestions) ? message.suggestions.slice(-20) : [];
+      this.syncMode = message.syncMode === 'strict' ? 'strict' : 'smooth';
       if (Array.isArray(message.participants)) {
         message.participants.forEach(person => {
           if (person?.id && person?.nickname) this.participants.set(person.id, person);
@@ -421,6 +441,37 @@ export class AnonymousDecisionRoom {
       this.votes = message.votes || {};
       this.ratings = message.ratings || {};
       this.emit();
+    }
+
+    if (message.type === 'suggestions' && Array.isArray(message.suggestions) && !this.isHost) {
+      this.suggestions = message.suggestions.slice(-20);
+      this.emit();
+    }
+
+    if (message.type === 'sync-mode' && !this.isHost) {
+      this.syncMode = message.syncMode === 'strict' ? 'strict' : 'smooth';
+      this.emit();
+    }
+
+    if (message.type === 'suggest-card' && this.isHost && message.card?.id) {
+      const suggestionId = `${message.senderId}:${message.card.type}:${message.card.id}`;
+      const alreadyListed = this.cards.some(card => String(card.id) === String(message.card.id) && card.type === message.card.type);
+      if (!alreadyListed && !this.suggestions.some(item => item.id === suggestionId)) {
+        const participant = this.participants.get(message.senderId);
+        this.suggestions = [...this.suggestions, {
+          id: suggestionId,
+          card: message.card,
+          nickname: participant?.nickname || 'Katılımcı'
+        }].slice(-20);
+        this.broadcast({ type: 'suggestions', suggestions: this.suggestions });
+        this.emit();
+      }
+    }
+
+    if (message.type === 'playback-health' && this.isHost && message.health?.senderId) {
+      window.dispatchEvent(new CustomEvent('cinepulse:room-playback-health-remote', {
+        detail: { ...message.health, roomCode: this.roomCode, syncMode: this.syncMode }
+      }));
     }
 
     if (message.type === 'vote' && message.cardId && message.senderId) {
@@ -502,6 +553,43 @@ export class AnonymousDecisionRoom {
     return true;
   }
 
+  suggest(card) {
+    if (this.isHost || !card?.id) return false;
+    this.broadcast({ type: 'suggest-card', card });
+    return true;
+  }
+
+  acceptSuggestion(suggestionId) {
+    if (!this.isHost) return false;
+    const suggestion = this.suggestions.find(item => item.id === suggestionId);
+    if (!suggestion || this.cards.length >= 12) return false;
+    this.suggestions = this.suggestions.filter(item => item.id !== suggestionId);
+    if (!this.cards.some(card => String(card.id) === String(suggestion.card.id) && card.type === suggestion.card.type)) {
+      this.cards = [...this.cards, suggestion.card];
+      this.broadcast({ type: 'cards', cards: this.cards, votes: this.votes, ratings: this.ratings });
+    }
+    this.broadcast({ type: 'suggestions', suggestions: this.suggestions });
+    this.emit();
+    return true;
+  }
+
+  dismissSuggestion(suggestionId) {
+    if (!this.isHost) return false;
+    const next = this.suggestions.filter(item => item.id !== suggestionId);
+    if (next.length === this.suggestions.length) return false;
+    this.suggestions = next;
+    this.broadcast({ type: 'suggestions', suggestions: this.suggestions });
+    this.emit();
+    return true;
+  }
+
+  setSyncMode(mode) {
+    if (!this.isHost) return;
+    this.syncMode = mode === 'strict' ? 'strict' : 'smooth';
+    this.broadcast({ type: 'sync-mode', syncMode: this.syncMode });
+    this.emit();
+  }
+
   removeCard(cardId) {
     if (!this.isHost || !cardId) return false;
     const nextCards = this.cards.filter(card => String(card.id) !== String(cardId));
@@ -551,6 +639,7 @@ export class AnonymousDecisionRoom {
     window.removeEventListener('cinepulse:room-finish-choice', this.onRoomFinishChoice);
     window.removeEventListener('cinepulse:room-reaction', this.onRoomReaction);
     window.removeEventListener('cinepulse:room-chat-send', this.onRoomChatSend);
+    window.removeEventListener('cinepulse:room-playback-health', this.onRoomPlaybackHealth);
     if (this.announceTimer) window.clearInterval(this.announceTimer);
     this.announceTimer = null;
     this.peers.forEach(peer => {

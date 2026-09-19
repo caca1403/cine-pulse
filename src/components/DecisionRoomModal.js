@@ -74,18 +74,40 @@ function ratingSummary(card, state) {
   return { average, count: values.length, mine };
 }
 
+function roomControlsHTML() {
+  return `
+    <section id="decision-room-moderator-panel" class="decision-room-moderator-panel" hidden>
+      <div><i data-lucide="crown"></i><strong>Moderatör paneli</strong><span>Katılanlar anonim kalır; yalnızca bu odadaki takma adları görünür.</span></div>
+      <small id="decision-room-signal-status" class="decision-room-signal-status">Katılım sinyali bekleniyor…</small>
+      <div id="decision-room-peers" class="decision-room-peers"></div>
+      <section id="decision-room-sync-mode" class="decision-room-sync-mode"><strong>İzleme senkronu</strong><label><input type="radio" name="room-sync-mode" value="smooth" /> Akıcı mod</label><label><input type="radio" name="room-sync-mode" value="strict" /> Herkesle senkron</label><small id="decision-room-sync-help"></small></section>
+      <section id="decision-room-suggestions" class="decision-room-suggestions"></section>
+      <form id="decision-room-content-form" class="decision-room-content-form"><label for="decision-room-content-search">Film veya dizi ekle</label><div><input id="decision-room-content-search" minlength="2" placeholder="İçerik ara" /><button type="submit"><i data-lucide="search"></i> Ara</button></div></form>
+      <div id="decision-room-content-results" class="decision-room-content-results"></div>
+    </section>
+    <section id="decision-room-suggestion-panel" class="decision-room-suggestion-panel" hidden>
+      <strong>İçerik öner</strong><small>Önerin moderatörün onayına düşer.</small>
+      <form id="decision-room-suggestion-form" class="decision-room-content-form"><div><input id="decision-room-suggestion-search" minlength="2" placeholder="Film veya dizi ara" /><button type="submit"><i data-lucide="send"></i> Öner</button></div></form>
+      <div id="decision-room-suggestion-results" class="decision-room-content-results"></div>
+    </section>`;
+}
+
 function renderRoomState(root, state, statusText = '') {
   const status = root.querySelector('#decision-room-status');
   const peers = root.querySelector('#decision-room-peers');
   const memberCount = root.querySelector('#decision-room-member-count');
   const moderatorPanel = root.querySelector('#decision-room-moderator-panel');
   const signalStatus = root.querySelector('#decision-room-signal-status');
+  const suggestionPanel = root.querySelector('#decision-room-suggestion-panel');
+  const suggestions = root.querySelector('#decision-room-suggestions');
+  const syncMode = root.querySelector('#decision-room-sync-mode');
   const deck = root.querySelector('#decision-room-deck');
   const link = root.querySelector('#decision-room-link');
   if (status) status.textContent = statusText || (state.peerCount ? 'Arkadaşların bağlandı, oylar anlık geliyor.' : 'Oda eşleştiriliyor. Arkadaşına bağlantıyı gönder.');
   const observedCount = Math.max(state.participants.length, state.trackerPeerCount || 1);
   if (memberCount) memberCount.textContent = `${observedCount} kişi`;
   if (moderatorPanel) moderatorPanel.hidden = !state.isHost;
+  if (suggestionPanel) suggestionPanel.hidden = state.isHost;
   if (signalStatus && state.isHost) {
     signalStatus.textContent = observedCount > state.participants.length
       ? `${observedCount} kişi tracker tarafından görüldü; doğrudan bağlantı hazırlanıyor.`
@@ -97,6 +119,27 @@ function renderRoomState(root, state, statusText = '') {
       : '';
   }
   if (link) link.value = buildRoomUrl(state.roomCode);
+  if (syncMode && state.isHost) {
+    const strict = state.syncMode === 'strict';
+    syncMode.querySelector('input[value="smooth"]').checked = !strict;
+    syncMode.querySelector('input[value="strict"]').checked = strict;
+    const help = syncMode.querySelector('#decision-room-sync-help');
+    if (help) help.textContent = strict
+      ? 'Yavaş bağlantı buffer’a düşünce herkes kısa süre bekler; süreler birlikte kalır.'
+      : 'Yavaş bağlantı kendi hızında ilerler; hızlı bağlantılı kişiler beklemez.';
+    syncMode.querySelectorAll('input[name="room-sync-mode"]').forEach(input => {
+      input.onchange = () => activeRoom?.setSyncMode(input.value);
+    });
+  }
+  if (suggestions && state.isHost) {
+    suggestions.innerHTML = state.suggestions?.length ? `<strong>Katılımcı önerileri</strong>${state.suggestions.map(item => `<div class="decision-room-suggestion"><span><b>${escapeHtml(item.card.title || item.card.name || 'İsimsiz içerik')}</b><small>${escapeHtml(item.nickname)} önerdi</small></span><button data-accept-suggestion="${escapeHtml(item.id)}">Ekle</button><button data-dismiss-suggestion="${escapeHtml(item.id)}" aria-label="Reddet">×</button></div>`).join('')}` : '';
+    suggestions.querySelectorAll('[data-accept-suggestion]').forEach(button => {
+      button.onclick = () => activeRoom?.acceptSuggestion(button.dataset.acceptSuggestion);
+    });
+    suggestions.querySelectorAll('[data-dismiss-suggestion]').forEach(button => {
+      button.onclick = () => activeRoom?.dismissSuggestion(button.dataset.dismissSuggestion);
+    });
+  }
 
   if (deck) {
     if (!state.cards.length) {
@@ -223,6 +266,41 @@ function setupModeratorContentSearch(root, room) {
   };
 }
 
+function setupParticipantSuggestionSearch(root, room) {
+  const form = root.querySelector('#decision-room-suggestion-form');
+  const input = root.querySelector('#decision-room-suggestion-search');
+  const results = root.querySelector('#decision-room-suggestion-results');
+  if (!form || !input || !results || room.isHost) return;
+  let debounceTimer = null;
+  let requestId = 0;
+  const runSearch = async () => {
+    const query = input.value.trim();
+    if (query.length < 2) return;
+    const currentRequest = ++requestId;
+    results.innerHTML = '<span class="decision-room-search-status">Aranıyor…</span>';
+    const items = await searchMulti(query).catch(() => []);
+    if (currentRequest !== requestId || input.value.trim() !== query) return;
+    const matches = items.filter(item => item?.id && (item.type === 'movie' || item.type === 'tv')).slice(0, 5);
+    results.innerHTML = matches.map(item => `<div class="decision-room-search-result"><button type="button" data-suggest-card="${item.id}" data-suggest-type="${item.type || item.media_type}"><img src="${getImageUrl(item.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL)}" alt="" /><span><strong>${escapeHtml(item.title || item.name || 'İsimsiz içerik')}</strong><small>${(item.type || item.media_type) === 'tv' ? 'Dizi' : 'Film'} · Moderatöre öner</small></span><i data-lucide="send"></i></button></div>`).join('') || '<span class="decision-room-search-status">Sonuç bulunamadı.</span>';
+    results.querySelectorAll('[data-suggest-card]').forEach(button => {
+      button.onclick = () => {
+        const item = matches.find(candidate => String(candidate.id) === button.dataset.suggestCard && String(candidate.type || candidate.media_type) === button.dataset.suggestType);
+        if (!item || !room.suggest(toRoomCard(item))) return;
+        input.value = '';
+        results.innerHTML = '';
+        showToast('Önerin moderatöre gönderildi.', 'success');
+      };
+    });
+    renderIcons(results);
+  };
+  form.onsubmit = event => { event.preventDefault(); window.clearTimeout(debounceTimer); runSearch(); };
+  input.oninput = () => {
+    window.clearTimeout(debounceTimer);
+    if (input.value.trim().length < 2) { requestId += 1; results.innerHTML = ''; return; }
+    debounceTimer = window.setTimeout(runSearch, 220);
+  };
+}
+
 async function loadCandidates(room, root) {
   const status = root.querySelector('#decision-room-status');
   if (status) status.textContent = 'Ortak adaylar hazırlanıyor…';
@@ -276,13 +354,7 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), i
         <small>Arkadaşın “Birlikte Seç” ekranında bu kodu yazsın.</small>
       </div>
       <div class="decision-room-live"><span class="decision-room-live-dot"></span><span id="decision-room-status">Oda hazırlanıyor…</span><strong id="decision-room-member-count" class="decision-room-member-count">1 kişi</strong></div>
-      <section id="decision-room-moderator-panel" class="decision-room-moderator-panel" hidden>
-        <div><i data-lucide="crown"></i><strong>Moderatör paneli</strong><span>Katılanlar anonim kalır; yalnızca bu odadaki takma adları görünür.</span></div>
-        <small id="decision-room-signal-status" class="decision-room-signal-status">Katılım sinyali bekleniyor…</small>
-        <div id="decision-room-peers" class="decision-room-peers"></div>
-        <form id="decision-room-content-form" class="decision-room-content-form"><label for="decision-room-content-search">Film veya dizi ekle</label><div><input id="decision-room-content-search" minlength="2" placeholder="İçerik ara" /><button type="submit"><i data-lucide="search"></i> Ara</button></div></form>
-        <div id="decision-room-content-results" class="decision-room-content-results"></div>
-      </section>
+      ${roomControlsHTML()}
       <div id="decision-room-deck" class="decision-room-deck"></div>
       <footer class="decision-room-footer"><span>Oda kapanınca oylar silinir.</span><button id="btn-refresh-decision-cards"><i data-lucide="refresh-cw"></i> Yeni adaylar</button></footer>
     </section>`;
@@ -307,6 +379,7 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), i
   // odaya işlem yapma.
   if (activeRoom !== room || activeRoomModal !== root) return;
   setupModeratorContentSearch(root, room);
+  setupParticipantSuggestionSearch(root, room);
 
   root.querySelector('#btn-copy-decision-room').onclick = async () => {
     try {
@@ -361,7 +434,7 @@ export function returnToDecisionRoomModal() {
       <header class="decision-room-header"><div class="decision-room-icon"><i data-lucide="users-round"></i></div><div><h2>Birlikte Seç</h2><p>Odan hâlâ açık. Adayları ve katılımcıları buradan gör.</p></div></header>
       <div class="decision-room-code-panel"><span>ODA KODU</span><strong id="decision-room-code">${escapeHtml(room.roomCode)}</strong><button id="btn-copy-decision-room"><i data-lucide="copy"></i> Kodu Kopyala</button><small>Arkadaşın “Birlikte Seç” ekranında bu kodu yazsın.</small></div>
       <div class="decision-room-live"><span class="decision-room-live-dot"></span><span id="decision-room-status">Odaya dönüldü.</span><strong id="decision-room-member-count" class="decision-room-member-count">1 kişi</strong></div>
-      <section id="decision-room-moderator-panel" class="decision-room-moderator-panel" hidden><div><i data-lucide="crown"></i><strong>Moderatör paneli</strong><span>Katılanlar anonim kalır; yalnızca bu odadaki takma adları görünür.</span></div><small id="decision-room-signal-status" class="decision-room-signal-status"></small><div id="decision-room-peers" class="decision-room-peers"></div><form id="decision-room-content-form" class="decision-room-content-form"><label for="decision-room-content-search">Film veya dizi ekle</label><div><input id="decision-room-content-search" minlength="2" placeholder="İçerik ara" /><button type="submit"><i data-lucide="search"></i> Ara</button></div></form><div id="decision-room-content-results" class="decision-room-content-results"></div></section>
+      ${roomControlsHTML()}
       <div id="decision-room-deck" class="decision-room-deck"></div>
       <footer class="decision-room-footer"><span>Oda kapanınca oylar silinir.</span><button id="btn-refresh-decision-cards"><i data-lucide="refresh-cw"></i> Yeni adaylar</button></footer>
     </section>`;
@@ -374,6 +447,7 @@ export function returnToDecisionRoomModal() {
   removeSharedOpenListener = () => window.removeEventListener('cinepulse:decision-room-open', closeForSharedPlayback);
   unsubscribe = room.subscribe(state => renderRoomState(root, state));
   setupModeratorContentSearch(root, room);
+  setupParticipantSuggestionSearch(root, room);
   root.querySelector('#btn-copy-decision-room').onclick = async () => {
     try {
       await navigator.clipboard.writeText(room.roomCode);

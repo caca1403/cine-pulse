@@ -353,6 +353,9 @@ export async function openPlayerModal({
   let pendingRoomPlayback = null;
   let lastRoomSyncIssuedAt = 0;
   let roomCatchupTimer = null;
+  let roomSyncMode = 'smooth';
+  let roomPausedForParticipants = false;
+  const roomParticipantHealth = new Map();
 
   function applyRemoteRoomPlayback(sync) {
     if (!roomSync || !sync || sync.roomCode !== roomSync.roomCode || String(sync.mediaId) !== String(roomSync.mediaId) || sync.type !== roomSync.type) return;
@@ -700,6 +703,21 @@ export async function openPlayerModal({
       if (!panel || panel.classList.contains('hidden')) {
         roomUnreadMessages += 1;
         updateRoomChatBadge();
+      }
+    });
+    modalScope.on(window, 'cinepulse:room-playback-health-remote', event => {
+      const health = event.detail;
+      if (!health || health.roomCode !== roomSync.roomCode || !isRoomModerator() || roomSyncMode !== 'strict') return;
+      roomParticipantHealth.set(health.senderId, health.status);
+      const video = modalContainer.querySelector('#hls-video-player');
+      const someoneBuffering = Array.from(roomParticipantHealth.values()).includes('buffering');
+      if (someoneBuffering && video && !video.paused) {
+        roomPausedForParticipants = true;
+        video.pause();
+        showToast('Bir katılımcının akışı hazırlanıyor; herkesle senkron için bekleniyor.', 'info');
+      } else if (!someoneBuffering && roomPausedForParticipants && video?.paused) {
+        roomPausedForParticipants = false;
+        video.play().catch(() => {});
       }
     });
     modalScope.on(window, 'cinepulse:decision-room-close-player', event => {
@@ -2090,6 +2108,13 @@ export async function openPlayerModal({
 
   const renderRoomPlayerHud = (presence = window.__cinepulseDecisionRoomPresence) => {
     if (!roomSync || !presence || presence.roomCode !== roomSync.roomCode) return;
+    roomSyncMode = presence.syncMode === 'strict' ? 'strict' : 'smooth';
+    if (roomSyncMode !== 'strict' && roomPausedForParticipants) {
+      roomPausedForParticipants = false;
+      roomParticipantHealth.clear();
+      const video = modalContainer.querySelector('#hls-video-player');
+      video?.play?.().catch(() => {});
+    }
     if (Array.isArray(presence.chatMessages)) {
       presence.chatMessages
         .filter(message => message?.senderId !== presence.selfId)
@@ -2099,9 +2124,10 @@ export async function openPlayerModal({
     const members = modalContainer.querySelector('#room-player-members');
     const episode = modalContainer.querySelector('#room-player-episode');
     const source = modalContainer.querySelector('#room-player-source');
+    const modeLabel = roomSyncMode === 'strict' ? 'Herkesle senkron' : 'Akıcı mod';
     if (status) status.textContent = presence.isHost
-      ? `${presence.participants.length} kişi bağlı · Kontrol sende`
-      : `${presence.participants.length} kişi bağlı · Moderatör eşitliyor`;
+      ? `${presence.participants.length} kişi bağlı · ${modeLabel}`
+      : `${presence.participants.length} kişi bağlı · ${modeLabel}`;
     if (members) {
       members.innerHTML = presence.participants.slice(0, 4)
         .map(person => `<span title="${person.nickname}">${person.role === 'moderator' ? '♛' : '●'} ${person.nickname}</span>`)
@@ -2969,6 +2995,22 @@ export async function openPlayerModal({
     };
 
     let lastRoomSyncHeartbeat = 0;
+    let roomHealthTimer = null;
+    const reportRoomPlaybackHealth = status => {
+      if (!roomSync?.roomCode || isRoomModerator() || roomSyncMode !== 'strict') return;
+      let bufferedAhead = 0;
+      try {
+        for (let index = 0; index < videoEl.buffered.length; index += 1) {
+          if (videoEl.buffered.start(index) <= videoEl.currentTime && videoEl.buffered.end(index) >= videoEl.currentTime) {
+            bufferedAhead = Math.max(0, videoEl.buffered.end(index) - videoEl.currentTime);
+            break;
+          }
+        }
+      } catch (_) {}
+      window.dispatchEvent(new CustomEvent('cinepulse:room-playback-health', {
+        detail: { roomCode: roomSync.roomCode, status, bufferedAhead }
+      }));
+    };
     const emitRoomSync = (action, overrides = {}) => {
       if (!roomSync?.roomCode || applyingRoomSync || !Number.isFinite(videoEl.currentTime)) return;
       window.dispatchEvent(new CustomEvent('cinepulse:player-sync', {
@@ -3020,6 +3062,22 @@ export async function openPlayerModal({
       emitRoomSync('play');
     });
     on(videoEl, 'playing', () => resetHideTimer());
+    on(videoEl, 'playing', () => {
+      if (roomHealthTimer) clearTimeout(roomHealthTimer);
+      reportRoomPlaybackHealth('ready');
+    });
+    on(videoEl, 'canplay', () => {
+      if (roomHealthTimer) clearTimeout(roomHealthTimer);
+      reportRoomPlaybackHealth('ready');
+    });
+    on(videoEl, 'waiting', () => {
+      if (roomHealthTimer) clearTimeout(roomHealthTimer);
+      roomHealthTimer = setTimeout(() => reportRoomPlaybackHealth('buffering'), 900);
+    });
+    on(videoEl, 'stalled', () => {
+      if (roomHealthTimer) clearTimeout(roomHealthTimer);
+      roomHealthTimer = setTimeout(() => reportRoomPlaybackHealth('buffering'), 900);
+    });
     on(videoEl, 'pause', () => {
       updatePlayState();
       handleVideoProgressUpdate(true);
