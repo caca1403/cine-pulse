@@ -739,16 +739,23 @@ export async function openPlayerModal({
       return;
     }
 
-    // Find next available non-failed server in active category
+    // Find the next available non-failed server in active category. Sources
+    // are priority-sorted, so a manually selected low-priority source may be
+    // the last item; wrap to the beginning instead of stranding the viewer on
+    // an error screen.
     const isCurrentDirect = currentSrv && (currentSrv.isDirectVideo || currentSrv.isHls || currentSrv.isMkv || !currentSrv.isTorrent);
-    const nextIndex = activeServers.findIndex((s, idx) => {
-      if (idx <= currentServerIndex || s.failed) return false;
+    let nextIndex = -1;
+    for (let offset = 1; offset < activeServers.length; offset++) {
+      const idx = (currentServerIndex + offset) % activeServers.length;
+      const s = activeServers[idx];
+      if (!s || s.failed) continue;
       if (isCurrentDirect) {
         const isTor = s.isTorrent || s.id?.includes('torrent') || s.streamUrl?.startsWith('magnet:') || s.streamUrl?.includes(':4000/torrent/');
-        if (isTor) return false;
+        if (isTor) continue;
       }
-      return true;
-    });
+      nextIndex = idx;
+      break;
+    }
     if (nextIndex !== -1) {
       const nextSrv = activeServers[nextIndex];
       showToast(`⚠️ ${currentSrv?.displayName || currentSrv?.name || 'Mevcut kaynak'} yanıt vermedi. ${nextSrv.displayName || nextSrv.name} deneniyor...`, 'warning');
