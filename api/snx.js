@@ -1,5 +1,7 @@
 import { guardNodeRequest } from './_security.js';
 
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -26,10 +28,30 @@ export default async function handler(req, res) {
   };
 
   try {
-    const upstreamRes = await fetch(targetUrl, {
+    let upstreamRes = await fetch(targetUrl, {
       method: req.method,
-      headers: customHeaders
-    });
+      headers: customHeaders,
+      signal: AbortSignal.timeout(4500)
+    }).catch(() => null);
+
+    const isBlocked = !upstreamRes || !upstreamRes.ok || (upstreamRes.headers.get('content-type') || '').includes('text/html');
+
+    if (isBlocked) {
+      const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
+      const workerRes = await fetch(workerUrl, {
+        method: req.method,
+        headers: customHeaders,
+        signal: AbortSignal.timeout(6000)
+      }).catch(() => null);
+
+      if (workerRes && workerRes.ok) {
+        upstreamRes = workerRes;
+      }
+    }
+
+    if (!upstreamRes) {
+      return res.status(502).json({ error: 'Failed to reach Sinewix upstream API' });
+    }
 
     const data = await upstreamRes.arrayBuffer();
     res.setHeader('Access-Control-Allow-Origin', '*');

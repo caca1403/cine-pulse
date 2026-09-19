@@ -994,11 +994,30 @@ export default async function handler(req, res) {
       }
     }
 
-    const upstreamRes = await fetch(targetUrl, {
+    let upstreamRes = await fetch(targetUrl, {
       method: req.method,
       headers: customHeaders,
       body: body
-    });
+    }).catch(() => null);
+
+    if (pathname.startsWith('/api/snx')) {
+      const isBlocked = !upstreamRes || !upstreamRes.ok || (upstreamRes.headers.get('content-type') || '').includes('text/html');
+      if (isBlocked) {
+        const workerUrl = `https://wild-credit-e1ae.cagatayca07.workers.dev?url=${encodeURIComponent(targetUrl)}`;
+        const workerRes = await fetch(workerUrl, {
+          method: req.method,
+          headers: customHeaders,
+          body: body
+        }).catch(() => null);
+        if (workerRes && workerRes.ok) {
+          upstreamRes = workerRes;
+        }
+      }
+    }
+
+    if (!upstreamRes) {
+      return res.status(502).json({ error: 'Upstream fetch failed' });
+    }
 
     // Forward Set-Cookie headers if any
     const setCookies = upstreamRes.headers.getSetCookie ? upstreamRes.headers.getSetCookie() : [upstreamRes.headers.get('set-cookie')];

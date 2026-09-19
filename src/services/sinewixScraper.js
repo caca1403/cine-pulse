@@ -20,6 +20,8 @@ const SINEWIX_HEADERS = {
   'Accept': 'application/json'
 };
 
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+
 function normalizeText(text) {
   if (!text) return '';
   return text
@@ -49,7 +51,23 @@ async function performSinewixRequest(endpoint) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const directTarget = `${SINEWIX_API_BASE}${cleanEndpoint}`;
 
-  // 1. Try Local Vite / Vercel Serverless Proxy (/api/snx)
+  const isValidPayload = (d) => Boolean(d && (d.search || d.videos || d.seasons || d.data || d.title || d.id || Array.isArray(d)));
+
+  // 1. Try CF Worker gateway first (bypasses Cloudflare bot detection & handles CORS directly in browser)
+  try {
+    const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(directTarget)}`;
+    const res = await fetch(workerUrl, {
+      headers: SINEWIX_HEADERS,
+      signal: AbortSignal.timeout(6000)
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (isValidPayload(data)) return data;
+    }
+  } catch (_) {}
+
+  // 2. Try Local Vite / Vercel Serverless Proxy (/api/snx)
   try {
     const vercelProxyUrl = apiUrl(`/api/snx?path=${encodeURIComponent(cleanEndpoint)}`);
     const res = await fetch(vercelProxyUrl, {
@@ -58,11 +76,11 @@ async function performSinewixRequest(endpoint) {
 
     if (res && res.ok) {
       const data = await res.json().catch(() => null);
-      if (data) return data;
+      if (isValidPayload(data)) return data;
     }
   } catch (_) {}
 
-  // 2. Direct backend fallback (for Node / server-side environments)
+  // 3. Direct backend fallback (for Node / server-side environments)
   try {
     const res = await fetch(directTarget, {
       headers: SINEWIX_HEADERS,
@@ -71,7 +89,7 @@ async function performSinewixRequest(endpoint) {
 
     if (res && res.ok) {
       const data = await res.json().catch(() => null);
-      if (data) return data;
+      if (isValidPayload(data)) return data;
     }
   } catch (_) {}
 
