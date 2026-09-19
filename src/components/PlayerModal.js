@@ -355,7 +355,12 @@ export async function openPlayerModal({
   let hasTriedSmoothInitialAlignment = false;
   let roomSyncMode = 'smooth';
   let roomPausedForParticipants = false;
+  let roomCheckpointPause = false;
+  let roomRemoteCheckpointPause = false;
+  let suppressRoomSyncUntil = 0;
   const roomParticipantHealth = new Map();
+  const roomParticipantProgress = new Map();
+  const roomHeldParticipants = new Map();
 
   function applyRemoteRoomPlayback(sync) {
     if (!roomSync || !sync || sync.roomCode !== roomSync.roomCode || String(sync.mediaId) !== String(roomSync.mediaId) || sync.type !== roomSync.type) return;
@@ -727,6 +732,54 @@ export async function openPlayerModal({
       } else if (!someoneBuffering && roomPausedForParticipants && video?.paused) {
         roomPausedForParticipants = false;
         video.play().catch(() => {});
+      }
+    });
+    modalScope.on(window, 'cinepulse:room-playback-progress-remote', event => {
+      const progress = event.detail;
+      if (!progress || progress.roomCode !== roomSync.roomCode || !isRoomModerator() || roomSyncMode !== 'smooth') return;
+      roomParticipantProgress.set(progress.senderId, progress);
+      const video = modalContainer.querySelector('#hls-video-player');
+      if (!video || !Number.isFinite(video.currentTime)) return;
+      const fresh = Array.from(roomParticipantProgress.values()).filter(item => Date.now() - item.reportedAt < 25000);
+      const maximumLag = fresh.reduce((largest, item) => Math.max(largest, video.currentTime - item.time), 0);
+      const participantLead = progress.time - video.currentTime;
+      // Akıcı modun güvenlik şeridi: küçük farklara karışmaz. Fark 2,5
+      // dakikaya ulaşırsa yalnız moderatör yerelde bekler; gerideki cihaz
+      // oynatmaya devam ederek yakalar. Bu pause paketi odaya yayınlanmaz.
+      if (maximumLag >= 150 && !roomCheckpointPause && !video.paused) {
+        roomCheckpointPause = true;
+        suppressRoomSyncUntil = Date.now() + 2500;
+        video.pause();
+        showToast(`${progress.nickname || 'Katılımcı'} geride kaldı; fark büyümesin diye kısa süre bekleniyor.`, 'info');
+      } else if (roomCheckpointPause && maximumLag <= 20 && video.paused) {
+        roomCheckpointPause = false;
+        suppressRoomSyncUntil = Date.now() + 2500;
+        video.play().catch(() => {});
+        showToast('Katılımcı yakaladı; akıcı izleme devam ediyor.', 'success');
+      }
+      if (participantLead >= 150 && !roomHeldParticipants.has(progress.senderId)) {
+        roomHeldParticipants.set(progress.senderId, progress.time);
+        window.dispatchEvent(new CustomEvent('cinepulse:room-playback-checkpoint', {
+          detail: { roomCode: roomSync.roomCode, targetId: progress.senderId, action: 'hold', mediaId: roomSync.mediaId, type: roomSync.type }
+        }));
+      }
+    });
+    modalScope.on(window, 'cinepulse:room-playback-checkpoint-remote', event => {
+      const checkpoint = event.detail;
+      const selfId = window.__cinepulseDecisionRoomPresence?.selfId;
+      if (!checkpoint || roomSyncMode !== 'smooth' || checkpoint.roomCode !== roomSync.roomCode
+        || checkpoint.targetId !== selfId || String(checkpoint.mediaId) !== String(roomSync.mediaId) || checkpoint.type !== roomSync.type) return;
+      const video = modalContainer.querySelector('#hls-video-player');
+      if (!video) return;
+      suppressRoomSyncUntil = Date.now() + 2500;
+      if (checkpoint.action === 'hold' && !video.paused) {
+        roomRemoteCheckpointPause = true;
+        video.pause();
+        showToast('Moderatör geride kaldı; sana yaklaşana kadar kısa süre bekleniyor.', 'info');
+      } else if (checkpoint.action === 'resume' && roomRemoteCheckpointPause && video.paused) {
+        roomRemoteCheckpointPause = false;
+        video.play().catch(() => {});
+        showToast('Moderatör yakaladı; akıcı izleme devam ediyor.', 'success');
       }
     });
     modalScope.on(window, 'cinepulse:room-playback-finished-remote', event => {
@@ -2131,6 +2184,20 @@ export async function openPlayerModal({
       const video = modalContainer.querySelector('#hls-video-player');
       video?.play?.().catch(() => {});
     }
+    if (roomSyncMode !== 'smooth' && roomCheckpointPause) {
+      roomCheckpointPause = false;
+      roomParticipantProgress.clear();
+      const video = modalContainer.querySelector('#hls-video-player');
+      suppressRoomSyncUntil = Date.now() + 2500;
+      video?.play?.().catch(() => {});
+    }
+    if (roomSyncMode !== 'smooth') roomHeldParticipants.clear();
+    if (roomSyncMode !== 'smooth' && roomRemoteCheckpointPause) {
+      roomRemoteCheckpointPause = false;
+      const video = modalContainer.querySelector('#hls-video-player');
+      suppressRoomSyncUntil = Date.now() + 2500;
+      video?.play?.().catch(() => {});
+    }
     if (Array.isArray(presence.chatMessages)) {
       presence.chatMessages
         .filter(message => message?.senderId !== presence.selfId)
@@ -3015,6 +3082,7 @@ export async function openPlayerModal({
     };
 
     let lastRoomSyncHeartbeat = 0;
+    let lastRoomProgressReport = 0;
     let roomHealthTimer = null;
     const reportRoomPlaybackHealth = status => {
       if (!roomSync?.roomCode || isRoomModerator() || roomSyncMode !== 'strict') return;
@@ -3032,7 +3100,7 @@ export async function openPlayerModal({
       }));
     };
     const emitRoomSync = (action, overrides = {}) => {
-      if (!roomSync?.roomCode || applyingRoomSync || !Number.isFinite(videoEl.currentTime)) return;
+      if (!roomSync?.roomCode || applyingRoomSync || Date.now() < suppressRoomSyncUntil || !Number.isFinite(videoEl.currentTime)) return;
       window.dispatchEvent(new CustomEvent('cinepulse:player-sync', {
         detail: {
           roomCode: roomSync.roomCode,
@@ -3195,6 +3263,22 @@ export async function openPlayerModal({
       if (now - lastRoomSyncHeartbeat > 2000) {
         lastRoomSyncHeartbeat = now;
         emitRoomSync('state');
+      }
+      if (roomSync?.roomCode && !isRoomModerator() && roomSyncMode === 'smooth' && now - lastRoomProgressReport > 8000) {
+        lastRoomProgressReport = now;
+        window.dispatchEvent(new CustomEvent('cinepulse:room-playback-progress', {
+          detail: { roomCode: roomSync.roomCode, time: videoEl.currentTime }
+        }));
+      }
+      if (roomSync?.roomCode && isRoomModerator() && roomSyncMode === 'smooth' && roomHeldParticipants.size) {
+        roomHeldParticipants.forEach((heldTime, participantId) => {
+          if (videoEl.currentTime >= heldTime - 20) {
+            roomHeldParticipants.delete(participantId);
+            window.dispatchEvent(new CustomEvent('cinepulse:room-playback-checkpoint', {
+              detail: { roomCode: roomSync.roomCode, targetId: participantId, action: 'resume', mediaId: roomSync.mediaId, type: roomSync.type }
+            }));
+          }
+        });
       }
     });
     on(videoEl, 'durationchange', updateTimeAndTimeline);

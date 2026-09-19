@@ -192,6 +192,28 @@ export class AnonymousDecisionRoom {
       }});
     };
     window.addEventListener('cinepulse:room-playback-health', this.onRoomPlaybackHealth);
+    this.onRoomPlaybackProgress = event => {
+      const progress = event.detail;
+      if (!progress || safeRoomCode(progress.roomCode) !== this.roomCode) return;
+      this.broadcast({ type: 'playback-progress', progress: {
+        senderId: this.selfId,
+        nickname: this.nickname,
+        time: Math.max(0, Number(progress.time) || 0),
+        reportedAt: Date.now()
+      }});
+    };
+    window.addEventListener('cinepulse:room-playback-progress', this.onRoomPlaybackProgress);
+    this.onRoomPlaybackCheckpoint = event => {
+      const checkpoint = event.detail;
+      if (!this.isHost || !checkpoint || safeRoomCode(checkpoint.roomCode) !== this.roomCode || !checkpoint.targetId) return;
+      this.broadcast({ type: 'playback-checkpoint', checkpoint: {
+        targetId: checkpoint.targetId,
+        action: checkpoint.action === 'resume' ? 'resume' : 'hold',
+        mediaId: String(checkpoint.mediaId || ''),
+        type: checkpoint.type === 'tv' ? 'tv' : 'movie'
+      }});
+    };
+    window.addEventListener('cinepulse:room-playback-checkpoint', this.onRoomPlaybackCheckpoint);
     this.onRoomPlaybackFinished = event => {
       const finished = event.detail;
       if (!finished || safeRoomCode(finished.roomCode) !== this.roomCode) return;
@@ -486,6 +508,18 @@ export class AnonymousDecisionRoom {
       }));
     }
 
+    if (message.type === 'playback-progress' && this.isHost && message.progress?.senderId) {
+      window.dispatchEvent(new CustomEvent('cinepulse:room-playback-progress-remote', {
+        detail: { ...message.progress, roomCode: this.roomCode }
+      }));
+    }
+
+    if (message.type === 'playback-checkpoint' && message.checkpoint?.targetId) {
+      window.dispatchEvent(new CustomEvent('cinepulse:room-playback-checkpoint-remote', {
+        detail: { ...message.checkpoint, roomCode: this.roomCode }
+      }));
+    }
+
     if (message.type === 'playback-finished' && message.finished?.mediaId) {
       window.dispatchEvent(new CustomEvent('cinepulse:room-playback-finished-remote', {
         detail: { ...message.finished, roomCode: this.roomCode, senderId: message.senderId }
@@ -658,6 +692,8 @@ export class AnonymousDecisionRoom {
     window.removeEventListener('cinepulse:room-reaction', this.onRoomReaction);
     window.removeEventListener('cinepulse:room-chat-send', this.onRoomChatSend);
     window.removeEventListener('cinepulse:room-playback-health', this.onRoomPlaybackHealth);
+    window.removeEventListener('cinepulse:room-playback-progress', this.onRoomPlaybackProgress);
+    window.removeEventListener('cinepulse:room-playback-checkpoint', this.onRoomPlaybackCheckpoint);
     window.removeEventListener('cinepulse:room-playback-finished', this.onRoomPlaybackFinished);
     if (this.announceTimer) window.clearInterval(this.announceTimer);
     this.announceTimer = null;
