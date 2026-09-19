@@ -382,9 +382,13 @@ export function attachMediaCardEvents(container) {
         // A card-relative popover is too easy to clip behind the bottom
         // navigation on phones. Keep one compact preview sheet above it.
         document.querySelectorAll('.card-hover-video-preview').forEach(existing => {
-          existing.closest?.('.media-card')?.classList.remove('preview-active');
-          existing.remove();
+          if (typeof existing._closePreview === 'function') existing._closePreview();
+          else {
+            existing.closest?.('.media-card')?.classList.remove('preview-active');
+            existing.remove();
+          }
         });
+        document.querySelectorAll('.card-preview-mobile-close-portal').forEach(button => button.remove());
         previewBox.classList.add('is-mobile-sheet');
       }
       previewBox.innerHTML = `
@@ -435,6 +439,27 @@ export function attachMediaCardEvents(container) {
       renderIcons();
 
       const iframe = previewBox.querySelector('iframe');
+      // Some mobile browsers composite a cross-origin YouTube iframe over its
+      // own siblings. Keep a second close control in the document top layer.
+      let mobileClosePortal = null;
+      let positionMobileClosePortal = null;
+      if (useMobileSheet) {
+        mobileClosePortal = document.createElement('button');
+        mobileClosePortal.type = 'button';
+        mobileClosePortal.className = 'card-preview-mobile-close-portal';
+        mobileClosePortal.setAttribute('aria-label', 'Fragmanı kapat');
+        mobileClosePortal.title = 'Fragmanı kapat';
+        mobileClosePortal.innerHTML = '<i data-lucide="x"></i>';
+        positionMobileClosePortal = () => {
+          const rect = previewBox.getBoundingClientRect();
+          mobileClosePortal.style.top = `${Math.max(8, rect.top + 12)}px`;
+          mobileClosePortal.style.left = `${Math.max(8, rect.right - 52)}px`;
+        };
+        document.body.appendChild(mobileClosePortal);
+        requestAnimationFrame(positionMobileClosePortal);
+        window.addEventListener('resize', positionMobileClosePortal, { passive: true });
+        renderIcons(mobileClosePortal);
+      }
       // Preview actions must not trigger the card's normal detail navigation.
       previewBox.addEventListener('click', event => event.stopPropagation());
       previewBox.addEventListener('touchend', event => event.stopPropagation(), { passive: true });
@@ -456,9 +481,12 @@ export function attachMediaCardEvents(container) {
         renderIcons();
       };
       const removePreview = () => {
+        if (positionMobileClosePortal) window.removeEventListener('resize', positionMobileClosePortal);
+        try { mobileClosePortal?.remove(); } catch (_) {}
         try { previewBox.remove(); } catch (_) {}
         card.classList.remove('preview-active');
       };
+      previewBox._closePreview = removePreview;
       // YouTube cross-origin iframes often skip the 'load' event — force show after 1.5s
       const forceShowTimer = window.setTimeout(() => {
         previewBox.classList.add('video-ready');
@@ -483,6 +511,11 @@ export function attachMediaCardEvents(container) {
           removePreview();
         });
       }
+      mobileClosePortal?.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        removePreview();
+      });
     }).catch(() => {});
   }
 
