@@ -17,6 +17,7 @@ import { initPwa } from './services/pwaManager.js';
 import { getUserSettings } from './services/storage.js';
 import { renderCardLayoutSwitcher, attachCardLayoutSwitcherEvents } from './components/CardLayoutSwitcher.js';
 import { grantAdminEntry, isAdminRouteAllowed } from './services/adminAccess.js';
+import { openDecisionRoomModal } from './components/DecisionRoomModal.js';
 
 // Disable browser default scroll jump on SPA hash changes
 if ('scrollRestoration' in history) {
@@ -225,7 +226,6 @@ setTimeout(async () => {
     // room transport out of every normal page load.
     const roomCode = String(new URL(window.location.href).searchParams.get('oda') || '').replace(/\D/g, '');
     if (!/^\d{6}$/.test(roomCode)) return;
-    const { openDecisionRoomModal } = await import('./components/DecisionRoomModal.js');
     openDecisionRoomModal({ roomCode });
   } catch (_) {}
 }, 700);

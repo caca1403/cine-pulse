@@ -7,6 +7,7 @@ import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.
 import { openProfileModal, triggerProfileSwitchTransition } from './ProfileModal.js';
 import { getActiveProfile, setActiveProfile, getProfiles } from '../services/storage.js';
 import { openNotificationCenterModal, getUnreadNotificationCount, updateNotificationBellBadge } from './NotificationCenterModal.js';
+import { openDecisionRoomModal } from './DecisionRoomModal.js';
 
 export function renderNavbar(currentView = 'home') {
   const activeProfile = getActiveProfile();
@@ -198,9 +199,8 @@ export function attachNavbarEvents(onNavigate) {
   }
 
   document.querySelectorAll('[data-open-decision-room]').forEach((decisionRoomBtn) => {
-    decisionRoomBtn.addEventListener('click', async () => {
-      const room = await import('./DecisionRoomModal.js');
-      room.openDecisionRoomModal();
+    decisionRoomBtn.addEventListener('click', () => {
+      openDecisionRoomModal();
     });
   });
 
