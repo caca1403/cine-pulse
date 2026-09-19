@@ -4,6 +4,7 @@ import { Readable } from 'stream';
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
   const isMediaSegment = /hls_proxy|live_tv_stream/.test(req.url || '');
