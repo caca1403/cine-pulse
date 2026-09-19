@@ -127,10 +127,12 @@ function getDizisolStreamPriority(url, provider = '') {
   const lowUrl = (url || '').toLowerCase();
   const lowProv = (provider || '').toLowerCase();
 
-  // Ultra-fast instant CDN providers (< 200ms start, 100% 200 OK & high bandwidth)
+  // Prefer the providers which have been stable in real playback. FilmMakinesi
+  // remains available in the source sheet, but it regularly stalls after the
+  // first fragments, so it must never win the automatic source selection.
   if (lowProv === 'cortina') score += 100;
   else if (lowProv === 'vidmixi') score += 95;
-  else if (lowProv === 'filmmakinesi') score += 90;
+  else if (lowProv === 'filmmakinesi') score += 15;
   else if (lowProv === 'rapidrame') score += 88;
   else if (lowProv === 'hdfilmdelisi') score += 85;
   else if (lowProv === 'pal-vds') score += 80;

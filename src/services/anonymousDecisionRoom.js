@@ -199,6 +199,8 @@ export class AnonymousDecisionRoom {
         senderId: this.selfId,
         nickname: this.nickname,
         time: Math.max(0, Number(progress.time) || 0),
+        playing: Boolean(progress.playing),
+        buffering: Boolean(progress.buffering),
         reportedAt: Date.now()
       }});
     };

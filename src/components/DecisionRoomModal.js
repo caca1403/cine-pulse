@@ -126,7 +126,7 @@ function renderRoomState(root, state, statusText = '') {
     const help = syncMode.querySelector('#decision-room-sync-help');
     if (help) help.textContent = strict
       ? 'Yavaş bağlantı buffer’a düşünce herkes kısa süre bekler; süreler birlikte kalır.'
-      : 'İlk açılışta en fazla 2 dakika fark için bir kez hizalar; sonra süre ve sarma eşitlenmez. Fark 2,5 dakikaya çıkarsa geride veya önde kalan taraf kısa süre bekler, diğeri yaklaşınca devam eder.';
+      : 'İlk açılışta en fazla 2 dakika fark için bir kez hizalar. Moderatörün oynat/duraklat ve sarma komutları herkese gider; otomatik durum paketleri buffer’ı bozmaz. Fark 1,5 dakikaya çıkarsa geride veya önde kalan taraf kısa süre bekler, diğeri yaklaşınca devam eder.';
     syncMode.querySelectorAll('input[name="room-sync-mode"]').forEach(input => {
       input.onchange = () => activeRoom?.setSyncMode(input.value);
     });

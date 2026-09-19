@@ -419,14 +419,15 @@ export async function openPlayerModal({
     };
     const isSmoothRoom = roomSyncMode === 'smooth';
     // Akıcı modda yalnız ilk açılışta, fark iki dakikayı geçmiyorsa tek bir
-    // hizalama denemesi yapılır. Sonrasında zaman/sarma/hız paketi cihazın
-    // kendi tamponuna hiç müdahale etmez; iki taraf da takılmadan izler.
+    // hizalama denemesi yapılır. Periyodik durum paketleri cihazın tamponuna
+    // dokunmaz; fakat moderatörün açık sarma komutu her cihazda uygulanır.
     const isFirstSmoothHeartbeat = isSmoothRoom && !hasTriedSmoothInitialAlignment && isHeartbeat;
     const canAlignOnJoin = isFirstSmoothHeartbeat
       && Number.isFinite(targetTime) && Math.abs(drift) <= 120;
     if (isSmoothRoom && isHeartbeat) hasTriedSmoothInitialAlignment = true;
     const shouldSeek = isSmoothRoom
-      ? (canAlignOnJoin && Math.abs(drift) > 0.25)
+      ? ((canAlignOnJoin && Math.abs(drift) > 0.25)
+        || (!isHeartbeat && sync.action === 'seek' && Number.isFinite(targetTime) && Math.abs(drift) > 0.25))
       : (!isHeartbeat && Number.isFinite(targetTime) && Math.abs(drift) > 0.25
         || (isHeartbeat && Math.abs(drift) > 18 && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA && isTargetBuffered()));
     const shouldPlaybackChange = typeof sync.playing === 'boolean' && sync.playing === video.paused
@@ -747,21 +748,21 @@ export async function openPlayerModal({
       const fresh = Array.from(roomParticipantProgress.values()).filter(item => Date.now() - item.reportedAt < 25000);
       const maximumLag = fresh.reduce((largest, item) => Math.max(largest, video.currentTime - item.time), 0);
       const participantLead = progress.time - video.currentTime;
-      // Akıcı modun güvenlik şeridi: küçük farklara karışmaz. Fark 2,5
+      // Akıcı modun güvenlik şeridi: küçük farklara karışmaz. Fark 1,5
       // dakikaya ulaşırsa yalnız moderatör yerelde bekler; gerideki cihaz
       // oynatmaya devam ederek yakalar. Bu pause paketi odaya yayınlanmaz.
-      if (maximumLag >= 150 && !roomCheckpointPause && !video.paused) {
+      if (maximumLag >= 90 && !roomCheckpointPause && !video.paused) {
         roomCheckpointPause = true;
         suppressRoomSyncUntil = Date.now() + 2500;
         video.pause();
         showToast(`${progress.nickname || 'Katılımcı'} geride kaldı; fark büyümesin diye kısa süre bekleniyor.`, 'info');
-      } else if (roomCheckpointPause && maximumLag <= 20 && video.paused) {
+      } else if (roomCheckpointPause && maximumLag <= 12 && video.paused) {
         roomCheckpointPause = false;
         suppressRoomSyncUntil = Date.now() + 2500;
         video.play().catch(() => {});
         showToast('Katılımcı yakaladı; akıcı izleme devam ediyor.', 'success');
       }
-      if (participantLead >= 150 && !roomHeldParticipants.has(progress.senderId)) {
+      if (participantLead >= 90 && !roomHeldParticipants.has(progress.senderId)) {
         roomHeldParticipants.set(progress.senderId, progress.time);
         window.dispatchEvent(new CustomEvent('cinepulse:room-playback-checkpoint', {
           detail: { roomCode: roomSync.roomCode, targetId: progress.senderId, action: 'hold', mediaId: roomSync.mediaId, type: roomSync.type }
@@ -3090,6 +3091,20 @@ export async function openPlayerModal({
     let lastRoomSyncHeartbeat = 0;
     let lastRoomProgressReport = 0;
     let roomHealthTimer = null;
+    const reportSmoothRoomProgress = () => {
+      if (!roomSync?.roomCode || isRoomModerator() || roomSyncMode !== 'smooth') return;
+      const now = Date.now();
+      if (now - lastRoomProgressReport < 5000) return;
+      lastRoomProgressReport = now;
+      window.dispatchEvent(new CustomEvent('cinepulse:room-playback-progress', {
+        detail: {
+          roomCode: roomSync.roomCode,
+          time: videoEl.currentTime,
+          playing: !videoEl.paused,
+          buffering: !videoEl.paused && videoEl.readyState < HTMLMediaElement.HAVE_FUTURE_DATA
+        }
+      }));
+    };
     const reportRoomPlaybackHealth = status => {
       if (!roomSync?.roomCode || isRoomModerator() || roomSyncMode !== 'strict') return;
       let bufferedAhead = 0;
@@ -3198,6 +3213,10 @@ export async function openPlayerModal({
       emitRoomSync('settings');
     });
     on(videoEl, 'volumechange', () => emitRoomSync('settings'));
+    // `timeupdate` stops while a weak connection is buffering. Keep sending
+    // progress in that state as well, otherwise the moderator never learns
+    // that the difference has crossed the safety threshold.
+    playbackScope.setInterval(reportSmoothRoomProgress, 5000);
 
     const handleVideoProgressUpdate = (force = false) => {
       if (!videoEl) return;
@@ -3271,12 +3290,7 @@ export async function openPlayerModal({
         lastRoomSyncHeartbeat = now;
         emitRoomSync('state');
       }
-      if (roomSync?.roomCode && !isRoomModerator() && roomSyncMode === 'smooth' && now - lastRoomProgressReport > 8000) {
-        lastRoomProgressReport = now;
-        window.dispatchEvent(new CustomEvent('cinepulse:room-playback-progress', {
-          detail: { roomCode: roomSync.roomCode, time: videoEl.currentTime }
-        }));
-      }
+      reportSmoothRoomProgress();
       if (roomSync?.roomCode && isRoomModerator() && roomSyncMode === 'smooth' && roomHeldParticipants.size) {
         roomHeldParticipants.forEach((heldTime, participantId) => {
           if (videoEl.currentTime >= heldTime - 20) {
@@ -4515,6 +4529,12 @@ export async function openPlayerModal({
 
       if (videoEl && streamUrl) {
         const isHlsStream = streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || srv.isHls;
+        const isDizisolFilmMakinesi = srv?.source === 'DS' && /filmmakinesi/i.test([
+          srv?.id,
+          srv?.name,
+          srv?.displayName,
+          srv?.provider
+        ].filter(Boolean).join(' '));
 
         if (isHlsStream && window.Hls && Hls.isSupported()) {
           const hls = new Hls({
@@ -4533,10 +4553,13 @@ export async function openPlayerModal({
             abrEwmaDefaultEstimate: 5000000,
             abrEwmaFastVoD: 3,
             abrBandWidthFactor: 0.92,
-            fragLoadingTimeOut: 20000,
+            // This particular DS mirror often accepts the playlist and then
+            // leaves a media fragment pending indefinitely. Give it one short
+            // retry, then continue with a healthy source instead of freezing.
+            fragLoadingTimeOut: isDizisolFilmMakinesi ? 12000 : 20000,
             manifestLoadingTimeOut: 15000,
             levelLoadingTimeOut: 15000,
-            fragLoadingMaxRetry: 6,
+            fragLoadingMaxRetry: isDizisolFilmMakinesi ? 1 : 6,
             manifestLoadingMaxRetry: 4,
             levelLoadingMaxRetry: 4,
             xhrSetup: (xhr) => {
@@ -4565,9 +4588,25 @@ export async function openPlayerModal({
           // source spinning forever in that state.
           const expectedStartTime = initialTime > 0 ? initialTime : 0;
           let hlsClockAdvanced = false;
+          let lastHlsPosition = expectedStartTime;
+          let lastHlsProgressAt = Date.now();
           playbackScope.on(videoEl, 'timeupdate', () => {
             if (videoEl.currentTime > expectedStartTime + 0.25) hlsClockAdvanced = true;
+            if (Math.abs(videoEl.currentTime - lastHlsPosition) > 0.1) {
+              lastHlsPosition = videoEl.currentTime;
+              lastHlsProgressAt = Date.now();
+            }
           });
+          if (isDizisolFilmMakinesi) {
+            playbackScope.on(videoEl, 'seeking', () => { lastHlsProgressAt = Date.now(); });
+            playbackScope.setInterval(() => {
+              if (closed || playbackRun !== playbackGeneration || activeHlsInstance !== hls) return;
+              if (videoEl.paused || videoEl.ended || Date.now() - lastHlsProgressAt < 12000) return;
+              try { hls.destroy(); } catch (_) {}
+              if (activeHlsInstance === hls) activeHlsInstance = null;
+              triggerAutoFailover('DS FILMMAKİNESİ akışı durdu');
+            }, 2000);
+          }
           if (srv.source === 'HDFilmizle') {
             playbackScope.setTimeout(() => {
               if (closed || playbackRun !== playbackGeneration || hlsClockAdvanced) return;
