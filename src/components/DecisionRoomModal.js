@@ -119,6 +119,7 @@ function renderRoomState(root, state, statusText = '') {
               <button data-room-vote="yes" data-card-id="${card.id}" class="${myVote === 'yes' ? 'active-yes' : ''}"><i data-lucide="heart"></i> İzle</button>
               <button data-room-vote="no" data-card-id="${card.id}" class="${myVote === 'no' ? 'active-no' : ''}"><i data-lucide="skip-forward"></i> Geç</button>
               ${vote.matched ? `<button data-room-open="${card.id}" class="decision-room-open"><i data-lucide="play"></i> Birlikte Aç</button>` : ''}
+              ${state.isHost ? `<button data-room-remove="${card.id}" class="decision-room-remove" aria-label="${escapeHtml(title)} içeriğini odadan kaldır"><i data-lucide="trash-2"></i> Kaldır</button>` : ''}
             </div>
           </div>
         </article>`;
@@ -135,6 +136,11 @@ function renderRoomState(root, state, statusText = '') {
       button.onclick = () => {
         const card = state.cards.find(item => String(item.id) === button.dataset.roomOpen);
         if (card) activeRoom?.openForEveryone(card);
+      };
+    });
+    deck.querySelectorAll('[data-room-remove]').forEach(button => {
+      button.onclick = () => {
+        if (activeRoom?.removeCard(button.dataset.roomRemove)) showToast('İçerik odadan kaldırıldı.', 'success');
       };
     });
   }
@@ -266,7 +272,6 @@ export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), i
   // Kullanıcı bağlantı kurulurken kapattıysa artık DOM'a ya da kapatılmış
   // odaya işlem yapma.
   if (activeRoom !== room || activeRoomModal !== root) return;
-  if (roomOwner) loadCandidates(room, root);
   setupModeratorContentSearch(root, room);
 
   root.querySelector('#btn-copy-decision-room').onclick = async () => {

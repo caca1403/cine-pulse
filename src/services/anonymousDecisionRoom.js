@@ -329,6 +329,18 @@ export class AnonymousDecisionRoom {
     return true;
   }
 
+  removeCard(cardId) {
+    if (!this.isHost || !cardId) return false;
+    const nextCards = this.cards.filter(card => String(card.id) !== String(cardId));
+    if (nextCards.length === this.cards.length) return false;
+    this.cards = nextCards;
+    delete this.votes[cardId];
+    delete this.ratings[cardId];
+    this.broadcast({ type: 'cards', cards: this.cards, votes: this.votes, ratings: this.ratings });
+    this.emit();
+    return true;
+  }
+
   vote(cardId, vote) {
     if (!cardId) return;
     this.votes = { ...this.votes, [cardId]: { ...(this.votes[cardId] || {}), [this.selfId]: vote === 'yes' ? 'yes' : 'no' } };
