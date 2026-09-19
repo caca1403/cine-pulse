@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
+    "bittorrent-tracker": "9.19.0",
     "lucide": "^0.344.0",
     "webtorrent": "^1.9.7"
   },

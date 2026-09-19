@@ -217,6 +217,22 @@ window.addEventListener('hashchange', route);
 // Module scripts run after parsing, so one initial route is enough.
 route();
 
+// A shared room is intentionally ephemeral: the URL only identifies the live
+// WebRTC rendezvous and no room record is created on the application server.
+setTimeout(async () => {
+  try {
+    // Do this small URL check before importing the WebRTC code. It keeps the
+    // room transport out of every normal page load.
+    const roomCode = String(new URL(window.location.href).searchParams.get('oda') || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 18);
+    if (!roomCode) return;
+    const { openDecisionRoomModal } = await import('./components/DecisionRoomModal.js');
+    openDecisionRoomModal({ roomCode });
+  } catch (_) {}
+}, 700);
+
 // Check if first-time visitor needs to create their personal profile
 setTimeout(() => {
   checkAndShowProfileOnboarding();

@@ -49,6 +49,9 @@ export function renderNavbar(currentView = 'home') {
             <span class="live-pulse-dot"></span>
             <span>CANLI</span>
           </a>
+          <button id="btn-open-decision-room" class="btn-decision-room-shortcut" title="Arkadaşlarınla anonim ortak seçim yap">
+            <i data-lucide="users-round"></i><span>Birlikte Seç</span>
+          </button>
           ` : ''}
 
           <!-- Desktop Search Box -->
@@ -187,6 +190,14 @@ export function attachNavbarEvents(onNavigate) {
   if (profileBtn) {
     profileBtn.addEventListener('click', () => {
       openProfileModal();
+    });
+  }
+
+  const decisionRoomBtn = document.getElementById('btn-open-decision-room');
+  if (decisionRoomBtn) {
+    decisionRoomBtn.addEventListener('click', async () => {
+      const room = await import('./DecisionRoomModal.js');
+      room.openDecisionRoomModal();
     });
   }
 

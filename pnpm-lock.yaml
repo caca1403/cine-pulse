@@ -11,6 +11,9 @@ importers:
       '@vercel/analytics':
         specifier: ^2.0.1
         version: 2.0.1
+      bittorrent-tracker:
+        specifier: 9.19.0
+        version: 9.19.0
       lucide:
         specifier: ^0.344.0
         version: 0.344.0
