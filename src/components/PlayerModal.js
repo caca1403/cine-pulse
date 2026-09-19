@@ -409,18 +409,36 @@ export async function openPlayerModal({
       } catch (_) {}
       return false;
     };
+    const bufferedAhead = () => {
+      try {
+        for (let index = 0; index < video.buffered.length; index += 1) {
+          if (video.buffered.start(index) <= video.currentTime && video.buffered.end(index) >= video.currentTime) {
+            return Math.max(0, video.buffered.end(index) - video.currentTime);
+          }
+        }
+      } catch (_) {}
+      return 0;
+    };
     // Heartbeat asla play/pause yapmaz. Büyük farkta da yalnız hazır olan
     // tamponun içindeki bir noktaya sıçrar; diğer durumda çok küçük hız farkı
     // ile doğal biçimde yakalar.
     const shouldSeek = !isHeartbeat && Number.isFinite(targetTime) && Math.abs(drift) > 0.25
-      || (isHeartbeat && Math.abs(drift) > 9 && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA && isTargetBuffered());
+      || (isHeartbeat && Math.abs(drift) > 18 && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA && isTargetBuffered());
     const shouldPlaybackChange = !isHeartbeat && typeof sync.playing === 'boolean' && sync.playing === video.paused;
     const shouldApplySettings = Boolean(sync.settings) && !isHeartbeat;
     const shouldApplyAudio = Boolean(sync.audioTrack && typeof video._setAudioTrack === 'function') && !isHeartbeat;
     if (!shouldSeek && !shouldPlaybackChange && !shouldApplySettings && !shouldApplyAudio) {
-      if (isHeartbeat && Number.isFinite(targetTime) && !video.paused && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+      if (isHeartbeat && roomSyncMode === 'smooth' && Number.isFinite(targetTime) && !video.paused && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
         const normalSpeed = roomPlaybackSettings.speed || 1;
-        const catchupSpeed = drift > 2.25 ? Math.min(1.08, normalSpeed + 0.08) : (drift < -2.25 ? Math.max(0.92, normalSpeed - 0.08) : normalSpeed);
+        const localBuffer = bufferedAhead();
+        // Yalnızca önünde birkaç saniyelik güvenli tampon varsa hızlanır.
+        // Bu, yavaş akışı daha fazla veri istemeye zorlamadan zaman farkını
+        // azaltır; moderatörün oynatmasına hiç dokunmaz.
+        const boost = Math.min(0.16, 0.04 + Math.abs(drift) / 25);
+        const canCatchUp = localBuffer >= 4;
+        const catchupSpeed = canCatchUp && drift > 1.5
+          ? Math.min(2, normalSpeed * (1 + boost))
+          : (canCatchUp && drift < -1.5 ? Math.max(0.5, normalSpeed * (1 - Math.min(0.1, boost))) : normalSpeed);
         if (Math.abs(video.playbackRate - catchupSpeed) > 0.01) video.playbackRate = catchupSpeed;
         if (roomCatchupTimer) clearTimeout(roomCatchupTimer);
         roomCatchupTimer = window.setTimeout(() => {
