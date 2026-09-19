@@ -343,7 +343,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
               backdropPath: media.backdrop_path,
               duration: movieDurationSec,
               currentTime: progress ? progress.currentTime : 0,
-              roomSync: decisionRoomAutoplay ? { roomCode: decisionRoomAutoplay.roomCode, mediaId: id, type: effectiveType, season: 1, episode: 1 } : null
+              roomSync: decisionRoomAutoplay ? { roomCode: decisionRoomAutoplay.roomCode, mediaId: id, type: effectiveType, season: 1, episode: 1, initialSync: decisionRoomAutoplay.initialSync || null } : null
             });
           } catch (err) {
             console.error('[CinePulse] Film oynatılamadı:', err);
@@ -385,7 +385,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
               backdropPath: media.backdrop_path,
               currentTime,
               seasonsList: media.seasons || [],
-              roomSync: selectedByRoom ? { roomCode: selectedByRoom.roomCode, mediaId: id, type: effectiveType, season: seasonNum, episode: episodeNum } : null
+              roomSync: selectedByRoom ? { roomCode: selectedByRoom.roomCode, mediaId: id, type: effectiveType, season: seasonNum, episode: episodeNum, initialSync: selectedByRoom.initialSync || null } : null
             });
           } catch (err) {
             console.error('[CinePulse] Dizi oynatılamadı:', err);

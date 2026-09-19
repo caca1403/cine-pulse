@@ -343,6 +343,57 @@ export async function openPlayerModal({
   let isSearching = true;
   let hasPlayerStartedPlaying = false;
   let currentImdbId = null; // Resolved asynchronously when available
+  let applyingRoomSync = false;
+  let pendingRoomPlayback = null;
+
+  function applyRemoteRoomPlayback(sync) {
+    if (!roomSync || !sync || sync.roomCode !== roomSync.roomCode || String(sync.mediaId) !== String(roomSync.mediaId) || sync.type !== roomSync.type) return;
+    if (sync.source) {
+      requiredRoomSource = sync.source;
+      const sourceChanged = applyRequiredRoomSource();
+      // Kaynak henüz bu cihazın taramasına düşmediyse yerel sıradan bir
+      // oynatıcı başlatmayız. Son komut, aynı kaynak bulunana kadar bekler.
+      if (sourceChanged || !hasRequiredRoomSource()) {
+        pendingRoomPlayback = sync;
+        return;
+      }
+    }
+    if (sync.type === 'tv' && (Number(sync.season) !== currentSeason || Number(sync.episode) !== currentEpisode)) {
+      pendingRoomPlayback = sync;
+      applyingRoomSync = true;
+      switchEpisodeInPlayer(Number(sync.season) || 1, Number(sync.episode) || 1)
+        .finally(() => { applyingRoomSync = false; });
+      return;
+    }
+
+    const video = modalContainer.querySelector('#hls-video-player');
+    if (!video) {
+      // Iframe kaynağı henüz yerel videoya dönüşmemiş olabilir. Son komut
+      // saklanır; doğrudan oynatıcı hazır olduğunda aşağıda uygulanır.
+      pendingRoomPlayback = sync;
+      return;
+    }
+
+    applyingRoomSync = true;
+    if (Number.isFinite(Number(sync.time)) && Math.abs(video.currentTime - Number(sync.time)) > 0.8) {
+      try { video.currentTime = Math.max(0, Number(sync.time)); } catch (_) {}
+    }
+    if (sync.audioTrack && typeof video._setAudioTrack === 'function') {
+      video._setAudioTrack(sync.audioTrack, true);
+    }
+    if (sync.playing) video.play().catch(() => {});
+    else video.pause();
+    window.setTimeout(() => { applyingRoomSync = false; }, 250);
+  }
+
+  if (roomSync) {
+    modalScope.on(window, 'cinepulse:player-sync-remote', event => applyRemoteRoomPlayback(event.detail));
+  }
+  if (roomSync?.initialSync) {
+    // Sonradan katılan kişi, sayfa geçişi sırasında kaçırdığı son moderatör
+    // komutunu kaynak taraması başlar başlamaz yeniden uygular.
+    window.setTimeout(() => applyRemoteRoomPlayback(roomSync.initialSync), 0);
+  }
 
   function getSeasonEpisodeCount(sNum) {
     const sObj = currentSeasonsList.find(s => s.season_number === sNum);
@@ -373,6 +424,36 @@ export async function openPlayerModal({
   // sağlayıcı kimliğini gönderip her tarayıcının kendi taramasından aynı hattı
   // seçiyoruz.
   let requiredRoomSource = null;
+  function isRoomControllableServer(srv) {
+    const streamUrl = getStreamSafeUrl(srv);
+    return Boolean(
+      srv?.isDirectVideo ||
+      srv?.isHls ||
+      (streamUrl && !streamUrl.startsWith('magnet:')
+        && (streamUrl.includes('.m3u8') || streamUrl.includes('.txt')
+          || streamUrl.includes('.mp4') || streamUrl.includes('.mkv')
+          || streamUrl.includes(':4000/torrent/')))
+    );
+  }
+
+  function getRoomPreferredServerIndex(servers) {
+    if (!Array.isArray(servers) || servers.length === 0) return 0;
+    if (!roomSync) return 0;
+    const directIndex = servers.findIndex(isRoomControllableServer);
+    return directIndex >= 0 ? directIndex : 0;
+  }
+
+  function isRoomModerator() {
+    const presence = window.__cinepulseDecisionRoomPresence;
+    return !roomSync || !presence || presence.roomCode !== roomSync.roomCode || presence.isHost !== false;
+  }
+
+  function requireRoomModerator() {
+    if (isRoomModerator()) return true;
+    showToast('Bu odada kaynak ve bölüm kontrolü moderatörde.', 'info');
+    return false;
+  }
+
   function getRoomSourceDescriptor(srv = activeServers[currentServerIndex]) {
     if (!srv) return null;
     return {
@@ -389,15 +470,18 @@ export async function openPlayerModal({
     const normalized = value => String(value || '').trim().toLocaleLowerCase('tr-TR');
     const srvId = normalized(srv.id);
     const targetId = normalized(descriptor.id);
-    if (srvId && targetId && srvId === targetId) return true;
+    // Bir sağlayıcının aynı isimli birden çok 1080p hattı olabilir. Kimlik
+    // varsa doğrudan onu, yoksa sağlayıcı + görünen ad ikilisini eşleştir.
+    if (srvId && targetId) return srvId === targetId;
     const srvProvider = normalized(srv.source);
     const targetProvider = normalized(descriptor.provider);
     const srvName = normalized(srv.displayName || srv.name);
     const targetName = normalized(descriptor.name);
-    return Boolean(
-      srvProvider && targetProvider && srvProvider === targetProvider
-      && (!targetName || srvName === targetName)
-    ) || Boolean(srvName && targetName && srvName === targetName);
+    if (srvProvider || targetProvider) {
+      return Boolean(srvProvider && targetProvider && srvProvider === targetProvider
+        && (!targetName || srvName === targetName));
+    }
+    return Boolean(srvName && targetName && srvName === targetName);
   }
 
   function broadcastRoomSource() {
@@ -413,6 +497,7 @@ export async function openPlayerModal({
         episode: currentEpisode,
         action: 'source',
         source,
+        audioTrack: video?._currentAudioTrack || null,
         time: Number.isFinite(video?.currentTime) ? video.currentTime : 0,
         playing: Boolean(video && !video.paused)
       }
@@ -428,7 +513,7 @@ export async function openPlayerModal({
       const index = servers.findIndex(server => sourceMatchesRoomDescriptor(server, requiredRoomSource));
       if (index < 0) continue;
       const hasChanged = currentCategory !== category
-        || activeServers[currentServerIndex] !== servers[index];
+        || !sourceMatchesRoomDescriptor(activeServers[currentServerIndex], requiredRoomSource);
       currentCategory = category;
       activeServers = servers;
       currentServerIndex = index;
@@ -718,6 +803,11 @@ export async function openPlayerModal({
         e.stopPropagation();
         const idx = parseInt(item.getAttribute('data-index'), 10);
         if (idx === currentServerIndex) return;
+        if (!requireRoomModerator()) return;
+        if (roomSync && !isRoomControllableServer(activeServers[idx])) {
+          showToast('Birlikte izleme için senkronlanabilir doğrudan bir yayın hattı seçin.', 'info');
+          return;
+        }
         currentServerIndex = idx;
         failoverCountInSession = 0;
         toggleSourcesPopover(false);
@@ -2279,6 +2369,11 @@ export async function openPlayerModal({
         e.preventDefault();
         const idx = parseInt(btn.getAttribute('data-index'), 10);
         if (idx === currentServerIndex) return;
+        if (!requireRoomModerator()) return;
+        if (roomSync && !isRoomControllableServer(activeServers[idx])) {
+          showToast('Birlikte izleme için senkronlanabilir doğrudan bir yayın hattı seçin.', 'info');
+          return;
+        }
 
         currentServerIndex = idx;
         toolbar.querySelectorAll('.server-btn').forEach(b => b.classList.remove('active'));
@@ -2513,7 +2608,6 @@ export async function openPlayerModal({
       setTimeout(() => centerIndicator.classList.remove('animate'), 350);
     };
 
-    let applyingRoomSync = false;
     let lastRoomSyncHeartbeat = 0;
     const emitRoomSync = (action) => {
       if (!roomSync?.roomCode || applyingRoomSync || !Number.isFinite(videoEl.currentTime)) return;
@@ -2526,32 +2620,19 @@ export async function openPlayerModal({
           episode: currentEpisode,
           action,
           source: getRoomSourceDescriptor(),
+          audioTrack: videoEl._currentAudioTrack || null,
           time: videoEl.currentTime || 0,
           playing: !videoEl.paused
         }
       }));
     };
-    playbackScope.on(window, 'cinepulse:player-sync-remote', event => {
-      const sync = event.detail;
-      if (!roomSync || !sync || sync.roomCode !== roomSync.roomCode || String(sync.mediaId) !== String(roomSync.mediaId) || sync.type !== roomSync.type) return;
-      if (sync.source) {
-        requiredRoomSource = sync.source;
-        applyRequiredRoomSource();
-      }
-      applyingRoomSync = true;
-      const finish = () => { applyingRoomSync = false; };
-      if (sync.type === 'tv' && (Number(sync.season) !== currentSeason || Number(sync.episode) !== currentEpisode)) {
-        switchEpisodeInPlayer(Number(sync.season) || 1, Number(sync.episode) || 1).finally(finish);
-        return;
-      }
-      if (Number.isFinite(Number(sync.time)) && Math.abs(videoEl.currentTime - Number(sync.time)) > 0.8) {
-        try { videoEl.currentTime = Math.max(0, Number(sync.time)); } catch (_) {}
-      }
-      if (sync.playing) videoEl.play().catch(() => {});
-      else videoEl.pause();
-      window.setTimeout(finish, 250);
-    });
 
+    // Oda komutu video hazır olmadan gelirse, kaynak kurulunca aynen uygula.
+    if (pendingRoomPlayback) {
+      const queuedRoomPlayback = pendingRoomPlayback;
+      pendingRoomPlayback = null;
+      window.setTimeout(() => applyRemoteRoomPlayback(queuedRoomPlayback), 0);
+    }
     if (playBtn) playBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
     videoEl.onclick = (e) => {
       if (isScreenLocked) return;
@@ -4112,7 +4193,10 @@ export async function openPlayerModal({
               // If the main video itself is already the dubbed stream, just unmute videoEl!
               if (!dubbedAudioEl || (srv.streamUrl === srv.dubbedAudioUrl)) {
                 videoEl.muted = false;
-                if (!silent) showToast('🇹🇷 Türkçe Dublaj sesi aktif.', 'success');
+                if (!silent) {
+                  broadcastRoomSource();
+                  showToast('🇹🇷 Türkçe Dublaj sesi aktif.', 'success');
+                }
                 return;
               }
 
@@ -4128,7 +4212,10 @@ export async function openPlayerModal({
                   videoEl.muted = false;
                 });
               }
-              if (!silent) showToast('🇹🇷 Türkçe Dublaj sesi aktif edildi.', 'success');
+              if (!silent) {
+                broadcastRoomSource();
+                showToast('🇹🇷 Türkçe Dublaj sesi aktif edildi.', 'success');
+              }
             } else {
               if (btnOriginal) btnOriginal.classList.add('active');
               if (btnDubbed) btnDubbed.classList.remove('active');
@@ -4137,7 +4224,10 @@ export async function openPlayerModal({
                 dubbedAudioEl.muted = true;
                 try { dubbedAudioEl.pause(); } catch (_) {}
               }
-              if (!silent) showToast('🇬🇧 Orijinal ses aktif edildi.', 'info');
+              if (!silent) {
+                broadcastRoomSource();
+                showToast('🇬🇧 Orijinal ses aktif edildi.', 'info');
+              }
             }
           };
 
@@ -4296,7 +4386,7 @@ export async function openPlayerModal({
         hasPlayerStartedPlaying = true;
         isSearching = false;
         activeServers = categorizedServers[currentCategory];
-        currentServerIndex = 0;
+        currentServerIndex = getRoomPreferredServerIndex(activeServers);
         updateServerPillsEvents();
         updateActiveSourceLabel();
         renderSourcesPopoverList();
@@ -4348,7 +4438,7 @@ export async function openPlayerModal({
             hasPlayerStartedPlaying = true;
             isSearching = false;
             activeServers = categorizedServers[currentCategory];
-            currentServerIndex = 0;
+            currentServerIndex = getRoomPreferredServerIndex(activeServers);
             updateServerPillsEvents();
             updateActiveSourceLabel();
             renderSourcesPopoverList();
@@ -4369,7 +4459,7 @@ export async function openPlayerModal({
             hasPlayerStartedPlaying = true;
             isSearching = false;
             activeServers = fallbackStreams;
-            currentServerIndex = 0;
+            currentServerIndex = getRoomPreferredServerIndex(activeServers);
             updateServerPillsEvents();
             updateActiveSourceLabel();
             renderSourcesPopoverList();
@@ -4402,7 +4492,7 @@ export async function openPlayerModal({
         if (!hasPlayerStartedPlaying && activeServers.length > 0) {
           hasPlayerStartedPlaying = true;
           isSearching = false;
-          currentServerIndex = 0;
+          currentServerIndex = getRoomPreferredServerIndex(activeServers);
           updateServerPillsEvents();
           updateActiveSourceLabel();
           renderSourcesPopoverList();
@@ -4447,6 +4537,7 @@ export async function openPlayerModal({
   // In-Place Episode Switching
   async function switchEpisodeInPlayer(newSeason, newEpisode) {
     if (isSwitchingEpisode) return;
+    if (roomSync && !applyingRoomSync && !requireRoomModerator()) return;
     isSwitchingEpisode = true;
 
     disposePlayback();
@@ -4462,6 +4553,8 @@ export async function openPlayerModal({
           season: currentSeason,
           episode: currentEpisode,
           action: 'episode',
+          source: getRoomSourceDescriptor(),
+          audioTrack: modalContainer.querySelector('#hls-video-player')?._currentAudioTrack || null,
           time: 0,
           playing: true
         }
@@ -4526,6 +4619,7 @@ export async function openPlayerModal({
       e.preventDefault();
       e.stopPropagation();
       if (currentCategory === 'dubbed') return;
+      if (!requireRoomModerator()) return;
       currentCategory = 'dubbed';
       failoverCountInSession = 0;
       try { localStorage.setItem('cp_preferred_category', 'dubbed'); } catch (_) {}
@@ -4533,7 +4627,7 @@ export async function openPlayerModal({
       tabDubbed.classList.add('active');
       disposePlayback();
       activeServers = categorizedServers['dubbed'] || [];
-      currentServerIndex = 0;
+      currentServerIndex = getRoomPreferredServerIndex(activeServers);
       hasPlayerStartedPlaying = activeServers.length > 0;
       updateServerPillsEvents();
       updateActiveSourceLabel();
@@ -4548,6 +4642,7 @@ export async function openPlayerModal({
       e.preventDefault();
       e.stopPropagation();
       if (currentCategory === 'subtitled') return;
+      if (!requireRoomModerator()) return;
       currentCategory = 'subtitled';
       failoverCountInSession = 0;
       try { localStorage.setItem('cp_preferred_category', 'subtitled'); } catch (_) {}
@@ -4555,7 +4650,7 @@ export async function openPlayerModal({
       tabSubtitled.classList.add('active');
       disposePlayback();
       activeServers = categorizedServers['subtitled'] || [];
-      currentServerIndex = 0;
+      currentServerIndex = getRoomPreferredServerIndex(activeServers);
       hasPlayerStartedPlaying = activeServers.length > 0;
       updateServerPillsEvents();
       updateActiveSourceLabel();

@@ -39,7 +39,7 @@ function safeRoomCode(value = '') {
   return code.length === 6 ? code : '';
 }
 
-function openSharedContent(card, roomCode = '') {
+function openSharedContent(card, roomCode = '', initialSync = null) {
   if (!card?.id) return;
   const type = card.type === 'tv' ? 'tv' : 'movie';
   try {
@@ -49,6 +49,7 @@ function openSharedContent(card, roomCode = '') {
       roomCode: safeRoomCode(roomCode),
       season: type === 'tv' ? Math.max(1, Number(card.season) || 1) : null,
       episode: type === 'tv' ? Math.max(1, Number(card.episode) || 1) : null,
+      initialSync: initialSync || null,
       createdAt: Date.now()
     }));
   } catch (_) {}
@@ -132,10 +133,12 @@ export class AnonymousDecisionRoom {
     this.votes = {};
     this.ratings = {};
     this.sharedPlayback = null;
+    this.lastPlayerSync = null;
     this.onPlayerSync = event => {
       const sync = event.detail;
       if (!this.isHost || !sync || safeRoomCode(sync.roomCode) !== this.roomCode || !this.sharedPlayback) return;
       if (String(sync.mediaId) !== String(this.sharedPlayback.id) || sync.type !== this.sharedPlayback.type) return;
+      this.lastPlayerSync = sync;
       this.broadcast({ type: 'player-sync', sync });
     };
     window.addEventListener('cinepulse:player-sync', this.onPlayerSync);
@@ -307,7 +310,9 @@ export class AnonymousDecisionRoom {
             cards: this.cards,
             votes: this.votes,
             ratings: this.ratings,
-            participants: Array.from(this.participants.values())
+            participants: Array.from(this.participants.values()),
+            sharedPlayback: this.sharedPlayback,
+            lastPlayerSync: this.lastPlayerSync
           });
         }
       }
@@ -322,6 +327,25 @@ export class AnonymousDecisionRoom {
         message.participants.forEach(person => {
           if (person?.id && person?.nickname) this.participants.set(person.id, person);
         });
+      }
+      if (message.sharedPlayback?.id) {
+        const playback = {
+          id: message.sharedPlayback.id,
+          type: message.sharedPlayback.type === 'tv' ? 'tv' : 'movie',
+          season: Math.max(1, Number(message.sharedPlayback.season) || 1),
+          episode: Math.max(1, Number(message.sharedPlayback.episode) || 1)
+        };
+        const shouldOpen = !this.sharedPlayback
+          || String(this.sharedPlayback.id) !== String(playback.id)
+          || this.sharedPlayback.type !== playback.type;
+        this.sharedPlayback = playback;
+        this.lastPlayerSync = message.lastPlayerSync || null;
+        if (shouldOpen) {
+          openSharedContent(playback, this.roomCode, this.lastPlayerSync);
+        } else if (this.lastPlayerSync) {
+          // Oynatıcı zaten açıksa yeni durum bilgisi doğrudan uygulanır.
+          window.dispatchEvent(new CustomEvent('cinepulse:player-sync-remote', { detail: this.lastPlayerSync }));
+        }
       }
       this.emit();
     }
@@ -359,6 +383,7 @@ export class AnonymousDecisionRoom {
     if (message.type === 'player-sync' && message.sync && !this.isHost) {
       const sync = message.sync;
       if (!this.sharedPlayback || String(sync.mediaId) !== String(this.sharedPlayback.id) || sync.type !== this.sharedPlayback.type) return;
+      this.lastPlayerSync = sync;
       window.dispatchEvent(new CustomEvent('cinepulse:player-sync-remote', { detail: sync }));
     }
   }
