@@ -385,11 +385,23 @@ export async function openPlayerModal({
       return;
     }
 
+    // Anlık komutlar (oynat/duraklat/sarma) doğrudan uygulanır. "state"
+    // paketi ise yalnızca düşük sıklıklı drift düzeltmesidir; mobilde her
+    // yarım saniye play(), ses ve filtre yazmak video akışını taktırıyordu.
+    const isHeartbeat = sync.action === 'state';
+    const targetTime = Number(sync.time);
+    const driftLimit = isHeartbeat ? 1.25 : 0.25;
+    const shouldSeek = Number.isFinite(targetTime) && Math.abs(video.currentTime - targetTime) > driftLimit;
+    const shouldPlaybackChange = typeof sync.playing === 'boolean' && sync.playing === video.paused;
+    const shouldApplySettings = Boolean(sync.settings) && !isHeartbeat;
+    const shouldApplyAudio = Boolean(sync.audioTrack && typeof video._setAudioTrack === 'function') && !isHeartbeat;
+    if (!shouldSeek && !shouldPlaybackChange && !shouldApplySettings && !shouldApplyAudio) return;
+
     applyingRoomSync = true;
-    if (Number.isFinite(Number(sync.time)) && Math.abs(video.currentTime - Number(sync.time)) > 0.25) {
-      try { video.currentTime = Math.max(0, Number(sync.time)); } catch (_) {}
+    if (shouldSeek) {
+      try { video.currentTime = Math.max(0, targetTime); } catch (_) {}
     }
-    if (sync.settings) {
+    if (shouldApplySettings) {
       roomPlaybackSettings.brightness = Math.max(30, Math.min(150, Number(sync.settings.brightness) || 100));
       roomPlaybackSettings.speed = Math.max(0.5, Math.min(2, Number(sync.settings.speed) || 1));
       video.style.filter = `brightness(${roomPlaybackSettings.brightness / 100})`;
@@ -397,12 +409,12 @@ export async function openPlayerModal({
       if (Number.isFinite(Number(sync.settings.volume))) video.volume = Math.max(0, Math.min(1, Number(sync.settings.volume)));
       if (typeof sync.settings.muted === 'boolean') video.muted = sync.settings.muted;
     }
-    if (sync.audioTrack && typeof video._setAudioTrack === 'function') {
-      video._setAudioTrack(sync.audioTrack, true);
+    if (shouldApplyAudio) video._setAudioTrack(sync.audioTrack, true);
+    if (shouldPlaybackChange) {
+      if (sync.playing) video.play().catch(() => {});
+      else video.pause();
     }
-    if (sync.playing) video.play().catch(() => {});
-    else video.pause();
-    window.setTimeout(() => { applyingRoomSync = false; }, 250);
+    window.setTimeout(() => { applyingRoomSync = false; }, 120);
   }
 
   if (roomSync) {
@@ -2924,7 +2936,7 @@ export async function openPlayerModal({
     on(videoEl, 'timeupdate', updateTimeAndTimeline);
     playbackScope.on(videoEl, 'timeupdate', () => {
       const now = Date.now();
-      if (now - lastRoomSyncHeartbeat > 500) {
+      if (now - lastRoomSyncHeartbeat > 2000) {
         lastRoomSyncHeartbeat = now;
         emitRoomSync('state');
       }
