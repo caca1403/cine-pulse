@@ -3863,7 +3863,11 @@ export async function openPlayerModal({
           videoEl.src = streamUrl;
 
           const startDirectPlayback = () => {
-            if (initialTime > 0) {
+            // MKV indexes are often at the end of multi-gigabyte files. Seeking
+            // to a saved position before the first playable frame makes Chrome
+            // request an undecodable range and appear frozen. Establish playback
+            // at zero first; subsequent user seeks retain normal range support.
+            if (initialTime > 0 && !srv.isMkv) {
               const dur = videoEl.duration;
               if (dur && isFinite(dur) && dur > 10 && initialTime >= dur - 15) {
                 videoEl.currentTime = 0;
@@ -3889,7 +3893,7 @@ export async function openPlayerModal({
           // never decode a frame. Treat a source as playable only after its clock
           // moves; otherwise the player would remain on a frozen first frame.
           if (srv.isMkv) {
-            const expectedStartTime = initialTime > 0 ? initialTime : 0;
+            const expectedStartTime = 0;
             let hasAdvanced = false;
             playbackScope.on(videoEl, 'timeupdate', () => {
               if (videoEl.currentTime > expectedStartTime + 0.25) hasAdvanced = true;

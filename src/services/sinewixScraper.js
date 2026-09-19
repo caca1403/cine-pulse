@@ -231,11 +231,6 @@ export async function fetchSinewixSources({
       }
 
       const isMkv = lowerLink.includes('.mkv');
-      // Native browser media engines do not reliably support Matroska. A range
-      // proxy can serve it, but cannot make an unsupported container decodable.
-      // Keep SWX entries only when the provider exposes a browser-playable
-      // HLS/MP4/WebM variant.
-      if (isMkv) continue;
       const isDirect = lowerLink.includes('.mp4') || lowerLink.includes('.webm') || isMkv;
       const isHls = lowerLink.includes('.m3u8');
 
