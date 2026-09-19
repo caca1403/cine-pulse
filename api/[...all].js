@@ -405,15 +405,10 @@ export default async function handler(req, res) {
         // otherwise valid HLS data.
         const isHdfTransportStream = /\.cfd\/hdfilm\//i.test(decodedTarget)
           && /\.(?:png|jpg)(?:$|\?)/i.test(decodedTarget);
-        // Chromium desktop accepts SWX's legacy compatibility MIME, whereas
-        // Android selects an MP4 extractor from it and rejects Matroska bytes.
-        // Keep the proven desktop behavior and expose the native MIME only to
-        // Android so each platform chooses the correct container extractor.
-        const isAndroidClient = /android/i.test(req.headers['user-agent'] || '');
-        if (isMkv) res.setHeader('Vary', 'User-Agent');
-        res.setHeader('Content-Type', isMkv
-          ? (isAndroidClient ? 'video/x-matroska' : 'video/mp4')
-          : (isHdfTransportStream ? 'video/mp2t' : (contentType || 'video/mp4')));
+        // Preserve the established SWX response behavior. The source has been
+        // consumed as a progressive MP4-compatible stream in this player for
+        // months, and changing the advertised container caused regressions.
+        res.setHeader('Content-Type', isMkv ? 'video/mp4' : (isHdfTransportStream ? 'video/mp2t' : (contentType || 'video/mp4')));
         // HDF's VOD segments are immutable, but its CDN requires the original
         // site Referer. Cache the already-authorized proxy response at Vercel
         // so repeat playback does not pay for a full upstream fetch per chunk.
