@@ -575,6 +575,10 @@ export async function openPlayerModal({
 
   function showRoomReaction(reaction) {
     if (!roomSync || reaction?.roomCode !== roomSync.roomCode) return;
+    // Gerçek video tam ekrandayken uygulama katmanları sahneye taşınmaz.
+    // Tepkiyi kuyrukta tutmak yerine atlamak, moderatörün ekranını yalnız
+    // içerik olarak bırakır.
+    if (document.fullscreenElement?.id === 'hls-video-player') return;
     const stage = modalContainer.querySelector('#player-iframe-wrapper');
     if (!stage) return;
     const burst = document.createElement('span');
@@ -3296,7 +3300,12 @@ export async function openPlayerModal({
     // 4. Fullscreen & Video Gestures (Double click left: -10s, right: +10s, middle: fullscreen)
     const toggleFullscreen = () => {
       if (!document.fullscreenElement) {
-        if (wrapper.requestFullscreen) wrapper.requestFullscreen();
+        // Wrapper'ı değil video öğesini tam ekrana al: oda HUD'ı, emojiler,
+        // sohbet ve özel kontrol katmanları gerçek tam ekranda görünmez.
+        if (videoEl.requestFullscreen) videoEl.requestFullscreen().catch(() => wrapper.requestFullscreen?.());
+        else if (videoEl.webkitEnterFullscreen) videoEl.webkitEnterFullscreen();
+        else if (videoEl.webkitRequestFullscreen) videoEl.webkitRequestFullscreen();
+        else if (wrapper.requestFullscreen) wrapper.requestFullscreen();
         else if (wrapper.webkitRequestFullscreen) wrapper.webkitRequestFullscreen();
       } else {
         if (document.exitFullscreen) document.exitFullscreen();
