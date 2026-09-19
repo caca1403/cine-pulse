@@ -371,8 +371,12 @@ export async function getStreamingServersProgressive({
       dubbed: hydrateServers(cached.dubbed),
       subtitled: hydrateServers(cached.subtitled)
     };
-    onUpdate({ ...hydrated, isComplete: true });
-    return hydrated;
+    // Show cached sources immediately, then revalidate every provider below.
+    // Previously this returned early, so stale DS entries could never recover
+    // and late Sezonluk/SWX sources were permanently hidden.
+    onUpdate({ ...hydrated, isComplete: false });
+    streamServersCache.delete(cacheKey);
+    try { sessionStorage.removeItem(`cp_streams_${CACHE_VERSION}_${cacheKey}`); } catch (_) {}
   }
 
   let candidateTitles = resolveCandidateTitlesSync(targetTitle, originalTitle);
