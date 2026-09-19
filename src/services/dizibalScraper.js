@@ -106,7 +106,7 @@ function toSlug(str) {
 export async function searchDizibalSeries(query) {
   if (!query || typeof query !== 'string' || query.trim().length < 2) return [];
   try {
-    const res = await fetchDizibal(`/series?search=${encodeURIComponent(query.trim())}`, { timeout: 3500 });
+    const res = await fetchDizibal(`/series?search=${encodeURIComponent(query.trim())}`, { timeout: 6500 });
     if (!res) return [];
     const data = await res.json().catch(() => null);
     return data && Array.isArray(data.data) ? data.data : [];
@@ -150,7 +150,7 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
     const slug = toSlug(q);
     if (!slug) continue;
     try {
-      const res = await fetchDizibal(`/series/${slug}`, { timeout: 3000 });
+      const res = await fetchDizibal(`/series/${slug}`, { timeout: 5500 });
       if (res) {
         const json = await res.json().catch(() => null);
         const resolvedTitle = json?.data?.title || json?.data?.name || json?.data?.name_tr || json?.data?.name_en || json?.data?.slug || '';
@@ -180,7 +180,7 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
 
   // Fetch season episodes
   try {
-    const seasonRes = await fetchDizibal(`/series/${matchedSeries._id}/seasons/${sNum}`, { timeout: 3500 });
+    const seasonRes = await fetchDizibal(`/series/${matchedSeries._id}/seasons/${sNum}`, { timeout: 6500 });
     if (!seasonRes) return [];
     const seasonJson = await seasonRes.json().catch(() => null);
     if (!seasonJson || !seasonJson.success || !seasonJson.data || !Array.isArray(seasonJson.data.episodes)) {

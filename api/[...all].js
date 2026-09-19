@@ -355,7 +355,9 @@ export default async function handler(req, res) {
 
           // Direct CDN bypass for video segments and sub-playlists with open CORS
           // Bypasses proxy for 10x faster playback (<200ms start)
+          const needsProxy = /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi)/i.test(fullLineUrl);
           if (
+            !needsProxy && (
             /\.(ts|jpg|jpeg|png|m4s|mp4)($|\?)/i.test(fullLineUrl) ||
             fullLineUrl.includes('dizisol.com/ts') ||
             fullLineUrl.includes('/ts?') ||
@@ -375,7 +377,7 @@ export default async function handler(req, res) {
                 fullLineUrl.includes('vidmixi.com/m3u') ||
                 fullLineUrl.includes('pics/hls2')
               )
-            )
+            ))
           ) {
             return fullLineUrl;
           }

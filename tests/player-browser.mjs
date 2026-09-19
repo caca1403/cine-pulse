@@ -68,6 +68,8 @@ try {
   });
   await open();
   const listenerCount = await page.evaluate(() => window.globalListenerCount());
+  await page.locator('video').evaluate(el => el.dispatchEvent(new PointerEvent('click', { bubbles: true, pointerType: 'touch' })));
+  assert.equal(await page.locator('video').evaluate(el => el.paused), false, 'a mobile tap reveals controls without pausing playback');
   await page.waitForTimeout(3200);
   assert.equal(await page.locator('#direct-video-wrapper').evaluate(el => el.classList.contains('hide-controls')), true, 'autoplay hides controls without mouse movement');
   assert.equal(await page.locator('.player-cinema-bar').evaluate(el => getComputedStyle(el).opacity), '0', 'header hides too');
@@ -106,7 +108,7 @@ try {
   assert.equal(await page.locator('#tab-subtitled').evaluate(el => el.classList.contains('active')), true);
   await page.evaluate(() => document.querySelector('#player-close-btn').click());
   assert.deepEqual(errors, []);
-  console.log('PASS: autoplay, header, icons, keyboard, popovers, 20 reopen cycles, episode and close race guards');
+  console.log('PASS: autoplay, mobile tap, header, icons, keyboard, popovers, 20 reopen cycles, episode and close race guards');
 } finally {
   await browser.close();
 }

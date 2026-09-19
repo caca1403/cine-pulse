@@ -32,7 +32,7 @@ import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 
 // Cache version
-const CACHE_VERSION = 'v27';
+const CACHE_VERSION = 'v28';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -667,7 +667,13 @@ export async function getStreamingServersProgressive({
         .then(res => addStreams(res, 'subtitled')),
       isMovie
         ? fetchDizibalMovieSources({ titles: extraTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled'))
-        : fetchDizibalEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled'))
+        : fetchDizibalEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')),
+      !isMovie
+        ? fetchSezonlukDiziEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).then(res => addStreams(res, 'dubbed'))
+        : Promise.resolve([]),
+      !isMovie
+        ? fetchSezonlukDiziEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled'))
+        : Promise.resolve([])
     ];
     return Promise.allSettled(aliasSearches);
   });

@@ -21,7 +21,24 @@ function toTurkishSlug(title) {
 async function fetchWithWorkerFallback(targetUrl, options = {}) {
   const isBrowser = typeof window !== 'undefined';
 
-  // 1. Try Cloudflare Worker Gateway first
+  // The same-origin proxy avoids an extra cross-origin round trip and behaves
+  // consistently in Chrome and Firefox. Keep the Worker as a fallback.
+  if (isBrowser) {
+    try {
+      const u = new URL(targetUrl);
+      const res = await fetch(`/api/szd${u.pathname}${u.search}`, {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        signal: AbortSignal.timeout(6000)
+      }).catch(() => null);
+      if (res && res.ok) return res;
+    } catch (_) {}
+  }
+
+  // Try Cloudflare Worker Gateway when the local gateway is unavailable.
   try {
     const workerUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(targetUrl)}`;
     const res = await fetch(workerUrl, {
@@ -34,15 +51,9 @@ async function fetchWithWorkerFallback(targetUrl, options = {}) {
     }
   } catch (_) {}
 
-  // 2. Fallback to Vercel Proxy or Direct
+  // Server-side/direct fallback.
   try {
-    let fallbackUrl = targetUrl;
-    if (isBrowser) {
-      const u = new URL(targetUrl);
-      fallbackUrl = `/api/szd${u.pathname}${u.search}`;
-    }
-
-    const res = await fetch(fallbackUrl, {
+    const res = await fetch(targetUrl, {
       ...options,
       headers: {
         ...(options.headers || {}),
@@ -113,7 +124,7 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
 
       const extractedSources = [];
 
-      for (const item of altJson.data) {
+      const sourceResults = await Promise.all(altJson.data.map(async item => {
         const embedUrlEndpoint = `${baseDomain}/ajax/dataEmbed22.asp`;
 
         const emRes = await fetchWithWorkerFallback(embedUrlEndpoint, {
@@ -124,7 +135,7 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
           body: `id=${item.id}`
         });
 
-        if (!emRes) continue;
+        if (!emRes) return null;
         const emText = await emRes.text().catch(() => '');
         const srcMatch = emText.match(/src=["']([^"']+)["']/i);
         let iframeUrl = srcMatch ? srcMatch[1] : null;
@@ -137,7 +148,7 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
             iframeUrl.includes('filemoon') ||
             iframeUrl.includes('videoseyred')
           ) {
-            continue;
+            return null;
           }
 
           if (iframeUrl.startsWith('//')) {
@@ -148,7 +159,7 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
           const finalUrl = iframeUrl;
           const serverName = isVidmoly ? 'VidMoly 1080p' : `${item.baslik} HD`;
 
-          extractedSources.push({
+          return {
             id: `szd_${item.id}`,
             name: serverName,
             displayName: serverName,
@@ -159,9 +170,11 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
             isHls: false,
             isDirectVideo: false,
             getUrl: () => finalUrl
-          });
+          };
         }
-      }
+        return null;
+      }));
+      extractedSources.push(...sourceResults.filter(Boolean));
 
       if (extractedSources.length > 0) {
         return extractedSources;

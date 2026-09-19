@@ -51,9 +51,8 @@ export function createPlayerScope() {
 export function renderPlayerIcons(root) {
   const lucide = globalThis.window?.lucide;
   if (!root || !lucide?.createElement || !lucide.icons) return;
-  for (const placeholder of root.querySelectorAll('[data-lucide]')) {
+  for (const placeholder of root.querySelectorAll('[data-lucide]:not(svg)')) {
     const name = placeholder.getAttribute('data-lucide');
-    if (placeholder.tagName.toLowerCase() === 'svg' && placeholder.classList.contains(`lucide-${name}`)) continue;
     const key = name.replace(/(^|-)(\w)/g, (_, __, letter) => letter.toUpperCase());
     const icon = lucide.icons[key];
     if (!icon) continue;
