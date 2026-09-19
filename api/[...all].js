@@ -394,7 +394,12 @@ export default async function handler(req, res) {
         // segment made TVR channel startup feel unnecessarily slow.
         res.statusCode = upstreamRes.status;
         const isMkv = contentType.includes('matroska') || decodedTarget.includes('.mkv');
-        res.setHeader('Content-Type', isMkv ? 'video/mp4' : (contentType || 'video/mp4'));
+        // HDF intentionally disguises MPEG-TS chunks as .png files. Keeping
+        // the upstream image MIME type makes some mobile media stacks reject
+        // otherwise valid HLS data.
+        const isHdfTransportStream = /\.cfd\/hdfilm\//i.test(decodedTarget)
+          && /\.(?:png|jpg)(?:$|\?)/i.test(decodedTarget);
+        res.setHeader('Content-Type', isMkv ? 'video/mp4' : (isHdfTransportStream ? 'video/mp2t' : (contentType || 'video/mp4')));
         // HDF's VOD segments are immutable, but its CDN requires the original
         // site Referer. Cache the already-authorized proxy response at Vercel
         // so repeat playback does not pay for a full upstream fetch per chunk.
