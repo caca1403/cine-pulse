@@ -395,6 +395,12 @@ export default async function handler(req, res) {
         res.statusCode = upstreamRes.status;
         const isMkv = contentType.includes('matroska') || decodedTarget.includes('.mkv');
         res.setHeader('Content-Type', isMkv ? 'video/mp4' : (contentType || 'video/mp4'));
+        // HDF's VOD segments are immutable, but its CDN requires the original
+        // site Referer. Cache the already-authorized proxy response at Vercel
+        // so repeat playback does not pay for a full upstream fetch per chunk.
+        if (/\.cfd\/hdfilm\//i.test(decodedTarget)) {
+          res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400');
+        }
         res.setHeader('Accept-Ranges', upstreamRes.headers.get('accept-ranges') || 'bytes');
         const contentLength = upstreamRes.headers.get('content-length');
         if (contentLength) res.setHeader('Content-Length', contentLength);

@@ -3741,6 +3741,24 @@ export async function openPlayerModal({
 
           hls.loadSource(streamUrl);
           hls.attachMedia(videoEl);
+          // A playlist can load successfully while its protected segments never
+          // deliver a decodable frame. Do not leave a manually selected HLS
+          // source spinning forever in that state.
+          const expectedStartTime = initialTime > 0 ? initialTime : 0;
+          let hlsClockAdvanced = false;
+          playbackScope.on(videoEl, 'timeupdate', () => {
+            if (videoEl.currentTime > expectedStartTime + 0.25) hlsClockAdvanced = true;
+          });
+          if (srv.source === 'HDFilmizle') {
+            playbackScope.setTimeout(() => {
+              if (closed || playbackRun !== playbackGeneration || hlsClockAdvanced) return;
+              if (videoEl.currentTime <= expectedStartTime + 0.25) {
+                try { hls.destroy(); } catch (_) {}
+                if (activeHlsInstance === hls) activeHlsInstance = null;
+                triggerAutoFailover('HDF akışı oynatmayı başlatamadı');
+              }
+            }, 18000);
+          }
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             applySafeSeek();
             const playPromise = videoEl.play();
