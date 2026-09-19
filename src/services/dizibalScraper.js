@@ -4,6 +4,7 @@
    ========================================================================== */
 
 import { isStrictMediaTitleMatch } from './mediaMatcher.js';
+import { apiUrl } from './apiOrigin.js';
 
 // Use DiziBal's own player URL. Direct CDN links are short lived and reject
 // requests when the browser/CDN session no longer matches (the production 403).
@@ -45,7 +46,7 @@ async function fetchDizibal(endpointOrUrl, options = {}) {
 
   const fetchProxy = async () => {
     if (!isBrowser || endpointOrUrl.startsWith('http')) throw new Error('No proxy needed');
-    const proxyUrl = `/api/dzb${cleanPath}`;
+    const proxyUrl = apiUrl(`/api/dzb${cleanPath}`);
     const res = await fetch(proxyUrl, {
       ...options,
       signal: AbortSignal.timeout(timeoutMs)

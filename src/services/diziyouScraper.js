@@ -5,6 +5,7 @@
    ========================================================================== */
 
 import { extractPageMediaTitle, isStrictMediaTitleMatch } from './mediaMatcher.js';
+import { apiUrl } from './apiOrigin.js';
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const DIZIYOU_BASE = 'https://www.diziyou.one';
@@ -43,7 +44,7 @@ async function fetchDiziyou(endpointOrUrl, options = {}) {
   // 1. In browser, try /api/dzy proxy first (bypasses CORS)
   if (isBrowser) {
     try {
-      const proxyUrl = `/api/dzy${pathOnly}`;
+      const proxyUrl = apiUrl(`/api/dzy${pathOnly}`);
       const res = await fetch(proxyUrl, {
         ...options,
         signal: AbortSignal.timeout(options.timeout || 4000)
@@ -69,7 +70,7 @@ async function fetchDiziyou(endpointOrUrl, options = {}) {
   // 3. Local proxy fallback
   if (isBrowser) {
     try {
-      const localProxyUrl = `/api/proxy?url=${encodeURIComponent(fullUrl)}&ref=${encodeURIComponent('https://www.diziyou.one/')}`;
+      const localProxyUrl = apiUrl(`/api/proxy?url=${encodeURIComponent(fullUrl)}&ref=${encodeURIComponent('https://www.diziyou.one/')}`);
       const res = await fetch(localProxyUrl, {
         ...options,
         signal: AbortSignal.timeout(options.timeout || 4000)
