@@ -234,18 +234,16 @@ export async function fetchSinewixSources({
       const isDirect = lowerLink.includes('.mp4') || lowerLink.includes('.webm') || isMkv;
       const isHls = lowerLink.includes('.m3u8');
 
-      // Use high-speed proxy with HTTP Range & CORS support for instant video startup
-      // HLS playlists need the playlist rewriter, while MP4/MKV files must
-      // use the byte/range proxy. Sending a progressive file through the HLS
-      // rewriter makes the source appear in the list but the player cannot
-      // seek or start it.
+      // Use high-speed proxy with HTTP Range & CORS support for instant video startup.
+      // MKV files are routed through /api/mkv_stream which uses ffmpeg to remux
+      // them to fragmented MP4 (copy codecs, no re-encoding). This allows Chromium
+      // to play H.264+AAC streams that are packaged in a Matroska container,
+      // which Chromium cannot natively open.
       const proxiedLink = rawLink.startsWith('http')
         ? (isHls
           ? apiUrl(`/api/hls_proxy?url=${encodeURIComponent(rawLink)}`)
-          // Keep SWX Matroska files on the media proxy path that supplies
-          // range support and a video-compatible response for Chromium.
           : isMkv
-            ? apiUrl(`/api/hls_proxy?url=${encodeURIComponent(rawLink)}`)
+            ? apiUrl(`/api/mkv_stream?url=${encodeURIComponent(rawLink)}&ref=${encodeURIComponent('https://ydfvfdizipanel.ru/')}`)
             : isDirect
             ? apiUrl(`/api/proxy?url=${encodeURIComponent(rawLink)}&ref=${encodeURIComponent('https://ydfvfdizipanel.ru/')}`)
             : rawLink)

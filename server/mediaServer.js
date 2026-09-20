@@ -15,9 +15,21 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
-import { Readable } from 'stream';
+import { Readable, PassThrough } from 'stream';
 import { fileURLToPath } from 'url';
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
+import { createRequire } from 'module';
+
+// Resolve @ffmpeg-installer/ffmpeg path (CommonJS package)
+let _ffmpegBin = null;
+try {
+  const require = createRequire(import.meta.url);
+  _ffmpegBin = require('@ffmpeg-installer/ffmpeg').path;
+} catch (_) {}
+// Fallback to system ffmpeg
+if (!_ffmpegBin) {
+  try { const { execFileSync } = await import('child_process'); _ffmpegBin = execFileSync('which', ['ffmpeg']).toString().trim(); } catch (_) {}
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1235,6 +1247,79 @@ const server = http.createServer(async (req, res) => {
       console.error('[MediaServer] HLS Proxy error:', err.message);
       res.writeHead(500, { 'Content-Type': 'text/plain' });
       res.end(`HLS Proxy Error: ${err.message}`);
+    }
+    return;
+  }
+
+  // ============ MKV → MP4 Remux Streaming Endpoint ============
+  // Remuxes Matroska (MKV) files to fragmented MP4 on-the-fly using ffmpeg copy
+  // codecs (no re-encoding). This allows Chromium to play H.264 streams that are
+  // wrapped in an MKV container, which Chromium cannot natively open.
+  if (reqUrl.pathname === '/mkv_stream' || reqUrl.pathname === '/api/mkv_stream') {
+    const rawTarget = reqUrl.searchParams.get('url') || '';
+    const rawRef = reqUrl.searchParams.get('ref') || '';
+
+    if (!rawTarget) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Missing url param');
+      return;
+    }
+
+    if (!_ffmpegBin) {
+      res.writeHead(503, { 'Content-Type': 'text/plain' });
+      res.end('ffmpeg not available');
+      return;
+    }
+
+    let decodedTarget;
+    try { decodedTarget = decodeURIComponent(rawTarget); } catch (_) { decodedTarget = rawTarget; }
+
+    if (!isSafePublicUrl(decodedTarget)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      res.end('Target blocked');
+      return;
+    }
+
+    try {
+      const ffArgs = [
+        '-hide_banner', '-loglevel', 'error',
+        '-headers', rawRef ? `Referer: ${rawRef}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\r\n` : 'User-Agent: Mozilla/5.0\r\n',
+        '-i', decodedTarget,
+        '-c', 'copy',
+        '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
+        '-f', 'mp4',
+        'pipe:1'
+      ];
+
+      res.setHeader('Content-Type', 'video/mp4');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Transfer-Encoding', 'chunked');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.writeHead(200);
+
+      const ffProc = spawn(_ffmpegBin, ffArgs, { stdio: ['ignore', 'pipe', 'ignore'] });
+      ffProc.stdout.pipe(res);
+
+      req.on('close', () => {
+        try { ffProc.kill('SIGTERM'); } catch (_) {}
+      });
+      res.on('close', () => {
+        try { ffProc.kill('SIGTERM'); } catch (_) {}
+      });
+
+      ffProc.on('error', (err) => {
+        console.error('[mkv_stream] ffmpeg error:', err.message);
+        if (!res.writableEnded) res.end();
+      });
+      ffProc.on('exit', () => {
+        if (!res.writableEnded) res.end();
+      });
+    } catch (err) {
+      console.error('[mkv_stream] Error:', err.message);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+      }
+      if (!res.writableEnded) res.end(`Error: ${err.message}`);
     }
     return;
   }
