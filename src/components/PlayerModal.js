@@ -739,12 +739,10 @@ export async function openPlayerModal({
       const video = modalContainer.querySelector('#hls-video-player');
       const iframe = modalContainer.querySelector('#video-iframe');
       const wrapper = modalContainer.querySelector('#direct-video-wrapper');
-      const mobile = window.matchMedia('(pointer: coarse)').matches;
-      // Mobilde mümkünse gerçek video tam ekranı, iframe kaynağında iframe
-      // tam ekranı kullanılır. Böylece uygulamanın başlık çubuğu taşınmaz.
-      const target = mobile && video ? video : (iframe || wrapper || video || modalContainer.querySelector('#cinema-modal-box'));
-      if (mobile && video?.webkitEnterFullscreen) video.webkitEnterFullscreen();
-      else target?.requestFullscreen?.().catch(() => {});
+      // Videonun yerel tam ekranı özel kontrol katmanını dışarıda bırakır.
+      // Bu nedenle mobilde de önce CinePulse sahnesini tam ekrana alıyoruz.
+      const target = wrapper || iframe || video || modalContainer.querySelector('#cinema-modal-box');
+      target?.requestFullscreen?.().catch(() => target?.webkitRequestFullscreen?.());
       invite.remove();
     };
     modalContainer.appendChild(invite);
@@ -2747,12 +2745,9 @@ export async function openPlayerModal({
       const iframeEl = document.getElementById('video-iframe');
       const videoEl = document.getElementById('hls-video-player');
       const wrapper = document.getElementById('direct-video-wrapper');
-      const mobile = window.matchMedia('(pointer: coarse)').matches;
-      const target = mobile ? (videoEl || iframeEl || wrapper || modalBox) : (iframeEl || wrapper || videoEl || modalBox);
+      const target = wrapper || iframeEl || videoEl || modalBox;
       if (!document.fullscreenElement) {
-        if (mobile && videoEl?.webkitEnterFullscreen) {
-          videoEl.webkitEnterFullscreen();
-        } else if (target && target.requestFullscreen) {
+        if (target && target.requestFullscreen) {
           target.requestFullscreen().catch(() => modalBox.requestFullscreen().catch(() => {}));
         } else if (target && target.webkitRequestFullscreen) {
           target.webkitRequestFullscreen();
@@ -3517,15 +3512,11 @@ export async function openPlayerModal({
     // 4. Fullscreen & Video Gestures (Double click left: -10s, right: +10s, middle: fullscreen)
     const toggleFullscreen = () => {
       if (!document.fullscreenElement) {
-        const isMobile = window.matchMedia('(pointer: coarse)').matches;
-        // Masaüstünde video sahnesi tam ekrana çıkar: İntroyu Atla gibi
-        // yararlı katmanlar kalır, oda/emoji katmanları CSS ile gizlenir.
-        // Mobilde native video tam ekranı tercih edilir.
-        if (!isMobile && wrapper.requestFullscreen) wrapper.requestFullscreen();
-        else if (videoEl.webkitEnterFullscreen) videoEl.webkitEnterFullscreen();
-        else if (videoEl.requestFullscreen) videoEl.requestFullscreen().catch(() => wrapper.requestFullscreen?.());
-        else if (videoEl.webkitRequestFullscreen) videoEl.webkitRequestFullscreen();
-        else if (wrapper.requestFullscreen) wrapper.requestFullscreen();
+        // Tek tam ekran hedefi özel player kabıdır. Böylece dokunmatik jestler,
+        // kilit, parlaklık, ses ve özel zaman çizgisi mobilde de korunur.
+        if (wrapper.requestFullscreen) wrapper.requestFullscreen();
+        else if (wrapper.webkitRequestFullscreen) wrapper.webkitRequestFullscreen();
+        else if (videoEl.requestFullscreen) videoEl.requestFullscreen().catch(() => {});
         else if (wrapper.webkitRequestFullscreen) wrapper.webkitRequestFullscreen();
       } else {
         if (document.exitFullscreen) document.exitFullscreen();
@@ -5432,17 +5423,6 @@ export async function openPlayerModal({
         if (span) span.textContent = isTheater ? 'Genişletildi' : 'Sinema';
         if (icon) icon.setAttribute('data-lucide', isTheater ? 'minimize-2' : 'tv');
         renderPlayerIcons(modalContainer);
-
-        // On mobile, entering cinema mode also triggers native full-screen video if available
-        const isMobile = window.innerWidth <= 768;
-        const videoEl = document.getElementById('hls-video-player') || document.querySelector('#player-iframe-wrapper video');
-        if (isMobile && videoEl && isTheater) {
-          if (videoEl.webkitEnterFullscreen) {
-            videoEl.webkitEnterFullscreen();
-          } else if (videoEl.requestFullscreen) {
-            videoEl.requestFullscreen().catch(() => {});
-          }
-        }
 
         if (isTheater) {
           const stage = document.querySelector('.player-stage-wrapper');
