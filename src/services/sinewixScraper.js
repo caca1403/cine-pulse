@@ -7,7 +7,7 @@
    ========================================================================== */
 
 import { isStrictMediaTitleMatch } from './mediaMatcher.js';
-import { apiUrl } from './apiOrigin.js';
+import { apiUrl, mkvRelayUrl } from './apiOrigin.js';
 
 const SINEWIX_API_BASE = 'https://ydfvfdizipanel.ru/public/api';
 const SINEWIX_TOKEN = 'EuXs1Y5oXTrDpGte3E2dNDIu82LLjaoCd6om';
@@ -243,7 +243,7 @@ export async function fetchSinewixSources({
         ? (isHls
           ? apiUrl(`/api/hls_proxy?url=${encodeURIComponent(rawLink)}`)
           : isMkv
-            ? apiUrl(`/api/mkv_stream?url=${encodeURIComponent(rawLink)}&ref=${encodeURIComponent('https://ydfvfdizipanel.ru/')}`)
+            ? mkvRelayUrl(`/api/mkv_stream?url=${encodeURIComponent(rawLink)}&ref=${encodeURIComponent('https://ydfvfdizipanel.ru/')}`)
             : isDirect
             ? apiUrl(`/api/proxy?url=${encodeURIComponent(rawLink)}&ref=${encodeURIComponent('https://ydfvfdizipanel.ru/')}`)
             : rawLink)

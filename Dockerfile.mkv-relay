@@ -1,0 +1,17 @@
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+# Sistem FFmpeg kullanılır; Vercel fonksiyonuna ikili dosya taşınmaz.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+COPY server ./server
+
+ENV PORT=4000
+EXPOSE 4000
+CMD ["node", "server/mediaServer.js"]
