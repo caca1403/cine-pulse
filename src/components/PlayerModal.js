@@ -789,7 +789,6 @@ export async function openPlayerModal({
       if (someoneBuffering && video && !video.paused) {
         roomPausedForParticipants = true;
         video.pause();
-        showToast('Bir katılımcının akışı hazırlanıyor; herkesle senkron için bekleniyor.', 'info');
       } else if (!someoneBuffering && roomPausedForParticipants && video?.paused) {
         roomPausedForParticipants = false;
         video.play().catch(() => {});
@@ -5030,38 +5029,16 @@ export async function openPlayerModal({
         // A source is healthy only after actual frames start flowing. This avoids
         // probing every URL (which would consume mobile data and trigger CORS).
         let hasRecordedWorkingSource = false;
-        let stallTimer = null;
-        const clearSourceStallTimer = () => {
-          if (stallTimer) clearTimeout(stallTimer);
-          stallTimer = null;
-        };
         const markSourceWorking = () => {
-          clearSourceStallTimer();
           if (hasRecordedWorkingSource || closed || playbackRun !== playbackGeneration) return;
           hasRecordedWorkingSource = true;
           rememberWorkingSource({ contentKey: getSourceContentKey(), category: currentCategory, source: srv });
         };
-        const armSourceStallFailover = () => {
-          clearSourceStallTimer();
-          if (videoEl.paused || videoEl.ended) return;
-          stallTimer = playbackScope.setTimeout(() => {
-            if (closed || playbackRun !== playbackGeneration || videoEl.paused || videoEl.ended) return;
-            if (videoEl.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
-              triggerAutoFailover('Akış uzun süre buffer’da kaldı');
-            }
-          }, 16000);
-        };
         playbackScope.on(videoEl, 'playing', markSourceWorking);
         playbackScope.on(videoEl, 'timeupdate', markSourceWorking);
-        playbackScope.on(videoEl, 'canplay', clearSourceStallTimer);
-        playbackScope.on(videoEl, 'waiting', armSourceStallFailover);
-        playbackScope.on(videoEl, 'stalled', armSourceStallFailover);
         playbackScope.on(videoEl, 'error', () => {
-          clearSourceStallTimer();
           rememberFailedSource({ category: currentCategory, source: srv });
         });
-        playbackScope.on(videoEl, 'pause', clearSourceStallTimer);
-        armSourceStallFailover();
 
         // ============ Subtitle Control Engine for Torrent, Sinewix & Direct Streams ============
         attachSubtitleControls(videoEl, srv);
