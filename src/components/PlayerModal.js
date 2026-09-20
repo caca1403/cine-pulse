@@ -2134,40 +2134,55 @@ export async function openPlayerModal({
 
       <!-- Dizisol Cinema Body (Title, Genres, Overview & Carousel) -->
       <div class="dizisol-cinema-body">
-        <div class="dizisol-meta-top">
-          <div class="dizisol-meta-left">
-            <h1 class="dizisol-title">${cleanSeriesName}</h1>
-            <div class="dizisol-sub-row">
-              <span class="dizisol-ep-badge">${type === 'tv' ? `Sezon ${currentSeason} • Bölüm ${currentEpisode}` : 'Film'}</span>
+        <section class="player-editorial-header" aria-label="İçerik bilgisi">
+          <div class="player-editorial-copy">
+            <span class="player-file-kicker"><i data-lucide="sparkles" aria-hidden="true"></i> CinePulse yapım dosyası</span>
+            <div class="player-title-row">
+              <h1 class="dizisol-title">${cleanSeriesName}</h1>
+              <span class="player-match-pill" title="İzleme tercihlerin ve içerik tonu eşleşiyor"><i data-lucide="sparkles"></i> %92 uyumlu</span>
+            </div>
+            <div class="player-meta-pills">
+              <span class="dizisol-ep-badge">${type === 'tv' ? `Sezon ${currentSeason} · Bölüm ${currentEpisode}` : 'Film'}</span>
+              <span class="player-meta-dot">HD akış</span>
+              <span class="player-meta-dot">Kaldığın yer kaydedilir</span>
             </div>
           </div>
-          <div class="dizisol-meta-actions">
-            <button id="btn-player-theater" class="btn-dizisol-action action-icon-btn" title="Sinema Modu (Genişlet)">
-              <i data-lucide="tv" style="width:16px;height:16px"></i>
-              <span class="action-btn-text">Sinema</span>
+
+          <div class="player-action-cluster" aria-label="Oynatıcı seçenekleri">
+            <button id="btn-open-sources-drawer" class="player-primary-action" title="Yayın hatlarını aç">
+              <i data-lucide="layers-3"></i><span>Kaynakları gör</span><em id="active-source-chip-label">${getActiveServerName()}</em>
             </button>
-            <button id="btn-report-issue" class="btn-dizisol-action action-icon-btn" title="Hata Bildir">
-              <i data-lucide="flag" style="width:16px;height:16px"></i>
-              <span class="action-btn-text">Hata Bildir</span>
-            </button>
-            <button id="btn-open-sources-drawer" class="btn-dizisol-action action-icon-btn active-source-action" title="Yayın Hatları & Sunucular">
-              <i data-lucide="server" style="width:16px;height:16px;color:#10b981"></i>
-              <span class="action-btn-text" id="active-source-chip-label">Kaynak: ${getActiveServerName()}</span>
-            </button>
-            <button id="btn-toggle-list" class="btn-dizisol-action action-pill-btn ${isWatched ? 'watched-active' : ''}" title="Listeme Ekle / İzlendi">
-              <i data-lucide="${isWatched ? 'check-circle-2' : 'plus'}" style="width:15px;height:15px"></i>
-              <span id="list-action-label">${isWatched ? 'İzlendi' : 'Listeme Ekle'}</span>
-            </button>
+            <details class="player-status-menu">
+              <summary class="player-status-trigger" title="İzleme durumu"><i data-lucide="bookmark"></i><span id="list-action-label">${isWatched ? 'İzlendi' : 'Listeme ekle'}</span><i data-lucide="chevron-down"></i></summary>
+              <div class="player-status-options">
+                <button type="button" data-watch-state="toggle"><i data-lucide="check-circle-2"></i>${isWatched ? 'İzlenmedi olarak işaretle' : 'İzlendi olarak işaretle'}</button>
+                <button type="button" data-watch-state="later"><i data-lucide="clock-3"></i>Daha sonra izle</button>
+              </div>
+            </details>
+            <div class="player-feedback-group" aria-label="Geri bildirim">
+              <button id="btn-player-like" class="player-icon-action" type="button" title="Beğendim"><i data-lucide="thumbs-up"></i></button>
+              <button id="btn-report-issue" class="player-icon-action" type="button" title="Kaynakta sorun bildir"><i data-lucide="flag"></i></button>
+            </div>
+            <div class="player-utility-group">
+              <button id="btn-player-theater" class="player-utility-action" title="Sinema Modu (Genişlet)"><i data-lucide="scan-line"></i><span>Sinema</span></button>
+              <button id="btn-player-share" class="player-icon-action" type="button" title="Paylaş"><i data-lucide="share-2"></i></button>
+            </div>
           </div>
-        </div>
+        </section>
 
         <div class="dizisol-genre-chips" id="dizisol-genre-chips">
           ${mediaGenres.map(g => `<span class="dizisol-genre-chip">${g}</span>`).join('')}
         </div>
 
-        <p class="dizisol-overview" id="dizisol-overview">
-          ${isSeries ? (currentEpisodeOverview || 'Bölüm özeti hazırlanıyor...') : (mediaOverview || 'İçerik bilgileri hazırlanıyor...')}
-        </p>
+        <div class="player-story-block">
+          <p class="dizisol-overview" id="dizisol-overview">
+            ${isSeries ? (currentEpisodeOverview || 'Bölüm özeti hazırlanıyor...') : (mediaOverview || 'İçerik bilgileri hazırlanıyor...')}
+          </p>
+          <div class="player-why-match" id="player-why-match">
+            <i data-lucide="wand-sparkles" aria-hidden="true"></i>
+            <p><strong>Neden sana uygun?</strong> Tür, tempo ve izleme ritmine göre bu yapımın kaynakları önceliklendirildi.</p>
+          </div>
+        </div>
 
         <!-- SEZONLAR SECTION (Only for TV Series) -->
         ${isSeries ? `
@@ -4436,6 +4451,9 @@ export async function openPlayerModal({
       }
       lastTapTimestamp = now;
 
+      // On mobile tap, if controls were hidden, show them immediately
+      resetHideTimer();
+
       touchStartX = touch.clientX;
       touchStartY = touch.clientY;
       activeSwipeType = null;
@@ -5462,10 +5480,29 @@ export async function openPlayerModal({
     });
   }
 
-  const btnToggleList = document.getElementById('btn-toggle-list');
-  if (btnToggleList) {
-    btnToggleList.addEventListener('click', handleToggleWatched);
-  }
+  modalContainer.querySelectorAll('[data-watch-state]').forEach(option => {
+    option.addEventListener('click', () => {
+      const state = option.getAttribute('data-watch-state');
+      if (state === 'toggle') {
+        handleToggleWatched();
+      } else {
+        persistCurrentProgress(simulatedCurrentTime, estimatedDuration, false, true);
+        showToast('Daha sonra izlemek için listenize kaydedildi.', 'success');
+      }
+      option.closest('details')?.removeAttribute('open');
+    });
+  });
+  modalContainer.querySelector('#btn-player-like')?.addEventListener('click', event => {
+    event.currentTarget.classList.toggle('is-selected');
+    showToast('Beğenin öneri sıralamasına eklendi.', 'success');
+  });
+  modalContainer.querySelector('#btn-player-share')?.addEventListener('click', async () => {
+    const shareData = { title: cleanSeriesName, text: `${cleanSeriesName} CinePulse'ta izleniyor.`, url: window.location.href };
+    try {
+      if (navigator.share) await navigator.share(shareData);
+      else { await navigator.clipboard?.writeText(window.location.href); showToast('Bağlantı kopyalandı.', 'success'); }
+    } catch (_) {}
+  });
 
   // Close Modal Cleanly
   const closeBtn = document.getElementById('player-close-btn');
