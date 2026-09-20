@@ -2987,11 +2987,19 @@ export async function openPlayerModal({
       const isLocalOnlyControl = target => Boolean(target.closest(
         '#custom-volume-wrap, #custom-brightness-wrap, #custom-btn-fullscreen'
       ));
+      // pointerdown is intentionally NOT intercepted here – on mobile it is the
+      // event that drives throttledResetTimer (showing/hiding the controls overlay),
+      // which is a purely local UX action that participants must always be able to trigger.
+      // Actual playback mutations (play/pause, seek) happen on click / dblclick,
+      // both of which are already guarded per-handler by isRoomModerator() and
+      // additionally caught by the listeners below.
       const preventParticipantPlaybackControl = event => {
         if (isLocalOnlyControl(event.target)) return;
-        const touchedVideo = event.target.closest('video');
-        if (touchedVideo && event.type !== 'dblclick') return;
-        if (!event.target.closest('video, button, input, .custom-timeline-container, .custom-player-menu, .custom-binge-card, .dual-audio-bar')) return;
+        // Allow single taps on the video element — videoEl.onclick already returns
+        // early for non-moderators, so no playback mutation occurs. Blocking here
+        // would also swallow the pointerdown→click pair needed to show controls.
+        if (event.target.closest('video') && event.type === 'click') return;
+        if (!event.target.closest('button, input, .custom-timeline-container, .custom-player-menu, .custom-binge-card, .dual-audio-bar')) return;
         event.preventDefault();
         event.stopImmediatePropagation();
         if (Date.now() - lastLockNotice > 1800) {
@@ -2999,7 +3007,6 @@ export async function openPlayerModal({
           showToast('Oynatma kontrolü moderatörde. Ses, parlaklık ve tam ekran sana açık.', 'info');
         }
       };
-      wrapper.addEventListener('pointerdown', preventParticipantPlaybackControl, true);
       wrapper.addEventListener('click', preventParticipantPlaybackControl, true);
       wrapper.addEventListener('dblclick', preventParticipantPlaybackControl, true);
     }
