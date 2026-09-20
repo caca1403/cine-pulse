@@ -151,6 +151,7 @@ export async function openPlayerModal({
     .replace(/\s*:\s*.*$/, '')
     .replace(/\s*\(\d{4}\).*/, '')
     .trim();
+  const previousDocumentTitle = document.title;
 
   let mediaOverview = '';
   let currentEpisodeOverview = '';
@@ -176,6 +177,7 @@ export async function openPlayerModal({
         if (!closed && data) {
           if (!posterPath && data.poster_path) posterPath = data.poster_path;
           if (!backdropPath && data.backdrop_path) backdropPath = data.backdrop_path;
+          syncMediaPresentation();
           if (data.overview) mediaOverview = data.overview;
           if (Array.isArray(data.genres)) mediaGenres = data.genres.map(g => g.name);
 
@@ -543,18 +545,27 @@ export async function openPlayerModal({
     }
   }
 
+  function syncMediaPresentation(videoEl = null) {
+    const title = getDisplayTitle();
+    document.title = title;
+    if (!('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
+    const artworkPath = posterPath || backdropPath;
+    const artworkUrl = artworkPath ? (artworkPath.startsWith('http') ? artworkPath : `https://image.tmdb.org/t/p/w780${artworkPath}`) : '';
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title,
+      artist: isSeries ? `${cleanSeriesName} · Sezon ${currentSeason}, Bölüm ${currentEpisode}` : 'Film',
+      album: '',
+      artwork: artworkUrl ? [
+        { src: artworkUrl, sizes: '342x513', type: 'image/jpeg' },
+        { src: artworkUrl, sizes: '780x1170', type: 'image/jpeg' }
+      ] : []
+    });
+    if (videoEl) navigator.mediaSession.playbackState = videoEl.paused ? 'paused' : 'playing';
+  }
+
   function configureMediaSession(videoEl) {
     if (!videoEl || !('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
-    const artworkPath = posterPath || backdropPath;
-    const artworkUrl = artworkPath
-      ? (artworkPath.startsWith('http') ? artworkPath : `https://image.tmdb.org/t/p/w500${artworkPath}`)
-      : '';
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: getDisplayTitle(),
-      artist: isSeries ? `${cleanSeriesName} · Sezon ${currentSeason}, Bölüm ${currentEpisode}` : cleanSeriesName,
-      album: 'CinePulse',
-      artwork: artworkUrl ? [{ src: artworkUrl, sizes: '500x750', type: 'image/jpeg' }] : []
-    });
+    syncMediaPresentation(videoEl);
     const applyPosition = () => {
       const duration = Number(videoEl.duration);
       const position = Number(videoEl.currentTime);
@@ -574,6 +585,8 @@ export async function openPlayerModal({
     bind('seekto', details => { if (Number.isFinite(details.seekTime)) videoEl.currentTime = details.seekTime; });
     applyPosition();
   }
+
+  syncMediaPresentation();
 
   function showRoomReaction(reaction) {
     if (!roomSync || reaction?.roomCode !== roomSync.roomCode) return;
@@ -2136,10 +2149,8 @@ export async function openPlayerModal({
       <div class="dizisol-cinema-body">
         <section class="player-editorial-header" aria-label="İçerik bilgisi">
           <div class="player-editorial-copy">
-            <span class="player-file-kicker"><i data-lucide="sparkles" aria-hidden="true"></i> CinePulse yapım dosyası</span>
             <div class="player-title-row">
               <h1 class="dizisol-title">${cleanSeriesName}</h1>
-              <span class="player-match-pill" title="İzleme tercihlerin ve içerik tonu eşleşiyor"><i data-lucide="sparkles"></i> %92 uyumlu</span>
             </div>
             <div class="player-meta-pills">
               <span class="dizisol-ep-badge">${type === 'tv' ? `Sezon ${currentSeason} · Bölüm ${currentEpisode}` : 'Film'}</span>
@@ -2159,8 +2170,7 @@ export async function openPlayerModal({
                 <button type="button" data-watch-state="later"><i data-lucide="clock-3"></i>Daha sonra izle</button>
               </div>
             </details>
-            <div class="player-feedback-group" aria-label="Geri bildirim">
-              <button id="btn-player-like" class="player-icon-action" type="button" title="Beğendim"><i data-lucide="thumbs-up"></i></button>
+            <div class="player-feedback-group" aria-label="Yayın geri bildirimi">
               <button id="btn-report-issue" class="player-icon-action" type="button" title="Kaynakta sorun bildir"><i data-lucide="flag"></i></button>
             </div>
             <div class="player-utility-group">
@@ -2178,10 +2188,6 @@ export async function openPlayerModal({
           <p class="dizisol-overview" id="dizisol-overview">
             ${isSeries ? (currentEpisodeOverview || 'Bölüm özeti hazırlanıyor...') : (mediaOverview || 'İçerik bilgileri hazırlanıyor...')}
           </p>
-          <div class="player-why-match" id="player-why-match">
-            <i data-lucide="wand-sparkles" aria-hidden="true"></i>
-            <p><strong>Neden sana uygun?</strong> Tür, tempo ve izleme ritmine göre bu yapımın kaynakları önceliklendirildi.</p>
-          </div>
         </div>
 
         <!-- SEZONLAR SECTION (Only for TV Series) -->
@@ -5492,10 +5498,6 @@ export async function openPlayerModal({
       option.closest('details')?.removeAttribute('open');
     });
   });
-  modalContainer.querySelector('#btn-player-like')?.addEventListener('click', event => {
-    event.currentTarget.classList.toggle('is-selected');
-    showToast('Beğenin öneri sıralamasına eklendi.', 'success');
-  });
   modalContainer.querySelector('#btn-player-share')?.addEventListener('click', async () => {
     const shareData = { title: cleanSeriesName, text: `${cleanSeriesName} CinePulse'ta izleniyor.`, url: window.location.href };
     try {
@@ -5516,6 +5518,7 @@ export async function openPlayerModal({
     disposePlayback();
     modalScope.dispose();
     activeModalClose = null;
+    document.title = previousDocumentTitle;
     clearInterval(activeProgressInterval);
 
     window.removeEventListener('pagehide', handleGlobalPageUnload);
