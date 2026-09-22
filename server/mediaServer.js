@@ -1126,7 +1126,8 @@ const server = http.createServer(async (req, res) => {
 
       const upstreamRes = await fetch(fetchUrl, {
         method: req.method === 'HEAD' ? 'HEAD' : 'GET',
-        headers: upstreamHeaders
+        headers: upstreamHeaders,
+        signal: AbortSignal.timeout(15000)  // 15s — segment geç gelirse HLS.js retry yapar
       });
 
       const contentType = upstreamRes.headers.get('content-type') || '';
@@ -1174,11 +1175,17 @@ const server = http.createServer(async (req, res) => {
             fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
           }
 
+          // Dizisol URL analizi:
+          // - s5.dizisol.com/play? ve /m3u8? → Referer zorunlu → proxy'den geç
+          // - s5.dizisol.com/ts? → Access-Control-Allow-Origin: * → bypass et
+          const isDizisolPlaylist = fullLineUrl.includes('dizisol.com') &&
+            !fullLineUrl.includes('/ts?') && !fullLineUrl.includes('/ts/');
           // Direct CDN bypass for video segments and sub-playlists with open CORS
           // Bypasses proxy for 10x faster playback (<200ms start)
-          const needsProxy = /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi)/i.test(fullLineUrl);
+          const needsProxy = isDizisolPlaylist || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi)/i.test(fullLineUrl);
           if (
-            !needsProxy && (
+            !needsProxy &&
+            (
             /\.(ts|jpg|jpeg|png|m4s|mp4)($|\?)/i.test(fullLineUrl) ||
             fullLineUrl.includes('dizisol.com/ts') ||
             fullLineUrl.includes('/ts?') ||

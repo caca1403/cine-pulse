@@ -924,6 +924,7 @@ export async function openPlayerModal({
       (streamUrl && !streamUrl.startsWith('magnet:')
         && (streamUrl.includes('.m3u8') || streamUrl.includes('.txt')
           || streamUrl.includes('.mp4') || streamUrl.includes('.mkv')
+          || streamUrl.includes('mkv_stream')
           || streamUrl.includes(':4000/torrent/')))
     );
   }
@@ -4638,6 +4639,8 @@ export async function openPlayerModal({
           srv?.displayName,
           srv?.provider
         ].filter(Boolean).join(' '));
+        // Tüm DS kaynakları için: imagestoo, pal-vds, hdfilmdelisi, vidmixi, vb.
+        const isDizisolSource = srv?.source === 'DS';
 
         if (isHlsStream && window.Hls && Hls.isSupported()) {
           const hls = new Hls({
@@ -4656,13 +4659,12 @@ export async function openPlayerModal({
             abrEwmaDefaultEstimate: 5000000,
             abrEwmaFastVoD: 3,
             abrBandWidthFactor: 0.92,
-            // This particular DS mirror often accepts the playlist and then
-            // leaves a media fragment pending indefinitely. Give it one short
-            // retry, then continue with a healthy source instead of freezing.
-            fragLoadingTimeOut: isDizisolFilmMakinesi ? 12000 : 20000,
+            // DS kaynakları s2k proxy latency yüzünden yavaş olabilir;
+            // kısa timeout + retry ile HLS.js kendi kendine recover edebilir.
+            fragLoadingTimeOut: isDizisolFilmMakinesi ? 8000 : (isDizisolSource ? 12000 : 20000),
             manifestLoadingTimeOut: 15000,
             levelLoadingTimeOut: 15000,
-            fragLoadingMaxRetry: isDizisolFilmMakinesi ? 1 : 6,
+            fragLoadingMaxRetry: isDizisolFilmMakinesi ? 1 : (isDizisolSource ? 3 : 6),
             manifestLoadingMaxRetry: 4,
             levelLoadingMaxRetry: 4,
             xhrSetup: (xhr) => {
@@ -4704,11 +4706,31 @@ export async function openPlayerModal({
             playbackScope.on(videoEl, 'seeking', () => { lastHlsProgressAt = Date.now(); });
             playbackScope.setInterval(() => {
               if (closed || playbackRun !== playbackGeneration || activeHlsInstance !== hls) return;
-              if (videoEl.paused || videoEl.ended || Date.now() - lastHlsProgressAt < 12000) return;
+              if (videoEl.paused || videoEl.ended || Date.now() - lastHlsProgressAt < 8000) return;
               try { hls.destroy(); } catch (_) {}
               if (activeHlsInstance === hls) activeHlsInstance = null;
               triggerAutoFailover('DS FILMMAKİNESİ akışı durdu');
             }, 2000);
+          } else if (isDizisolSource) {
+            // imagestoo, pal-vds, hdfilmdelisi, normal VIP gibi tüm DS kaynakları:
+            // 15 saniye içinde video ilerlemezse failover yap.
+            playbackScope.on(videoEl, 'seeking', () => { lastHlsProgressAt = Date.now(); });
+            playbackScope.setInterval(() => {
+              if (closed || playbackRun !== playbackGeneration || activeHlsInstance !== hls) return;
+              if (videoEl.paused || videoEl.ended || Date.now() - lastHlsProgressAt < 15000) return;
+              // Video hiç başlamadıysa daha erken failover
+              if (!hlsClockAdvanced && Date.now() - lastHlsProgressAt > 20000) {
+                try { hls.destroy(); } catch (_) {}
+                if (activeHlsInstance === hls) activeHlsInstance = null;
+                triggerAutoFailover('DS akışı oynatmayı başlatamadı');
+                return;
+              }
+              if (hlsClockAdvanced) {
+                try { hls.destroy(); } catch (_) {}
+                if (activeHlsInstance === hls) activeHlsInstance = null;
+                triggerAutoFailover('DS akışı durdu');
+              }
+            }, 3000);
           }
           if (srv.source === 'HDFilmizle') {
             playbackScope.setTimeout(() => {
@@ -4721,6 +4743,16 @@ export async function openPlayerModal({
             }, 18000);
           }
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            // Türkçe ses track'i varsa otomatik seç (imagestoo gibi dual-audio
+            // kaynaklarda İngilizce track'in DEFAULT olmasını engeller)
+            if (hls.audioTracks && hls.audioTracks.length > 1) {
+              const trIdx = hls.audioTracks.findIndex(t =>
+                /tr|tur|turk/i.test(t.name || '') || /tr|tur/i.test(t.lang || '')
+              );
+              if (trIdx !== -1 && hls.audioTrack !== trIdx) {
+                hls.audioTrack = trIdx;
+              }
+            }
             applySafeSeek();
             const playPromise = videoEl.play();
             if (playPromise !== undefined) {

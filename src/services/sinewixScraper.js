@@ -7,7 +7,7 @@
    ========================================================================== */
 
 import { isStrictMediaTitleMatch } from './mediaMatcher.js';
-import { apiUrl, mkvRelayUrl } from './apiOrigin.js';
+import { apiUrl } from './apiOrigin.js';
 
 const SINEWIX_API_BASE = 'https://ydfvfdizipanel.ru/public/api';
 const SINEWIX_TOKEN = 'EuXs1Y5oXTrDpGte3E2dNDIu82LLjaoCd6om';
@@ -238,16 +238,18 @@ export async function fetchSinewixSources({
       // MKV files are routed through /api/mkv_stream which uses ffmpeg to remux
       // them to fragmented MP4 (copy codecs, no re-encoding). This allows Chromium
       // to play H.264+AAC streams that are packaged in a Matroska container,
-      // which Chromium cannot natively open.
+      // which Chromium cannot natively open. /api/mkv_stream handles both local
+      // (ffmpeg remux) and Vercel (byte-proxy, Content-Type: video/mp4) cases.
       const proxiedLink = rawLink.startsWith('http')
         ? (isHls
           ? apiUrl(`/api/hls_proxy?url=${encodeURIComponent(rawLink)}`)
           : isMkv
-            ? mkvRelayUrl(`/api/mkv_stream?url=${encodeURIComponent(rawLink)}&ref=${encodeURIComponent('https://ydfvfdizipanel.ru/')}`)
+            ? apiUrl(`/api/mkv_stream?url=${encodeURIComponent(rawLink)}&ref=${encodeURIComponent('https://ydfvfdizipanel.ru/')}`)
             : isDirect
             ? apiUrl(`/api/proxy?url=${encodeURIComponent(rawLink)}&ref=${encodeURIComponent('https://ydfvfdizipanel.ru/')}`)
             : rawLink)
         : rawLink;
+
 
       const serverTitle = isDirect ? (isMkv ? 'SWX 1080p (MKV)' : 'SWX 1080p Direct') : 'SWX VIP 1080p';
       const badge = isSubtitledVideo ? '💬 TR Altyazı 1080p' : (isDualAudio ? '⚡ SWX Dual 1080p' : '⚡ SWX 1080p');

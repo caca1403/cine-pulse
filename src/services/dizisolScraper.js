@@ -98,10 +98,15 @@ export async function searchDizisol(query) {
 function toProxiedDizisolStreamUrl(rawUrl) {
   if (!rawUrl || typeof rawUrl !== 'string') return '';
   const isBrowser = typeof window !== 'undefined';
+  // Relative /api/ URL'leri dizisol.com'a ait — absolute'a çevir ve proxy'den geçir
+  // (filmekseni gibi provider'lar Referer: dizisol.com gerektiriyor)
+  const fullUrl = rawUrl.startsWith('/api/')
+    ? `https://dizisol.com${rawUrl}`
+    : rawUrl;
   if (isBrowser) {
-    return `/api/hls_proxy?url=${encodeURIComponent(rawUrl)}&ref=${encodeURIComponent('https://dizisol.com/')}`;
+    return `/api/hls_proxy?url=${encodeURIComponent(fullUrl)}&ref=${encodeURIComponent('https://dizisol.com/')}`;
   }
-  return rawUrl;
+  return fullUrl;
 }
 
 function toProxiedDizisolSubUrl(rawUrl) {
@@ -115,10 +120,13 @@ function toProxiedDizisolSubUrl(rawUrl) {
 
 function isValidDizisolStreamUrl(url) {
   if (!url || typeof url !== 'string') return false;
-  if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
-  if (url.includes('picturebox.cloud')) {
-    return false;
-  }
+  // Relative /api/ URL'leri kabul et (filmekseni gibi proxy URL'leri)
+  const isRelativeApi = url.startsWith('/api/');
+  if (!isRelativeApi && !url.startsWith('http://') && !url.startsWith('https://')) return false;
+  // Oynatılamayan formatları filtrele
+  if (url.includes('picturebox.cloud')) return false;
+  if (url.includes('setfilmizle::')) return false;  // embed formatı, oynatılamaz
+  if (url.startsWith('setfilmizle:')) return false;
   return true;
 }
 
@@ -127,12 +135,12 @@ function getDizisolStreamPriority(url, provider = '') {
   const lowUrl = (url || '').toLowerCase();
   const lowProv = (provider || '').toLowerCase();
 
-  // Prefer the providers which have been stable in real playback. FilmMakinesi
-  // remains available in the source sheet, but it regularly stalls after the
-  // first fragments, so it must never win the automatic source selection.
-  if (lowProv === 'cortina') score += 100;
+  // VIP (ana m3u8Url) en güvenilir kaynaktır, her zaman ilk sırada yer almalı.
+  // FilmMakinesi çalışıyor gibi görünse de ilk fragmentlardan sonra takılıyor,
+  // bu nedenle otomatik seçimde asla kazanmamalı.
+  if (lowProv === 'vip') score += 105;
+  else if (lowProv === 'cortina') score += 100;
   else if (lowProv === 'vidmixi') score += 95;
-  else if (lowProv === 'filmmakinesi') score += 15;
   else if (lowProv === 'rapidrame') score += 88;
   else if (lowProv === 'hdfilmdelisi') score += 85;
   else if (lowProv === 'pal-vds') score += 80;
@@ -140,7 +148,8 @@ function getDizisolStreamPriority(url, provider = '') {
   else if (lowProv === 'imagestoo') score += 70;
   else if (lowProv === 'fullhd') score += 65;
   else if (lowProv === 'filmekseni') score += 60;
-  else if (lowProv === 'vip') score += 50;
+  else if (lowProv === 'filmmakinesi') score += 15;
+  else score += 40; // bilinmeyen sağlayıcılar için ortalama puan
 
   if (lowUrl.includes('dizisol.com')) score += 10;
 

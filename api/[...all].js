@@ -354,11 +354,17 @@ export default async function handler(req, res) {
             fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
           }
 
+          // Dizisol URL analizi (test edildi):
+          // - s5.dizisol.com/play? ve /m3u8? → Referer zorunlu → proxy'den geç
+          // - s5.dizisol.com/ts? → Access-Control-Allow-Origin: * → bypass et (hız)
+          const isDizisolPlaylist = fullLineUrl.includes('dizisol.com') &&
+            !fullLineUrl.includes('/ts?') && !fullLineUrl.includes('/ts/');
           // Direct CDN bypass for video segments and sub-playlists with open CORS
           // Bypasses proxy for 10x faster playback (<200ms start)
-          const needsProxy = /(?:hdfilmizle\.best)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi)/i.test(fullLineUrl);
+          const needsProxy = isDizisolPlaylist || /(?:hdfilmizle\.best)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi)/i.test(fullLineUrl);
           if (
-            !needsProxy && (
+            !needsProxy &&
+            (
             /\.(ts|jpg|jpeg|png|m4s|mp4)($|\?)/i.test(fullLineUrl) ||
             fullLineUrl.includes('dizisol.com/ts') ||
             fullLineUrl.includes('/ts?') ||
@@ -434,6 +440,60 @@ export default async function handler(req, res) {
       return res.status(500).send(err.message);
     }
   }
+
+  // MKV → video/mp4 byte-pass-through proxy (Vercel / serverless uyumlu)
+  // Vercel'de ffmpeg çalışmadığından remux yapılamaz; bunun yerine MKV
+  // dosyaları Content-Type: video/mp4 ile doğrudan proxylenir. H.264+AAC
+  // içeren MKV'ler bu şekilde modern tarayıcılarda sorunsuz oynatılır.
+  if (pathname.startsWith('/api/mkv_stream')) {
+    const rawTarget = urlObj.searchParams.get('url') || '';
+    const rawRef = urlObj.searchParams.get('ref') || '';
+    if (!rawTarget) return res.status(400).send('Missing url param');
+
+    try {
+      const decodedTarget = decodeURIComponent(rawTarget);
+      if (!isSafePublicUrl(decodedTarget)) return res.status(403).send('Target blocked');
+
+      const upstreamHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+      };
+      if (rawRef) upstreamHeaders['Referer'] = rawRef;
+      if (req.headers.range) upstreamHeaders['Range'] = req.headers.range;
+
+      const upstreamRes = await fetch(decodedTarget, {
+        headers: upstreamHeaders,
+        method: req.method === 'HEAD' ? 'HEAD' : 'GET'
+      });
+
+      // MKV içeriğini video/mp4 olarak sun; tarayıcılar H.264+AAC MKV
+      // stream'ini MP4 olarak kabul eder ve native player'da açar.
+      res.setHeader('Content-Type', 'video/mp4');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+      res.setHeader('Accept-Ranges', upstreamRes.headers.get('accept-ranges') || 'bytes');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      const contentLength = upstreamRes.headers.get('content-length');
+      if (contentLength) res.setHeader('Content-Length', contentLength);
+      const contentRange = upstreamRes.headers.get('content-range');
+      if (contentRange) res.setHeader('Content-Range', contentRange);
+
+      if (!upstreamRes.body) return res.status(upstreamRes.status).end();
+
+      res.statusCode = upstreamRes.status;
+      await new Promise((resolve, reject) => {
+        const stream = Readable.fromWeb(upstreamRes.body);
+        stream.on('error', reject);
+        res.on('finish', resolve);
+        stream.pipe(res);
+      });
+      return;
+    } catch (err) {
+      console.error('[mkv_stream] Error:', err.message);
+      return res.status(500).send(err.message);
+    }
+  }
+
 
   if (pathname.startsWith('/api/dzm_video')) {
     const hash = urlObj.searchParams.get('hash') || urlObj.searchParams.get('data') || '';
