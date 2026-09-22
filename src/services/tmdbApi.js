@@ -1038,7 +1038,8 @@ export function generateCinematicOverview(media, type = 'tv') {
 
 export async function fetchMediaDetails(type = 'tv', id) {
   const res = await tmdbFetch(`/${type}/${id}`, {
-    append_to_response: 'credits,similar,recommendations,videos',
+    // external_ids → IMDb ID (altyazı arama ve TVmaze yayın takvimi için gerekir)
+    append_to_response: 'credits,similar,recommendations,videos,external_ids',
     language: 'tr-TR'
   });
   if (!res) return null;

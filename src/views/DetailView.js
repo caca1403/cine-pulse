@@ -14,6 +14,7 @@ import { openPlayerModal } from '../components/openPlayer.js';
 import { openTrailerModal } from '../components/TrailerModal.js';
 import { openCastExplorerModal } from '../components/CastExplorerModal.js';
 import { showToast } from '../components/Toast.js';
+import { getNextEpisodeInfo } from '../services/tvmazeService.js';
 
 const DECISION_ROOM_AUTOPLAY_KEY = 'cinepulse.decision-room.autoplay';
 
@@ -177,6 +178,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                 ${runtimeBadgeHTML}
                 ${media.number_of_seasons ? `<span class="badge">${media.number_of_seasons} Sezon</span>` : ''}
                 ${media.number_of_episodes ? `<span class="badge">${media.number_of_episodes} Bölüm</span>` : ''}
+                ${effectiveType === 'tv' ? `<span class="badge" id="detail-next-episode-badge" style="display: none; background: rgba(34, 197, 94, 0.16); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); font-weight: 700; align-items: center; gap: 0.35rem;"></span>` : ''}
                 ${!media.runtime && media.episode_run_time && media.episode_run_time.length > 0 ? `<span class="badge">${media.episode_run_time[0]} dk / bölüm</span>` : ''}
               </div>
 
@@ -746,6 +748,36 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
             }
           });
         });
+      }
+
+      // TVmaze yayın takvimi: "Yeni bölüm S3 B5 • 3 gün sonra" rozeti (progresif, bloklamaz)
+      const nextEpisodeBadge = container.querySelector('#detail-next-episode-badge');
+      if (nextEpisodeBadge && effectiveType === 'tv') {
+        (async () => {
+          try {
+            const info = await getNextEpisodeInfo({
+              imdbId: media.external_ids?.imdb_id,
+              title: originalTitle || title,
+              year
+            });
+            if (!info?.nextEpisode || !nextEpisodeBadge.isConnected) return;
+
+            const epLabel = info.nextLabel || '';
+            const dateLabel = info.nextAirdateLabel || '';
+            if (!epLabel && !dateLabel) return;
+            if (dateLabel === 'Yayınlandı') return; // geçmiş bölüm bilgisini gösterme
+
+            const badgeText = [epLabel ? `Yeni bölüm ${epLabel}` : 'Yeni bölüm', dateLabel]
+              .filter(Boolean)
+              .join(' • ');
+            nextEpisodeBadge.innerHTML = `<i data-lucide="calendar-clock" style="width:13px; height:13px"></i><span>${badgeText}</span>`;
+            nextEpisodeBadge.title = `Sonraki bölüm: ${epLabel || '-'}${info.nextEpisode.name ? ' — ' + info.nextEpisode.name : ''}${dateLabel ? ' • ' + dateLabel : ''} (Kaynak: TVmaze)`;
+            nextEpisodeBadge.style.display = 'inline-flex';
+            renderIcons(nextEpisodeBadge);
+          } catch (_) {
+            // Takvim bilgisi opsiyoneldir; hata durumunda rozet gizli kalır
+          }
+        })();
       }
 
       const recGrid = container.querySelector('.media-grid');
