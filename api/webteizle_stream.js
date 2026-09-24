@@ -5,6 +5,7 @@
 
 import { execFile } from 'child_process';
 import util from 'util';
+import fs from 'fs';
 
 const execFileAsync = util.promisify(execFile);
 
@@ -28,9 +29,13 @@ function slugify(text) {
   return normalizeTitle(text).replace(/\s+/g, '-');
 }
 
-async function curlRequest(args, timeout = 9000) {
+async function curlRequest(args, cookiePath = null, timeout = 9000) {
   try {
-    const fullArgs = ['-4', '--compressed', '--connect-timeout', '4', '--max-time', '7', ...args];
+    const fullArgs = ['-4', '--compressed', '--connect-timeout', '4', '--max-time', '7'];
+    if (cookiePath) {
+      fullArgs.push('-c', cookiePath, '-b', cookiePath);
+    }
+    fullArgs.push(...args);
     const { stdout, stderr } = await execFileAsync('curl', fullArgs, { timeout: timeout + 1500 });
     return { stdout, stderr, ok: true };
   } catch (err) {
@@ -75,66 +80,68 @@ export default async function handler(req, res) {
     if (!slug) continue;
 
     for (const dilPath of dilPaths) {
+      const cookiePath = `/tmp/wt_ck_${Date.now()}_${Math.random().toString(36).slice(2)}.txt`;
       const watchUrl = `https://webteizle.info/izle/${dilPath}/${slug}`;
 
-      const pageRes = await curlRequest([
-        '-sL', watchUrl,
-        '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        '-H', 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      ]);
-      const html = pageRes.stdout || '';
-
-      globalThis._lastWtzDebug = {
-        watchUrl,
-        curlOk: pageRes.ok,
-        curlStderr: pageRes.stderr,
-        curlCode: pageRes.code,
-        htmlLen: html.length,
-        hasDataId: html.includes('data-id'),
-        preview: html.slice(0, 200)
-      };
-
-      if (!html || !html.includes('data-id')) continue;
-
-      const idMatch = html.match(/id=["']dilsec["'][^>]*data-id=["'](\d+)["']/i) || html.match(/data-id=["'](\d+)["']/i);
-      if (!idMatch || !idMatch[1]) continue;
-      const filmId = idMatch[1];
-      const dilCode = dilPath === 'altyazi' ? 1 : 0;
-
-      const altPayload = `filmid=${filmId}&dil=${dilCode}&s=&b=&bot=0`;
-      const altRes = await curlRequest([
-        '-sL', '-X', 'POST', 'https://webteizle.info/ajax/dataAlternatif3.asp',
-        '-H', 'Content-Type: application/x-www-form-urlencoded',
-        '-H', 'X-Requested-With: XMLHttpRequest',
-        '-H', `Referer: ${watchUrl}`,
-        '-d', altPayload
-      ]);
-      const altJsonText = altRes.stdout || '';
-
-      if (globalThis._lastWtzDebug) {
-        globalThis._lastWtzDebug.altJsonText = altJsonText.slice(0, 200);
-        globalThis._lastWtzDebug.altOk = altRes.ok;
-        globalThis._lastWtzDebug.altStderr = altRes.stderr;
-      }
-
-      let altData = null;
       try {
-        altData = JSON.parse(altJsonText);
-      } catch (_) {}
+        const pageRes = await curlRequest([
+          '-sL', watchUrl,
+          '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          '-H', 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        ], cookiePath);
+        const html = pageRes.stdout || '';
 
-      if (!altData || altData.status !== 'success' || !Array.isArray(altData.data)) continue;
+        globalThis._lastWtzDebug = {
+          watchUrl,
+          curlOk: pageRes.ok,
+          curlStderr: pageRes.stderr,
+          curlCode: pageRes.code,
+          htmlLen: html.length,
+          hasDataId: html.includes('data-id'),
+          preview: html.slice(0, 200)
+        };
 
-      for (const alt of altData.data) {
-        if (!alt || !alt.id) continue;
+        if (!html || !html.includes('data-id')) continue;
 
-        const embedRes = await curlRequest([
-          '-sL', '-X', 'POST', 'https://webteizle.info/ajax/dataEmbed.asp',
+        const idMatch = html.match(/id=["']dilsec["'][^>]*data-id=["'](\d+)["']/i) || html.match(/data-id=["'](\d+)["']/i);
+        if (!idMatch || !idMatch[1]) continue;
+        const filmId = idMatch[1];
+        const dilCode = dilPath === 'altyazi' ? 1 : 0;
+
+        const altPayload = `filmid=${filmId}&dil=${dilCode}&s=&b=&bot=0`;
+        const altRes = await curlRequest([
+          '-sL', '-X', 'POST', 'https://webteizle.info/ajax/dataAlternatif3.asp',
           '-H', 'Content-Type: application/x-www-form-urlencoded',
           '-H', 'X-Requested-With: XMLHttpRequest',
           '-H', `Referer: ${watchUrl}`,
-          '-d', `id=${alt.id}`
-        ]);
-        const embedHtml = embedRes.stdout || '';
+          '-d', altPayload
+        ], cookiePath);
+        const altJsonText = altRes.stdout || '';
+
+        if (globalThis._lastWtzDebug) {
+          globalThis._lastWtzDebug.altJsonText = altJsonText.slice(0, 200);
+          globalThis._lastWtzDebug.altOk = altRes.ok;
+          globalThis._lastWtzDebug.altStderr = altRes.stderr;
+        }
+
+        let altData = null;
+        try {
+          altData = JSON.parse(altJsonText);
+        } catch (_) {}
+
+        if (!altData || altData.status !== 'success' || !Array.isArray(altData.data)) continue;
+
+        for (const alt of altData.data) {
+          if (!alt || !alt.id) continue;
+
+          const embedRes = await curlRequest([
+            '-sL', '-X', 'POST', 'https://webteizle.info/ajax/dataEmbed.asp',
+            '-H', 'Content-Type: application/x-www-form-urlencoded',
+            '-H', 'X-Requested-With: XMLHttpRequest',
+            '-H', `Referer: ${watchUrl}`,
+            '-d', `id=${alt.id}`
+          ], cookiePath);
+          const embedHtml = embedRes.stdout || '';
 
         if (globalThis._lastWtzDebug) {
           globalThis._lastWtzDebug.embedSample = {
@@ -186,6 +193,11 @@ export default async function handler(req, res) {
         }
       }
 
+      } finally {
+        try {
+          if (fs.existsSync(cookiePath)) fs.unlinkSync(cookiePath);
+        } catch (_) {}
+      }
       if (streams.length > 0) break;
     }
 
