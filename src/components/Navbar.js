@@ -465,11 +465,11 @@ export function attachNavbarEvents(onNavigate) {
   }
   function closeMobileHub() {
     if (!mobileHubBackdrop) return;
+    document.body.style.overflow = '';
     mobileHubSheet?.classList.add('sheet-closing');
     setTimeout(() => {
       mobileHubBackdrop.classList.add('hidden');
       mobileHubSheet?.classList.remove('sheet-closing');
-      document.body.style.overflow = '';
     }, 280);
   }
 

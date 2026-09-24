@@ -1188,9 +1188,15 @@ img {
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
   z-index: 10000;
-  display: flex;
+  display: none;
   align-items: flex-end;
   justify-content: center;
+}
+
+@media (max-width: 1180px) {
+  .mobile-hub-backdrop:not(.hidden) {
+    display: flex;
+  }
 }
 
 
