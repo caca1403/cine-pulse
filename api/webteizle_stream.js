@@ -111,9 +111,17 @@ export default async function handler(req, res) {
         const altPayload = `filmid=${filmId}&dil=${dilCode}&s=&b=&bot=0`;
         const altRes = await curlRequest([
           '-sL', '-X', 'POST', 'https://webteizle.info/ajax/dataAlternatif3.asp',
-          '-H', 'Content-Type: application/x-www-form-urlencoded',
+          '-H', 'Host: webteizle.info',
+          '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          '-H', 'Accept: application/json, text/javascript, */*; q=0.01',
+          '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+          '-H', 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8',
           '-H', 'X-Requested-With: XMLHttpRequest',
+          '-H', 'Origin: https://webteizle.info',
           '-H', `Referer: ${watchUrl}`,
+          '-H', 'Sec-Fetch-Dest: empty',
+          '-H', 'Sec-Fetch-Mode: cors',
+          '-H', 'Sec-Fetch-Site: same-origin',
           '-d', altPayload
         ], cookiePath);
         const altJsonText = altRes.stdout || '';
@@ -136,9 +144,17 @@ export default async function handler(req, res) {
 
           const embedRes = await curlRequest([
             '-sL', '-X', 'POST', 'https://webteizle.info/ajax/dataEmbed.asp',
-            '-H', 'Content-Type: application/x-www-form-urlencoded',
+            '-H', 'Host: webteizle.info',
+            '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            '-H', 'Accept: */*',
+            '-H', 'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+            '-H', 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8',
             '-H', 'X-Requested-With: XMLHttpRequest',
+            '-H', 'Origin: https://webteizle.info',
             '-H', `Referer: ${watchUrl}`,
+            '-H', 'Sec-Fetch-Dest: empty',
+            '-H', 'Sec-Fetch-Mode: cors',
+            '-H', 'Sec-Fetch-Site: same-origin',
             '-d', `id=${alt.id}`
           ], cookiePath);
           const embedHtml = embedRes.stdout || '';
