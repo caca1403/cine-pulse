@@ -75,6 +75,19 @@ async function fetchSafe(pathUrl, options = {}) {
   return null;
 }
 
+export function extractCleanImageUrl(raw) {
+  if (!raw) return '';
+  try {
+    if (raw.includes('image_proxy.php?url=')) {
+      const match = raw.match(/url=([^&]+)/);
+      if (match) {
+        return decodeURIComponent(match[1]);
+      }
+    }
+  } catch (_) {}
+  return raw;
+}
+
 /**
  * Searches DramaDizilerim for candidate short dramas
  */
@@ -97,18 +110,205 @@ export async function searchDramaDizilerim(query) {
     const slug = match[1];
     const inner = match[2];
     const titleMatch = inner.match(/alt=["']([^"']+)["']/i) || inner.match(/<h[2-6][^>]*>(.*?)<\/h[2-6]>/i);
-    const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : slug;
+    const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").trim() : slug;
+    const imgMatch = inner.match(/src=["']([^"']+)["']/i);
+    const poster = imgMatch ? extractCleanImageUrl(imgMatch[1].replace(/&amp;/g, '&')) : '';
+    const isDubbed = title.toLowerCase().includes('dublaj');
 
     if (!results.some(r => r.slug === slug)) {
       results.push({
         title,
         slug,
+        poster,
+        isDubbed,
         url: `${BASE_URL}/dizi/${slug}`
       });
     }
   }
 
   return results;
+}
+
+/**
+ * Fetches trending dramas from frontpage
+ */
+export async function fetchTrendingDramas() {
+  const res = await fetchSafe('/');
+  if (!res) return [];
+
+  const html = await res.text().catch(() => '');
+  if (!html) return [];
+
+  const cards = [];
+  const cardRegex = /<a[^>]+href=["'](?:https:\/\/dramadizilerim\.com)?\/dizi\/([a-zA-Z0-9_-]+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let match;
+
+  while ((match = cardRegex.exec(html)) !== null) {
+    const slug = match[1];
+    const inner = match[2];
+    const imgMatch = inner.match(/src=["']([^"']+)["']/i);
+    const titleMatch = inner.match(/alt=["']([^"']+)["']/i) || inner.match(/<h[2-6][^>]*>(.*?)<\/h[2-6]>/i);
+    const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").trim() : slug;
+    const poster = imgMatch ? extractCleanImageUrl(imgMatch[1].replace(/&amp;/g, '&')) : '';
+    const isDubbed = title.toLowerCase().includes('dublaj');
+
+    if (!cards.some(c => c.slug === slug)) {
+      cards.push({
+        slug,
+        title,
+        poster,
+        isDubbed,
+        badge: isDubbed ? '🇹🇷 DUBLAJ' : 'TR ALTYAZI',
+        url: `${BASE_URL}/dizi/${slug}`
+      });
+    }
+  }
+
+  return cards;
+}
+
+/**
+ * Fetches drama catalog with pagination and optional query
+ */
+export async function fetchDramaCatalog({ page = 1, query = '' } = {}) {
+  if (query && query.trim().length >= 2) {
+    return searchDramaDizilerim(query);
+  }
+
+  const path = page > 1 ? `/dizi?page=${page}` : '/dizi';
+  const res = await fetchSafe(path);
+  if (!res) return [];
+
+  const html = await res.text().catch(() => '');
+  if (!html) return [];
+
+  const cards = [];
+  const cardRegex = /<a[^>]+href=["'](?:https:\/\/dramadizilerim\.com)?\/dizi\/([a-zA-Z0-9_-]+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let match;
+
+  while ((match = cardRegex.exec(html)) !== null) {
+    const slug = match[1];
+    const inner = match[2];
+    const imgMatch = inner.match(/src=["']([^"']+)["']/i);
+    const titleMatch = inner.match(/alt=["']([^"']+)["']/i) || inner.match(/<h[2-6][^>]*>(.*?)<\/h[2-6]>/i);
+    const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").trim() : slug;
+    const poster = imgMatch ? extractCleanImageUrl(imgMatch[1].replace(/&amp;/g, '&')) : '';
+    const isDubbed = title.toLowerCase().includes('dublaj');
+
+    if (!cards.some(c => c.slug === slug)) {
+      cards.push({
+        slug,
+        title,
+        poster,
+        isDubbed,
+        badge: isDubbed ? '🇹🇷 DUBLAJ' : 'TR ALTYAZI',
+        url: `${BASE_URL}/dizi/${slug}`
+      });
+    }
+  }
+
+  return cards;
+}
+
+/**
+ * Fetches drama detail page, synopsis, and episode list
+ */
+export async function fetchDramaDetails(slug) {
+  if (!slug) return null;
+
+  const res = await fetchSafe(`/dizi/${slug}`);
+  if (!res) return null;
+
+  const html = await res.text().catch(() => '');
+  if (!html) return null;
+
+  const titleMatch = html.match(/<h1[^>]*>(.*?)<\/h1>/i);
+  const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").trim() : slug;
+
+  const descMatch = html.match(/<p class=["'][^"']*description[^"']*["'][^>]*>([\s\S]*?)<\/p>/i) ||
+                    html.match(/<div class=["'][^"']*synopsis[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) ||
+                    html.match(/<meta name=["']description["'] content=["']([^"']+)["']/i);
+  const description = descMatch ? descMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").trim() : 'Bu kısa dizi için henüz açıklama girilmedi.';
+
+  const posterMatch = html.match(/<div class=["'][^"']*poster[^"']*["'][^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["']/i) ||
+                      html.match(/<img[^>]+class=["'][^"']*spotlight[^"']*["'][^>]+src=["']([^"']+)["']/i);
+  const poster = posterMatch ? extractCleanImageUrl(posterMatch[1].replace(/&amp;/g, '&')) : '';
+
+  const epRegex = /<a[^>]+href=["'](?:\/izle\/|https:\/\/dramadizilerim\.com\/izle\/)([a-zA-Z0-9_-]+)\?s=(\d+)&e=(\d+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const episodes = [];
+  let epMatch;
+
+  while ((epMatch = epRegex.exec(html)) !== null) {
+    const s = parseInt(epMatch[2], 10) || 1;
+    const e = parseInt(epMatch[3], 10) || 1;
+    const inner = epMatch[4];
+    const epTitleMatch = inner.match(/class=["']wp-enum["']>([^<]+)</i) || inner.match(/alt=["']([^"']+)["']/i);
+    const epTitle = epTitleMatch ? epTitleMatch[1].trim() : `Bölüm ${e}`;
+    const thumbMatch = inner.match(/src=["']([^"']+)["']/i);
+    const thumb = thumbMatch ? extractCleanImageUrl(thumbMatch[1].replace(/&amp;/g, '&')) : '';
+
+    if (!episodes.some(ep => ep.season === s && ep.episode === e)) {
+      episodes.push({ season: s, episode: e, title: epTitle, thumb });
+    }
+  }
+
+  // Sort episodes by season and episode number
+  episodes.sort((a, b) => (a.season - b.season) || (a.episode - b.episode));
+
+  return {
+    slug,
+    title,
+    poster,
+    description,
+    isDubbed: title.toLowerCase().includes('dublaj'),
+    totalEpisodes: episodes.length,
+    episodes
+  };
+}
+
+/**
+ * Directly extracts direct HLS stream for a drama episode
+ */
+export async function fetchDramaEpisodeStream(slug, season = 1, episode = 1) {
+  const watchPath = `/izle/${slug}?s=${season}&e=${episode}`;
+  const watchRes = await fetchSafe(watchPath);
+  if (!watchRes) return null;
+
+  const watchHtml = await watchRes.text().catch(() => '');
+  if (!watchHtml) return null;
+
+  const embedMatch = watchHtml.match(/(?:data-src|src)=["']([^"']*embed\.php[^"']*)["']/i);
+  if (!embedMatch) return null;
+
+  let embedUrl = embedMatch[1].replace(/&amp;/g, '&');
+  if (!embedUrl.startsWith('http')) {
+    embedUrl = `${BASE_URL}${embedUrl.startsWith('/') ? '' : '/'}${embedUrl}`;
+  }
+
+  const embedRes = await fetchSafe(embedUrl, {
+    headers: { 'Referer': `${BASE_URL}${watchPath}` }
+  });
+  if (!embedRes) return null;
+
+  const embedHtml = await embedRes.text().catch(() => '');
+  if (!embedHtml) return null;
+
+  const sourceMatch = embedHtml.match(/let\s+source\s*=\s*["']([^"']+)["']/);
+  let rawUrl = (sourceMatch && sourceMatch[1].startsWith('http')) ? sourceMatch[1] : null;
+
+  if (!rawUrl) {
+    const directMedia = embedHtml.match(/https?:\/\/[^"'\s\\]+\.(?:m3u8|mp4)[^"'\s\\]*/);
+    if (directMedia) rawUrl = directMedia[0];
+  }
+
+  if (rawUrl) {
+    return {
+      streamUrl: rawUrl,
+      isHls: rawUrl.includes('.m3u8') || rawUrl.includes('mpegurl')
+    };
+  }
+
+  return null;
 }
 
 /**

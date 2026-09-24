@@ -76,6 +76,21 @@ export function openProfileModal() {
             </div>
           </div>
 
+          <!-- Featured Drama & Reels Hub Transition Button -->
+          <a href="#dramas" class="profile-drama-hub-btn" id="btn-modal-open-dramas" title="Kısa Diziler ve Reels Dünyası">
+            <div class="drama-hub-icon-wrap">
+              <i data-lucide="sparkles" style="width: 22px; height: 22px; color: #c084fc;"></i>
+            </div>
+            <div class="drama-hub-text">
+              <div class="drama-hub-title">
+                <span>🎭 Kısa Diziler &amp; Reels</span>
+                <span class="drama-hub-badge">ÖZEL KÜTÜPHANE</span>
+              </div>
+              <span class="drama-hub-sub">DramaBox, ReelShort ve ShortMax dizileri (TMDB dışı)</span>
+            </div>
+            <i data-lucide="chevron-right" style="width: 18px; height: 18px; color: #a855f7; margin-left: auto;"></i>
+          </a>
+
           <!-- Bottom Management Bar -->
           <div class="profile-footer-bar">
             <button class="btn-manage-profiles" id="btn-modal-open-backup" title="Yedekleme & Veri Yönetimi">
@@ -164,6 +179,14 @@ export function openProfileModal() {
         }
       };
     });
+
+    // Drama Hub Button inside modal
+    const dramasBtn = modalContainer.querySelector('#btn-modal-open-dramas');
+    if (dramasBtn) {
+      dramasBtn.onclick = () => {
+        closeProfileModal();
+      };
+    }
 
     // Backup and PWA Buttons inside modal
     const backupBtn = modalContainer.querySelector('#btn-modal-open-backup');

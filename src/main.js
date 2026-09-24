@@ -11,6 +11,7 @@ import { renderDiscoverView } from './views/DiscoverView.js';
 import { renderPopularListView } from './views/PopularListView.js';
 import { renderLiveTvView } from './views/LiveTvView.js';
 import { renderAdminView } from './views/AdminView.js';
+import { renderDramaView } from './views/DramaView.js';
 import { checkAndShowProfileOnboarding } from './components/ProfileOnboardingModal.js';
 import { checkAndShowProductTour } from './components/ProductTour.js';
 import { trackScrollState, flushScrollState, restoreAllScrollState } from './services/scrollManager.js';
@@ -108,6 +109,14 @@ async function route() {
     viewName = 'discover';
   } else if (hash === '#library') {
     viewName = 'library';
+  } else if (hash.startsWith('#dramas')) {
+    viewName = 'dramas';
+    if (hash.includes('?')) {
+      const queryStr = hash.split('?')[1] || '';
+      const urlParams = new URLSearchParams(queryStr);
+      params.slug = urlParams.get('slug');
+      params.q = urlParams.get('q');
+    }
   } else if (hash === '#admin') {
     // Access grants live only in module memory. Typing #admin or forging a
     // sessionStorage key can never open the authentication screen/dashboard.
@@ -153,7 +162,7 @@ async function route() {
 
   // Render Navbar for regular application views
   const navbarHTML = renderNavbar(viewName);
-  const cardViews = new Set(['home', 'series', 'cartoons', 'movies', 'anime', 'documentary', 'discover', 'library']);
+  const cardViews = new Set(['home', 'series', 'cartoons', 'movies', 'anime', 'documentary', 'discover', 'library', 'dramas']);
   const cardLayoutSwitcherHTML = cardViews.has(viewName) ? renderCardLayoutSwitcher() : '';
 
   if (viewName === 'home' || viewName === 'detail') {
@@ -183,6 +192,8 @@ async function route() {
     viewResult = await renderDiscoverView('tv');
   } else if (viewName === 'library') {
     viewResult = renderLibraryView();
+  } else if (viewName === 'dramas') {
+    viewResult = await renderDramaView(params.slug, params.q);
   }
 
   if (generation !== routeGeneration) return;

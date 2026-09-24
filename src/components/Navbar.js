@@ -39,13 +39,18 @@ export function renderNavbar(currentView = 'home') {
             <li><a href="#anime" title="Anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}"><i data-lucide="sparkles"></i><span>Anime</span></a></li>
             <li><a href="#documentary" title="Belgesel" class="nav-link ${currentView === 'documentary' ? 'active' : ''}"><i data-lucide="book-open"></i><span>Belgesel</span></a></li>
             <li><a href="#discover" title="Keşfet" class="nav-link ${currentView === 'discover' ? 'active' : ''}"><i data-lucide="compass"></i><span>Keşfet</span></a></li>
+            <li><a href="#dramas" title="Kısa Diziler" class="nav-link ${currentView === 'dramas' ? 'active' : ''}"><i data-lucide="sparkles"></i><span>Kısa Dizi</span></a></li>
             <li><a href="#library" title="Listem" class="nav-link ${currentView === 'library' ? 'active' : ''}"><i data-lucide="bookmark"></i><span>Listem</span></a></li>
           `}
         </ul>
 
         <div class="nav-actions">
-          <!-- Live TV Quick Action Pill (hidden in kids mode) -->
+          <!-- Live TV & Drama Quick Action Pills (hidden in kids mode) -->
           ${!activeProfile.isKid ? `
+          <a href="#dramas" class="btn-drama-nav-shortcut ${currentView === 'dramas' ? 'active' : ''}" title="Mini Diziler &amp; Reels (DramaBox, ReelShort)">
+            <i data-lucide="sparkles" style="width: 14px; height: 14px; color: #c084fc;"></i>
+            <span>KISA DİZİ</span>
+          </a>
           <a href="#livetv" class="btn-live-shortcut ${currentView === 'livetv' ? 'active' : ''}" title="Canlı TV Yayınları">
             <span class="live-pulse-dot"></span>
             <span>CANLI</span>
@@ -127,6 +132,10 @@ export function renderNavbar(currentView = 'home') {
       <a href="#discover" class="dock-item ${currentView === 'discover' ? 'active' : ''}">
         <i data-lucide="compass"></i>
         <span>Keşfet</span>
+      </a>
+      <a href="#dramas" class="dock-item ${currentView === 'dramas' ? 'active' : ''}">
+        <i data-lucide="sparkles"></i>
+        <span>Kısa Dizi</span>
       </a>
       ` : ''}
       <a href="#library" class="dock-item ${currentView === 'library' ? 'active' : ''}">
@@ -277,13 +286,33 @@ function setupSearchInput(inputId, overlayId) {
           const rawData = await searchMulti(query);
           const results = Array.isArray(rawData) ? rawData.slice(0, 8) : (rawData?.results ? rawData.results.slice(0, 8) : []);
 
+          const dramaSearchItemHTML = `
+            <a href="#dramas?q=${encodeURIComponent(query)}" class="search-item search-item-drama" style="background: linear-gradient(135deg, rgba(88, 28, 135, 0.35), rgba(30, 27, 75, 0.55)); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 10px; margin-top: 6px; padding: 0.6rem 0.75rem;">
+              <div style="width: 36px; height: 48px; border-radius: 6px; background: rgba(168, 85, 247, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i data-lucide="sparkles" style="width: 18px; height: 18px; color: #c084fc;"></i>
+              </div>
+              <div class="search-item-info">
+                <div class="search-item-title" style="color: #f3e8ff; font-weight: 750;">🎭 Kısa Dizilerde Ara: "${query}"</div>
+                <div class="search-item-meta">
+                  <span class="search-badge" style="background: #a855f7; color: #fff;">Özel Hub</span>
+                  <span style="color: #c4b5fd;">ReelShort &amp; DramaBox</span>
+                </div>
+              </div>
+            </a>
+          `;
+
           if (!results || results.length === 0) {
-            overlay.innerHTML = '<div class="search-no-results">Sonuç bulunamadı</div>';
+            overlay.innerHTML = `
+              <div class="search-no-results" style="padding-bottom: 0.5rem;">TMDB Sonucu Bulunamadı</div>
+              ${dramaSearchItemHTML}
+            `;
             overlay.classList.remove('hidden');
+            renderIcons(overlay);
+            attachSearchClickEvents();
             return;
           }
 
-          overlay.innerHTML = results.map(item => {
+          const tmdbItemsHTML = results.map(item => {
             const isTv = item.media_type === 'tv' || !!item.first_air_date || (!item.release_date && !!item.name);
             const title = item.title || item.name || 'İsimsiz İçerik';
             const year = (item.release_date || item.first_air_date || '').slice(0, 4);
@@ -306,16 +335,21 @@ function setupSearchInput(inputId, overlayId) {
             `;
           }).join('');
 
+          overlay.innerHTML = `${tmdbItemsHTML}${dramaSearchItemHTML}`;
           overlay.classList.remove('hidden');
+          renderIcons(overlay);
+          attachSearchClickEvents();
 
-          overlay.querySelectorAll('.search-item').forEach(link => {
-            link.addEventListener('click', () => {
-              overlay.classList.add('hidden');
-              input.value = '';
-              const mobileSearchRow = document.getElementById('mobile-search-row');
-              if (mobileSearchRow) mobileSearchRow.classList.add('hidden');
+          function attachSearchClickEvents() {
+            overlay.querySelectorAll('.search-item').forEach(link => {
+              link.addEventListener('click', () => {
+                overlay.classList.add('hidden');
+                input.value = '';
+                const mobileSearchRow = document.getElementById('mobile-search-row');
+                if (mobileSearchRow) mobileSearchRow.classList.add('hidden');
+              });
             });
-          });
+          }
         } catch (err) {
           console.error('[Search Overlay Error]', err);
           overlay.innerHTML = '<div class="search-no-results">Arama sırasında bir hata oluştu</div>';
