@@ -56,6 +56,7 @@ export async function fetchWebteizleSources({
     const params = new URLSearchParams({
       title: title || candidateQueries[0] || '',
       originalTitle: originalTitle || '',
+      titles: candidateQueries.join(','),
       type,
       season: String(season),
       episode: String(episode),

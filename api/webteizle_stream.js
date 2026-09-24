@@ -31,10 +31,10 @@ function slugify(text) {
 async function curlRequest(args, timeout = 9000) {
   try {
     const fullArgs = ['-4', '--connect-timeout', '4', '--max-time', '7', ...args];
-    const { stdout } = await execFileAsync('curl', fullArgs, { timeout: timeout + 1500 });
-    return stdout;
+    const { stdout, stderr } = await execFileAsync('curl', fullArgs, { timeout: timeout + 1500 });
+    return { stdout, stderr, ok: true };
   } catch (err) {
-    return '';
+    return { stdout: '', stderr: err.message, ok: false, code: err.code };
   }
 }
 
@@ -59,7 +59,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, streams: [] });
   }
 
-  const candidateQueries = [...new Set([title, originalTitle])].filter(t => t && typeof t === 'string' && t.trim().length > 1);
+  const titlesParam = urlObj.searchParams.get('titles') || '';
+  const extraTitles = titlesParam ? titlesParam.split(',').map(t => t.trim()) : [];
+  const candidateQueries = [...new Set([title, originalTitle, ...extraTitles])].filter(t => t && typeof t === 'string' && t.trim().length > 1);
   if (candidateQueries.length === 0) {
     return res.status(200).json({ success: true, streams: [] });
   }
@@ -75,11 +77,12 @@ export default async function handler(req, res) {
     for (const dilPath of dilPaths) {
       const watchUrl = `https://webteizle.info/izle/${dilPath}/${slug}`;
 
-      const html = await curlRequest([
+      const pageRes = await curlRequest([
         '-sL', watchUrl,
         '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         '-H', 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
       ]);
+      const html = pageRes.stdout || '';
 
       if (!html || !html.includes('data-id')) continue;
 
@@ -89,13 +92,14 @@ export default async function handler(req, res) {
       const dilCode = dilPath === 'altyazi' ? 1 : 0;
 
       const altPayload = `filmid=${filmId}&dil=${dilCode}&s=&b=&bot=0`;
-      const altJsonText = await curlRequest([
+      const altRes = await curlRequest([
         '-sL', '-X', 'POST', 'https://webteizle.info/ajax/dataAlternatif3.asp',
         '-H', 'Content-Type: application/x-www-form-urlencoded',
         '-H', 'X-Requested-With: XMLHttpRequest',
         '-H', `Referer: ${watchUrl}`,
         '-d', altPayload
       ]);
+      const altJsonText = altRes.stdout || '';
 
       let altData = null;
       try {
@@ -107,13 +111,14 @@ export default async function handler(req, res) {
       for (const alt of altData.data) {
         if (!alt || !alt.id) continue;
 
-        const embedHtml = await curlRequest([
+        const embedRes = await curlRequest([
           '-sL', '-X', 'POST', 'https://webteizle.info/ajax/dataEmbed.asp',
           '-H', 'Content-Type: application/x-www-form-urlencoded',
           '-H', 'X-Requested-With: XMLHttpRequest',
           '-H', `Referer: ${watchUrl}`,
           '-d', `id=${alt.id}`
         ]);
+        const embedHtml = embedRes.stdout || '';
 
         if (!embedHtml) continue;
 
