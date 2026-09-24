@@ -1190,6 +1190,11 @@ const server = http.createServer(async (req, res) => {
 
       if (decodedTarget.includes('.m3u8') || decodedTarget.includes('.txt') || contentType.includes('mpegurl') || contentType.includes('application/x-mpegURL') || contentType.includes('text/plain')) {
         const text = await upstreamRes.text();
+        if (!upstreamRes.ok || !text.trimStart().startsWith('#EXTM3U')) {
+          res.writeHead(upstreamRes.ok ? 502 : upstreamRes.status, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+          res.end('Live playlist unavailable');
+          return;
+        }
         const baseOrigin = new URL(decodedTarget).origin;
 
         const rewritten = text.split('\n').map(line => {
@@ -1234,7 +1239,7 @@ const server = http.createServer(async (req, res) => {
             !fullLineUrl.includes('/ts?') && !fullLineUrl.includes('/ts/');
           // Direct CDN bypass for video segments and sub-playlists with open CORS
           // Bypasses proxy for 10x faster playback (<200ms start)
-          const needsProxy = isDizisolPlaylist || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi)/i.test(fullLineUrl);
+          const needsProxy = isDizisolPlaylist || /prectv/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi|mariuannastluisborg|moveonjoy)/i.test(fullLineUrl);
           if (
             !needsProxy &&
             (

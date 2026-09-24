@@ -338,6 +338,9 @@ export default async function handler(req, res) {
 
       if (isPlaylist) {
         const text = await upstreamRes.text();
+        if (!upstreamRes.ok || !text.trimStart().startsWith('#EXTM3U')) {
+          return res.status(upstreamRes.ok ? 502 : upstreamRes.status).send('Live playlist unavailable');
+        }
         const baseOrigin = new URL(decodedTarget).origin;
 
         const rewritten = text.split('\n').map(line => {
@@ -383,7 +386,7 @@ export default async function handler(req, res) {
             !fullLineUrl.includes('/ts?') && !fullLineUrl.includes('/ts/');
           // Direct CDN bypass for video segments and sub-playlists with open CORS
           // Bypasses proxy for 10x faster playback (<200ms start)
-          const needsProxy = isDizisolPlaylist || /(?:hdfilmizle\.best)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi)/i.test(fullLineUrl);
+          const needsProxy = isDizisolPlaylist || /(?:hdfilmizle\.best|prectv)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi|mariuannastluisborg|moveonjoy)/i.test(fullLineUrl);
           if (
             !needsProxy &&
             (

@@ -272,6 +272,7 @@ async function recTvApiRequest(apiPath, method = 'GET', bodyStr = '') {
     const res = await fetch(getRtvFetchUrl(apiPath), {
       method,
       headers,
+      signal: AbortSignal.timeout(6000),
       ...(bodyStr ? { body: bodyStr } : {})
     });
     if (res.ok) {

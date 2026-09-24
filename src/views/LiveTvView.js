@@ -855,8 +855,22 @@ export function renderLiveTvView() {
         loadingEl.classList.remove('hidden');
         errorEl.classList.add('hidden');
 
+        // A parsed playlist is not proof that its segments are playable.
+        // Keep the loading state until the browser has actual video data.
+        const onVideoReady = () => {
+          if (channelPlaybackToken !== myToken) return;
+          loadingEl.classList.add('hidden');
+          errorEl.classList.add('hidden');
+        };
+        videoEl.addEventListener('loadeddata', onVideoReady, { once: true });
+        setTimeout(() => {
+          videoEl.removeEventListener('loadeddata', onVideoReady);
+          if (channelPlaybackToken === myToken && videoEl.readyState < 2) showPlaybackError();
+        }, 20000);
+
         let freshStreamAttempted = false;
         let directNetworkRetryCount = 0;
+        let proxyFallbackAttempted = false;
         let mediaRecoveryAttempted = false;
         async function tryFreshRecTvStream(failedUrl) {
           if (freshStreamAttempted || !channel.isTvr || !channel.tvrId) return false;
@@ -865,7 +879,7 @@ export function renderLiveTvView() {
           errorEl.classList.add('hidden');
 
           try {
-            const freshUrl = await getRecTvChannelStreamUrl(channel.tvrId);
+            const freshUrl = await getRecTvChannelStreamUrl(channel.tvrId, { forceRefresh: true });
             if (channelPlaybackToken !== myToken) return true;
             if (freshUrl && freshUrl !== failedUrl) {
               channel.streamUrl = freshUrl;
@@ -882,10 +896,20 @@ export function renderLiveTvView() {
           errorEl.classList.remove('hidden');
         }
 
+        function tryProxyFallback(failedUrl) {
+          if (proxyFallbackAttempted || !/^https?:\/\//i.test(failedUrl)) return false;
+          proxyFallbackAttempted = true;
+          const ref = `${new URL(failedUrl).origin}/`;
+          const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(failedUrl)}&ref=${encodeURIComponent(ref)}`;
+          channel.streamUrl = proxiedUrl;
+          startHls(proxiedUrl);
+          return true;
+        }
+
         function startHls(url) {
           if (channelPlaybackToken !== myToken) return;
 
-          if (window.Hls && window.Hls.isSupported()) {
+          if (Hls.isSupported()) {
             if (activeHls) {
               try {
                 activeHls.stopLoad();
@@ -895,7 +919,7 @@ export function renderLiveTvView() {
               activeHls = null;
             }
 
-            const hls = new window.Hls({
+            const hls = new Hls({
               enableWorker: true,
               lowLatencyMode: true,
               startLevel: 0,
@@ -917,7 +941,7 @@ export function renderLiveTvView() {
             hls.loadSource(url);
             hls.attachMedia(videoEl);
 
-            hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
               if (channelPlaybackToken !== myToken) {
                 try {
                   hls.stopLoad();
@@ -926,31 +950,29 @@ export function renderLiveTvView() {
                 } catch (_) {}
                 return;
               }
-              loadingEl.classList.add('hidden');
-              errorEl.classList.add('hidden');
               setupQualityMenu(hls);
               videoEl.play().catch(() => {});
             });
 
-            hls.on(window.Hls.Events.ERROR, (_, data) => {
+            hls.on(Hls.Events.ERROR, (_, data) => {
               if (channelPlaybackToken !== myToken || activeHls !== hls) return;
               if (data.fatal) {
                 console.warn('[LiveTV] Fatal HLS error on:', url, data.type, data.details);
-                if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+                if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                   if (channel.isTvr && channel.tvrId) {
                     tryFreshRecTvStream(url).then(recovered => {
-                      if (!recovered) showPlaybackError();
+                      if (!recovered && !tryProxyFallback(url)) showPlaybackError();
                     });
                   } else if (directNetworkRetryCount < 1) {
                     directNetworkRetryCount += 1;
                     loadingEl.classList.remove('hidden');
                     setTimeout(() => {
-                      if (channelPlaybackToken === myToken && activeHls === hls) hls.startLoad();
+                      if (channelPlaybackToken === myToken && activeHls === hls) startHls(url);
                     }, 700);
-                  } else {
+                  } else if (!tryProxyFallback(url)) {
                     showPlaybackError();
                   }
-                } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+                } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                   if (mediaRecoveryAttempted) {
                     showPlaybackError();
                   } else {
@@ -971,19 +993,28 @@ export function renderLiveTvView() {
             videoEl.src = url;
             videoEl.addEventListener('loadedmetadata', () => {
               if (channelPlaybackToken !== myToken) return;
-              loadingEl.classList.add('hidden');
-              errorEl.classList.add('hidden');
               setupQualityMenu(null);
               videoEl.play().catch(() => {});
             }, { once: true });
             videoEl.addEventListener('error', () => {
               if (channelPlaybackToken !== myToken) return;
               tryFreshRecTvStream(url).then(recovered => {
-                if (!recovered) showPlaybackError();
+                if (!recovered && !tryProxyFallback(url)) showPlaybackError();
               });
             }, { once: true });
+          } else {
+            showPlaybackError();
           }
         }
+
+        let Hls;
+        try {
+          Hls = (await import('hls.js')).default;
+        } catch (_) {
+          showPlaybackError();
+          return;
+        }
+        if (channelPlaybackToken !== myToken) return;
 
         // Existing TVR channels start from their known URL immediately. Dynamic
         // channels have no URL yet, so only those wait for a one-time resolve.

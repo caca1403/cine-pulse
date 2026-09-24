@@ -5,11 +5,15 @@ import { renderIcons } from '../services/icons.js';
    animated roulette shuffle, and one-click direct playback.
    ========================================================================== */
 
-import { fetchDiscoverMedia, GENRE_MAP_MOVIE, GENRE_MAP_TV, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
+import { fetchDiscoverMedia, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
 import { openPlayerModal } from './openPlayer.js';
-import { showToast } from './Toast.js';
 
 let activeRandomModal = null;
+let removeEscapeListener = null;
+
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, character => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+})[character]);
 
 const GENRE_OPTIONS = [
   { label: '🎲 Karışık / Farketmez', id: null },
@@ -24,7 +28,7 @@ const GENRE_OPTIONS = [
   { label: '🌍 Belgesel', movie: 99, tv: 99 }
 ];
 
-export async function openRandomPickerModal() {
+export function openRandomPickerModal({ type = 'all' } = {}) {
   closeRandomPickerModal();
 
   const modalContainer = document.createElement('div');
@@ -33,7 +37,7 @@ export async function openRandomPickerModal() {
   document.body.appendChild(modalContainer);
   activeRandomModal = modalContainer;
 
-  let selectedType = 'all'; // 'all' | 'movie' | 'tv'
+  let selectedType = type === 'tv' ? 'tv' : 'all'; // 'all' | 'movie' | 'tv'
   let selectedGenreIndex = 0; // null = random/mixed
   let selectedMinRating = 7.0;
 
@@ -48,8 +52,8 @@ export async function openRandomPickerModal() {
         <div class="random-picker-sparkle-icon">
           <i data-lucide="dices" style="width: 28px; height: 28px; color: #f59e0b;"></i>
         </div>
-        <h2>Ne İzlesem? 🍿</h2>
-        <p>Kararsız mı kaldınız? Kriterlerinizi seçin, CinePulse yapay zekası sizin için en iyi yapımı önersin.</p>
+        <h2>${selectedType === 'tv' ? 'Dizi Öneri Sistemi 📺' : 'Şanslı Çark 🍿'}</h2>
+        <p>Popüler yapımlar arasından rastgele bir öneri seçin. Tür ve puan filtrelerini değiştirebilirsiniz.</p>
       </div>
 
       <!-- Filters Section -->
@@ -58,9 +62,9 @@ export async function openRandomPickerModal() {
         <div class="random-filter-row">
           <label>İçerik Türü</label>
           <div class="random-pills-wrap" id="random-type-pills">
-            <button class="random-pill-btn active" data-type="all">🎬 Film & Dizi</button>
+            <button class="random-pill-btn ${selectedType === 'all' ? 'active' : ''}" data-type="all">🎬 Film & Dizi</button>
             <button class="random-pill-btn" data-type="movie">🎥 Sadece Film</button>
-            <button class="random-pill-btn" data-type="tv">📺 Sadece Dizi</button>
+            <button class="random-pill-btn ${selectedType === 'tv' ? 'active' : ''}" data-type="tv">📺 Sadece Dizi</button>
           </div>
         </div>
 
@@ -114,12 +118,10 @@ export async function openRandomPickerModal() {
   };
 
   const handleEsc = (e) => {
-    if (e.key === 'Escape') {
-      closeRandomPickerModal();
-      window.removeEventListener('keydown', handleEsc);
-    }
+    if (e.key === 'Escape') closeRandomPickerModal();
   };
   window.addEventListener('keydown', handleEsc);
+  removeEscapeListener = () => window.removeEventListener('keydown', handleEsc);
 
   // Wire Filter Clicks
   const typePills = modalContainer.querySelectorAll('#random-type-pills .random-pill-btn');
@@ -184,12 +186,19 @@ export async function openRandomPickerModal() {
 
     // Fetch random page from 1 to 3
     const randomPage = Math.floor(Math.random() * 3) + 1;
-    const items = await fetchDiscoverMedia(fetchType, {
-      genreId,
-      minRating: selectedMinRating,
-      page: randomPage,
-      sortBy: 'popularity.desc'
-    });
+    let items;
+    try {
+      items = await fetchDiscoverMedia({
+        type: fetchType,
+        genreId,
+        minRating: selectedMinRating,
+        page: randomPage,
+        sortBy: 'popularity.desc'
+      });
+    } catch {
+      items = [];
+    }
+    if (activeRandomModal !== modalContainer) return;
 
     // Simulate roulette shuffle with candidates
     const validItems = (items || []).filter(item => item && (item.title || item.name) && (item.poster_path || item.backdrop_path));
@@ -215,9 +224,10 @@ export async function openRandomPickerModal() {
       const tempItem = validItems[Math.floor(Math.random() * validItems.length)];
       const tempTitle = tempItem.title || tempItem.name || 'Öneri Aranıyor';
       if (roller) {
-        roller.innerHTML = `<div class="roulette-reel-text animate-pulse">${tempTitle}</div>`;
+        roller.innerHTML = `<div class="roulette-reel-text animate-pulse">${escapeHtml(tempTitle)}</div>`;
       }
       await new Promise(r => setTimeout(r, 120 + i * 25));
+      if (activeRandomModal !== modalContainer) return;
     }
 
     // Select winner
@@ -225,8 +235,7 @@ export async function openRandomPickerModal() {
     const winnerTitle = winner.title || winner.name || 'Seçilen Yapım';
     const winnerOriginalTitle = winner.original_title || winner.original_name || winnerTitle;
     const winnerPoster = getImageUrl(winner.poster_path, TMDB_IMAGE_SIZES.POSTER_MEDIUM);
-    const winnerBackdrop = getImageUrl(winner.backdrop_path, TMDB_IMAGE_SIZES.BACKDROP_LARGE);
-    const winnerRating = winner.vote_average ? Number(winner.vote_average).toFixed(1) : '8.0';
+    const winnerRating = winner.vote_average ? Number(winner.vote_average).toFixed(1) : '—';
     const winnerYear = (winner.release_date || winner.first_air_date || '').substring(0, 4);
     const winnerOverview = winner.overview && winner.overview.trim().length > 10
       ? winner.overview
@@ -237,17 +246,17 @@ export async function openRandomPickerModal() {
     stage.innerHTML = `
       <div class="random-winner-card">
         <div class="winner-poster-wrap">
-          <img src="${winnerPoster}" alt="${winnerTitle}" class="winner-poster" />
+          <img src="${winnerPoster}" alt="${escapeHtml(winnerTitle)}" class="winner-poster" />
           <div class="winner-rating-pill">⭐ ${winnerRating}</div>
         </div>
         <div class="winner-details-wrap">
           <div class="winner-badge-row">
             <span class="winner-tag-type">${winnerType === 'movie' ? 'FİLM' : 'DİZİ'}</span>
-            ${winnerYear ? `<span class="winner-tag-year">${winnerYear}</span>` : ''}
-            <span class="winner-tag-match">🎯 %98 Eşleşme</span>
+            ${winnerYear ? `<span class="winner-tag-year">${escapeHtml(winnerYear)}</span>` : ''}
+            <span class="winner-tag-match">Popüler öneri</span>
           </div>
-          <h3 class="winner-title">${winnerTitle}</h3>
-          <p class="winner-overview">${winnerOverview}</p>
+          <h3 class="winner-title">${escapeHtml(winnerTitle)}</h3>
+          <p class="winner-overview">${escapeHtml(winnerOverview)}</p>
           <div class="winner-actions-row">
             <button class="winner-play-btn" id="btn-winner-play">
               <i data-lucide="play" style="width: 16px; height: 16px; fill: currentColor;"></i>
@@ -313,9 +322,12 @@ export async function openRandomPickerModal() {
   if (spinBtn) {
     spinBtn.onclick = () => executeSpin();
   }
+  executeSpin();
 }
 
 export function closeRandomPickerModal() {
+  removeEscapeListener?.();
+  removeEscapeListener = null;
   if (activeRandomModal) {
     try { activeRandomModal.remove(); } catch (_) {}
     activeRandomModal = null;

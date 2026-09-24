@@ -17,6 +17,9 @@ importers:
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
+      hls.js:
+        specifier: 1.6.15
+        version: 1.6.15
       lucide:
         specifier: ^0.344.0
         version: 0.344.0
@@ -525,6 +528,9 @@ packages:
   get-stdin@8.0.0:
     resolution: {integrity: sha512-sY22aA6xchAzprjyqmSEQv4UbAAzRN0L2dQB0NlN5acTTK9Don6nhoc3eAbUnpZiCANAMfd/+40kVdKfFygohg==}
     engines: {node: '>=10'}
+
+  hls.js@1.6.15:
+    resolution: {integrity: sha512-E3a5VwgXimGHwpRGV+WxRTKeSp2DW5DI5MWv34ulL3t5UNmyJWCQ1KmLEHbYzcfThfXG8amBL+fCYPneGHC4VA==}
 
   http-parser-js@0.4.13:
     resolution: {integrity: sha512-u8u5ZaG0Tr/VvHlucK2ufMuOp4/5bvwgneXle+y228K5rMbJOlVjThONcaAw3ikAy8b2OO9RfEucdMHFz3UWMA==}
@@ -1294,6 +1300,8 @@ snapshots:
   get-browser-rtc@1.1.0: {}
 
   get-stdin@8.0.0: {}
+
+  hls.js@1.6.15: {}
 
   http-parser-js@0.4.13: {}
 

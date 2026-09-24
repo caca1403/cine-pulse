@@ -9,8 +9,9 @@ import { renderIcons } from '../services/icons.js';
              Anime, Çizgi, Belgesel, Detaylı Keşif, Şanslı Çark, Kısa Diziler
    ========================================================================== */
 
-import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES, fetchTrending } from '../services/tmdbApi.js';
+import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
 import { openProfileModal } from './ProfileModal.js';
+import { openRandomPickerModal } from './RandomPickerModal.js';
 import { getActiveProfile } from '../services/storage.js';
 import { openNotificationCenterModal, getUnreadNotificationCount } from './NotificationCenterModal.js';
 import { openDecisionRoomModal } from './DecisionRoomModal.js';
@@ -152,6 +153,15 @@ export function renderNavbar(currentView = 'home') {
                           <div class="hub-mega-item-sub">Rastgele yapım seç</div>
                         </div>
                       </button>
+                      <a href="https://caca1403.github.io/dizionerisistemi/" target="_blank" rel="noopener noreferrer" id="btn-hub-series-recommend" class="hub-mega-item hub-tool-btn" aria-label="SÉRA Dizi Öneri Sistemi'ni aç">
+                        <div class="hub-mega-icon" style="background:rgba(99,102,241,.15);color:#a5b4fc;">
+                          <i data-lucide="wand-sparkles" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">SÉRA Dizi Öneri Sistemi ↗</div>
+                          <div class="hub-mega-item-sub">SÉRA uygulamasını aç</div>
+                        </div>
+                      </a>
                     </div>
 
                   </div>
@@ -361,6 +371,15 @@ export function renderNavbar(currentView = 'home') {
               </div>
               <i data-lucide="sparkles" style="width:14px;height:14px;color:#fbbf24;margin-left:auto;flex-shrink:0;"></i>
             </button>
+            <a href="https://caca1403.github.io/dizionerisistemi/" target="_blank" rel="noopener noreferrer" id="btn-hub-series-recommend-mobile" class="hub-sheet-tool-btn" aria-label="SÉRA Dizi Öneri Sistemi'ni aç">
+              <div class="hub-sheet-tool-icon" style="background:linear-gradient(135deg,#6366f1,#a855f7);">
+                <i data-lucide="wand-sparkles" style="width:18px;height:18px;color:#fff;"></i>
+              </div>
+              <div class="hub-sheet-tool-text">
+                <span class="hub-sheet-tool-title">SÉRA Dizi Öneri Sistemi ↗</span>
+                <span class="hub-sheet-tool-sub">SÉRA uygulamasını aç</span>
+              </div>
+            </a>
           </div>
         </div>
       </div>
@@ -404,31 +423,41 @@ export function attachNavbarEvents(onNavigate) {
   document.getElementById('btn-nav-profile')?.addEventListener('click', openProfileModal);
 
   /* ============================================================
-     DESKTOP HUB – Mega Dropdown (hover + click toggle)
+     DESKTOP HUB – Mega Dropdown (hover + click)
   ============================================================ */
   const hubLi = document.getElementById('nav-hub-li');
   const hubBtn = document.getElementById('btn-desktop-hub');
   const hubDropdown = document.getElementById('hub-mega-dropdown');
+  let desktopHubCloseTimer;
 
   function openDesktopHub() {
+    clearTimeout(desktopHubCloseTimer);
     hubBtn?.setAttribute('aria-expanded', 'true');
     hubDropdown?.classList.add('open');
   }
   function closeDesktopHub() {
+    clearTimeout(desktopHubCloseTimer);
     hubBtn?.setAttribute('aria-expanded', 'false');
     hubDropdown?.classList.remove('open');
+  }
+  function scheduleDesktopHubClose() {
+    clearTimeout(desktopHubCloseTimer);
+    desktopHubCloseTimer = setTimeout(() => {
+      if (!hubLi?.matches(':hover') && !hubDropdown?.matches(':hover')) closeDesktopHub();
+    }, 350);
   }
 
   if (hubLi) {
     // Hover behaviour on desktop
     hubLi.addEventListener('mouseenter', openDesktopHub);
-    hubLi.addEventListener('mouseleave', closeDesktopHub);
+    hubLi.addEventListener('mouseleave', scheduleDesktopHubClose);
+    hubDropdown?.addEventListener('mouseenter', openDesktopHub);
+    hubDropdown?.addEventListener('mouseleave', scheduleDesktopHubClose);
 
-    // Also click for keyboard / touch
+    // Clicking after mouseenter must keep the menu open.
     hubBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (hubDropdown?.classList.contains('open')) closeDesktopHub();
-      else openDesktopHub();
+      openDesktopHub();
     });
 
     // Close when clicking a nav-trigger inside
@@ -448,17 +477,21 @@ export function attachNavbarEvents(onNavigate) {
   /* Desktop hub random spin */
   document.getElementById('btn-hub-random-spin')?.addEventListener('click', async () => {
     closeDesktopHub();
-    await randomSpin();
+    openRandomPickerModal();
   });
+  document.getElementById('btn-hub-series-recommend')?.addEventListener('click', closeDesktopHub);
 
   /* ============================================================
      MOBILE HUB – Bottom Sheet
   ============================================================ */
   const mobileHubBackdrop = document.getElementById('mobile-hub-backdrop');
   const mobileHubSheet = document.getElementById('mobile-hub-sheet');
+  let mobileHubCloseTimer;
 
   function openMobileHub() {
     if (!mobileHubBackdrop) return;
+    clearTimeout(mobileHubCloseTimer);
+    mobileHubSheet?.classList.remove('sheet-closing');
     mobileHubBackdrop.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     // Icons already rendered when navbar was mounted — no renderIcons call here
@@ -467,7 +500,8 @@ export function attachNavbarEvents(onNavigate) {
     if (!mobileHubBackdrop) return;
     document.body.style.overflow = '';
     mobileHubSheet?.classList.add('sheet-closing');
-    setTimeout(() => {
+    clearTimeout(mobileHubCloseTimer);
+    mobileHubCloseTimer = setTimeout(() => {
       mobileHubBackdrop.classList.add('hidden');
       mobileHubSheet?.classList.remove('sheet-closing');
     }, 280);
@@ -490,8 +524,9 @@ export function attachNavbarEvents(onNavigate) {
   /* Mobile random spin */
   document.getElementById('btn-hub-random-spin-mobile')?.addEventListener('click', async () => {
     closeMobileHub();
-    await randomSpin();
+    openRandomPickerModal();
   });
+  document.getElementById('btn-hub-series-recommend-mobile')?.addEventListener('click', closeMobileHub);
 
   /* Decision room (all instances) */
   document.querySelectorAll('[data-open-decision-room]').forEach(btn => {
@@ -537,25 +572,6 @@ export function attachNavbarEvents(onNavigate) {
     }
   };
   window.addEventListener('keydown', _searchShortcut);
-}
-
-/* ============================================================
-   Random Spin Helper
-============================================================ */
-async function randomSpin() {
-  try {
-    const page = Math.floor(Math.random() * 3) + 1;
-    const res = await fetchTrending('all', 'week', page);
-    const items = (res?.results || []).filter(i => i.poster_path && (i.title || i.name));
-    if (items.length) {
-      const picked = items[Math.floor(Math.random() * items.length)];
-      window.location.hash = `#detail?type=${picked.media_type === 'tv' ? 'tv' : 'movie'}&id=${picked.id}`;
-    } else {
-      window.location.hash = '#movies';
-    }
-  } catch {
-    window.location.hash = '#movies';
-  }
 }
 
 /* ============================================================
