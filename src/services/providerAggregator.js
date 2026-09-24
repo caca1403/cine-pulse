@@ -30,7 +30,6 @@ import { fetchTorrentStreamSources } from './torrentStreamService.js';
 import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
-import { fetchWebteizleSources } from './webteizleScraper.js';
 import { fetchAniziumSources } from './aniziumScraper.js';
 
 // Cache version
@@ -297,7 +296,6 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('dzy_') || raw.includes('diziyo')) return 6;
   if (id.startsWith('dyu_') || raw.includes('diziyou')) return 7;
   if (id.startsWith('szd_') || raw.includes('sezonluk')) return 8;
-  if (id.startsWith('webteizle_') || raw.includes('webteizle')) return 8;
   if (id.startsWith('hdfb_') || raw.includes('hdfilmizle') || raw.includes('hdf ')) return 9;
 
   // 8. VIP P2P Torrent Akışları
@@ -684,18 +682,7 @@ export async function getStreamingServersProgressive({
       }).catch(err => {
         console.error('[providerAggregator] HDFC error:', err);
         return [];
-      }),
-
-    // 14. Webteizle VIP (Movies only: VidMoly, Pixel, Filemoon, Ok.ru)
-    isMovie
-      ? fetchWebteizleSources({ type, title: targetTitle, originalTitle, titles: candidateTitles, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : Promise.resolve([]),
-
-    isMovie
-      ? fetchWebteizleSources({ type, title: targetTitle, originalTitle, titles: candidateTitles, season, episode, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : Promise.resolve([]),
+      })
   ];
 
   // Alias expansion task

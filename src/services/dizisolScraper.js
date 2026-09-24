@@ -141,13 +141,18 @@ function getDizisolStreamPriority(url, provider = '') {
   if (lowProv === 'vip') score += 105;
   else if (lowProv === 'cortina') score += 100;
   else if (lowProv === 'vidmixi') score += 95;
-  else if (lowProv === 'rapidrame') score += 88;
+  else if (lowProv === 'rapidrame') score += 90;
   else if (lowProv === 'hdfilmdelisi') score += 85;
-  else if (lowProv === 'pal-vds') score += 80;
+  else if (lowProv === 'pal-vds' || lowProv === 'dizipal-vds') score += 80;
   else if (lowProv === 'vidrame') score += 75;
+  else if (lowProv === 'dosyaload') score += 72;
   else if (lowProv === 'imagestoo') score += 70;
+  else if (lowProv === 'diziyou') score += 68;
   else if (lowProv === 'fullhd') score += 65;
   else if (lowProv === 'filmekseni') score += 60;
+  else if (lowProv === 'videoplays') score += 55;
+  else if (lowProv === 'canlidizi') score += 50;
+  else if (lowProv === 'draktar') score += 45;
   else if (lowProv === 'filmmakinesi') score += 15;
   else score += 40; // bilinmeyen sağlayıcılar için ortalama puan
 
@@ -335,8 +340,8 @@ export async function fetchDizisolEpisodeSources({
 
       return {
         id: `dzs_tv_${targetTmdbId}_s${season}_e${episode}_${item.id || item.provider || index}`,
-        name: index === 0 ? `DS 1080p (S${season}B${episode})` : `DS ${item.provider} (S${season}B${episode})`,
-        displayName: index === 0 ? `DS 1080p (S${season}B${episode})` : `DS ${item.provider} (S${season}B${episode})`,
+        name: index === 0 ? `DS 1080p (S${season}B${episode})` : `DS ${item.provider} 1080p (S${season}B${episode})`,
+        displayName: index === 0 ? `DS 1080p (S${season}B${episode})` : `DS ${item.provider} 1080p (S${season}B${episode})`,
         badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
         source: 'DS',
         url: proxiedUrl,
