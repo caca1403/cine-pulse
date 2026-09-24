@@ -2526,6 +2526,78 @@ img {
   box-shadow: 0 0 12px var(--primary-glow);
 }
 
+/* Swipe cursor affordance */
+.hero-slider {
+  cursor: grab;
+  user-select: none;
+}
+.hero-slider:active {
+  cursor: grabbing;
+}
+
+/* Prev / Next arrow buttons */
+.hero-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(10, 14, 26, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hero-arrow:hover {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.3);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.hero-arrow:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.hero-arrow-prev {
+  left: 1.5rem;
+}
+
+.hero-arrow-next {
+  right: 1.5rem;
+}
+
+/* Show arrows on hover (desktop) */
+.hero-slider:hover .hero-arrow {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Always show on mobile (touch) */
+@media (max-width: 1180px) {
+  .hero-arrow {
+    opacity: 1;
+    pointer-events: auto;
+    width: 36px;
+    height: 36px;
+    background: rgba(10, 14, 26, 0.55);
+  }
+  .hero-arrow-prev { left: 0.65rem; }
+  .hero-arrow-next { right: 0.65rem; }
+}
+
+
+
 @media (max-width: 768px) {
   .hero-slider {
     height: 75vh;
