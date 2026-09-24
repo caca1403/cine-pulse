@@ -62,6 +62,10 @@
       "destination": "/api/hdfc_stream.py"
     },
     {
+      "source": "/api/webteizle_stream",
+      "destination": "/api/webteizle_stream"
+    },
+    {
       "source": "/api/fin/(.*)",
       "destination": "https://filmizle.now/$1"
     },
