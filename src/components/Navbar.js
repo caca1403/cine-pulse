@@ -1,11 +1,10 @@
 import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Next-Gen Luxury Navigation System
-   Desktop: Apple TV+ Minimalist Segmented Track & Unified Action Bar
-   Mobile: visionOS Dynamic Island Dock + Floating Hub Center Orb & Glass Sheet
+   Desktop & Mobile: Unified visionOS Space Hub Command Center & Dynamic Island Dock
    ========================================================================== */
 
-import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
+import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES, fetchTrending } from '../services/tmdbApi.js';
 import { openProfileModal, triggerProfileSwitchTransition } from './ProfileModal.js';
 import { getActiveProfile, setActiveProfile, getProfiles } from '../services/storage.js';
 import { openNotificationCenterModal, getUnreadNotificationCount, updateNotificationBellBadge } from './NotificationCenterModal.js';
@@ -14,13 +13,12 @@ import { openDecisionRoomModal } from './DecisionRoomModal.js';
 export function renderNavbar(currentView = 'home') {
   const activeProfile = getActiveProfile();
   const unreadCount = getUnreadNotificationCount();
-  const isCategoriesActive = ['anime', 'cartoons', 'documentary', 'discover'].includes(currentView);
 
   const navbarHTML = `
     <!-- Top Universal Header -->
     <nav class="navbar" id="main-navbar">
       <div class="nav-container">
-        <!-- Left: Brand Logo & Desktop Segmented Links -->
+        <!-- Left: Brand Logo & Desktop Segmented Navigation Track -->
         <div class="nav-left-group">
           <a href="#home" class="nav-brand" id="nav-brand-logo" title="CinePulse Studio">
             <div class="brand-logo-icon">
@@ -39,8 +37,8 @@ export function renderNavbar(currentView = 'home') {
               <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}">Listem</a></li>
             ` : `
               <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}">Ana Sayfa</a></li>
-              <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}">Diziler</a></li>
               <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}">Filmler</a></li>
+              <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}">Diziler</a></li>
               <li>
                 <a href="#dramas" class="nav-link nav-link-dramas ${currentView === 'dramas' ? 'active' : ''}" title="ReelShort &amp; DramaBox Mini Dizileri">
                   <span>Kısa Dizi</span>
@@ -48,50 +46,13 @@ export function renderNavbar(currentView = 'home') {
                 </a>
               </li>
 
-              <!-- Clean Floating Categories Dropdown -->
-              <li class="nav-dropdown-item" id="nav-categories-dropdown">
-                <button type="button" class="nav-link nav-dropdown-trigger ${isCategoriesActive ? 'active' : ''}" aria-expanded="false">
-                  <span>Kategoriler</span>
-                  <i data-lucide="chevron-down" style="width: 13px; height: 13px; margin-left: 2px;"></i>
+              <!-- Desktop Universal Hub Trigger Button -->
+              <li>
+                <button type="button" id="btn-desktop-hub" class="nav-link nav-link-hub-trigger" title="CinePulse Evreni &amp; Tüm Kategoriler">
+                  <i data-lucide="sparkles" style="width: 14px; height: 14px; color: #c084fc;"></i>
+                  <span>Evren</span>
+                  <span class="nav-hub-badge">HUB</span>
                 </button>
-                <div class="nav-dropdown-menu glass-panel" id="nav-dropdown-menu">
-                  <a href="#anime" class="nav-dropdown-link ${currentView === 'anime' ? 'active' : ''}">
-                    <div class="dropdown-icon-box" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
-                      <i data-lucide="sparkles" style="width: 15px; height: 15px;"></i>
-                    </div>
-                    <div class="dropdown-link-text">
-                      <span class="dropdown-link-title">Anime</span>
-                      <span class="dropdown-link-sub">Popüler seriler</span>
-                    </div>
-                  </a>
-                  <a href="#cartoons" class="nav-dropdown-link ${currentView === 'cartoons' ? 'active' : ''}">
-                    <div class="dropdown-icon-box" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
-                      <i data-lucide="palette" style="width: 15px; height: 15px;"></i>
-                    </div>
-                    <div class="dropdown-link-text">
-                      <span class="dropdown-link-title">Çizgi Diziler</span>
-                      <span class="dropdown-link-sub">Nostalji &amp; Eğlence</span>
-                    </div>
-                  </a>
-                  <a href="#documentary" class="nav-dropdown-link ${currentView === 'documentary' ? 'active' : ''}">
-                    <div class="dropdown-icon-box" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
-                      <i data-lucide="book-open" style="width: 15px; height: 15px;"></i>
-                    </div>
-                    <div class="dropdown-link-text">
-                      <span class="dropdown-link-title">Belgesel</span>
-                      <span class="dropdown-link-sub">Bilim, Doğa &amp; Tarih</span>
-                    </div>
-                  </a>
-                  <a href="#discover" class="nav-dropdown-link ${currentView === 'discover' ? 'active' : ''}">
-                    <div class="dropdown-icon-box" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">
-                      <i data-lucide="compass" style="width: 15px; height: 15px;"></i>
-                    </div>
-                    <div class="dropdown-link-text">
-                      <span class="dropdown-link-title">Gelişmiş Keşfet</span>
-                      <span class="dropdown-link-sub">Yıl &amp; Tür Filtreleri</span>
-                    </div>
-                  </a>
-                </div>
               </li>
 
               <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}">Listem</a></li>
@@ -158,7 +119,7 @@ export function renderNavbar(currentView = 'home') {
 
     <!-- ====================================================================
          Next-Gen Mobile "Dynamic Glass Capsule" Dock
-         Ultra Clean 4-Item Layout with Floating Center Glow Hub Orb
+         Ultra Clean 4-Item Layout + Floating Center Glow "✦ EVREN" Orb
          ==================================================================== -->
     <div class="mobile-dynamic-dock" id="mobile-bottom-dock">
       <a href="#home" class="dynamic-dock-item ${currentView === 'home' ? 'active' : ''}">
@@ -166,17 +127,21 @@ export function renderNavbar(currentView = 'home') {
         <span>Ana Sayfa</span>
       </a>
 
-      <a href="#series" class="dynamic-dock-item ${currentView === 'series' || currentView === 'movies' ? 'active' : ''}">
-        <i data-lucide="tv"></i>
-        <span>Diziler</span>
+      <!-- Kısa Dizi with glowing REEL dot -->
+      <a href="#dramas" class="dynamic-dock-item dynamic-dock-dramas ${currentView === 'dramas' ? 'active' : ''}" title="Reel Kısa Diziler">
+        <div class="dock-icon-rel">
+          <i data-lucide="clapperboard"></i>
+          <span class="dock-micro-dot"></span>
+        </div>
+        <span>Kısa Dizi</span>
       </a>
 
       <!-- Center Super FAB: Glowing Hub Orb -->
-      <button class="dynamic-dock-hub-orb" id="btn-open-mobile-hub" aria-label="Keşif &amp; Kütüphane Hub'ı">
+      <button class="dynamic-dock-hub-orb" id="btn-open-mobile-hub" aria-label="CinePulse Evreni &amp; Hub">
         <div class="hub-orb-inner">
           <i data-lucide="sparkles" style="width: 20px; height: 20px; color: #fff;"></i>
         </div>
-        <span class="hub-orb-label">HUB</span>
+        <span class="hub-orb-label">EVREN</span>
       </button>
 
       <a href="#discover" class="dynamic-dock-item ${currentView === 'discover' ? 'active' : ''}">
@@ -191,114 +156,189 @@ export function renderNavbar(currentView = 'home') {
     </div>
 
     <!-- ====================================================================
-         Mobile "Space Hub" Bottom Glass Sheet (visionOS Style Drawer)
-         Instant tactile access to Short Dramas, Live TV, Anime, etc.
+         Universal "CinePulse Evreni" Space Hub Command Center (PC & Mobile)
+         Desktop: Floating Acrylic Spatial Modal / Mobile: visionOS Bottom Sheet
          ==================================================================== -->
-    <div class="mobile-hub-backdrop hidden" id="mobile-hub-backdrop">
-      <div class="mobile-hub-sheet" id="mobile-hub-sheet">
-        <div class="hub-sheet-handle-wrap">
+    <div class="space-hub-backdrop hidden" id="space-hub-backdrop">
+      <div class="space-hub-dialog" id="space-hub-dialog">
+        <!-- Ambient Radial Aura -->
+        <div class="hub-ambient-glow"></div>
+
+        <!-- Mobile Sheet Drag Handle -->
+        <div class="hub-sheet-handle-wrap mobile-only-flex">
           <div class="hub-sheet-handle"></div>
         </div>
 
-        <div class="hub-sheet-header">
-          <div class="hub-sheet-title-row">
-            <div class="hub-sheet-icon">
-              <i data-lucide="sparkles" style="width: 18px; height: 18px; color: #c084fc;"></i>
+        <!-- Hub Top Header -->
+        <div class="hub-header">
+          <div class="hub-header-left">
+            <div class="hub-header-icon-box">
+              <i data-lucide="sparkles" style="width: 22px; height: 22px; color: #ffffff;"></i>
             </div>
-            <div>
-              <h3 class="hub-sheet-title">CinePulse Evreni</h3>
-              <p class="hub-sheet-sub">Özel kategoriler, canlı yayınlar ve mini diziler</p>
+            <div class="hub-header-titles">
+              <div class="hub-title-line">
+                <h3 class="hub-header-title">CinePulse Evreni</h3>
+                <span class="hub-title-badge">STUDIO</span>
+              </div>
+              <p class="hub-header-sub">Sinema, diziler, canlı yayınlar ve stüdyo araçları</p>
             </div>
           </div>
-          <button class="hub-sheet-close-btn" id="btn-close-mobile-hub">
+          <button class="hub-close-btn" id="btn-close-space-hub" aria-label="Kapat (ESC)" title="Kapat (ESC)">
             <i data-lucide="x" style="width: 18px; height: 18px;"></i>
           </button>
         </div>
 
-        <!-- Hub Action Grid Cards -->
-        <div class="hub-sheet-grid">
-          <!-- 1. Kısa Diziler & Reels VIP -->
-          <a href="#dramas" class="hub-card hub-card-featured">
-            <div class="hub-card-icon" style="background: linear-gradient(135deg, #7c3aed, #ec4899);">
-              <i data-lucide="clapperboard" style="width: 20px; height: 20px; color: #fff;"></i>
-            </div>
-            <div class="hub-card-text">
-              <div class="hub-card-title-row">
-                <span class="hub-card-title">Kısa Diziler</span>
-                <span class="hub-pill-vip">VIP</span>
+        <!-- Hub Scrollable Content -->
+        <div class="hub-scroll-body">
+          <!-- 1. Flagships: Filmler & Diziler (Both Star Giants Together!) -->
+          <div class="hub-section-head">
+            <span class="hub-section-tag">ANA KATALOG</span>
+            <div class="hub-section-line"></div>
+          </div>
+          <div class="hub-flagships-grid">
+            <a href="#movies" class="hub-flagship-card card-film-glow hub-nav-trigger">
+              <div class="flagship-glass-tint"></div>
+              <div class="flagship-icon-box" style="background: linear-gradient(135deg, #0284c7, #06b6d4);">
+                <i data-lucide="film" style="width: 24px; height: 24px; color: #fff;"></i>
               </div>
-              <span class="hub-card-sub">DramaBox &amp; ReelShort</span>
-            </div>
-          </a>
-
-          <!-- 2. Canlı TV -->
-          <a href="#livetv" class="hub-card">
-            <div class="hub-card-icon" style="background: linear-gradient(135deg, #ef4444, #f97316);">
-              <i data-lucide="tv" style="width: 20px; height: 20px; color: #fff;"></i>
-            </div>
-            <div class="hub-card-text">
-              <div class="hub-card-title-row">
-                <span class="hub-card-title">Canlı TV</span>
-                <span class="hub-pill-live">CANLI</span>
+              <div class="flagship-info">
+                <div class="flagship-heading">
+                  <span class="flagship-name">Filmler</span>
+                  <span class="flagship-badge badge-cyan">4K UHD</span>
+                </div>
+                <span class="flagship-sub">Yerli &amp; Yabancı Gişe Filmleri</span>
               </div>
-              <span class="hub-card-sub">30+ Canlı Kanal</span>
-            </div>
-          </a>
+              <div class="flagship-arrow-box">
+                <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i>
+              </div>
+            </a>
 
-          <!-- 3. Filmler -->
-          <a href="#movies" class="hub-card">
-            <div class="hub-card-icon" style="background: linear-gradient(135deg, #3b82f6, #06b6d4);">
-              <i data-lucide="film" style="width: 20px; height: 20px; color: #fff;"></i>
-            </div>
-            <div class="hub-card-text">
-              <span class="hub-card-title">Filmler</span>
-              <span class="hub-card-sub">1080p Sinema</span>
-            </div>
-          </a>
+            <a href="#series" class="hub-flagship-card card-series-glow hub-nav-trigger">
+              <div class="flagship-glass-tint"></div>
+              <div class="flagship-icon-box" style="background: linear-gradient(135deg, #f59e0b, #ef4444);">
+                <i data-lucide="tv" style="width: 24px; height: 24px; color: #fff;"></i>
+              </div>
+              <div class="flagship-info">
+                <div class="flagship-heading">
+                  <span class="flagship-name">Diziler</span>
+                  <span class="flagship-badge badge-amber">TREND</span>
+                </div>
+                <span class="flagship-sub">Popüler Yapımlar &amp; Tüm Sezonlar</span>
+              </div>
+              <div class="flagship-arrow-box">
+                <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i>
+              </div>
+            </a>
+          </div>
 
-          <!-- 4. Anime -->
-          <a href="#anime" class="hub-card">
-            <div class="hub-card-icon" style="background: linear-gradient(135deg, #0284c7, #38bdf8);">
-              <i data-lucide="sparkles" style="width: 20px; height: 20px; color: #fff;"></i>
-            </div>
-            <div class="hub-card-text">
-              <span class="hub-card-title">Anime</span>
-              <span class="hub-card-sub">Altyazı &amp; Dublaj</span>
-            </div>
-          </a>
+          <!-- 2. Special Formats: Kısa Diziler & Canlı TV -->
+          <div class="hub-section-head">
+            <span class="hub-section-tag">ÖZEL YAYINLAR &amp; MİNİ FORMAT</span>
+            <div class="hub-section-line"></div>
+          </div>
+          <div class="hub-specials-grid">
+            <a href="#dramas" class="hub-special-card card-dramas-glow hub-nav-trigger">
+              <div class="special-icon-box" style="background: linear-gradient(135deg, #7c3aed, #ec4899);">
+                <i data-lucide="clapperboard" style="width: 22px; height: 22px; color: #fff;"></i>
+              </div>
+              <div class="special-info">
+                <div class="special-heading">
+                  <span class="special-name">Kısa Diziler</span>
+                  <span class="special-badge badge-vip">VIP REEL</span>
+                </div>
+                <span class="special-sub">DramaBox &amp; ReelShort Dikey Dizileri</span>
+              </div>
+            </a>
 
-          <!-- 5. Çizgi Diziler -->
-          <a href="#cartoons" class="hub-card">
-            <div class="hub-card-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-              <i data-lucide="palette" style="width: 20px; height: 20px; color: #fff;"></i>
-            </div>
-            <div class="hub-card-text">
-              <span class="hub-card-title">Çizgi Diziler</span>
-              <span class="hub-card-sub">Nostalji &amp; Çocuk</span>
-            </div>
-          </a>
+            <a href="#livetv" class="hub-special-card card-livetv-glow hub-nav-trigger">
+              <div class="special-icon-box" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                <i data-lucide="radio" style="width: 22px; height: 22px; color: #fff;"></i>
+              </div>
+              <div class="special-info">
+                <div class="special-heading">
+                  <span class="special-name">Canlı TV</span>
+                  <span class="special-badge badge-live"><span class="badge-live-dot"></span>CANLI</span>
+                </div>
+                <span class="special-sub">30+ Ulusal &amp; Tematik Kanal</span>
+              </div>
+            </a>
+          </div>
 
-          <!-- 6. Belgeseller -->
-          <a href="#documentary" class="hub-card">
-            <div class="hub-card-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
-              <i data-lucide="book-open" style="width: 20px; height: 20px; color: #fff;"></i>
-            </div>
-            <div class="hub-card-text">
-              <span class="hub-card-title">Belgesel</span>
-              <span class="hub-card-sub">Doğa, Bilim &amp; Tarih</span>
-            </div>
-          </a>
+          <!-- 3. Curated Genres: Anime, Çizgi Dizi, Belgesel, Gelişmiş Keşfet -->
+          <div class="hub-section-head">
+            <span class="hub-section-tag">TÜRLER &amp; KOLEKSİYONLAR</span>
+            <div class="hub-section-line"></div>
+          </div>
+          <div class="hub-genres-grid">
+            <a href="#anime" class="hub-genre-card hub-nav-trigger">
+              <div class="genre-icon-box" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+                <i data-lucide="sparkles" style="width: 18px; height: 18px;"></i>
+              </div>
+              <div class="genre-info">
+                <span class="genre-name">Anime Dünyası</span>
+                <span class="genre-sub">Shonen, Seinen &amp; Filmler</span>
+              </div>
+            </a>
 
-          <!-- 7. Birlikte Seç -->
-          <button data-open-decision-room class="hub-card hub-card-wide" style="text-align: left; width: 100%;">
-            <div class="hub-card-icon" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
-              <i data-lucide="users-round" style="width: 20px; height: 20px; color: #fff;"></i>
-            </div>
-            <div class="hub-card-text">
-              <span class="hub-card-title">Birlikte Seç (Ortak Karar Odası)</span>
-              <span class="hub-card-sub">Arkadaşlarınla anonim oylama yap ve ortak film seç</span>
-            </div>
-          </button>
+            <a href="#cartoons" class="hub-genre-card hub-nav-trigger">
+              <div class="genre-icon-box" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                <i data-lucide="palette" style="width: 18px; height: 18px;"></i>
+              </div>
+              <div class="genre-info">
+                <span class="genre-name">Çizgi Diziler</span>
+                <span class="genre-sub">Nostalji &amp; Animasyon</span>
+              </div>
+            </a>
+
+            <a href="#documentary" class="hub-genre-card hub-nav-trigger">
+              <div class="genre-icon-box" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                <i data-lucide="book-open" style="width: 18px; height: 18px;"></i>
+              </div>
+              <div class="genre-info">
+                <span class="genre-name">Belgesel Kulübü</span>
+                <span class="genre-sub">Bilim, Doğa &amp; Tarih</span>
+              </div>
+            </a>
+
+            <a href="#discover" class="hub-genre-card hub-nav-trigger">
+              <div class="genre-icon-box" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">
+                <i data-lucide="sliders-horizontal" style="width: 18px; height: 18px;"></i>
+              </div>
+              <div class="genre-info">
+                <span class="genre-name">Detaylı Keşif</span>
+                <span class="genre-sub">Yıl, Tür &amp; Filtreler</span>
+              </div>
+            </a>
+          </div>
+
+          <!-- 4. Interactive Studio Tools: Birlikte Seç & Şanslı Çark -->
+          <div class="hub-section-head">
+            <span class="hub-section-tag">İNTERAKTİF STÜDYO</span>
+            <div class="hub-section-line"></div>
+          </div>
+          <div class="hub-tools-grid">
+            <button type="button" data-open-decision-room class="hub-tool-item tool-decision">
+              <div class="tool-icon-box" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
+                <i data-lucide="users-round" style="width: 20px; height: 20px; color: #fff;"></i>
+              </div>
+              <div class="tool-info">
+                <span class="tool-name">Birlikte Seç (Ortak Karar Odası)</span>
+                <span class="tool-sub">Arkadaşlarınla anlık oda kur, anonim oy kullan ve ortak filmini seç</span>
+              </div>
+              <i data-lucide="chevron-right" class="tool-chevron"></i>
+            </button>
+
+            <button type="button" id="btn-hub-random-spin" class="hub-tool-item tool-spin">
+              <div class="tool-icon-box" style="background: linear-gradient(135deg, #f59e0b, #ef4444);">
+                <i data-lucide="dices" style="width: 20px; height: 20px; color: #fff;"></i>
+              </div>
+              <div class="tool-info">
+                <span class="tool-name">Şanslı Çark: "Ne İzlesem?"</span>
+                <span class="tool-sub">Kararsız mısın? Tek tıkla rastgele popüler bir yapım başlatsın</span>
+              </div>
+              <i data-lucide="sparkles" class="tool-chevron" style="color: #fbbf24;"></i>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -359,80 +399,93 @@ export function attachNavbarEvents(onNavigate) {
     });
   }
 
-  document.querySelectorAll('[data-open-decision-room]').forEach((decisionRoomBtn) => {
-    decisionRoomBtn.addEventListener('click', () => {
-      closeMobileHub();
-      openDecisionRoomModal();
-    });
-  });
-
-  // Desktop Categories Dropdown
-  const catDropdown = document.getElementById('nav-categories-dropdown');
-  const catTrigger = catDropdown?.querySelector('.nav-dropdown-trigger');
-  const catMenu = document.getElementById('nav-dropdown-menu');
-  if (catDropdown && catTrigger && catMenu) {
-    catTrigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = catMenu.classList.toggle('open');
-      catTrigger.setAttribute('aria-expanded', isOpen);
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!catDropdown.contains(e.target)) {
-        catMenu.classList.remove('open');
-        catTrigger.setAttribute('aria-expanded', 'false');
-      }
-    });
-
-    catMenu.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => {
-        catMenu.classList.remove('open');
-        catTrigger.setAttribute('aria-expanded', 'false');
-      });
-    });
-  }
-
   // ====================================================================
-  // Mobile Hub Sheet Handler
+  // Universal Space Hub Command Center Event Handlers (PC & Mobile)
   // ====================================================================
-  const hubBackdrop = document.getElementById('mobile-hub-backdrop');
-  const hubOpenBtn = document.getElementById('btn-open-mobile-hub');
-  const hubCloseBtn = document.getElementById('btn-close-mobile-hub');
+  const hubBackdrop = document.getElementById('space-hub-backdrop');
+  const hubOpenMobileBtn = document.getElementById('btn-open-mobile-hub');
+  const hubOpenDesktopBtn = document.getElementById('btn-desktop-hub');
+  const hubCloseBtn = document.getElementById('btn-close-space-hub');
 
-  function openMobileHub() {
+  function openSpaceHub() {
     if (!hubBackdrop) return;
     hubBackdrop.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     renderIcons(hubBackdrop);
   }
 
-  function closeMobileHub() {
+  function closeSpaceHub() {
     if (!hubBackdrop) return;
     hubBackdrop.classList.add('hidden');
     document.body.style.overflow = '';
   }
 
-  if (hubOpenBtn) {
-    hubOpenBtn.addEventListener('click', (e) => {
+  if (hubOpenMobileBtn) {
+    hubOpenMobileBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      openMobileHub();
+      openSpaceHub();
+    });
+  }
+
+  if (hubOpenDesktopBtn) {
+    hubOpenDesktopBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openSpaceHub();
     });
   }
 
   if (hubCloseBtn) {
-    hubCloseBtn.addEventListener('click', closeMobileHub);
+    hubCloseBtn.addEventListener('click', closeSpaceHub);
   }
 
   if (hubBackdrop) {
     hubBackdrop.addEventListener('click', (e) => {
-      if (e.target === hubBackdrop) closeMobileHub();
+      if (e.target === hubBackdrop) closeSpaceHub();
     });
-    hubBackdrop.querySelectorAll('.hub-card').forEach(card => {
-      card.addEventListener('click', () => {
-        closeMobileHub();
+
+    hubBackdrop.querySelectorAll('.hub-nav-trigger').forEach(trigger => {
+      trigger.addEventListener('click', () => {
+        closeSpaceHub();
       });
     });
   }
+
+  // Birlikte Seç (Karar Odası) handlers
+  document.querySelectorAll('[data-open-decision-room]').forEach((decisionRoomBtn) => {
+    decisionRoomBtn.addEventListener('click', () => {
+      closeSpaceHub();
+      openDecisionRoomModal();
+    });
+  });
+
+  // Random Title Spinner: "Ne İzlesem?"
+  const randomSpinBtn = document.getElementById('btn-hub-random-spin');
+  if (randomSpinBtn) {
+    randomSpinBtn.addEventListener('click', async () => {
+      closeSpaceHub();
+      try {
+        const randomPage = Math.floor(Math.random() * 3) + 1;
+        const res = await fetchTrending('all', 'week', randomPage);
+        const items = res?.results?.filter(i => i.poster_path && (i.title || i.name)) || [];
+        if (items.length > 0) {
+          const picked = items[Math.floor(Math.random() * items.length)];
+          const mediaType = picked.media_type === 'tv' ? 'tv' : 'movie';
+          window.location.hash = `#detail?type=${mediaType}&id=${picked.id}`;
+        } else {
+          window.location.hash = '#movies';
+        }
+      } catch (err) {
+        window.location.hash = '#movies';
+      }
+    });
+  }
+
+  // ESC key closes Space Hub
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && hubBackdrop && !hubBackdrop.classList.contains('hidden')) {
+      closeSpaceHub();
+    }
+  });
 
   // Attach search handlers for both Desktop and Mobile search inputs
   setupSearchInput('nav-search-input', 'search-overlay');

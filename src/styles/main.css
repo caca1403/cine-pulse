@@ -988,224 +988,647 @@ img {
       transform: translateY(-2px);
     }
   }
+}
 
-  /* visionOS Style Space Hub Bottom Sheet Drawer */
-  .mobile-hub-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    z-index: 10000;
-    display: flex;
+/* --------------------------------------------------------------------------
+   5. Universal "CinePulse Evreni" Space Hub Command Center (Desktop & Mobile)
+-------------------------------------------------------------------------- */
+.nav-link-hub-trigger {
+  cursor: pointer;
+  background: rgba(168, 85, 247, 0.12) !important;
+  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+  color: #e9d5ff !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-link-hub-trigger:hover {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(236, 72, 153, 0.25)) !important;
+  border-color: rgba(168, 85, 247, 0.6) !important;
+  color: #fff !important;
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+.nav-hub-badge {
+  font-size: 0.58rem;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: #fff;
+  letter-spacing: 0.05em;
+}
+
+.dock-icon-rel {
+  position: relative;
+  display: inline-flex;
+}
+
+.dock-micro-dot {
+  position: absolute;
+  top: -1px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ec4899;
+  box-shadow: 0 0 8px #ec4899;
+}
+
+/* Universal Space Hub Backdrop */
+.space-hub-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.26s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.26s;
+}
+
+.space-hub-backdrop.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Floating Acrylic Spatial Dialog (Desktop Centered / Mobile Bottom Sheet) */
+.space-hub-dialog {
+  position: relative;
+  width: 92%;
+  max-width: 640px;
+  max-height: 86vh;
+  background: rgba(11, 16, 29, 0.95);
+  backdrop-filter: blur(40px) saturate(210%);
+  -webkit-backdrop-filter: blur(40px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 26px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95), 0 0 40px rgba(168, 85, 247, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: scale(1) translateY(0);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s;
+  z-index: 10001;
+}
+
+.space-hub-backdrop.hidden .space-hub-dialog {
+  transform: scale(0.95) translateY(14px);
+  opacity: 0;
+}
+
+/* Ambient Radial Aura behind header */
+.hub-ambient-glow {
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 380px;
+  height: 180px;
+  background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.28) 0%, rgba(236, 72, 153, 0.12) 50%, transparent 75%);
+  filter: blur(45px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Mobile Drag Handle */
+.hub-sheet-handle-wrap {
+  display: none;
+  justify-content: center;
+  padding: 0.75rem 0 0.25rem;
+}
+
+.hub-sheet-handle {
+  width: 44px;
+  height: 4.5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Top Header */
+.hub-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.4rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hub-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.hub-header-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 18px rgba(124, 58, 237, 0.5);
+  flex-shrink: 0;
+}
+
+.hub-title-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hub-header-title {
+  font-size: 1.15rem;
+  font-weight: 850;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.hub-title-badge {
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #cbd5e1;
+}
+
+.hub-header-sub {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  margin: 2px 0 0;
+}
+
+.hub-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hub-close-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  transform: rotate(90deg);
+}
+
+/* Scrollable Content Body */
+.hub-scroll-body {
+  position: relative;
+  z-index: 1;
+  padding: 1.1rem 1.4rem 1.4rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.hub-scroll-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.hub-scroll-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+/* Section Header Tags */
+.hub-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+}
+
+.hub-section-tag {
+  font-size: 0.64rem;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  color: #94a3b8;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.hub-section-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 1. Flagships Grid (Filmler & Diziler) */
+.hub-flagships-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.hub-flagship-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  text-decoration: none;
+  color: #fff;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.card-film-glow:hover {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.18), rgba(6, 182, 212, 0.08));
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.25);
+  transform: translateY(-2px);
+}
+
+.card-series-glow:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(239, 68, 68, 0.08));
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25);
+  transform: translateY(-2px);
+}
+
+.flagship-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.flagship-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.flagship-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.flagship-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.flagship-badge {
+  font-size: 0.55rem;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+
+.badge-cyan {
+  background: rgba(6, 182, 212, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+}
+
+.badge-amber {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.flagship-sub {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.flagship-arrow-box {
+  color: #64748b;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.hub-flagship-card:hover .flagship-arrow-box {
+  color: #fff;
+  transform: translate(2px, -2px);
+}
+
+/* 2. Specials Grid (Kısa Diziler & Canlı TV) */
+.hub-specials-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.hub-special-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  text-decoration: none;
+  color: #fff;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.card-dramas-glow {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(236, 72, 153, 0.09));
+  border-color: rgba(168, 85, 247, 0.35);
+}
+
+.card-dramas-glow:hover {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.22), rgba(236, 72, 153, 0.16));
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
+  transform: translateY(-2px);
+}
+
+.card-livetv-glow {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(249, 115, 22, 0.08));
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.card-livetv-glow:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(249, 115, 22, 0.14));
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+  transform: translateY(-2px);
+}
+
+.special-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+}
+
+.special-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.special-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.special-name {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.special-badge {
+  font-size: 0.54rem;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.badge-vip {
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: #fff;
+}
+
+.badge-live {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+}
+
+.badge-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  animation: liveDotPulseAnim 1.4s infinite;
+}
+
+.special-sub {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* 3. Genres Grid (Anime, Çizgi Dizi, Belgesel, Keşfet) */
+.hub-genres-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.65rem;
+}
+
+.hub-genre-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  text-decoration: none;
+  color: #fff;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.hub-genre-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.genre-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.genre-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.genre-name {
+  font-size: 0.84rem;
+  font-weight: 750;
+  color: #f1f5f9;
+}
+
+.genre-sub {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 4. Interactive Studio Tools Grid (Birlikte Seç & Şanslı Çark) */
+.hub-tools-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.hub-tool-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #fff;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+}
+
+.hub-tool-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tool-decision:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
+}
+
+.tool-spin:hover {
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.25);
+}
+
+.tool-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tool-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tool-name {
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-sub {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.tool-chevron {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+/* Mobile Adaptive Styles for Space Hub */
+@media (max-width: 768px) {
+  .space-hub-backdrop {
     align-items: flex-end;
-    justify-content: center;
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.28s;
   }
 
-  .mobile-hub-backdrop.hidden {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-  }
-
-  .mobile-hub-sheet {
+  .space-hub-dialog {
     width: 100%;
-    max-width: 500px;
-    background: rgba(12, 17, 30, 0.96);
-    backdrop-filter: blur(36px) saturate(200%);
-    -webkit-backdrop-filter: blur(36px) saturate(200%);
-    border-top: 1px solid rgba(255, 255, 255, 0.16);
-    border-left: 1px solid rgba(255, 255, 255, 0.08);
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    max-width: 520px;
+    max-height: 85vh;
     border-radius: 28px 28px 0 0;
-    padding: 0.85rem 1.15rem 2.2rem;
-    box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.92);
+    border-bottom: none;
+    padding: 0;
     transform: translateY(0);
     transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-    max-height: 85vh;
-    overflow-y: auto;
   }
 
-  .mobile-hub-backdrop.hidden .mobile-hub-sheet {
+  .space-hub-backdrop.hidden .space-hub-dialog {
     transform: translateY(100%);
+    opacity: 1;
   }
 
   .hub-sheet-handle-wrap {
     display: flex;
-    justify-content: center;
-    padding-bottom: 0.75rem;
   }
 
-  .hub-sheet-handle {
-    width: 42px;
-    height: 4.5px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.28);
+  .hub-header {
+    padding: 0.6rem 1.1rem 0.8rem;
   }
 
-  .hub-sheet-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1.1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  .hub-scroll-body {
+    padding: 0.8rem 1.1rem 2.4rem;
   }
 
-  .hub-sheet-title-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .hub-sheet-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    background: rgba(168, 85, 247, 0.15);
-    border: 1px solid rgba(168, 85, 247, 0.35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .hub-sheet-title {
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: #ffffff;
-    margin: 0;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
-  }
-
-  .hub-sheet-sub {
-    font-size: 0.72rem;
-    color: #94a3b8;
-    margin: 0;
-    margin-top: 2px;
-  }
-
-  .hub-sheet-close-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #cbd5e1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .hub-sheet-close-btn:active {
-    background: rgba(255, 255, 255, 0.18);
-    transform: scale(0.92);
-  }
-
-  .hub-sheet-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.65rem;
-  }
-
-  .hub-card {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 0.85rem;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    text-decoration: none;
-    color: #ffffff;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    cursor: pointer;
-    font-family: inherit;
-    user-select: none;
-  }
-
-  .hub-card:active {
-    transform: scale(0.96);
-    background: rgba(255, 255, 255, 0.09);
-  }
-
-  .hub-card-featured {
-    border-color: rgba(168, 85, 247, 0.45);
-    background: linear-gradient(135deg, rgba(124, 58, 237, 0.14), rgba(236, 72, 153, 0.12));
-    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.15);
-  }
-
-  .hub-card-wide {
-    grid-column: span 2;
-  }
-
-  .hub-card-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  }
-
-  .hub-card-text {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    text-align: left;
-  }
-
-  .hub-card-title-row {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  .hub-card-title {
-    font-size: 0.84rem;
-    font-weight: 750;
-    color: #f8fafc;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .hub-card-sub {
-    font-size: 0.66rem;
-    color: #94a3b8;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 1px;
-  }
-
-  .hub-pill-vip {
-    background: linear-gradient(135deg, #a855f7, #ec4899);
-    color: #ffffff;
-    font-size: 0.54rem;
-    font-weight: 900;
-    padding: 1px 5px;
-    border-radius: 999px;
-    letter-spacing: 0.04em;
-  }
-
-  .hub-pill-live {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: #ffffff;
-    font-size: 0.54rem;
-    font-weight: 900;
-    padding: 1px 5px;
-    border-radius: 999px;
-    letter-spacing: 0.04em;
+  .hub-flagships-grid,
+  .hub-specials-grid,
+  .hub-genres-grid,
+  .hub-tools-grid {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
   }
 }
 
