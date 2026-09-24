@@ -173,6 +173,9 @@ function formatStreamName(s, category = '') {
   if (id.startsWith('kvip_') || raw.includes('kids vip')) {
     return s.displayName || s.name || '⚡ Kids VIP Direct 1080p';
   }
+  if (id.startsWith('anizium_') || raw.includes('anizium')) {
+    return s.displayName || s.name || 'Anizium 4K/1080p VIP';
+  }
   if (id.startsWith('acx_') || raw.includes('animecix')) {
     return s.displayName || s.name || 'AX Tau Direct 1080p';
   }
@@ -197,6 +200,8 @@ function formatStreamItem(s, category, fallbackName) {
     badge = category === 'dubbed' ? '⚡ DP Dublaj' : '💬 DP Altyazı';
   } else if (lowerName.includes('ds')) {
     badge = category === 'dubbed' ? '⚡ DS Dublaj' : '💬 DS Altyazı';
+  } else if (lowerName.includes('anizium')) {
+    badge = s.badge || (category === 'dubbed' ? '⚡ Anizium 4K Dublaj' : '⚡ Anizium 4K Altyazı');
   } else if (lowerName.includes('swx')) {
     badge = '⚡ SWX 1080p';
   } else if (lowerName.includes('tvr')) {
@@ -307,6 +312,7 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('smashystream_') || raw.includes('smashy')) return 13;
 
   // 10. Anime & Çocuk
+  if (id.startsWith('anizium_') || raw.includes('anizium')) return 2;
   if (id.startsWith('kvip_') || raw.includes('kids vip')) return 14;
   if (id.startsWith('acx_') || raw.includes('animecix')) return 15;
   if (id.startsWith('atr_') || raw.includes('animetr')) return 17;
@@ -637,15 +643,11 @@ export async function getStreamingServersProgressive({
       : Promise.resolve([]),
 
     // Anizium 4K / 1080p dedicated anime streams
-    isAnime
-      ? fetchAniziumSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : Promise.resolve([]),
+    fetchAniziumSources({ type, titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+      .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
-    isAnime
-      ? fetchAniziumSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : Promise.resolve([]),
+    fetchAniziumSources({ type, titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+      .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 12. VIP P2P Streams (2-3 high-seed torrent streams with multi-sub / OpenSubtitles)
     fetchTorrentStreamSources({ type, tmdbId, season, episode })
