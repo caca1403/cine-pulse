@@ -436,15 +436,13 @@ export function attachNavbarEvents(onNavigate) {
       el.addEventListener('click', closeDesktopHub);
     });
 
-    // ESC closes
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeDesktopHub();
-    });
+    // ESC closes (use abort on re-render)
+    const escHandler = (e) => { if (e.key === 'Escape') closeDesktopHub(); };
+    window.addEventListener('keydown', escHandler);
 
-    // Click outside closes
-    document.addEventListener('click', (e) => {
-      if (!hubLi.contains(e.target)) closeDesktopHub();
-    });
+    // Click outside closes (use abort on re-render)
+    const outsideHandler = (e) => { if (!hubLi.contains(e.target)) closeDesktopHub(); };
+    document.addEventListener('click', outsideHandler);
   }
 
   /* Desktop hub random spin */
@@ -463,7 +461,7 @@ export function attachNavbarEvents(onNavigate) {
     if (!mobileHubBackdrop) return;
     mobileHubBackdrop.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
-    renderIcons(mobileHubBackdrop);
+    // Icons already rendered when navbar was mounted — no renderIcons call here
   }
   function closeMobileHub() {
     if (!mobileHubBackdrop) return;
@@ -478,7 +476,7 @@ export function attachNavbarEvents(onNavigate) {
   document.getElementById('btn-open-mobile-hub')?.addEventListener('click', (e) => {
     e.preventDefault();
     openMobileHub();
-  });
+  }, { once: false }); // event delegated to this specific element after each render
   document.getElementById('btn-close-mobile-hub')?.addEventListener('click', closeMobileHub);
 
   mobileHubBackdrop?.addEventListener('click', (e) => {
