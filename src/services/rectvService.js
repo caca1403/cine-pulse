@@ -118,6 +118,8 @@ function getRtvFetchUrl(subPath) {
   return isNodeEnv ? `https://a.prectv70.lol/api${subPath}` : `/api/rtv${subPath}`;
 }
 
+let lastAttestationFailure = 0;
+
 /**
  * Ensures a valid RecTV JWT token via RSA Key Attestation
  */
@@ -136,6 +138,11 @@ export async function getValidRecTvJwt() {
       memoryJwtExp = exp;
       return stored;
     }
+  }
+
+  // If recent attestation failed (e.g. revoked key), avoid redundant roundtrips for 5 min
+  if (Date.now() - lastAttestationFailure < 300000) {
+    return null;
   }
 
   try {
@@ -205,7 +212,7 @@ export async function getValidRecTvJwt() {
 
     return memoryJwt;
   } catch (err) {
-    console.warn('[RecTV] Attestation error:', err.message);
+    lastAttestationFailure = Date.now();
     return null;
   }
 }
@@ -247,15 +254,17 @@ export async function decryptRecTvStreamUrl(encB64) {
 
 // Authenticated TVR (RecTV) API Request Helper
 async function recTvApiRequest(apiPath, method = 'GET', bodyStr = '') {
-  const jwt = await getValidRecTvJwt();
-  if (!jwt) return null;
+  let jwt = null;
+  try {
+    jwt = await getValidRecTvJwt();
+  } catch (_) {}
 
   const fullPath = `/api${apiPath}`;
   const hmacHeaders = await createHmacHeaders(method, fullPath, bodyStr);
   const headers = {
     ...hmacHeaders,
-    'Authorization': `Bearer ${jwt}`,
     'x-rtv-path': apiPath,
+    ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {}),
     ...(bodyStr ? { 'Content-Type': 'application/json' } : {})
   };
 
@@ -314,11 +323,21 @@ export async function fetchRecTvSources({
 
     // Find best matching item
     let match = null;
+    const checkCandidateMatch = (candidateTitle) => {
+      if (!candidateTitle) return false;
+      if (isStrictMediaTitleMatch(candidateTitle, expectedTitles)) return true;
+      const parts = candidateTitle.split(/\s*[-/:]\s*/).filter(Boolean);
+      for (const p of parts) {
+        if (isStrictMediaTitleMatch(p, expectedTitles)) return true;
+      }
+      return false;
+    };
+
     for (const item of searchRes.posters) {
       const isTargetType = isMovie ? item.type === 'movie' : item.type === 'serie';
       if (!isTargetType) continue;
 
-      if (isStrictMediaTitleMatch(item.title || item.name || '', expectedTitles)) {
+      if (checkCandidateMatch(item.title || item.name || '')) {
         match = item;
         break;
       }
@@ -445,8 +464,6 @@ export async function fetchRecTvSources({
  */
 export async function fetchRecTvLiveChannels() {
   try {
-    const jwt = await getValidRecTvJwt();
-    if (!jwt) return [];
     // Category 0 is TVR's current live roster. One request replaces eight
     // category requests; callers verify that each candidate has an open source.
     const list = await recTvApiRequest(`/channel/by/filtres/0/0/0/${SW_KEY}/`);
