@@ -31,6 +31,7 @@ import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
 import { fetchAniziumSources } from './aniziumScraper.js';
+import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
 
 // Cache version
 const CACHE_VERSION = 'v39';
@@ -293,6 +294,9 @@ function getStreamPriorityScore(s) {
 
   // 5. TVR VIP (RecTV 1080p HLS)
   if (id.startsWith('tvr_') || raw.includes('tvr') || raw.includes('rectv')) return 4;
+
+  // 5b. DramaDizilerim (Short Drama VIP - Direct 1080p HLS)
+  if (id.startsWith('ddz_') || raw.includes('dramadizilerim') || raw.includes('ddz vip')) return 4;
 
   // 6. LookMovie VIP (1080p HLS)
   if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) return 5;
@@ -684,7 +688,18 @@ export async function getStreamingServersProgressive({
       }).catch(err => {
         console.error('[providerAggregator] HDFC error:', err);
         return [];
-      })
+      }),
+
+    // 14. DramaDizilerim (Short Drama / Mini Dizi VIP - Direct 1080p HLS)
+    !isMovie
+      ? fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : Promise.resolve([]),
+
+    !isMovie
+      ? fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      : Promise.resolve([])
   ];
 
   // Alias expansion task
