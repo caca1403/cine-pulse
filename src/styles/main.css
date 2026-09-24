@@ -11270,29 +11270,37 @@ video::cue {
 .decision-room-votes .decision-room-open { color:#fff; border-color:#10b981; background:#059669; }
 .decision-room-empty { grid-column:1/-1; min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-align:center; border:1px dashed rgba(148,163,184,.26); border-radius:14px; color:var(--text-sub); font-size:.82rem; }
 .decision-room-empty i { width:27px; height:27px; color:#fbbf24; }.decision-room-empty strong { color:var(--text-main); }
-/* Room Player Floating Cloud Button & Popover HUD */
+/* Room Player Floating Cloud Button & Popover HUD (Kıyıda Köşede - Sağ Üst) */
 .room-player-hud {
   position: absolute;
   z-index: 45;
-  left: 50%;
-  bottom: 74px;
-  transform: translateX(-50%);
+  top: 16px;
+  right: 175px;
+  left: auto;
+  bottom: auto;
+  transform: none;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   pointer-events: none;
   background: transparent;
   border: none;
   box-shadow: none;
   padding: 0;
   backdrop-filter: none;
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  opacity: 0.85;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.room-player-hud:hover,
+.room-player-hud:has(.room-cloud-pill-btn.active) {
+  opacity: 1;
 }
 
 .direct-video-wrapper.hide-controls ~ .room-player-hud:not(:has(.room-cloud-popover:not([hidden]))),
 .player-modal-content.hide-controls .room-player-hud:not(:has(.room-cloud-popover:not([hidden]))) {
   opacity: 0;
-  transform: translateX(-50%) translateY(8px);
+  transform: translateY(-6px);
   pointer-events: none;
 }
 
@@ -11306,35 +11314,35 @@ video::cue {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 7px;
+  padding: 6px 13px;
   border-radius: 999px;
   color: #e2e8f0;
-  background: rgba(10, 20, 38, 0.88);
-  border: 1px solid rgba(52, 211, 153, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 15px rgba(16, 185, 129, 0.2);
+  background: rgba(10, 20, 38, 0.84);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(16, 185, 129, 0.15);
   font: inherit;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
   user-select: none;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .room-cloud-pill-btn:hover {
-  background: rgba(15, 29, 56, 0.96);
+  background: rgba(15, 29, 56, 0.95);
   border-color: #34d399;
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 0 22px rgba(52, 211, 153, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 18px rgba(52, 211, 153, 0.3);
 }
 
 .room-cloud-pill-btn.active,
 .room-cloud-pill-btn[aria-expanded="true"] {
-  background: rgba(16, 185, 129, 0.22);
+  background: rgba(16, 185, 129, 0.2);
   border-color: #34d399;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5), 0 0 20px rgba(52, 211, 153, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), 0 0 16px rgba(52, 211, 153, 0.35);
 }
 
 .room-cloud-icon-wrap {
@@ -11345,8 +11353,8 @@ video::cue {
 }
 
 .room-cloud-icon-wrap i {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 
 .room-cloud-title {
@@ -11357,11 +11365,11 @@ video::cue {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
   border-radius: 999px;
-  font-size: 0.63rem;
+  font-size: 0.62rem;
   font-weight: 800;
   color: #6ee7b7;
   background: rgba(16, 185, 129, 0.2);
@@ -11370,16 +11378,16 @@ video::cue {
 
 .room-chat-unread-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -5px;
+  right: -5px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
+  min-width: 17px;
+  height: 17px;
   padding: 0 4px;
   border-radius: 999px;
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   font-weight: 800;
   color: #fff;
   background: #ef4444;
@@ -11394,10 +11402,10 @@ video::cue {
 }
 
 .room-cloud-chevron {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   color: #94a3b8;
-  transition: transform 0.22s ease;
+  transition: transform 0.2s ease;
 }
 
 .room-cloud-pill-btn.active .room-cloud-chevron,
@@ -11407,12 +11415,12 @@ video::cue {
 }
 
 .room-player-live-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   flex: none;
   border-radius: 99px;
   background: #34d399;
-  box-shadow: 0 0 12px #34d399;
+  box-shadow: 0 0 10px #34d399;
   animation: roomLiveDotGlow 2s infinite ease-in-out;
 }
 
@@ -11424,22 +11432,24 @@ video::cue {
 .room-cloud-popover {
   pointer-events: auto;
   position: absolute;
-  bottom: calc(100% + 14px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(340px, calc(100vw - 32px));
-  background: rgba(8, 16, 32, 0.95);
+  top: calc(100% + 10px);
+  right: 0;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  width: min(330px, calc(100vw - 28px));
+  background: rgba(8, 16, 32, 0.96);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(52, 211, 153, 0.4);
-  border-radius: 20px;
-  padding: 14px 16px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 0 25px rgba(16, 185, 129, 0.18);
+  border-radius: 18px;
+  padding: 13px 15px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65), 0 0 22px rgba(16, 185, 129, 0.16);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 11px;
   color: #e2e8f0;
-  animation: roomCloudPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: roomCloudPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .room-cloud-popover[hidden] {
@@ -11449,24 +11459,28 @@ video::cue {
 .room-cloud-popover::after {
   content: '';
   position: absolute;
-  bottom: -7px;
-  left: 50%;
-  transform: translateX(-50%) rotate(45deg);
-  width: 13px;
-  height: 13px;
+  top: -6px;
+  right: 28px;
+  left: auto;
+  bottom: auto;
+  transform: rotate(45deg);
+  width: 12px;
+  height: 12px;
   background: rgba(8, 16, 32, 0.96);
-  border-right: 1px solid rgba(52, 211, 153, 0.4);
-  border-bottom: 1px solid rgba(52, 211, 153, 0.4);
+  border-top: 1px solid rgba(52, 211, 153, 0.4);
+  border-left: 1px solid rgba(52, 211, 153, 0.4);
+  border-right: none;
+  border-bottom: none;
 }
 
 @keyframes roomCloudPopIn {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(8px) scale(0.96);
+    transform: translateY(-8px) scale(0.96);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -11474,7 +11488,7 @@ video::cue {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 8px;
+  padding-bottom: 7px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.15);
 }
 
@@ -11485,7 +11499,7 @@ video::cue {
 }
 
 .room-cloud-header-left strong {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   letter-spacing: 0.02em;
   color: #f1f5f9;
 }
@@ -11494,8 +11508,8 @@ video::cue {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: none;
   background: rgba(255, 255, 255, 0.06);
@@ -11511,14 +11525,14 @@ video::cue {
 }
 
 .room-cloud-close i {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 
 .room-cloud-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
 }
 
 .room-cloud-info-grid {
@@ -11530,21 +11544,21 @@ video::cue {
 .room-cloud-info-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   color: #cbd5e1;
-  font-size: 0.72rem;
+  font-size: 0.71rem;
 }
 
 .room-cloud-info-row i {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   color: #34d399;
   flex: none;
 }
 
 .room-cloud-info-row small {
   color: #86efac;
-  font-size: 0.68rem;
+  font-size: 0.67rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -11570,16 +11584,16 @@ video::cue {
 }
 
 .room-player-members span {
-  max-width: 95px;
+  max-width: 90px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 4px 8px;
+  padding: 3px 7px;
   color: #d1fae5;
   background: rgba(16, 185, 129, 0.14);
   border: 1px solid rgba(52, 211, 153, 0.25);
-  border-radius: 8px;
-  font-size: 0.62rem;
+  border-radius: 7px;
+  font-size: 0.61rem;
 }
 
 .room-cloud-actions {
@@ -11598,16 +11612,18 @@ video::cue {
 
 @media (max-width: 620px) {
   .room-player-hud {
-    bottom: 68px;
+    top: 56px;
+    right: 12px;
+    align-items: flex-end;
   }
   .room-cloud-pill-btn {
-    padding: 7px 12px;
-    font-size: 0.7rem;
-    gap: 6px;
+    padding: 5px 10px;
+    font-size: 0.68rem;
+    gap: 5px;
   }
   .room-cloud-popover {
     width: calc(100vw - 24px);
-    max-width: 320px;
+    max-width: 310px;
   }
 }
 .decision-room-footer { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:17px; color:var(--text-sub); font-size:.77rem; }.decision-room-footer strong { color:#e2e8f0; }.decision-room-footer button { padding:8px 10px; }
@@ -14331,7 +14347,11 @@ video::cue {
   border-bottom-color: rgba(148, 163, 184, .13);
 }
 .dizisol-cinema-body {
-  gap: 1.1rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 1.25rem;
   padding: 1.8rem clamp(1.25rem, 3vw, 2.7rem) 2.7rem;
   background:
     radial-gradient(90% 130% at 0% 0%, rgba(16, 185, 129, .075), transparent 54%),
@@ -14342,8 +14362,9 @@ video::cue {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1.5rem;
+  flex-wrap: wrap;
 }
-.player-editorial-copy { min-width: 0; max-width: 680px; }
+.player-editorial-copy { min-width: 0; flex: 1; max-width: none; }
 .player-file-kicker {
   display: inline-flex;
   align-items: center;
@@ -14384,8 +14405,8 @@ video::cue {
 .player-meta-dot { color: #cbd5e1; background: rgba(148,163,184,.07); border-color: rgba(148,163,184,.16); font-weight: 650; }
 .dizisol-genre-chips { margin-top: -.15rem; }
 .dizisol-genre-chip { background: rgba(30,41,59,.62); border-color: rgba(148,163,184,.18); color: #cbd5e1; }
-.player-story-block { max-width: 800px; display: grid; gap: .82rem; }
-.dizisol-overview { max-width: 760px; margin: 0; color: #cbd5e1; font-size: .94rem; line-height: 1.75; }
+.player-story-block { max-width: 100%; display: grid; gap: .82rem; }
+.dizisol-overview { max-width: 100%; margin: 0; color: #cbd5e1; font-size: .98rem; line-height: 1.8; text-wrap: pretty; }
 .player-why-match {
   display: flex;
   gap: .7rem;
@@ -14427,7 +14448,19 @@ video::cue {
 .player-icon-action { display:grid; place-items:center; width:33px; min-height:32px; padding:0; border:0; background:transparent; color:#94a3b8; cursor:pointer; }.player-icon-action i { width:16px; height:16px; }.player-icon-action:hover,.player-icon-action.is-selected { color:#6ee7b7; background:rgba(16,185,129,.12); transform:translateY(-1px); }
 .player-utility-action { display:inline-flex; align-items:center; gap:.35rem; min-height:32px; padding:0 .5rem; border:0; background:transparent; color:#a5b4fc; cursor:pointer; }.player-utility-action i { width:15px; height:15px; }.player-utility-action:hover { color:#c7d2fe; background:rgba(99,102,241,.12); transform:translateY(-1px); }
 .player-primary-action:hover,.player-status-trigger:hover,.player-utility-action:hover { transform:translateY(-1px); }
-.player-movie-meta-bar { padding: .72rem .85rem; border:1px solid rgba(148,163,184,.12); border-radius:14px; background:rgba(15,23,42,.38); }
+.player-movie-meta-bar {
+  width: fit-content;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding: .45rem .85rem;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, .55);
+  backdrop-filter: blur(10px);
+}
 .player-movie-director-tag { border-color:rgba(16,185,129,.25); background:rgba(16,185,129,.08); }.player-movie-director-tag .meta-tag-label { color:#6ee7b7; }
 .player-movie-cast-rail { gap:.8rem; padding:.15rem .1rem .7rem; }.player-movie-cast-chip { flex-direction:column; align-items:center; width:88px; gap:.35rem; padding:0; border:0; background:transparent; border-radius:0; }.player-movie-cast-chip:hover { background:transparent; transform:translateY(-2px); }.player-cast-avatar { width:60px; height:60px; border:2px solid #1e293b; box-shadow:0 0 0 1px rgba(148,163,184,.13); }.player-movie-cast-chip:hover .player-cast-avatar { border-color:#34d399; }.player-cast-meta { width:100%; text-align:center; }.player-cast-name { max-width:88px; overflow:hidden; text-overflow:ellipsis; font-size:.7rem; }.player-cast-role { max-width:88px; font-size:.63rem; }
 @media (max-width: 768px) {
