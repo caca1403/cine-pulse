@@ -84,6 +84,16 @@ export default async function handler(req, res) {
       ]);
       const html = pageRes.stdout || '';
 
+      globalThis._lastWtzDebug = {
+        watchUrl,
+        curlOk: pageRes.ok,
+        curlStderr: pageRes.stderr,
+        curlCode: pageRes.code,
+        htmlLen: html.length,
+        hasDataId: html.includes('data-id'),
+        preview: html.slice(0, 200)
+      };
+
       if (!html || !html.includes('data-id')) continue;
 
       const idMatch = html.match(/id=["']dilsec["'][^>]*data-id=["'](\d+)["']/i);
@@ -167,5 +177,5 @@ export default async function handler(req, res) {
     if (streams.length > 0) break;
   }
 
-  return res.status(200).json({ success: true, streams });
+  return res.status(200).json({ success: true, streams, debug: globalThis._lastWtzDebug || {} });
 }
