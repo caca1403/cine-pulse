@@ -19,6 +19,7 @@ import { Readable, PassThrough } from 'stream';
 import { fileURLToPath } from 'url';
 import { execFile, spawn } from 'child_process';
 import { createRequire } from 'module';
+import { resolveWebteizleStreams } from './webteizleExtractor.js';
 
 // Resolve @ffmpeg-installer/ffmpeg path (CommonJS package)
 let _ffmpegBin = null;
@@ -786,6 +787,57 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ success: false, error: 'Invalid JSON output from extractor' }));
       }
     });
+    return;
+  }
+
+  // ============ Webteizle VIP Stream Resolver ============
+  if (reqUrl.pathname === '/webteizle_stream' || reqUrl.pathname === '/api/webteizle_stream') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const title = reqUrl.searchParams.get('title') || reqUrl.searchParams.get('query') || '';
+    const originalTitle = reqUrl.searchParams.get('originalTitle') || '';
+    const type = reqUrl.searchParams.get('type') || 'movie';
+    const season = parseInt(reqUrl.searchParams.get('season') || '1', 10);
+    const episode = parseInt(reqUrl.searchParams.get('episode') || '1', 10);
+    const isDub = reqUrl.searchParams.get('isDub') === 'true' || reqUrl.searchParams.get('dub') === '1';
+
+    const cacheKey = `wtz_${title}_${originalTitle}_${type}_s${season}e${episode}_dub${isDub}`;
+    if (globalThis._webteizleCache && globalThis._webteizleCache.has(cacheKey)) {
+      const cached = globalThis._webteizleCache.get(cacheKey);
+      if (Date.now() - cached.time < 15 * 60 * 1000) {
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, streams: cached.data }));
+        return;
+      }
+    }
+
+    try {
+      const streams = await resolveWebteizleStreams({
+        title,
+        originalTitle,
+        type,
+        season,
+        episode,
+        isDub
+      });
+
+      if (!globalThis._webteizleCache) globalThis._webteizleCache = new Map();
+      globalThis._webteizleCache.set(cacheKey, { time: Date.now(), data: streams });
+
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true, streams }));
+    } catch (err) {
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: false, error: err?.message || 'Resolution failed', streams: [] }));
+    }
     return;
   }
 

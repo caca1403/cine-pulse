@@ -83,6 +83,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/dzb_stream/, '/api/dzb_stream')
       },
+      '/api/webteizle_stream': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/webteizle_stream/, '/api/webteizle_stream')
+      },
       '/api/szd': {
         target: 'https://sezonlukdizi.cc',
         changeOrigin: true,

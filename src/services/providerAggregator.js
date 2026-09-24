@@ -17,7 +17,6 @@
 import { fetchSezonlukDiziEpisodeSources } from './sezonlukDiziScraper.js';
 import { fetchSinewixSources } from './sinewixScraper.js';
 import { fetchAnimecixSources } from './animecixScraper.js';
-import { fetchTurkAnimeSources } from './turkanimeScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchDizisolMovieSources, fetchDizisolEpisodeSources } from './dizisolScraper.js';
 import { fetchDizibalMovieSources, fetchDizibalEpisodeSources } from './dizibalScraper.js';
@@ -31,6 +30,8 @@ import { fetchTorrentStreamSources } from './torrentStreamService.js';
 import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
+import { fetchWebteizleSources } from './webteizleScraper.js';
+import { fetchAniziumSources } from './aniziumScraper.js';
 
 // Cache version
 const CACHE_VERSION = 'v39';
@@ -309,7 +310,6 @@ function getStreamPriorityScore(s) {
   // 10. Anime & Çocuk
   if (id.startsWith('kvip_') || raw.includes('kids vip')) return 14;
   if (id.startsWith('acx_') || raw.includes('animecix')) return 15;
-  if (id.startsWith('ta_') || raw.includes('turkanime')) return 16;
   if (id.startsWith('atr_') || raw.includes('animetr')) return 17;
 
   return 20;
@@ -631,14 +631,21 @@ export async function getStreamingServersProgressive({
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
 
-    isAnime
-      ? fetchTurkAnimeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : Promise.resolve([]),
 
     isAnime
       ? fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : Promise.resolve([]),
+
+    // Anizium 4K / 1080p dedicated anime streams
+    isAnime
+      ? fetchAniziumSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : Promise.resolve([]),
+
+    isAnime
+      ? fetchAniziumSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
 
     // 12. VIP P2P Streams (2-3 high-seed torrent streams with multi-sub / OpenSubtitles)
@@ -676,7 +683,18 @@ export async function getStreamingServersProgressive({
       }).catch(err => {
         console.error('[providerAggregator] HDFC error:', err);
         return [];
-      })
+      }),
+
+    // 14. Webteizle VIP (Movies only: VidMoly, Pixel, Filemoon, Ok.ru)
+    isMovie
+      ? fetchWebteizleSources({ type, title: targetTitle, originalTitle, titles: candidateTitles, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : Promise.resolve([]),
+
+    isMovie
+      ? fetchWebteizleSources({ type, title: targetTitle, originalTitle, titles: candidateTitles, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      : Promise.resolve([]),
   ];
 
   // Alias expansion task

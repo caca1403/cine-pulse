@@ -1,5 +1,5 @@
 const PUBLIC_API_ORIGIN = 'https://cine-pulse-drab.vercel.app';
-const MKV_RELAY_ORIGIN = (import.meta.env.VITE_MKV_RELAY_ORIGIN || '').replace(/\/$/, '');
+const MKV_RELAY_ORIGIN = (import.meta.env?.VITE_MKV_RELAY_ORIGIN || '').replace(/\/$/, '');
 
 export function apiUrl(path = '') {
   if (!path || /^https?:\/\//i.test(path)) return path;
