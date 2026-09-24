@@ -11611,19 +11611,30 @@ video::cue {
 }
 
 @media (max-width: 620px) {
+  /* Mobilde bulut butonunu sol alta taşı — reaksiyon dock (sağ üst) ile çakışmasın */
   .room-player-hud {
-    top: 56px;
-    right: 12px;
-    align-items: flex-end;
+    top: auto;
+    bottom: 60px;
+    right: auto;
+    left: 10px;
+    align-items: flex-start;
   }
   .room-cloud-pill-btn {
     padding: 5px 10px;
     font-size: 0.68rem;
     gap: 5px;
   }
+  /* Popover sola doğru açılsın */
   .room-cloud-popover {
     width: calc(100vw - 24px);
     max-width: 310px;
+    right: auto;
+    left: 0;
+  }
+  /* Popover ok işareti sol üstte olsun */
+  .room-cloud-popover::after {
+    right: auto;
+    left: 28px;
   }
 }
 .decision-room-footer { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:17px; color:var(--text-sub); font-size:.77rem; }.decision-room-footer strong { color:#e2e8f0; }.decision-room-footer button { padding:8px 10px; }
