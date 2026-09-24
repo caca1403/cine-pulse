@@ -44,7 +44,7 @@ export function getTraktSettings() {
   return {
     autoScrobble: true,
     scrobbleThreshold: 80, // % progress to mark as completed
-    autoSyncOnLaunch: false
+    autoSyncOnLaunch: true
   };
 }
 
@@ -53,6 +53,28 @@ export function saveTraktSettings(settings) {
   const merged = { ...current, ...settings };
   localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(merged));
   return merged;
+}
+
+let autoSyncRanThisSession = false;
+
+/**
+ * Background auto-sync on app launch
+ */
+export function initTraktAutoSync(storageMethods) {
+  const settings = getTraktSettings();
+  if (!settings.autoSyncOnLaunch || !isTraktConnected() || autoSyncRanThisSession) return;
+
+  autoSyncRanThisSession = true;
+  // Delay by 4s to ensure zero impact on initial view render
+  window.setTimeout(async () => {
+    try {
+      console.log('[Trakt] Başlangıç otomatik senkronizasyonu çalışıyor...');
+      await performFullSync(storageMethods);
+      console.log('[Trakt] Başlangıç otomatik senkronizasyonu tamamlandı.');
+    } catch (err) {
+      console.warn('[Trakt] Otomatik senkronizasyon uyarısı:', err);
+    }
+  }, 4000);
 }
 
 /**

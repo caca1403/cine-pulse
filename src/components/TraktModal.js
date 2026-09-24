@@ -228,6 +228,16 @@ export function openTraktModal() {
               <div class="trakt-settings-list">
                 <div class="trakt-setting-row">
                   <div>
+                    <div class="trakt-setting-title">Açılışta Otomatik Eşitle</div>
+                    <div class="trakt-setting-sub">CinePulse açıldığında izleme geçmişini arka planda otomatik olarak Trakt ile eşitler.</div>
+                  </div>
+                  <label class="switch-toggle">
+                    <input type="checkbox" id="trakt-toggle-autosync" ${settings.autoSyncOnLaunch ? 'checked' : ''} />
+                    <span class="slider-round"></span>
+                  </label>
+                </div>
+                <div class="trakt-setting-row">
+                  <div>
                     <div class="trakt-setting-title">Otomatik Scrobble (Canlı Takip)</div>
                     <div class="trakt-setting-sub">Oynatıcı açıkken içeriğin izleme durumunu Trakt'a anlık bildirir.</div>
                   </div>
@@ -406,6 +416,15 @@ export function openTraktModal() {
             wipeTraktBtn.disabled = false;
             render('main');
           }
+        };
+      }
+
+      // Auto-Sync Toggle
+      const autoSyncToggle = document.getElementById('trakt-toggle-autosync');
+      if (autoSyncToggle) {
+        autoSyncToggle.onchange = (e) => {
+          traktService.saveTraktSettings({ autoSyncOnLaunch: e.target.checked });
+          showToast(e.target.checked ? 'Açılışta otomatik eşitleme açıldı' : 'Açılışta otomatik eşitleme kapatıldı', 'info');
         };
       }
 
