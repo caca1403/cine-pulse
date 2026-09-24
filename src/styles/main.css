@@ -841,12 +841,632 @@ img {
 }
 
 /* --------------------------------------------------------------------------
-   4. Next-Gen Mobile Dynamic Glass Island Dock & Space Hub Sheet
+   4. Mobile Dynamic Glass Island Dock
 -------------------------------------------------------------------------- */
 .mobile-dynamic-dock,
 .apple-bottom-dock {
   display: none;
 }
+
+.mobile-hub-backdrop {
+  display: none;
+}
+
+/* Dock-level .active-pill style for Listem link */
+.btn-nav-action-pill.active-pill {
+  background: rgba(245, 158, 11, 0.18) !important;
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  color: #fbbf24 !important;
+}
+
+@media (max-width: 1180px) {
+  body {
+    padding-bottom: 5.5rem;
+  }
+
+  /* Glass Island Dock */
+  .mobile-dynamic-dock {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 24px);
+    max-width: 400px;
+    height: 60px;
+    background: rgba(9, 13, 24, 0.92);
+    backdrop-filter: blur(30px) saturate(200%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 999px;
+    box-shadow: 0 16px 45px rgba(0, 0, 0, 0.9), 0 0 24px rgba(168, 85, 247, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+    z-index: 9999;
+    padding: 0 0.5rem;
+  }
+
+  /* Dock Items */
+  .dynamic-dock-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: #64748b;
+    text-decoration: none;
+    padding: 5px 0;
+    border-radius: 999px;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .dynamic-dock-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 52px;
+  }
+
+  .dynamic-dock-item svg,
+  .dynamic-dock-item i {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+  }
+
+  .dynamic-dock-item:active {
+    transform: scale(0.9);
+  }
+
+  .dynamic-dock-item.active,
+  .dynamic-dock-item:hover {
+    color: #ffffff;
+  }
+
+  .dynamic-dock-item.active svg,
+  .dynamic-dock-item.active i {
+    color: #fbbf24;
+    transform: translateY(-1px) scale(1.1);
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.65));
+  }
+
+  /* Live dock item – red glow */
+  .dynamic-dock-live svg,
+  .dynamic-dock-live i {
+    color: #f87171;
+  }
+  .dynamic-dock-live.active svg,
+  .dynamic-dock-live.active i {
+    color: #ef4444;
+    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.7));
+  }
+
+  /* Dock live pulse dot */
+  .dock-live-dot {
+    position: absolute;
+    top: -1px;
+    right: -2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+    animation: liveDotPulseAnim 1.6s infinite;
+  }
+
+  /* Dock icon wrapper */
+  .dock-icon-rel {
+    position: relative;
+    display: inline-flex;
+  }
+
+  /* Center Hub Orb */
+  .dynamic-dock-hub-orb {
+    position: relative;
+    top: -12px;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #f59e0b 100%);
+    border: 3.5px solid #080c16;
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.7), 0 0 20px rgba(236, 72, 153, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+    margin: 0 0.25rem;
+    animation: hubOrbPulse 3.2s ease-in-out infinite;
+    outline: none;
+  }
+
+  .dynamic-dock-hub-orb:active {
+    transform: scale(0.9) translateY(-8px);
+  }
+
+  .hub-orb-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hub-orb-inner svg,
+  .hub-orb-inner i {
+    width: 20px;
+    height: 20px;
+    color: #fff;
+  }
+
+  .hub-orb-label {
+    font-size: 0.5rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    color: #fff;
+    line-height: 1;
+    margin-top: 1px;
+  }
+
+  @keyframes hubOrbPulse {
+    0%, 100% {
+      box-shadow: 0 8px 24px rgba(124, 58, 237, 0.7), 0 0 18px rgba(236, 72, 153, 0.45);
+      transform: translateY(0) top -12px;
+    }
+    50% {
+      box-shadow: 0 10px 32px rgba(168, 85, 247, 0.9), 0 0 28px rgba(245, 158, 11, 0.6);
+      transform: translateY(-2px);
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Desktop Hub – Mega Dropdown (slides below navbar)
+-------------------------------------------------------------------------- */
+
+/* Hub trigger button in the nav */
+.nav-hub-li {
+  position: relative;
+  list-style: none;
+}
+
+.nav-link-hub-trigger {
+  cursor: pointer;
+  color: #cbd5e1 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent !important;
+  border: none !important;
+}
+
+.nav-link-hub-trigger:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.hub-caret {
+  transition: transform 0.22s ease;
+  color: #64748b;
+}
+
+.nav-link-hub-trigger[aria-expanded="true"] .hub-caret {
+  transform: rotate(180deg);
+  color: #a855f7;
+}
+
+/* Mega dropdown panel */
+.hub-mega-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  width: 460px;
+  background: rgba(9, 13, 24, 0.97);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(168, 85, 247, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2000;
+  overflow: hidden;
+}
+
+.hub-mega-dropdown.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.hub-mega-inner {
+  display: flex;
+  padding: 0.7rem;
+  gap: 0;
+}
+
+.hub-mega-col {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+}
+
+.hub-mega-divider {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 0.4rem 0;
+  flex-shrink: 0;
+}
+
+.hub-mega-section-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #475569;
+  padding: 0 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.hub-mega-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 12px;
+  text-decoration: none;
+  color: #cbd5e1;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.hub-mega-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  transform: translateX(2px);
+}
+
+.hub-mega-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hub-mega-item-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  line-height: 1.2;
+}
+
+.hub-mega-item-sub {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 500;
+  line-height: 1.2;
+  margin-top: 1px;
+}
+
+/* --------------------------------------------------------------------------
+   6. Mobile Hub Bottom Sheet
+-------------------------------------------------------------------------- */
+
+/* Backdrop */
+.mobile-hub-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 10000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+@media (max-width: 1180px) {
+  .mobile-hub-backdrop {
+    display: flex;
+  }
+}
+
+/* Sheet panel */
+.mobile-hub-sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 82vh;
+  background: rgba(10, 14, 26, 0.98);
+  border-radius: 26px 26px 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: sheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.mobile-hub-backdrop.hidden .mobile-hub-sheet,
+.mobile-hub-sheet.sheet-closing {
+  animation: sheetSlideDown 0.28s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes sheetSlideDown {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+
+/* Sheet drag handle */
+.hub-sheet-handle-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 0.65rem 0 0.4rem;
+  flex-shrink: 0;
+}
+
+.hub-sheet-handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Sheet header */
+.hub-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.1rem 0.8rem;
+  flex-shrink: 0;
+}
+
+.hub-sheet-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hub-sheet-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.45);
+}
+
+.hub-sheet-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.hub-sheet-subtitle {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.hub-sheet-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.hub-sheet-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+/* Sheet scrollable body */
+.hub-sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 1.1rem 2.5rem;
+  overscroll-behavior: contain;
+}
+
+/* Section labels */
+.hub-sheet-section-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #475569;
+  margin-bottom: 0.55rem;
+}
+
+/* 2-col grid for main cards */
+.hub-sheet-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.hub-sheet-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.9rem 0.85rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  text-decoration: none;
+  color: #f1f5f9;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hub-sheet-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--card-color, #6366f1), transparent 60%);
+  opacity: 0.08;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.hub-sheet-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.hub-sheet-card:hover::before {
+  opacity: 0.15;
+}
+
+.hub-sheet-card svg,
+.hub-sheet-card i {
+  color: var(--card-color, #6366f1);
+}
+
+.hub-sheet-card-title {
+  font-size: 0.88rem;
+  font-weight: 750;
+  color: #f1f5f9;
+}
+
+.hub-sheet-card-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+/* 3-col chip row for genres */
+.hub-sheet-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.hub-sheet-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.5rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: #cbd5e1;
+  text-decoration: none;
+  transition: all 0.18s ease;
+}
+
+.hub-sheet-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* Tool rows */
+.hub-sheet-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hub-sheet-tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.8rem 0.9rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+}
+
+.hub-sheet-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.hub-sheet-tool-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hub-sheet-tool-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hub-sheet-tool-title {
+  font-size: 0.88rem;
+  font-weight: 750;
+  color: #f1f5f9;
+}
+
+.hub-sheet-tool-sub {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
 
 .mobile-hub-backdrop {
   display: none;

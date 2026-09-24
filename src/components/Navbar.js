@@ -1,82 +1,167 @@
 import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
-   CinePulse Studio - Next-Gen Luxury Navigation System
-   Desktop & Mobile: Unified visionOS Space Hub Command Center & Dynamic Island Dock
+   CinePulse Studio – v3 Navigation
+   Desktop : Floating bar  →  [Logo | Links] ————— [Canlı | Birlikte | Listem | Search | Bell | Profile]
+   Mobile  : Top bar (Logo + Search + Bell + Profile)  +  Bottom Dock
+             Dock: Ana Sayfa | Canlı | ✦Evren | Birlikte | Listem
+   Hub     : Mega-dropdown (desktop) / Bottom-sheet (mobile)
+             Contains ONLY items NOT in the primary nav:
+             Anime, Çizgi, Belgesel, Detaylı Keşif, Şanslı Çark, Kısa Diziler
    ========================================================================== */
 
 import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES, fetchTrending } from '../services/tmdbApi.js';
-import { openProfileModal, triggerProfileSwitchTransition } from './ProfileModal.js';
-import { getActiveProfile, setActiveProfile, getProfiles } from '../services/storage.js';
-import { openNotificationCenterModal, getUnreadNotificationCount, updateNotificationBellBadge } from './NotificationCenterModal.js';
+import { openProfileModal } from './ProfileModal.js';
+import { getActiveProfile } from '../services/storage.js';
+import { openNotificationCenterModal, getUnreadNotificationCount } from './NotificationCenterModal.js';
 import { openDecisionRoomModal } from './DecisionRoomModal.js';
 
 export function renderNavbar(currentView = 'home') {
   const activeProfile = getActiveProfile();
   const unreadCount = getUnreadNotificationCount();
+  const isKid = activeProfile.isKid;
 
-  const navbarHTML = `
-    <!-- Top Universal Header -->
+  return `
+    <!-- ================================================================
+         TOP NAVBAR
+    ================================================================ -->
     <nav class="navbar" id="main-navbar">
       <div class="nav-container">
-        <!-- Left: Brand Logo & Desktop Segmented Navigation Track -->
+
+        <!-- Left: Brand + Desktop Primary Links -->
         <div class="nav-left-group">
           <a href="#home" class="nav-brand" id="nav-brand-logo" title="CinePulse Studio">
             <div class="brand-logo-icon">
-              <i data-lucide="clapperboard" style="width:18px; height:18px; color:#fff;"></i>
+              <i data-lucide="clapperboard" style="width:17px;height:17px;color:#fff;"></i>
             </div>
             <span class="brand-name">Cine<span class="brand-highlight">Pulse</span></span>
           </a>
 
-          <!-- Desktop Apple-Style Segmented Navigation (Clean & Uncluttered) -->
+          <!-- Desktop Primary Nav Links -->
           <ul class="nav-links desktop-nav-links">
-            ${activeProfile.isKid ? `
+            ${isKid ? `
               <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}">Ana Sayfa</a></li>
               <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}">Animasyonlar</a></li>
               <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}">Çizgi Diziler</a></li>
               <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}">Anime</a></li>
-              <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}">Listem</a></li>
             ` : `
               <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}">Ana Sayfa</a></li>
               <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}">Filmler</a></li>
               <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}">Diziler</a></li>
-              <li>
-                <a href="#dramas" class="nav-link nav-link-dramas ${currentView === 'dramas' ? 'active' : ''}" title="ReelShort &amp; DramaBox Mini Dizileri">
-                  <span>Kısa Dizi</span>
-                  <span class="nav-drama-tag">REEL</span>
-                </a>
-              </li>
-
-              <!-- Desktop Universal Hub Trigger Button -->
-              <li>
-                <button type="button" id="btn-desktop-hub" class="nav-link nav-link-hub-trigger" title="CinePulse Evreni &amp; Tüm Kategoriler">
-                  <i data-lucide="sparkles" style="width: 14px; height: 14px; color: #c084fc;"></i>
-                  <span>Evren</span>
-                  <span class="nav-hub-badge">HUB</span>
+              <li><a href="#dramas" class="nav-link nav-link-dramas ${currentView === 'dramas' ? 'active' : ''}">
+                Kısa Dizi <span class="nav-drama-tag">REEL</span>
+              </a></li>
+              <!-- Evren Dropdown Trigger -->
+              <li class="nav-hub-li" id="nav-hub-li">
+                <button type="button" id="btn-desktop-hub" class="nav-link nav-link-hub-trigger" aria-haspopup="true" aria-expanded="false">
+                  <i data-lucide="compass" style="width:13px;height:13px;"></i>
+                  <span>Keşfet</span>
+                  <i data-lucide="chevron-down" class="hub-caret" style="width:12px;height:12px;"></i>
                 </button>
-              </li>
 
-              <li><a href="#library" class="nav-link ${currentView === 'library' ? 'active' : ''}">Listem</a></li>
+                <!-- Mega Dropdown Panel -->
+                <div class="hub-mega-dropdown" id="hub-mega-dropdown" role="menu">
+                  <div class="hub-mega-inner">
+                    <!-- Left column: Categories -->
+                    <div class="hub-mega-col">
+                      <div class="hub-mega-section-label">TÜRLER</div>
+                      <a href="#anime" class="hub-mega-item hub-nav-trigger">
+                        <div class="hub-mega-icon" style="background:rgba(56,189,248,.15);color:#38bdf8;">
+                          <i data-lucide="sparkles" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">Anime Dünyası</div>
+                          <div class="hub-mega-item-sub">Shonen, Seinen & Filmler</div>
+                        </div>
+                      </a>
+                      <a href="#cartoons" class="hub-mega-item hub-nav-trigger">
+                        <div class="hub-mega-icon" style="background:rgba(245,158,11,.15);color:#f59e0b;">
+                          <i data-lucide="palette" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">Çizgi Diziler</div>
+                          <div class="hub-mega-item-sub">Nostalji & Animasyon</div>
+                        </div>
+                      </a>
+                      <a href="#documentary" class="hub-mega-item hub-nav-trigger">
+                        <div class="hub-mega-icon" style="background:rgba(16,185,129,.15);color:#10b981;">
+                          <i data-lucide="book-open" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">Belgesel Kulübü</div>
+                          <div class="hub-mega-item-sub">Bilim, Doğa & Tarih</div>
+                        </div>
+                      </a>
+                      <a href="#discover" class="hub-mega-item hub-nav-trigger">
+                        <div class="hub-mega-icon" style="background:rgba(168,85,247,.15);color:#c084fc;">
+                          <i data-lucide="sliders-horizontal" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">Detaylı Keşif</div>
+                          <div class="hub-mega-item-sub">Yıl, Tür & Filtreler</div>
+                        </div>
+                      </a>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="hub-mega-divider"></div>
+
+                    <!-- Right column: Tools -->
+                    <div class="hub-mega-col">
+                      <div class="hub-mega-section-label">ARAÇLAR</div>
+                      <button type="button" data-open-decision-room class="hub-mega-item hub-tool-btn">
+                        <div class="hub-mega-icon" style="background:rgba(99,102,241,.18);color:#818cf8;">
+                          <i data-lucide="users-round" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">Birlikte Seç</div>
+                          <div class="hub-mega-item-sub">Anonim ortak karar odası</div>
+                        </div>
+                      </button>
+                      <button type="button" id="btn-hub-random-spin" class="hub-mega-item hub-tool-btn">
+                        <div class="hub-mega-icon" style="background:rgba(245,158,11,.15);color:#fbbf24;">
+                          <i data-lucide="dices" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">Şanslı Çark</div>
+                          <div class="hub-mega-item-sub">"Ne izlesem?" rastgele seç</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </li>
             `}
           </ul>
         </div>
 
-        <!-- Right: Actions Cluster (Desktop & Mobile Adaptive) -->
+        <!-- Right: Primary Actions always visible -->
         <div class="nav-actions">
-          ${!activeProfile.isKid ? `
-            <!-- Live TV Pill (Desktop Only) -->
-            <a href="#livetv" class="btn-nav-live desktop-only ${currentView === 'livetv' ? 'active' : ''}" title="Canlı TV Yayınları">
+          ${!isKid ? `
+            <!-- Canlı TV – always visible desktop pill -->
+            <a href="#livetv" class="btn-nav-live desktop-only ${currentView === 'livetv' ? 'active' : ''}" title="Canlı TV">
               <span class="live-dot-pulse"></span>
               <span>CANLI</span>
             </a>
 
-            <!-- Birlikte Seç Pill (Desktop Only) -->
-            <button data-open-decision-room class="btn-nav-action-pill desktop-only" title="Arkadaşlarınla Anonim Ortak Seçim">
-              <i data-lucide="users-round" style="width: 14px; height: 14px;"></i>
+            <!-- Birlikte – always visible desktop pill -->
+            <button data-open-decision-room class="btn-nav-action-pill desktop-only" title="Birlikte Seç">
+              <i data-lucide="users-round" style="width:13px;height:13px;"></i>
               <span>Birlikte</span>
             </button>
-          ` : ''}
 
-          <!-- Desktop Search Box (Smooth Expandable) -->
+            <!-- Listem – always visible desktop pill -->
+            <a href="#library" class="btn-nav-action-pill desktop-only ${currentView === 'library' ? 'active-pill' : ''}" title="Listem">
+              <i data-lucide="bookmark" style="width:13px;height:13px;"></i>
+              <span>Listem</span>
+            </a>
+          ` : `
+            <a href="#library" class="btn-nav-action-pill desktop-only ${currentView === 'library' ? 'active-pill' : ''}">
+              <i data-lucide="bookmark" style="width:13px;height:13px;"></i>
+              <span>Listem</span>
+            </a>
+          `}
+
+          <!-- Desktop Search Box -->
           <div class="search-box desktop-search-box desktop-only">
             <i data-lucide="search" class="search-icon"></i>
             <input type="text" id="nav-search-input" class="search-input" placeholder="Ara..." autocomplete="off" />
@@ -84,70 +169,81 @@ export function renderNavbar(currentView = 'home') {
             <div id="search-overlay" class="search-results-overlay glass-panel hidden"></div>
           </div>
 
-          <!-- Notification Bell Button -->
+          <!-- Notification Bell -->
           <button id="btn-nav-notifications" class="btn-action-icon btn-nav-bell" title="Bildirimler">
-            <i data-lucide="bell" style="width: 16px; height: 16px;"></i>
+            <i data-lucide="bell" style="width:16px;height:16px;"></i>
             <span id="nav-notif-badge" class="nav-notif-dot ${unreadCount > 0 ? '' : 'hidden'}">${unreadCount}</span>
           </button>
 
-          <!-- Profile Switcher Button (Compact Circular Avatar) -->
+          <!-- Profile Avatar -->
           <button id="btn-nav-profile" class="btn-nav-avatar" title="Profil: ${activeProfile.name}">
-            <div class="nav-avatar-circle" style="border-color: ${activeProfile.color || '#f59e0b'}; background: ${activeProfile.color || '#f59e0b'}22;">
-              <i data-lucide="${activeProfile.avatar || (activeProfile.isKid ? 'smile' : 'user')}" style="width: 16px; height: 16px; color: ${activeProfile.color || '#f59e0b'};"></i>
+            <div class="nav-avatar-circle" style="border-color:${activeProfile.color || '#f59e0b'};background:${activeProfile.color || '#f59e0b'}22;">
+              <i data-lucide="${activeProfile.avatar || (isKid ? 'smile' : 'user')}" style="width:15px;height:15px;color:${activeProfile.color || '#f59e0b'};"></i>
             </div>
           </button>
 
-          <!-- Mobile Only: Search Trigger Icon -->
-          <button id="btn-mobile-search-toggle" class="btn-action-icon mobile-only" aria-label="Arama Yap">
-            <i data-lucide="search" style="width: 18px; height: 18px;"></i>
+          <!-- Mobile: search toggle -->
+          <button id="btn-mobile-search-toggle" class="btn-action-icon mobile-only" aria-label="Ara">
+            <i data-lucide="search" style="width:18px;height:18px;"></i>
           </button>
         </div>
       </div>
 
-      <!-- Full-Width Mobile Expandable Search Row -->
+      <!-- Mobile Expandable Search Row -->
       <div id="mobile-search-row" class="mobile-search-row glass-panel hidden">
         <div class="mobile-search-input-wrapper">
           <i data-lucide="search" class="search-icon"></i>
           <input type="text" id="mobile-search-input" class="mobile-search-input" placeholder="Dizi, film veya kısa dizi ara..." autocomplete="off" />
-          <button id="btn-mobile-search-close" class="btn-icon">
-            <i data-lucide="x"></i>
-          </button>
+          <button id="btn-mobile-search-close" class="btn-icon"><i data-lucide="x"></i></button>
         </div>
         <div id="mobile-search-overlay" class="search-results-overlay glass-panel hidden"></div>
       </div>
     </nav>
 
-    <!-- ====================================================================
-         Next-Gen Mobile "Dynamic Glass Capsule" Dock
-         Ultra Clean 4-Item Layout + Floating Center Glow "✦ EVREN" Orb
-         ==================================================================== -->
+    <!-- ================================================================
+         MOBILE BOTTOM DOCK
+         Items: Ana Sayfa | Canlı | ✦Evren | Birlikte | Listem
+    ================================================================ -->
     <div class="mobile-dynamic-dock" id="mobile-bottom-dock">
       <a href="#home" class="dynamic-dock-item ${currentView === 'home' ? 'active' : ''}">
         <i data-lucide="home"></i>
         <span>Ana Sayfa</span>
       </a>
 
-      <!-- Kısa Dizi with glowing REEL dot -->
-      <a href="#dramas" class="dynamic-dock-item dynamic-dock-dramas ${currentView === 'dramas' ? 'active' : ''}" title="Reel Kısa Diziler">
-        <div class="dock-icon-rel">
-          <i data-lucide="clapperboard"></i>
-          <span class="dock-micro-dot"></span>
-        </div>
-        <span>Kısa Dizi</span>
-      </a>
+      ${!isKid ? `
+        <a href="#livetv" class="dynamic-dock-item dynamic-dock-live ${currentView === 'livetv' ? 'active' : ''}">
+          <div class="dock-icon-rel">
+            <i data-lucide="radio"></i>
+            <span class="dock-live-dot"></span>
+          </div>
+          <span>Canlı</span>
+        </a>
+      ` : `
+        <a href="#movies" class="dynamic-dock-item ${currentView === 'movies' ? 'active' : ''}">
+          <i data-lucide="film"></i>
+          <span>Filmler</span>
+        </a>
+      `}
 
-      <!-- Center Super FAB: Glowing Hub Orb -->
-      <button class="dynamic-dock-hub-orb" id="btn-open-mobile-hub" aria-label="CinePulse Evreni &amp; Hub">
+      <!-- Center Orb – Evren Hub -->
+      <button class="dynamic-dock-hub-orb" id="btn-open-mobile-hub" aria-label="CinePulse Evreni">
         <div class="hub-orb-inner">
-          <i data-lucide="sparkles" style="width: 20px; height: 20px; color: #fff;"></i>
+          <i data-lucide="sparkles" style="width:20px;height:20px;color:#fff;"></i>
         </div>
         <span class="hub-orb-label">EVREN</span>
       </button>
 
-      <a href="#discover" class="dynamic-dock-item ${currentView === 'discover' ? 'active' : ''}">
-        <i data-lucide="compass"></i>
-        <span>Keşfet</span>
-      </a>
+      ${!isKid ? `
+        <button data-open-decision-room class="dynamic-dock-item dynamic-dock-birlikte">
+          <i data-lucide="users-round"></i>
+          <span>Birlikte</span>
+        </button>
+      ` : `
+        <a href="#anime" class="dynamic-dock-item ${currentView === 'anime' ? 'active' : ''}">
+          <i data-lucide="sparkles"></i>
+          <span>Anime</span>
+        </a>
+      `}
 
       <a href="#library" class="dynamic-dock-item ${currentView === 'library' ? 'active' : ''}">
         <i data-lucide="bookmark"></i>
@@ -155,364 +251,270 @@ export function renderNavbar(currentView = 'home') {
       </a>
     </div>
 
-    <!-- ====================================================================
-         Universal "CinePulse Evreni" Space Hub Command Center (PC & Mobile)
-         Desktop: Floating Acrylic Spatial Modal / Mobile: visionOS Bottom Sheet
-         ==================================================================== -->
-    <div class="space-hub-backdrop hidden" id="space-hub-backdrop">
-      <div class="space-hub-dialog" id="space-hub-dialog">
-        <!-- Ambient Radial Aura -->
-        <div class="hub-ambient-glow"></div>
-
-        <!-- Mobile Sheet Drag Handle -->
-        <div class="hub-sheet-handle-wrap mobile-only-flex">
+    <!-- ================================================================
+         MOBILE HUB BOTTOM SHEET
+         (Secondary categories not in the main dock)
+    ================================================================ -->
+    <div class="mobile-hub-backdrop hidden" id="mobile-hub-backdrop">
+      <div class="mobile-hub-sheet" id="mobile-hub-sheet">
+        <!-- Drag Handle -->
+        <div class="hub-sheet-handle-wrap">
           <div class="hub-sheet-handle"></div>
         </div>
 
-        <!-- Hub Top Header -->
-        <div class="hub-header">
-          <div class="hub-header-left">
-            <div class="hub-header-icon-box">
-              <i data-lucide="sparkles" style="width: 22px; height: 22px; color: #ffffff;"></i>
+        <!-- Sheet Header -->
+        <div class="hub-sheet-header">
+          <div class="hub-sheet-header-left">
+            <div class="hub-sheet-icon-box">
+              <i data-lucide="sparkles" style="width:18px;height:18px;color:#fff;"></i>
             </div>
-            <div class="hub-header-titles">
-              <div class="hub-title-line">
-                <h3 class="hub-header-title">CinePulse Evreni</h3>
-                <span class="hub-title-badge">STUDIO</span>
-              </div>
-              <p class="hub-header-sub">Sinema, diziler, canlı yayınlar ve stüdyo araçları</p>
+            <div>
+              <div class="hub-sheet-title">CinePulse Evreni</div>
+              <div class="hub-sheet-subtitle">Tüm kategoriler & araçlar</div>
             </div>
           </div>
-          <button class="hub-close-btn" id="btn-close-space-hub" aria-label="Kapat (ESC)" title="Kapat (ESC)">
-            <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+          <button id="btn-close-mobile-hub" class="hub-sheet-close" aria-label="Kapat">
+            <i data-lucide="x" style="width:18px;height:18px;"></i>
           </button>
         </div>
 
-        <!-- Hub Scrollable Content -->
-        <div class="hub-scroll-body">
-          <!-- 1. Flagships: Filmler & Diziler (Both Star Giants Together!) -->
-          <div class="hub-section-head">
-            <span class="hub-section-tag">ANA KATALOG</span>
-            <div class="hub-section-line"></div>
-          </div>
-          <div class="hub-flagships-grid">
-            <a href="#movies" class="hub-flagship-card card-film-glow hub-nav-trigger">
-              <div class="flagship-glass-tint"></div>
-              <div class="flagship-icon-box" style="background: linear-gradient(135deg, #0284c7, #06b6d4);">
-                <i data-lucide="film" style="width: 24px; height: 24px; color: #fff;"></i>
-              </div>
-              <div class="flagship-info">
-                <div class="flagship-heading">
-                  <span class="flagship-name">Filmler</span>
-                  <span class="flagship-badge badge-cyan">4K UHD</span>
-                </div>
-                <span class="flagship-sub">Yerli &amp; Yabancı Gişe Filmleri</span>
-              </div>
-              <div class="flagship-arrow-box">
-                <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i>
-              </div>
+        <!-- Sheet Grid -->
+        <div class="hub-sheet-body">
+          <!-- Row 1: Main content shortcuts (film/dizi still useful for quick access on mobile) -->
+          <div class="hub-sheet-section-label">HIZLI ERİŞİM</div>
+          <div class="hub-sheet-grid-2">
+            <a href="#movies" class="hub-sheet-card hub-nav-trigger" style="--card-color:#0284c7;">
+              <i data-lucide="film" style="width:22px;height:22px;"></i>
+              <span class="hub-sheet-card-title">Filmler</span>
+              <span class="hub-sheet-card-badge">4K UHD</span>
             </a>
-
-            <a href="#series" class="hub-flagship-card card-series-glow hub-nav-trigger">
-              <div class="flagship-glass-tint"></div>
-              <div class="flagship-icon-box" style="background: linear-gradient(135deg, #f59e0b, #ef4444);">
-                <i data-lucide="tv" style="width: 24px; height: 24px; color: #fff;"></i>
-              </div>
-              <div class="flagship-info">
-                <div class="flagship-heading">
-                  <span class="flagship-name">Diziler</span>
-                  <span class="flagship-badge badge-amber">TREND</span>
-                </div>
-                <span class="flagship-sub">Popüler Yapımlar &amp; Tüm Sezonlar</span>
-              </div>
-              <div class="flagship-arrow-box">
-                <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i>
-              </div>
+            <a href="#series" class="hub-sheet-card hub-nav-trigger" style="--card-color:#f59e0b;">
+              <i data-lucide="tv" style="width:22px;height:22px;"></i>
+              <span class="hub-sheet-card-title">Diziler</span>
+              <span class="hub-sheet-card-badge">TREND</span>
+            </a>
+            <a href="#dramas" class="hub-sheet-card hub-nav-trigger" style="--card-color:#a855f7;">
+              <i data-lucide="clapperboard" style="width:22px;height:22px;"></i>
+              <span class="hub-sheet-card-title">Kısa Dizi</span>
+              <span class="hub-sheet-card-badge">REEL</span>
+            </a>
+            <a href="#discover" class="hub-sheet-card hub-nav-trigger" style="--card-color:#6366f1;">
+              <i data-lucide="sliders-horizontal" style="width:22px;height:22px;"></i>
+              <span class="hub-sheet-card-title">Keşif</span>
+              <span class="hub-sheet-card-badge">FİLTRE</span>
             </a>
           </div>
 
-          <!-- 2. Special Formats: Kısa Diziler & Canlı TV -->
-          <div class="hub-section-head">
-            <span class="hub-section-tag">ÖZEL YAYINLAR &amp; MİNİ FORMAT</span>
-            <div class="hub-section-line"></div>
-          </div>
-          <div class="hub-specials-grid">
-            <a href="#dramas" class="hub-special-card card-dramas-glow hub-nav-trigger">
-              <div class="special-icon-box" style="background: linear-gradient(135deg, #7c3aed, #ec4899);">
-                <i data-lucide="clapperboard" style="width: 22px; height: 22px; color: #fff;"></i>
-              </div>
-              <div class="special-info">
-                <div class="special-heading">
-                  <span class="special-name">Kısa Diziler</span>
-                  <span class="special-badge badge-vip">VIP REEL</span>
-                </div>
-                <span class="special-sub">DramaBox &amp; ReelShort Dikey Dizileri</span>
-              </div>
+          <!-- Row 2: Niche categories -->
+          <div class="hub-sheet-section-label" style="margin-top:1.1rem;">TÜRLER</div>
+          <div class="hub-sheet-grid-3">
+            <a href="#anime" class="hub-sheet-chip hub-nav-trigger">
+              <i data-lucide="sparkles" style="width:14px;height:14px;color:#38bdf8;"></i>
+              Anime
             </a>
-
-            <a href="#livetv" class="hub-special-card card-livetv-glow hub-nav-trigger">
-              <div class="special-icon-box" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
-                <i data-lucide="radio" style="width: 22px; height: 22px; color: #fff;"></i>
-              </div>
-              <div class="special-info">
-                <div class="special-heading">
-                  <span class="special-name">Canlı TV</span>
-                  <span class="special-badge badge-live"><span class="badge-live-dot"></span>CANLI</span>
-                </div>
-                <span class="special-sub">30+ Ulusal &amp; Tematik Kanal</span>
-              </div>
+            <a href="#cartoons" class="hub-sheet-chip hub-nav-trigger">
+              <i data-lucide="palette" style="width:14px;height:14px;color:#f59e0b;"></i>
+              Çizgi
+            </a>
+            <a href="#documentary" class="hub-sheet-chip hub-nav-trigger">
+              <i data-lucide="book-open" style="width:14px;height:14px;color:#10b981;"></i>
+              Belgesel
             </a>
           </div>
 
-          <!-- 3. Curated Genres: Anime, Çizgi Dizi, Belgesel, Gelişmiş Keşfet -->
-          <div class="hub-section-head">
-            <span class="hub-section-tag">TÜRLER &amp; KOLEKSİYONLAR</span>
-            <div class="hub-section-line"></div>
-          </div>
-          <div class="hub-genres-grid">
-            <a href="#anime" class="hub-genre-card hub-nav-trigger">
-              <div class="genre-icon-box" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
-                <i data-lucide="sparkles" style="width: 18px; height: 18px;"></i>
+          <!-- Row 3: Tools -->
+          <div class="hub-sheet-section-label" style="margin-top:1.1rem;">ARAÇLAR</div>
+          <div class="hub-sheet-tools">
+            <button type="button" data-open-decision-room class="hub-sheet-tool-btn hub-nav-trigger">
+              <div class="hub-sheet-tool-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+                <i data-lucide="users-round" style="width:18px;height:18px;color:#fff;"></i>
               </div>
-              <div class="genre-info">
-                <span class="genre-name">Anime Dünyası</span>
-                <span class="genre-sub">Shonen, Seinen &amp; Filmler</span>
+              <div class="hub-sheet-tool-text">
+                <span class="hub-sheet-tool-title">Birlikte Seç</span>
+                <span class="hub-sheet-tool-sub">Arkadaşlarınla ortak karar odası</span>
               </div>
-            </a>
-
-            <a href="#cartoons" class="hub-genre-card hub-nav-trigger">
-              <div class="genre-icon-box" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
-                <i data-lucide="palette" style="width: 18px; height: 18px;"></i>
-              </div>
-              <div class="genre-info">
-                <span class="genre-name">Çizgi Diziler</span>
-                <span class="genre-sub">Nostalji &amp; Animasyon</span>
-              </div>
-            </a>
-
-            <a href="#documentary" class="hub-genre-card hub-nav-trigger">
-              <div class="genre-icon-box" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
-                <i data-lucide="book-open" style="width: 18px; height: 18px;"></i>
-              </div>
-              <div class="genre-info">
-                <span class="genre-name">Belgesel Kulübü</span>
-                <span class="genre-sub">Bilim, Doğa &amp; Tarih</span>
-              </div>
-            </a>
-
-            <a href="#discover" class="hub-genre-card hub-nav-trigger">
-              <div class="genre-icon-box" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">
-                <i data-lucide="sliders-horizontal" style="width: 18px; height: 18px;"></i>
-              </div>
-              <div class="genre-info">
-                <span class="genre-name">Detaylı Keşif</span>
-                <span class="genre-sub">Yıl, Tür &amp; Filtreler</span>
-              </div>
-            </a>
-          </div>
-
-          <!-- 4. Interactive Studio Tools: Birlikte Seç & Şanslı Çark -->
-          <div class="hub-section-head">
-            <span class="hub-section-tag">İNTERAKTİF STÜDYO</span>
-            <div class="hub-section-line"></div>
-          </div>
-          <div class="hub-tools-grid">
-            <button type="button" data-open-decision-room class="hub-tool-item tool-decision">
-              <div class="tool-icon-box" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
-                <i data-lucide="users-round" style="width: 20px; height: 20px; color: #fff;"></i>
-              </div>
-              <div class="tool-info">
-                <span class="tool-name">Birlikte Seç (Ortak Karar Odası)</span>
-                <span class="tool-sub">Arkadaşlarınla anlık oda kur, anonim oy kullan ve ortak filmini seç</span>
-              </div>
-              <i data-lucide="chevron-right" class="tool-chevron"></i>
+              <i data-lucide="chevron-right" style="width:14px;height:14px;color:#64748b;margin-left:auto;flex-shrink:0;"></i>
             </button>
-
-            <button type="button" id="btn-hub-random-spin" class="hub-tool-item tool-spin">
-              <div class="tool-icon-box" style="background: linear-gradient(135deg, #f59e0b, #ef4444);">
-                <i data-lucide="dices" style="width: 20px; height: 20px; color: #fff;"></i>
+            <button type="button" id="btn-hub-random-spin-mobile" class="hub-sheet-tool-btn">
+              <div class="hub-sheet-tool-icon" style="background:linear-gradient(135deg,#f59e0b,#ef4444);">
+                <i data-lucide="dices" style="width:18px;height:18px;color:#fff;"></i>
               </div>
-              <div class="tool-info">
-                <span class="tool-name">Şanslı Çark: "Ne İzlesem?"</span>
-                <span class="tool-sub">Kararsız mısın? Tek tıkla rastgele popüler bir yapım başlatsın</span>
+              <div class="hub-sheet-tool-text">
+                <span class="hub-sheet-tool-title">Şanslı Çark</span>
+                <span class="hub-sheet-tool-sub">Rastgele popüler bir yapım seç</span>
               </div>
-              <i data-lucide="sparkles" class="tool-chevron" style="color: #fbbf24;"></i>
+              <i data-lucide="sparkles" style="width:14px;height:14px;color:#fbbf24;margin-left:auto;flex-shrink:0;"></i>
             </button>
           </div>
         </div>
       </div>
     </div>
   `;
-
-  return navbarHTML;
 }
 
-let attachedScrollHandler = null;
-let attachedSearchShortcut = null;
-let attachedOutsideSearchClick = false;
+/* ==========================================================================
+   Event Attachment
+   ========================================================================== */
+let _scrollHandler = null;
+let _searchShortcut = null;
+let _outsideSearchAttached = false;
 
 export function attachNavbarEvents(onNavigate) {
   const navbar = document.getElementById('main-navbar');
+
+  /* Scroll glassmorphism */
+  if (_scrollHandler) window.removeEventListener('scroll', _scrollHandler);
+  _scrollHandler = () => navbar?.classList.toggle('scrolled', window.scrollY > 20);
+  _scrollHandler();
+  window.addEventListener('scroll', _scrollHandler, { passive: true });
+
+  /* Mobile search toggle */
   const mobileSearchRow = document.getElementById('mobile-search-row');
-  const mobileSearchToggleBtn = document.getElementById('btn-mobile-search-toggle');
-  const mobileSearchCloseBtn = document.getElementById('btn-mobile-search-close');
-
-  if (attachedScrollHandler) window.removeEventListener('scroll', attachedScrollHandler);
-  attachedScrollHandler = () => {
-    if (window.scrollY > 20) {
-      navbar?.classList.add('scrolled');
-    } else {
-      navbar?.classList.remove('scrolled');
-    }
-  };
-  attachedScrollHandler();
-  window.addEventListener('scroll', attachedScrollHandler, { passive: true });
-
-  // Mobile Search Toggle
-  if (mobileSearchToggleBtn && mobileSearchRow) {
-    mobileSearchToggleBtn.addEventListener('click', () => {
-      mobileSearchRow.classList.toggle('hidden');
-      if (!mobileSearchRow.classList.contains('hidden')) {
-        document.getElementById('mobile-search-input')?.focus();
-      }
+  document.getElementById('btn-mobile-search-toggle')?.addEventListener('click', () => {
+    mobileSearchRow?.classList.toggle('hidden');
+    if (!mobileSearchRow?.classList.contains('hidden')) {
+      document.getElementById('mobile-search-input')?.focus();
       renderIcons();
+    }
+  });
+  document.getElementById('btn-mobile-search-close')?.addEventListener('click', () => {
+    mobileSearchRow?.classList.add('hidden');
+  });
+
+  /* Notifications */
+  document.getElementById('btn-nav-notifications')?.addEventListener('click', openNotificationCenterModal);
+
+  /* Profile */
+  document.getElementById('btn-nav-profile')?.addEventListener('click', openProfileModal);
+
+  /* ============================================================
+     DESKTOP HUB – Mega Dropdown (hover + click toggle)
+  ============================================================ */
+  const hubLi = document.getElementById('nav-hub-li');
+  const hubBtn = document.getElementById('btn-desktop-hub');
+  const hubDropdown = document.getElementById('hub-mega-dropdown');
+
+  function openDesktopHub() {
+    hubBtn?.setAttribute('aria-expanded', 'true');
+    hubDropdown?.classList.add('open');
+  }
+  function closeDesktopHub() {
+    hubBtn?.setAttribute('aria-expanded', 'false');
+    hubDropdown?.classList.remove('open');
+  }
+
+  if (hubLi) {
+    // Hover behaviour on desktop
+    hubLi.addEventListener('mouseenter', openDesktopHub);
+    hubLi.addEventListener('mouseleave', closeDesktopHub);
+
+    // Also click for keyboard / touch
+    hubBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (hubDropdown?.classList.contains('open')) closeDesktopHub();
+      else openDesktopHub();
+    });
+
+    // Close when clicking a nav-trigger inside
+    hubDropdown?.querySelectorAll('.hub-nav-trigger').forEach(el => {
+      el.addEventListener('click', closeDesktopHub);
+    });
+
+    // ESC closes
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDesktopHub();
+    });
+
+    // Click outside closes
+    document.addEventListener('click', (e) => {
+      if (!hubLi.contains(e.target)) closeDesktopHub();
     });
   }
 
-  if (mobileSearchCloseBtn && mobileSearchRow) {
-    mobileSearchCloseBtn.addEventListener('click', () => {
-      mobileSearchRow.classList.add('hidden');
-    });
-  }
+  /* Desktop hub random spin */
+  document.getElementById('btn-hub-random-spin')?.addEventListener('click', async () => {
+    closeDesktopHub();
+    await randomSpin();
+  });
 
-  const notifBtn = document.getElementById('btn-nav-notifications');
-  if (notifBtn) {
-    notifBtn.addEventListener('click', () => {
-      openNotificationCenterModal();
-    });
-  }
+  /* ============================================================
+     MOBILE HUB – Bottom Sheet
+  ============================================================ */
+  const mobileHubBackdrop = document.getElementById('mobile-hub-backdrop');
+  const mobileHubSheet = document.getElementById('mobile-hub-sheet');
 
-  const profileBtn = document.getElementById('btn-nav-profile');
-  if (profileBtn) {
-    profileBtn.addEventListener('click', () => {
-      openProfileModal();
-    });
-  }
-
-  // ====================================================================
-  // Universal Space Hub Command Center Event Handlers (PC & Mobile)
-  // ====================================================================
-  const hubBackdrop = document.getElementById('space-hub-backdrop');
-  const hubOpenMobileBtn = document.getElementById('btn-open-mobile-hub');
-  const hubOpenDesktopBtn = document.getElementById('btn-desktop-hub');
-  const hubCloseBtn = document.getElementById('btn-close-space-hub');
-
-  function openSpaceHub() {
-    if (!hubBackdrop) return;
-    hubBackdrop.classList.remove('hidden');
+  function openMobileHub() {
+    if (!mobileHubBackdrop) return;
+    mobileHubBackdrop.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
-    renderIcons(hubBackdrop);
+    renderIcons(mobileHubBackdrop);
+  }
+  function closeMobileHub() {
+    if (!mobileHubBackdrop) return;
+    mobileHubSheet?.classList.add('sheet-closing');
+    setTimeout(() => {
+      mobileHubBackdrop.classList.add('hidden');
+      mobileHubSheet?.classList.remove('sheet-closing');
+      document.body.style.overflow = '';
+    }, 280);
   }
 
-  function closeSpaceHub() {
-    if (!hubBackdrop) return;
-    hubBackdrop.classList.add('hidden');
-    document.body.style.overflow = '';
-  }
+  document.getElementById('btn-open-mobile-hub')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openMobileHub();
+  });
+  document.getElementById('btn-close-mobile-hub')?.addEventListener('click', closeMobileHub);
 
-  if (hubOpenMobileBtn) {
-    hubOpenMobileBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      openSpaceHub();
-    });
-  }
+  mobileHubBackdrop?.addEventListener('click', (e) => {
+    if (e.target === mobileHubBackdrop) closeMobileHub();
+  });
 
-  if (hubOpenDesktopBtn) {
-    hubOpenDesktopBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      openSpaceHub();
-    });
-  }
+  mobileHubBackdrop?.querySelectorAll('.hub-nav-trigger').forEach(el => {
+    el.addEventListener('click', closeMobileHub);
+  });
 
-  if (hubCloseBtn) {
-    hubCloseBtn.addEventListener('click', closeSpaceHub);
-  }
+  /* Mobile random spin */
+  document.getElementById('btn-hub-random-spin-mobile')?.addEventListener('click', async () => {
+    closeMobileHub();
+    await randomSpin();
+  });
 
-  if (hubBackdrop) {
-    hubBackdrop.addEventListener('click', (e) => {
-      if (e.target === hubBackdrop) closeSpaceHub();
-    });
-
-    hubBackdrop.querySelectorAll('.hub-nav-trigger').forEach(trigger => {
-      trigger.addEventListener('click', () => {
-        closeSpaceHub();
-      });
-    });
-  }
-
-  // Birlikte Seç (Karar Odası) handlers
-  document.querySelectorAll('[data-open-decision-room]').forEach((decisionRoomBtn) => {
-    decisionRoomBtn.addEventListener('click', () => {
-      closeSpaceHub();
+  /* Decision room (all instances) */
+  document.querySelectorAll('[data-open-decision-room]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      closeDesktopHub();
+      closeMobileHub();
       openDecisionRoomModal();
     });
   });
 
-  // Random Title Spinner: "Ne İzlesem?"
-  const randomSpinBtn = document.getElementById('btn-hub-random-spin');
-  if (randomSpinBtn) {
-    randomSpinBtn.addEventListener('click', async () => {
-      closeSpaceHub();
-      try {
-        const randomPage = Math.floor(Math.random() * 3) + 1;
-        const res = await fetchTrending('all', 'week', randomPage);
-        const items = res?.results?.filter(i => i.poster_path && (i.title || i.name)) || [];
-        if (items.length > 0) {
-          const picked = items[Math.floor(Math.random() * items.length)];
-          const mediaType = picked.media_type === 'tv' ? 'tv' : 'movie';
-          window.location.hash = `#detail?type=${mediaType}&id=${picked.id}`;
-        } else {
-          window.location.hash = '#movies';
-        }
-      } catch (err) {
-        window.location.hash = '#movies';
-      }
-    });
-  }
-
-  // ESC key closes Space Hub
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && hubBackdrop && !hubBackdrop.classList.contains('hidden')) {
-      closeSpaceHub();
-    }
-  });
-
-  // Attach search handlers for both Desktop and Mobile search inputs
+  /* ============================================================
+     SEARCH
+  ============================================================ */
   setupSearchInput('nav-search-input', 'search-overlay');
   setupSearchInput('mobile-search-input', 'mobile-search-overlay');
-  if (!attachedOutsideSearchClick) {
-    attachedOutsideSearchClick = true;
-    document.addEventListener('click', (event) => {
-      for (const [inputId, overlayId] of [
+
+  if (!_outsideSearchAttached) {
+    _outsideSearchAttached = true;
+    document.addEventListener('click', (e) => {
+      for (const [iId, oId] of [
         ['nav-search-input', 'search-overlay'],
         ['mobile-search-input', 'mobile-search-overlay']
       ]) {
-        const input = document.getElementById(inputId);
-        const overlay = document.getElementById(overlayId);
-        if (overlay && !input?.contains(event.target) && !overlay.contains(event.target)) {
+        const input = document.getElementById(iId);
+        const overlay = document.getElementById(oId);
+        if (overlay && !input?.contains(e.target) && !overlay.contains(e.target)) {
           overlay.classList.add('hidden');
         }
       }
     });
   }
 
-  // Keyboard shortcut Ctrl+K / Cmd+K to focus search input
-  if (attachedSearchShortcut) document.removeEventListener('keydown', attachedSearchShortcut);
-  attachedSearchShortcut = (e) => {
+  if (_searchShortcut) document.removeEventListener('keydown', _searchShortcut);
+  _searchShortcut = (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      const isMobile = window.innerWidth <= 992;
-      if (isMobile && mobileSearchRow) {
+      if (window.innerWidth <= 992 && mobileSearchRow) {
         mobileSearchRow.classList.remove('hidden');
         document.getElementById('mobile-search-input')?.focus();
       } else {
@@ -520,110 +522,113 @@ export function attachNavbarEvents(onNavigate) {
       }
     }
   };
-  window.addEventListener('keydown', attachedSearchShortcut);
+  window.addEventListener('keydown', _searchShortcut);
 }
 
+/* ============================================================
+   Random Spin Helper
+============================================================ */
+async function randomSpin() {
+  try {
+    const page = Math.floor(Math.random() * 3) + 1;
+    const res = await fetchTrending('all', 'week', page);
+    const items = (res?.results || []).filter(i => i.poster_path && (i.title || i.name));
+    if (items.length) {
+      const picked = items[Math.floor(Math.random() * items.length)];
+      window.location.hash = `#detail?type=${picked.media_type === 'tv' ? 'tv' : 'movie'}&id=${picked.id}`;
+    } else {
+      window.location.hash = '#movies';
+    }
+  } catch {
+    window.location.hash = '#movies';
+  }
+}
+
+/* ============================================================
+   Search Input Handler
+============================================================ */
 function setupSearchInput(inputId, overlayId) {
   const input = document.getElementById(inputId);
   const overlay = document.getElementById(overlayId);
-  let searchTimeout = null;
+  let timer = null;
 
-  if (input && overlay) {
-    input.addEventListener('input', (e) => {
-      const query = e.target.value.trim();
-      clearTimeout(searchTimeout);
+  if (!input || !overlay) return;
 
-      if (query.length < 2) {
-        overlay.classList.add('hidden');
-        overlay.innerHTML = '';
-        return;
-      }
+  input.addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    clearTimeout(timer);
+    if (query.length < 2) { overlay.classList.add('hidden'); overlay.innerHTML = ''; return; }
 
-      // Show temporary searching indicator
-      overlay.innerHTML = '<div class="search-no-results" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:1rem;color:var(--text-muted);font-size:0.85rem;"><span class="tv-loading-spinner" style="width:16px;height:16px;border-width:2px;"></span> Aranıyor...</div>';
-      overlay.classList.remove('hidden');
+    overlay.innerHTML = '<div class="search-no-results" style="display:flex;align-items:center;gap:8px;padding:1rem;color:var(--text-muted);font-size:.85rem;"><span class="tv-loading-spinner" style="width:16px;height:16px;border-width:2px;"></span> Aranıyor...</div>';
+    overlay.classList.remove('hidden');
 
-      searchTimeout = setTimeout(async () => {
-        try {
-          const rawData = await searchMulti(query);
-          const results = Array.isArray(rawData) ? rawData.slice(0, 8) : (rawData?.results ? rawData.results.slice(0, 8) : []);
+    timer = setTimeout(async () => {
+      try {
+        const raw = await searchMulti(query);
+        const results = Array.isArray(raw) ? raw.slice(0, 8) : (raw?.results?.slice(0, 8) || []);
 
-          const dramaSearchItemHTML = `
-            <a href="#dramas?q=${encodeURIComponent(query)}" class="search-item search-item-drama" style="background: linear-gradient(135deg, rgba(88, 28, 135, 0.35), rgba(30, 27, 75, 0.55)); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 10px; margin-top: 6px; padding: 0.6rem 0.75rem;">
-              <div style="width: 36px; height: 48px; border-radius: 6px; background: rgba(168, 85, 247, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <i data-lucide="sparkles" style="width: 18px; height: 18px; color: #c084fc;"></i>
+        const dramaRow = `
+          <a href="#dramas?q=${encodeURIComponent(query)}" class="search-item search-item-drama" style="background:linear-gradient(135deg,rgba(88,28,135,.35),rgba(30,27,75,.55));border:1px solid rgba(168,85,247,.3);border-radius:10px;margin-top:6px;padding:.6rem .75rem;">
+            <div style="width:36px;height:48px;border-radius:6px;background:rgba(168,85,247,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i data-lucide="sparkles" style="width:18px;height:18px;color:#c084fc;"></i>
+            </div>
+            <div class="search-item-info">
+              <div class="search-item-title" style="color:#f3e8ff;font-weight:750;">🎭 Kısa Dizilerde Ara: "${query}"</div>
+              <div class="search-item-meta">
+                <span class="search-badge" style="background:#a855f7;color:#fff;">Özel Hub</span>
+                <span style="color:#c4b5fd;">ReelShort & DramaBox</span>
               </div>
-              <div class="search-item-info">
-                <div class="search-item-title" style="color: #f3e8ff; font-weight: 750;">🎭 Kısa Dizilerde Ara: "${query}"</div>
-                <div class="search-item-meta">
-                  <span class="search-badge" style="background: #a855f7; color: #fff;">Özel Hub</span>
-                  <span style="color: #c4b5fd;">ReelShort &amp; DramaBox</span>
-                </div>
-              </div>
-            </a>
-          `;
+            </div>
+          </a>`;
 
-          if (!results || results.length === 0) {
-            overlay.innerHTML = `
-              <div class="search-no-results" style="padding-bottom: 0.5rem;">TMDB Sonucu Bulunamadı</div>
-              ${dramaSearchItemHTML}
-            `;
-            overlay.classList.remove('hidden');
-            renderIcons(overlay);
-            attachSearchClickEvents();
-            return;
-          }
-
-          const tmdbItemsHTML = results.map(item => {
-            const isTv = item.media_type === 'tv' || !!item.first_air_date || (!item.release_date && !!item.name);
-            const title = item.title || item.name || 'İsimsiz İçerik';
-            const year = (item.release_date || item.first_air_date || '').slice(0, 4);
-            const poster = getImageUrl(item.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL || TMDB_IMAGE_SIZES.POSTER_MEDIUM);
-            const typeLabel = isTv ? 'Dizi' : 'Film';
-            const route = `#detail?type=${isTv ? 'tv' : 'movie'}&id=${item.id}`;
-
-            return `
-              <a href="${route}" class="search-item">
-                <img src="${poster}" alt="${title}" class="search-item-img" onerror="this.src='https://via.placeholder.com/45x68/1e293b/64748b?text=N/A'" />
-                <div class="search-item-info">
-                  <div class="search-item-title">${title}</div>
-                  <div class="search-item-meta">
-                    <span class="search-badge">${typeLabel}</span>
-                    ${year ? `<span>${year}</span>` : ''}
-                    <span class="search-rating">★ ${(item.vote_average || 0).toFixed(1)}</span>
-                  </div>
-                </div>
-              </a>
-            `;
-          }).join('');
-
-          overlay.innerHTML = `${tmdbItemsHTML}${dramaSearchItemHTML}`;
+        if (!results.length) {
+          overlay.innerHTML = `<div class="search-no-results" style="padding-bottom:.5rem;">TMDB Sonucu Bulunamadı</div>${dramaRow}`;
           overlay.classList.remove('hidden');
           renderIcons(overlay);
-          attachSearchClickEvents();
-
-          function attachSearchClickEvents() {
-            overlay.querySelectorAll('.search-item').forEach(link => {
-              link.addEventListener('click', () => {
-                overlay.classList.add('hidden');
-                input.value = '';
-                const mobileSearchRow = document.getElementById('mobile-search-row');
-                if (mobileSearchRow) mobileSearchRow.classList.add('hidden');
-              });
-            });
-          }
-        } catch (err) {
-          console.error('[Search Overlay Error]', err);
-          overlay.innerHTML = '<div class="search-no-results">Arama sırasında bir hata oluştu</div>';
+          attachClose();
+          return;
         }
-      }, 200);
-    });
 
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        overlay.classList.add('hidden');
-        input.blur();
+        const itemsHTML = results.map(item => {
+          const isTv = item.media_type === 'tv' || !!item.first_air_date || (!item.release_date && !!item.name);
+          const title = item.title || item.name || 'İsimsiz';
+          const year = (item.release_date || item.first_air_date || '').slice(0, 4);
+          const poster = getImageUrl(item.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL || TMDB_IMAGE_SIZES.POSTER_MEDIUM);
+          return `
+            <a href="#detail?type=${isTv ? 'tv' : 'movie'}&id=${item.id}" class="search-item">
+              <img src="${poster}" alt="${title}" class="search-item-img" onerror="this.src='https://via.placeholder.com/45x68/1e293b/64748b?text=N/A'" />
+              <div class="search-item-info">
+                <div class="search-item-title">${title}</div>
+                <div class="search-item-meta">
+                  <span class="search-badge">${isTv ? 'Dizi' : 'Film'}</span>
+                  ${year ? `<span>${year}</span>` : ''}
+                  <span class="search-rating">★ ${(item.vote_average || 0).toFixed(1)}</span>
+                </div>
+              </div>
+            </a>`;
+        }).join('');
+
+        overlay.innerHTML = itemsHTML + dramaRow;
+        overlay.classList.remove('hidden');
+        renderIcons(overlay);
+        attachClose();
+
+        function attachClose() {
+          overlay.querySelectorAll('.search-item').forEach(link => {
+            link.addEventListener('click', () => {
+              overlay.classList.add('hidden');
+              input.value = '';
+              document.getElementById('mobile-search-row')?.classList.add('hidden');
+            });
+          });
+        }
+      } catch (err) {
+        overlay.innerHTML = '<div class="search-no-results">Arama sırasında bir hata oluştu</div>';
       }
-    });
-  }
+    }, 200);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { overlay.classList.add('hidden'); input.blur(); }
+  });
 }
