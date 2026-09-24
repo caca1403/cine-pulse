@@ -43,8 +43,9 @@ let activeHlsInstance = null;
 let activeAudioHlsInstance = null;
 
 export async function openPlayerModal({
-  type = 'tv',
+  type = 'movie',
   isAnime = false,
+  isSeries: initialIsSeries = null,
   tmdbId,
   title = '',
   seriesTitle = '',
@@ -72,7 +73,12 @@ export async function openPlayerModal({
   function disposePlayback() {
     playbackGeneration++;
     const video = modalContainer.querySelector('#hls-video-player');
-    video?._persistProgress?.(true);
+    const isVidPaused = video ? video.paused : true;
+    if (video && typeof video._persistProgress === 'function') {
+      video._persistProgress(true, isVidPaused);
+    } else {
+      persistCurrentProgress(simulatedCurrentTime, estimatedDuration, null, true, true);
+    }
     playbackScope.dispose();
     playbackScope = createPlayerScope();
     for (const instance of [activeHlsInstance, activeAudioHlsInstance]) {
@@ -142,7 +148,13 @@ export async function openPlayerModal({
     registerAnimeId(tmdbId);
   }
 
-  const isSeries = type === 'tv' || (type !== 'movie' && (Boolean(season) || Boolean(episode) || (Array.isArray(seasonsList) && seasonsList.length > 0) || currentSeason > 0));
+  const isSeries = typeof initialIsSeries === 'boolean'
+    ? initialIsSeries
+    : (type === 'tv' || (type !== 'movie' && (
+        (Array.isArray(seasonsList) && seasonsList.length > 0) ||
+        (season && Number(season) > 1) ||
+        (episode && Number(episode) > 1)
+      )));
 
   const rawSeries = seriesTitle || title || '';
   const cleanSeriesName = rawSeries
@@ -284,7 +296,7 @@ export async function openPlayerModal({
   };
 
   let lastProgressSaveTimestamp = 0;
-  const persistCurrentProgress = (curTime, durTime, forceCompleted = null, immediate = false) => {
+  const persistCurrentProgress = (curTime, durTime, forceCompleted = null, immediate = false, isPaused = false) => {
     if (!tmdbId) return;
     const cur = Math.max(0, Math.round(curTime ?? simulatedCurrentTime ?? 0));
     const dur = Math.max(0, Math.round(durTime || estimatedDuration || 0));
@@ -310,8 +322,8 @@ export async function openPlayerModal({
       type: effectiveIsAnime ? 'anime' : (isSeries ? 'tv' : 'movie'),
       isAnime: effectiveIsAnime,
       isSeries: isSeries,
-      season: currentSeason,
-      episode: currentEpisode,
+      season: isSeries ? currentSeason : undefined,
+      episode: isSeries ? currentEpisode : undefined,
       currentTime: cur,
       duration: dur > 0 ? dur : estimatedDuration,
       completed: completedStatus
@@ -321,14 +333,17 @@ export async function openPlayerModal({
     try {
       const mediaPayload = {
         tmdbId,
-        seriesTitle: cleanSeriesName,
-        title: cleanSeriesName,
+        seriesTitle: isSeries ? (originalTitle || cleanSeriesName) : undefined,
+        title: originalTitle || cleanSeriesName,
         isSeries: Boolean(isSeries),
-        season: currentSeason,
-        episode: currentEpisode
+        type: isSeries ? 'tv' : 'movie',
+        season: isSeries ? currentSeason : undefined,
+        episode: isSeries ? currentEpisode : undefined
       };
       if (completedStatus) {
         traktService.scrobbleStop(mediaPayload, progressPercent);
+      } else if (isPaused) {
+        traktService.scrobblePause(mediaPayload, progressPercent);
       } else {
         traktService.scrobbleStart(mediaPayload, progressPercent);
       }
@@ -355,9 +370,9 @@ export async function openPlayerModal({
   const handleGlobalPageUnload = () => {
     const videoEl = document.getElementById('hls-video-player');
     if (videoEl && typeof videoEl._persistProgress === 'function') {
-      videoEl._persistProgress(true);
+      videoEl._persistProgress(true, true);
     } else {
-      persistCurrentProgress(simulatedCurrentTime, estimatedDuration, null, true);
+      persistCurrentProgress(simulatedCurrentTime, estimatedDuration, null, true, true);
     }
   };
   window.addEventListener('pagehide', handleGlobalPageUnload);
@@ -3443,14 +3458,22 @@ export async function openPlayerModal({
     // that the difference has crossed the safety threshold.
     playbackScope.setInterval(reportSmoothRoomProgress, 5000);
 
-    const handleVideoProgressUpdate = (force = false) => {
+    const handleVideoProgressUpdate = (force = false, isPaused = null) => {
       if (!videoEl) return;
       const cur = videoEl.currentTime;
       const dur = videoEl.duration;
       if (isNaN(cur) || cur < 0) return;
-      persistCurrentProgress(cur, dur, null, force);
+      const pausedState = (isPaused !== null) ? isPaused : videoEl.paused;
+      persistCurrentProgress(cur, dur, null, force, pausedState);
     };
     videoEl._persistProgress = handleVideoProgressUpdate;
+
+    playbackScope.on(videoEl, 'pause', () => {
+      handleVideoProgressUpdate(true, true);
+    });
+    playbackScope.on(videoEl, 'play', () => {
+      handleVideoProgressUpdate(true, false);
+    });
 
     // 2. Timeline and Time Update
     const updateTimeAndTimeline = () => {

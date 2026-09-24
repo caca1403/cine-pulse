@@ -305,7 +305,14 @@ export async function fetchUserProfile(tokenOverride = null) {
 function buildTraktMediaPayload(media, progressPercent = 0) {
   const progress = Math.min(100, Math.max(0, Math.round(progressPercent)));
   const tmdbId = media.tmdbId || media.id;
-  const isSeries = Boolean(media.isSeries || media.type === 'tv' || media.season);
+
+  // Strict series detection:
+  // Must NOT be a series if explicitly marked isSeries: false or type: 'movie'
+  const isSeries = media.isSeries === true
+    ? true
+    : (media.isSeries === false || media.type === 'movie'
+      ? false
+      : Boolean(media.type === 'tv' || (Boolean(media.season) && Number(media.season) > 0 && media.type !== 'movie')));
 
   if (isSeries) {
     return {
@@ -316,10 +323,12 @@ function buildTraktMediaPayload(media, progressPercent = 0) {
         }
       },
       episode: {
-        season: Number(media.season) || 1,
-        number: Number(media.episode) || 1
+        season: Math.max(1, Number(media.season) || 1),
+        number: Math.max(1, Number(media.episode) || 1)
       },
-      progress
+      progress,
+      app_version: '2.0.0',
+      app_date: '2026-09-25'
     };
   }
 
@@ -330,7 +339,9 @@ function buildTraktMediaPayload(media, progressPercent = 0) {
         tmdb: Number(tmdbId) || undefined
       }
     },
-    progress
+    progress,
+    app_version: '2.0.0',
+    app_date: '2026-09-25'
   };
 }
 
@@ -342,7 +353,7 @@ export async function scrobbleStart(media, progressPercent = 0) {
   if (!settings.autoScrobble || !isTraktConnected()) return null;
 
   const now = Date.now();
-  if (lastScrobbleAction === 'start' && now - lastScrobbleTime < 10000) return null;
+  if (lastScrobbleAction === 'start' && now - lastScrobbleTime < 8000) return null;
 
   const token = await getValidToken();
   if (!token) return null;
@@ -358,6 +369,8 @@ export async function scrobbleStart(media, progressPercent = 0) {
       lastScrobbleAction = 'start';
       lastScrobbleTime = now;
       return await res.json();
+    } else {
+      console.warn('Trakt scrobbleStart error status:', res.status, await res.text());
     }
   } catch (err) {
     console.warn('Trakt scrobbleStart error:', err);
@@ -366,14 +379,11 @@ export async function scrobbleStart(media, progressPercent = 0) {
 }
 
 /**
- * Scrobble: Pause Watching
+ * Scrobble: Pause Watching (Instantly moves media into Trakt's Continue Watching / On-Deck)
  */
 export async function scrobblePause(media, progressPercent = 0) {
   const settings = getTraktSettings();
   if (!settings.autoScrobble || !isTraktConnected()) return null;
-
-  const now = Date.now();
-  if (lastScrobbleAction === 'pause' && now - lastScrobbleTime < 10000) return null;
 
   const token = await getValidToken();
   if (!token) return null;
@@ -383,12 +393,15 @@ export async function scrobblePause(media, progressPercent = 0) {
     const res = await fetch(`${TRAKT_API_URL}/scrobble/pause`, {
       method: 'POST',
       headers: getApiHeaders(token),
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      keepalive: true
     });
     if (res.ok) {
       lastScrobbleAction = 'pause';
-      lastScrobbleTime = now;
+      lastScrobbleTime = Date.now();
       return await res.json();
+    } else {
+      console.warn('Trakt scrobblePause error status:', res.status, await res.text());
     }
   } catch (err) {
     console.warn('Trakt scrobblePause error:', err);
@@ -399,7 +412,7 @@ export async function scrobblePause(media, progressPercent = 0) {
 /**
  * Scrobble: Stop Watching (marks watched on Trakt if progress >= threshold)
  */
-export async function scrobbleStop(media, progressPercent = 0) {
+export async function scrobbleStop(media, progressPercent = 100) {
   const settings = getTraktSettings();
   if (!settings.autoScrobble || !isTraktConnected()) return null;
 
@@ -411,17 +424,35 @@ export async function scrobbleStop(media, progressPercent = 0) {
     const res = await fetch(`${TRAKT_API_URL}/scrobble/stop`, {
       method: 'POST',
       headers: getApiHeaders(token),
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      keepalive: true
     });
     if (res.ok) {
       lastScrobbleAction = 'stop';
       lastScrobbleTime = Date.now();
       return await res.json();
+    } else {
+      console.warn('Trakt scrobbleStop error status:', res.status, await res.text());
     }
   } catch (err) {
     console.warn('Trakt scrobbleStop error:', err);
   }
   return null;
+}
+
+/**
+ * Sync: Get Trakt In-Progress Playback (Continue Watching)
+ */
+export async function fetchTraktPlayback(limit = 20) {
+  const token = await getValidToken();
+  if (!token) return [];
+
+  const res = await fetch(`${TRAKT_API_URL}/sync/playback?limit=${limit}`, {
+    headers: getApiHeaders(token)
+  });
+
+  if (!res.ok) return [];
+  return await res.json();
 }
 
 /**

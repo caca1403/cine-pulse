@@ -221,6 +221,7 @@ export function renderMediaCard(item, options = {}) {
       data-backdrop="${encodedBackdrop}"
       data-tmdbid="${id}"
       data-mediatype="${mediaType === 'tv' || isSeries ? 'tv' : 'movie'}"
+      data-isseries="${isSeries ? 'true' : 'false'}"
       data-season="${season}" 
       data-episode="${episode}" 
       data-currenttime="${currentTime}"
@@ -324,17 +325,24 @@ export function attachMediaCardEvents(container) {
     const posterPath = card.getAttribute('data-poster') || '';
     const backdropPath = card.getAttribute('data-backdrop') || '';
     const isContinue = card.getAttribute('data-iscontinue') === 'true';
+    const isSeriesAttr = card.getAttribute('data-isseries');
+    const mediaTypeAttr = card.getAttribute('data-mediatype');
+
+    const isSeriesCard = isSeriesAttr !== null
+      ? isSeriesAttr === 'true'
+      : (mediaTypeAttr === 'tv' || type === 'tv');
 
     if (isContinue && (card.closest('#continue-watching-rail') || card.closest('.continue-card-wrapper') || currentTime > 0)) {
       openPlayerModal({
-        type: isAnime ? 'anime' : type,
+        type: isAnime ? 'anime' : (isSeriesCard ? 'tv' : 'movie'),
         isAnime,
+        isSeries: isSeriesCard,
         tmdbId: id,
-        title: (type === 'tv' || isAnime) ? `${title} - S${season}E${episode}` : title,
+        title: isSeriesCard ? `${title} - S${season}E${episode}` : title,
         seriesTitle: title,
         originalTitle: originalTitle || title,
-        season,
-        episode,
+        season: isSeriesCard ? season : undefined,
+        episode: isSeriesCard ? episode : undefined,
         posterPath,
         backdropPath,
         currentTime
