@@ -30,7 +30,7 @@ function slugify(text) {
 
 async function curlRequest(args, timeout = 9000) {
   try {
-    const fullArgs = ['-4', '--connect-timeout', '4', '--max-time', '7', ...args];
+    const fullArgs = ['-4', '--compressed', '--connect-timeout', '4', '--max-time', '7', ...args];
     const { stdout, stderr } = await execFileAsync('curl', fullArgs, { timeout: timeout + 1500 });
     return { stdout, stderr, ok: true };
   } catch (err) {
@@ -96,7 +96,7 @@ export default async function handler(req, res) {
 
       if (!html || !html.includes('data-id')) continue;
 
-      const idMatch = html.match(/id=["']dilsec["'][^>]*data-id=["'](\d+)["']/i);
+      const idMatch = html.match(/id=["']dilsec["'][^>]*data-id=["'](\d+)["']/i) || html.match(/data-id=["'](\d+)["']/i);
       if (!idMatch || !idMatch[1]) continue;
       const filmId = idMatch[1];
       const dilCode = dilPath === 'altyazi' ? 1 : 0;
