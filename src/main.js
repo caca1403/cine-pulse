@@ -162,7 +162,7 @@ async function route() {
 
   // Render Navbar for regular application views
   const navbarHTML = renderNavbar(viewName);
-  const cardViews = new Set(['home', 'series', 'cartoons', 'movies', 'anime', 'documentary', 'discover', 'library', 'dramas']);
+  const cardViews = new Set(['home', 'series', 'cartoons', 'movies', 'anime', 'documentary', 'discover', 'library']);
   const cardLayoutSwitcherHTML = cardViews.has(viewName) ? renderCardLayoutSwitcher() : '';
 
   if (viewName === 'home' || viewName === 'detail') {
