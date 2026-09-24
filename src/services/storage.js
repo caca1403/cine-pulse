@@ -894,6 +894,18 @@ export function clearCompletedHistory() {
   setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
 }
 
+export function cleanTraktImportedHistory() {
+  let history = getWatchHistory();
+  const beforeCount = history.length;
+  // Remove items added by faulty sync with dummy currentTime=1000 & duration=1000
+  history = history.filter(item => !(item.currentTime === 1000 && item.duration === 1000));
+  _watchHistoryCache = history;
+  _progressMapCache = null;
+  invalidateDerivedHistoryCaches();
+  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history);
+  return beforeCount - history.length;
+}
+
 export function getMediaProgress(id, season = 1, episode = 1) {
   const map = getProgressMap();
   return map.get(`${id}_${season}_${episode}`) || null;

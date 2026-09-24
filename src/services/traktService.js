@@ -456,40 +456,65 @@ export async function fetchTraktWatchlist() {
 
 /**
  * Sync: Push CinePulse Watched Items to Trakt
+ * Correctly maps shows -> seasons -> episodes according to official Trakt API schema.
  */
 export async function pushHistoryToTrakt(items) {
   const token = await getValidToken();
   if (!token || !items || !items.length) return null;
 
   const movies = [];
-  const episodes = [];
+  const showsMap = new Map();
 
   for (const item of items) {
-    const tmdbId = item.id || item.tmdbId;
-    if (!tmdbId) continue;
+    const rawId = item.id || item.tmdbId;
+    const tmdbId = Number(rawId);
+    if (!tmdbId || isNaN(tmdbId)) continue;
 
     const watchedAt = item.lastWatchedAt ? new Date(item.lastWatchedAt).toISOString() : new Date().toISOString();
+    const isSeries = Boolean(item.isSeries || item.type === 'tv' || (item.season && item.season > 0));
 
-    if (item.isSeries || item.type === 'tv' || item.season) {
-      episodes.push({
-        watched_at: watchedAt,
-        ids: { tmdb: Number(tmdbId) },
-        season: Number(item.season) || 1,
-        number: Number(item.episode) || 1
+    if (isSeries) {
+      const seasonNum = Math.max(1, Number(item.season) || 1);
+      const episodeNum = Math.max(1, Number(item.episode) || 1);
+
+      if (!showsMap.has(tmdbId)) {
+        showsMap.set(tmdbId, {
+          title: item.title || '',
+          ids: { tmdb: tmdbId },
+          seasonsMap: new Map()
+        });
+      }
+      const showEntry = showsMap.get(tmdbId);
+      if (!showEntry.seasonsMap.has(seasonNum)) {
+        showEntry.seasonsMap.set(seasonNum, []);
+      }
+      showEntry.seasonsMap.get(seasonNum).push({
+        number: episodeNum,
+        watched_at: watchedAt
       });
     } else {
       movies.push({
+        title: item.title || '',
         watched_at: watchedAt,
-        ids: { tmdb: Number(tmdbId) }
+        ids: { tmdb: tmdbId }
       });
     }
   }
 
-  if (movies.length === 0 && episodes.length === 0) return null;
+  const shows = Array.from(showsMap.values()).map(s => ({
+    title: s.title,
+    ids: s.ids,
+    seasons: Array.from(s.seasonsMap.entries()).map(([num, eps]) => ({
+      number: num,
+      episodes: eps
+    }))
+  }));
+
+  if (movies.length === 0 && shows.length === 0) return null;
 
   const payload = {};
   if (movies.length > 0) payload.movies = movies;
-  if (episodes.length > 0) payload.episodes = episodes;
+  if (shows.length > 0) payload.shows = shows;
 
   const res = await fetch(`${TRAKT_API_URL}/sync/history`, {
     method: 'POST',
@@ -497,101 +522,37 @@ export async function pushHistoryToTrakt(items) {
     body: JSON.stringify(payload)
   });
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Trakt API Hatası (${res.status}): ${errText}`);
+  }
   return await res.json();
 }
 
 /**
- * Full Two-Way Sync between CinePulse and Trakt.tv
+ * Push CinePulse Library & Watch History to Trakt.tv safely
  */
 export async function performFullSync(storageMethods) {
   if (!isTraktConnected()) throw new Error('Trakt hesabı bağlı değil');
 
-  const {
-    getWatchHistory,
-    saveWatchProgress,
-    getWatchlist,
-    toggleWatchlist,
-    isWatchlist
-  } = storageMethods;
+  const { getWatchHistory } = storageMethods;
 
   const syncResult = {
-    pulledHistoryCount: 0,
-    pulledWatchlistCount: 0,
-    pushedHistoryCount: 0,
+    pushedMoviesCount: 0,
+    pushedEpisodesCount: 0,
     errors: []
   };
 
   try {
-    // 1. Pull Watchlist from Trakt
-    const traktWatchlist = await fetchTraktWatchlist();
-    if (Array.isArray(traktWatchlist)) {
-      for (const item of traktWatchlist) {
-        const media = item.movie || item.show;
-        if (!media || !media.ids?.tmdb) continue;
+    const localHistory = getWatchHistory() || [];
+    // Include items that are marked completed OR actively watched (currentTime > 60 or progressPercent > 5)
+    const validItems = localHistory.filter(h => h.completed || (h.currentTime && h.currentTime > 60) || (h.progressPercent && h.progressPercent > 5));
 
-        const tmdbId = media.ids.tmdb;
-        const alreadyInWatchlist = isWatchlist(tmdbId);
-        if (!alreadyInWatchlist) {
-          toggleWatchlist({
-            id: tmdbId,
-            tmdbId: tmdbId,
-            title: media.title,
-            type: item.type === 'show' ? 'tv' : 'movie',
-            isSeries: item.type === 'show',
-            releaseDate: media.year ? `${media.year}-01-01` : ''
-          });
-          syncResult.pulledWatchlistCount++;
-        }
-      }
-    }
-
-    // 2. Pull Watched History from Trakt
-    const traktHistory = await fetchTraktHistory(100);
-    if (Array.isArray(traktHistory)) {
-      for (const item of traktHistory) {
-        let tmdbId = null;
-        let title = '';
-        let isSeries = false;
-        let season = 1;
-        let episode = 1;
-
-        if (item.type === 'movie' && item.movie) {
-          tmdbId = item.movie.ids?.tmdb;
-          title = item.movie.title;
-          isSeries = false;
-        } else if (item.type === 'episode' && item.show) {
-          tmdbId = item.show.ids?.tmdb;
-          title = item.show.title;
-          isSeries = true;
-          season = item.episode?.season || 1;
-          episode = item.episode?.number || 1;
-        }
-
-        if (tmdbId) {
-          saveWatchProgress({
-            id: tmdbId,
-            title,
-            type: isSeries ? 'tv' : 'movie',
-            isSeries,
-            season,
-            episode,
-            currentTime: 1000,
-            duration: 1000,
-            completed: true
-          });
-          syncResult.pulledHistoryCount++;
-        }
-      }
-    }
-
-    // 3. Push Local Completed History to Trakt
-    const localHistory = getWatchHistory();
-    const completedItems = (localHistory || []).filter(h => h.completed);
-    if (completedItems.length > 0) {
-      const pushRes = await pushHistoryToTrakt(completedItems.slice(0, 50));
+    if (validItems.length > 0) {
+      const pushRes = await pushHistoryToTrakt(validItems);
       if (pushRes && pushRes.added) {
-        syncResult.pushedHistoryCount = (pushRes.added.movies || 0) + (pushRes.added.episodes || 0);
+        syncResult.pushedMoviesCount = pushRes.added.movies || 0;
+        syncResult.pushedEpisodesCount = pushRes.added.episodes || 0;
       }
     }
 
