@@ -111,6 +111,12 @@ export default async function handler(req, res) {
       ]);
       const altJsonText = altRes.stdout || '';
 
+      if (globalThis._lastWtzDebug) {
+        globalThis._lastWtzDebug.altJsonText = altJsonText.slice(0, 200);
+        globalThis._lastWtzDebug.altOk = altRes.ok;
+        globalThis._lastWtzDebug.altStderr = altRes.stderr;
+      }
+
       let altData = null;
       try {
         altData = JSON.parse(altJsonText);
@@ -129,6 +135,15 @@ export default async function handler(req, res) {
           '-d', `id=${alt.id}`
         ]);
         const embedHtml = embedRes.stdout || '';
+
+        if (globalThis._lastWtzDebug) {
+          globalThis._lastWtzDebug.embedSample = {
+            altId: alt.id,
+            baslik: alt.baslik,
+            htmlLen: embedHtml.length,
+            preview: embedHtml.slice(0, 150)
+          };
+        }
 
         if (!embedHtml) continue;
 
