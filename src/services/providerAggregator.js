@@ -173,8 +173,8 @@ function formatStreamName(s, category = '') {
   if (id.startsWith('kvip_') || raw.includes('kids vip')) {
     return s.displayName || s.name || '⚡ Kids VIP Direct 1080p';
   }
-  if (id.startsWith('anizium_') || raw.includes('anizium')) {
-    return s.displayName || s.name || 'Anizium 4K/1080p VIP';
+  if (id.startsWith('az_') || id.startsWith('anizium_') || raw.includes('anizium') || raw.includes('az ')) {
+    return s.displayName || s.name || 'AZ 4K/1080p VIP';
   }
   if (id.startsWith('acx_') || raw.includes('animecix')) {
     return s.displayName || s.name || 'AX Tau Direct 1080p';
@@ -200,8 +200,8 @@ function formatStreamItem(s, category, fallbackName) {
     badge = category === 'dubbed' ? '⚡ DP Dublaj' : '💬 DP Altyazı';
   } else if (lowerName.includes('ds')) {
     badge = category === 'dubbed' ? '⚡ DS Dublaj' : '💬 DS Altyazı';
-  } else if (lowerName.includes('anizium')) {
-    badge = s.badge || (category === 'dubbed' ? '⚡ Anizium 4K Dublaj' : '⚡ Anizium 4K Altyazı');
+  } else if (lowerName.includes('az ') || lowerName.includes('az 4k') || lowerName.includes('az 1080p') || lowerName.includes('anizium')) {
+    badge = s.badge || (category === 'dubbed' ? '⚡ AZ 4K Dublaj' : '⚡ AZ 4K Altyazı');
   } else if (lowerName.includes('swx')) {
     badge = '⚡ SWX 1080p';
   } else if (lowerName.includes('tvr')) {
@@ -312,7 +312,7 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('smashystream_') || raw.includes('smashy')) return 13;
 
   // 10. Anime & Çocuk
-  if (id.startsWith('anizium_') || raw.includes('anizium')) return 2;
+  if (id.startsWith('az_') || id.startsWith('anizium_') || raw.includes('anizium') || raw.includes('az ')) return 2;
   if (id.startsWith('kvip_') || raw.includes('kids vip')) return 14;
   if (id.startsWith('acx_') || raw.includes('animecix')) return 15;
   if (id.startsWith('atr_') || raw.includes('animetr')) return 17;

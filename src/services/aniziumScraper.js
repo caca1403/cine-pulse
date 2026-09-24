@@ -196,14 +196,14 @@ export async function fetchAniziumSources({
           seenUrls.add(it.link);
           const qText = it.quality >= 2160 ? '4K' : (it.quality ? `${it.quality}p` : '1080p');
           const is4k = it.quality >= 2160;
-          const labelPrefix = isMovie ? `Anizium ${qText}` : `Anizium ${qText} (S${targetSeason}B${targetEpisode})`;
+          const labelPrefix = isMovie ? `AZ ${qText}` : `AZ ${qText} (S${targetSeason}B${targetEpisode})`;
 
           sources.push({
-            id: `anizium_${item.ID}_${isMovie ? 'mov' : `s${targetSeason}e${targetEpisode}`}_${it.quality || '1080'}_${isDub ? 'dub' : 'sub'}`,
+            id: `az_${item.ID}_${isMovie ? 'mov' : `s${targetSeason}e${targetEpisode}`}_${it.quality || '1080'}_${isDub ? 'dub' : 'sub'}`,
             name: `${labelPrefix} ${isDub ? 'TR Dublaj' : 'TR Altyazı'}`,
             displayName: `${labelPrefix} ${isDub ? 'TR Dublaj' : 'TR Altyazı'}`,
-            badge: is4k ? `⚡ Anizium 4K UHD ${isDub ? 'Dublaj' : 'Altyazı'}` : `⚡ Anizium 1080p ${isDub ? 'Dublaj' : 'Altyazı'}`,
-            source: 'Anizium',
+            badge: is4k ? `⚡ AZ 4K UHD ${isDub ? 'Dublaj' : 'Altyazı'}` : `⚡ AZ 1080p ${isDub ? 'Dublaj' : 'Altyazı'}`,
+            source: 'AZ',
             url: it.link,
             streamUrl: it.link,
             quality: is4k ? '4K UHD' : (it.quality ? `${it.quality}p` : '1080p'),
