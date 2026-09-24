@@ -143,15 +143,6 @@ export function renderNavbar(currentView = 'home') {
                     <!-- Col 3: Tools -->
                     <div class="hub-mega-col">
                       <div class="hub-mega-section-label">ARAÇLAR</div>
-                      <button type="button" data-open-decision-room class="hub-mega-item hub-tool-btn">
-                        <div class="hub-mega-icon" style="background:rgba(99,102,241,.18);color:#818cf8;">
-                          <i data-lucide="users-round" style="width:15px;height:15px;"></i>
-                        </div>
-                        <div>
-                          <div class="hub-mega-item-title">Birlikte Seç</div>
-                          <div class="hub-mega-item-sub">Anonim karar odası</div>
-                        </div>
-                      </button>
                       <button type="button" id="btn-hub-random-spin" class="hub-mega-item hub-tool-btn">
                         <div class="hub-mega-icon" style="background:rgba(245,158,11,.15);color:#fbbf24;">
                           <i data-lucide="dices" style="width:15px;height:15px;"></i>
@@ -361,16 +352,6 @@ export function renderNavbar(currentView = 'home') {
           <!-- Row 3: Tools -->
           <div class="hub-sheet-section-label" style="margin-top:1.1rem;">ARAÇLAR</div>
           <div class="hub-sheet-tools">
-            <button type="button" data-open-decision-room class="hub-sheet-tool-btn hub-nav-trigger">
-              <div class="hub-sheet-tool-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
-                <i data-lucide="users-round" style="width:18px;height:18px;color:#fff;"></i>
-              </div>
-              <div class="hub-sheet-tool-text">
-                <span class="hub-sheet-tool-title">Birlikte Seç</span>
-                <span class="hub-sheet-tool-sub">Arkadaşlarınla ortak karar odası</span>
-              </div>
-              <i data-lucide="chevron-right" style="width:14px;height:14px;color:#64748b;margin-left:auto;flex-shrink:0;"></i>
-            </button>
             <button type="button" id="btn-hub-random-spin-mobile" class="hub-sheet-tool-btn">
               <div class="hub-sheet-tool-icon" style="background:linear-gradient(135deg,#f59e0b,#ef4444);">
                 <i data-lucide="dices" style="width:18px;height:18px;color:#fff;"></i>
