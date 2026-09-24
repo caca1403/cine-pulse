@@ -564,3 +564,36 @@ export async function performFullSync(storageMethods) {
 
   return syncResult;
 }
+
+/**
+ * Wipe all history records from Trakt.tv account to start fresh
+ */
+export async function clearTraktRemoteHistory() {
+  const token = await getValidToken();
+  if (!token) throw new Error('Trakt hesabı bağlı değil');
+
+  const res = await fetch(`${TRAKT_API_URL}/sync/history?limit=1000`, {
+    headers: getApiHeaders(token)
+  });
+  if (!res.ok) throw new Error('Trakt geçmişi alınamadı');
+
+  const items = await res.json();
+  if (!Array.isArray(items) || items.length === 0) return 0;
+
+  const historyIds = items.map(i => i.id).filter(Boolean);
+  if (historyIds.length === 0) return 0;
+
+  const removeRes = await fetch(`${TRAKT_API_URL}/sync/history/remove`, {
+    method: 'POST',
+    headers: getApiHeaders(token),
+    body: JSON.stringify({ ids: historyIds })
+  });
+
+  if (!removeRes.ok) {
+    const errText = await removeRes.text();
+    throw new Error(`Trakt geçmişi silinemedi: ${errText}`);
+  }
+
+  const result = await removeRes.json();
+  return (result.deleted?.movies || 0) + (result.deleted?.episodes || 0);
+}

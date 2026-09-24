@@ -212,6 +212,18 @@ export function openTraktModal() {
                 </button>
               </div>
 
+              <!-- Wipe Remote Trakt History Panel -->
+              <div class="backup-card" style="border: 1px solid rgba(245, 158, 11, 0.25); background: rgba(245, 158, 11, 0.05); display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; gap: 10px;">
+                <div>
+                  <div style="font-size: 0.85rem; font-weight: 600; color: #fbbf24;">Trakt.tv Geçmişini Tamamen Sıfırla</div>
+                  <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">Trakt hesabındaki tüm eski ve karışmış izleme kayıtlarını tamamen siler (temiz sayfa).</div>
+                </div>
+                <button id="btn-wipe-trakt-history" class="btn-secondary" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.4); padding: 0.45rem 0.9rem; font-size: 0.8rem; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;">
+                  <i data-lucide="eraser" style="width: 14px; height: 14px;"></i>
+                  <span>Trakt'ı Sıfırla</span>
+                </button>
+              </div>
+
               <!-- Settings Controls -->
               <div class="trakt-settings-list">
                 <div class="trakt-setting-row">
@@ -375,6 +387,25 @@ export function openTraktModal() {
           const removed = cleanTraktImportedHistory();
           showToast(`${removed} adet hatalı Trakt kaydı geçmişten temizlendi!`, 'success');
           render('main');
+        };
+      }
+
+      // Wipe Remote Trakt Account History Button
+      const wipeTraktBtn = document.getElementById('btn-wipe-trakt-history');
+      if (wipeTraktBtn) {
+        wipeTraktBtn.onclick = async () => {
+          if (!confirm('Trakt.tv hesabınızdaki tüm izleme geçmişini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) return;
+          wipeTraktBtn.disabled = true;
+          wipeTraktBtn.innerHTML = `<span>Sıfırlanıyor...</span>`;
+          try {
+            const count = await traktService.clearTraktRemoteHistory();
+            showToast(`Trakt hesabından ${count} adet kayıt tamamen silindi!`, 'success');
+            render('main');
+          } catch (err) {
+            showToast(`Hata: ${err.message}`, 'error');
+            wipeTraktBtn.disabled = false;
+            render('main');
+          }
         };
       }
 
