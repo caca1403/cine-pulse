@@ -297,6 +297,7 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('dzy_') || raw.includes('diziyo')) return 6;
   if (id.startsWith('dyu_') || raw.includes('diziyou')) return 7;
   if (id.startsWith('szd_') || raw.includes('sezonluk')) return 8;
+  if (id.startsWith('webteizle_') || raw.includes('webteizle')) return 8;
   if (id.startsWith('hdfb_') || raw.includes('hdfilmizle') || raw.includes('hdf ')) return 9;
 
   // 8. VIP P2P Torrent Akışları

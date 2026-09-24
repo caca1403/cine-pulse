@@ -63,7 +63,7 @@ export async function fetchWebteizleSources({
     });
 
     const serverUrl = apiUrl(`/api/webteizle_stream?${params.toString()}`);
-    const res = await fetch(serverUrl, { signal: AbortSignal.timeout(6000) }).catch(() => null);
+    const res = await fetch(serverUrl, { signal: AbortSignal.timeout(10000) }).catch(() => null);
     if (res && res.ok) {
       const data = await res.json().catch(() => null);
       if (data && data.success && Array.isArray(data.streams) && data.streams.length > 0) {

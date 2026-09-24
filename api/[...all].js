@@ -1,5 +1,6 @@
 import { guardNodeRequest, isSafePublicUrl } from './_security.js';
 import { Readable } from 'stream';
+import webteizleHandler from './webteizle_stream.js';
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
@@ -18,6 +19,10 @@ export default async function handler(req, res) {
   const urlObj = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
   const pathname = urlObj.pathname; // e.g. /api/hdfc/search/Deadpool/
   const search = urlObj.search || '';
+
+  if (pathname === '/api/webteizle_stream' || pathname === '/webteizle_stream') {
+    return webteizleHandler(req, res);
+  }
 
   let targetUrl = '';
   let customHeaders = {
