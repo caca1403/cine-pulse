@@ -482,9 +482,17 @@ export async function openPlayerModal({
 
   function updateRoomChatBadge() {
     const badge = modalContainer.querySelector('#room-chat-unread');
-    if (!badge) return;
-    badge.hidden = roomUnreadMessages < 1;
-    badge.textContent = roomUnreadMessages > 9 ? '9+' : String(roomUnreadMessages);
+    const cloudBadge = modalContainer.querySelector('#room-chat-unread-cloud');
+    const hasUnread = roomUnreadMessages >= 1;
+    const countText = roomUnreadMessages > 9 ? '9+' : String(roomUnreadMessages);
+    if (badge) {
+      badge.hidden = !hasUnread;
+      badge.textContent = countText;
+    }
+    if (cloudBadge) {
+      cloudBadge.hidden = !hasUnread;
+      cloudBadge.textContent = countText;
+    }
   }
 
   function appendRoomChatMessage(message, mine = false) {
@@ -2058,13 +2066,54 @@ export async function openPlayerModal({
     <div class="player-ambient-backdrop" ${backdropPath ? `style="background-image: url('${backdropPath}');"` : ''}></div>
     
     <div class="modal-content player-modal-content" id="cinema-modal-box">
-      ${roomSync ? `<aside id="room-player-hud" class="room-player-hud" aria-live="polite">
-        <span class="room-player-live-dot"></span>
-        <div><strong>Birlikte İzleme</strong><small id="room-player-status">Oda eşitleniyor…</small><small id="room-player-episode">${isSeries ? `S${currentSeason} · B${currentEpisode}` : 'Film'}</small><small id="room-player-source">Ortak kaynak aranıyor…</small></div>
-        <div id="room-player-members" class="room-player-members"></div>
-        <div class="room-player-actions">
-          <button id="btn-room-return" class="room-player-return" type="button"><i data-lucide="users-round"></i><span>Odaya dön</span></button>
-          <button id="btn-room-chat" class="room-player-chat" type="button" aria-label="Oda sohbeti"><i data-lucide="message-circle"></i><span class="room-chat-label">Sohbet</span><b id="room-chat-unread" hidden>0</b></button>
+      ${roomSync ? `<aside id="room-player-hud" class="room-player-hud room-player-cloud-hud" aria-live="polite">
+        <!-- Açılır Bulut Butonu (Cloud Floating Trigger) -->
+        <button id="btn-room-cloud-toggle" class="room-cloud-pill-btn" type="button" aria-expanded="false" aria-label="Birlikte İzleme ve Sohbet Bulutu" title="Birlikte İzleme Menüsü">
+          <span class="room-player-live-dot"></span>
+          <span class="room-cloud-icon-wrap"><i data-lucide="cloud"></i></span>
+          <span class="room-cloud-title">Birlikte İzleme</span>
+          <span id="room-cloud-member-badge" class="room-cloud-member-badge" title="Bağlı Kişi Sayısı">1</span>
+          <b id="room-chat-unread-cloud" class="room-chat-unread-badge" hidden>0</b>
+          <i data-lucide="chevron-up" class="room-cloud-chevron"></i>
+        </button>
+
+        <!-- Açılan Bulut Kartı / Popover (Cloud Bubble Panel) -->
+        <div id="room-cloud-popover" class="room-cloud-popover" hidden>
+          <div class="room-cloud-header">
+            <div class="room-cloud-header-left">
+              <span class="room-player-live-dot"></span>
+              <strong>Birlikte İzleme</strong>
+            </div>
+            <button id="btn-room-cloud-close" class="room-cloud-close" type="button" title="Kapat" aria-label="Kapat">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+
+          <div class="room-cloud-body">
+            <div class="room-cloud-info-grid">
+              <div class="room-cloud-info-row">
+                <i data-lucide="activity"></i>
+                <small id="room-player-status">Oda eşitleniyor…</small>
+              </div>
+              <div class="room-cloud-info-row">
+                <i data-lucide="film"></i>
+                <small id="room-player-episode">${isSeries ? `S${currentSeason} · B${currentEpisode}` : 'Film'}</small>
+              </div>
+              <div class="room-cloud-info-row">
+                <i data-lucide="radio"></i>
+                <small id="room-player-source">Ortak kaynak aranıyor…</small>
+              </div>
+            </div>
+
+            <div class="room-cloud-members-section">
+              <div id="room-player-members" class="room-player-members"></div>
+            </div>
+          </div>
+
+          <div class="room-player-actions room-cloud-actions">
+            <button id="btn-room-return" class="room-player-return" type="button"><i data-lucide="users-round"></i><span>Odaya dön</span></button>
+            <button id="btn-room-chat" class="room-player-chat" type="button" aria-label="Oda sohbeti"><i data-lucide="message-circle"></i><span class="room-chat-label">Sohbet</span><b id="room-chat-unread" hidden>0</b></button>
+          </div>
         </div>
       </aside>` : ''}
       
@@ -2313,10 +2362,14 @@ export async function openPlayerModal({
     const members = modalContainer.querySelector('#room-player-members');
     const episode = modalContainer.querySelector('#room-player-episode');
     const source = modalContainer.querySelector('#room-player-source');
+    const memberBadge = modalContainer.querySelector('#room-cloud-member-badge');
     const modeLabel = roomSyncMode === 'strict' ? 'Herkesle senkron' : 'Akıcı mod';
     if (status) status.textContent = presence.isHost
       ? `${presence.participants.length} kişi bağlı · ${modeLabel}`
       : `${presence.participants.length} kişi bağlı · ${modeLabel}`;
+    if (memberBadge) {
+      memberBadge.textContent = String(presence.participants.length || 1);
+    }
     if (members) {
       members.innerHTML = presence.participants.slice(0, 4)
         .map(person => `<span title="${person.nickname}">${person.role === 'moderator' ? '♛' : '●'} ${person.nickname}</span>`)
@@ -2328,13 +2381,62 @@ export async function openPlayerModal({
       source.textContent = descriptor?.name ? `Ortak kaynak: ${descriptor.name}` : 'Ortak kaynak aranıyor…';
     }
   };
+
+  function setupRoomCloudPopover() {
+    const toggleBtn = modalContainer.querySelector('#btn-room-cloud-toggle');
+    const popover = modalContainer.querySelector('#room-cloud-popover');
+    const closeBtn = modalContainer.querySelector('#btn-room-cloud-close');
+    if (!toggleBtn || !popover) return;
+
+    const setOpen = (open) => {
+      popover.hidden = !open;
+      toggleBtn.setAttribute('aria-expanded', String(open));
+      toggleBtn.classList.toggle('active', open);
+      if (open) {
+        renderPlayerIcons(popover);
+      }
+    };
+
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setOpen(popover.hidden);
+    });
+
+    closeBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setOpen(false);
+    });
+
+    modalScope.on(document, 'click', (e) => {
+      if (!popover.hidden && !popover.contains(e.target) && !toggleBtn.contains(e.target)) {
+        setOpen(false);
+      }
+    });
+
+    modalScope.on(document, 'keydown', (e) => {
+      if (e.key === 'Escape' && !popover.hidden) {
+        setOpen(false);
+        e.stopPropagation();
+      }
+    });
+  }
+
   if (roomSync) {
     renderRoomPlayerHud();
+    setupRoomCloudPopover();
     modalContainer.querySelector('#btn-room-return')?.addEventListener('click', () => {
       closeModal();
       window.setTimeout(() => returnToDecisionRoomModal(), 0);
     });
-    modalContainer.querySelector('#btn-room-chat')?.addEventListener('click', () => toggleRoomChatPanel());
+    modalContainer.querySelector('#btn-room-chat')?.addEventListener('click', () => {
+      const popover = modalContainer.querySelector('#room-cloud-popover');
+      if (popover && !popover.hidden) {
+        popover.hidden = true;
+        modalContainer.querySelector('#btn-room-cloud-toggle')?.setAttribute('aria-expanded', 'false');
+        modalContainer.querySelector('#btn-room-cloud-toggle')?.classList.remove('active');
+      }
+      toggleRoomChatPanel();
+    });
     modalScope.on(window, 'cinepulse:decision-room-presence', event => renderRoomPlayerHud(event.detail));
   }
 
