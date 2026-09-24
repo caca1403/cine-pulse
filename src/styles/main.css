@@ -2583,18 +2583,13 @@ img {
   pointer-events: auto;
 }
 
-/* Always show on mobile (touch) */
+/* Arrow buttons: desktop only – mobile uses touch swipe */
 @media (max-width: 1180px) {
   .hero-arrow {
-    opacity: 1;
-    pointer-events: auto;
-    width: 36px;
-    height: 36px;
-    background: rgba(10, 14, 26, 0.55);
+    display: none !important;
   }
-  .hero-arrow-prev { left: 0.65rem; }
-  .hero-arrow-next { right: 0.65rem; }
 }
+
 
 
 

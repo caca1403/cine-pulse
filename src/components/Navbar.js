@@ -257,7 +257,6 @@ export function renderNavbar(currentView = 'home') {
         <div class="hub-orb-inner">
           <i data-lucide="sparkles" style="width:20px;height:20px;color:#fff;"></i>
         </div>
-        <span class="hub-orb-label">EVREN</span>
       </button>
 
       ${!isKid ? `
