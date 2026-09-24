@@ -32,6 +32,7 @@ import {
 import { showToast } from './Toast.js';
 import { translateToTurkish } from '../services/tmdbApi.js';
 import { returnToDecisionRoomModal } from './DecisionRoomModal.js';
+import * as traktService from '../services/traktService.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -315,6 +316,23 @@ export async function openPlayerModal({
       duration: dur > 0 ? dur : estimatedDuration,
       completed: completedStatus
     });
+
+    // Trakt.tv Real-Time Scrobble
+    try {
+      const mediaPayload = {
+        tmdbId,
+        seriesTitle: cleanSeriesName,
+        title: cleanSeriesName,
+        isSeries: Boolean(isSeries),
+        season: currentSeason,
+        episode: currentEpisode
+      };
+      if (completedStatus) {
+        traktService.scrobbleStop(mediaPayload, progressPercent);
+      } else {
+        traktService.scrobbleStart(mediaPayload, progressPercent);
+      }
+    } catch (_) {}
   };
 
   function startWatchProgressLoop() {

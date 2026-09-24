@@ -8,6 +8,7 @@ import { renderIcons } from '../services/icons.js';
 import { getProfiles, getActiveProfile, setActiveProfile, addProfile, deleteProfile } from '../services/storage.js';
 import { showToast } from './Toast.js';
 import { openDataManagerModal } from './DataManagerModal.js';
+import { openTraktModal } from './TraktModal.js';
 import { promptInstall } from '../services/pwaManager.js';
 
 let activeProfileModal = null;
@@ -92,7 +93,11 @@ export function openProfileModal() {
           </a>
 
           <!-- Bottom Management Bar -->
-          <div class="profile-footer-bar">
+          <div class="profile-footer-bar" style="gap: 8px; flex-wrap: wrap;">
+            <button class="btn-manage-profiles" id="btn-modal-open-trakt" title="Trakt.tv Senkronizasyonu">
+              <i data-lucide="tv" style="width: 15px; height: 15px; color: #ed1c24;"></i>
+              <span>Trakt.tv</span>
+            </button>
             <button class="btn-manage-profiles" id="btn-modal-open-backup" title="Yedekleme & Veri Yönetimi">
               <i data-lucide="hard-drive-download" style="width: 15px; height: 15px;"></i>
               <span>Veri & Yedek</span>
@@ -188,7 +193,15 @@ export function openProfileModal() {
       };
     }
 
-    // Backup and PWA Buttons inside modal
+    // Trakt, Backup and PWA Buttons inside modal
+    const traktBtn = modalContainer.querySelector('#btn-modal-open-trakt');
+    if (traktBtn) {
+      traktBtn.onclick = () => {
+        closeProfileModal();
+        openTraktModal();
+      };
+    }
+
     const backupBtn = modalContainer.querySelector('#btn-modal-open-backup');
     if (backupBtn) {
       backupBtn.onclick = () => {

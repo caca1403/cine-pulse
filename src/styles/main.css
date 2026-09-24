@@ -15378,3 +15378,330 @@ video::cue {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ==========================================================================
+   Trakt.tv Integration Modal Styles
+   ========================================================================== */
+.trakt-dialog {
+  max-width: 520px !important;
+  width: 92% !important;
+  border: 1px solid rgba(237, 28, 36, 0.3) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(237, 28, 36, 0.15) !important;
+}
+
+.trakt-logo-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(237, 28, 36, 0.15);
+  border: 1px solid rgba(237, 28, 36, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trakt-hero-banner {
+  background: linear-gradient(135deg, rgba(237, 28, 36, 0.15) 0%, rgba(20, 20, 25, 0.8) 100%);
+  border: 1px solid rgba(237, 28, 36, 0.25);
+  border-radius: 14px;
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.trakt-pill-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ed1c24;
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.trakt-hero-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.4rem;
+  font-family: 'Outfit', sans-serif;
+}
+
+.trakt-hero-sub {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.trakt-features-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.trakt-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.trakt-feat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trakt-feat-title {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.trakt-feat-desc {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.trakt-btn-glow {
+  background: linear-gradient(135deg, #ed1c24 0%, #b91c1c 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 4px 18px rgba(237, 28, 36, 0.4) !important;
+  font-weight: 700 !important;
+  transition: all 0.2s ease !important;
+}
+
+.trakt-btn-glow:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 24px rgba(237, 28, 36, 0.6) !important;
+}
+
+.trakt-code-display {
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px dashed rgba(237, 28, 36, 0.5);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.trakt-code-display:hover {
+  background: rgba(237, 28, 36, 0.1);
+  border-color: #ed1c24;
+}
+
+.trakt-code-text {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: #fff;
+}
+
+.trakt-code-copy-icon {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+}
+
+.trakt-pulse-loader {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  margin: 0 auto;
+  background: rgba(237, 28, 36, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.trakt-pulse-circle {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid rgba(237, 28, 36, 0.5);
+  animation: traktPulse 1.8s infinite ease-out;
+}
+
+@keyframes traktPulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.trakt-dot-ping {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ed1c24;
+  box-shadow: 0 0 8px #ed1c24;
+  animation: traktBlink 1.2s infinite ease-in-out;
+}
+
+@keyframes traktBlink {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.trakt-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.trakt-profile-avatar-wrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.trakt-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ed1c24;
+}
+
+.trakt-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(237, 28, 36, 0.15);
+  border: 2px solid #ed1c24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trakt-status-dot-active {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  background: #22c55e;
+  border: 2px solid #0f172a;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.trakt-profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trakt-profile-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trakt-username {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.trakt-vip-badge {
+  font-size: 9px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.trakt-connected-badge {
+  font-size: 9px;
+  font-weight: 800;
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.trakt-profile-meta {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trakt-settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+}
+
+.trakt-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trakt-setting-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.trakt-setting-sub {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.trakt-spin {
+  animation: traktSpin 1s infinite linear;
+}
+
+@keyframes traktSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+

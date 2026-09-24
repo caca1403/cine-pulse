@@ -15,6 +15,7 @@ import { openRandomPickerModal } from './RandomPickerModal.js';
 import { getActiveProfile } from '../services/storage.js';
 import { openNotificationCenterModal, getUnreadNotificationCount } from './NotificationCenterModal.js';
 import { openDecisionRoomModal } from './DecisionRoomModal.js';
+import { openTraktModal } from './TraktModal.js';
 
 export function renderNavbar(currentView = 'home') {
   const activeProfile = getActiveProfile();
@@ -162,6 +163,15 @@ export function renderNavbar(currentView = 'home') {
                           <div class="hub-mega-item-sub">SÉRA uygulamasını aç</div>
                         </div>
                       </a>
+                      <button type="button" id="btn-hub-trakt" class="hub-mega-item hub-tool-btn">
+                        <div class="hub-mega-icon" style="background:rgba(237,28,36,.15);color:#ed1c24;">
+                          <i data-lucide="tv" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">Trakt.tv Eşitleme</div>
+                          <div class="hub-mega-item-sub">İzleme geçmişi & Scrobble</div>
+                        </div>
+                      </button>
                     </div>
 
                   </div>
@@ -380,6 +390,16 @@ export function renderNavbar(currentView = 'home') {
                 <span class="hub-sheet-tool-sub">SÉRA uygulamasını aç</span>
               </div>
             </a>
+            <button type="button" id="btn-hub-trakt-mobile" class="hub-sheet-tool-btn">
+              <div class="hub-sheet-tool-icon" style="background:linear-gradient(135deg,#ed1c24,#b91c1c);">
+                <i data-lucide="tv" style="width:18px;height:18px;color:#fff;"></i>
+              </div>
+              <div class="hub-sheet-tool-text">
+                <span class="hub-sheet-tool-title">Trakt.tv Eşitleme</span>
+                <span class="hub-sheet-tool-sub">İzleme geçmişi & Scrobble</span>
+              </div>
+              <i data-lucide="repeat" style="width:14px;height:14px;color:#ed1c24;margin-left:auto;flex-shrink:0;"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -481,6 +501,12 @@ export function attachNavbarEvents(onNavigate) {
   });
   document.getElementById('btn-hub-series-recommend')?.addEventListener('click', closeDesktopHub);
 
+  /* Desktop hub trakt sync */
+  document.getElementById('btn-hub-trakt')?.addEventListener('click', () => {
+    closeDesktopHub();
+    openTraktModal();
+  });
+
   /* ============================================================
      MOBILE HUB – Bottom Sheet
   ============================================================ */
@@ -527,6 +553,12 @@ export function attachNavbarEvents(onNavigate) {
     openRandomPickerModal();
   });
   document.getElementById('btn-hub-series-recommend-mobile')?.addEventListener('click', closeMobileHub);
+
+  /* Mobile hub trakt sync */
+  document.getElementById('btn-hub-trakt-mobile')?.addEventListener('click', () => {
+    closeMobileHub();
+    openTraktModal();
+  });
 
   /* Decision room (all instances) */
   document.querySelectorAll('[data-open-decision-room]').forEach(btn => {

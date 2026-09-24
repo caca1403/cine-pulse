@@ -6,6 +6,8 @@ import { renderIcons } from '../services/icons.js';
 
 import { exportDataAsJSON, importDataFromJSON, getStorageStats, clearAllData } from '../services/storage.js';
 import { showToast } from './Toast.js';
+import { openTraktModal } from './TraktModal.js';
+import { isTraktConnected } from '../services/traktService.js';
 
 export function openDataManagerModal() {
   const modalContainer = document.getElementById('data-modal');
@@ -75,6 +77,27 @@ export function openDataManagerModal() {
             </label>
           </div>
         </div>
+
+        <!-- Trakt.tv Cloud Sync Section -->
+        <div class="backup-card" style="border: 1px solid rgba(237, 28, 36, 0.25); background: rgba(237, 28, 36, 0.04);">
+          <h3 class="backup-card-title" style="color: #ed1c24;">
+            <i data-lucide="tv"></i> Trakt.tv Bulut Eşitleme
+          </h3>
+          <p style="font-size: 0.88rem; color: var(--text-sub); line-height: 1.6; margin: 0;">
+            İzleme geçmişinizi ve izleme listenizi Trakt.tv ile bulut üzerinden çift yönlü eşitleyin.
+          </p>
+
+          <div class="backup-stats-box">
+            <div style="font-weight: 600; color: #cbd5e1;">Trakt Durumu:</div>
+            <div>• Bağlantı: <strong>${isTraktConnected() ? '<span style="color:#4ade80;">● Bağlı</span>' : '<span style="color:#94a3b8;">○ Bağlı Değil</span>'}</strong></div>
+            <div>• Otomatik Scrobble & İzleme Listesi</div>
+          </div>
+
+          <button id="btn-open-trakt-from-data" class="btn-primary trakt-btn-glow" style="margin-top: auto; justify-content: center;">
+            <i data-lucide="repeat"></i>
+            <span>Trakt.tv Yönetimi & Eşitle</span>
+          </button>
+        </div>
       </div>
 
       <div class="data-modal-footer">
@@ -125,6 +148,14 @@ export function openDataManagerModal() {
     exportBtn.addEventListener('click', () => {
       exportDataAsJSON();
       showToast('JSON yedek dosyası indirildi!', 'success');
+    });
+  }
+
+  const traktBtn = document.getElementById('btn-open-trakt-from-data');
+  if (traktBtn) {
+    traktBtn.addEventListener('click', () => {
+      closeModal();
+      openTraktModal();
     });
   }
 
