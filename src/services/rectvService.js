@@ -462,12 +462,36 @@ export async function fetchRecTvSources({
 /**
  * Fetches all unlocked TVR (RecTV) Live Channels (Sports, Cinema, Docs, etc.)
  */
+// Discovery-only channels not in TVR's API roster (fetched via daioncdn scraping)
+const STATIC_CHANNELS = [
+  {
+    id: 'tvr_ch_dmax',
+    tvrId: 'dmax',
+    isDaion: true,
+    name: 'DMAX',
+    category: 'national',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/DMAX_Logo_2019.svg/200px-DMAX_Logo_2019.svg.png',
+    quality: 'HD Canlı',
+    streamUrl: ''
+  },
+  {
+    id: 'tvr_ch_tlc',
+    tvrId: 'tlc',
+    isDaion: true,
+    name: 'TLC',
+    category: 'national',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/TLC_Logo.svg/200px-TLC_Logo.svg.png',
+    quality: 'HD Canlı',
+    streamUrl: ''
+  }
+];
+
 export async function fetchRecTvLiveChannels() {
   try {
     // Category 0 is TVR's current live roster. One request replaces eight
     // category requests; callers verify that each candidate has an open source.
     const list = await recTvApiRequest(`/channel/by/filtres/0/0/0/${SW_KEY}/`);
-    if (!Array.isArray(list)) return [];
+    if (!Array.isArray(list)) return [...STATIC_CHANNELS];
     const categoryMap = new Map([
       [1, 'sports'], [2, 'doc'], [3, 'national'], [4, 'news'],
       [5, 'music'], [6, 'national'], [7, 'kids'], [8, 'national']
@@ -492,10 +516,19 @@ export async function fetchRecTvLiveChannels() {
       });
     }
 
+    // Append DMAX / TLC if TVR no longer lists them
+    for (const sc of STATIC_CHANNELS) {
+      const alreadyPresent = channels.some(ch => {
+        const n = (ch.name || '').toLowerCase();
+        return n === sc.name.toLowerCase() || n.includes(sc.tvrId);
+      });
+      if (!alreadyPresent) channels.push(sc);
+    }
+
     return channels;
   } catch (err) {
     console.warn('[TVR] Fetch live channels failed:', err.message);
-    return [];
+    return [...STATIC_CHANNELS];
   }
 }
 
@@ -509,8 +542,28 @@ const LIVE_CHANNEL_URL_TTL_MS = 2 * 60 * 1000;
 export async function getRecTvChannelStreamUrl(chId, { forceRefresh = false } = {}) {
   if (!chId) return null;
   const cleanId = String(chId).replace(/^tvr_ch_/, '');
-  if (cleanId === '81') return '/api/live_tv_stream?channel=dmax';
-  if (cleanId === '83') return '/api/live_tv_stream?channel=tlc';
+
+  // DMAX and TLC: resolve via daioncdn scraping API (with JSON response)
+  if (cleanId === 'dmax' || cleanId === 'tlc' || cleanId === '81' || cleanId === '83') {
+    const daionChannel = (cleanId === '81' || cleanId === 'dmax') ? 'dmax' : 'tlc';
+    const cacheKey = `daion_${daionChannel}`;
+    const cached = liveChannelUrlCache.get(cacheKey);
+    if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.url;
+
+    try {
+      const resp = await fetch(`/api/live_tv_stream?channel=${daionChannel}&json=1`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.url) {
+          liveChannelUrlCache.set(cacheKey, { url: data.url, expiresAt: Date.now() + LIVE_CHANNEL_URL_TTL_MS });
+          return data.url;
+        }
+      }
+    } catch (_) {}
+    // Fallback: redirect endpoint (player will follow the 302)
+    return `/api/live_tv_stream?channel=${daionChannel}`;
+  }
+
   const cached = liveChannelUrlCache.get(cleanId);
   if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.url;
   if (liveChannelUrlPending.has(cleanId)) return liveChannelUrlPending.get(cleanId);

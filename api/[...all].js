@@ -70,18 +70,32 @@ export default async function handler(req, res) {
 
       const now = Date.now();
       if (globalThis._liveTvCache && globalThis._liveTvCache[channel] && globalThis._liveTvCache[channel].exp > now) {
-        return res.redirect(302, globalThis._liveTvCache[channel].url);
+        const cached = globalThis._liveTvCache[channel];
+        const wantsJson = urlObj.searchParams.get('json') === '1';
+        if (wantsJson) return res.json({ url: cached.url, raw: cached.raw });
+        return res.redirect(302, cached.url);
       }
 
+      // Full browser-like headers to bypass Cloudflare protection on DMAX/TLC sites
       const pageRes = await fetch(pageUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Referer': refUrl,
+          'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"Windows"',
+          'sec-fetch-dest': 'document',
+          'sec-fetch-mode': 'navigate',
+          'sec-fetch-site': 'same-origin',
+          'upgrade-insecure-requests': '1'
         }
       });
       const html = await pageRes.text();
-      const m = html.match(/daionUrl\s*:\s*['"]([^'"]+)['"]/);
+      const m = html.match(/daionUrl\s*:\s*['"](https?:\/\/[^'"]+)['"]/);
       if (!m || !m[1]) {
-        return res.status(502).json({ error: 'Failed to extract live stream URL' });
+        return res.status(502).json({ error: 'Failed to extract live stream URL', httpStatus: pageRes.status });
       }
       const daionUrl = m[1];
       const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(daionUrl)}&ref=${encodeURIComponent(refUrl)}`;
@@ -89,9 +103,12 @@ export default async function handler(req, res) {
       if (!globalThis._liveTvCache) globalThis._liveTvCache = {};
       globalThis._liveTvCache[channel] = {
         url: proxiedUrl,
+        raw: daionUrl,
         exp: now + 5 * 60 * 1000 // Cache for 5 minutes
       };
 
+      const wantsJson = urlObj.searchParams.get('json') === '1';
+      if (wantsJson) return res.json({ url: proxiedUrl, raw: daionUrl });
       return res.redirect(302, proxiedUrl);
     } catch (e) {
       return res.status(500).json({ error: e.message });
