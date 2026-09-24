@@ -582,23 +582,186 @@ export async function pushHistoryToTrakt(items) {
   return await res.json();
 }
 
+const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
+
+async function fetchTmdbMediaInfo(tmdbId, isSeries = false) {
+  try {
+    const endpoint = isSeries ? 'tv' : 'movie';
+    const res = await fetch(`https://api.themoviedb.org/3/${endpoint}/${tmdbId}?api_key=${TMDB_API_KEY}&language=tr-TR`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (_) {}
+  return null;
+}
+
 /**
- * Push CinePulse Library & Watch History to Trakt.tv safely
+ * Pull Trakt In-Progress Playback & History into CinePulse (Trakt -> CinePulse)
+ */
+export async function pullTraktIntoCinePulse(storageMethods) {
+  const token = await getValidToken();
+  if (!token) return { importedPlaybackCount: 0, importedHistoryCount: 0 };
+
+  const { saveWatchProgress, getWatchHistory } = storageMethods;
+  if (!saveWatchProgress) return { importedPlaybackCount: 0, importedHistoryCount: 0 };
+
+  const localHistory = getWatchHistory ? getWatchHistory() : [];
+  let importedPlaybackCount = 0;
+  let importedHistoryCount = 0;
+
+  // 1. Pull Playback (In-Progress Continue Watching from Trakt)
+  try {
+    const playbackRes = await fetch(`${TRAKT_API_URL}/sync/playback?limit=30`, {
+      headers: getApiHeaders(token)
+    });
+    if (playbackRes.ok) {
+      const playbackItems = await playbackRes.json();
+      if (Array.isArray(playbackItems)) {
+        for (const item of playbackItems) {
+          const isMovie = item.type === 'movie';
+          const mediaObj = isMovie ? item.movie : item.show;
+          const tmdbId = mediaObj?.ids?.tmdb;
+          if (!tmdbId) continue;
+
+          const season = isMovie ? 1 : (item.episode?.season || 1);
+          const episode = isMovie ? 1 : (item.episode?.number || 1);
+          const progressPercent = Math.min(99, Math.max(1, Math.round(item.progress || 0)));
+          const pausedAt = item.paused_at ? new Date(item.paused_at).getTime() : Date.now();
+
+          // Check if local history already has this item and was updated more recently
+          const existing = localHistory.find(h => h.id == tmdbId && (!h.isSeries || (h.season == season && h.episode == episode)));
+          if (existing && existing.lastWatchedAt && existing.lastWatchedAt > pausedAt) {
+            continue;
+          }
+
+          let posterPath = existing?.poster_path || existing?.posterPath || '';
+          let backdropPath = existing?.backdrop_path || existing?.backdropPath || '';
+          let title = existing?.title || mediaObj.title || '';
+          let duration = isMovie ? 6600 : 3000;
+
+          if (!posterPath || !title) {
+            const tmdbData = await fetchTmdbMediaInfo(tmdbId, !isMovie);
+            if (tmdbData) {
+              posterPath = tmdbData.poster_path || '';
+              backdropPath = tmdbData.backdrop_path || '';
+              title = tmdbData.title || tmdbData.name || title;
+              if (tmdbData.runtime) duration = tmdbData.runtime * 60;
+              else if (tmdbData.episode_run_time?.[0]) duration = tmdbData.episode_run_time[0] * 60;
+            }
+          }
+
+          const currentTime = Math.max(60, Math.round((progressPercent / 100) * duration));
+
+          saveWatchProgress({
+            id: tmdbId,
+            title,
+            posterPath,
+            backdropPath,
+            type: isMovie ? 'movie' : 'tv',
+            isSeries: !isMovie,
+            season: !isMovie ? season : undefined,
+            episode: !isMovie ? episode : undefined,
+            currentTime,
+            duration,
+            completed: false,
+            lastWatchedAt: pausedAt
+          });
+          importedPlaybackCount++;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Trakt playback pull error:', err);
+  }
+
+  // 2. Pull History (Watched Items from Trakt)
+  try {
+    const historyRes = await fetch(`${TRAKT_API_URL}/sync/history?limit=50&extended=full`, {
+      headers: getApiHeaders(token)
+    });
+    if (historyRes.ok) {
+      const historyItems = await historyRes.json();
+      if (Array.isArray(historyItems)) {
+        for (const item of historyItems) {
+          const isMovie = item.type === 'movie';
+          const mediaObj = isMovie ? item.movie : item.show;
+          const tmdbId = mediaObj?.ids?.tmdb;
+          if (!tmdbId) continue;
+
+          const season = isMovie ? 1 : (item.episode?.season || 1);
+          const episode = isMovie ? 1 : (item.episode?.number || 1);
+          const watchedAt = item.watched_at ? new Date(item.watched_at).getTime() : Date.now();
+
+          const existing = localHistory.find(h => h.id == tmdbId && (!h.isSeries || (h.season == season && h.episode == episode)));
+          if (existing && existing.completed) {
+            continue;
+          }
+
+          let posterPath = existing?.poster_path || existing?.posterPath || '';
+          let backdropPath = existing?.backdrop_path || existing?.backdropPath || '';
+          let title = existing?.title || mediaObj.title || '';
+          let duration = isMovie ? 6600 : 3000;
+
+          if (!posterPath || !title) {
+            const tmdbData = await fetchTmdbMediaInfo(tmdbId, !isMovie);
+            if (tmdbData) {
+              posterPath = tmdbData.poster_path || '';
+              backdropPath = tmdbData.backdrop_path || '';
+              title = tmdbData.title || tmdbData.name || title;
+              if (tmdbData.runtime) duration = tmdbData.runtime * 60;
+              else if (tmdbData.episode_run_time?.[0]) duration = tmdbData.episode_run_time[0] * 60;
+            }
+          }
+
+          saveWatchProgress({
+            id: tmdbId,
+            title,
+            posterPath,
+            backdropPath,
+            type: isMovie ? 'movie' : 'tv',
+            isSeries: !isMovie,
+            season: !isMovie ? season : undefined,
+            episode: !isMovie ? episode : undefined,
+            currentTime: duration,
+            duration,
+            completed: true,
+            lastWatchedAt: watchedAt
+          });
+          importedHistoryCount++;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Trakt history pull error:', err);
+  }
+
+  if (importedPlaybackCount > 0 || importedHistoryCount > 0) {
+    window.dispatchEvent(new CustomEvent('cinepulse_data_changed', { detail: { action: 'import', source: 'trakt' } }));
+    window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { action: 'import', source: 'trakt' } }));
+  }
+
+  return { importedPlaybackCount, importedHistoryCount };
+}
+
+/**
+ * Perform Full Two-Way Sync (CinePulse <-> Trakt.tv)
  */
 export async function performFullSync(storageMethods) {
   if (!isTraktConnected()) throw new Error('Trakt hesabı bağlı değil');
 
-  const { getWatchHistory } = storageMethods;
+  const { getWatchHistory, saveWatchProgress } = storageMethods;
 
   const syncResult = {
     pushedMoviesCount: 0,
     pushedEpisodesCount: 0,
+    importedPlaybackCount: 0,
+    importedHistoryCount: 0,
     errors: []
   };
 
   try {
-    const localHistory = getWatchHistory() || [];
-    // Include items that are marked completed OR actively watched (currentTime > 60 or progressPercent > 5)
+    // 1. Push CinePulse -> Trakt
+    const localHistory = getWatchHistory ? getWatchHistory() : [];
     const validItems = localHistory.filter(h => h.completed || (h.currentTime && h.currentTime > 60) || (h.progressPercent && h.progressPercent > 5));
 
     if (validItems.length > 0) {
@@ -607,6 +770,13 @@ export async function performFullSync(storageMethods) {
         syncResult.pushedMoviesCount = pushRes.added.movies || 0;
         syncResult.pushedEpisodesCount = pushRes.added.episodes || 0;
       }
+    }
+
+    // 2. Pull Trakt -> CinePulse (Two-Way Sync)
+    if (saveWatchProgress) {
+      const pullRes = await pullTraktIntoCinePulse(storageMethods);
+      syncResult.importedPlaybackCount = pullRes.importedPlaybackCount || 0;
+      syncResult.importedHistoryCount = pullRes.importedHistoryCount || 0;
     }
 
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, String(Date.now()));

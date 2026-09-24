@@ -186,16 +186,16 @@ export function openTraktModal() {
               <div class="backup-card" style="border: 1px solid rgba(237, 28, 36, 0.2); background: rgba(237, 28, 36, 0.04);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                   <h3 class="backup-card-title" style="color: #fff; margin: 0; font-size: 0.95rem;">
-                    <i data-lucide="upload-cloud" style="color: #ed1c24;"></i>
-                    <span>CinePulse Geçmişini Trakt'a Yükle</span>
+                    <i data-lucide="refresh-cw" style="color: #ed1c24;"></i>
+                    <span>Karşılıklı Senkronizasyon (İki Yönlü)</span>
                   </h3>
                   <button id="btn-trakt-sync-now" class="btn-primary trakt-btn-glow" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
                     <i data-lucide="refresh-cw" id="trakt-sync-icon" style="width: 14px; height: 14px;"></i>
-                    <span>Şimdi Yükle</span>
+                    <span>Şimdi Eşitle</span>
                   </button>
                 </div>
                 <p style="font-size: 0.82rem; color: #94a3b8; margin: 0; line-height: 1.5;">
-                  CinePulse'da izlediğin tüm dizi bölümlerini ve filmleri (düzeltilmiş dizi/sezon/bölüm şemasıyla) doğrudan Trakt profiline aktarır.
+                  CinePulse'daki geçmişi Trakt'a yükler ve Trakt'ta izlediğin veya yarım bıraktığın içerikleri doğrudan CinePulse kütüphanene aktarır.
                 </p>
                 <div id="trakt-sync-result" style="display: none; margin-top: 0.8rem; padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.8rem; background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); color: #4ade80;"></div>
               </div>
@@ -368,18 +368,19 @@ export function openTraktModal() {
 
           try {
             const res = await traktService.performFullSync({
-              getWatchHistory
+              getWatchHistory,
+              saveWatchProgress
             });
 
             if (resultBox) {
               resultBox.style.display = 'block';
               resultBox.innerHTML = `
-                ✓ <strong>Trakt'a aktarım tamamlandı!</strong><br/>
-                • ${res.pushedMoviesCount} film Trakt profiline işlendi<br/>
-                • ${res.pushedEpisodesCount} dizi bölümü Trakt profiline işlendi
+                ✓ <strong>Karşılıklı senkronizasyon tamamlandı!</strong><br/>
+                • ${res.pushedMoviesCount} film & ${res.pushedEpisodesCount} dizi Trakt'a yüklendi<br/>
+                • ${res.importedPlaybackCount} yarım kalan & ${res.importedHistoryCount} izlenen Trakt'tan CinePulse'a aktarıldı
               `;
             }
-            showToast('CinePulse izleme geçmişin Trakt\'a başarıyla aktarıldı!', 'success');
+            showToast('CinePulse ve Trakt başarıyla karşılıklı eşitlendi!', 'success');
             setTimeout(() => render('main'), 2500);
           } catch (err) {
             showToast(`Aktarım hatası: ${err.message}`, 'error');

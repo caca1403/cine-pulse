@@ -21,7 +21,7 @@ import { renderCardLayoutSwitcher, attachCardLayoutSwitcherEvents } from './comp
 import { grantAdminEntry, isAdminRouteAllowed } from './services/adminAccess.js';
 import { openDecisionRoomModal } from './components/DecisionRoomModal.js';
 import { initTraktAutoSync } from './services/traktService.js';
-import { getWatchHistory } from './services/storage.js';
+import { getWatchHistory, saveWatchProgress } from './services/storage.js';
 
 // Disable browser default scroll jump on SPA hash changes
 if ('scrollRestoration' in history) {
@@ -267,7 +267,7 @@ setTimeout(() => {
 }, 1200);
 
 // Initialize background Trakt auto-sync if user has enabled it
-initTraktAutoSync({ getWatchHistory });
+initTraktAutoSync({ getWatchHistory, saveWatchProgress });
 
 // Data change event listeners (Only reload whole route when backup data is imported or cleared)
 const onExternalDataImport = (e) => {
