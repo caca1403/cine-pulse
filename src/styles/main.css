@@ -1071,7 +1071,7 @@ img {
   top: calc(100% + 12px);
   left: 50%;
   transform: translateX(-50%) translateY(6px);
-  width: 460px;
+  width: 620px;
   background: rgba(9, 13, 24, 0.97);
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
@@ -1165,6 +1165,17 @@ img {
   font-weight: 500;
   line-height: 1.2;
   margin-top: 1px;
+}
+
+.hub-mega-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.58rem;
+  font-weight: 800;
+  padding: 0.15rem 0.42rem;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 /* --------------------------------------------------------------------------

@@ -45,23 +45,58 @@ export function renderNavbar(currentView = 'home') {
               <li><a href="#anime" class="nav-link ${currentView === 'anime' ? 'active' : ''}">Anime</a></li>
             ` : `
               <li><a href="#home" class="nav-link ${currentView === 'home' ? 'active' : ''}">Ana Sayfa</a></li>
-              <li><a href="#movies" class="nav-link ${currentView === 'movies' ? 'active' : ''}">Filmler</a></li>
-              <li><a href="#series" class="nav-link ${currentView === 'series' ? 'active' : ''}">Diziler</a></li>
-              <li><a href="#dramas" class="nav-link nav-link-dramas ${currentView === 'dramas' ? 'active' : ''}">
-                Kısa Dizi <span class="nav-drama-tag">REEL</span>
-              </a></li>
-              <!-- Evren Dropdown Trigger -->
+
+              <!-- Evren Hub Trigger – everything else lives here -->
               <li class="nav-hub-li" id="nav-hub-li">
                 <button type="button" id="btn-desktop-hub" class="nav-link nav-link-hub-trigger" aria-haspopup="true" aria-expanded="false">
-                  <i data-lucide="compass" style="width:13px;height:13px;"></i>
-                  <span>Keşfet</span>
-                  <i data-lucide="chevron-down" class="hub-caret" style="width:12px;height:12px;"></i>
+                  <i data-lucide="sparkles" style="width:13px;height:13px;color:#a855f7;"></i>
+                  <span>Evren</span>
+                  <i data-lucide="chevron-down" class="hub-caret" style="width:11px;height:11px;"></i>
                 </button>
 
                 <!-- Mega Dropdown Panel -->
                 <div class="hub-mega-dropdown" id="hub-mega-dropdown" role="menu">
                   <div class="hub-mega-inner">
-                    <!-- Left column: Categories -->
+
+                    <!-- Col 1: Main content -->
+                    <div class="hub-mega-col">
+                      <div class="hub-mega-section-label">İÇERİK</div>
+                      <a href="#movies" class="hub-mega-item hub-nav-trigger">
+                        <div class="hub-mega-icon" style="background:rgba(2,132,199,.18);color:#38bdf8;">
+                          <i data-lucide="film" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">Filmler</div>
+                          <div class="hub-mega-item-sub">Yerli & Yabancı Gişe</div>
+                        </div>
+                        <span class="hub-mega-badge" style="background:rgba(2,132,199,.2);color:#38bdf8;">4K UHD</span>
+                      </a>
+                      <a href="#series" class="hub-mega-item hub-nav-trigger">
+                        <div class="hub-mega-icon" style="background:rgba(245,158,11,.15);color:#f59e0b;">
+                          <i data-lucide="tv" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">Diziler</div>
+                          <div class="hub-mega-item-sub">Popüler & Tüm Sezonlar</div>
+                        </div>
+                        <span class="hub-mega-badge" style="background:rgba(245,158,11,.15);color:#f59e0b;">TREND</span>
+                      </a>
+                      <a href="#dramas" class="hub-mega-item hub-nav-trigger">
+                        <div class="hub-mega-icon" style="background:rgba(168,85,247,.15);color:#c084fc;">
+                          <i data-lucide="clapperboard" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">Kısa Diziler</div>
+                          <div class="hub-mega-item-sub">DramaBox & ReelShort</div>
+                        </div>
+                        <span class="hub-mega-badge" style="background:rgba(168,85,247,.15);color:#c084fc;">REEL</span>
+                      </a>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="hub-mega-divider"></div>
+
+                    <!-- Col 2: Genres -->
                     <div class="hub-mega-col">
                       <div class="hub-mega-section-label">TÜRLER</div>
                       <a href="#anime" class="hub-mega-item hub-nav-trigger">
@@ -70,7 +105,7 @@ export function renderNavbar(currentView = 'home') {
                         </div>
                         <div>
                           <div class="hub-mega-item-title">Anime Dünyası</div>
-                          <div class="hub-mega-item-sub">Shonen, Seinen & Filmler</div>
+                          <div class="hub-mega-item-sub">Shonen, Seinen</div>
                         </div>
                       </a>
                       <a href="#cartoons" class="hub-mega-item hub-nav-trigger">
@@ -87,12 +122,12 @@ export function renderNavbar(currentView = 'home') {
                           <i data-lucide="book-open" style="width:15px;height:15px;"></i>
                         </div>
                         <div>
-                          <div class="hub-mega-item-title">Belgesel Kulübü</div>
+                          <div class="hub-mega-item-title">Belgesel</div>
                           <div class="hub-mega-item-sub">Bilim, Doğa & Tarih</div>
                         </div>
                       </a>
                       <a href="#discover" class="hub-mega-item hub-nav-trigger">
-                        <div class="hub-mega-icon" style="background:rgba(168,85,247,.15);color:#c084fc;">
+                        <div class="hub-mega-icon" style="background:rgba(99,102,241,.15);color:#818cf8;">
                           <i data-lucide="sliders-horizontal" style="width:15px;height:15px;"></i>
                         </div>
                         <div>
@@ -105,7 +140,7 @@ export function renderNavbar(currentView = 'home') {
                     <!-- Divider -->
                     <div class="hub-mega-divider"></div>
 
-                    <!-- Right column: Tools -->
+                    <!-- Col 3: Tools -->
                     <div class="hub-mega-col">
                       <div class="hub-mega-section-label">ARAÇLAR</div>
                       <button type="button" data-open-decision-room class="hub-mega-item hub-tool-btn">
@@ -114,7 +149,7 @@ export function renderNavbar(currentView = 'home') {
                         </div>
                         <div>
                           <div class="hub-mega-item-title">Birlikte Seç</div>
-                          <div class="hub-mega-item-sub">Anonim ortak karar odası</div>
+                          <div class="hub-mega-item-sub">Anonim karar odası</div>
                         </div>
                       </button>
                       <button type="button" id="btn-hub-random-spin" class="hub-mega-item hub-tool-btn">
@@ -123,10 +158,11 @@ export function renderNavbar(currentView = 'home') {
                         </div>
                         <div>
                           <div class="hub-mega-item-title">Şanslı Çark</div>
-                          <div class="hub-mega-item-sub">"Ne izlesem?" rastgele seç</div>
+                          <div class="hub-mega-item-sub">Rastgele yapım seç</div>
                         </div>
                       </button>
                     </div>
+
                   </div>
                 </div>
               </li>
