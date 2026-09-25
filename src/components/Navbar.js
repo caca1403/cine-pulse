@@ -156,7 +156,7 @@ export function renderNavbar(currentView = 'home') {
                       </button>
                       <a href="https://caca1403.github.io/dizionerisistemi/" target="_blank" rel="noopener noreferrer" id="btn-hub-series-recommend" class="hub-mega-item hub-tool-btn" aria-label="SÉRA Dizi Öneri Sistemi'ni aç">
                         <div class="hub-mega-icon" style="background:rgba(99,102,241,.15);color:#a5b4fc;">
-                          <i data-lucide="wand-sparkles" style="width:15px;height:15px;"></i>
+                          <i data-lucide="wand-2" style="width:15px;height:15px;"></i>
                         </div>
                         <div>
                           <div class="hub-mega-item-title">SÉRA Dizi Öneri Sistemi ↗</div>
@@ -383,7 +383,7 @@ export function renderNavbar(currentView = 'home') {
             </button>
             <a href="https://caca1403.github.io/dizionerisistemi/" target="_blank" rel="noopener noreferrer" id="btn-hub-series-recommend-mobile" class="hub-sheet-tool-btn" aria-label="SÉRA Dizi Öneri Sistemi'ni aç">
               <div class="hub-sheet-tool-icon" style="background:linear-gradient(135deg,#6366f1,#a855f7);">
-                <i data-lucide="wand-sparkles" style="width:18px;height:18px;color:#fff;"></i>
+                <i data-lucide="wand-2" style="width:18px;height:18px;color:#fff;"></i>
               </div>
               <div class="hub-sheet-tool-text">
                 <span class="hub-sheet-tool-title">SÉRA Dizi Öneri Sistemi ↗</span>

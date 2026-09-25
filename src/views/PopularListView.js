@@ -58,7 +58,7 @@ export async function renderPopularListView(type = 'tv') {
     documentary: ['🐾 Doğa & Hayvan Belgeselleri', 'globe']
   } : {
     tv: ['Tüm Zamanların En Popüler Dizileri', 'monitor-play'],
-    cartoon: ['Çizgi Dizi Dünyası & Unutulmaz Klasikler', 'wand-sparkles'],
+    cartoon: ['Çizgi Dizi Dünyası & Unutulmaz Klasikler', 'wand-2'],
     movie: ['Tüm Zamanların En Popüler Filmleri', 'popcorn'],
     anime: ['Türkiye’de En Popüler Animeler', 'cat'],
     documentary: ['Tüm Zamanların En Çok İzlenen Belgeselleri', 'globe']

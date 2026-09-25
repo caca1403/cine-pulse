@@ -412,7 +412,7 @@ export async function renderHomeView() {
 
       ${cartoonSeriesItems && cartoonSeriesItems.length > 0 ? renderInfiniteRail({
         id:    'rail-cartoon-series',
-        icon:  'wand-sparkles',
+        icon:  'wand-2',
         title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler',
         accent:'#38bdf8',
         items: cartoonSeriesItems
@@ -550,7 +550,7 @@ export async function renderHomeView() {
             ${renderInfiniteRail({ id: 'rail-anime', icon: 'smile', title: '🎌 Çocuk & Genç Anime Dünyası', accent: '#a855f7', items: animeItems })}
           ` : `
             ${renderInfiniteRail({ id: 'rail-adult-animation', icon: 'sparkles', title: 'Yetişkin Animasyonları & Çizgi Diziler', accent: '#fb7185', items: adultAnimationItems })}
-            ${renderInfiniteRail({ id: 'rail-cartoon-series', icon: 'wand-sparkles', title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler', accent: '#38bdf8', items: cartoonSeriesItems })}
+            ${renderInfiniteRail({ id: 'rail-cartoon-series', icon: 'wand-2', title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler', accent: '#38bdf8', items: cartoonSeriesItems })}
             ${renderInfiniteRail({ id: 'rail-top-movies', icon: 'award', title: '⭐ Sinema Tarihinin Başyapıtları (IMDb 8.5+)', accent: '#fbbf24', items: topRatedMovies })}
             ${renderInfiniteRail({ id: 'rail-top-tv', icon: 'star', title: 'Kült & En Yüksek Puanlı Diziler', accent: '#34d399', items: topRatedTV })}
             ${renderInfiniteRail({ id: 'rail-anime', icon: 'sparkles', title: '🎌 Popüler Anime Evreni (TR Dublaj & Altyazı)', accent: '#ec4899', items: animeItems })}
