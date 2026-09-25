@@ -11,8 +11,15 @@ function pickArtwork(images) {
 }
 
 export default async function handler(req, res) {
-  const type = req.query?.type === 'tv' ? 'tv' : req.query?.type === 'movie' ? 'movie' : null;
-  const id = String(req.query?.id || '');
+  let query = req.query;
+  if (!query && req.url) {
+    try {
+      const parsedUrl = new URL(req.url, 'http://localhost');
+      query = Object.fromEntries(parsedUrl.searchParams.entries());
+    } catch (_) {}
+  }
+  const type = query?.type === 'tv' ? 'tv' : query?.type === 'movie' ? 'movie' : null;
+  const id = String(query?.id || '');
   if (!type || !/^\d+$/.test(id)) return res.status(400).json({ error: 'Invalid media' });
 
   const apiKey = process.env.FANART_API_KEY;

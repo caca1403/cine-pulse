@@ -25,7 +25,8 @@ import {
   clearAllWatchHistory,
   syncHistoryAnimeStatus
 } from '../services/storage.js';
-import { renderMediaCard, attachMediaCardEvents, determineMediaType } from '../components/MediaCard.js';
+import { renderMediaCard, attachMediaCardEvents, upgradeLandscapeBackdrops, determineMediaType } from '../components/MediaCard.js';
+import { prefetchBackdrops } from '../services/fanartService.js';
 import { openDataManagerModal } from '../components/DataManagerModal.js';
 import { showToast } from '../components/Toast.js';
 
@@ -368,24 +369,69 @@ export function renderLibraryView() {
               ${visibleChunk.map(item => renderLibraryCard(item, currentTab)).join('')}
             </div>
             ${hasMore ? `
-              <div style="text-align: center; margin: 2rem 0 1rem;">
+              <div class="lib-load-more-wrap" style="text-align: center; margin: 2rem 0 1rem;">
                 <button id="btn-lib-load-more" class="btn-secondary" style="padding: 0.6rem 1.8rem; border-radius: var(--radius-full); font-size: 0.88rem;">
                   <span>Daha Fazla Göster (${filtered.length - tabLimit} içerik daha)</span>
                 </button>
+                <div class="lib-scroll-sentinel" style="height: 1px; margin-top: 1rem;"></div>
               </div>
             ` : ''}
           `;
 
+          const grid = activeContent.querySelector(`#grid-${currentTab}`);
+
+          const loadMoreItems = () => {
+            const currentRendered = grid.querySelectorAll('.library-card-item').length;
+            if (currentRendered >= filtered.length) {
+              const wrap = activeContent.querySelector('.lib-load-more-wrap');
+              if (wrap) wrap.remove();
+              return;
+            }
+
+            const nextChunk = filtered.slice(currentRendered, currentRendered + 36);
+            tabLimit = currentRendered + nextChunk.length;
+
+            const nextHTML = nextChunk.map(item => renderLibraryCard(item, currentTab)).join('');
+            grid.insertAdjacentHTML('beforeend', nextHTML);
+
+            const remaining = filtered.length - tabLimit;
+            const wrap = activeContent.querySelector('.lib-load-more-wrap');
+            if (remaining > 0) {
+              const btnSpan = wrap?.querySelector('#btn-lib-load-more span');
+              if (btnSpan) btnSpan.textContent = `Daha Fazla Göster (${remaining} içerik daha)`;
+            } else if (wrap) {
+              wrap.remove();
+            }
+
+            prefetchBackdrops(nextChunk);
+            bindDeleteButtons(grid);
+            renderIcons(grid);
+            attachMediaCardEvents(grid);
+            upgradeLandscapeBackdrops(grid);
+          };
+
           const loadMoreBtn = activeContent.querySelector('#btn-lib-load-more');
           if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', () => {
-              tabLimit += 36;
-              renderActiveTabContent();
-            });
+            loadMoreBtn.addEventListener('click', loadMoreItems);
+          }
+
+          const sentinel = activeContent.querySelector('.lib-scroll-sentinel');
+          if (sentinel && 'IntersectionObserver' in window) {
+            const sentinelObserver = new IntersectionObserver((entries) => {
+              if (entries.some(e => e.isIntersecting)) {
+                loadMoreItems();
+              }
+            }, { rootMargin: '400px 0px' });
+            sentinelObserver.observe(sentinel);
           }
 
           // Re-bind delete buttons inside this rendered tab
           bindDeleteButtons(activeContent);
+
+          // Prefetch and upgrade Fanart backdrops for active tab
+          prefetchBackdrops(visibleChunk);
+          attachMediaCardEvents(activeContent);
+          upgradeLandscapeBackdrops(activeContent);
         }
 
         // Update Batch Clear button visibility

@@ -626,8 +626,21 @@ export function attachMediaCardEvents(container) {
 
 let fanartObserver = null;
 
+function getFanartObserver() {
+  if (fanartObserver) return fanartObserver;
+  if (!('IntersectionObserver' in window)) return null;
+  fanartObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      fanartObserver.unobserve(entry.target);
+      loadLandscapeArtwork(entry.target);
+    });
+  }, { rootMargin: '800px 0px' });
+  return fanartObserver;
+}
+
 async function loadLandscapeArtwork(card) {
-  if (card.dataset.fanartState) return;
+  if (!card || card.dataset.fanartState) return;
   card.dataset.fanartState = 'loading';
   const img = card.querySelector('.card-poster-img');
   if (!img) return;
@@ -654,31 +667,26 @@ async function loadLandscapeArtwork(card) {
   }
 
   img.dataset.backdropSrc = artwork.image;
-  if (artwork.logo) card.querySelector('.card-fanart-logo').src = artwork.logo;
+  const logoEl = card.querySelector('.card-fanart-logo');
+  if (logoEl && artwork.logo) logoEl.src = artwork.logo;
   const wrapper = card.querySelector('.card-poster-wrapper');
   wrapper?.classList.remove('card-fanart-placeholder');
   wrapper?.classList.toggle('card-fanart-composite', Boolean(artwork.logo));
-  if (document.documentElement.classList.contains('cards-landscape')) img.src = artwork.image;
+  const isLandscape = getUserSettings().cardLayout === 'landscape' || document.documentElement.classList.contains('cards-landscape');
+  if (isLandscape) img.src = artwork.image;
   card.dataset.fanartState = 'loaded';
 }
 
 export function upgradeLandscapeBackdrops(container = document) {
   if (getUserSettings().cardLayout !== 'landscape') return;
-  fanartObserver?.disconnect();
-  const cards = document.querySelectorAll('.media-card[data-tmdbid]:not([data-fanart-state])');
+  const root = (container && container.querySelectorAll) ? container : document;
+  const cards = root.querySelectorAll('.media-card[data-tmdbid]:not([data-fanart-state])');
   if (!cards.length) return;
 
-  if (!('IntersectionObserver' in window)) {
+  const observer = getFanartObserver();
+  if (!observer) {
     cards.forEach(card => loadLandscapeArtwork(card));
     return;
   }
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-      observer.unobserve(entry.target);
-      loadLandscapeArtwork(entry.target);
-    });
-  }, { rootMargin: '800px 0px' });
-  fanartObserver = observer;
-  cards.forEach(card => fanartObserver.observe(card));
+  cards.forEach(card => observer.observe(card));
 }

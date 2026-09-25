@@ -12,10 +12,9 @@ import {
   fetchKidsAnimationSeries, fetchKidsClassicCartoonSeries,
   fetchAdultAnimationSeries, fetchCartoonSeries
 } from '../services/tmdbApi.js';
-import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
 import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile, isItemKidSafe } from '../services/storage.js';
 import { renderHeroSlider, attachHeroSliderEvents, stopHeroSlider } from '../components/HeroSlider.js';
-import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
+import { renderMediaCard, attachMediaCardEvents, upgradeLandscapeBackdrops } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
 import { railScrollMemory } from '../services/scrollManager.js';
 
@@ -227,6 +226,7 @@ function initInfiniteRails(container) {
         });
 
         renderIcons(rail);
+        upgradeLandscapeBackdrops(rail);
       } catch (err) {
         spinner.remove();
         console.error('Rail load error:', err);
@@ -558,6 +558,7 @@ export async function renderHomeView() {
           `;
           homeView.append(extra);
           renderIcons(extra);
+          attachMediaCardEvents(extra);
           attachRailScrolling(extra);
           initInfiniteRails(extra);
         });
