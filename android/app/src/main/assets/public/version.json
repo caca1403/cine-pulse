@@ -1,10 +1,10 @@
 {
-  "version": "1.1.5",
-  "versionCode": 115,
+  "version": "1.1.6",
+  "versionCode": 116,
   "releaseDate": "2026-09-25",
-  "title": "CinePulse Android v1.1.5",
-  "releaseNotes": "• Kısa dizi oynatıcısına tüm ekranlarda yatay kapak, dizi özeti ve görselli bölüm seçimi eklendi.\n• APK oynatıcısına bölüm indirme düğmesi ve indirme ilerlemesi eklendi.\n• İndirilen HLS bölümleri paketlenip internet olmadan oynatılabilir.\n• İndirilenler sayfası yalnızca APK'da görünür; mobil web sitesi eski gezinmesini korur.",
-  "downloadUrl": "https://cine-pulse-drab.vercel.app/cinepulse.apk",
+  "title": "CinePulse Android v1.1.6",
+  "releaseNotes": "• Canlı TV ve Birlikte İzle alt menü çubuğuna alındı.\n• DMAX ve TLC yayın adresleri kanal açılışında resmi kaynaktan yenileniyor; hata durumunda otomatik tekrar deneniyor.\n• APK oynatıcısında API adresleri doğru sunucuya yönlendiriliyor.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
   "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
   "mandatory": false
 }

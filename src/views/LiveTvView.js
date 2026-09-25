@@ -11,6 +11,7 @@ import { fetchRecTvLiveChannels, getRecTvChannelStreamUrl } from '../services/re
 import { getChannelEpg, initEpgService, stopEpgService } from '../services/epgService.js';
 import { showToast } from '../components/Toast.js';
 import { isKidProfileActive } from '../services/storage.js';
+import { apiUrl } from '../services/apiOrigin.js';
 
 const FAVS_STORAGE_KEY = 'cinepulse_live_favs';
 
@@ -869,10 +870,38 @@ export function renderLiveTvView() {
         }, 20000);
 
         let freshStreamAttempted = false;
+        let officialRefreshAttempts = 0;
         let directNetworkRetryCount = 0;
         let proxyFallbackAttempted = false;
         let mediaRecoveryAttempted = false;
+        async function tryFreshOfficialStream(failedUrl, forceRefresh = true) {
+          if (!channel.officialLiveId) return false;
+          if (forceRefresh && officialRefreshAttempts >= 2) return false;
+          if (forceRefresh) officialRefreshAttempts += 1;
+          freshStreamAttempted = true;
+          loadingEl.classList.remove('hidden');
+          errorEl.classList.add('hidden');
+          try {
+            const resolver = apiUrl(`/api/live_tv_stream?channel=${encodeURIComponent(channel.officialLiveId)}&json=1&refresh=1&_=${Date.now()}`);
+            const response = await fetch(resolver, { cache: 'no-store', headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error(`Live resolver ${response.status}`);
+            const data = await response.json();
+            if (channelPlaybackToken !== myToken) return true;
+            const freshUrl = data?.url ? apiUrl(data.url) : '';
+            if (!freshUrl) throw new Error('Live stream URL missing');
+            channel.streamUrl = freshUrl;
+            if (freshUrl !== failedUrl || forceRefresh) {
+              startHls(freshUrl);
+              return true;
+            }
+          } catch (error) {
+            console.warn('[LiveTV] Official stream refresh failed:', channel.name, error?.message || error);
+          }
+          return false;
+        }
+
         async function tryFreshRecTvStream(failedUrl) {
+          if (channel.officialLiveId) return tryFreshOfficialStream(failedUrl);
           if (freshStreamAttempted || !channel.isTvr || !channel.tvrId) return false;
           freshStreamAttempted = true;
           loadingEl.classList.remove('hidden');
@@ -908,6 +937,7 @@ export function renderLiveTvView() {
 
         function startHls(url) {
           if (channelPlaybackToken !== myToken) return;
+          url = apiUrl(url);
 
           if (Hls.isSupported()) {
             if (activeHls) {
@@ -959,7 +989,11 @@ export function renderLiveTvView() {
               if (data.fatal) {
                 console.warn('[LiveTV] Fatal HLS error on:', url, data.type, data.details);
                 if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                  if (channel.isTvr && channel.tvrId) {
+                  if (channel.officialLiveId) {
+                    tryFreshOfficialStream(url).then(recovered => {
+                      if (!recovered) showPlaybackError();
+                    });
+                  } else if (channel.isTvr && channel.tvrId) {
                     tryFreshRecTvStream(url).then(recovered => {
                       if (!recovered && !tryProxyFallback(url)) showPlaybackError();
                     });
@@ -1016,9 +1050,17 @@ export function renderLiveTvView() {
         }
         if (channelPlaybackToken !== myToken) return;
 
+        // Official DMAX/TLC playback URLs are signed and short-lived; resolve a fresh URL on every selection.
+        if (channel.officialLiveId) {
+          tryFreshOfficialStream('', true).then(recovered => {
+            if (recovered || channelPlaybackToken !== myToken) return;
+            tryFreshOfficialStream('', true).then(retried => {
+              if (!retried && channelPlaybackToken === myToken) showPlaybackError();
+            });
+          });
         // Existing TVR channels start from their known URL immediately. Dynamic
         // channels have no URL yet, so only those wait for a one-time resolve.
-        if (channel.isTvr && channel.tvrId && !channel.streamUrl) {
+        } else if (channel.isTvr && channel.tvrId && !channel.streamUrl) {
           getRecTvChannelStreamUrl(channel.tvrId).then(freshUrl => {
             if (channelPlaybackToken !== myToken) return;
             if (freshUrl) {

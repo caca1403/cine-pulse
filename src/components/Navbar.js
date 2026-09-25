@@ -174,7 +174,7 @@ export function renderNavbar(currentView = 'home') {
                           <div class="hub-mega-item-sub">İzleme geçmişi & Scrobble</div>
                         </div>
                       </button>
-                      <a href="./cinepulse.apk" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" id="btn-hub-apk" class="hub-mega-item hub-tool-btn" aria-label="CinePulse Android APK İndir">
+                      <a href="https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" id="btn-hub-apk" class="hub-mega-item hub-tool-btn" aria-label="CinePulse Android APK İndir">
                         <div class="hub-mega-icon" style="background:rgba(16,185,129,.15);color:#10b981;">
                           <i data-lucide="smartphone" style="width:15px;height:15px;"></i>
                         </div>
@@ -268,9 +268,9 @@ export function renderNavbar(currentView = 'home') {
         <span>Ana Sayfa</span>
       </a>
 
-      <a href="#discover" class="dynamic-dock-item ${currentView === 'discover' ? 'active' : ''}">
-        <i data-lucide="compass"></i>
-        <span>Keşfet</span>
+      <a href="#livetv" class="dynamic-dock-item dynamic-dock-live ${currentView === 'livetv' ? 'active' : ''}">
+        <i data-lucide="radio"></i>
+        <span>Canlı</span>
       </a>
 
       <!-- Center Orb – Evren Hub -->
@@ -278,6 +278,11 @@ export function renderNavbar(currentView = 'home') {
         <div class="hub-orb-inner">
           <i data-lucide="sparkles" style="width:20px;height:20px;color:#fff;"></i>
         </div>
+      </button>
+
+      <button type="button" data-open-decision-room class="dynamic-dock-item" aria-label="Birlikte İzle">
+        <i data-lucide="users-round"></i>
+        <span>Birlikte</span>
       </button>
 
       ${showOfflineDownloads ? `<a href="#downloads" class="dynamic-dock-item ${currentView === 'downloads' ? 'active' : ''}" id="dock-item-downloads">
@@ -341,10 +346,10 @@ export function renderNavbar(currentView = 'home') {
               <span class="hub-sheet-card-title">Kısa Dizi</span>
               <span class="hub-sheet-card-badge">REEL</span>
             </a>
-            <a href="#livetv" class="hub-sheet-card hub-nav-trigger" style="--card-color:#ef4444;">
-              <i data-lucide="radio" style="width:22px;height:22px;"></i>
-              <span class="hub-sheet-card-title">Canlı TV</span>
-              <span class="hub-sheet-card-badge" style="background:#ef4444;color:#fff;">7/24 VIP</span>
+            <a href="#discover" class="hub-sheet-card hub-nav-trigger" style="--card-color:#6366f1;">
+              <i data-lucide="sliders-horizontal" style="width:22px;height:22px;"></i>
+              <span class="hub-sheet-card-title">Keşfet</span>
+              <span class="hub-sheet-card-badge">FİLTRE</span>
             </a>
           </div>
 
@@ -368,17 +373,6 @@ export function renderNavbar(currentView = 'home') {
           <!-- Row 3: Tools -->
           <div class="hub-sheet-section-label" style="margin-top:1.1rem;">ARAÇLAR & ÖZEL</div>
           <div class="hub-sheet-tools">
-            <button type="button" data-open-decision-room class="hub-sheet-tool-btn">
-              <div class="hub-sheet-tool-icon" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);">
-                <i data-lucide="users-round" style="width:18px;height:18px;color:#fff;"></i>
-              </div>
-              <div class="hub-sheet-tool-text">
-                <span class="hub-sheet-tool-title">Birlikte İzle (Karar Odası)</span>
-                <span class="hub-sheet-tool-sub">Arkadaşlarınla ortak film seç</span>
-              </div>
-              <i data-lucide="users" style="width:14px;height:14px;color:#60a5fa;margin-left:auto;flex-shrink:0;"></i>
-            </button>
-
             <button type="button" id="btn-hub-random-spin-mobile" class="hub-sheet-tool-btn">
               <div class="hub-sheet-tool-icon" style="background:linear-gradient(135deg,#f59e0b,#ef4444);">
                 <i data-lucide="dices" style="width:18px;height:18px;color:#fff;"></i>
@@ -408,7 +402,7 @@ export function renderNavbar(currentView = 'home') {
               </div>
               <i data-lucide="repeat" style="width:14px;height:14px;color:#ed1c24;margin-left:auto;flex-shrink:0;"></i>
             </button>
-            <a href="./cinepulse.apk" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" id="btn-hub-apk-mobile" class="hub-sheet-tool-btn" aria-label="CinePulse Android APK İndir">
+            <a href="https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" id="btn-hub-apk-mobile" class="hub-sheet-tool-btn" aria-label="CinePulse Android APK İndir">
               <div class="hub-sheet-tool-icon" style="background:linear-gradient(135deg,#10b981,#059669);">
                 <i data-lucide="smartphone" style="width:18px;height:18px;color:#fff;"></i>
               </div>

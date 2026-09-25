@@ -69,7 +69,8 @@ export default async function handler(req, res) {
       }
 
       const now = Date.now();
-      if (globalThis._liveTvCache && globalThis._liveTvCache[channel] && globalThis._liveTvCache[channel].exp > now) {
+      const forceRefresh = urlObj.searchParams.get('refresh') === '1';
+      if (!forceRefresh && globalThis._liveTvCache && globalThis._liveTvCache[channel] && globalThis._liveTvCache[channel].exp > now) {
         const cached = globalThis._liveTvCache[channel];
         const wantsJson = urlObj.searchParams.get('json') === '1';
         if (wantsJson) return res.json({ url: cached.url, raw: cached.raw });
@@ -92,22 +93,42 @@ export default async function handler(req, res) {
           'upgrade-insecure-requests': '1'
         }
       });
+      if (!pageRes.ok) {
+        return res.status(502).json({ error: 'Official channel page unavailable', httpStatus: pageRes.status });
+      }
       const html = await pageRes.text();
-      const m = html.match(/daionUrl\s*:\s*['"](https?:\/\/[^'"]+)['"]/);
-      if (!m || !m[1]) {
+      const escapedHtml = html.replace(/\\\//g, '/').replace(/\\u0026/gi, '&').replace(/&amp;/gi, '&');
+      const channelName = channel === 'dmax' ? 'dmax' : 'tlc';
+      const daionMatch = escapedHtml.match(/daionUrl\s*:\s*['"](https?:\/\/[^'"]+)['"]/i);
+      const candidates = [...escapedHtml.matchAll(/https?:\/\/[^\s'"<>\\]+?\.m3u8(?:\?[^\s'"<>\\]*)?/gi)].map(match => match[0]);
+      const daionUrl = (daionMatch?.[1] || candidates.find(value => {
+        try {
+          const parsed = new URL(value);
+          return parsed.hostname.endsWith('daioncdn.net') && parsed.pathname.toLowerCase().includes(`/${channelName}/`);
+        } catch (_) { return false; }
+      }) || '').replace(/\\\//g, '/').replace(/\\u0026/gi, '&');
+      if (!daionUrl) {
         return res.status(502).json({ error: 'Failed to extract live stream URL', httpStatus: pageRes.status });
       }
-      const daionUrl = m[1];
+      try {
+        const parsedStreamUrl = new URL(daionUrl);
+        if (!isSafePublicUrl(daionUrl) || !parsedStreamUrl.hostname.endsWith('daioncdn.net') || !parsedStreamUrl.pathname.toLowerCase().includes(`/${channelName}/`)) {
+          return res.status(502).json({ error: 'Official stream URL validation failed' });
+        }
+      } catch (_) {
+        return res.status(502).json({ error: 'Official stream URL validation failed' });
+      }
       const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(daionUrl)}&ref=${encodeURIComponent(refUrl)}`;
 
       if (!globalThis._liveTvCache) globalThis._liveTvCache = {};
       globalThis._liveTvCache[channel] = {
         url: proxiedUrl,
         raw: daionUrl,
-        exp: now + 5 * 60 * 1000 // Cache for 5 minutes
+        exp: now + 20 * 1000 // Signed playback URLs are short lived; refresh often.
       };
 
       const wantsJson = urlObj.searchParams.get('json') === '1';
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
       if (wantsJson) return res.json({ url: proxiedUrl, raw: daionUrl });
       return res.redirect(302, proxiedUrl);
     } catch (e) {
