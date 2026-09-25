@@ -1,7 +1,7 @@
 /* Title-bearing landscape artwork from Fanart.tv. */
 
 const artworkCache = new Map();
-const SS_PREFIX = 'cp_fanart_thumb_v1_';
+const SS_PREFIX = 'cp_fanart_thumb_v2_';
 
 export async function getBestBackdrop(tmdbId, type = 'movie') {
   if (!/^\d+$/.test(String(tmdbId))) return null;
@@ -11,8 +11,9 @@ export async function getBestBackdrop(tmdbId, type = 'movie') {
   try {
     const stored = sessionStorage.getItem(SS_PREFIX + cacheKey);
     if (stored !== null) {
-      artworkCache.set(cacheKey, stored || null);
-      return stored || null;
+      const result = stored ? JSON.parse(stored) : null;
+      artworkCache.set(cacheKey, result);
+      return result;
     }
   } catch (_) {}
 
@@ -22,9 +23,10 @@ export async function getBestBackdrop(tmdbId, type = 'movie') {
         signal: AbortSignal.timeout(8000)
       });
       if (!response.ok) return null;
-      const image = (await response.json()).image || null;
-      try { sessionStorage.setItem(SS_PREFIX + cacheKey, image || ''); } catch (_) {}
-      return image;
+      const data = await response.json();
+      const artwork = data.image ? { image: data.image, logo: data.logo || null } : null;
+      try { sessionStorage.setItem(SS_PREFIX + cacheKey, artwork ? JSON.stringify(artwork) : ''); } catch (_) {}
+      return artwork;
     } catch (_) {
       return null;
     }

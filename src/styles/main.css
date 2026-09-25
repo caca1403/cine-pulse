@@ -2746,6 +2746,18 @@ img {
 }
 
 .card-fanart-title { display: none; }
+.card-fanart-logo { display: none; }
+.cards-landscape .card-fanart-composite .card-fanart-logo {
+  position: absolute;
+  left: 10%;
+  top: 20%;
+  display: block;
+  width: 80%;
+  height: 60%;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 9px rgba(0, 0, 0, .85));
+  pointer-events: none;
+}
 .cards-landscape .card-fanart-placeholder .card-fanart-title {
   position: absolute;
   inset: 0;

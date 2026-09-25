@@ -1,6 +1,6 @@
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
-function pickThumb(images) {
+function pickArtwork(images) {
   if (!Array.isArray(images)) return null;
   return images
     .filter(image => image?.url && /^https?:\/\/assets\.fanart\.tv\//.test(image.url))
@@ -34,8 +34,11 @@ export default async function handler(req, res) {
     if (response.status === 404) return res.status(200).json({ image: null });
     if (!response.ok) throw new Error(`Fanart request failed: ${response.status}`);
     const data = await response.json();
+    const thumb = pickArtwork(type === 'tv' ? data.tvthumb : data.moviethumb);
+    const logo = pickArtwork(type === 'tv' ? [...(data.hdtvlogo || []), ...(data.clearlogo || [])] : [...(data.hdmovielogo || []), ...(data.movielogo || [])]);
+    const background = logo && pickArtwork(type === 'tv' ? data.tvbackground : data.moviebackground);
     res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
-    return res.status(200).json({ image: pickThumb(type === 'tv' ? data.tvthumb : data.moviethumb) });
+    return res.status(200).json({ image: thumb || background || null, logo: thumb ? null : background ? logo : null });
   } catch (error) {
     return res.status(502).json({ error: error.message });
   }

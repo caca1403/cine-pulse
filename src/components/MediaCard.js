@@ -241,6 +241,7 @@ export function renderMediaCard(item, options = {}) {
           decoding="async"
           onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'"
         />
+        <img class="card-fanart-logo" alt="" aria-hidden="true" />
         <span class="card-fanart-title">${escapePreviewText(title)}</span>
         
         <div class="card-glass-glow"></div>
@@ -651,12 +652,12 @@ export async function upgradeLandscapeBackdrops(container = document) {
       if (!img) return;
 
       try {
-        const bestUrl = await getBestBackdrop(tmdbId, mediaType);
-        if (!bestUrl || bestUrl === img.src) return;
+        const artwork = await getBestBackdrop(tmdbId, mediaType);
+        if (!artwork?.image || artwork.image === img.src) return;
 
         // Smooth swap: preload first
         const preloader = new Image();
-        preloader.onload = () => {
+        const applyArtwork = () => {
           // Only apply if still in landscape mode and card still exists
           if (!document.documentElement.classList.contains('cards-landscape')) return;
           if (!card.isConnected) return;
@@ -664,13 +665,22 @@ export async function upgradeLandscapeBackdrops(container = document) {
           img.style.transition = 'opacity 0.3s ease';
           img.style.opacity = '0';
           setTimeout(() => {
-            img.src = bestUrl;
-            img.dataset.backdropSrc = bestUrl;
-            card.querySelector('.card-poster-wrapper')?.classList.remove('card-fanart-placeholder');
+            img.src = artwork.image;
+            img.dataset.backdropSrc = artwork.image;
+            const wrapper = card.querySelector('.card-poster-wrapper');
+            wrapper?.classList.remove('card-fanart-placeholder');
+            wrapper?.classList.toggle('card-fanart-composite', Boolean(artwork.logo));
+            if (artwork.logo) card.querySelector('.card-fanart-logo').src = artwork.logo;
             img.style.opacity = '1';
           }, 150);
         };
-        preloader.src = bestUrl;
+        preloader.onload = () => {
+          if (!artwork.logo) return applyArtwork();
+          const logoPreloader = new Image();
+          logoPreloader.onload = applyArtwork;
+          logoPreloader.src = artwork.logo;
+        };
+        preloader.src = artwork.image;
       } catch (_) {}
     }));
 
