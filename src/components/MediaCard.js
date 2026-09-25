@@ -14,6 +14,7 @@ import { getBestBackdrop, prefetchBackdrops } from '../services/fanartService.js
 const KNOWN_ANIME_KEYWORDS = STORAGE_ANIME_KEYWORDS || [
   'anime', 'kimetsu', 'yaiba', 'iblis keser', 'demon slayer', 'naruto', 'boruto', 'shingeki', 'titan'
 ];
+const FANART_PLACEHOLDER = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
 function escapePreviewText(value = '') {
   return String(value).replace(/[&<>'"]/g, char => ({
@@ -148,9 +149,8 @@ export function renderMediaCard(item, options = {}) {
   const posterPath = item.poster_path || item.posterPath || item.poster || '';
   const backdropPath = item.backdrop_path || item.backdropPath || item.backdrop || '';
   const posterUrl = getImageUrl(posterPath, TMDB_IMAGE_SIZES.POSTER_MEDIUM);
-  const backdropUrl = getImageUrl(backdropPath || posterPath, TMDB_IMAGE_SIZES.BACKDROP_LARGE);
   const usesLandscapeCards = getUserSettings().cardLayout === 'landscape';
-  const cardImageUrl = usesLandscapeCards ? backdropUrl : posterUrl;
+  const cardImageUrl = usesLandscapeCards ? FANART_PLACEHOLDER : posterUrl;
   
   // Real rating or empty
   let rawRating = item.vote_average ?? item.voteAverage ?? item.rating;
@@ -230,17 +230,18 @@ export function renderMediaCard(item, options = {}) {
       role="button"
       aria-label="${title}">
       
-      <div class="card-poster-wrapper">
+      <div class="card-poster-wrapper card-fanart-placeholder">
         <img 
           src="${cardImageUrl}"
           data-poster-src="${posterUrl}"
-          data-backdrop-src="${backdropUrl}"
+          data-backdrop-src="${FANART_PLACEHOLDER}"
           alt="${title}" 
           class="card-poster-img" 
           loading="lazy" 
           decoding="async"
           onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'"
         />
+        <span class="card-fanart-title">${escapePreviewText(title)}</span>
         
         <div class="card-glass-glow"></div>
 
@@ -665,6 +666,7 @@ export async function upgradeLandscapeBackdrops(container = document) {
           setTimeout(() => {
             img.src = bestUrl;
             img.dataset.backdropSrc = bestUrl;
+            card.querySelector('.card-poster-wrapper')?.classList.remove('card-fanart-placeholder');
             img.style.opacity = '1';
           }, 150);
         };
