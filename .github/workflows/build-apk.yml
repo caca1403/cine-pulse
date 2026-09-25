@@ -30,20 +30,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
+          cache: 'npm'
 
       - name: Install Node Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: npm install --legacy-peer-deps
 
       - name: Build Web Application (Vite)
-        run: pnpm run build
+        run: npm run build
 
       - name: Sync Capacitor Android Project
-        run: pnpm exec cap sync android
+        run: npx @capacitor/cli sync android
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x android/gradlew
@@ -69,7 +65,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
         with:
-          name: CinePulse Mobile App (${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.1.0' }})
+          name: CinePulse Mobil Uygulama (${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.1.0' }})
           tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.1.0' }}
           files: |
             cinepulse.apk
