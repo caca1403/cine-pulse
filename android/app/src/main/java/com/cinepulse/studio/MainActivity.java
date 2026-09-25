@@ -18,9 +18,16 @@ public class MainActivity extends BridgeActivity {
                         try {
                             Intent intent = new Intent(Intent.ACTION_VIEW);
                             intent.setData(Uri.parse(url));
+                            intent.addCategory(Intent.CATEGORY_BROWSABLE);
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                             startActivity(intent);
-                        } catch (Exception ignored) {}
+                        } catch (Exception e1) {
+                            try {
+                                Intent chooserIntent = Intent.createChooser(new Intent(Intent.ACTION_VIEW, Uri.parse(url)), "İndirici Seçin");
+                                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(chooserIntent);
+                            } catch (Exception ignored) {}
+                        }
                     }
                 });
             }

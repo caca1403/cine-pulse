@@ -216,14 +216,30 @@ export function showUpdateModal(updateInfo) {
     showToast('APK indirmesi başlatılıyor...', 'info');
     if (isNativeAndroidApp()) {
       try {
-        window.open(targetUrl, '_system');
+        const opened = window.open(targetUrl, '_system');
+        if (!opened) {
+          window.location.href = targetUrl;
+        }
+      } catch (_) {
+        window.location.href = targetUrl;
+      }
+    } else {
+      try {
+        const a = document.createElement('a');
+        a.href = targetUrl;
+        a.download = 'cinepulse.apk';
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 1000);
       } catch (_) {
         window.location.href = targetUrl;
       }
     }
     setTimeout(() => {
       try { modal.remove(); } catch (_) {}
-    }, 1800);
+    }, 2000);
   };
 
   const downloadBtn = modal.querySelector('#btn-update-download');
