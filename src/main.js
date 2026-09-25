@@ -22,6 +22,7 @@ import { grantAdminEntry, isAdminRouteAllowed } from './services/adminAccess.js'
 import { openDecisionRoomModal } from './components/DecisionRoomModal.js';
 import { initTraktAutoSync } from './services/traktService.js';
 import { getWatchHistory, saveWatchProgress, saveBatchWatchProgress } from './services/storage.js';
+import { initAppUpdater } from './services/appUpdater.js';
 
 // Disable browser default scroll jump on SPA hash changes
 if ('scrollRestoration' in history) {
@@ -272,6 +273,9 @@ window.addEventListener('cinepulse_trakt_auth_changed', (event) => {
   if (event.detail?.connected) initTraktAutoSync(traktStorageMethods);
 });
 initTraktAutoSync(traktStorageMethods);
+
+// Initialize mobile app auto-updater check (checks GitHub releases for latest version)
+initAppUpdater();
 
 // Data change event listeners (Only reload whole route when backup data is imported or cleared)
 const onExternalDataImport = (e) => {

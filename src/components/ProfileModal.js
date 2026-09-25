@@ -10,6 +10,7 @@ import { showToast } from './Toast.js';
 import { openDataManagerModal } from './DataManagerModal.js';
 import { openTraktModal } from './TraktModal.js';
 import { promptInstall } from '../services/pwaManager.js';
+import { isNativeAndroidApp, checkForAppUpdates } from '../services/appUpdater.js';
 
 let activeProfileModal = null;
 
@@ -87,10 +88,21 @@ export function openProfileModal() {
               <i data-lucide="hard-drive-download" style="width: 15px; height: 15px;"></i>
               <span>Veri & Yedek</span>
             </button>
-            <button class="btn-manage-profiles" id="btn-modal-pwa-install" title="CinePulse Uygulamasını Yükle">
-              <i data-lucide="download" style="width: 15px; height: 15px;"></i>
-              <span>Uygulamayı Yükle</span>
-            </button>
+            ${isNativeAndroidApp() ? `
+              <button class="btn-manage-profiles" id="btn-modal-check-update" title="Güncellemeleri Denetle">
+                <i data-lucide="refresh-cw" style="width: 15px; height: 15px; color: #10b981;"></i>
+                <span>Güncelleme</span>
+              </button>
+            ` : `
+              <a class="btn-manage-profiles" id="btn-modal-apk-download" href="https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk" target="_blank" rel="noopener noreferrer" title="Android APK İndir" style="text-decoration: none;">
+                <i data-lucide="smartphone" style="width: 15px; height: 15px; color: #10b981;"></i>
+                <span>Android APK</span>
+              </a>
+              <button class="btn-manage-profiles" id="btn-modal-pwa-install" title="CinePulse Web Uygulamasını Yükle">
+                <i data-lucide="download" style="width: 15px; height: 15px;"></i>
+                <span>Web Uygulaması</span>
+              </button>
+            `}
           </div>
         </div>
       `;
@@ -191,6 +203,13 @@ export function openProfileModal() {
     if (pwaBtn) {
       pwaBtn.onclick = () => {
         promptInstall();
+      };
+    }
+
+    const checkUpdateBtn = modalContainer.querySelector('#btn-modal-check-update');
+    if (checkUpdateBtn) {
+      checkUpdateBtn.onclick = () => {
+        checkForAppUpdates({ manual: true });
       };
     }
 

@@ -172,6 +172,15 @@ export function renderNavbar(currentView = 'home') {
                           <div class="hub-mega-item-sub">İzleme geçmişi & Scrobble</div>
                         </div>
                       </button>
+                      <a href="https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk" target="_blank" rel="noopener noreferrer" id="btn-hub-apk" class="hub-mega-item hub-tool-btn" aria-label="CinePulse Android APK İndir">
+                        <div class="hub-mega-icon" style="background:rgba(16,185,129,.15);color:#10b981;">
+                          <i data-lucide="smartphone" style="width:15px;height:15px;"></i>
+                        </div>
+                        <div>
+                          <div class="hub-mega-item-title">Android APK İndir</div>
+                          <div class="hub-mega-item-sub">Telefona doğrudan kur</div>
+                        </div>
+                      </a>
                     </div>
 
                   </div>
@@ -400,6 +409,16 @@ export function renderNavbar(currentView = 'home') {
               </div>
               <i data-lucide="repeat" style="width:14px;height:14px;color:#ed1c24;margin-left:auto;flex-shrink:0;"></i>
             </button>
+            <a href="https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk" target="_blank" rel="noopener noreferrer" id="btn-hub-apk-mobile" class="hub-sheet-tool-btn" aria-label="CinePulse Android APK İndir">
+              <div class="hub-sheet-tool-icon" style="background:linear-gradient(135deg,#10b981,#059669);">
+                <i data-lucide="smartphone" style="width:18px;height:18px;color:#fff;"></i>
+              </div>
+              <div class="hub-sheet-tool-text">
+                <span class="hub-sheet-tool-title">Android APK İndir</span>
+                <span class="hub-sheet-tool-sub">Telefona doğrudan kur & güncelle</span>
+              </div>
+              <i data-lucide="download" style="width:14px;height:14px;color:#10b981;margin-left:auto;flex-shrink:0;"></i>
+            </a>
           </div>
         </div>
       </div>
