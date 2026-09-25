@@ -1400,6 +1400,10 @@ export function getContinueWatchingList() {
       }
     } else {
       // === SERIES HANDLING ===
+      // A series whose recorded episodes are all watched belongs in Completed,
+      // and must not also appear in Continue Watching with an "İZLENDİ" badge.
+      if (records.every(r => r.completed || r.progressPercent >= 85)) continue;
+
       // Find any record that is explicitly in-progress (not completed, with watch time)
       const inProgressRecord = records.find(r => !r.completed && r.currentTime > 0 && r.progressPercent < 100);
       
