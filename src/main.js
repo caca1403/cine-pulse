@@ -266,8 +266,12 @@ setTimeout(() => {
   checkAndShowProductTour();
 }, 1200);
 
-// Initialize background Trakt auto-sync if user has enabled it
-initTraktAutoSync({ getWatchHistory, saveWatchProgress, saveBatchWatchProgress });
+// Keep Trakt synced on launch, after connecting, and when returning to the app.
+const traktStorageMethods = { getWatchHistory, saveWatchProgress, saveBatchWatchProgress };
+window.addEventListener('cinepulse_trakt_auth_changed', (event) => {
+  if (event.detail?.connected) initTraktAutoSync(traktStorageMethods);
+});
+initTraktAutoSync(traktStorageMethods);
 
 // Data change event listeners (Only reload whole route when backup data is imported or cleared)
 const onExternalDataImport = (e) => {

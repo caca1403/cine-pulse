@@ -55,26 +55,48 @@ export function saveTraktSettings(settings) {
   return merged;
 }
 
-let autoSyncRanThisSession = false;
+const AUTO_SYNC_INTERVAL_MS = 15 * 60 * 1000;
+let autoSyncInitialized = false;
+let autoSyncInFlight = false;
+let lastAutoSyncAttempt = 0;
 
 /**
  * Background auto-sync on app launch
  */
 export function initTraktAutoSync(storageMethods) {
-  const settings = getTraktSettings();
-  if (!settings.autoSyncOnLaunch || !isTraktConnected() || autoSyncRanThisSession) return;
+  if (autoSyncInitialized) {
+    // A newly connected account should sync even if startup ran while disconnected.
+    if (isTraktConnected()) runAutoSync(storageMethods);
+    return;
+  }
+  autoSyncInitialized = true;
 
-  autoSyncRanThisSession = true;
-  // Delay by 4s to ensure zero impact on initial view render
-  window.setTimeout(async () => {
-    try {
-      console.log('[Trakt] Başlangıç otomatik senkronizasyonu çalışıyor...');
-      await performFullSync(storageMethods);
-      console.log('[Trakt] Başlangıç otomatik senkronizasyonu tamamlandı.');
-    } catch (err) {
-      console.warn('[Trakt] Otomatik senkronizasyon uyarısı:', err);
-    }
-  }, 4000);
+  const runIfDue = () => {
+    if (document.visibilityState === 'hidden') return;
+    if (Date.now() - lastAutoSyncAttempt < AUTO_SYNC_INTERVAL_MS) return;
+    runAutoSync(storageMethods);
+  };
+
+  // Let the first view render before fetching the account history.
+  window.setTimeout(runIfDue, 4000);
+  window.setInterval(runIfDue, AUTO_SYNC_INTERVAL_MS);
+  document.addEventListener('visibilitychange', runIfDue);
+}
+
+async function runAutoSync(storageMethods) {
+  if (!getTraktSettings().autoSyncOnLaunch || !isTraktConnected() || autoSyncInFlight) return;
+  autoSyncInFlight = true;
+  lastAutoSyncAttempt = Date.now();
+  try {
+    console.log('[Trakt] Otomatik senkronizasyon çalışıyor...');
+    const result = await performFullSync(storageMethods);
+    if (result.errors.length) console.warn('[Trakt] Otomatik senkronizasyon uyarısı:', result.errors);
+    console.log('[Trakt] Otomatik senkronizasyon tamamlandı.');
+  } catch (err) {
+    console.warn('[Trakt] Otomatik senkronizasyon uyarısı:', err);
+  } finally {
+    autoSyncInFlight = false;
+  }
 }
 
 /**

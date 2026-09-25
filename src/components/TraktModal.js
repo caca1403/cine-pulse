@@ -229,8 +229,8 @@ export function openTraktModal() {
               <div class="trakt-settings-list">
                 <div class="trakt-setting-row">
                   <div>
-                    <div class="trakt-setting-title">Açılışta Otomatik Eşitle</div>
-                    <div class="trakt-setting-sub">CinePulse açıldığında izleme geçmişini arka planda otomatik olarak Trakt ile eşitler.</div>
+                    <div class="trakt-setting-title">Otomatik Eşitle</div>
+                    <div class="trakt-setting-sub">CinePulse açıldığında, Trakt bağlandığında ve uygulamaya döndüğünde geçmişi arka planda eşitler.</div>
                   </div>
                   <label class="switch-toggle">
                     <input type="checkbox" id="trakt-toggle-autosync" ${settings.autoSyncOnLaunch ? 'checked' : ''} />
