@@ -583,35 +583,50 @@ export async function pushHistoryToTrakt(items) {
 }
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
+const tmdbInfoCache = new Map();
 
 async function fetchTmdbMediaInfo(tmdbId, isSeries = false) {
+  const cacheKey = `${isSeries ? 'tv' : 'movie'}_${tmdbId}`;
+  if (tmdbInfoCache.has(cacheKey)) {
+    return tmdbInfoCache.get(cacheKey);
+  }
   try {
     const endpoint = isSeries ? 'tv' : 'movie';
     const res = await fetch(`https://api.themoviedb.org/3/${endpoint}/${tmdbId}?api_key=${TMDB_API_KEY}&language=tr-TR`);
     if (res.ok) {
-      return await res.json();
+      const data = await res.json();
+      tmdbInfoCache.set(cacheKey, data);
+      return data;
     }
   } catch (_) {}
   return null;
 }
 
 /**
- * Pull Trakt In-Progress Playback & History into CinePulse (Trakt -> CinePulse)
+ * Pull Trakt In-Progress Playback & Full Watched History into CinePulse (Trakt -> CinePulse)
  */
 export async function pullTraktIntoCinePulse(storageMethods) {
   const token = await getValidToken();
   if (!token) return { importedPlaybackCount: 0, importedHistoryCount: 0 };
 
-  const { saveWatchProgress, getWatchHistory } = storageMethods;
-  if (!saveWatchProgress) return { importedPlaybackCount: 0, importedHistoryCount: 0 };
+  const { saveWatchProgress, saveBatchWatchProgress, getWatchHistory } = storageMethods;
+  if (!saveWatchProgress && !saveBatchWatchProgress) return { importedPlaybackCount: 0, importedHistoryCount: 0 };
 
-  const localHistory = getWatchHistory ? getWatchHistory() : [];
   let importedPlaybackCount = 0;
   let importedHistoryCount = 0;
+  const itemsToBatch = [];
+  const currentHistory = getWatchHistory ? getWatchHistory() : [];
 
-  // 1. Pull Playback (In-Progress Continue Watching from Trakt)
+  // Helper map for fast lookup of existing local items
+  const localMap = new Map();
+  for (const h of currentHistory) {
+    const key = `${h.id}_${h.season || 1}_${h.episode || 1}`;
+    localMap.set(key, h);
+  }
+
+  // 1. Pull In-Progress Playback (Continue Watching from Trakt)
   try {
-    const playbackRes = await fetch(`${TRAKT_API_URL}/sync/playback?limit=30`, {
+    const playbackRes = await fetch(`${TRAKT_API_URL}/sync/playback?extended=full&limit=50`, {
       headers: getApiHeaders(token)
     });
     if (playbackRes.ok) {
@@ -628,8 +643,8 @@ export async function pullTraktIntoCinePulse(storageMethods) {
           const progressPercent = Math.min(99, Math.max(1, Math.round(item.progress || 0)));
           const pausedAt = item.paused_at ? new Date(item.paused_at).getTime() : Date.now();
 
-          // Check if local history already has this item and was updated more recently
-          const existing = localHistory.find(h => h.id == tmdbId && (!h.isSeries || (h.season == season && h.episode == episode)));
+          const key = `${tmdbId}_${season}_${episode}`;
+          const existing = localMap.get(key);
           if (existing && existing.lastWatchedAt && existing.lastWatchedAt > pausedAt) {
             continue;
           }
@@ -638,6 +653,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
           let backdropPath = existing?.backdrop_path || existing?.backdropPath || '';
           let title = existing?.title || mediaObj.title || '';
           let duration = isMovie ? 6600 : 3000;
+          let seriesMeta = {};
 
           if (!posterPath || !title) {
             const tmdbData = await fetchTmdbMediaInfo(tmdbId, !isMovie);
@@ -647,12 +663,20 @@ export async function pullTraktIntoCinePulse(storageMethods) {
               title = tmdbData.title || tmdbData.name || title;
               if (tmdbData.runtime) duration = tmdbData.runtime * 60;
               else if (tmdbData.episode_run_time?.[0]) duration = tmdbData.episode_run_time[0] * 60;
+              if (!isMovie) {
+                seriesMeta = {
+                  number_of_episodes: tmdbData.number_of_episodes,
+                  number_of_seasons: tmdbData.number_of_seasons,
+                  status: tmdbData.status,
+                  seasons: tmdbData.seasons
+                };
+              }
             }
           }
 
           const currentTime = Math.max(60, Math.round((progressPercent / 100) * duration));
 
-          saveWatchProgress({
+          itemsToBatch.push({
             id: tmdbId,
             title,
             posterPath,
@@ -663,8 +687,10 @@ export async function pullTraktIntoCinePulse(storageMethods) {
             episode: !isMovie ? episode : undefined,
             currentTime,
             duration,
+            progressPercent,
             completed: false,
-            lastWatchedAt: pausedAt
+            lastWatchedAt: pausedAt,
+            ...seriesMeta
           });
           importedPlaybackCount++;
         }
@@ -674,65 +700,142 @@ export async function pullTraktIntoCinePulse(storageMethods) {
     console.warn('Trakt playback pull error:', err);
   }
 
-  // 2. Pull History (Watched Items from Trakt)
+  // 2. Pull ALL Watched Movies from Trakt (Parallel Batched)
   try {
-    const historyRes = await fetch(`${TRAKT_API_URL}/sync/history?limit=50&extended=full`, {
+    const moviesRes = await fetch(`${TRAKT_API_URL}/sync/watched/movies?extended=full`, {
       headers: getApiHeaders(token)
     });
-    if (historyRes.ok) {
-      const historyItems = await historyRes.json();
-      if (Array.isArray(historyItems)) {
-        for (const item of historyItems) {
-          const isMovie = item.type === 'movie';
-          const mediaObj = isMovie ? item.movie : item.show;
-          const tmdbId = mediaObj?.ids?.tmdb;
-          if (!tmdbId) continue;
+    if (moviesRes.ok) {
+      const watchedMovies = await moviesRes.json();
+      if (Array.isArray(watchedMovies)) {
+        // Chunk movies in batches of 5 to avoid sequential bottleneck
+        for (let i = 0; i < watchedMovies.length; i += 5) {
+          const chunk = watchedMovies.slice(i, i + 5);
+          await Promise.all(chunk.map(async (item) => {
+            const tmdbId = item.movie?.ids?.tmdb;
+            if (!tmdbId) return;
 
-          const season = isMovie ? 1 : (item.episode?.season || 1);
-          const episode = isMovie ? 1 : (item.episode?.number || 1);
-          const watchedAt = item.watched_at ? new Date(item.watched_at).getTime() : Date.now();
-
-          const existing = localHistory.find(h => h.id == tmdbId && (!h.isSeries || (h.season == season && h.episode == episode)));
-          if (existing && existing.completed) {
-            continue;
-          }
-
-          let posterPath = existing?.poster_path || existing?.posterPath || '';
-          let backdropPath = existing?.backdrop_path || existing?.backdropPath || '';
-          let title = existing?.title || mediaObj.title || '';
-          let duration = isMovie ? 6600 : 3000;
-
-          if (!posterPath || !title) {
-            const tmdbData = await fetchTmdbMediaInfo(tmdbId, !isMovie);
-            if (tmdbData) {
-              posterPath = tmdbData.poster_path || '';
-              backdropPath = tmdbData.backdrop_path || '';
-              title = tmdbData.title || tmdbData.name || title;
-              if (tmdbData.runtime) duration = tmdbData.runtime * 60;
-              else if (tmdbData.episode_run_time?.[0]) duration = tmdbData.episode_run_time[0] * 60;
+            const key = `${tmdbId}_1_1`;
+            const existing = localMap.get(key);
+            if (existing && existing.completed) {
+              return;
             }
-          }
 
-          saveWatchProgress({
-            id: tmdbId,
-            title,
-            posterPath,
-            backdropPath,
-            type: isMovie ? 'movie' : 'tv',
-            isSeries: !isMovie,
-            season: !isMovie ? season : undefined,
-            episode: !isMovie ? episode : undefined,
-            currentTime: duration,
-            duration,
-            completed: true,
-            lastWatchedAt: watchedAt
-          });
-          importedHistoryCount++;
+            const watchedAt = item.last_watched_at ? new Date(item.last_watched_at).getTime() : Date.now();
+            let posterPath = existing?.poster_path || existing?.posterPath || '';
+            let backdropPath = existing?.backdrop_path || existing?.backdropPath || '';
+            let title = existing?.title || item.movie?.title || '';
+            let duration = 6600;
+
+            if (!posterPath || !title) {
+              const tmdbData = await fetchTmdbMediaInfo(tmdbId, false);
+              if (tmdbData) {
+                posterPath = tmdbData.poster_path || '';
+                backdropPath = tmdbData.backdrop_path || '';
+                title = tmdbData.title || title;
+                if (tmdbData.runtime) duration = tmdbData.runtime * 60;
+              }
+            }
+
+            itemsToBatch.push({
+              id: tmdbId,
+              title,
+              posterPath,
+              backdropPath,
+              type: 'movie',
+              isSeries: false,
+              currentTime: duration,
+              duration,
+              progressPercent: 100,
+              completed: true,
+              lastWatchedAt: watchedAt
+            });
+            importedHistoryCount++;
+          }));
         }
       }
     }
   } catch (err) {
-    console.warn('Trakt history pull error:', err);
+    console.warn('Trakt watched movies pull error:', err);
+  }
+
+  // 3. Pull ALL Watched TV Shows & Episodes from Trakt (Parallel Batched)
+  try {
+    const showsRes = await fetch(`${TRAKT_API_URL}/sync/watched/shows?extended=full`, {
+      headers: getApiHeaders(token)
+    });
+    if (showsRes.ok) {
+      const watchedShows = await showsRes.json();
+      if (Array.isArray(watchedShows)) {
+        for (let i = 0; i < watchedShows.length; i += 4) {
+          const chunk = watchedShows.slice(i, i + 4);
+          await Promise.all(chunk.map(async (showEntry) => {
+            const tmdbId = showEntry.show?.ids?.tmdb;
+            if (!tmdbId) return;
+
+            const showTitle = showEntry.show?.title || '';
+            const tmdbData = await fetchTmdbMediaInfo(tmdbId, true);
+            const posterPath = tmdbData?.poster_path || '';
+            const backdropPath = tmdbData?.backdrop_path || '';
+            const title = tmdbData?.name || tmdbData?.title || showTitle;
+            const duration = tmdbData?.episode_run_time?.[0] ? tmdbData.episode_run_time[0] * 60 : 3000;
+            const seriesMeta = {
+              number_of_episodes: tmdbData?.number_of_episodes,
+              number_of_seasons: tmdbData?.number_of_seasons,
+              status: tmdbData?.status,
+              seasons: tmdbData?.seasons
+            };
+
+            const seasons = Array.isArray(showEntry.seasons) ? showEntry.seasons : [];
+            for (const s of seasons) {
+              const seasonNum = s.number;
+              const episodes = Array.isArray(s.episodes) ? s.episodes : [];
+              for (const ep of episodes) {
+                const epNum = ep.number;
+                const key = `${tmdbId}_${seasonNum}_${epNum}`;
+                const existing = localMap.get(key);
+                if (existing && existing.completed) {
+                  continue;
+                }
+
+                const watchedAt = ep.last_watched_at ? new Date(ep.last_watched_at).getTime() : Date.now();
+
+                itemsToBatch.push({
+                  id: tmdbId,
+                  title,
+                  posterPath,
+                  backdropPath,
+                  type: 'tv',
+                  isSeries: true,
+                  season: seasonNum,
+                  episode: epNum,
+                  currentTime: duration,
+                  duration,
+                  progressPercent: 100,
+                  completed: true,
+                  lastWatchedAt: watchedAt,
+                  ...seriesMeta
+                });
+                importedHistoryCount++;
+              }
+            }
+          }));
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Trakt watched shows pull error:', err);
+  }
+
+  // Save all accumulated items in one swift bulk operation
+  if (itemsToBatch.length > 0) {
+    if (saveBatchWatchProgress) {
+      saveBatchWatchProgress(itemsToBatch);
+    } else if (saveWatchProgress) {
+      for (const b of itemsToBatch) {
+        saveWatchProgress(b);
+      }
+    }
   }
 
   if (importedPlaybackCount > 0 || importedHistoryCount > 0) {

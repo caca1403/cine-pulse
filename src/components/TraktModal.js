@@ -4,6 +4,7 @@ import * as traktService from '../services/traktService.js';
 import {
   getWatchHistory,
   saveWatchProgress,
+  saveBatchWatchProgress,
   getWatchlist,
   toggleWatchlist,
   isWatchlist,
@@ -369,7 +370,8 @@ export function openTraktModal() {
           try {
             const res = await traktService.performFullSync({
               getWatchHistory,
-              saveWatchProgress
+              saveWatchProgress,
+              saveBatchWatchProgress
             });
 
             if (resultBox) {

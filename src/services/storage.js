@@ -849,7 +849,7 @@ export function saveWatchProgress({
     duration: Math.round(effectiveDuration),
     progressPercent,
     completed: isCompleted,
-    lastWatchedAt: Date.now()
+    lastWatchedAt: rest.lastWatchedAt ? Number(rest.lastWatchedAt) : Date.now()
   };
 
   if (existingIndex >= 0) {
@@ -858,6 +858,7 @@ export function saveWatchProgress({
     history.unshift(record);
   }
 
+  history.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
   _watchHistoryCache = history;
   if (_progressMapCache) {
     _progressMapCache.set(`${id}_${season}_${episode}`, record);
@@ -868,6 +869,96 @@ export function saveWatchProgress({
   invalidateDerivedHistoryCaches();
 
   setLocalItem(STORAGE_KEYS.WATCH_HISTORY, history, { isProgressUpdate: true });
+}
+
+/**
+ * Bulk save watch progress records in a single optimized pass
+ */
+export function saveBatchWatchProgress(items = []) {
+  if (!Array.isArray(items) || items.length === 0) return;
+  const history = getWatchHistory();
+  const historyMap = new Map();
+
+  for (let i = 0; i < history.length; i++) {
+    const item = history[i];
+    const key = `${item.id}_${item.season || 1}_${item.episode || 1}`;
+    historyMap.set(key, item);
+  }
+
+  for (const item of items) {
+    if (!item || !item.id) continue;
+    const season = Number(item.season || 1);
+    const episode = Number(item.episode || 1);
+    const key = `${item.id}_${season}_${episode}`;
+    const existing = historyMap.get(key);
+
+    if (existing && existing.lastWatchedAt && item.lastWatchedAt && existing.lastWatchedAt > item.lastWatchedAt && existing.completed) {
+      continue;
+    }
+
+    const isAnAnime = Boolean(
+      item.isAnime ||
+      item.type === 'anime' ||
+      isRegisteredAnimeId(item.id) ||
+      (existing && (existing.isAnime || existing.type === 'anime')) ||
+      isAnimeRecord(item)
+    );
+    if (isAnAnime) registerAnimeId(item.id);
+
+    const hasSeriesProps = Boolean(
+      item.isSeries ||
+      item.type === 'tv' ||
+      item.first_air_date ||
+      season > 1 ||
+      episode > 1 ||
+      (existing && (existing.isSeries || existing.type === 'tv'))
+    );
+
+    const resolvedType = isAnAnime ? 'anime' : (hasSeriesProps ? 'tv' : 'movie');
+    const { resolvedPoster, resolvedBackdrop } = resolveMediaImages(
+      item.id,
+      item.posterPath || item.poster_path,
+      item.backdropPath || item.backdrop_path,
+      history
+    );
+
+    const effectiveDuration = item.duration > 0 ? item.duration : (resolvedType === 'movie' ? 6600 : 3000);
+    const currentTime = item.currentTime !== undefined ? item.currentTime : (item.completed ? effectiveDuration : 0);
+    const progressPercent = item.progressPercent !== undefined 
+      ? item.progressPercent 
+      : (effectiveDuration > 0 ? Math.min(100, Math.round((currentTime / effectiveDuration) * 100)) : 0);
+    const isCompleted = item.completed || progressPercent >= 90;
+
+    const record = {
+      ...(existing || {}),
+      ...item,
+      id: item.id,
+      title: item.title || existing?.title || 'İçerik',
+      posterPath: resolvedPoster,
+      poster_path: resolvedPoster,
+      backdropPath: resolvedBackdrop,
+      backdrop_path: resolvedBackdrop,
+      type: resolvedType,
+      isAnime: isAnAnime,
+      isSeries: hasSeriesProps,
+      season,
+      episode,
+      currentTime: Math.round(currentTime),
+      duration: Math.round(effectiveDuration),
+      progressPercent,
+      completed: isCompleted,
+      lastWatchedAt: item.lastWatchedAt ? Number(item.lastWatchedAt) : (existing?.lastWatchedAt || Date.now())
+    };
+
+    historyMap.set(key, record);
+  }
+
+  const updatedHistory = Array.from(historyMap.values()).sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+  _watchHistoryCache = updatedHistory;
+  _progressMapCache = null;
+  _seriesLatestMapCache = null;
+  invalidateDerivedHistoryCaches();
+  setLocalItem(STORAGE_KEYS.WATCH_HISTORY, updatedHistory);
 }
 
 export function removeWatchHistoryItem(id, season = 1, episode = 1) {
@@ -1303,9 +1394,22 @@ export function getContinueWatchingList() {
       const epDuration = (currentInProg ? currentInProg.duration : firstRecord.duration) || 3000;
       const remStr = formatRemainingTime(currentEpTime, epDuration);
 
-      // If all recorded episodes are finished and not marked as halfway, exclude from continue watching
-      const allWatched = records.every(r => r.completed || r.progressPercent >= 85);
-      if (allWatched && !isCurrentEpHalfway) {
+      // Check if series/season is completely finished
+      const isSeriesEnded = firstRecord.status === 'Ended' || firstRecord.status === 'Canceled';
+      const seasonInfo = Array.isArray(firstRecord.seasons) 
+        ? firstRecord.seasons.find(s => s.season_number === currentActiveSeason) 
+        : null;
+      const seasonEpCount = seasonInfo?.episode_count || firstRecord.season_episodes_count;
+
+      if (seasonEpCount && targetEp > seasonEpCount) {
+        const totalSeasons = firstRecord.number_of_seasons || (Array.isArray(firstRecord.seasons) ? firstRecord.seasons.filter(s => s.season_number > 0).length : 1);
+        if (currentActiveSeason < totalSeasons) {
+          currentActiveSeason++;
+          targetEp = 1;
+        } else if (isSeriesEnded && !isCurrentEpHalfway) {
+          continue;
+        }
+      } else if (isSeriesEnded && firstRecord.number_of_episodes && watchedEpNumbers.size >= firstRecord.number_of_episodes && !isCurrentEpHalfway) {
         continue;
       }
 
