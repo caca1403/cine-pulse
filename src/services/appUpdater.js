@@ -7,8 +7,8 @@
 import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
 
-export const CURRENT_APP_VERSION = '1.1.0';
-export const CURRENT_VERSION_CODE = 110;
+export const CURRENT_APP_VERSION = '1.1.1';
+export const CURRENT_VERSION_CODE = 111;
 
 const REMOTE_VERSION_URL = 'https://raw.githubusercontent.com/caca1403/cine-pulse/main/public/version.json';
 const SNOOZE_KEY = 'cinepulse_update_snoozed_until';
@@ -45,6 +45,9 @@ function isNewerVersion(remote, current) {
 export function showUpdateModal(updateInfo) {
   // Prevent duplicate modals
   if (document.getElementById('cinepulse-update-modal')) return;
+
+  const directUrl = updateInfo.downloadUrl || 'https://cine-pulse-drab.vercel.app/cinepulse.apk';
+  const githubUrl = updateInfo.githubDownloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk';
 
   const modal = document.createElement('div');
   modal.id = 'cinepulse-update-modal';
@@ -117,7 +120,7 @@ export function showUpdateModal(updateInfo) {
         border: 1px solid rgba(255, 255, 255, 0.07);
         border-radius: 14px;
         padding: 1rem 1.2rem;
-        margin-bottom: 1.6rem;
+        margin-bottom: 1.3rem;
         max-height: 140px;
         overflow-y: auto;
       ">
@@ -130,8 +133,8 @@ export function showUpdateModal(updateInfo) {
       </div>
 
       <!-- Action Buttons -->
-      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-        <a id="btn-update-download" href="${updateInfo.downloadUrl}" target="_blank" rel="noopener noreferrer" style="
+      <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+        <a id="btn-update-download" href="${directUrl}" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" style="
           display: flex;
           align-items: center;
           justify-content: center;
@@ -147,7 +150,26 @@ export function showUpdateModal(updateInfo) {
           transition: all 0.2s ease;
         ">
           <i data-lucide="download" style="width: 18px; height: 18px; stroke-width: 2.5;"></i>
-          <span>Şimdi Güncelle (APK İndir)</span>
+          <span>Hemen İndir (Hızlı Sunucu)</span>
+        </a>
+
+        <a id="btn-update-github" href="${githubUrl}" target="_blank" rel="noopener noreferrer" style="
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: #cbd5e1;
+          font-weight: 600;
+          font-size: 0.84rem;
+          padding: 0.65rem 1.2rem;
+          border-radius: 9999px;
+          text-decoration: none;
+          transition: all 0.2s ease;
+        ">
+          <i data-lucide="external-link" style="width: 15px; height: 15px;"></i>
+          <span>GitHub Releases (Yedek)</span>
         </a>
 
         ${!updateInfo.mandatory ? `
@@ -157,13 +179,21 @@ export function showUpdateModal(updateInfo) {
             color: #64748b;
             font-size: 0.84rem;
             font-weight: 600;
-            padding: 0.5rem;
+            padding: 0.4rem;
             cursor: pointer;
             transition: color 0.2s ease;
           ">
             Daha Sonra Hatırlat
           </button>
         ` : ''}
+      </div>
+
+      <div style="margin-top: 1rem; padding: 0.65rem 0.85rem; border-radius: 12px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); text-align: left; font-size: 0.76rem; color: #fde68a; line-height: 1.4;">
+        <div style="font-weight: 700; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.35rem; color: #fbbf24;">
+          <i data-lucide="info" style="width: 13px; height: 13px;"></i>
+          <span>İndirme İpucu</span>
+        </div>
+        Chrome tarayıcısında <em>"Zararlı dosya olabilir"</em> uyarısı çıkarsa bildirim çubuğunu indirip <strong>"Yine de indir"</strong> butonuna basarak indirmeyi tamamlayabilirsiniz.
       </div>
     </div>
   `;
@@ -182,13 +212,39 @@ export function showUpdateModal(updateInfo) {
     });
   }
 
+  const triggerDownload = (targetUrl) => {
+    showToast('APK indirmesi başlatılıyor...', 'info');
+    if (isNativeAndroidApp()) {
+      try {
+        window.open(targetUrl, '_system');
+      } catch (_) {
+        window.location.href = targetUrl;
+      }
+    }
+    setTimeout(() => {
+      try { modal.remove(); } catch (_) {}
+    }, 1800);
+  };
+
   const downloadBtn = modal.querySelector('#btn-update-download');
   if (downloadBtn) {
-    downloadBtn.addEventListener('click', () => {
-      showToast('APK indirmesi başlatılıyor...', 'info');
-      setTimeout(() => {
-        try { modal.remove(); } catch (_) {}
-      }, 1500);
+    downloadBtn.addEventListener('click', (e) => {
+      if (isNativeAndroidApp()) {
+        e.preventDefault();
+        triggerDownload(directUrl);
+      } else {
+        triggerDownload(directUrl);
+      }
+    });
+  }
+
+  const githubBtn = modal.querySelector('#btn-update-github');
+  if (githubBtn) {
+    githubBtn.addEventListener('click', (e) => {
+      if (isNativeAndroidApp()) {
+        e.preventDefault();
+        triggerDownload(githubUrl);
+      }
     });
   }
 }

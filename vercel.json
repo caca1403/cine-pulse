@@ -38,6 +38,23 @@
           "value": "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; media-src 'self' blob: https:; frame-src https:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
         }
       ]
+    },
+    {
+      "source": "/cinepulse.apk",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/vnd.android.package-archive"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment; filename=\"cinepulse.apk\""
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=60, must-revalidate"
+        }
+      ]
     }
   ],
   "rewrites": [
