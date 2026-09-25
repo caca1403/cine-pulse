@@ -67,14 +67,6 @@
       "destination": "/api/download_apk"
     },
     {
-      "source": "/api/live_tv_stream",
-      "destination": "/api/live_tv_stream"
-    },
-    {
-      "source": "/api/hls_proxy",
-      "destination": "/api/hls_proxy"
-    },
-    {
       "source": "/api/hdi/(.*)",
       "destination": "https://www.hdfilmizle.vip/$1"
     },
