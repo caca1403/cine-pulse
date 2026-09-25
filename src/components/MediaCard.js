@@ -623,70 +623,61 @@ export function attachMediaCardEvents(container) {
   }
 }
 
-/**
- * Upgrades landscape card backdrop images with best-quality versions from TMDB images API.
- * Call after rendering a list of cards in landscape mode.
- * Uses smooth fade-in transition when upgrading images.
- * 
- * @param {HTMLElement} [container=document] - Container to search for cards in
- */
-export async function upgradeLandscapeBackdrops(container = document) {
-  const isLandscape = getUserSettings().cardLayout === 'landscape';
-  if (!isLandscape) return;
+let fanartObserver = null;
 
-  const cards = container.querySelectorAll('.media-card[data-tmdbid]');
+async function loadLandscapeArtwork(card) {
+  if (card.dataset.fanartState) return;
+  card.dataset.fanartState = 'loading';
+  const img = card.querySelector('.card-poster-img');
+  if (!img) return;
+
+  const artwork = await getBestBackdrop(card.dataset.tmdbid, card.dataset.mediatype || 'movie');
+  if (!artwork?.image) {
+    card.dataset.fanartState = 'empty';
+    return;
+  }
+
+  const loadImage = url => new Promise(resolve => {
+    const image = new Image();
+    image.onload = () => resolve(true);
+    image.onerror = () => resolve(false);
+    image.src = url;
+  });
+  const [backgroundReady, logoReady] = await Promise.all([
+    loadImage(artwork.image),
+    artwork.logo ? loadImage(artwork.logo) : Promise.resolve(true)
+  ]);
+  if (!backgroundReady || !logoReady || !card.isConnected) {
+    card.dataset.fanartState = 'empty';
+    return;
+  }
+
+  img.dataset.backdropSrc = artwork.image;
+  if (artwork.logo) card.querySelector('.card-fanart-logo').src = artwork.logo;
+  const wrapper = card.querySelector('.card-poster-wrapper');
+  wrapper?.classList.remove('card-fanart-placeholder');
+  wrapper?.classList.toggle('card-fanart-composite', Boolean(artwork.logo));
+  if (document.documentElement.classList.contains('cards-landscape')) img.src = artwork.image;
+  card.dataset.fanartState = 'loaded';
+}
+
+export function upgradeLandscapeBackdrops(container = document) {
+  if (getUserSettings().cardLayout !== 'landscape') return;
+  fanartObserver?.disconnect();
+  const cards = document.querySelectorAll('.media-card[data-tmdbid]:not([data-fanart-state])');
   if (!cards.length) return;
 
-  const BATCH_SIZE = 6; // Process N cards at a time
-  const cardArray = Array.from(cards);
-
-  for (let i = 0; i < cardArray.length; i += BATCH_SIZE) {
-    const batch = cardArray.slice(i, i + BATCH_SIZE);
-
-    await Promise.allSettled(batch.map(async (card) => {
-      const tmdbId = card.dataset.tmdbid;
-      const mediaType = card.dataset.mediatype || 'movie';
-      if (!tmdbId) return;
-
-      const img = card.querySelector('.card-poster-img');
-      if (!img) return;
-
-      try {
-        const artwork = await getBestBackdrop(tmdbId, mediaType);
-        if (!artwork?.image || artwork.image === img.src) return;
-
-        // Smooth swap: preload first
-        const preloader = new Image();
-        const applyArtwork = () => {
-          // Only apply if still in landscape mode and card still exists
-          if (!document.documentElement.classList.contains('cards-landscape')) return;
-          if (!card.isConnected) return;
-
-          img.style.transition = 'opacity 0.3s ease';
-          img.style.opacity = '0';
-          setTimeout(() => {
-            img.src = artwork.image;
-            img.dataset.backdropSrc = artwork.image;
-            const wrapper = card.querySelector('.card-poster-wrapper');
-            wrapper?.classList.remove('card-fanart-placeholder');
-            wrapper?.classList.toggle('card-fanart-composite', Boolean(artwork.logo));
-            if (artwork.logo) card.querySelector('.card-fanart-logo').src = artwork.logo;
-            img.style.opacity = '1';
-          }, 150);
-        };
-        preloader.onload = () => {
-          if (!artwork.logo) return applyArtwork();
-          const logoPreloader = new Image();
-          logoPreloader.onload = applyArtwork;
-          logoPreloader.src = artwork.logo;
-        };
-        preloader.src = artwork.image;
-      } catch (_) {}
-    }));
-
-    // Small pause between batches to avoid overwhelming the browser
-    if (i + BATCH_SIZE < cardArray.length) {
-      await new Promise(r => setTimeout(r, 100));
-    }
+  if (!('IntersectionObserver' in window)) {
+    cards.forEach(card => loadLandscapeArtwork(card));
+    return;
   }
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      observer.unobserve(entry.target);
+      loadLandscapeArtwork(entry.target);
+    });
+  }, { rootMargin: '800px 0px' });
+  fanartObserver = observer;
+  cards.forEach(card => fanartObserver.observe(card));
 }
