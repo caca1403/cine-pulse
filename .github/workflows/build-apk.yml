@@ -47,7 +47,7 @@ jobs:
           mkdir -p android/app/src/main/assets/public
           cp -r dist/* android/app/src/main/assets/public/
           cp capacitor.config.json android/app/src/main/assets/capacitor.config.json
-          npx cap sync android || true
+          npx cap copy android || true
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x android/gradlew
