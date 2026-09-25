@@ -224,18 +224,7 @@ export function showUpdateModal(updateInfo) {
         window.location.href = targetUrl;
       }
     } else {
-      try {
-        const a = document.createElement('a');
-        a.href = targetUrl;
-        a.download = 'cinepulse.apk';
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => a.remove(), 1000);
-      } catch (_) {
-        window.location.href = targetUrl;
-      }
+      window.location.assign(targetUrl);
     }
     setTimeout(() => {
       try { modal.remove(); } catch (_) {}
@@ -245,12 +234,8 @@ export function showUpdateModal(updateInfo) {
   const downloadBtn = modal.querySelector('#btn-update-download');
   if (downloadBtn) {
     downloadBtn.addEventListener('click', (e) => {
-      if (isNativeAndroidApp()) {
-        e.preventDefault();
-        triggerDownload(directUrl);
-      } else {
-        triggerDownload(directUrl);
-      }
+      e.preventDefault();
+      triggerDownload(directUrl);
     });
   }
 
