@@ -14,7 +14,6 @@ import { getBestBackdrop, prefetchBackdrops } from '../services/fanartService.js
 const KNOWN_ANIME_KEYWORDS = STORAGE_ANIME_KEYWORDS || [
   'anime', 'kimetsu', 'yaiba', 'iblis keser', 'demon slayer', 'naruto', 'boruto', 'shingeki', 'titan'
 ];
-const FANART_PLACEHOLDER = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
 function escapePreviewText(value = '') {
   return String(value).replace(/[&<>'"]/g, char => ({
@@ -149,8 +148,11 @@ export function renderMediaCard(item, options = {}) {
   const posterPath = item.poster_path || item.posterPath || item.poster || '';
   const backdropPath = item.backdrop_path || item.backdropPath || item.backdrop || '';
   const posterUrl = getImageUrl(posterPath, TMDB_IMAGE_SIZES.POSTER_MEDIUM);
+  const fallbackLandscapeUrl = backdropPath
+    ? getImageUrl(backdropPath, TMDB_IMAGE_SIZES.BACKDROP_LARGE)
+    : posterUrl;
   const usesLandscapeCards = getUserSettings().cardLayout === 'landscape';
-  const cardImageUrl = usesLandscapeCards ? FANART_PLACEHOLDER : posterUrl;
+  const cardImageUrl = usesLandscapeCards ? fallbackLandscapeUrl : posterUrl;
   
   // Real rating or empty
   let rawRating = item.vote_average ?? item.voteAverage ?? item.rating;
@@ -230,11 +232,11 @@ export function renderMediaCard(item, options = {}) {
       role="button"
       aria-label="${title}">
       
-      <div class="card-poster-wrapper card-fanart-placeholder">
+      <div class="card-poster-wrapper card-fanart-placeholder ${!backdropPath ? 'card-fanart-portrait-fallback' : ''}">
         <img 
           src="${cardImageUrl}"
           data-poster-src="${posterUrl}"
-          data-backdrop-src="${FANART_PLACEHOLDER}"
+          data-backdrop-src="${fallbackLandscapeUrl}"
           alt="${title}" 
           class="card-poster-img" 
           loading="lazy" 

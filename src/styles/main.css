@@ -2744,6 +2744,9 @@ img {
 .cards-landscape .card-poster-img {
   object-position: center;
 }
+.cards-landscape .card-fanart-portrait-fallback.card-fanart-placeholder .card-poster-img {
+  object-fit: contain;
+}
 
 .card-fanart-title { display: none; }
 .card-fanart-logo { display: none; }
@@ -2762,9 +2765,10 @@ img {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: 1rem;
+  padding: 2rem 1rem .8rem;
+  background: linear-gradient(transparent 30%, rgba(0, 0, 0, .78));
   color: #fff;
   font-size: clamp(1rem, 1.5vw, 1.4rem);
   font-weight: 800;
@@ -2772,6 +2776,7 @@ img {
   line-height: 1.2;
   text-shadow: 0 2px 10px #000;
   pointer-events: none;
+  z-index: 1;
 }
 
 .card-poster-img {
