@@ -603,6 +603,37 @@ async function fetchTmdbMediaInfo(tmdbId, isSeries = false) {
   return null;
 }
 
+async function fetchAllWatched(type, token) {
+  const items = [];
+  const seen = new Set();
+  const limit = type === 'shows' ? 100 : 250;
+  for (let page = 1; ; page++) {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (type === 'shows') params.set('extended', 'progress');
+    const res = await fetch(`${TRAKT_API_URL}/sync/watched/${type}?${params}`, {
+      headers: getApiHeaders(token)
+    });
+    if (!res.ok) throw new Error(`İzlenen ${type === 'shows' ? 'diziler' : 'filmler'} alınamadı (${res.status})`);
+    const batch = await res.json();
+    if (!Array.isArray(batch)) throw new Error('Trakt izlenenler yanıtı geçersiz');
+    if (batch.length === 0) break;
+
+    let newItems = 0;
+    for (const item of batch) {
+      const id = item[type === 'shows' ? 'show' : 'movie']?.ids?.trakt;
+      if (id && seen.has(id)) continue;
+      if (id) seen.add(id);
+      items.push(item);
+      newItems++;
+    }
+    if (!newItems) break;
+    const totalPages = Number(res.headers?.get('X-Pagination-Page-Count'));
+    if (totalPages && page >= totalPages) break;
+    if (!totalPages && batch.length < limit) break;
+  }
+  return items;
+}
+
 /**
  * Pull Trakt In-Progress Playback & Full Watched History into CinePulse (Trakt -> CinePulse)
  */
@@ -628,12 +659,8 @@ export async function pullTraktIntoCinePulse(storageMethods) {
 
   // 1. Pull ALL Watched Movies from Trakt (Parallel Batched)
   try {
-    const moviesRes = await fetch(`${TRAKT_API_URL}/sync/watched/movies?extended=full`, {
-      headers: getApiHeaders(token)
-    });
-    if (!moviesRes.ok) throw new Error(`İzlenen filmler alınamadı (${moviesRes.status})`);
-    if (moviesRes.ok) {
-      const watchedMovies = await moviesRes.json();
+    {
+      const watchedMovies = await fetchAllWatched('movies', token);
       if (Array.isArray(watchedMovies)) {
         for (let i = 0; i < watchedMovies.length; i += 5) {
           const chunk = watchedMovies.slice(i, i + 5);
@@ -689,12 +716,8 @@ export async function pullTraktIntoCinePulse(storageMethods) {
 
   // 2. Pull ALL Watched TV Shows & Episodes from Trakt (Parallel Batched)
   try {
-    const showsRes = await fetch(`${TRAKT_API_URL}/sync/watched/shows?extended=full`, {
-      headers: getApiHeaders(token)
-    });
-    if (!showsRes.ok) throw new Error(`İzlenen diziler alınamadı (${showsRes.status})`);
-    if (showsRes.ok) {
-      const watchedShows = await showsRes.json();
+    {
+      const watchedShows = await fetchAllWatched('shows', token);
       if (Array.isArray(watchedShows)) {
         for (let i = 0; i < watchedShows.length; i += 4) {
           const chunk = watchedShows.slice(i, i + 4);
