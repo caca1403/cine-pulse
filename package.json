@@ -3,6 +3,9 @@
   "private": true,
   "version": "1.0.7",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
@@ -14,7 +17,6 @@
   "dependencies": {
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.1",
-    "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
     "@capacitor/status-bar": "^8.0.3",
     "@vercel/analytics": "^2.0.1",
@@ -26,6 +28,7 @@
     "webtorrent": "^1.9.7"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
     "vite": "^5.1.4"
   }
 }

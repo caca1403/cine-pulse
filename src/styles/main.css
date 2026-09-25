@@ -191,7 +191,7 @@ img {
   left: 0;
   width: 100%;
   z-index: 1000;
-  padding: 0.85rem 0;
+  padding: max(0.85rem, env(safe-area-inset-top, 0px)) 0 0.85rem;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   background: linear-gradient(180deg, rgba(5, 7, 13, 0.85) 0%, rgba(5, 7, 13, 0.4) 65%, transparent 100%);
 }
@@ -866,7 +866,7 @@ img {
     align-items: center;
     justify-content: space-between;
     position: fixed;
-    bottom: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     left: 50%;
     transform: translateX(-50%);
     width: calc(100% - 24px);
