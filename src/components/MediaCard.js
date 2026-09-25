@@ -382,6 +382,9 @@ export function attachMediaCardEvents(container) {
       const typeLabel = card.querySelector('.card-type-tag')?.textContent?.trim() || '';
       const year = card.querySelector('.card-year-tag')?.textContent?.trim() || '';
       const rating = card.querySelector('.card-rating-pill span')?.textContent?.trim() || '';
+      const mediaId = card.getAttribute('data-id') || '';
+      const mediaType = card.getAttribute('data-type') || 'movie';
+      const detailUrl = `#detail?type=${encodeURIComponent(mediaType)}&id=${encodeURIComponent(mediaId)}`;
       const safeKey = encodeURIComponent(trailer.key);
       const previewBox = document.createElement('div');
       previewBox.className = 'card-hover-video-preview';
@@ -426,6 +429,7 @@ export function attachMediaCardEvents(container) {
             </div>
           </div>
           <div class="card-preview-actions">
+            <a class="card-preview-detail" href="${escapePreviewText(detailUrl)}" aria-label="${escapePreviewText(title)} içerik sayfasına git"><i data-lucide="info"></i><span>İçeriğe Git</span></a>
             <a class="card-preview-open" href="${escapePreviewText(trailer.watchUrl || `https://www.youtube.com/watch?v=${safeKey}`)}" target="_blank" rel="noopener noreferrer" title="YouTube'da aç" aria-label="Fragmanı YouTube'da aç"><i data-lucide="external-link"></i></a>
             <button class="card-preview-sound ${previewSoundEnabled ? 'is-on' : ''}" type="button" aria-label="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}" title="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}">
               <i data-lucide="${previewSoundEnabled ? 'volume-2' : 'volume-x'}"></i>
@@ -478,6 +482,10 @@ export function attachMediaCardEvents(container) {
 
       const soundBtn = previewBox.querySelector('.card-preview-sound');
       const closeBtn = previewBox.querySelector('.card-preview-close-btn');
+      previewBox.querySelector('.card-preview-detail')?.addEventListener('click', () => {
+        saveAllScrollState();
+        removePreview();
+      });
       const sendPlayerCommand = (command, args = []) => {
         iframe?.contentWindow?.postMessage(JSON.stringify({
           event: 'command', func: command, args
@@ -544,8 +552,8 @@ export function attachMediaCardEvents(container) {
       const id = card.getAttribute('data-id');
       const type = card.getAttribute('data-type') || 'movie';
       const trailerPromise = fetchMediaTrailer(type === 'tv' ? 'tv' : 'movie', id);
-      // Reduced from 600ms → 350ms for snappier response
-      const timer = setTimeout(() => showTrailerPreview(card, trailerPromise), 350);
+      // Require a deliberate hover so moving across the grid does not open trailers.
+      const timer = setTimeout(() => showTrailerPreview(card, trailerPromise), 850);
       hoverTimers.set(card, timer);
     });
 

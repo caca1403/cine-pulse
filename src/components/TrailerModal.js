@@ -7,7 +7,7 @@ import { renderIcons } from '../services/icons.js';
 
 let activeEscListener = null;
 
-export function openTrailerModal({ title = 'Fragman', trailerInfo }) {
+export function openTrailerModal({ title = 'Fragman', trailerInfo, mediaId = null, mediaType = 'movie' }) {
   const modalContainer = document.getElementById('trailer-modal');
   if (!modalContainer) return;
 
@@ -17,6 +17,7 @@ export function openTrailerModal({ title = 'Fragman', trailerInfo }) {
   }
 
   const trailerName = trailerInfo.name || 'Resmi Tanıtım';
+  const detailUrl = mediaId ? `#detail?type=${encodeURIComponent(mediaType)}&id=${encodeURIComponent(mediaId)}` : null;
 
   modalContainer.innerHTML = `
     <div class="trailer-modal-overlay">
@@ -58,6 +59,8 @@ export function openTrailerModal({ title = 'Fragman', trailerInfo }) {
           ></iframe>
         </div>
 
+        ${detailUrl ? `<div class="trailer-footer"><a class="btn-trailer-detail" href="${detailUrl}"><i data-lucide="info"></i><span>İçerik Sayfasına Git</span><i data-lucide="arrow-right"></i></a></div>` : ''}
+
       </div>
     </div>
   `;
@@ -79,6 +82,7 @@ export function openTrailerModal({ title = 'Fragman', trailerInfo }) {
 
   const closeBtn = modalContainer.querySelector('#btn-close-trailer');
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  modalContainer.querySelector('.btn-trailer-detail')?.addEventListener('click', closeModal);
 
   const overlay = modalContainer.querySelector('.trailer-modal-overlay');
   if (overlay) {

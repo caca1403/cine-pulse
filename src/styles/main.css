@@ -9997,6 +9997,30 @@ video::cue {
   border: 0;
 }
 
+.trailer-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 1.25rem;
+  background: #0e1420;
+}
+
+.btn-trailer-detail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 42px;
+  padding: 0.6rem 1rem;
+  border-radius: 9px;
+  background: #e50914;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.btn-trailer-detail svg { width: 17px; height: 17px; }
+.btn-trailer-detail:hover { background: #f32630; }
+
 @media (max-width: 640px) {
   .trailer-modal-overlay {
     padding: 0.4rem;
@@ -10011,6 +10035,8 @@ video::cue {
   .trailer-title {
     font-size: 0.84rem;
   }
+  .trailer-footer { padding: 0.65rem 0.85rem; }
+  .btn-trailer-detail { width: 100%; }
 }
 
 /* --------------------------------------------------------------------------
@@ -11828,6 +11854,25 @@ video::cue {
   gap: 9px;
 }
 
+.card-preview-detail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 38px;
+  padding: 0 0.65rem;
+  border-radius: 8px;
+  background: #e50914;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.card-preview-detail svg { width: 15px; height: 15px; }
+.card-preview-detail:hover { background: #f32630; }
+
 .card-preview-open,
 .card-preview-sound {
   width: 38px;
@@ -11890,6 +11935,7 @@ video::cue {
     min-height: 60px;
     padding: 10px 12px 11px;
     gap: 10px;
+    flex-wrap: wrap;
   }
   .card-hover-video-preview.is-mobile-sheet .card-preview-copy {
     gap: 4px;
@@ -11916,6 +11962,11 @@ video::cue {
   }
   .card-hover-video-preview.is-mobile-sheet .card-preview-actions {
     gap: 7px;
+    width: 100%;
+  }
+  .card-hover-video-preview.is-mobile-sheet .card-preview-detail {
+    flex: 1;
+    min-height: 38px;
   }
   .card-hover-video-preview.is-mobile-sheet .card-preview-badge {
     top: 10px;
@@ -12099,7 +12150,7 @@ video::cue {
     max-height: calc(100dvh - .8rem);
   }
   .trailer-video-wrapper {
-    max-height: calc(100dvh - 58px - .8rem);
+    max-height: calc(100dvh - 118px - .8rem);
   }
 }
 
@@ -15704,4 +15755,3 @@ video::cue {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-

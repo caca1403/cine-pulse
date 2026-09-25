@@ -261,7 +261,7 @@ export function attachHeroSliderEvents(items = []) {
     try {
       const trailerInfo = await fetchMediaTrailer(type, currentItem.id, currentItem.title || currentItem.name);
       if (trailerInfo) {
-        openTrailerModal({ title: currentItem.title || currentItem.name, trailerInfo });
+        openTrailerModal({ title: currentItem.title || currentItem.name, trailerInfo, mediaId: currentItem.id, mediaType: type });
       } else {
         showToast('Bu yapım için resmi tanıtım fragmanı bulunamadı.', 'info');
       }

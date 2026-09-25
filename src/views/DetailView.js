@@ -443,7 +443,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           try {
             const trailer = await fetchMediaTrailer(effectiveType, id, title);
             if (trailer) {
-              openTrailerModal({ title, trailerInfo: trailer });
+              openTrailerModal({ title, trailerInfo: trailer, mediaId: id, mediaType: isAnime ? 'anime' : effectiveType });
             } else {
               showToast('Bu yapım için resmi fragman bulunamadı.', 'info');
             }
