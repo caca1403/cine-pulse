@@ -225,10 +225,49 @@ export async function fetchDramaDetails(slug) {
   const titleMatch = html.match(/<h1[^>]*>(.*?)<\/h1>/i);
   const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").trim() : slug;
 
-  const descMatch = html.match(/<p class=["'][^"']*description[^"']*["'][^>]*>([\s\S]*?)<\/p>/i) ||
-                    html.match(/<div class=["'][^"']*synopsis[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) ||
-                    html.match(/<meta name=["']description["'] content=["']([^"']+)["']/i);
-  const description = descMatch ? descMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").trim() : 'Bu kısa dizi için henüz açıklama girilmedi.';
+  // Extract complete, untruncated drama synopsis
+  let description = '';
+  const pMatches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
+  const candidateParagraphs = pMatches
+    .map(m => m[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim())
+    .filter(text => {
+      if (text.length < 25) return false;
+      const lower = text.toLowerCase();
+      if (
+        lower.includes('çerez') ||
+        lower.includes('cookie') ||
+        lower.includes('reklam') ||
+        lower.includes('tüm hakları') ||
+        lower.includes('bildirim') ||
+        lower.includes('yapay zeka') ||
+        lower.includes('bize bildirin') ||
+        lower.includes('aradığınız dizi')
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+  if (candidateParagraphs.length > 0) {
+    // Sort by length to pick the most informative synopsis paragraph
+    candidateParagraphs.sort((a, b) => b.length - a.length);
+    description = candidateParagraphs[0];
+  }
+
+  if (!description || description.length < 25) {
+    const metaDesc = html.match(/<meta\s+(?:property=["']og:description["']|name=["']description["'])\s+content=["']([^"']+)["']/i) ||
+                     html.match(/<meta\s+content=["']([^"']+)["']\s+(?:property=["']og:description["']|name=["']description["'])/i);
+    if (metaDesc && metaDesc[1] && metaDesc[1].trim().length > 15) {
+      const cleanMeta = metaDesc[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim();
+      if (!cleanMeta.toLowerCase().includes('aradığınız dizi')) {
+        description = cleanMeta;
+      }
+    }
+  }
+
+  if (!description || description.includes('Bu dizi için konu özeti henüz eklenmedi')) {
+    description = `${title} - Tüm bölümleri yüksek kalitede, kesintisiz ve donmadan Türkçe dublaj ve altyazı seçenekleriyle CinePulse Kısa Dizi Evreni'nde izleyin.`;
+  }
 
   const posterMatch = html.match(/<div class=["'][^"']*poster[^"']*["'][^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["']/i) ||
                       html.match(/<img[^>]+class=["'][^"']*spotlight[^"']*["'][^>]+src=["']([^"']+)["']/i);

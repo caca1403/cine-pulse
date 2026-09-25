@@ -355,7 +355,11 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
   const spoilerNotice = spoilerSafe ? `<div class="spoiler-safe-notice"><i data-lucide="shield-check"></i><span>Spoilersız keşif açık · S${spoilerBoundary.season} B${spoilerBoundary.episode + 1} sonrasının detayları gizli.</span></div>` : '';
   gridContainer.innerHTML = spoilerNotice + visibleEpisodes.map(ep => {
     const epNum = ep.episode_number;
-    const epTitle = ep.name || `${epNum}. Bölüm`;
+    let cleanEpName = (ep.name || '').trim();
+    cleanEpName = cleanEpName.replace(new RegExp(`^(?:${epNum}\\s*[\\.\\:\\-]\\s*)+(?:Bölüm\\s*[\\:\\-]\\s*)?`, 'i'), '');
+    cleanEpName = cleanEpName.replace(new RegExp(`^Bölüm\\s*${epNum}\\s*[\\:\\-]\\s*`, 'i'), '');
+    cleanEpName = cleanEpName.trim();
+    const epTitle = cleanEpName ? `${epNum}. Bölüm: ${cleanEpName}` : `${epNum}. Bölüm`;
     
     // REAL TMDB Episode Overview in Turkish
     let rawOverview = ep.overview ? ep.overview.trim() : '';
@@ -433,7 +437,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
 
         <div class="episode-info">
           <div class="episode-header-row">
-            <span class="episode-title" title="${epTitle}">${epNum}. ${epTitle}</span>
+            <span class="episode-title" title="${epTitle}">${epTitle}</span>
             <span class="episode-duration">${runtime || airDate}</span>
           </div>
           

@@ -150,15 +150,16 @@ export default async function handler(req, res) {
 
       if (!globalThis._liveTvCache) globalThis._liveTvCache = {};
       globalThis._liveTvCache[channel] = {
-        url: proxiedUrl,
+        url: daionUrl,
+        proxiedUrl: proxiedUrl,
         raw: daionUrl,
-        exp: now + 20 * 1000 // Signed playback URLs are short lived; refresh often.
+        exp: now + 15 * 60 * 1000 // Signed playback URLs remain valid for multiple hours; cache for 15m
       };
 
       const wantsJson = urlObj.searchParams.get('json') === '1';
       res.setHeader('Cache-Control', 'no-store, max-age=0');
-      if (wantsJson) return res.json({ url: proxiedUrl, raw: daionUrl });
-      return res.redirect(302, proxiedUrl);
+      if (wantsJson) return res.json({ url: daionUrl, proxiedUrl, raw: daionUrl });
+      return res.redirect(302, daionUrl);
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }

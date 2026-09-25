@@ -197,11 +197,13 @@ img {
 }
 
 /* The native WebView draws behind Android's system bars on some devices.
-   Reserve status-bar space only in the APK; mobile browsers keep their own
-   safe-area behavior independently. */
+   Reserve status-bar space in the APK and prevent page content from scrolling above navbar. */
 html.native-android .navbar {
-  top: max(24px, env(safe-area-inset-top, 24px));
-  padding-top: 0.85rem;
+  top: 0 !important;
+  padding-top: max(28px, env(safe-area-inset-top, 28px)) !important;
+  padding-bottom: 0.75rem !important;
+  background: rgba(8, 12, 20, 0.98) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 html.mobile-web body {
@@ -209,11 +211,12 @@ html.mobile-web body {
 }
 
 html.mobile-web .navbar {
-  top: env(safe-area-inset-top, 0px);
+  top: 0;
+  padding-top: max(env(safe-area-inset-top, 0px), 8px);
 }
 
 .navbar.scrolled {
-  background: rgba(8, 12, 20, 0.88);
+  background: rgba(8, 12, 20, 0.96) !important;
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border-color);
@@ -16121,27 +16124,125 @@ html.native-android #player-modal .player-modal-content {
     white-space: nowrap !important;
   }
 
-  /* Mobile Episode Cards - Netflix List Style */
+  /* Mobile Detail View & Episode Section Ergonomics */
+  .detail-view {
+    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 20px)) !important;
+    width: 100% !important;
+  }
+
+  .season-selector-wrapper {
+    margin: 1.5rem 0 2.5rem 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .season-selector-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 0.65rem !important;
+    margin-bottom: 1rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .season-selector-title {
+    font-size: 1.15rem !important;
+    font-weight: 800 !important;
+  }
+
+  #btn-mark-season-all {
+    font-size: 0.78rem !important;
+    padding: 0.4rem 0.85rem !important;
+  }
+
+  /* Mobile Episode Cards - Vertical Luxury Card (Edge-to-Edge Thumbnail + Padded Info) */
   .episodes-grid {
     display: flex !important;
     flex-direction: column !important;
-    gap: 0.85rem !important;
+    gap: 1.15rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding-bottom: 2rem !important;
   }
 
   .episode-card {
     display: flex !important;
-    align-items: center !important;
-    gap: 0.9rem !important;
-    background: rgba(255, 255, 255, 0.03) !important;
-    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    background: rgba(14, 18, 28, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 14px !important;
-    padding: 0.65rem !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
     transition: all 0.2s ease !important;
+  }
+
+  .episode-card .episode-thumb-wrap {
+    width: 100% !important;
+    aspect-ratio: 16 / 9 !important;
+    overflow: hidden !important;
+    position: relative !important;
+    border-radius: 13px 13px 0 0 !important;
+  }
+
+  .episode-card .episode-thumb-wrap img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+  }
+
+  .episode-card .episode-info {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    padding: 0.85rem 1rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.35rem !important;
+  }
+
+  .episode-card .episode-header-row {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+  }
+
+  .episode-card .episode-title {
+    flex: 1 !important;
+    min-width: 0 !important;
+    font-size: 0.92rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .episode-card .episode-duration {
+    font-size: 0.74rem !important;
+    color: var(--text-muted) !important;
+    flex-shrink: 0 !important;
+  }
+
+  .episode-card .episode-overview {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    font-size: 0.8rem !important;
+    line-height: 1.45 !important;
+    color: #94a3b8 !important;
+    word-break: break-word !important;
   }
 
   .episode-card:active {
     background: rgba(245, 158, 11, 0.1) !important;
     border-color: rgba(245, 158, 11, 0.35) !important;
-    transform: scale(0.98) !important;
+    transform: scale(0.985) !important;
   }
 }

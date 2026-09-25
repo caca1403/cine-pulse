@@ -23,6 +23,7 @@ import {
   removeWatchlist,
   clearCompletedHistory,
   clearAllWatchHistory,
+  clearStorageCache,
   syncHistoryAnimeStatus
 } from '../services/storage.js';
 import { renderMediaCard, attachMediaCardEvents, upgradeLandscapeBackdrops, determineMediaType } from '../components/MediaCard.js';
@@ -758,9 +759,12 @@ export function renderLibraryView() {
             reader.onload = (event) => {
               const res = importDataFromJSON(event.target.result, 'merge');
               if (res.success) {
-                showToast(`✓ Yedek başarıyla yüklendi! (${res.countHistory} izleme, ${res.countFavs} favori aktarıldı)`, 'success');
+                clearStorageCache();
                 refreshLibraryStats();
                 renderActiveTabContent();
+                attachMediaCardEvents(container);
+                renderIcons();
+                showToast(`✓ Yedek başarıyla yüklendi! (${res.countHistory} izleme, ${res.countFavs} favori aktarıldı)`, 'success');
               } else {
                 showToast(`Yükleme hatası: ${res.message || res.error}`, 'error');
               }
@@ -794,6 +798,7 @@ export function renderLibraryView() {
         renderActiveTabContent();
       };
       window.addEventListener('sineflix_data_changed', onStorageChanged);
+      window.addEventListener('cinepulse_data_changed', onStorageChanged);
 
       const onOfflineChanged = () => loadOfflineItems();
       window.addEventListener('cinepulse_offline_changed', onOfflineChanged);

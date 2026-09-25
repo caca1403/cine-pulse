@@ -78,7 +78,7 @@ function invalidateDerivedHistoryCaches() {
   _cachedTotalWatchStats = null;
 }
 
-function clearStorageCache() {
+export function clearStorageCache() {
   _watchHistoryCache = null;
   _progressMapCache = null;
   _seriesLatestMapCache = null;
@@ -2002,9 +2002,11 @@ export function importDataFromJSON(jsonInput, mode = 'merge') {
       setLocalItem(STORAGE_KEYS.USER_SETTINGS, { ...existingSettings, ...incomingSettings });
     }
 
+    // Invalidate memory caches so subsequent reads get the imported data immediately
+    clearStorageCache();
+
     // Fire all legacy & active synchronization events
     window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { action: 'import' } }));
-    window.dispatchEvent(new CustomEvent('cinepulse_data_changed', { detail: { action: 'import' } }));
     window.dispatchEvent(new CustomEvent('cinepulse_data_changed', { detail: { action: 'import' } }));
 
     return {

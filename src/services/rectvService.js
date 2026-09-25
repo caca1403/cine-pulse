@@ -544,7 +544,7 @@ export async function getRecTvChannelStreamUrl(chId, { forceRefresh = false } = 
   if (!chId) return null;
   const cleanId = String(chId).replace(/^tvr_ch_/, '');
 
-  // DMAX and TLC: resolve via daioncdn scraping API (with JSON response)
+  // DMAX and TLC: resolve via daioncdn scraping API (with JSON response), with RecTV fallback
   if (cleanId === 'dmax' || cleanId === 'tlc' || cleanId === '81' || cleanId === '83') {
     const daionChannel = (cleanId === '81' || cleanId === 'dmax') ? 'dmax' : 'tlc';
     const cacheKey = `daion_${daionChannel}`;
@@ -555,14 +555,17 @@ export async function getRecTvChannelStreamUrl(chId, { forceRefresh = false } = 
       const resp = await fetch(`/api/live_tv_stream?channel=${daionChannel}&json=1`);
       if (resp.ok) {
         const data = await resp.json();
-        if (data && data.url) {
-          liveChannelUrlCache.set(cacheKey, { url: data.url, expiresAt: Date.now() + LIVE_CHANNEL_URL_TTL_MS });
-          return data.url;
+        const streamTarget = data?.raw || data?.url;
+        if (streamTarget) {
+          liveChannelUrlCache.set(cacheKey, { url: streamTarget, expiresAt: Date.now() + LIVE_CHANNEL_URL_TTL_MS });
+          return streamTarget;
         }
       }
     } catch (_) {}
-    // Fallback: redirect endpoint (player will follow the 302)
-    return `/api/live_tv_stream?channel=${daionChannel}`;
+    // If daion scrape fails and this is channel 81 or 83, fall through to try RecTV upstream source
+    if (cleanId !== '81' && cleanId !== '83') {
+      return `/api/live_tv_stream?channel=${daionChannel}`;
+    }
   }
 
   const cached = liveChannelUrlCache.get(cleanId);
