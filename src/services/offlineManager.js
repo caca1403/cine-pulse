@@ -30,13 +30,23 @@ function resolvePlaylistUrl(uri, baseUrl) {
 }
 
 async function saveHlsResource(cache, key, index, url, onProgress, progress) {
-  const response = await fetch(url, { cache: 'no-store' });
-  if (!response.ok) throw new Error(`Bölüm parçası indirilemedi (HTTP ${response.status})`);
+  let response = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      response = await fetch(url, { cache: 'no-store' });
+      if (response && response.ok) break;
+    } catch (err) {
+      if (attempt === 2) throw err;
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+    }
+  }
+  if (!response || !response.ok) throw new Error(`Bölüm parçası indirilemedi (HTTP ${response?.status || 'ağ hatası'})`);
   const blob = await response.blob();
   await cache.put(cacheRequest(key, index), new Response(blob, { headers: { 'Content-Type': response.headers.get('content-type') || 'application/octet-stream' } }));
   progress.loaded += blob.size;
   progress.done += 1;
-  onProgress({ percent: Math.min(98, 8 + Math.round((progress.done / progress.count) * 90)), loaded: progress.loaded, total: 0, status: `%${Math.min(98, 8 + Math.round((progress.done / progress.count) * 90))} · ${progress.done}/${progress.count} parça` });
+  const pct = Math.min(98, 8 + Math.round((progress.done / progress.count) * 90));
+  onProgress({ percent: pct, loaded: progress.loaded, total: 0, status: `%${pct} · ${progress.done}/${progress.count} parça` });
   return blob.size;
 }
 
@@ -56,14 +66,18 @@ async function downloadHlsBundle(cache, key, response, firstText, onProgress) {
   let playlistUrl = response.url || response.url;
   let playlistText = firstText;
   let mediaUrl = getMasterVariant(playlistText, playlistUrl);
-  if (mediaUrl) {
+  let depth = 0;
+  while (mediaUrl && depth < 3) {
+    depth++;
     const mediaResponse = await fetch(mediaUrl, { cache: 'no-store' });
     if (!mediaResponse.ok) throw new Error(`Bölüm listesi alınamadı (HTTP ${mediaResponse.status})`);
     playlistUrl = mediaResponse.url || mediaUrl;
     playlistText = await mediaResponse.text();
-    if (getMasterVariant(playlistText, playlistUrl)) throw new Error('Bu yayın çok katmanlı HLS listesi kullanıyor; farklı bir kaynak seçin.');
+    mediaUrl = getMasterVariant(playlistText, playlistUrl);
   }
-  if (!playlistText.includes('#EXT-X-ENDLIST')) throw new Error('Bu yayın tamamlanmış bölüm değil; çevrimdışı indirme desteklenmiyor.');
+  if (!playlistText.includes('#EXT-X-ENDLIST')) {
+    playlistText += '\n#EXT-X-ENDLIST\n';
+  }
   if (playlistText.includes('#EXT-X-BYTERANGE')) throw new Error('Bu kaynak parçalı byte aralığı kullanıyor; başka bir yayın hattı seçin.');
 
   const lines = playlistText.split(/\r?\n/);
