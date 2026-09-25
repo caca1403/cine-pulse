@@ -9,7 +9,8 @@ const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w1280';
 
 const backdropCache = new Map();
-const SS_PREFIX = 'cp_fanart_';
+// Version the cache so previously selected textless backdrops are refreshed.
+const SS_PREFIX = 'cp_fanart_v2_';
 
 function getFromSession(key) {
   try { return sessionStorage.getItem(SS_PREFIX + key); } catch (_) { return null; }
@@ -48,13 +49,16 @@ export async function getBestBackdrop(tmdbId, type = 'movie') {
 
     if (backdrops.length === 0) { backdropCache.set(cacheKey, null); saveToSession(cacheKey, ''); return null; }
 
-    // Sort: highest vote_average first, then vote_count as tiebreaker
-    backdrops.sort((a, b) => {
+    // TMDB marks title-bearing landscape artwork with a language. Prefer the
+    // original/English artwork; null-language images are usually plain stills.
+    const titleArt = backdrops.filter(b => b.file_path && b.iso_639_1 === 'en' && (b.aspect_ratio || 0) > 1.5);
+    const candidates = titleArt.length ? titleArt : backdrops.filter(b => b.file_path && (b.aspect_ratio || 0) > 1.5);
+    candidates.sort((a, b) => {
       const diff = (b.vote_average || 0) - (a.vote_average || 0);
       return Math.abs(diff) > 0.3 ? diff : (b.vote_count || 0) - (a.vote_count || 0);
     });
 
-    const best = backdrops.find(b => b.file_path && (b.aspect_ratio || 1.78) > 1.5) || backdrops[0];
+    const best = candidates[0] || backdrops.find(b => b.file_path);
     if (!best?.file_path) { backdropCache.set(cacheKey, null); saveToSession(cacheKey, ''); return null; }
 
     const fullUrl = `${TMDB_IMAGE_BASE}${best.file_path}`;
