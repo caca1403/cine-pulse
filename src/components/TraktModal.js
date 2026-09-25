@@ -377,13 +377,17 @@ export function openTraktModal() {
             if (resultBox) {
               resultBox.style.display = 'block';
               resultBox.innerHTML = `
-                ✓ <strong>Karşılıklı senkronizasyon tamamlandı!</strong><br/>
+                <strong>${res.errors.length ? 'Senkronizasyon kısmen tamamlandı' : '✓ Karşılıklı senkronizasyon tamamlandı!'}</strong><br/>
                 • ${res.pushedMoviesCount} film & ${res.pushedEpisodesCount} dizi Trakt'a yüklendi<br/>
                 • ${res.importedPlaybackCount} yarım kalan & ${res.importedHistoryCount} izlenen Trakt'tan CinePulse'a aktarıldı
               `;
             }
-            showToast('CinePulse ve Trakt başarıyla karşılıklı eşitlendi!', 'success');
-            setTimeout(() => render('main'), 2500);
+            if (res.errors.length) {
+              showToast(`Trakt senkronizasyon uyarısı: ${res.errors.join('; ')}`, 'error');
+            } else {
+              showToast('CinePulse ve Trakt başarıyla karşılıklı eşitlendi!', 'success');
+              setTimeout(() => render('main'), 2500);
+            }
           } catch (err) {
             showToast(`Aktarım hatası: ${err.message}`, 'error');
           } finally {

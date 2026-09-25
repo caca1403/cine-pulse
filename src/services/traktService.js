@@ -519,12 +519,13 @@ export async function pushHistoryToTrakt(items) {
   const showsMap = new Map();
 
   for (const item of items) {
-    const rawId = item.id || item.tmdbId;
+    const rawId = item.tmdbId || item.id;
     const tmdbId = Number(rawId);
     if (!tmdbId || isNaN(tmdbId)) continue;
 
-    const watchedAt = item.lastWatchedAt ? new Date(item.lastWatchedAt).toISOString() : new Date().toISOString();
-    const isSeries = Boolean(item.isSeries || item.type === 'tv' || (item.season && item.season > 0));
+    const watchedDate = new Date(Number(item.lastWatchedAt) || item.lastWatchedAt || Date.now());
+    const watchedAt = Number.isNaN(watchedDate.getTime()) ? new Date().toISOString() : watchedDate.toISOString();
+    const isSeries = item.type === 'movie' ? false : Boolean(item.isSeries || item.type === 'tv' || item.type === 'anime');
 
     if (isSeries) {
       const seasonNum = Math.max(1, Number(item.season) || 1);
@@ -614,6 +615,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
 
   let importedPlaybackCount = 0;
   let importedHistoryCount = 0;
+  const pullErrors = [];
   const itemsToBatch = [];
   const currentHistory = getWatchHistory ? getWatchHistory() : [];
 
@@ -629,6 +631,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
     const moviesRes = await fetch(`${TRAKT_API_URL}/sync/watched/movies?extended=full`, {
       headers: getApiHeaders(token)
     });
+    if (!moviesRes.ok) throw new Error(`İzlenen filmler alınamadı (${moviesRes.status})`);
     if (moviesRes.ok) {
       const watchedMovies = await moviesRes.json();
       if (Array.isArray(watchedMovies)) {
@@ -671,6 +674,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
               duration,
               progressPercent: 100,
               completed: true,
+              traktImported: true,
               lastWatchedAt: watchedAt
             });
             importedHistoryCount++;
@@ -680,6 +684,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
     }
   } catch (err) {
     console.warn('Trakt watched movies pull error:', err);
+    pullErrors.push(err.message);
   }
 
   // 2. Pull ALL Watched TV Shows & Episodes from Trakt (Parallel Batched)
@@ -687,6 +692,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
     const showsRes = await fetch(`${TRAKT_API_URL}/sync/watched/shows?extended=full`, {
       headers: getApiHeaders(token)
     });
+    if (!showsRes.ok) throw new Error(`İzlenen diziler alınamadı (${showsRes.status})`);
     if (showsRes.ok) {
       const watchedShows = await showsRes.json();
       if (Array.isArray(watchedShows)) {
@@ -736,6 +742,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
                   duration,
                   progressPercent: 100,
                   completed: true,
+                  traktImported: true,
                   lastWatchedAt: watchedAt,
                   ...seriesMeta
                 });
@@ -748,6 +755,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
     }
   } catch (err) {
     console.warn('Trakt watched shows pull error:', err);
+    pullErrors.push(err.message);
   }
 
   // 3. Pull In-Progress Playback (Continue Watching from Trakt) - Pulled LAST so in-progress status overrides watched status
@@ -755,6 +763,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
     const playbackRes = await fetch(`${TRAKT_API_URL}/sync/playback?extended=full&limit=50`, {
       headers: getApiHeaders(token)
     });
+    if (!playbackRes.ok) throw new Error(`Yarım kalanlar alınamadı (${playbackRes.status})`);
     if (playbackRes.ok) {
       const playbackItems = await playbackRes.json();
       if (Array.isArray(playbackItems)) {
@@ -812,6 +821,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
             duration,
             progressPercent,
             completed: false,
+            traktImported: true,
             lastWatchedAt: pausedAt,
             ...seriesMeta
           });
@@ -821,6 +831,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
     }
   } catch (err) {
     console.warn('Trakt playback pull error:', err);
+    pullErrors.push(err.message);
   }
 
   // Save all accumulated items in one swift bulk operation
@@ -839,7 +850,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
   window.dispatchEvent(new CustomEvent('cinepulse_data_changed', { detail: { action: 'import', source: 'trakt' } }));
   window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { action: 'import', source: 'trakt' } }));
 
-  return { importedPlaybackCount, importedHistoryCount };
+  return { importedPlaybackCount, importedHistoryCount, errors: pullErrors };
 }
 
 /**
@@ -848,7 +859,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
 export async function performFullSync(storageMethods) {
   if (!isTraktConnected()) throw new Error('Trakt hesabı bağlı değil');
 
-  const { getWatchHistory, saveWatchProgress } = storageMethods;
+  const { getWatchHistory, saveWatchProgress, saveBatchWatchProgress } = storageMethods;
 
   const syncResult = {
     pushedMoviesCount: 0,
@@ -858,31 +869,40 @@ export async function performFullSync(storageMethods) {
     errors: []
   };
 
+  // Read from Trakt first, so a failed upload cannot prevent importing remote items.
+  if (saveWatchProgress || saveBatchWatchProgress) {
+    try {
+      const pullRes = await pullTraktIntoCinePulse(storageMethods);
+      syncResult.importedPlaybackCount = pullRes.importedPlaybackCount || 0;
+      syncResult.importedHistoryCount = pullRes.importedHistoryCount || 0;
+      syncResult.errors.push(...(pullRes.errors || []));
+    } catch (err) {
+      syncResult.errors.push(`Trakt'tan aktarma: ${err.message}`);
+    }
+  }
+
   try {
-    // 1. Push CinePulse -> Trakt
+    // Push only completed local watches; partial progress belongs to scrobbling.
     const localHistory = getWatchHistory ? getWatchHistory() : [];
-    const validItems = localHistory.filter(h => h.completed || (h.currentTime && h.currentTime > 60) || (h.progressPercent && h.progressPercent > 5));
+    const validItems = localHistory.filter(h => h.completed && !h.traktImported);
 
     if (validItems.length > 0) {
       const pushRes = await pushHistoryToTrakt(validItems);
       if (pushRes && pushRes.added) {
         syncResult.pushedMoviesCount = pushRes.added.movies || 0;
         syncResult.pushedEpisodesCount = pushRes.added.episodes || 0;
+        const notFoundCount = Object.values(pushRes.not_found || {}).reduce(
+          (count, entries) => count + (Array.isArray(entries) ? entries.length : 0), 0
+        );
+        if (notFoundCount) syncResult.errors.push(`Trakt ${notFoundCount} içeriği katalogunda bulamadı`);
       }
     }
 
-    // 2. Pull Trakt -> CinePulse (Two-Way Sync)
-    if (saveWatchProgress) {
-      const pullRes = await pullTraktIntoCinePulse(storageMethods);
-      syncResult.importedPlaybackCount = pullRes.importedPlaybackCount || 0;
-      syncResult.importedHistoryCount = pullRes.importedHistoryCount || 0;
-    }
-
-    localStorage.setItem(STORAGE_KEYS.LAST_SYNC, String(Date.now()));
   } catch (err) {
-    syncResult.errors.push(err.message || 'Senkronizasyon hatası');
-    throw err;
+    syncResult.errors.push(`Trakt'a gönderme: ${err.message || 'Senkronizasyon hatası'}`);
   }
+
+  if (syncResult.errors.length === 0) localStorage.setItem(STORAGE_KEYS.LAST_SYNC, String(Date.now()));
 
   return syncResult;
 }
