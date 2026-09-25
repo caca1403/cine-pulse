@@ -59,6 +59,14 @@
   ],
   "rewrites": [
     {
+      "source": "/api/download_apk",
+      "destination": "/api/download_apk"
+    },
+    {
+      "source": "/cinepulse.apk",
+      "destination": "/api/download_apk"
+    },
+    {
       "source": "/api/hdi/(.*)",
       "destination": "https://www.hdfilmizle.vip/$1"
     },
