@@ -4568,6 +4568,30 @@ export async function openPlayerModal({
     let swipeInitialVal = 0;
     let lastTapTimestamp = 0;
 
+    function showSeekRipple(side, seconds) {
+      try {
+        let ripple = wrapper.querySelector(`.seek-ripple-${side}`);
+        if (!ripple) {
+          ripple = document.createElement('div');
+          ripple.className = `custom-seek-ripple seek-ripple-${side}`;
+          ripple.innerHTML = `
+            <div class="seek-ripple-content">
+              <i data-lucide="${side === 'left' ? 'rotate-ccw' : 'rotate-cw'}" style="width: 32px; height: 32px;"></i>
+              <span>${Math.abs(seconds)} saniye</span>
+            </div>
+          `;
+          wrapper.appendChild(ripple);
+          renderPlayerIcons(ripple);
+        }
+        ripple.classList.remove('animating');
+        void ripple.offsetWidth;
+        ripple.classList.add('animating');
+        setTimeout(() => {
+          ripple.classList.remove('animating');
+        }, 650);
+      } catch (_) {}
+    }
+
     on(wrapper, 'touchstart', (e) => {
       if (isScreenLocked) return;
       if (e.touches.length !== 1) return;
@@ -4581,14 +4605,16 @@ export async function openPlayerModal({
       const relativeX = touch.clientX - rect.left;
       const now = Date.now();
 
-      // Double-tap skip detection (YouTube style)
+      // Double-tap skip detection (YouTube / Netflix style)
       if (now - lastTapTimestamp < 320) {
         lastTapTimestamp = 0;
         e.preventDefault();
         if (relativeX < rect.width * 0.4) {
           skipTime(-10);
+          showSeekRipple('left', -10);
         } else if (relativeX > rect.width * 0.6) {
           skipTime(10);
+          showSeekRipple('right', 10);
         } else {
           togglePlay();
         }

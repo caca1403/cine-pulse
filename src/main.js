@@ -201,7 +201,7 @@ async function route() {
 
   // Render Navbar for regular application views
   const navbarHTML = renderNavbar(viewName);
-  const cardViews = new Set(['home', 'series', 'cartoons', 'movies', 'anime', 'documentary', 'discover', 'library']);
+  const cardViews = new Set(['home', 'series', 'cartoons', 'movies', 'anime', 'documentary', 'discover', 'library', 'downloads']);
   const cardLayoutSwitcherHTML = cardViews.has(viewName) ? renderCardLayoutSwitcher() : '';
 
   if (viewName === 'home' || viewName === 'detail') {
@@ -230,6 +230,9 @@ async function route() {
   } else if (viewName === 'discover') {
     viewResult = await renderDiscoverView('tv');
   } else if (viewName === 'library') {
+    viewResult = renderLibraryView();
+  } else if (viewName === 'downloads') {
+    try { sessionStorage.setItem('cp_lib_active_tab', 'downloads'); } catch (_) {}
     viewResult = renderLibraryView();
   } else if (viewName === 'dramas') {
     viewResult = await renderDramaView(params.slug, params.q);

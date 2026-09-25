@@ -15778,3 +15778,234 @@ video::cue {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* ==========================================================================
+   Mobile-First Luxury OTT UX (Netflix, Nuvio & CloudStream Standards)
+   ========================================================================== */
+
+/* 1. In-Player Animated Seek Ripples (YouTube / Netflix Double-Tap) */
+.custom-seek-ripple {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 38%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 99;
+  opacity: 0;
+  user-select: none;
+}
+
+.seek-ripple-left {
+  left: 0;
+  background: radial-gradient(circle at left center, rgba(245, 158, 11, 0.28) 0%, rgba(245, 158, 11, 0.05) 50%, transparent 75%);
+  border-top-right-radius: 50%;
+  border-bottom-right-radius: 50%;
+}
+
+.seek-ripple-right {
+  right: 0;
+  background: radial-gradient(circle at right center, rgba(245, 158, 11, 0.28) 0%, rgba(245, 158, 11, 0.05) 50%, transparent 75%);
+  border-top-left-radius: 50%;
+  border-bottom-left-radius: 50%;
+}
+
+.custom-seek-ripple.animating {
+  animation: seekRippleAnim 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.seek-ripple-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.92rem;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+  background: rgba(11, 15, 25, 0.75);
+  padding: 0.75rem 1.1rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(245, 158, 11, 0.25);
+}
+
+@keyframes seekRippleAnim {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+
+/* 2. Dock Download Badge */
+.dock-download-badge {
+  position: absolute;
+  top: -3px;
+  right: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #10b981;
+  color: #0b0f19;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+}
+
+/* 3. Global Mobile Touch Ergonomics */
+@media (max-width: 768px) {
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  body, html {
+    touch-action: manipulation;
+    overflow-x: hidden;
+    background-color: #070a13;
+  }
+
+  /* Safe Area Spacing */
+  .navbar {
+    padding-top: max(env(safe-area-inset-top, 0px), 8px);
+  }
+
+  /* Mobile Hero Banner - Netflix/Nuvio High Contrast */
+  .hero-slider-section {
+    min-height: 72vh !important;
+    position: relative;
+  }
+
+  .hero-backdrop-container::after {
+    background: linear-gradient(
+      180deg,
+      rgba(7, 10, 19, 0.1) 0%,
+      rgba(7, 10, 19, 0.3) 40%,
+      rgba(7, 10, 19, 0.85) 75%,
+      #070a13 100%
+    ) !important;
+  }
+
+  .hero-content {
+    bottom: 2.2rem !important;
+    padding: 0 1.25rem !important;
+    width: 100% !important;
+  }
+
+  .hero-btn-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    width: 100% !important;
+  }
+
+  .hero-btn-primary {
+    flex: 1.6 !important;
+    justify-content: center !important;
+    padding: 0.85rem 1.2rem !important;
+    font-size: 0.95rem !important;
+    font-weight: 800 !important;
+    border-radius: 9999px !important;
+  }
+
+  .hero-btn-secondary {
+    flex: 1 !important;
+    justify-content: center !important;
+    padding: 0.85rem 1rem !important;
+    font-size: 0.85rem !important;
+    border-radius: 9999px !important;
+  }
+
+  /* Card Touch Momentum & Scaling */
+  .card-rail {
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x proximity !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+    gap: 0.85rem !important;
+  }
+
+  .media-card {
+    scroll-snap-align: start !important;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  .media-card:active {
+    transform: scale(0.95) !important;
+  }
+
+  /* Landscape Card Logo Drop Shadows */
+  .card-fanart-composite .card-fanart-logo {
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 16px rgba(0, 0, 0, 0.7)) !important;
+  }
+
+  /* Detail View Mobile Edge-to-Edge */
+  .detail-hero-backdrop {
+    height: 48vh !important;
+    min-height: 320px !important;
+  }
+
+  .detail-action-deck {
+    width: 100% !important;
+    margin-top: 1.2rem !important;
+  }
+
+  .btn-play-primary {
+    width: 100% !important;
+    padding: 0.95rem 1.5rem !important;
+    font-size: 1rem !important;
+    font-weight: 800 !important;
+    border-radius: 9999px !important;
+    box-shadow: 0 10px 30px rgba(245, 158, 11, 0.45) !important;
+  }
+
+  /* Season Tabs Smooth Mobile Pill Bar */
+  .season-pills-track {
+    -webkit-overflow-scrolling: touch !important;
+    gap: 0.6rem !important;
+    padding: 0.2rem 0 !important;
+  }
+
+  .season-pill {
+    padding: 0.55rem 1.15rem !important;
+    font-size: 0.84rem !important;
+    border-radius: 9999px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Mobile Episode Cards - Netflix List Style */
+  .episodes-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.85rem !important;
+  }
+
+  .episode-card {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.9rem !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-radius: 14px !important;
+    padding: 0.65rem !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .episode-card:active {
+    background: rgba(245, 158, 11, 0.1) !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+    transform: scale(0.98) !important;
+  }
+}
