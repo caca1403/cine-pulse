@@ -14647,6 +14647,9 @@ html.native-android #player-modal .player-modal-content {
 .player-feedback-group,.player-utility-group { display:flex; align-items:center; gap:3px; padding:3px; border:1px solid rgba(148,163,184,.15); border-radius:12px; background:rgba(2,6,23,.38); }
 .player-icon-action { display:grid; place-items:center; width:33px; min-height:32px; padding:0; border:0; background:transparent; color:#94a3b8; cursor:pointer; }.player-icon-action i { width:16px; height:16px; }.player-icon-action:hover,.player-icon-action.is-selected { color:#6ee7b7; background:rgba(16,185,129,.12); transform:translateY(-1px); }
 .player-utility-action { display:inline-flex; align-items:center; gap:.35rem; min-height:32px; padding:0 .5rem; border:0; background:transparent; color:#a5b4fc; cursor:pointer; }.player-utility-action i { width:15px; height:15px; }.player-utility-action:hover { color:#c7d2fe; background:rgba(99,102,241,.12); transform:translateY(-1px); }
+.player-utility-action.is-downloaded { color:#34d399 !important; background:rgba(16,185,129,.15) !important; border:1px solid rgba(52,211,153,.3) !important; }
+.player-utility-action.is-downloading { color:#38bdf8 !important; background:rgba(56,189,248,.15) !important; border:1px solid rgba(56,189,248,.35) !important; animation:pulse-player-download 1.4s ease-in-out infinite; }
+@keyframes pulse-player-download { 0%,100%{opacity:1;} 50%{opacity:.55;} }
 .player-primary-action:hover,.player-status-trigger:hover,.player-utility-action:hover { transform:translateY(-1px); }
 .player-movie-meta-bar {
   width: fit-content;
@@ -14670,7 +14673,12 @@ html.native-android #player-modal .player-modal-content {
   .player-action-cluster { justify-content:flex-start; width:100%; max-width:none; gap:.42rem; }
   .player-primary-action { flex:1 1 175px; justify-content:center; }.player-primary-action em { display:none; }
   .player-status-trigger span,.player-utility-action span { display:none; }.player-status-trigger { min-width:38px; justify-content:center; padding:.5rem; }.player-status-trigger i:last-child { display:none; }
-  .player-utility-group { margin-left:auto; }.player-utility-action { width:32px; justify-content:center; padding:0; }
+  .player-utility-group { margin-left:auto; }
+  .player-utility-action { width:32px; justify-content:center; padding:0; }
+  .player-utility-action.is-downloading,
+  .player-utility-action.is-downloaded { width:auto !important; min-width:32px; padding:0 .45rem !important; }
+  .player-utility-action.is-downloading span,
+  .player-utility-action.is-downloaded span { display:inline !important; font-size:.68rem !important; font-weight:700 !important; }
   .player-status-options { left:0; right:auto; width:215px; }
   .player-match-pill { font-size:.67rem; }.player-meta-pills { margin-top:.6rem; }.player-meta-dot { font-size:.65rem; }
   .player-why-match { padding:.72rem .76rem; }.dizisol-overview { font-size:.88rem !important; line-height:1.65 !important; }

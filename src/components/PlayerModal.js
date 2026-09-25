@@ -1296,45 +1296,112 @@ export async function openPlayerModal({
     refreshOfflineDownloadButton();
   }
 
+  let isDownloadingOffline = false;
+
+  function findDownloadableStream() {
+    // 1. Check current server first
+    const currentSrv = activeServers[currentServerIndex];
+    if (currentSrv) {
+      const u = getStreamSafeUrl(currentSrv);
+      if (u && (currentSrv.isHls || currentSrv.isDirectVideo || /\.(?:m3u8|mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u))) {
+        return { server: currentSrv, streamUrl: u };
+      }
+    }
+
+    // 2. Check other servers in activeServers
+    for (const srv of (activeServers || [])) {
+      if (!srv || srv === currentSrv) continue;
+      const u = getStreamSafeUrl(srv);
+      if (u && (srv.isHls || srv.isDirectVideo || /\.(?:m3u8|mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u))) {
+        return { server: srv, streamUrl: u };
+      }
+    }
+
+    // 3. Check categorizedServers pool (dubbed, then subtitled)
+    const allPool = [...(categorizedServers?.dubbed || []), ...(categorizedServers?.subtitled || [])];
+    for (const srv of allPool) {
+      if (!srv) continue;
+      const u = getStreamSafeUrl(srv);
+      if (u && (srv.isHls || srv.isDirectVideo || /\.(?:m3u8|mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u))) {
+        return { server: srv, streamUrl: u };
+      }
+    }
+
+    return null;
+  }
+
   async function refreshOfflineDownloadButton() {
     const button = modalContainer.querySelector('#btn-player-download');
     if (!button) return;
-    const srv = activeServers[currentServerIndex];
-    const streamUrl = getStreamSafeUrl(srv);
-    const isSupported = Boolean(srv && (srv.isHls || srv.isDirectVideo || /\.(?:m3u8|mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(streamUrl)));
-    if (!isSupported) {
-      button.disabled = true;
-      button.title = 'Bu kaynak doğrudan indirilebilir bölüm akışı sunmuyor.';
-      return;
-    }
+    if (isDownloadingOffline) return;
     const downloaded = await isMediaDownloaded(tmdbId, isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
     if (closed || !button.isConnected) return;
-    button.disabled = downloaded;
-    button.title = downloaded ? 'Bu bölüm cihaza indirildi' : 'Bölümü çevrimdışı indir';
-    button.querySelector('span').textContent = downloaded ? 'İndirildi' : 'Bölümü indir';
+    const label = button.querySelector('span');
+    button.disabled = false;
+    if (downloaded) {
+      button.dataset.downloaded = 'true';
+      button.classList.add('is-downloaded');
+      button.classList.remove('is-downloading');
+      button.title = 'Bu bölüm cihaza indirildi (İndirilenler menüsünden internetsiz izleyebilirsiniz)';
+      if (label) label.textContent = 'İndirildi';
+    } else {
+      delete button.dataset.downloaded;
+      button.classList.remove('is-downloaded', 'is-downloading');
+      button.title = 'Bölümü çevrimdışı indir';
+      if (label) label.textContent = 'İndir';
+    }
   }
 
   modalContainer.querySelector('#btn-player-download')?.addEventListener('click', async event => {
     const button = event.currentTarget;
-    const server = activeServers[currentServerIndex];
-    const streamUrl = getStreamSafeUrl(server);
-    if (!streamUrl || button.disabled) return;
-    button.disabled = true;
+    if (isDownloadingOffline) {
+      showToast('İndirme arka planda devam ediyor...', 'info');
+      return;
+    }
+    const alreadyDownloaded = await isMediaDownloaded(tmdbId, isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
+    if (alreadyDownloaded) {
+      showToast('Bu içerik zaten cihaza indirilmiş durumda! İndirilenler sekmesinden internetsiz izleyebilirsiniz.', 'info');
+      return;
+    }
+
+    const target = findDownloadableStream();
+    if (!target) {
+      if (isDiscoveryActive || isSearching) {
+        showToast('Yayın hatları taranıyor, indirme akışı hazırlanıyor... Lütfen birkaç saniye sonra tekrar deneyin.', 'info');
+        return;
+      }
+      showToast('Bu içerik için doğrudan indirilebilir (HLS/MP4) bir yayın akışı bulunamadı. Lütfen listeden başka bir hat seçin.', 'error');
+      return;
+    }
+
+    const { streamUrl, server } = target;
+    isDownloadingOffline = true;
+    button.classList.add('is-downloading');
     const label = button.querySelector('span');
+
+    showToast(`İndirme başlatıldı: ${server.displayName || server.name || 'Yayın Hattı'} üzerinden cihaza kaydediliyor...`, 'info');
+    if (label) label.textContent = '%0';
+
     try {
       await startOfflineDownload({
-        tmdbId, type: type === 'movie' ? 'movie' : 'tv',
+        tmdbId,
+        type: type === 'movie' ? 'movie' : 'tv',
         title: isSeries ? `${cleanSeriesName} · S${currentSeason} B${currentEpisode}` : cleanSeriesName,
-        poster: posterPath, backdrop: backdropPath,
-        season: isSeries ? currentSeason : null, episode: isSeries ? currentEpisode : null,
+        poster: posterPath,
+        backdrop: backdropPath,
+        season: isSeries ? currentSeason : null,
+        episode: isSeries ? currentEpisode : null,
         streamUrl
       }, progress => {
-        if (label) label.textContent = progress.status || `%${progress.percent}`;
+        if (label) label.textContent = `%${progress.percent}`;
       });
-      showToast('Bölüm cihaza indirildi. İnternetsiz izleyebilirsin.', 'success');
+      showToast('🎉 İçerik başarıyla cihaza indirildi! İndirilenler menüsünden internetsiz izleyebilirsiniz.', 'success');
     } catch (error) {
+      console.error('[Download] Failed:', error);
       showToast(error?.message || 'İndirme tamamlanamadı. Farklı bir yayın hattı deneyin.', 'error');
     } finally {
+      isDownloadingOffline = false;
+      button.classList.remove('is-downloading');
       refreshOfflineDownloadButton();
     }
   });
@@ -2443,6 +2510,7 @@ export async function openPlayerModal({
   document.body.style.overflow = 'hidden';
   renderPlayerIcons(modalContainer);
   renderRoomReactionDock();
+  refreshOfflineDownloadButton();
 
   const renderRoomPlayerHud = (presence = window.__cinepulseDecisionRoomPresence) => {
     if (!roomSync || !presence || presence.roomCode !== roomSync.roomCode) return;
@@ -4832,6 +4900,7 @@ export async function openPlayerModal({
     // Kaynak değişimi oynatıcı alanını yeniden oluşturur; oda tepkileri de
     // her yeni alana tekrar takılmalı.
     renderRoomReactionDock();
+    refreshOfflineDownloadButton();
 
     const popoutBtn = document.getElementById('player-popout-btn');
     if (popoutBtn) {
@@ -5429,6 +5498,7 @@ export async function openPlayerModal({
         };
         updateCategoryCounts();
         isDiscoveryActive = !isComplete;
+        refreshOfflineDownloadButton();
 
         // Katılımcı, moderatörün hattı kendi taramasında görünene kadar
         // yerel öncelik sırasından başka bir sunucuyu başlatmaz. Eşleşen

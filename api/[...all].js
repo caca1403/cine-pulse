@@ -93,8 +93,8 @@ export default async function handler(req, res) {
       if (!forceRefresh && globalThis._liveTvCache && globalThis._liveTvCache[channel] && globalThis._liveTvCache[channel].exp > now) {
         const cached = globalThis._liveTvCache[channel];
         const wantsJson = urlObj.searchParams.get('json') === '1';
-        if (wantsJson) return res.json({ url: cached.url, raw: cached.raw });
-        return res.redirect(302, cached.url);
+        if (wantsJson) return res.json({ url: cached.url, proxiedUrl: cached.proxiedUrl, raw: cached.raw });
+        return res.redirect(302, cached.proxiedUrl || cached.url);
       }
 
       // Full browser-like headers to bypass Cloudflare protection on DMAX/TLC sites
@@ -308,6 +308,10 @@ export default async function handler(req, res) {
       if (!ref) {
         if (decodedTarget.includes('dizisol.com')) {
           ref = 'https://dizisol.com/';
+        } else if (decodedTarget.includes('daioncdn.net') || decodedTarget.includes('dmax')) {
+          ref = 'https://www.dmax.com.tr/';
+        } else if (decodedTarget.includes('tlctv') || decodedTarget.includes('/tlc/')) {
+          ref = 'https://www.tlctv.com.tr/';
         } else if (decodedTarget.includes('ag2m4') || decodedTarget.includes('uk-traffic-076') || decodedTarget.includes('dizibal')) {
           ref = 'https://x.ag2m4.cfd/';
         } else if (decodedTarget.includes('prectv') || decodedTarget.includes('mariuannastluisborg') || decodedTarget.includes('moveonjoy')) {
@@ -428,7 +432,7 @@ export default async function handler(req, res) {
             !fullLineUrl.includes('/ts?') && !fullLineUrl.includes('/ts/');
           // Direct CDN bypass for video segments and sub-playlists with open CORS
           // Bypasses proxy for 10x faster playback (<200ms start)
-          const needsProxy = isDizisolPlaylist || /(?:hdfilmizle\.best|prectv)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi|mariuannastluisborg|moveonjoy)/i.test(fullLineUrl);
+          const needsProxy = isDizisolPlaylist || /(?:hdfilmizle\.best|prectv|dmax|tlc|daioncdn)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi|mariuannastluisborg|moveonjoy|daioncdn)/i.test(fullLineUrl);
           if (
             !needsProxy &&
             (

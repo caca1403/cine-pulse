@@ -1,3 +1,5 @@
+import { apiUrl } from './apiOrigin.js';
+
 /* ==========================================================================
    CinePulse Studio - Offline Media Download Manager
    - Client-side offline downloads using CacheStorage + IndexedDB
@@ -31,22 +33,34 @@ function resolvePlaylistUrl(uri, baseUrl) {
 
 async function saveHlsResource(cache, key, index, url, onProgress, progress) {
   let response = null;
+  const attempts = [
+    url,
+    url.includes('/api/hls_proxy') ? null : apiUrl(`/api/hls_proxy?url=${encodeURIComponent(url)}`)
+  ].filter(Boolean);
+
+  let lastError = null;
   for (let attempt = 0; attempt < 3; attempt++) {
+    const targetUrl = attempts[Math.min(attempt, attempts.length - 1)];
     try {
-      response = await fetch(url, { cache: 'no-store' });
+      response = await fetch(targetUrl, { cache: 'no-store' });
       if (response && response.ok) break;
     } catch (err) {
-      if (attempt === 2) throw err;
-      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+      lastError = err;
+      if (attempt === 2) throw lastError;
+      await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
     }
   }
-  if (!response || !response.ok) throw new Error(`Bölüm parçası indirilemedi (HTTP ${response?.status || 'ağ hatası'})`);
+  if (!response || !response.ok) {
+    throw new Error(`Bölüm parçası indirilemedi (HTTP ${response?.status || lastError?.message || 'ağ hatası'})`);
+  }
   const blob = await response.blob();
-  await cache.put(cacheRequest(key, index), new Response(blob, { headers: { 'Content-Type': response.headers.get('content-type') || 'application/octet-stream' } }));
+  await cache.put(cacheRequest(key, index), new Response(blob, {
+    headers: { 'Content-Type': response.headers.get('content-type') || 'application/octet-stream' }
+  }));
   progress.loaded += blob.size;
   progress.done += 1;
-  const pct = Math.min(98, 8 + Math.round((progress.done / progress.count) * 90));
-  onProgress({ percent: pct, loaded: progress.loaded, total: 0, status: `%${pct} · ${progress.done}/${progress.count} parça` });
+  const pct = Math.min(98, 5 + Math.round((progress.done / progress.count) * 93));
+  onProgress({ percent: pct, loaded: progress.loaded, total: 0, status: `%${pct}` });
   return blob.size;
 }
 
@@ -81,34 +95,54 @@ async function downloadHlsBundle(cache, key, response, firstText, onProgress) {
   if (playlistText.includes('#EXT-X-BYTERANGE')) throw new Error('Bu kaynak parçalı byte aralığı kullanıyor; başka bir yayın hattı seçin.');
 
   const lines = playlistText.split(/\r?\n/);
-  const resourceCount = lines.filter(line => line && !line.startsWith('#')).length
-    + (playlistText.match(/#EXT-X-(?:KEY|MAP):[^\n]*URI="[^"]+"/g) || []).length;
-  if (!resourceCount) throw new Error('Bu bölümde indirilebilir video parçası bulunamadı.');
-  const progress = { done: 0, count: resourceCount, loaded: 0 };
-  const resourceKeys = [];
-  let resourceIndex = 0;
-  const resourceToken = async (url) => {
-    const index = resourceIndex++;
-    await saveHlsResource(cache, key, index, url, onProgress, progress);
-    resourceKeys.push(index);
-    return `__CP_OFFLINE_RESOURCE_${index}__`;
-  };
-
+  const itemsToFetch = [];
   const rewritten = [];
+  let resourceIndex = 0;
+
   for (const line of lines) {
     if (!line) { rewritten.push(line); continue; }
     if (line.startsWith('#EXT-X-BYTERANGE')) throw new Error('Bu kaynak parçalı byte aralığı kullanıyor; başka bir yayın hattı seçin.');
     if (line.startsWith('#EXT-X-KEY:') || line.startsWith('#EXT-X-MAP:')) {
       const match = line.match(/URI="([^"]+)"/);
       if (match) {
-        const token = await resourceToken(resolvePlaylistUrl(match[1], playlistUrl));
-        rewritten.push(line.replace(match[0], `URI="${token}"`));
-      } else rewritten.push(line);
+        const idx = resourceIndex++;
+        const resUrl = resolvePlaylistUrl(match[1], playlistUrl);
+        itemsToFetch.push({ index: idx, url: resUrl });
+        rewritten.push(line.replace(match[0], `URI="__CP_OFFLINE_RESOURCE_${idx}__"`));
+      } else {
+        rewritten.push(line);
+      }
       continue;
     }
-    if (!line.startsWith('#')) rewritten.push(await resourceToken(resolvePlaylistUrl(line.trim(), playlistUrl)));
-    else rewritten.push(line);
+    if (!line.startsWith('#')) {
+      const idx = resourceIndex++;
+      const resUrl = resolvePlaylistUrl(line.trim(), playlistUrl);
+      itemsToFetch.push({ index: idx, url: resUrl });
+      rewritten.push(`__CP_OFFLINE_RESOURCE_${idx}__`);
+    } else {
+      rewritten.push(line);
+    }
   }
+
+  const resourceCount = itemsToFetch.length;
+  if (!resourceCount) throw new Error('Bu bölümde indirilebilir video parçası bulunamadı.');
+
+  const progress = { done: 0, count: resourceCount, loaded: 0 };
+  const resourceKeys = itemsToFetch.map(item => item.index);
+
+  // Parallel pool with 5 concurrent workers
+  const CONCURRENCY = 5;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < itemsToFetch.length) {
+      const current = itemsToFetch[cursor++];
+      if (!current) break;
+      await saveHlsResource(cache, key, current.index, current.url, onProgress, progress);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(CONCURRENCY, itemsToFetch.length) }, () => worker());
+  await Promise.all(workers);
 
   return { playlistTemplate: rewritten.join('\n'), resourceKeys, sizeBytes: progress.loaded };
 }
@@ -233,10 +267,11 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}) {
   const key = getItemKey(tmdbId, season, episode);
   const cacheUrl = `/offline/${key}`;
 
+  const safeStreamUrl = typeof streamUrl === 'string' && streamUrl.startsWith('/api/') ? apiUrl(streamUrl) : streamUrl;
   onProgress({ percent: 5, loaded: 0, total: 0, status: 'Başlatılıyor...' });
 
   try {
-    const response = await fetch(streamUrl, { cache: 'no-store' });
+    const response = await fetch(safeStreamUrl, { cache: 'no-store' });
     if (!response.ok) throw new Error(`İndirme başarısız (${response.status})`);
 
     const contentType = response.headers.get('content-type') || '';
