@@ -26,6 +26,11 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Setup Android SDK (API 36)
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0'
+
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -42,7 +47,7 @@ jobs:
           mkdir -p android/app/src/main/assets/public
           cp -r dist/* android/app/src/main/assets/public/
           cp capacitor.config.json android/app/src/main/assets/capacitor.config.json
-          npx @capacitor/cli sync android || true
+          npx cap sync android || true
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x android/gradlew
@@ -50,7 +55,7 @@ jobs:
       - name: Build Android Debug APK
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Prepare APK Asset
         run: |
