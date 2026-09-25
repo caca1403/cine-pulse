@@ -892,7 +892,8 @@ export function saveBatchWatchProgress(items = []) {
     const key = `${item.id}_${season}_${episode}`;
     const existing = historyMap.get(key);
 
-    if (existing && existing.lastWatchedAt && item.lastWatchedAt && existing.lastWatchedAt > item.lastWatchedAt && existing.completed) {
+    // If existing record is newer AND completed, and the incoming item is ALSO completed, skip
+    if (existing && existing.lastWatchedAt && item.lastWatchedAt && existing.lastWatchedAt > item.lastWatchedAt && existing.completed && item.completed) {
       continue;
     }
 
@@ -1373,9 +1374,11 @@ export function getContinueWatchingList() {
         });
       }
     } else {
-      const watchedEpNumbers = new Set();
-      let currentActiveSeason = firstRecord.season || 1;
+      // Find the most recently active in-progress record if one exists
+      const halfwayRecord = records.find(r => !r.completed && (r.currentTime > 0 || (r.progressPercent > 0 && r.progressPercent < 85)));
+      let currentActiveSeason = halfwayRecord ? (halfwayRecord.season || 1) : (firstRecord.season || 1);
 
+      const watchedEpNumbers = new Set();
       for (const rec of records) {
         if (rec.season === currentActiveSeason && (rec.completed || rec.progressPercent >= 85)) {
           watchedEpNumbers.add(rec.episode);
@@ -1383,15 +1386,31 @@ export function getContinueWatchingList() {
       }
 
       let targetEp = 1;
-      const maxPossibleEp = records.length + 50;
-      while (watchedEpNumbers.has(targetEp) && targetEp <= maxPossibleEp) {
-        targetEp++;
+      let isCurrentEpHalfway = false;
+      let currentEpTime = 0;
+      let currentRecordForDisplay = firstRecord;
+
+      if (halfwayRecord && halfwayRecord.season === currentActiveSeason) {
+        targetEp = halfwayRecord.episode || 1;
+        isCurrentEpHalfway = true;
+        currentEpTime = halfwayRecord.currentTime || 0;
+        currentRecordForDisplay = halfwayRecord;
+      } else {
+        const maxPossibleEp = records.length + 50;
+        while (watchedEpNumbers.has(targetEp) && targetEp <= maxPossibleEp) {
+          targetEp++;
+        }
+        const currentInProg = records.find(r => r.season === currentActiveSeason && r.episode === targetEp);
+        if (currentInProg && !currentInProg.completed && currentInProg.currentTime > 0) {
+          isCurrentEpHalfway = true;
+          currentEpTime = currentInProg.currentTime;
+          currentRecordForDisplay = currentInProg;
+        } else {
+          currentEpTime = (watchedEpNumbers.size > 0 ? 0 : firstRecord.currentTime) || 0;
+        }
       }
 
-      const currentInProg = records.find(r => r.season === currentActiveSeason && r.episode === targetEp);
-      const isCurrentEpHalfway = currentInProg && !currentInProg.completed && currentInProg.currentTime > 0;
-      const currentEpTime = isCurrentEpHalfway ? currentInProg.currentTime : (firstRecord.currentTime || 0);
-      const epDuration = (currentInProg ? currentInProg.duration : firstRecord.duration) || 3000;
+      const epDuration = (currentRecordForDisplay.duration) || 3000;
       const remStr = formatRemainingTime(currentEpTime, epDuration);
 
       // Check if series/season is completely finished
@@ -1415,23 +1434,24 @@ export function getContinueWatchingList() {
 
       const prefix = isAnime ? 'Anime Dizisi • ' : '';
       let subtitle = '';
-      if (isCurrentEpHalfway) {
+      if (isCurrentEpHalfway && currentEpTime > 0) {
         subtitle = `${prefix}S${currentActiveSeason} B${targetEp} • Kaldığın: ${formatSecondsToTime(currentEpTime)} • ${remStr}`;
-      } else if (watchedEpNumbers.size > 0) {
+      } else if (watchedEpNumbers.size > 0 || targetEp > 1) {
         subtitle = `${prefix}S${currentActiveSeason} B${targetEp} • Sıradaki Bölüm`;
       } else if (firstRecord.currentTime > 0) {
         subtitle = `${prefix}S${currentActiveSeason} B${firstRecord.episode || 1} • Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)}`;
       } else {
-        continue;
+        subtitle = `${prefix}S${currentActiveSeason} B${targetEp} • Sıradaki Bölüm`;
       }
 
       inProgressList.push({
         ...firstRecord,
+        ...currentRecordForDisplay,
         type: isAnime ? 'anime' : 'tv',
         isAnime: isAnime,
         isSeries: true,
         season: currentActiveSeason,
-        episode: isCurrentEpHalfway ? targetEp : (watchedEpNumbers.size > 0 ? targetEp : firstRecord.episode || 1),
+        episode: targetEp,
         currentTime: isCurrentEpHalfway ? currentEpTime : (watchedEpNumbers.size > 0 ? 0 : firstRecord.currentTime),
         subtitle
       });
