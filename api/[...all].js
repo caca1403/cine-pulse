@@ -24,6 +24,34 @@ export default async function handler(req, res) {
     return webteizleHandler(req, res);
   }
 
+  if (pathname === '/api/download_apk' || pathname === '/cinepulse.apk') {
+    try {
+      const apkUrl = 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk';
+      const apkRes = await fetch(apkUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Android; Mobile)'
+        }
+      });
+      if (!apkRes.ok) {
+        return res.redirect(302, apkUrl);
+      }
+      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+      res.setHeader('Content-Disposition', 'attachment; filename="cinepulse.apk"');
+      const cLen = apkRes.headers.get('content-length');
+      if (cLen) res.setHeader('Content-Length', cLen);
+      res.setHeader('Cache-Control', 'public, max-age=300');
+      if (apkRes.body) {
+        const stream = Readable.fromWeb(apkRes.body);
+        stream.pipe(res);
+        return;
+      }
+      const buf = await apkRes.arrayBuffer();
+      return res.status(200).send(Buffer.from(buf));
+    } catch (e) {
+      return res.redirect(302, 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk');
+    }
+  }
+
   let targetUrl = '';
   let customHeaders = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'

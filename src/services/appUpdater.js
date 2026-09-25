@@ -46,8 +46,8 @@ export function showUpdateModal(updateInfo) {
   // Prevent duplicate modals
   if (document.getElementById('cinepulse-update-modal')) return;
 
-  const directUrl = updateInfo.downloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk';
-  const githubUrl = updateInfo.githubDownloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk';
+  const directUrl = updateInfo.downloadUrl || 'https://cine-pulse.vercel.app/api/download_apk';
+  const githubUrl = updateInfo.githubDownloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest';
 
   const modal = document.createElement('div');
   modal.id = 'cinepulse-update-modal';

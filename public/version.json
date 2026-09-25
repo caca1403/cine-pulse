@@ -4,7 +4,7 @@
   "releaseDate": "2026-09-25",
   "title": "CinePulse Android v1.1.6",
   "releaseNotes": "• Canlı TV ve Birlikte İzle alt menü çubuğuna alındı.\n• DMAX ve TLC yayın adresleri kanal açılışında resmi kaynaktan yenileniyor; hata durumunda otomatik tekrar deneniyor.\n• APK oynatıcısında API adresleri doğru sunucuya yönlendiriliyor.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
+  "downloadUrl": "https://cine-pulse.vercel.app/api/download_apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest",
   "mandatory": false
 }
