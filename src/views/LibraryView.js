@@ -29,7 +29,9 @@ import { renderMediaCard, attachMediaCardEvents, upgradeLandscapeBackdrops, dete
 import { prefetchBackdrops } from '../services/fanartService.js';
 import { openDataManagerModal } from '../components/DataManagerModal.js';
 import { showToast } from '../components/Toast.js';
-import { getDownloadedMediaList, deleteOfflineMedia, formatBytes } from '../services/offlineManager.js';
+import { getDownloadedMediaList, deleteOfflineMedia, getDownloadedPlaybackUrl, formatBytes } from '../services/offlineManager.js';
+import { isNativeAndroidApp } from '../services/appUpdater.js';
+import { openPlayerModal } from '../components/openPlayer.js';
 
 function renderLibraryCard(item, tabType) {
   const resolvedType = determineMediaType(item);
@@ -52,6 +54,7 @@ function renderLibraryCard(item, tabType) {
 }
 
 export function renderLibraryView() {
+  const showOfflineDownloads = isNativeAndroidApp();
   const allHistory = getWatchHistory();
   const groupedHistory = getGroupedWatchHistory();
   const favorites = getFavorites();
@@ -65,7 +68,7 @@ export function renderLibraryView() {
   if (typeof window !== 'undefined' && window.sessionStorage) {
     try {
       const stored = window.sessionStorage.getItem('cp_lib_active_tab');
-      if (stored && ['continue', 'completed', 'favorites', 'watchlist', 'all-episodes', 'downloads'].includes(stored)) {
+      if (stored && ['continue', 'completed', 'favorites', 'watchlist', 'all-episodes', ...(showOfflineDownloads ? ['downloads'] : [])].includes(stored)) {
         savedActiveTab = stored;
       }
     } catch (_) {}
@@ -165,11 +168,11 @@ export function renderLibraryView() {
             <span>İzleme Geçmişi</span>
             <span class="lib-tab-badge" id="tab-count-all-episodes">${groupedHistory.length}</span>
           </button>
-          <button class="lib-nav-tab ${savedActiveTab === 'downloads' ? 'active' : ''}" data-tab="downloads">
+          ${showOfflineDownloads ? `<button class="lib-nav-tab ${savedActiveTab === 'downloads' ? 'active' : ''}" data-tab="downloads">
             <i data-lucide="download"></i>
             <span>İndirilenler</span>
             <span class="lib-tab-badge" id="tab-count-downloads">0</span>
-          </button>
+          </button>` : ''}
         </div>
 
         <!-- Library Luxury Toolbar Deck (Search, Type Filters, Sort & Batch Actions) -->
@@ -224,7 +227,7 @@ export function renderLibraryView() {
         <div class="tab-content ${savedActiveTab === 'all-episodes' ? '' : 'hidden'}" id="tab-all-episodes"></div>
 
         <!-- Tab 6: Offline Downloads -->
-        <div class="tab-content ${savedActiveTab === 'downloads' ? '' : 'hidden'}" id="tab-downloads"></div>
+        ${showOfflineDownloads ? `<div class="tab-content ${savedActiveTab === 'downloads' ? '' : 'hidden'}" id="tab-downloads"></div>` : ''}
       </div>
     </div>
   `;
@@ -256,9 +259,10 @@ export function renderLibraryView() {
             backdrop_path: it.backdrop,
             type: it.type,
             isSeries: it.type === 'tv' || (it.season !== null && it.episode !== null),
-            season: it.season || 1,
-            episode: it.episode || 1,
+            season: it.season ?? null,
+            episode: it.episode ?? null,
             sizeBytes: it.sizeBytes,
+            mediaKind: it.mediaKind || 'file',
             isDownloaded: true,
             key: it.key
           }));
@@ -267,7 +271,7 @@ export function renderLibraryView() {
           if (currentTab === 'downloads') renderActiveTabContent();
         } catch (_) {}
       };
-      loadOfflineItems();
+      if (showOfflineDownloads) loadOfflineItems();
 
       // Tab data provider
       const getTabData = (tab) => {
@@ -410,6 +414,54 @@ export function renderLibraryView() {
 
         if (filtered.length === 0) {
           activeContent.innerHTML = getEmptyState(currentTab);
+        } else if (currentTab === 'downloads') {
+          activeContent.innerHTML = `
+            <div class="offline-download-list">
+              ${filtered.map(item => `
+                <article class="offline-download-card" data-offline-id="${item.id}" data-season="${item.season ?? ''}" data-episode="${item.episode ?? ''}">
+                  <img src="${item.backdrop_path || item.poster_path || ''}" alt="" loading="lazy" />
+                  <div class="offline-download-info"><strong>${item.title}</strong><span>${item.isSeries ? `S${item.season} · B${item.episode}` : 'Film'} · ${formatBytes(item.sizeBytes)}</span><small>Bu cihaza kaydedildi · İnternetsiz izlenebilir</small></div>
+                  <button class="offline-play-btn" type="button"><i data-lucide="play"></i><span>Oynat</span></button>
+                  <button class="btn-delete-history btn-lib-delete" title="Cihazdan sil" aria-label="Cihazdan sil"><i data-lucide="trash-2"></i></button>
+                </article>`).join('')}
+            </div>`;
+          activeContent.querySelectorAll('.offline-play-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+              const row = button.closest('.offline-download-card');
+              const id = row?.dataset.offlineId;
+              const season = row?.dataset.season ? Number(row.dataset.season) : null;
+              const episode = row?.dataset.episode ? Number(row.dataset.episode) : null;
+              const item = offlineItems.find(entry => String(entry.id) === String(id) && entry.season === season && entry.episode === episode);
+              if (!item) return;
+              button.disabled = true;
+              try {
+                const offlinePlaybackUrl = await getDownloadedPlaybackUrl(id, season, episode);
+                if (!offlinePlaybackUrl) throw new Error('İndirilen video dosyası bulunamadı.');
+                openPlayerModal({
+                  type: item.type === 'movie' ? 'movie' : 'tv', tmdbId: id, title: item.title,
+                  seriesTitle: item.title, season: season || 1, episode: episode || 1,
+                  posterPath: item.poster_path || '', backdropPath: item.backdrop_path || '', offlinePlaybackUrl, offlineMediaKind: item.mediaKind
+                });
+              } catch (error) {
+                showToast(error?.message || 'İndirilen içerik açılamadı.', 'error');
+              } finally { button.disabled = false; }
+            });
+          });
+          activeContent.querySelectorAll('.offline-download-card .btn-lib-delete').forEach(button => {
+            button.addEventListener('click', async () => {
+              const row = button.closest('.offline-download-card');
+              const id = row?.dataset.offlineId;
+              const season = row?.dataset.season ? Number(row.dataset.season) : null;
+              const episode = row?.dataset.episode ? Number(row.dataset.episode) : null;
+              if (!id || !window.confirm('Bu indirilen içerik cihazdan silinsin mi?')) return;
+              await deleteOfflineMedia(id, season, episode);
+              offlineItems = offlineItems.filter(item => !(String(item.id) === String(id) && item.season === season && item.episode === episode));
+              const badge = container.querySelector('#tab-count-downloads');
+              if (badge) badge.textContent = String(offlineItems.length);
+              renderActiveTabContent();
+              showToast('İndirilen içerik cihazdan silindi.', 'success');
+            });
+          });
         } else {
           const visibleChunk = filtered.slice(0, tabLimit);
           const hasMore = filtered.length > tabLimit;
@@ -597,7 +649,8 @@ export function renderLibraryView() {
               } else if (tab === 'watchlist') {
                 removeWatchlist(id);
               } else if (tab === 'downloads') {
-                deleteOfflineMedia(id, season, episode);
+                const offlineItem = offlineItems.find(it => String(it.id) === String(id) && (it.season || 1) === season && (it.episode || 1) === episode);
+                deleteOfflineMedia(id, offlineItem?.season ?? null, offlineItem?.episode ?? null);
                 offlineItems = offlineItems.filter(it => !(it.id === id && it.season === season && it.episode === episode));
               }
 
@@ -741,6 +794,9 @@ export function renderLibraryView() {
         renderActiveTabContent();
       };
       window.addEventListener('sineflix_data_changed', onStorageChanged);
+
+      const onOfflineChanged = () => loadOfflineItems();
+      window.addEventListener('cinepulse_offline_changed', onOfflineChanged);
     }
   };
 }

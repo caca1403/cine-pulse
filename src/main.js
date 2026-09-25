@@ -7,6 +7,7 @@ import { renderNavbar, attachNavbarEvents } from './components/Navbar.js';
 import { renderHomeView, clearHomeCache, cleanupHomeView } from './views/HomeView.js';
 import { renderDetailView } from './views/DetailView.js';
 import { renderLibraryView } from './views/LibraryView.js';
+import { renderDownloadsView } from './views/DownloadsView.js';
 import { renderDiscoverView } from './views/DiscoverView.js';
 import { renderPopularListView } from './views/PopularListView.js';
 import { renderLiveTvView } from './views/LiveTvView.js';
@@ -24,6 +25,38 @@ import { initTraktAutoSync } from './services/traktService.js';
 import { getWatchHistory, saveWatchProgress, saveBatchWatchProgress } from './services/storage.js';
 import { initAppUpdater } from './services/appUpdater.js';
 import { App } from '@capacitor/app';
+
+// Keep the native APK runtime distinct from mobile browsers. API routes are
+// hosted by Vercel, so relative /api requests must not resolve to the local
+// Capacitor WebView origin (https://localhost).
+const isNativeAndroid = Boolean(
+  window.Capacitor?.isNativePlatform?.() &&
+  window.Capacitor?.getPlatform?.() === 'android'
+);
+document.documentElement.classList.toggle('native-android', isNativeAndroid);
+const mobileWebQuery = matchMedia('(max-width: 768px)');
+document.documentElement.classList.toggle('mobile-web', !isNativeAndroid && mobileWebQuery.matches);
+mobileWebQuery.addEventListener?.('change', (event) => {
+  document.documentElement.classList.toggle('mobile-web', !isNativeAndroid && event.matches);
+});
+
+if (isNativeAndroid) {
+  const nativeFetch = window.fetch.bind(window);
+  const apiOrigin = 'https://cine-pulse-drab.vercel.app';
+  window.fetch = (input, init) => {
+    if (typeof input === 'string' && input.startsWith('/api/')) {
+      input = `${apiOrigin}${input}`;
+    } else if (input instanceof URL && input.origin === window.location.origin && input.pathname.startsWith('/api/')) {
+      input = `${apiOrigin}${input.pathname}${input.search}${input.hash}`;
+    } else if (typeof Request !== 'undefined' && input instanceof Request) {
+      const url = new URL(input.url);
+      if (url.origin === window.location.origin && url.pathname.startsWith('/api/')) {
+        input = new Request(`${apiOrigin}${url.pathname}${url.search}${url.hash}`, input);
+      }
+    }
+    return nativeFetch(input, init);
+  };
+}
 
 // Native Android Hardware Back-Button Support for APK
 if (typeof window !== 'undefined') {
@@ -148,6 +181,9 @@ async function route() {
     viewName = 'discover';
   } else if (hash === '#library') {
     viewName = 'library';
+  } else if (hash === '#downloads') {
+    if (isNativeAndroid) viewName = 'downloads';
+    else { window.location.replace('#library'); viewName = 'library'; }
   } else if (hash.startsWith('#dramas')) {
     viewName = 'dramas';
     if (hash.includes('?')) {
@@ -201,7 +237,7 @@ async function route() {
 
   // Render Navbar for regular application views
   const navbarHTML = renderNavbar(viewName);
-  const cardViews = new Set(['home', 'series', 'cartoons', 'movies', 'anime', 'documentary', 'discover', 'library', 'downloads']);
+  const cardViews = new Set(['home', 'series', 'cartoons', 'movies', 'anime', 'documentary', 'discover', 'library']);
   const cardLayoutSwitcherHTML = cardViews.has(viewName) ? renderCardLayoutSwitcher() : '';
 
   if (viewName === 'home' || viewName === 'detail') {
@@ -232,8 +268,7 @@ async function route() {
   } else if (viewName === 'library') {
     viewResult = renderLibraryView();
   } else if (viewName === 'downloads') {
-    try { sessionStorage.setItem('cp_lib_active_tab', 'downloads'); } catch (_) {}
-    viewResult = renderLibraryView();
+    viewResult = renderDownloadsView();
   } else if (viewName === 'dramas') {
     viewResult = await renderDramaView(params.slug, params.q);
   }

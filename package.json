@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "server": "node server/mediaServer.js",
     "tunnel": "npx localtunnel --port 4000",
-    "cap:sync": "cap sync android"
+    "cap:sync": "cap sync android && node scripts/clean-android-apk.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

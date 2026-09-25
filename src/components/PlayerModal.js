@@ -33,6 +33,10 @@ import { showToast } from './Toast.js';
 import { translateToTurkish } from '../services/tmdbApi.js';
 import { returnToDecisionRoomModal } from './DecisionRoomModal.js';
 import * as traktService from '../services/traktService.js';
+import Hls from 'hls.js';
+import { apiUrl } from '../services/apiOrigin.js';
+import { startOfflineDownload, isMediaDownloaded, getDownloadedPlaybackUrl, releaseDownloadedPlaybackUrls } from '../services/offlineManager.js';
+import { isNativeAndroidApp } from '../services/appUpdater.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -54,6 +58,12 @@ export async function openPlayerModal({
   episode = 1,
   posterPath = '',
   backdropPath = '',
+  playerVariant = '',
+  seriesOverview = '',
+  episodeArtworkPath = '',
+  shortDramaEpisodes = [],
+  offlinePlaybackUrl = '',
+  offlineMediaKind = 'file',
   currentTime = 0,
   duration = 0,
   seasonsList = [],
@@ -62,6 +72,8 @@ export async function openPlayerModal({
 }) {
   const modalContainer = document.getElementById('player-modal');
   if (!modalContainer) return;
+
+  modalContainer.classList.toggle('player-variant-short-drama', playerVariant === 'short-drama');
 
   activeModalClose?.();
   let closed = false;
@@ -166,7 +178,7 @@ export async function openPlayerModal({
     .trim();
   const previousDocumentTitle = document.title;
 
-  let mediaOverview = '';
+  let mediaOverview = seriesOverview || '';
   let currentEpisodeOverview = '';
   let mediaGenres = [];
   let movieDirector = '';
@@ -943,13 +955,16 @@ export async function openPlayerModal({
 
   function getStreamSafeUrl(srv) {
     if (!srv) return '';
+    const toPlayableUrl = (url) => typeof url === 'string' && url.startsWith('/api/')
+      ? apiUrl(url)
+      : (url || '');
     if (typeof srv.getUrl === 'function') {
       try {
         const u = srv.getUrl();
-        if (u) return u;
+        if (u) return toPlayableUrl(u);
       } catch (_) {}
     }
-    return srv.streamUrl || srv.url || srv.originalEmbedUrl || '';
+    return toPlayableUrl(srv.streamUrl || srv.url || srv.originalEmbedUrl || '');
   }
 
   // Oda üyeleri aynı yayın hattını kullanır. URL'yi paylaşmıyoruz: bazı
@@ -1219,6 +1234,7 @@ export async function openPlayerModal({
   }
 
   async function updateEpisodeOverview(seasonNum, epNum) {
+    if (playerVariant === 'short-drama') return;
     if (!isSeries || !tmdbId) return;
     const overviewEl = document.getElementById('dizisol-overview');
 
@@ -1277,7 +1293,51 @@ export async function openPlayerModal({
       renderSourcesPopoverList();
     }
     if (roomSync) renderRoomPlayerHud();
+    refreshOfflineDownloadButton();
   }
+
+  async function refreshOfflineDownloadButton() {
+    const button = modalContainer.querySelector('#btn-player-download');
+    if (!button) return;
+    const srv = activeServers[currentServerIndex];
+    const streamUrl = getStreamSafeUrl(srv);
+    const isSupported = Boolean(srv && (srv.isHls || srv.isDirectVideo || /\.(?:m3u8|mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(streamUrl)));
+    if (!isSupported) {
+      button.disabled = true;
+      button.title = 'Bu kaynak doğrudan indirilebilir bölüm akışı sunmuyor.';
+      return;
+    }
+    const downloaded = await isMediaDownloaded(tmdbId, isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
+    if (closed || !button.isConnected) return;
+    button.disabled = downloaded;
+    button.title = downloaded ? 'Bu bölüm cihaza indirildi' : 'Bölümü çevrimdışı indir';
+    button.querySelector('span').textContent = downloaded ? 'İndirildi' : 'Bölümü indir';
+  }
+
+  modalContainer.querySelector('#btn-player-download')?.addEventListener('click', async event => {
+    const button = event.currentTarget;
+    const server = activeServers[currentServerIndex];
+    const streamUrl = getStreamSafeUrl(server);
+    if (!streamUrl || button.disabled) return;
+    button.disabled = true;
+    const label = button.querySelector('span');
+    try {
+      await startOfflineDownload({
+        tmdbId, type: type === 'movie' ? 'movie' : 'tv',
+        title: isSeries ? `${cleanSeriesName} · S${currentSeason} B${currentEpisode}` : cleanSeriesName,
+        poster: posterPath, backdrop: backdropPath,
+        season: isSeries ? currentSeason : null, episode: isSeries ? currentEpisode : null,
+        streamUrl
+      }, progress => {
+        if (label) label.textContent = progress.status || `%${progress.percent}`;
+      });
+      showToast('Bölüm cihaza indirildi. İnternetsiz izleyebilirsin.', 'success');
+    } catch (error) {
+      showToast(error?.message || 'İndirme tamamlanamadı. Farklı bir yayın hattı deneyin.', 'error');
+    } finally {
+      refreshOfflineDownloadButton();
+    }
+  });
 
   function updateCategoryCounts() {
     const dubCount = document.getElementById('tab-dubbed-count');
@@ -1374,7 +1434,6 @@ export async function openPlayerModal({
       try { activeAudioHlsInstance.destroy(); } catch (_) {}
       activeAudioHlsInstance = null;
     }
-
     const currentSrv = activeServers[currentServerIndex];
     const nextIndex = activeServers.findIndex((s, idx) => idx > currentServerIndex && !s.failed);
     const hasNext = nextIndex !== -1;
@@ -2202,7 +2261,7 @@ export async function openPlayerModal({
       </div>
 
       <!-- Center Player Video Container -->
-      <div class="player-stage-wrapper">
+          <div class="player-stage-wrapper">
         <div class="player-iframe-container" id="player-iframe-wrapper">
           ${renderPlayerContent()}
         </div>
@@ -2225,6 +2284,13 @@ export async function openPlayerModal({
         </div>
       </div>
 
+      ${playerVariant === 'short-drama' && (episodeArtworkPath || backdropPath || posterPath) ? `
+      <section class="short-drama-artwork" aria-label="${cleanSeriesName} kapak görseli">
+        <img src="${(episodeArtworkPath || backdropPath || posterPath).startsWith('http') ? (episodeArtworkPath || backdropPath || posterPath) : `https://image.tmdb.org/t/p/w1280${episodeArtworkPath || backdropPath || posterPath}`}" alt="${cleanSeriesName}" />
+        <div class="short-drama-artwork-shade"></div>
+        <div class="short-drama-artwork-copy"><span>KISA DİZİ · MİNİ SERİ · ${currentEpisode}. BÖLÜM</span><strong>${cleanSeriesName}</strong></div>
+      </section>` : ''}
+
       <!-- Dizisol Cinema Body (Title, Genres, Overview & Carousel) -->
       <div class="dizisol-cinema-body">
         <section class="player-editorial-header" aria-label="İçerik bilgisi">
@@ -2233,9 +2299,11 @@ export async function openPlayerModal({
               <h1 class="dizisol-title">${cleanSeriesName}</h1>
             </div>
             <div class="player-meta-pills">
-              <span class="dizisol-ep-badge">${type === 'tv' ? `Sezon ${currentSeason} · Bölüm ${currentEpisode}` : 'Film'}</span>
-              <span class="player-meta-dot">HD akış</span>
-              <span class="player-meta-dot">Kaldığın yer kaydedilir</span>
+              ${playerVariant === 'short-drama'
+                ? `<span class="dizisol-ep-badge">${currentEpisode}. Bölüm${maxEpisodes ? ` · ${maxEpisodes} bölüm` : ''}</span>`
+                : `<span class="dizisol-ep-badge">${type === 'tv' ? `Sezon ${currentSeason} · Bölüm ${currentEpisode}` : 'Film'}</span>
+                   <span class="player-meta-dot">HD akış</span>
+                   <span class="player-meta-dot">Kaldığın yer kaydedilir</span>`}
             </div>
           </div>
 
@@ -2253,8 +2321,9 @@ export async function openPlayerModal({
             <div class="player-feedback-group" aria-label="Yayın geri bildirimi">
               <button id="btn-report-issue" class="player-icon-action" type="button" title="Kaynakta sorun bildir"><i data-lucide="flag"></i></button>
             </div>
-            <div class="player-utility-group">
-              <button id="btn-player-theater" class="player-utility-action" title="Sinema Modu (Genişlet)"><i data-lucide="scan-line"></i><span>Sinema</span></button>
+          <div class="player-utility-group">
+            ${isNativeAndroidApp() && !offlinePlaybackUrl ? `<button id="btn-player-download" class="player-utility-action player-download-action" type="button" title="Bölümü çevrimdışı indir"><i data-lucide="download"></i><span>İndir</span></button>` : ''}
+            <button id="btn-player-theater" class="player-utility-action" title="Sinema Modu (Genişlet)"><i data-lucide="scan-line"></i><span>Sinema</span></button>
               <button id="btn-player-share" class="player-icon-action" type="button" title="Paylaş"><i data-lucide="share-2"></i></button>
             </div>
           </div>
@@ -2264,14 +2333,26 @@ export async function openPlayerModal({
           ${mediaGenres.map(g => `<span class="dizisol-genre-chip">${g}</span>`).join('')}
         </div>
 
-        <div class="player-story-block">
-          <p class="dizisol-overview" id="dizisol-overview">
-            ${isSeries ? (currentEpisodeOverview || 'Bölüm özeti hazırlanıyor...') : (mediaOverview || 'İçerik bilgileri hazırlanıyor...')}
-          </p>
-        </div>
+          <div class="player-story-block ${playerVariant === 'short-drama' ? 'short-drama-story' : ''}">
+            ${playerVariant === 'short-drama' ? '<h2 class="short-drama-story-heading">DİZİ HAKKINDA</h2>' : ''}
+            <p class="dizisol-overview" id="dizisol-overview">
+            ${playerVariant === 'short-drama' ? (seriesOverview || 'Bu kısa dizi için henüz özet girilmedi.') : (isSeries ? (currentEpisodeOverview || 'Bölüm özeti hazırlanıyor...') : (mediaOverview || 'İçerik bilgileri hazırlanıyor...'))}
+            </p>
+          </div>
 
         <!-- SEZONLAR SECTION (Only for TV Series) -->
-        ${isSeries ? `
+        ${isSeries && playerVariant === 'short-drama' ? `
+          <section class="dizisol-seasons-section short-drama-episodes">
+            <div class="dizisol-seasons-header"><h4>BÖLÜMLER</h4><span class="dizisol-episodes-count">${shortDramaEpisodes.length || maxEpisodes} Bölüm</span></div>
+            <div class="short-drama-episode-rail">
+              ${shortDramaEpisodes.map(ep => `
+                <button class="short-drama-episode-card ${Number(ep.episode) === Number(currentEpisode) ? 'is-current' : ''}" type="button" data-drama-season="${ep.season}" data-drama-episode="${ep.episode}">
+                  <span class="short-drama-episode-image">${ep.thumb ? `<img loading="lazy" src="${ep.thumb}" alt="${ep.title}" />` : `<span>${ep.episode}</span>`}<b>${Number(ep.episode) === Number(currentEpisode) ? 'ŞİMDİ OYNUYOR' : `${ep.episode}. BÖLÜM`}</b></span>
+                  <span class="short-drama-episode-name">${ep.title}</span>
+                </button>`).join('')}
+            </div>
+          </section>
+        ` : isSeries ? `
           <div class="dizisol-seasons-section">
             <div class="dizisol-seasons-header">
               <h4>SEZONLAR</h4>
@@ -2761,6 +2842,23 @@ export async function openPlayerModal({
     updateEpisodeOverview(currentSeason, currentEpisode);
   } else {
     renderMovieInfoSection();
+  }
+
+  if (playerVariant === 'short-drama') {
+    modalContainer.querySelectorAll('.short-drama-episode-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const nextSeason = Number(card.dataset.dramaSeason) || 1;
+        const nextEpisode = Number(card.dataset.dramaEpisode) || 1;
+        if (nextEpisode === Number(currentEpisode) && nextSeason === Number(currentSeason)) return;
+        const next = shortDramaEpisodes.find(ep => Number(ep.season) === nextSeason && Number(ep.episode) === nextEpisode);
+        openPlayerModal({
+          type: 'tv', tmdbId, title: `${cleanSeriesName} - B${nextEpisode}`, seriesTitle: cleanSeriesName,
+          season: nextSeason, episode: nextEpisode, posterPath, backdropPath, playerVariant,
+          seriesOverview, episodeArtworkPath: next?.thumb || posterPath, shortDramaEpisodes, maxEpisodes,
+          seasonsList: [{ season_number: nextSeason, episode_count: maxEpisodes }]
+        });
+      });
+    });
   }
   async function renderQuickEpisodesRail() {
     const rail = document.getElementById('player-quick-episodes-rail');
@@ -4811,7 +4909,7 @@ export async function openPlayerModal({
         // Tüm DS kaynakları için: imagestoo, pal-vds, hdfilmdelisi, vidmixi, vb.
         const isDizisolSource = srv?.source === 'DS';
 
-        if (isHlsStream && window.Hls && Hls.isSupported()) {
+        if (isHlsStream && Hls.isSupported()) {
           const hls = new Hls({
             enableWorker: true,
             lowLatencyMode: false,
@@ -4988,7 +5086,7 @@ export async function openPlayerModal({
             }
           });
         } else if (isHlsStream && videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-          // iOS Safari Native HLS Engine
+          // Native HLS fallback (primarily Safari/WebKit).
           videoEl.src = streamUrl;
           const startIosPlayback = () => {
             if (initialTime > 0) {
@@ -5012,7 +5110,7 @@ export async function openPlayerModal({
           startIosPlayback();
           playbackScope.on(videoEl, 'error', () => {
             if (closed || playbackRun !== playbackGeneration) return;
-            triggerAutoFailover('iOS Oynatıcı Hatası');
+            triggerAutoFailover('Yerel HLS oynatıcı hatası');
           });
         } else {
           videoEl.src = streamUrl;
@@ -5071,7 +5169,7 @@ export async function openPlayerModal({
             const dubbedUrl = srv.dubbedAudioUrl;
             const isAudioHls = dubbedUrl.includes('.m3u8') || srv.dubbedAudioIsHls;
 
-            if (isAudioHls && window.Hls && Hls.isSupported()) {
+            if (isAudioHls && Hls.isSupported()) {
               const audioHls = new Hls({
                 enableWorker: true,
                 lowLatencyMode: false,
@@ -5453,8 +5551,19 @@ export async function openPlayerModal({
     });
   }
 
-  // Initial Progressive Server Discovery
-  startServerDiscovery();
+  // Native offline entries bypass discovery and play the device cache directly.
+  if (offlinePlaybackUrl) {
+    const offlineServer = { source: 'OFFLINE', name: 'Cihaza indirilen', displayName: 'Cihaza indirilen', streamUrl: offlinePlaybackUrl, isDirectVideo: offlineMediaKind !== 'hls', isHls: offlineMediaKind === 'hls' };
+    categorizedServers = { dubbed: [offlineServer], subtitled: [] };
+    activeServers = categorizedServers.dubbed;
+    currentServerIndex = 0;
+    isSearching = false;
+    hasPlayerStartedPlaying = true;
+    updateServerPillsEvents();
+    updatePlayerContainer();
+  } else {
+    startServerDiscovery();
+  }
   if (type === 'tv') renderDrawerContent();
   startWatchProgressLoop();
 
@@ -5696,6 +5805,7 @@ export async function openPlayerModal({
       try { activeAudioHlsInstance.destroy(); } catch (_) {}
       activeAudioHlsInstance = null;
     }
+    releaseDownloadedPlaybackUrls();
     if (originalWindowOpen) {
       window.open = originalWindowOpen;
       originalWindowOpen = null;

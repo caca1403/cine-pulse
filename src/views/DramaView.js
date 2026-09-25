@@ -488,7 +488,8 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
 
       function playDramaEpisode(season = 1, episode = 1) {
         if (!selectedDrama) return;
-        const { slug, title, poster, episodes = [] } = selectedDrama;
+        const { slug, title, poster, description, episodes = [] } = selectedDrama;
+        const episodeArtwork = episodes.find(ep => ep.season === season && ep.episode === episode)?.thumb || '';
 
         openPlayerModal({
           type: 'tv',
@@ -499,6 +500,10 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
           episode,
           posterPath: poster,
           backdropPath: poster,
+          playerVariant: 'short-drama',
+          seriesOverview: description || '',
+          episodeArtworkPath: episodeArtwork || poster,
+          shortDramaEpisodes: episodes,
           maxEpisodes: episodes.length,
           seasonsList: [{ season_number: season, episode_count: episodes.length }]
         });

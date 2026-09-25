@@ -7,8 +7,8 @@
 import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
 
-export const CURRENT_APP_VERSION = '1.1.1';
-export const CURRENT_VERSION_CODE = 111;
+export const CURRENT_APP_VERSION = '1.1.5';
+export const CURRENT_VERSION_CODE = 115;
 
 const REMOTE_VERSION_URL = 'https://raw.githubusercontent.com/caca1403/cine-pulse/main/public/version.json';
 const SNOOZE_KEY = 'cinepulse_update_snoozed_until';

@@ -16,11 +16,13 @@ import { getActiveProfile } from '../services/storage.js';
 import { openNotificationCenterModal, getUnreadNotificationCount } from './NotificationCenterModal.js';
 import { openDecisionRoomModal } from './DecisionRoomModal.js';
 import { openTraktModal } from './TraktModal.js';
+import { isNativeAndroidApp } from '../services/appUpdater.js';
 
 export function renderNavbar(currentView = 'home') {
   const activeProfile = getActiveProfile();
   const unreadCount = getUnreadNotificationCount();
   const isKid = activeProfile.isKid;
+  const showOfflineDownloads = isNativeAndroidApp();
 
   return `
     <!-- ================================================================
@@ -278,13 +280,13 @@ export function renderNavbar(currentView = 'home') {
         </div>
       </button>
 
-      <a href="#downloads" class="dynamic-dock-item ${currentView === 'downloads' ? 'active' : ''}" id="dock-item-downloads">
+      ${showOfflineDownloads ? `<a href="#downloads" class="dynamic-dock-item ${currentView === 'downloads' ? 'active' : ''}" id="dock-item-downloads">
         <div class="dock-icon-rel">
           <i data-lucide="arrow-down-circle"></i>
           <span class="dock-download-badge" id="dock-downloads-badge" style="display:none;"></span>
         </div>
         <span>İndirilenler</span>
-      </a>
+      </a>` : ''}
 
       <a href="#library" class="dynamic-dock-item ${currentView === 'library' ? 'active' : ''}">
         <i data-lucide="bookmark"></i>

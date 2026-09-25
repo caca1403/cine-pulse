@@ -1,5 +1,10 @@
 apply plugin: 'com.android.application'
 
+def signingStorePath = System.getenv('ANDROID_KEYSTORE_PATH')
+def signingStorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
+def signingKeyAlias = System.getenv('ANDROID_KEY_ALIAS')
+def signingKeyPassword = System.getenv('ANDROID_KEY_PASSWORD')
+
 android {
     namespace = "com.cinepulse.studio"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +12,8 @@ android {
         applicationId "com.cinepulse.studio"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 111
-        versionName "1.1.1"
+        versionCode 115
+        versionName "1.1.5"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +21,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    if (signingStorePath && signingStorePassword && signingKeyAlias && signingKeyPassword) {
+        signingConfigs {
+            release {
+                storeFile file(signingStorePath)
+                storePassword signingStorePassword
+                keyAlias signingKeyAlias
+                keyPassword signingKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (signingStorePath && signingStorePassword && signingKeyAlias && signingKeyPassword) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
