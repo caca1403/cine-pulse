@@ -960,6 +960,14 @@ export function saveBatchWatchProgress(items = []) {
   _progressMapCache = null;
   _seriesLatestMapCache = null;
   invalidateDerivedHistoryCaches();
+  
+  const inProgressCount = updatedHistory.filter(r => !r.completed).length;
+  const completedCount = updatedHistory.filter(r => r.completed).length;
+  console.log(`[saveBatchWatchProgress] Saved ${items.length} items. Total history: ${updatedHistory.length} (${inProgressCount} in-progress, ${completedCount} completed)`);
+  if (inProgressCount > 0) {
+    console.log('[saveBatchWatchProgress] In-progress items:', updatedHistory.filter(r => !r.completed).map(r => `${r.title} S${r.season}E${r.episode} progress:${r.progressPercent}% completed:${r.completed}`));
+  }
+  
   setLocalItem(STORAGE_KEYS.WATCH_HISTORY, updatedHistory);
 }
 
@@ -1337,8 +1345,12 @@ export function getTotalWatchStats() {
 export function getContinueWatchingList() {
   if (_cachedContinueWatching) return _cachedContinueWatching;
   const history = getWatchHistory();
-  const seriesMap = new Map();
+  if (!history || history.length === 0) {
+    _cachedContinueWatching = [];
+    return _cachedContinueWatching;
+  }
 
+  const seriesMap = new Map();
   for (const item of history) {
     const id = item.id;
     if (!seriesMap.has(id)) {
@@ -1351,15 +1363,27 @@ export function getContinueWatchingList() {
 
   for (const [id, records] of seriesMap.entries()) {
     records.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
-    const firstRecord = records[0];
+    const firstRecord = records[0]; // most recent record
     const isAnime = Boolean(firstRecord.isAnime || firstRecord.type === 'anime' || isRegisteredAnimeId(firstRecord.id) || isAnimeRecord(firstRecord));
     if (isAnime) registerAnimeId(firstRecord.id);
-    const isMovie = isMovieRecord(firstRecord);
 
-    if (isMovie) {
+    // Determine if this content is a series (TV/anime) or movie
+    // Check ANY record in the group — if any has isSeries/tv/season>1/episode>1, it's a series
+    const isSeries = records.some(r => 
+      r.isSeries === true || 
+      r.type === 'tv' || 
+      r.type === 'anime' ||
+      r.first_air_date ||
+      r.number_of_seasons ||
+      (r.season && r.season > 1) || 
+      (r.episode && r.episode > 1) ||
+      (Array.isArray(r.seasons) && r.seasons.length > 0)
+    );
+
+    if (!isSeries) {
+      // === MOVIE HANDLING ===
       const isCompleted = firstRecord.completed || firstRecord.progressPercent >= 90;
-      // Exclude completed movies from Continue Watching!
-      if (isCompleted) continue;
+      if (isCompleted) continue; // Completed movies excluded
 
       if (firstRecord.currentTime > 0) {
         const duration = firstRecord.duration || 6600;
@@ -1375,13 +1399,19 @@ export function getContinueWatchingList() {
         });
       }
     } else {
-      // Find the most recently active in-progress record if one exists (any non-completed record with progress)
-      const halfwayRecord = records.find(r => !r.completed && (r.currentTime > 0 || (r.progressPercent > 0 && r.progressPercent < 100)));
-      let currentActiveSeason = halfwayRecord ? (halfwayRecord.season || 1) : (firstRecord.season || 1);
+      // === SERIES HANDLING ===
+      // Find any record that is explicitly in-progress (not completed, with watch time)
+      const inProgressRecord = records.find(r => !r.completed && r.currentTime > 0 && r.progressPercent < 100);
+      
+      // Determine the active season from the in-progress record or the most recent record
+      let currentActiveSeason = inProgressRecord 
+        ? (inProgressRecord.season || 1) 
+        : (firstRecord.season || 1);
 
+      // Count watched episodes in the active season
       const watchedEpNumbers = new Set();
       for (const rec of records) {
-        if (rec.season === currentActiveSeason && (rec.completed || rec.progressPercent >= 85)) {
+        if (rec.season === currentActiveSeason && (rec.completed || rec.progressPercent >= 90)) {
           watchedEpNumbers.add(rec.episode);
         }
       }
@@ -1391,47 +1421,64 @@ export function getContinueWatchingList() {
       let currentEpTime = 0;
       let currentRecordForDisplay = firstRecord;
 
-      if (halfwayRecord && halfwayRecord.season === currentActiveSeason) {
-        targetEp = halfwayRecord.episode || 1;
+      if (inProgressRecord && inProgressRecord.season === currentActiveSeason) {
+        // User is actively watching an episode
+        targetEp = inProgressRecord.episode || 1;
         isCurrentEpHalfway = true;
-        currentEpTime = halfwayRecord.currentTime || 0;
-        currentRecordForDisplay = halfwayRecord;
+        currentEpTime = inProgressRecord.currentTime || 0;
+        currentRecordForDisplay = inProgressRecord;
       } else {
-        const maxPossibleEp = records.length + 50;
-        while (watchedEpNumbers.has(targetEp) && targetEp <= maxPossibleEp) {
+        // Find the next unwatched episode
+        while (watchedEpNumbers.has(targetEp) && targetEp <= 999) {
           targetEp++;
         }
-        const currentInProg = records.find(r => r.season === currentActiveSeason && r.episode === targetEp);
-        if (currentInProg && !currentInProg.completed && currentInProg.currentTime > 0) {
+        // Check if there's a record for this next episode that has some progress
+        const nextEpRecord = records.find(r => r.season === currentActiveSeason && r.episode === targetEp);
+        if (nextEpRecord && !nextEpRecord.completed && nextEpRecord.currentTime > 0) {
           isCurrentEpHalfway = true;
-          currentEpTime = currentInProg.currentTime;
-          currentRecordForDisplay = currentInProg;
-        } else {
-          currentEpTime = (watchedEpNumbers.size > 0 ? 0 : firstRecord.currentTime) || 0;
+          currentEpTime = nextEpRecord.currentTime;
+          currentRecordForDisplay = nextEpRecord;
         }
+      }
+
+      // Get series metadata from any record that has it
+      const metaRecord = records.find(r => r.number_of_seasons || r.status || (Array.isArray(r.seasons) && r.seasons.length > 0)) || firstRecord;
+      const isSeriesEnded = metaRecord.status === 'Ended' || metaRecord.status === 'Canceled';
+      const seasonInfo = Array.isArray(metaRecord.seasons) 
+        ? metaRecord.seasons.find(s => s.season_number === currentActiveSeason) 
+        : null;
+      const seasonEpCount = seasonInfo?.episode_count || metaRecord.season_episodes_count;
+      const totalSeasons = metaRecord.number_of_seasons || (Array.isArray(metaRecord.seasons) ? metaRecord.seasons.filter(s => s.season_number > 0).length : 0);
+
+      // Handle season overflow — advance to next season if all episodes watched
+      if (seasonEpCount && targetEp > seasonEpCount) {
+        if (totalSeasons && currentActiveSeason < totalSeasons) {
+          currentActiveSeason++;
+          targetEp = 1;
+          isCurrentEpHalfway = false;
+          currentEpTime = 0;
+        } else if (isSeriesEnded && !isCurrentEpHalfway) {
+          // Truly finished series — all seasons watched, series ended
+          continue;
+        }
+        // If series is NOT ended, still show it even if current season is done
+      }
+
+      // Additional check: if series ended AND total episodes known AND all are watched
+      if (isSeriesEnded && metaRecord.number_of_episodes && !isCurrentEpHalfway) {
+        const totalWatchedAllSeasons = records.filter(r => r.completed || r.progressPercent >= 90).length;
+        if (totalWatchedAllSeasons >= metaRecord.number_of_episodes) {
+          continue; // Truly completed series
+        }
+      }
+
+      // If we have NO watched episodes at all AND no in-progress, skip
+      if (watchedEpNumbers.size === 0 && !isCurrentEpHalfway && firstRecord.currentTime <= 0) {
+        continue;
       }
 
       const epDuration = (currentRecordForDisplay.duration) || 3000;
       const remStr = formatRemainingTime(currentEpTime, epDuration);
-
-      // Check if series/season is completely finished
-      const isSeriesEnded = firstRecord.status === 'Ended' || firstRecord.status === 'Canceled';
-      const seasonInfo = Array.isArray(firstRecord.seasons) 
-        ? firstRecord.seasons.find(s => s.season_number === currentActiveSeason) 
-        : null;
-      const seasonEpCount = seasonInfo?.episode_count || firstRecord.season_episodes_count;
-
-      if (seasonEpCount && targetEp > seasonEpCount) {
-        const totalSeasons = firstRecord.number_of_seasons || (Array.isArray(firstRecord.seasons) ? firstRecord.seasons.filter(s => s.season_number > 0).length : 1);
-        if (currentActiveSeason < totalSeasons) {
-          currentActiveSeason++;
-          targetEp = 1;
-        } else if (isSeriesEnded && !isCurrentEpHalfway) {
-          continue;
-        }
-      } else if (isSeriesEnded && firstRecord.number_of_episodes && watchedEpNumbers.size >= firstRecord.number_of_episodes && !isCurrentEpHalfway) {
-        continue;
-      }
 
       const prefix = isAnime ? 'Anime Dizisi • ' : '';
       let subtitle = '';
@@ -1439,8 +1486,6 @@ export function getContinueWatchingList() {
         subtitle = `${prefix}S${currentActiveSeason} B${targetEp} • Kaldığın: ${formatSecondsToTime(currentEpTime)} • ${remStr}`;
       } else if (watchedEpNumbers.size > 0 || targetEp > 1) {
         subtitle = `${prefix}S${currentActiveSeason} B${targetEp} • Sıradaki Bölüm`;
-      } else if (firstRecord.currentTime > 0) {
-        subtitle = `${prefix}S${currentActiveSeason} B${firstRecord.episode || 1} • Kaldığın: ${formatSecondsToTime(firstRecord.currentTime)}`;
       } else {
         subtitle = `${prefix}S${currentActiveSeason} B${targetEp} • Sıradaki Bölüm`;
       }
@@ -1448,21 +1493,29 @@ export function getContinueWatchingList() {
       inProgressList.push({
         ...firstRecord,
         ...currentRecordForDisplay,
+        id: firstRecord.id,
+        title: firstRecord.title || currentRecordForDisplay.title,
+        posterPath: firstRecord.posterPath || currentRecordForDisplay.posterPath,
+        poster_path: firstRecord.poster_path || currentRecordForDisplay.poster_path,
+        backdropPath: firstRecord.backdropPath || currentRecordForDisplay.backdropPath,
+        backdrop_path: firstRecord.backdrop_path || currentRecordForDisplay.backdrop_path,
         type: isAnime ? 'anime' : 'tv',
         isAnime: isAnime,
         isSeries: true,
         season: currentActiveSeason,
         episode: targetEp,
-        currentTime: isCurrentEpHalfway ? currentEpTime : (watchedEpNumbers.size > 0 ? 0 : firstRecord.currentTime),
+        currentTime: isCurrentEpHalfway ? currentEpTime : 0,
         subtitle
       });
     }
   }
 
   inProgressList.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+  console.log('[ContinueWatching] Generated list:', inProgressList.length, 'items', inProgressList.map(i => `${i.title} S${i.season}E${i.episode} completed:${i.completed}`));
   _cachedContinueWatching = inProgressList;
   return _cachedContinueWatching;
 }
+
 
 export function getCompletedWatchList() {
   if (_cachedCompletedList) return _cachedCompletedList;

@@ -584,6 +584,90 @@ export async function renderHomeView() {
           }, 300);
         });
       });
+
+      // Live-update Continue Watching section when Trakt sync completes (NO page refresh needed)
+      const liveUpdateContinueWatching = () => {
+        if (!(window.location.hash || '#home').startsWith('#home')) return;
+        const homeView = container.querySelector('.home-view');
+        if (!homeView?.isConnected) return;
+
+        console.log('[HomeView] Live-updating Continue Watching rail after data change...');
+        const freshList = filterForActiveProfile(getUnifiedContinueWatching());
+        const existingSection = container.querySelector('#continue-watching-rail')?.closest('.rail-section');
+        
+        if (freshList && freshList.length > 0) {
+          const displayItems = freshList.slice(0, 24);
+          const cards = displayItems.map(item => `
+            <div class="continue-card-wrapper" data-id="${item.id}" data-season="${item.season || 1}" data-episode="${item.episode || 1}">
+              ${renderMediaCard(item, { isContinueSection: true })}
+              <button class="btn-delete-history" title="Geçmişten Kaldır" aria-label="Kaldır">
+                <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+              </button>
+            </div>
+          `).join('');
+
+          if (existingSection) {
+            // Update existing rail
+            const rail = existingSection.querySelector('#continue-watching-rail');
+            if (rail) rail.innerHTML = cards;
+          } else {
+            // Create new rail section and insert after hero
+            const sectionHTML = `
+              <section class="rail-section">
+                <div class="container">
+                  <div class="rail-header">
+                    <h2 class="rail-title">
+                      <span class="rail-icon-pill" style="--rail-color: var(--primary);">
+                        <i data-lucide="history" style="width:15px;height:15px;"></i>
+                      </span>
+                      İzlemeye Devam Et
+                    </h2>
+                  </div>
+                  <div class="card-rail continue-rail" id="continue-watching-rail">
+                    ${cards}
+                  </div>
+                </div>
+              </section>
+            `;
+            const heroSection = homeView.querySelector('.hero-slider-section') || homeView.querySelector('.rail-section');
+            if (heroSection) {
+              heroSection.insertAdjacentHTML('afterend', sectionHTML);
+            } else {
+              homeView.insertAdjacentHTML('afterbegin', sectionHTML);
+            }
+          }
+
+          // Re-attach events on updated cards
+          renderIcons(container);
+          attachMediaCardEvents(container);
+          container.querySelectorAll('.btn-delete-history').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const wrapper = btn.closest('.continue-card-wrapper');
+              if (!wrapper) return;
+              const deleteId = wrapper.getAttribute('data-id');
+              removeSeriesFromHistory(deleteId);
+              showToast('İçerik izleme geçmişinden kaldırıldı.', 'info');
+              wrapper.style.transition = 'all 0.28s ease-out';
+              wrapper.style.transform  = 'scale(0.85)';
+              wrapper.style.opacity    = '0';
+              setTimeout(() => {
+                wrapper.remove();
+                const railEl = container.querySelector('#continue-watching-rail');
+                if (railEl && railEl.children.length === 0) {
+                  railEl.closest('.rail-section')?.remove();
+                }
+              }, 300);
+            });
+          });
+          console.log('[HomeView] Continue Watching rail updated with', freshList.length, 'items');
+        } else if (existingSection) {
+          existingSection.remove();
+        }
+      };
+
+      window.addEventListener('cinepulse_data_changed', liveUpdateContinueWatching);
+      window.addEventListener('sineflix_data_changed', liveUpdateContinueWatching);
     }
   };
 }

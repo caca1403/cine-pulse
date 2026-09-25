@@ -834,10 +834,10 @@ export async function pullTraktIntoCinePulse(storageMethods) {
     }
   }
 
-  if (importedPlaybackCount > 0 || importedHistoryCount > 0) {
-    window.dispatchEvent(new CustomEvent('cinepulse_data_changed', { detail: { action: 'import', source: 'trakt' } }));
-    window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { action: 'import', source: 'trakt' } }));
-  }
+  // Always notify the UI after sync so Continue Watching updates even on re-sync
+  console.log(`[Trakt] Sync complete: ${importedHistoryCount} history, ${importedPlaybackCount} playback, ${itemsToBatch.length} batch items`);
+  window.dispatchEvent(new CustomEvent('cinepulse_data_changed', { detail: { action: 'import', source: 'trakt' } }));
+  window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { action: 'import', source: 'trakt' } }));
 
   return { importedPlaybackCount, importedHistoryCount };
 }
