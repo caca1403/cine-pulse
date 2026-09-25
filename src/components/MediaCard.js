@@ -295,12 +295,11 @@ export function renderMediaCard(item, options = {}) {
 }
 
 export function attachMediaCardEvents(container) {
-  if (!container || container._hasMediaEventsDelegated) return;
+  if (!container) return;
+  upgradeLandscapeBackdrops(container);
+  if (container._hasMediaEventsDelegated) return;
   container._hasMediaEventsDelegated = true;
   let suppressCardNavigationUntil = 0;
-
-  // Upgrade backdrop images asynchronously for landscape mode (fire & forget)
-  upgradeLandscapeBackdrops(container);
 
   container.addEventListener('click', (e) => {
     if (Date.now() < suppressCardNavigationUntil) {
