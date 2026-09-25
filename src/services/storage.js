@@ -928,7 +928,8 @@ export function saveBatchWatchProgress(items = []) {
     const progressPercent = item.progressPercent !== undefined 
       ? item.progressPercent 
       : (effectiveDuration > 0 ? Math.min(100, Math.round((currentTime / effectiveDuration) * 100)) : 0);
-    const isCompleted = item.completed || progressPercent >= 90;
+    // If the incoming item explicitly says completed:false (e.g. Trakt playback in-progress), respect it
+    const isCompleted = item.completed === false ? false : (item.completed || progressPercent >= 90);
 
     const record = {
       ...(existing || {}),
@@ -1374,8 +1375,8 @@ export function getContinueWatchingList() {
         });
       }
     } else {
-      // Find the most recently active in-progress record if one exists
-      const halfwayRecord = records.find(r => !r.completed && (r.currentTime > 0 || (r.progressPercent > 0 && r.progressPercent < 85)));
+      // Find the most recently active in-progress record if one exists (any non-completed record with progress)
+      const halfwayRecord = records.find(r => !r.completed && (r.currentTime > 0 || (r.progressPercent > 0 && r.progressPercent < 100)));
       let currentActiveSeason = halfwayRecord ? (halfwayRecord.season || 1) : (firstRecord.season || 1);
 
       const watchedEpNumbers = new Set();
