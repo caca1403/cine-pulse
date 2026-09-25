@@ -29,6 +29,7 @@ import { renderMediaCard, attachMediaCardEvents, upgradeLandscapeBackdrops, dete
 import { prefetchBackdrops } from '../services/fanartService.js';
 import { openDataManagerModal } from '../components/DataManagerModal.js';
 import { showToast } from '../components/Toast.js';
+import { getDownloadedMediaList, deleteOfflineMedia, formatBytes } from '../services/offlineManager.js';
 
 function renderLibraryCard(item, tabType) {
   const resolvedType = determineMediaType(item);
@@ -64,7 +65,7 @@ export function renderLibraryView() {
   if (typeof window !== 'undefined' && window.sessionStorage) {
     try {
       const stored = window.sessionStorage.getItem('cp_lib_active_tab');
-      if (stored && ['continue', 'completed', 'favorites', 'watchlist', 'all-episodes'].includes(stored)) {
+      if (stored && ['continue', 'completed', 'favorites', 'watchlist', 'all-episodes', 'downloads'].includes(stored)) {
         savedActiveTab = stored;
       }
     } catch (_) {}
@@ -164,6 +165,11 @@ export function renderLibraryView() {
             <span>İzleme Geçmişi</span>
             <span class="lib-tab-badge" id="tab-count-all-episodes">${groupedHistory.length}</span>
           </button>
+          <button class="lib-nav-tab ${savedActiveTab === 'downloads' ? 'active' : ''}" data-tab="downloads">
+            <i data-lucide="download"></i>
+            <span>İndirilenler</span>
+            <span class="lib-tab-badge" id="tab-count-downloads">0</span>
+          </button>
         </div>
 
         <!-- Library Luxury Toolbar Deck (Search, Type Filters, Sort & Batch Actions) -->
@@ -216,6 +222,9 @@ export function renderLibraryView() {
 
         <!-- Tab 5: All Episodes Breakdown -->
         <div class="tab-content ${savedActiveTab === 'all-episodes' ? '' : 'hidden'}" id="tab-all-episodes"></div>
+
+        <!-- Tab 6: Offline Downloads -->
+        <div class="tab-content ${savedActiveTab === 'downloads' ? '' : 'hidden'}" id="tab-downloads"></div>
       </div>
     </div>
   `;
@@ -235,6 +244,31 @@ export function renderLibraryView() {
       const sortSelect = container.querySelector('#lib-sort-select');
       const batchClearBtn = container.querySelector('#lib-batch-clear-btn');
 
+      // Offline items cache
+      let offlineItems = [];
+      const loadOfflineItems = async () => {
+        try {
+          const list = await getDownloadedMediaList();
+          offlineItems = list.map(it => ({
+            id: it.tmdbId,
+            title: it.title,
+            poster_path: it.poster,
+            backdrop_path: it.backdrop,
+            type: it.type,
+            isSeries: it.type === 'tv' || (it.season !== null && it.episode !== null),
+            season: it.season || 1,
+            episode: it.episode || 1,
+            sizeBytes: it.sizeBytes,
+            isDownloaded: true,
+            key: it.key
+          }));
+          const countEl = container.querySelector('#tab-count-downloads');
+          if (countEl) countEl.textContent = offlineItems.length;
+          if (currentTab === 'downloads') renderActiveTabContent();
+        } catch (_) {}
+      };
+      loadOfflineItems();
+
       // Tab data provider
       const getTabData = (tab) => {
         if (tab === 'continue') return getContinueWatchingList();
@@ -242,10 +276,26 @@ export function renderLibraryView() {
         if (tab === 'favorites') return getFavorites();
         if (tab === 'watchlist') return getWatchlist();
         if (tab === 'all-episodes') return getGroupedWatchHistory();
+        if (tab === 'downloads') return offlineItems;
         return [];
       };
 
       const getEmptyState = (tab) => {
+        if (tab === 'downloads') {
+          return `
+            <div class="library-empty-state">
+              <div class="empty-state-icon-wrap" style="background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3); color: #f59e0b;">
+                <i data-lucide="download" style="width: 32px; height: 32px;"></i>
+              </div>
+              <h3 class="empty-state-title">Henüz indirilmiş içerik yok</h3>
+              <p class="empty-state-desc">Oynatıcıdaki "Çevrimdışı İndir" butonuna basarak dizi veya filmleri cihazınıza indirebilir, internetsiz izleyebilirsiniz.</p>
+              <a href="#discover" class="btn-primary empty-state-action-btn">
+                <i data-lucide="compass" style="width: 16px; height: 16px;"></i>
+                <span>İçerik Keşfet</span>
+              </a>
+            </div>
+          `;
+        }
         if (tab === 'continue') {
           return `
             <div class="library-empty-state">
@@ -533,6 +583,8 @@ export function renderLibraryView() {
               confirmMsg = `"${title}" favorilerinizden kaldırılsın mı?`;
             } else if (tab === 'watchlist') {
               confirmMsg = `"${title}" izleme listenizden kaldırılsın mı?`;
+            } else if (tab === 'downloads') {
+              confirmMsg = `"${title}" indirilmiş içerik cihazınızdan silinsin mi?`;
             }
 
             if (window.confirm(confirmMsg)) {
@@ -544,6 +596,9 @@ export function renderLibraryView() {
                 removeFavorite(id);
               } else if (tab === 'watchlist') {
                 removeWatchlist(id);
+              } else if (tab === 'downloads') {
+                deleteOfflineMedia(id, season, episode);
+                offlineItems = offlineItems.filter(it => !(it.id === id && it.season === season && it.episode === episode));
               }
 
               showToast('✓ Kayıt başarıyla silindi.', 'success');

@@ -679,7 +679,93 @@ export async function pullTraktIntoCinePulse(storageMethods) {
     localMap.set(key, h);
   }
 
-  // 1. Pull ALL Watched Movies from Trakt (Parallel Batched)
+  // 1. Pull In-Progress Playback FIRST (Continue Watching from Trakt with top priority)
+  try {
+    const playbackRes = await fetch(`${TRAKT_API_URL}/sync/playback?extended=full&limit=50`, {
+      headers: getApiHeaders(token),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (playbackRes.ok) {
+      const playbackItems = await playbackRes.json();
+      if (Array.isArray(playbackItems)) {
+        for (const item of playbackItems) {
+          const isMovie = item.type === 'movie';
+          const mediaObj = isMovie ? item.movie : (item.show || item.episode);
+          // For TV shows/episodes, the show TMDB ID is needed so CinePulse can find the series
+          const tmdbId = isMovie 
+            ? (item.movie?.ids?.tmdb || mediaObj?.ids?.tmdb)
+            : (item.show?.ids?.tmdb || item.episode?.ids?.tmdb || mediaObj?.ids?.tmdb);
+          if (!tmdbId) continue;
+
+          const season = isMovie ? 1 : (item.episode?.season || 1);
+          const episode = isMovie ? 1 : (item.episode?.number || 1);
+          const progressPercent = Math.min(99, Math.max(1, Math.round(item.progress || 0)));
+          const pausedAt = item.paused_at ? new Date(item.paused_at).getTime() : Date.now();
+
+          const key = `${tmdbId}_${season}_${episode}`;
+          const existing = localMap.get(key);
+
+          let posterPath = existing?.poster_path || existing?.posterPath || '';
+          let backdropPath = existing?.backdrop_path || existing?.backdropPath || '';
+          let title = existing?.title || item.show?.title || mediaObj?.title || '';
+          let duration = isMovie ? 6600 : 3000;
+          let seriesMeta = {};
+
+          if (!posterPath || !title) {
+            const tmdbData = await fetchTmdbMediaInfo(tmdbId, !isMovie);
+            if (tmdbData) {
+              posterPath = tmdbData.poster_path || '';
+              backdropPath = tmdbData.backdrop_path || '';
+              title = tmdbData.title || tmdbData.name || title;
+              if (tmdbData.runtime) duration = tmdbData.runtime * 60;
+              else if (tmdbData.episode_run_time?.[0]) duration = tmdbData.episode_run_time[0] * 60;
+              if (!isMovie) {
+                seriesMeta = {
+                  number_of_episodes: tmdbData.number_of_episodes,
+                  number_of_seasons: tmdbData.number_of_seasons,
+                  status: tmdbData.status,
+                  seasons: tmdbData.seasons
+                };
+              }
+            }
+          }
+
+          const currentTime = Math.max(60, Math.round((progressPercent / 100) * duration));
+
+          itemsToBatch.push({
+            id: tmdbId,
+            title,
+            posterPath,
+            backdropPath,
+            type: isMovie ? 'movie' : 'tv',
+            isSeries: !isMovie,
+            season: !isMovie ? season : undefined,
+            episode: !isMovie ? episode : undefined,
+            currentTime,
+            duration,
+            progressPercent,
+            completed: false,
+            traktImported: true,
+            lastWatchedAt: pausedAt,
+            ...seriesMeta
+          });
+          importedPlaybackCount++;
+        }
+
+        // Immediately save continue watching batch and trigger UI update
+        if (itemsToBatch.length > 0) {
+          if (saveBatchWatchProgress) saveBatchWatchProgress(itemsToBatch);
+          else if (saveWatchProgress) itemsToBatch.forEach(b => saveWatchProgress(b));
+          window.dispatchEvent(new CustomEvent('sineflix_data_changed', { detail: { action: 'playback_import', source: 'trakt' } }));
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Trakt playback pull error:', err);
+    pullErrors.push(err.message);
+  }
+
+  // 2. Pull ALL Watched Movies from Trakt (Parallel Batched)
   try {
     {
       const watchedMovies = await fetchAllWatched('movies', token);
@@ -736,7 +822,7 @@ export async function pullTraktIntoCinePulse(storageMethods) {
     pullErrors.push(err.message);
   }
 
-  // 2. Pull ALL Watched TV Shows & Episodes from Trakt (Parallel Batched)
+  // 3. Pull ALL Watched TV Shows & Episodes from Trakt (Parallel Batched)
   try {
     {
       const watchedShows = await fetchAllWatched('shows', token);
@@ -773,7 +859,6 @@ export async function pullTraktIntoCinePulse(storageMethods) {
                 }
 
                 const watchedAt = ep.last_watched_at ? new Date(ep.last_watched_at).getTime() : Date.now();
-
                 itemsToBatch.push({
                   id: tmdbId,
                   title,
@@ -800,82 +885,6 @@ export async function pullTraktIntoCinePulse(storageMethods) {
     }
   } catch (err) {
     console.warn('Trakt watched shows pull error:', err);
-    pullErrors.push(err.message);
-  }
-
-  // 3. Pull In-Progress Playback (Continue Watching from Trakt) - Pulled LAST so in-progress status overrides watched status
-  try {
-    const playbackRes = await fetch(`${TRAKT_API_URL}/sync/playback?extended=full&limit=50`, {
-      headers: getApiHeaders(token)
-    });
-    if (!playbackRes.ok) throw new Error(`Yarım kalanlar alınamadı (${playbackRes.status})`);
-    if (playbackRes.ok) {
-      const playbackItems = await playbackRes.json();
-      if (Array.isArray(playbackItems)) {
-        for (const item of playbackItems) {
-          const isMovie = item.type === 'movie';
-          const mediaObj = isMovie ? item.movie : (item.show || item.episode);
-          const tmdbId = mediaObj?.ids?.tmdb || item.show?.ids?.tmdb || item.episode?.ids?.tmdb;
-          if (!tmdbId) continue;
-
-          const season = isMovie ? 1 : (item.episode?.season || 1);
-          const episode = isMovie ? 1 : (item.episode?.number || 1);
-          const progressPercent = Math.min(99, Math.max(1, Math.round(item.progress || 0)));
-          const pausedAt = item.paused_at ? new Date(item.paused_at).getTime() : Date.now();
-
-          const key = `${tmdbId}_${season}_${episode}`;
-          const existing = localMap.get(key);
-
-          let posterPath = existing?.poster_path || existing?.posterPath || '';
-          let backdropPath = existing?.backdrop_path || existing?.backdropPath || '';
-          let title = existing?.title || mediaObj.title || item.show?.title || '';
-          let duration = isMovie ? 6600 : 3000;
-          let seriesMeta = {};
-
-          if (!posterPath || !title) {
-            const tmdbData = await fetchTmdbMediaInfo(tmdbId, !isMovie);
-            if (tmdbData) {
-              posterPath = tmdbData.poster_path || '';
-              backdropPath = tmdbData.backdrop_path || '';
-              title = tmdbData.title || tmdbData.name || title;
-              if (tmdbData.runtime) duration = tmdbData.runtime * 60;
-              else if (tmdbData.episode_run_time?.[0]) duration = tmdbData.episode_run_time[0] * 60;
-              if (!isMovie) {
-                seriesMeta = {
-                  number_of_episodes: tmdbData.number_of_episodes,
-                  number_of_seasons: tmdbData.number_of_seasons,
-                  status: tmdbData.status,
-                  seasons: tmdbData.seasons
-                };
-              }
-            }
-          }
-
-          const currentTime = Math.max(60, Math.round((progressPercent / 100) * duration));
-
-          itemsToBatch.push({
-            id: tmdbId,
-            title,
-            posterPath,
-            backdropPath,
-            type: isMovie ? 'movie' : 'tv',
-            isSeries: !isMovie,
-            season: !isMovie ? season : undefined,
-            episode: !isMovie ? episode : undefined,
-            currentTime,
-            duration,
-            progressPercent,
-            completed: false,
-            traktImported: true,
-            lastWatchedAt: pausedAt,
-            ...seriesMeta
-          });
-          importedPlaybackCount++;
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('Trakt playback pull error:', err);
     pullErrors.push(err.message);
   }
 

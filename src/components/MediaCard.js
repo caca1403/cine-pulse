@@ -232,7 +232,7 @@ export function renderMediaCard(item, options = {}) {
       role="button"
       aria-label="${title}">
       
-      <div class="card-poster-wrapper card-fanart-placeholder ${!backdropPath ? 'card-fanart-portrait-fallback' : ''}">
+      <div class="card-poster-wrapper ${!backdropPath ? 'card-fanart-portrait-fallback' : ''}">
         <img 
           src="${cardImageUrl}"
           data-poster-src="${posterUrl}"
@@ -244,7 +244,6 @@ export function renderMediaCard(item, options = {}) {
           onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'"
         />
         <img class="card-fanart-logo" alt="" aria-hidden="true" />
-        <span class="card-fanart-title">${escapePreviewText(title)}</span>
         
         <div class="card-glass-glow"></div>
 
@@ -646,7 +645,13 @@ async function loadLandscapeArtwork(card) {
   if (!img) return;
 
   const artwork = await getBestBackdrop(card.dataset.tmdbid, card.dataset.mediatype || 'movie');
-  if (!artwork?.image) {
+  if (!artwork?.image && !artwork?.logo) {
+    card.dataset.fanartState = 'empty';
+    return;
+  }
+
+  const bgUrl = artwork.image || img.dataset.backdropSrc || img.src;
+  if (!bgUrl) {
     card.dataset.fanartState = 'empty';
     return;
   }
@@ -658,7 +663,7 @@ async function loadLandscapeArtwork(card) {
     image.src = url;
   });
   const [backgroundReady, logoReady] = await Promise.all([
-    loadImage(artwork.image),
+    artwork.image ? loadImage(artwork.image) : Promise.resolve(true),
     artwork.logo ? loadImage(artwork.logo) : Promise.resolve(true)
   ]);
   if (!backgroundReady || !logoReady || !card.isConnected) {
@@ -666,19 +671,20 @@ async function loadLandscapeArtwork(card) {
     return;
   }
 
-  img.dataset.backdropSrc = artwork.image;
+  if (artwork.image) img.dataset.backdropSrc = artwork.image;
   const logoEl = card.querySelector('.card-fanart-logo');
   if (logoEl && artwork.logo) logoEl.src = artwork.logo;
   const wrapper = card.querySelector('.card-poster-wrapper');
   wrapper?.classList.remove('card-fanart-placeholder');
   wrapper?.classList.toggle('card-fanart-composite', Boolean(artwork.logo));
   const isLandscape = getUserSettings().cardLayout === 'landscape' || document.documentElement.classList.contains('cards-landscape');
-  if (isLandscape) img.src = artwork.image;
+  if (isLandscape && artwork.image) img.src = artwork.image;
   card.dataset.fanartState = 'loaded';
 }
 
 export function upgradeLandscapeBackdrops(container = document) {
-  if (getUserSettings().cardLayout !== 'landscape') return;
+  const isLandscape = getUserSettings().cardLayout === 'landscape' || document.documentElement.classList.contains('cards-landscape');
+  if (!isLandscape) return;
   const root = (container && container.querySelectorAll) ? container : document;
   const cards = root.querySelectorAll('.media-card[data-tmdbid]:not([data-fanart-state])');
   if (!cards.length) return;

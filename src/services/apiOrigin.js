@@ -5,7 +5,14 @@ export function apiUrl(path = '') {
   if (!path || /^https?:\/\//i.test(path)) return path;
   if (typeof window === 'undefined') return `http://127.0.0.1:4000${path}`;
   const host = window.location?.hostname || '';
-  return host.endsWith('github.io') ? `${PUBLIC_API_ORIGIN}${path}` : path;
+  const isCapacitorOrStatic = Boolean(
+    window.Capacitor?.isNativePlatform?.() ||
+    window.location?.protocol === 'capacitor:' ||
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host.endsWith('github.io')
+  );
+  return isCapacitorOrStatic ? `${PUBLIC_API_ORIGIN}${path}` : path;
 }
 
 export function mkvRelayUrl(path = '') {

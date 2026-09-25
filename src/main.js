@@ -23,6 +23,42 @@ import { openDecisionRoomModal } from './components/DecisionRoomModal.js';
 import { initTraktAutoSync } from './services/traktService.js';
 import { getWatchHistory, saveWatchProgress, saveBatchWatchProgress } from './services/storage.js';
 import { initAppUpdater } from './services/appUpdater.js';
+import { App } from '@capacitor/app';
+
+// Native Android Hardware Back-Button Support for APK
+if (typeof window !== 'undefined') {
+  try {
+    App.addListener('backButton', ({ canGoBack }) => {
+      const playerContainer = document.getElementById('player-modal-container') || document.querySelector('.player-modal-overlay');
+      if (playerContainer) {
+        const closeBtn = document.getElementById('player-close-btn');
+        if (closeBtn) closeBtn.click();
+        else playerContainer.remove();
+        return;
+      }
+
+      const openModal = document.querySelector('.modal-overlay, .decision-modal-overlay, .profile-modal-overlay, .data-manager-modal');
+      if (openModal) {
+        const closeBtn = openModal.querySelector('.modal-close, .btn-modal-close, [data-action="close"]');
+        if (closeBtn) closeBtn.click();
+        else openModal.remove();
+        return;
+      }
+
+      const currentHash = window.location.hash || '#home';
+      if (currentHash !== '#home' && currentHash !== '') {
+        if (canGoBack) {
+          window.history.back();
+        } else {
+          window.location.hash = '#home';
+        }
+        return;
+      }
+
+      App.exitApp();
+    });
+  } catch (_) {}
+}
 
 // Disable browser default scroll jump on SPA hash changes
 if ('scrollRestoration' in history) {

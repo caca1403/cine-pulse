@@ -1,9 +1,9 @@
 {
-  "version": "1.1.0",
-  "versionCode": 110,
+  "version": "1.1.1",
+  "versionCode": 111,
   "releaseDate": "2026-09-25",
-  "title": "CinePulse Android v1.1.0",
-  "releaseNotes": "• CinePulse Mobil APK desteği yayınlandı!\n• Fanart.tv yatay kartları ve otomatik başlık desteği optimize edildi.\n• Ultra akıcı HLS oynatıcı ve dokunmatik tam ekran deneyimi.",
+  "title": "CinePulse Android v1.1.1",
+  "releaseNotes": "• Yatay kartlar için ultra hızlı TMDB & Fanart görsel logosu desteği (yazı yerine yüksek çözünürlüklü logolar).\n• Çevrimdışı İndirme Desteği: Dizi ve filmleri indirip internetsiz izleyin.\n• Trakt.tv İzlemeye Devam Et (in-progress) öncelikli senkronizasyonu.\n• Yeni nesil neon CinePulse marka simgesi.\n• Android donanım geri tuşu ve modal yönetimi.",
   "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
   "mandatory": false
 }
