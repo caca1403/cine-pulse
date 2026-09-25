@@ -94,7 +94,7 @@ export function openProfileModal() {
                 <span>Güncelleme</span>
               </button>
             ` : `
-              <a class="btn-manage-profiles" id="btn-modal-apk-download" href="https://cine-pulse.vercel.app/api/download_apk" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" title="Android APK İndir" style="text-decoration: none;">
+              <a class="btn-manage-profiles" id="btn-modal-apk-download" href="https://cine-pulse-drab.vercel.app/api/download_apk" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" title="Android APK İndir" style="text-decoration: none;">
                 <i data-lucide="smartphone" style="width: 15px; height: 15px; color: #10b981;"></i>
                 <span>Android APK</span>
               </a>

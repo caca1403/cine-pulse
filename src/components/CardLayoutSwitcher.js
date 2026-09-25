@@ -1,58 +1,20 @@
 import { getUserSettings, saveUserSettings } from '../services/storage.js';
 import { upgradeLandscapeBackdrops } from './MediaCard.js';
 
-const layoutImageCache = new Map();
 const readyLayoutImages = new Set();
-let layoutChangeToken = 0;
-
-function preloadLayoutImage(url) {
-  if (!url) return Promise.resolve(false);
-  if (layoutImageCache.has(url)) return layoutImageCache.get(url);
-
-  const request = new Promise(resolve => {
-    const image = new Image();
-    image.decoding = 'async';
-    image.onload = async () => {
-      try { await image.decode(); } catch (_) {}
-      readyLayoutImages.add(url);
-      resolve(true);
-    };
-    image.onerror = () => {
-      layoutImageCache.delete(url);
-      resolve(false);
-    };
-    image.src = url;
-  });
-  layoutImageCache.set(url, request);
-  return request;
-}
 
 function getLayoutSource(img, layout) {
-  return layout === 'landscape' ? img.dataset.backdropSrc : img.dataset.posterSrc;
-}
-
-function getNearbyCardImages() {
-  const preloadBoundary = window.innerHeight + 900;
-  return [...document.querySelectorAll('.card-poster-img')].filter(img => {
-    const rect = img.getBoundingClientRect();
-    return rect.bottom > -300 && rect.top < preloadBoundary;
-  });
-}
-
-function warmLayoutImages(layout) {
-  return Promise.all(getNearbyCardImages().map(img => preloadLayoutImage(getLayoutSource(img, layout))));
+  return layout === 'landscape' ? (img.dataset.backdropSrc || img.src) : (img.dataset.posterSrc || img.src);
 }
 
 function applyLayoutImages(layout) {
-  document.querySelectorAll('.card-poster-img').forEach(img => {
-    const nextSrc = getLayoutSource(img, layout);
+  const isLandscape = layout === 'landscape';
+  const images = document.querySelectorAll('.card-poster-img');
+  
+  images.forEach(img => {
+    const nextSrc = isLandscape ? (img.dataset.backdropSrc || img.src) : (img.dataset.posterSrc || img.src);
     if (!nextSrc || img.src === nextSrc) return;
-    if (!readyLayoutImages.has(nextSrc)) {
-      img.classList.add('card-image-pending');
-      img.addEventListener('load', () => img.classList.remove('card-image-pending'), { once: true });
-    } else {
-      img.classList.remove('card-image-pending');
-    }
+
     img.src = nextSrc;
     img.dataset.activeLayout = layout;
   });
@@ -81,80 +43,45 @@ export function attachCardLayoutSwitcherEvents(container = document) {
 
   const buttons = [...switcher.querySelectorAll('.card-layout-option')];
 
-  // Warm the opposite artwork shortly after the cards become visible. Pointer
-  // intent also starts the request before the user completes the click.
-  const currentLayout = getUserSettings().cardLayout === 'landscape' ? 'landscape' : 'portrait';
-  const oppositeLayout = currentLayout === 'landscape' ? 'portrait' : 'landscape';
-  const warmOpposite = () => {
-    if (switcher.isConnected) warmLayoutImages(oppositeLayout);
+  // Silently warm opposite artwork in background during browser idle time
+  const warmBackgroundArtwork = () => {
+    if (!switcher.isConnected) return;
+    upgradeLandscapeBackdrops(document, false);
   };
-  if (window.innerWidth > 768) {
-    if ('requestIdleCallback' in window) {
-      window.requestIdleCallback(warmOpposite, { timeout: 1400 });
-    } else {
-      window.setTimeout(warmOpposite, 450);
-    }
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(warmBackgroundArtwork, { timeout: 1000 });
+  } else {
+    setTimeout(warmBackgroundArtwork, 300);
   }
 
   buttons.forEach(button => {
-    const requestedLayout = button.dataset.layout === 'landscape' ? 'landscape' : 'portrait';
-    button.addEventListener('pointerenter', () => {
-      if (switcher.isConnected) warmLayoutImages(requestedLayout);
-    }, { passive: true });
-    button.addEventListener('focus', () => {
-      if (switcher.isConnected) warmLayoutImages(requestedLayout);
-    }, { passive: true });
-
-    button.addEventListener('click', async () => {
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
       const layout = button.dataset.layout === 'landscape' ? 'landscape' : 'portrait';
+      const isLandscape = layout === 'landscape';
       const activeLayout = document.documentElement.classList.contains('cards-landscape') ? 'landscape' : 'portrait';
-      if (layout === activeLayout || switcher.classList.contains('is-switching')) return;
+      if (layout === activeLayout) return;
 
-      const token = ++layoutChangeToken;
-      switcher.classList.add('is-switching');
-      buttons.forEach(option => { option.disabled = true; });
+      // 1. INSTANT DOM class toggle (0ms latency)
+      document.documentElement.classList.toggle('cards-landscape', isLandscape);
 
-      // Mobile taps must not wait for a batch of image downloads or a full-page
-      // view-transition snapshot. Pending artwork loads in its new frame.
-      const isMobile = window.innerWidth <= 768;
-      if (!isMobile) {
-        await Promise.race([
-          warmLayoutImages(layout),
-          new Promise(resolve => window.setTimeout(resolve, 1200))
-        ]);
-      }
-      if (token !== layoutChangeToken || !switcher.isConnected) return;
+      // 2. INSTANT button state update
+      buttons.forEach(option => {
+        const isActive = option.dataset.layout === layout;
+        option.classList.toggle('active', isActive);
+        option.setAttribute('aria-pressed', String(isActive));
+      });
 
-      const commitLayout = () => {
-        applyLayoutImages(layout);
-        document.documentElement.classList.toggle('cards-landscape', layout === 'landscape');
+      // 3. INSTANT image source swap for all visible cards
+      applyLayoutImages(layout);
 
-        buttons.forEach(option => {
-          const isActive = option.dataset.layout === layout;
-          option.classList.toggle('active', isActive);
-          option.setAttribute('aria-pressed', String(isActive));
-        });
-      };
-
-      if (isMobile) {
-        commitLayout();
-      } else if (typeof document.startViewTransition === 'function') {
-        const transition = document.startViewTransition(commitLayout);
-        try { await transition.finished; } catch (_) {}
-      } else {
-        document.documentElement.classList.add('card-layout-changing');
-        commitLayout();
-        await new Promise(resolve => window.setTimeout(resolve, 280));
-        document.documentElement.classList.remove('card-layout-changing');
-      }
-
+      // 4. Save setting immediately
       saveUserSettings({ cardLayout: layout });
-      switcher.classList.remove('is-switching');
-      buttons.forEach(option => { option.disabled = false; });
 
-      // After switching to landscape, upgrade backdrops with best quality images
-      if (layout === 'landscape') {
-        upgradeLandscapeBackdrops(document);
+      // 5. Trigger immediate fanart / backdrop resolution for landscape
+      if (isLandscape) {
+        upgradeLandscapeBackdrops(document, true);
       }
     });
   });

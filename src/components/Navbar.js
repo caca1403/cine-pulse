@@ -174,7 +174,7 @@ export function renderNavbar(currentView = 'home') {
                           <div class="hub-mega-item-sub">İzleme geçmişi & Scrobble</div>
                         </div>
                       </button>
-                      <a href="https://cine-pulse.vercel.app/api/download_apk" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" id="btn-hub-apk" class="hub-mega-item hub-tool-btn" aria-label="CinePulse Android APK İndir">
+                      <a href="https://cine-pulse-drab.vercel.app/api/download_apk" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" id="btn-hub-apk" class="hub-mega-item hub-tool-btn" aria-label="CinePulse Android APK İndir">
                         <div class="hub-mega-icon" style="background:rgba(16,185,129,.15);color:#10b981;">
                           <i data-lucide="smartphone" style="width:15px;height:15px;"></i>
                         </div>

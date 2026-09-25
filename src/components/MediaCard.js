@@ -639,55 +639,51 @@ function getFanartObserver() {
 }
 
 async function loadLandscapeArtwork(card) {
-  if (!card || card.dataset.fanartState) return;
+  if (!card || card.dataset.fanartState === 'loaded' || card.dataset.fanartState === 'loading') return;
   card.dataset.fanartState = 'loading';
   const img = card.querySelector('.card-poster-img');
   if (!img) return;
 
-  const artwork = await getBestBackdrop(card.dataset.tmdbid, card.dataset.mediatype || 'movie');
-  if (!artwork?.image && !artwork?.logo) {
-    card.dataset.fanartState = 'empty';
-    return;
-  }
+  try {
+    const artwork = await getBestBackdrop(card.dataset.tmdbid, card.dataset.mediatype || 'movie');
+    if (!card.isConnected) return;
 
-  const bgUrl = artwork.image || img.dataset.backdropSrc || img.src;
-  if (!bgUrl) {
-    card.dataset.fanartState = 'empty';
-    return;
-  }
+    if (!artwork?.image && !artwork?.logo) {
+      card.dataset.fanartState = 'empty';
+      return;
+    }
 
-  const loadImage = url => new Promise(resolve => {
-    const image = new Image();
-    image.onload = () => resolve(true);
-    image.onerror = () => resolve(false);
-    image.src = url;
-  });
-  const [backgroundReady, logoReady] = await Promise.all([
-    artwork.image ? loadImage(artwork.image) : Promise.resolve(true),
-    artwork.logo ? loadImage(artwork.logo) : Promise.resolve(true)
-  ]);
-  if (!backgroundReady || !logoReady || !card.isConnected) {
-    card.dataset.fanartState = 'empty';
-    return;
-  }
+    if (artwork.image) {
+      img.dataset.backdropSrc = artwork.image;
+      const isLandscape = getUserSettings().cardLayout === 'landscape' || document.documentElement.classList.contains('cards-landscape');
+      if (isLandscape) {
+        img.src = artwork.image;
+      }
+    }
 
-  if (artwork.image) img.dataset.backdropSrc = artwork.image;
-  const logoEl = card.querySelector('.card-fanart-logo');
-  if (logoEl && artwork.logo) logoEl.src = artwork.logo;
-  const wrapper = card.querySelector('.card-poster-wrapper');
-  wrapper?.classList.remove('card-fanart-placeholder');
-  wrapper?.classList.toggle('card-fanart-composite', Boolean(artwork.logo));
-  const isLandscape = getUserSettings().cardLayout === 'landscape' || document.documentElement.classList.contains('cards-landscape');
-  if (isLandscape && artwork.image) img.src = artwork.image;
-  card.dataset.fanartState = 'loaded';
+    const logoEl = card.querySelector('.card-fanart-logo');
+    if (logoEl && artwork.logo) {
+      logoEl.src = artwork.logo;
+      const wrapper = card.querySelector('.card-poster-wrapper');
+      wrapper?.classList.remove('card-fanart-placeholder');
+      wrapper?.classList.toggle('card-fanart-composite', true);
+    }
+
+    card.dataset.fanartState = 'loaded';
+  } catch (_) {
+    card.dataset.fanartState = 'empty';
+  }
 }
 
-export function upgradeLandscapeBackdrops(container = document) {
-  const isLandscape = getUserSettings().cardLayout === 'landscape' || document.documentElement.classList.contains('cards-landscape');
-  if (!isLandscape) return;
+export function upgradeLandscapeBackdrops(container = document, forceImmediate = false) {
   const root = (container && container.querySelectorAll) ? container : document;
-  const cards = root.querySelectorAll('.media-card[data-tmdbid]:not([data-fanart-state])');
+  const cards = root.querySelectorAll('.media-card[data-tmdbid]:not([data-fanart-state="loaded"])');
   if (!cards.length) return;
+
+  if (forceImmediate) {
+    cards.forEach(card => loadLandscapeArtwork(card));
+    return;
+  }
 
   const observer = getFanartObserver();
   if (!observer) {

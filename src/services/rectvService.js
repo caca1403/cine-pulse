@@ -555,7 +555,7 @@ export async function getRecTvChannelStreamUrl(chId, { forceRefresh = false } = 
       const resp = await fetch(`/api/live_tv_stream?channel=${daionChannel}&json=1`);
       if (resp.ok) {
         const data = await resp.json();
-        const streamTarget = data?.raw || data?.url;
+        const streamTarget = data?.proxiedUrl || data?.url || data?.raw;
         if (streamTarget) {
           liveChannelUrlCache.set(cacheKey, { url: streamTarget, expiresAt: Date.now() + LIVE_CHANNEL_URL_TTL_MS });
           return streamTarget;

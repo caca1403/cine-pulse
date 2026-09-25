@@ -885,9 +885,8 @@ export function renderLiveTvView() {
             const resolver = apiUrl(`/api/live_tv_stream?channel=${encodeURIComponent(channel.officialLiveId)}&json=1&refresh=1&_=${Date.now()}`);
             const response = await fetch(resolver, { cache: 'no-store', headers: { Accept: 'application/json' } });
             if (!response.ok) throw new Error(`Live resolver ${response.status}`);
-            const data = await response.json();
-            if (channelPlaybackToken !== myToken) return true;
-            const freshUrl = data?.url ? apiUrl(data.url) : '';
+            const chosenPath = data?.proxiedUrl || data?.url || '';
+            const freshUrl = chosenPath ? apiUrl(chosenPath) : '';
             if (!freshUrl) throw new Error('Live stream URL missing');
             channel.streamUrl = freshUrl;
             if (freshUrl !== failedUrl || forceRefresh) {
