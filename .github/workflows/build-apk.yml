@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -81,7 +82,7 @@ jobs:
 
       - name: Publish to GitHub Releases (latest)
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         with:
           name: CinePulse Mobil Uygulama (${{ github.ref_name }})
           tag_name: ${{ github.ref_name }}
