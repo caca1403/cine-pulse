@@ -74,6 +74,20 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
+        public void downloadApk(String url) {
+            runOnUiThread(() -> {
+                if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_REQUEST);
+                }
+                try {
+                    enqueueDownload(url, null, "cinepulse.apk", "application/vnd.android.package-archive", true);
+                } catch (Exception error) {
+                    android.widget.Toast.makeText(MainActivity.this, "APK indirilemedi: " + error.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
+        @JavascriptInterface
         public String getDeviceStorageInfo() {
             try {
                 StatFs stats = new StatFs(Environment.getDataDirectory().getAbsolutePath());
@@ -87,13 +101,18 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void enqueueDownload(String url, String userAgent, String contentDisposition, String mimeType) {
+        enqueueDownload(url, userAgent, contentDisposition, mimeType, false);
+    }
+
+    private void enqueueDownload(String url, String userAgent, String contentDisposition, String mimeType, boolean apkUpdate) {
         Uri uri = Uri.parse(url);
         DownloadManager.Request request = new DownloadManager.Request(uri);
         String cookie = CookieManager.getInstance().getCookie(url);
         if (cookie != null && !cookie.isEmpty()) request.addRequestHeader("Cookie", cookie);
         if (userAgent != null && !userAgent.isEmpty()) request.addRequestHeader("User-Agent", userAgent);
-        request.setTitle(URLUtil.guessFileName(url, contentDisposition, mimeType));
-        request.setDescription("CinePulse bölüm indiriliyor");
+        request.setMimeType(apkUpdate ? "application/vnd.android.package-archive" : mimeType);
+        request.setTitle(apkUpdate ? "CinePulse güncellemesi" : URLUtil.guessFileName(url, contentDisposition, mimeType));
+        request.setDescription(apkUpdate ? "Güncel APK indiriliyor" : "CinePulse bölüm indiriliyor");
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
         request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,
                 URLUtil.guessFileName(url, contentDisposition, mimeType));

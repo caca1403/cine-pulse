@@ -7,8 +7,8 @@
 import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
 
-export const CURRENT_APP_VERSION = '1.1.25';
-export const CURRENT_VERSION_CODE = 135;
+export const CURRENT_APP_VERSION = '1.1.26';
+export const CURRENT_VERSION_CODE = 136;
 
 const REMOTE_VERSION_URL = 'https://github.com/caca1403/cine-pulse/releases/latest/download/version.json';
 
@@ -46,7 +46,7 @@ export function showUpdateModal(updateInfo) {
   if (document.getElementById('cinepulse-update-modal')) return;
 
   const directUrl = updateInfo.downloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk';
-  const githubUrl = updateInfo.githubDownloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest';
+  const githubUrl = updateInfo.githubDownloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk';
 
   const modal = document.createElement('div');
   modal.id = 'cinepulse-update-modal';
@@ -210,6 +210,14 @@ export function showUpdateModal(updateInfo) {
   const triggerDownload = (targetUrl) => {
     showToast('APK indirmesi başlatılıyor...', 'info');
     if (isNativeAndroidApp()) {
+      if (window.CinePulseNative?.downloadApk) {
+        try {
+          window.CinePulseNative.downloadApk(targetUrl);
+          showToast('APK Android İndirme Yöneticisi’ne eklendi. İlerleme bildirim çubuğunda görünecek.', 'success');
+          modal.remove();
+          return;
+        } catch (_) {}
+      }
       try {
         const opened = window.open(targetUrl, '_system');
         if (!opened) {

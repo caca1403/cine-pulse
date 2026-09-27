@@ -1399,7 +1399,10 @@ export async function openPlayerModal({
       const progressPanel = modalContainer.querySelector('#player-download-progress');
       const progress = activeDownloadProgress;
       const hasKnownTotal = Number(progress.total) > 0;
-      const actualPercent = hasKnownTotal ? Math.min(100, Math.floor((progress.loaded / progress.total) * 100)) : 0;
+      const transferPercent = hasKnownTotal ? Math.floor((progress.loaded / progress.total) * 100) : 0;
+      const actualPercent = hasKnownTotal
+        ? (progress.status === 'Tamamlandı' ? 100 : Math.min(99, transferPercent))
+        : 0;
       button.dataset.downloading = 'true';
       button.classList.add('is-downloading');
       button.classList.remove('is-downloaded');

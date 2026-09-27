@@ -478,6 +478,7 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
     }
 
     if (signal?.aborted) throw new Error('İndirme iptal edildi');
+    onProgress({ percent: 99, loaded: blob.size, total: total || blob.size, status: 'İndirme tamamlandı, cihaz depolamasına yazılıyor…' });
 
     // Save to CacheStorage for fast zero-memory playback
     if ('caches' in window) {
@@ -489,6 +490,7 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
         }
       }));
     }
+    onProgress({ percent: 99, loaded: blob.size, total: total || blob.size, status: 'Video kaydedildi, İndirilenler listesi güncelleniyor…' });
 
     // Save metadata to IndexedDB
     const db = await openDB();
