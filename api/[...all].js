@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     const fallbackUrl = 'https://github.com/caca1403/cine-pulse/releases/download/v1.1.26/cinepulse.apk';
     try {
       let downloadUrl = fallbackUrl;
-      const manifestResponse = await fetch(`https://github.com/caca1403/cine-pulse/releases/latest/download/version.json?_t=${Date.now()}`, {
+      const manifestResponse = await fetch(`https://cine-pulse-drab.vercel.app/version.json?_t=${Date.now()}`, {
         headers: { 'User-Agent': 'CinePulse-Updater', 'Cache-Control': 'no-cache' },
         cache: 'no-store'
       });
