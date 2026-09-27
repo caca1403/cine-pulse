@@ -34,8 +34,16 @@ import { translateToTurkish } from '../services/tmdbApi.js';
 import { returnToDecisionRoomModal } from './DecisionRoomModal.js';
 import * as traktService from '../services/traktService.js';
 import Hls from 'hls.js';
-import { apiUrl } from '../services/apiOrigin.js';
-import { startOfflineDownload, isMediaDownloaded, getDownloadedPlaybackUrl, releaseDownloadedPlaybackUrls } from '../services/offlineManager.js';
+import {
+  startOfflineDownload,
+  isMediaDownloaded,
+  getDownloadedPlaybackUrl,
+  releaseDownloadedPlaybackUrls,
+  deleteOfflineMedia,
+  formatBytes,
+  triggerNativeDeviceDownload
+} from '../services/offlineManager.js';
+import { fetchDizisolEpisodeSources } from '../services/dizisolScraper.js';
 import { isNativeAndroidApp } from '../services/appUpdater.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -1297,114 +1305,431 @@ export async function openPlayerModal({
   }
 
   let isDownloadingOffline = false;
+  let activeDownloadAbortController = null;
+  let activeDownloadTargetKey = null;
+  let activeDownloadProgress = { percent: 0, loaded: 0, status: '' };
+
+  function getItemOfflineKey(season = null, episode = null) {
+    if (season !== null && episode !== null && season !== undefined && episode !== undefined) {
+      return `${tmdbId}_s${season}_e${episode}`;
+    }
+    return String(tmdbId);
+  }
+
+  function isDirectOrHlsStream(srv) {
+    if (!srv) return false;
+    const u = getStreamSafeUrl(srv);
+    if (!u) return false;
+    if (srv.isDirectVideo || srv.isHls) return true;
+    if (/\.(?:m3u8|mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u)) return true;
+    if (u.includes('/api/hls_proxy') || u.includes('/api/snx') || u.includes('/api/dzs') || u.includes('/api/rtv') || u.includes('/api/czm') || u.includes('/api/jet')) return true;
+    return false;
+  }
+
+  function getAllDownloadableStreams() {
+    const list = [];
+    const seen = new Set();
+    const addSrv = (srv, extraCategory = null) => {
+      if (!srv) return;
+      const u = getStreamSafeUrl(srv);
+      if (!u || seen.has(u)) return;
+      if (!isDirectOrHlsStream(srv)) return;
+      seen.add(u);
+      list.push({
+        server: srv,
+        streamUrl: u,
+        displayName: srv.displayName || srv.name || 'Yayın Hattı',
+        isDirectVideo: Boolean(srv.isDirectVideo || /\.(?:mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u)),
+        isHls: Boolean(srv.isHls || u.includes('.m3u8') || u.includes('/api/hls_proxy')),
+        category: extraCategory || srv.category || currentCategory
+      });
+    };
+
+    // 1. Current server first
+    addSrv(activeServers[currentServerIndex]);
+    // 2. All active servers
+    for (const s of (activeServers || [])) addSrv(s);
+    // 3. Dubbed pool
+    for (const s of (categorizedServers?.dubbed || [])) addSrv(s, 'dubbed');
+    // 4. Subtitled pool
+    for (const s of (categorizedServers?.subtitled || [])) addSrv(s, 'subtitled');
+
+    return list;
+  }
 
   function findDownloadableStream() {
-    // 1. Check current server first
-    const currentSrv = activeServers[currentServerIndex];
-    if (currentSrv) {
-      const u = getStreamSafeUrl(currentSrv);
-      if (u && (currentSrv.isHls || currentSrv.isDirectVideo || /\.(?:m3u8|mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u))) {
-        return { server: currentSrv, streamUrl: u };
-      }
-    }
-
-    // 2. Check other servers in activeServers
-    for (const srv of (activeServers || [])) {
-      if (!srv || srv === currentSrv) continue;
-      const u = getStreamSafeUrl(srv);
-      if (u && (srv.isHls || srv.isDirectVideo || /\.(?:m3u8|mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u))) {
-        return { server: srv, streamUrl: u };
-      }
-    }
-
-    // 3. Check categorizedServers pool (dubbed, then subtitled)
-    const allPool = [...(categorizedServers?.dubbed || []), ...(categorizedServers?.subtitled || [])];
-    for (const srv of allPool) {
-      if (!srv) continue;
-      const u = getStreamSafeUrl(srv);
-      if (u && (srv.isHls || srv.isDirectVideo || /\.(?:m3u8|mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u))) {
-        return { server: srv, streamUrl: u };
-      }
-    }
-
-    return null;
+    const streams = getAllDownloadableStreams();
+    const directMp4 = streams.find(s => s.isDirectVideo && !s.isHls);
+    return directMp4 || streams[0] || null;
   }
 
   async function refreshOfflineDownloadButton() {
     const button = modalContainer.querySelector('#btn-player-download');
-    if (!button) return;
-    if (isDownloadingOffline) return;
     const downloaded = await isMediaDownloaded(tmdbId, isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
-    if (closed || !button.isConnected) return;
-    const label = button.querySelector('span');
-    button.disabled = false;
-    if (downloaded) {
-      button.dataset.downloaded = 'true';
-      button.classList.add('is-downloaded');
-      button.classList.remove('is-downloading');
-      button.title = 'Bu bölüm cihaza indirildi (İndirilenler menüsünden internetsiz izleyebilirsiniz)';
-      if (label) label.textContent = 'İndirildi';
-    } else {
-      delete button.dataset.downloaded;
-      button.classList.remove('is-downloaded', 'is-downloading');
-      button.title = 'Bölümü çevrimdışı indir';
-      if (label) label.textContent = 'İndir';
+    if (closed) return;
+
+    if (button) {
+      const label = button.querySelector('span');
+      const currentKey = getItemOfflineKey(isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
+      if (isDownloadingOffline && activeDownloadTargetKey === currentKey) {
+        button.dataset.downloading = 'true';
+        button.classList.add('is-downloading');
+        button.classList.remove('is-downloaded');
+        if (label) label.textContent = `%${activeDownloadProgress.percent}`;
+        button.title = `İndiriliyor: %${activeDownloadProgress.percent}`;
+      } else if (downloaded) {
+        button.dataset.downloaded = 'true';
+        button.classList.add('is-downloaded');
+        button.classList.remove('is-downloading');
+        button.title = 'Bu bölüm cihaza indirildi (İndirilenler menüsünden internetsiz izleyebilirsiniz)';
+        if (label) label.textContent = 'İndirildi';
+        const icon = button.querySelector('i');
+        if (icon) icon.setAttribute('data-lucide', 'check-circle-2');
+      } else {
+        delete button.dataset.downloaded;
+        delete button.dataset.downloading;
+        button.classList.remove('is-downloaded', 'is-downloading');
+        button.title = 'Bölümü indir / çevrimdışı kaydet';
+        if (label) label.textContent = 'İndir';
+        const icon = button.querySelector('i');
+        if (icon) icon.setAttribute('data-lucide', 'download');
+      }
+      renderPlayerIcons(button);
+    }
+
+    // Also update any episode download buttons in carousel
+    const epBtns = modalContainer.querySelectorAll('.dizisol-ep-download-btn');
+    for (const epBtn of epBtns) {
+      const s = parseInt(epBtn.getAttribute('data-season'), 10);
+      const e = parseInt(epBtn.getAttribute('data-episode'), 10);
+      const epKey = getItemOfflineKey(s, e);
+      const isDownloaded = await isMediaDownloaded(tmdbId, s, e);
+      if (!epBtn.isConnected) continue;
+      if (isDownloadingOffline && activeDownloadTargetKey === epKey) {
+        epBtn.classList.add('is-downloading');
+        epBtn.classList.remove('is-downloaded');
+        epBtn.innerHTML = `<span style="font-size:0.6rem;font-weight:800;color:#38bdf8;">%${activeDownloadProgress.percent}</span>`;
+      } else if (isDownloaded) {
+        epBtn.classList.add('is-downloaded');
+        epBtn.classList.remove('is-downloading');
+        epBtn.innerHTML = '<i data-lucide="check-circle-2" style="width:13px;height:13px;color:#fff;"></i>';
+      } else {
+        epBtn.classList.remove('is-downloaded', 'is-downloading');
+        epBtn.innerHTML = '<i data-lucide="download" style="width:13px;height:13px;"></i>';
+      }
+      renderPlayerIcons(epBtn);
     }
   }
 
-  modalContainer.querySelector('#btn-player-download')?.addEventListener('click', async event => {
-    const button = event.currentTarget;
-    if (isDownloadingOffline) {
-      showToast('İndirme arka planda devam ediyor...', 'info');
-      return;
+  async function openDownloadModal(targetSeason = null, targetEpisode = null) {
+    const isTargetSeries = isSeries && (targetSeason !== null || targetEpisode !== null || currentSeason !== null);
+    const sNum = isTargetSeries ? (targetSeason !== null ? targetSeason : currentSeason) : null;
+    const epNum = isTargetSeries ? (targetEpisode !== null ? targetEpisode : currentEpisode) : null;
+    const downloadKey = getItemOfflineKey(sNum, epNum);
+
+    const popover = modalContainer.querySelector('#player-download-popover');
+    const body = modalContainer.querySelector('#download-popover-body');
+    if (!popover || !body) return;
+
+    popover.classList.remove('hidden');
+
+    const isCurrentEp = (!isTargetSeries) || (sNum === currentSeason && epNum === currentEpisode);
+    let streams = isCurrentEp ? getAllDownloadableStreams() : [];
+    
+    // If not current episode, fetch sources for that episode
+    if (!isCurrentEp && streams.length === 0) {
+      body.innerHTML = `
+        <div class="drawer-loading" style="padding: 2.5rem 1rem; text-align: center;">
+          <div class="drawer-spinner" style="margin: 0 auto 1rem;"></div>
+          <p style="color:#94a3b8; font-size:0.9rem;">${sNum}. Sezon ${epNum}. Bölüm için indirme kaynakları taranıyor...</p>
+        </div>
+      `;
+      try {
+        const episodeSources = await fetchDizisolEpisodeSources({
+          titles: [cleanSeriesName, seriesTitle, originalTitle].filter(Boolean),
+          seriesTitle: cleanSeriesName,
+          originalTitle,
+          season: sNum,
+          episode: epNum,
+          tmdbId,
+          isDub: currentCategory === 'dubbed'
+        });
+        if (Array.isArray(episodeSources) && episodeSources.length > 0) {
+          streams = episodeSources.map(srv => ({
+            server: srv,
+            streamUrl: getStreamSafeUrl(srv),
+            displayName: srv.displayName || srv.name || 'DS 1080p',
+            isDirectVideo: Boolean(srv.isDirectVideo),
+            isHls: Boolean(srv.isHls),
+            category: currentCategory
+          })).filter(s => s.streamUrl);
+        }
+      } catch (_) {}
     }
-    const alreadyDownloaded = await isMediaDownloaded(tmdbId, isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
-    if (alreadyDownloaded) {
-      showToast('Bu içerik zaten cihaza indirilmiş durumda! İndirilenler sekmesinden internetsiz izleyebilirsiniz.', 'info');
-      return;
+
+    // Fallback: if still no streams, try finding current stream
+    if (streams.length === 0 && isCurrentEp) {
+      const fallbackTarget = findDownloadableStream();
+      if (fallbackTarget) streams.push(fallbackTarget);
     }
 
-    const target = findDownloadableStream();
-    if (!target) {
-      if (isDiscoveryActive || isSearching) {
-        showToast('Yayın hatları taranıyor, indirme akışı hazırlanıyor... Lütfen birkaç saniye sonra tekrar deneyin.', 'info');
-        return;
-      }
-      showToast('Bu içerik için doğrudan indirilebilir (HLS/MP4) bir yayın akışı bulunamadı. Lütfen listeden başka bir hat seçin.', 'error');
-      return;
-    }
+    const downloaded = await isMediaDownloaded(tmdbId, sNum, epNum);
+    const displayTitle = isTargetSeries
+      ? `${cleanSeriesName} · ${sNum}. Sezon ${epNum}. Bölüm`
+      : cleanSeriesName;
+    const filename = isTargetSeries
+      ? `${cleanSeriesName}_S${String(sNum).padStart(2, '0')}E${String(epNum).padStart(2, '0')}.mp4`
+      : `${cleanSeriesName}.mp4`;
 
-    const { streamUrl, server } = target;
-    isDownloadingOffline = true;
-    button.classList.add('is-downloading');
-    const label = button.querySelector('span');
+    let selectedStreamIndex = 0;
 
-    showToast(`İndirme başlatıldı: ${server.displayName || server.name || 'Yayın Hattı'} üzerinden cihaza kaydediliyor...`, 'info');
-    if (label) label.textContent = '%0';
+    const renderDownloadBody = () => {
+      const selectedStream = streams[selectedStreamIndex] || streams[0];
+      const isCurrentlyDownloading = isDownloadingOffline && activeDownloadTargetKey === downloadKey;
 
-    try {
-      await startOfflineDownload({
-        tmdbId,
-        type: type === 'movie' ? 'movie' : 'tv',
-        title: isSeries ? `${cleanSeriesName} · S${currentSeason} B${currentEpisode}` : cleanSeriesName,
-        poster: posterPath,
-        backdrop: backdropPath,
-        season: isSeries ? currentSeason : null,
-        episode: isSeries ? currentEpisode : null,
-        streamUrl
-      }, progress => {
-        if (label) label.textContent = `%${progress.percent}`;
+      body.innerHTML = `
+        <div class="dl-modal-header-card">
+          <div class="dl-modal-art">
+            ${backdropPath || posterPath ? `<img src="${backdropPath || posterPath}" alt="${displayTitle}" />` : '<i data-lucide="film"></i>'}
+          </div>
+          <div class="dl-modal-meta">
+            <h4>${displayTitle}</h4>
+            <div class="dl-modal-tags">
+              <span class="dl-tag-badge dl-badge-res">1080p Full HD</span>
+              <span class="dl-tag-badge dl-badge-cat">${currentCategory === 'dubbed' ? '🇹🇷 Türkçe Dublaj' : '💬 Türkçe Altyazı'}</span>
+              ${downloaded ? '<span class="dl-tag-badge dl-badge-ready"><i data-lucide="check-circle-2" style="width:12px;height:12px"></i> İndirildi</span>' : ''}
+            </div>
+          </div>
+        </div>
+
+        ${downloaded ? `
+          <div class="dl-downloaded-box">
+            <div class="dl-box-icon"><i data-lucide="shield-check" style="width:24px;height:24px;color:#10b981"></i></div>
+            <div class="dl-box-text">
+              <strong>Bu içerik cihazınızda çevrimdışı kayıtlı!</strong>
+              <p>İnternet bağlantınız olmasa dahi kesintisiz olarak izleyebilirsiniz.</p>
+            </div>
+          </div>
+          <div class="dl-card-actions" style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem; margin-top: 0.5rem;">
+            <button type="button" class="btn-primary dl-btn-play-offline" id="btn-dl-play-offline" style="padding:0.75rem 1rem; border-radius:12px; display:flex; align-items:center; justify-content:center; gap:0.5rem; font-weight:700;">
+              <i data-lucide="play" style="width:16px;height:16px;fill:currentColor"></i>
+              <span>İnternetsiz Oynat</span>
+            </button>
+            <button type="button" class="btn-secondary dl-btn-delete-offline" id="btn-dl-delete-offline" style="padding:0.75rem 1rem; border-radius:12px; display:flex; align-items:center; justify-content:center; gap:0.5rem; color:#ef4444; border-color:rgba(239,68,68,0.3); font-weight:700;">
+              <i data-lucide="trash-2" style="width:16px;height:16px"></i>
+              <span>Cihazdan Sil</span>
+            </button>
+          </div>
+        ` : ''}
+
+        ${streams.length > 1 ? `
+          <div class="dl-stream-selector-group">
+            <label class="dl-selector-label"><i data-lucide="server" style="width:13px;height:13px"></i> Yayın / İndirme Hattı:</label>
+            <div class="dl-stream-chips">
+              ${streams.map((s, idx) => `
+                <button type="button" class="dl-stream-chip ${idx === selectedStreamIndex ? 'active' : ''}" data-stream-idx="${idx}">
+                  ${s.displayName || `Hat ${idx + 1}`}
+                  ${s.isDirectVideo ? ' • MP4' : ''}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        ${!selectedStream && !downloaded ? `
+          <div class="dl-no-stream-warning">
+            <i data-lucide="alert-circle" style="width:20px;height:20px;color:#f59e0b"></i>
+            <p>Bu bölüm için şu anda doğrudan indirilebilir hat taranıyor. Lütfen birkaç saniye sonra tekrar deneyin veya oynatıcıdan başka bir hat seçin.</p>
+          </div>
+        ` : ''}
+
+        ${selectedStream ? `
+          <div class="dl-options-container">
+            <!-- OPTION 1: CİHAZA İNDİR (1DM / ADM / TARAYICI) -->
+            <div class="dl-option-card">
+              <div class="dl-card-icon-wrap" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
+                <i data-lucide="folder-down" style="width:20px;height:20px"></i>
+              </div>
+              <div class="dl-card-content">
+                <h5>Cihaz Hafızasına İndir (/Download)</h5>
+                <p>VLC, MX Player, 1DM, ADM veya telefon tarayıcınız ile doğrudan cihaz hafızasına kaydeder. Galeride görünür.</p>
+                <div class="dl-card-actions">
+                  <button type="button" class="btn-primary dl-btn-native-download" id="btn-dl-native-start" style="padding:0.55rem 1rem; border-radius:10px; display:inline-flex; align-items:center; gap:0.4rem; font-weight:700; background:linear-gradient(135deg,#2563eb,#1d4ed8);">
+                    <i data-lucide="download" style="width:14px;height:14px"></i>
+                    <span>Cihaza İndir</span>
+                  </button>
+                  <button type="button" class="btn-secondary dl-btn-copy-url" id="btn-dl-copy-link" style="padding:0.55rem 0.85rem; border-radius:10px; display:inline-flex; align-items:center; gap:0.35rem; font-size:0.78rem;">
+                    <i data-lucide="copy" style="width:13px;height:13px"></i>
+                    <span>Bağlantıyı Kopyala</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- OPTION 2: UYGULAMA İÇİ ÇEVRİMDIŞI İNDİR -->
+            <div class="dl-option-card ${downloaded ? 'is-disabled-card' : ''}">
+              <div class="dl-card-icon-wrap" style="background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3);">
+                <i data-lucide="cloud-download" style="width:20px;height:20px"></i>
+              </div>
+              <div class="dl-card-content">
+                <h5>Uygulama İçi Çevrimdışı İndir</h5>
+                <p>CinePulse içinde saklar. İnternetiniz olmadığında 'İndirilenler' sekmesinden internetsiz izleyebilirsiniz.</p>
+                
+                ${isCurrentlyDownloading ? `
+                  <div class="dl-progress-box">
+                    <div class="dl-progress-info">
+                      <span>İndiriliyor: %${activeDownloadProgress.percent}</span>
+                      <span>${activeDownloadProgress.loaded > 0 ? formatBytes(activeDownloadProgress.loaded) : ''}</span>
+                    </div>
+                    <div class="dl-progress-track">
+                      <div class="dl-progress-bar" style="width: ${activeDownloadProgress.percent}%;"></div>
+                    </div>
+                    <button type="button" class="dl-btn-cancel" id="btn-dl-cancel-download">
+                      <i data-lucide="x" style="width:13px;height:13px"></i> İndirmeyi İptal Et
+                    </button>
+                  </div>
+                ` : downloaded ? `
+                  <span class="dl-status-downloaded-label"><i data-lucide="check" style="width:13px;height:13px"></i> Zaten İndirildi</span>
+                ` : `
+                  <button type="button" class="btn-primary dl-btn-offline-start" id="btn-dl-offline-start" style="padding:0.55rem 1rem; border-radius:10px; display:inline-flex; align-items:center; gap:0.4rem; font-weight:700; background:linear-gradient(135deg,#059669,#10b981);">
+                    <i data-lucide="smartphone" style="width:14px;height:14px"></i>
+                    <span>Uygulama İçi İndir</span>
+                  </button>
+                `}
+              </div>
+            </div>
+          </div>
+        ` : ''}
+      `;
+
+      renderPlayerIcons(body);
+
+      // Event: Stream chip selection
+      body.querySelectorAll('.dl-stream-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          selectedStreamIndex = parseInt(chip.getAttribute('data-stream-idx'), 10) || 0;
+          renderDownloadBody();
+        });
       });
-      showToast('🎉 İçerik başarıyla cihaza indirildi! İndirilenler menüsünden internetsiz izleyebilirsiniz.', 'success');
-    } catch (error) {
-      console.error('[Download] Failed:', error);
-      showToast(error?.message || 'İndirme tamamlanamadı. Farklı bir yayın hattı deneyin.', 'error');
-    } finally {
-      isDownloadingOffline = false;
-      button.classList.remove('is-downloading');
-      refreshOfflineDownloadButton();
-    }
-  });
+
+      // Event: Play offline
+      body.querySelector('#btn-dl-play-offline')?.addEventListener('click', async () => {
+        popover.classList.add('hidden');
+        try {
+          const offlineUrl = await getDownloadedPlaybackUrl(tmdbId, sNum, epNum);
+          if (!offlineUrl) throw new Error('İndirilen video açılamadı.');
+          openPlayerModal({
+            type: isTargetSeries ? 'tv' : 'movie',
+            tmdbId,
+            title: displayTitle,
+            seriesTitle: cleanSeriesName,
+            season: sNum || 1,
+            episode: epNum || 1,
+            posterPath,
+            backdropPath,
+            offlinePlaybackUrl: offlineUrl,
+            offlineMediaKind: 'hls'
+          });
+        } catch (err) {
+          showToast(err?.message || 'İndirilen içerik açılamadı.', 'error');
+        }
+      });
+
+      // Event: Delete offline
+      body.querySelector('#btn-dl-delete-offline')?.addEventListener('click', async () => {
+        if (!window.confirm(`“${displayTitle}” cihazdan silinsin mi?`)) return;
+        await deleteOfflineMedia(tmdbId, sNum, epNum);
+        showToast('İndirilen içerik silindi.', 'success');
+        refreshOfflineDownloadButton();
+        renderDownloadBody();
+      });
+
+      // Event: Native Device Download (1DM / ADM / Browser)
+      body.querySelector('#btn-dl-native-start')?.addEventListener('click', () => {
+        if (!selectedStream) return;
+        showToast('📥 İndirme başlatılıyor... İndirici (1DM, ADM veya Tarayıcı) açılıyor...', 'info');
+        triggerNativeDeviceDownload(selectedStream.streamUrl, filename);
+      });
+
+      // Event: Copy link
+      body.querySelector('#btn-dl-copy-link')?.addEventListener('click', async () => {
+        if (!selectedStream) return;
+        try {
+          const directUrl = typeof selectedStream.streamUrl === 'string' && selectedStream.streamUrl.startsWith('/api/')
+            ? apiUrl(selectedStream.streamUrl)
+            : selectedStream.streamUrl;
+          await navigator.clipboard.writeText(directUrl);
+          showToast('📋 İndirme bağlantısı kopyalandı! 1DM, ADM veya VLC uygulamasına yapıştırabilirsiniz.', 'success');
+        } catch (_) {
+          showToast('Bağlantı kopyalanamadı.', 'error');
+        }
+      });
+
+      // Event: In-App Offline Download Start
+      body.querySelector('#btn-dl-offline-start')?.addEventListener('click', async () => {
+        if (!selectedStream) return;
+        if (isDownloadingOffline) {
+          showToast('Şu anda başka bir indirme devam ediyor.', 'info');
+          return;
+        }
+
+        isDownloadingOffline = true;
+        activeDownloadTargetKey = downloadKey;
+        activeDownloadAbortController = new AbortController();
+        activeDownloadProgress = { percent: 1, loaded: 0, status: 'Başlatılıyor...' };
+        refreshOfflineDownloadButton();
+        renderDownloadBody();
+
+        showToast(`🚀 Çevrimdışı indirme başladı: ${displayTitle}`, 'info');
+
+        try {
+          await startOfflineDownload({
+            tmdbId,
+            type: isTargetSeries ? 'tv' : 'movie',
+            title: displayTitle,
+            poster: posterPath,
+            backdrop: backdropPath,
+            season: sNum,
+            episode: epNum,
+            streamUrl: selectedStream.streamUrl
+          }, (prog) => {
+            activeDownloadProgress = prog;
+            const bar = body.querySelector('.dl-progress-bar');
+            const infoSpan = body.querySelector('.dl-progress-info span:first-child');
+            const sizeSpan = body.querySelector('.dl-progress-info span:last-child');
+            if (bar) bar.style.width = `${prog.percent}%`;
+            if (infoSpan) infoSpan.textContent = `İndiriliyor: %${prog.percent}`;
+            if (sizeSpan && prog.loaded > 0) sizeSpan.textContent = formatBytes(prog.loaded);
+            refreshOfflineDownloadButton();
+          }, activeDownloadAbortController.signal);
+
+          showToast(`🎉 “${displayTitle}” başarıyla cihaza indirildi! 'İndirilenler' sekmesinden internetsiz izleyebilirsiniz.`, 'success');
+        } catch (err) {
+          if (err.message !== 'İndirme iptal edildi') {
+            console.error('[Download] Failed:', err);
+            showToast(err?.message || 'İndirme tamamlanamadı. Başka bir hat deneyin.', 'error');
+          } else {
+            showToast('İndirme iptal edildi.', 'info');
+          }
+        } finally {
+          isDownloadingOffline = false;
+          activeDownloadTargetKey = null;
+          activeDownloadAbortController = null;
+          refreshOfflineDownloadButton();
+          renderDownloadBody();
+        }
+      });
+
+      // Event: Cancel In-App Download
+      body.querySelector('#btn-dl-cancel-download')?.addEventListener('click', () => {
+        if (activeDownloadAbortController) {
+          activeDownloadAbortController.abort();
+        }
+      });
+    };
+
+    renderDownloadBody();
+  }
 
   function updateCategoryCounts() {
     const dubCount = document.getElementById('tab-dubbed-count');
@@ -2389,7 +2714,7 @@ export async function openPlayerModal({
               <button id="btn-report-issue" class="player-icon-action" type="button" title="Kaynakta sorun bildir"><i data-lucide="flag"></i></button>
             </div>
           <div class="player-utility-group">
-            ${isNativeAndroidApp() && !offlinePlaybackUrl ? `<button id="btn-player-download" class="player-utility-action player-download-action" type="button" title="Bölümü çevrimdışı indir"><i data-lucide="download"></i><span>İndir</span></button>` : ''}
+            ${!offlinePlaybackUrl ? `<button id="btn-player-download" class="player-utility-action player-download-action" type="button" title="Bölümü indir / çevrimdışı kaydet"><i data-lucide="download"></i><span>İndir</span></button>` : ''}
             <button id="btn-player-theater" class="player-utility-action" title="Sinema Modu (Genişlet)"><i data-lucide="scan-line"></i><span>Sinema</span></button>
               <button id="btn-player-share" class="player-icon-action" type="button" title="Paylaş"><i data-lucide="share-2"></i></button>
             </div>
@@ -2501,6 +2826,25 @@ export async function openPlayerModal({
           <div class="sources-list" id="sources-popover-list">
             <!-- Rendered sources -->
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Glassmorphism Download Hub Modal -->
+    <div class="player-download-popover hidden" id="player-download-popover">
+      <div class="download-popover-backdrop" id="download-popover-backdrop"></div>
+      <div class="download-popover-content">
+        <div class="download-popover-header">
+          <div class="download-header-title">
+            <i data-lucide="download" style="width:18px;height:18px;color:#10b981"></i>
+            <h4 id="download-popover-heading">İndirme Merkezi</h4>
+          </div>
+          <button class="btn-close-popover" id="btn-close-download-popover" type="button" title="Kapat">
+            <i data-lucide="x" style="width:16px;height:16px"></i>
+          </button>
+        </div>
+        <div class="download-popover-body" id="download-popover-body">
+          <!-- Rendered dynamically by openDownloadModal -->
         </div>
       </div>
     </div>
@@ -2760,6 +3104,9 @@ export async function openPlayerModal({
                 <i data-lucide="${epWatched ? 'check-circle-2' : 'eye'}" style="width: 13px; height: 13px;"></i>
                 <span class="ep-watch-text">${epWatched ? 'İzlendi' : 'İşaretle'}</span>
               </button>
+              <button class="dizisol-ep-download-btn" data-season="${drawerSeason}" data-episode="${epNum}" title="Bu bölümü indir" type="button">
+                <i data-lucide="download" style="width:12px;height:12px"></i>
+              </button>
               ${isCurrent ? `
                 <div class="dizisol-ep-play-circle">
                   <i data-lucide="play" style="width:16px;height:16px;fill:#fff;color:#fff;margin-left:2px;"></i>
@@ -2793,6 +3140,9 @@ export async function openPlayerModal({
               <button class="dizisol-ep-watch-toggle ${epWatched ? 'is-watched' : ''}" data-season="${drawerSeason}" data-episode="${epNum}" title="${epWatched ? 'İzlendi (Kaldırmak için tıkla)' : 'İzlendi Olarak İşaretle'}">
                 <i data-lucide="${epWatched ? 'check-circle-2' : 'eye'}" style="width: 13px; height: 13px;"></i>
                 <span class="ep-watch-text">${epWatched ? 'İzlendi' : 'İşaretle'}</span>
+              </button>
+              <button class="dizisol-ep-download-btn" data-season="${drawerSeason}" data-episode="${epNum}" title="Bu bölümü indir" type="button">
+                <i data-lucide="download" style="width:12px;height:12px"></i>
               </button>
               ${durationText ? `<span class="dizisol-ep-duration">${durationText}</span>` : ''}
               ${isCurrent ? `
@@ -2860,9 +3210,20 @@ export async function openPlayerModal({
         });
       });
 
+      carouselContainer.querySelectorAll('.dizisol-ep-download-btn').forEach(dlBtn => {
+        dlBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          const s = parseInt(dlBtn.getAttribute('data-season'), 10);
+          const e = parseInt(dlBtn.getAttribute('data-episode'), 10);
+          openDownloadModal(s, e);
+        });
+      });
+
       carouselContainer.querySelectorAll('.dizisol-ep-card').forEach(card => {
         card.addEventListener('click', (ev) => {
           if (ev.target.closest('.dizisol-ep-watch-toggle')) return;
+          if (ev.target.closest('.dizisol-ep-download-btn')) return;
           const s = parseInt(card.getAttribute('data-season'), 10);
           const e = parseInt(card.getAttribute('data-episode'), 10);
           if (s === currentSeason && e === currentEpisode) return;
@@ -2902,6 +3263,7 @@ export async function openPlayerModal({
     }
 
     renderPlayerIcons(modalContainer);
+    refreshOfflineDownloadButton();
   }
 
   // Trigger initial drawer & mobile episode rail rendering for TV & Anime series, or movie info section
@@ -5787,6 +6149,33 @@ export async function openPlayerModal({
       e.preventDefault();
       e.stopPropagation();
       toggleSourcesPopover(false);
+    });
+  }
+
+  // Player Download Button Listener (Open Download Hub)
+  const btnPlayerDownload = modalContainer.querySelector('#btn-player-download');
+  if (btnPlayerDownload) {
+    btnPlayerDownload.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openDownloadModal(isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
+    });
+  }
+
+  const btnCloseDownload = modalContainer.querySelector('#btn-close-download-popover');
+  const backdropDownload = modalContainer.querySelector('#download-popover-backdrop');
+  if (btnCloseDownload) {
+    btnCloseDownload.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      modalContainer.querySelector('#player-download-popover')?.classList.add('hidden');
+    });
+  }
+  if (backdropDownload) {
+    backdropDownload.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      modalContainer.querySelector('#player-download-popover')?.classList.add('hidden');
     });
   }
 

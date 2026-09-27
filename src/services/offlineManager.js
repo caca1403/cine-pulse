@@ -27,27 +27,105 @@ function cacheRequest(key, index) {
   return new Request(new URL(`/__cinepulse_offline__/${encodeURIComponent(key)}/${index}`, location.origin));
 }
 
-function resolvePlaylistUrl(uri, baseUrl) {
-  return new URL(uri, baseUrl).href;
+export function extractTargetAndRef(urlStr) {
+  if (!urlStr || typeof urlStr !== 'string') return { target: null, ref: null };
+  try {
+    const raw = urlStr.startsWith('http') ? urlStr : `http://localhost${urlStr.startsWith('/') ? '' : '/'}${urlStr}`;
+    const u = new URL(raw);
+    const target = u.searchParams.get('url');
+    const ref = u.searchParams.get('ref');
+    return {
+      target: target ? decodeURIComponent(target) : null,
+      ref: ref ? decodeURIComponent(ref) : null
+    };
+  } catch (_) {
+    return { target: null, ref: null };
+  }
 }
 
-async function saveHlsResource(cache, key, index, url, onProgress, progress) {
+export function resolvePlaylistUrl(uri, baseUrl) {
+  const cleanUri = (uri || '').trim();
+  if (!cleanUri) return '';
+  if (/^https?:\/\//i.test(cleanUri)) {
+    return cleanUri;
+  }
+  const { target, ref } = extractTargetAndRef(baseUrl);
+  if (target) {
+    try {
+      const resolvedUpstream = new URL(cleanUri, target).href;
+      return apiUrl(`/api/hls_proxy?url=${encodeURIComponent(resolvedUpstream)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`);
+    } catch (_) {}
+  }
+  try {
+    return new URL(cleanUri, baseUrl).href;
+  } catch (_) {
+    return cleanUri;
+  }
+}
+
+/**
+ * Triggers native download on Android device (via DownloadListener / 1DM / ADM / Browser)
+ */
+export function triggerNativeDeviceDownload(streamUrl, filename = 'video.mp4') {
+  if (!streamUrl) return false;
+  
+  const downloadUrl = typeof streamUrl === 'string' && streamUrl.startsWith('/api/')
+    ? apiUrl(streamUrl)
+    : streamUrl;
+
+  try {
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.setAttribute('download', filename);
+    a.setAttribute('target', '_blank');
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { try { a.remove(); } catch (_) {} }, 1000);
+    return true;
+  } catch (_) {
+    try {
+      window.open(downloadUrl, '_system');
+      return true;
+    } catch (_) {
+      window.location.href = downloadUrl;
+      return true;
+    }
+  }
+}
+
+async function saveHlsResource(cache, key, index, url, onProgress, progress, signal = null) {
+  if (signal?.aborted) throw new Error('İndirme iptal edildi');
   let response = null;
-  const attempts = [
-    url,
-    url.includes('/api/hls_proxy') ? null : apiUrl(`/api/hls_proxy?url=${encodeURIComponent(url)}`)
-  ].filter(Boolean);
+  const { target, ref } = extractTargetAndRef(url);
+  const attempts = [];
+
+  // 1. Direct target (often fastest for open CORS CDNs)
+  if (target && /^https?:\/\//i.test(target)) {
+    attempts.push(target);
+  }
+  // 2. Proxied URL with apiOrigin
+  const fullUrl = url.startsWith('/api/') ? apiUrl(url) : url;
+  attempts.push(fullUrl);
+  // 3. Fallback explicit proxy with ref
+  if (!url.includes('/api/hls_proxy') && !target) {
+    attempts.push(apiUrl(`/api/hls_proxy?url=${encodeURIComponent(url)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`));
+  }
 
   let lastError = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const targetUrl = attempts[Math.min(attempt, attempts.length - 1)];
+  for (let attempt = 0; attempt < attempts.length; attempt++) {
+    if (signal?.aborted) throw new Error('İndirme iptal edildi');
+    const targetUrl = attempts[attempt];
     try {
-      response = await fetch(targetUrl, { cache: 'no-store' });
+      response = await fetch(targetUrl, { cache: 'no-store', signal });
       if (response && response.ok) break;
     } catch (err) {
+      if (err.name === 'AbortError' || signal?.aborted) throw new Error('İndirme iptal edildi');
       lastError = err;
-      if (attempt === 2) throw lastError;
-      await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+      if (attempt < attempts.length - 1) {
+        await new Promise(r => setTimeout(r, 250 * (attempt + 1)));
+      }
     }
   }
   if (!response || !response.ok) {
@@ -59,7 +137,7 @@ async function saveHlsResource(cache, key, index, url, onProgress, progress) {
   }));
   progress.loaded += blob.size;
   progress.done += 1;
-  const pct = Math.min(98, 5 + Math.round((progress.done / progress.count) * 93));
+  const pct = Math.min(99, 5 + Math.round((progress.done / progress.count) * 94));
   onProgress({ percent: pct, loaded: progress.loaded, total: 0, status: `%${pct}` });
   return blob.size;
 }
@@ -73,17 +151,24 @@ function getMasterVariant(text, baseUrl) {
     const uri = lines.slice(i + 1).find(line => line && !line.startsWith('#'));
     if (uri) variants.push({ bandwidth, url: resolvePlaylistUrl(uri.trim(), baseUrl) });
   }
-  return variants.sort((a, b) => b.bandwidth - a.bandwidth)[0]?.url || null;
+  if (!variants.length) return null;
+  // Pick optimal mobile bandwidth ~1.8Mbps to 3Mbps (not excessive 4K/10Mbps that exhausts memory)
+  variants.sort((a, b) => {
+    const targetBw = 2200000;
+    return Math.abs(a.bandwidth - targetBw) - Math.abs(b.bandwidth - targetBw);
+  });
+  return variants[0]?.url || null;
 }
 
-async function downloadHlsBundle(cache, key, response, firstText, onProgress) {
+async function downloadHlsBundle(cache, key, response, firstText, onProgress, signal = null) {
   let playlistUrl = response.url || response.url;
   let playlistText = firstText;
   let mediaUrl = getMasterVariant(playlistText, playlistUrl);
   let depth = 0;
   while (mediaUrl && depth < 3) {
+    if (signal?.aborted) throw new Error('İndirme iptal edildi');
     depth++;
-    const mediaResponse = await fetch(mediaUrl, { cache: 'no-store' });
+    const mediaResponse = await fetch(mediaUrl, { cache: 'no-store', signal });
     if (!mediaResponse.ok) throw new Error(`Bölüm listesi alınamadı (HTTP ${mediaResponse.status})`);
     playlistUrl = mediaResponse.url || mediaUrl;
     playlistText = await mediaResponse.text();
@@ -130,14 +215,15 @@ async function downloadHlsBundle(cache, key, response, firstText, onProgress) {
   const progress = { done: 0, count: resourceCount, loaded: 0 };
   const resourceKeys = itemsToFetch.map(item => item.index);
 
-  // Parallel pool with 5 concurrent workers
-  const CONCURRENCY = 5;
+  // Parallel pool with 4 concurrent workers
+  const CONCURRENCY = 4;
   let cursor = 0;
   async function worker() {
     while (cursor < itemsToFetch.length) {
+      if (signal?.aborted) throw new Error('İndirme iptal edildi');
       const current = itemsToFetch[cursor++];
       if (!current) break;
-      await saveHlsResource(cache, key, current.index, current.url, onProgress, progress);
+      await saveHlsResource(cache, key, current.index, current.url, onProgress, progress, signal);
     }
   }
 
@@ -259,10 +345,14 @@ export function releaseDownloadedPlaybackUrls() {
 /**
  * Save / Download video stream for offline viewing with progress callback
  */
-export async function startOfflineDownload(mediaData, onProgress = () => {}) {
+export async function startOfflineDownload(mediaData, onProgress = () => {}, signal = null) {
   const { tmdbId, type, title, poster, backdrop, season, episode, streamUrl } = mediaData;
   if (!streamUrl) throw new Error('İndirilecek medya bağlantısı bulunamadı.');
   if (!('caches' in window)) throw new Error('Bu cihaz çevrimdışı depolamayı desteklemiyor.');
+
+  if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+    try { await navigator.storage.persist(); } catch (_) {}
+  }
 
   const key = getItemKey(tmdbId, season, episode);
   const cacheUrl = `/offline/${key}`;
@@ -271,16 +361,17 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}) {
   onProgress({ percent: 5, loaded: 0, total: 0, status: 'Başlatılıyor...' });
 
   try {
-    const response = await fetch(safeStreamUrl, { cache: 'no-store' });
+    if (signal?.aborted) throw new Error('İndirme iptal edildi');
+    const response = await fetch(safeStreamUrl, { cache: 'no-store', signal });
     if (!response.ok) throw new Error(`İndirme başarısız (${response.status})`);
 
     const contentType = response.headers.get('content-type') || '';
-    const isHls = /mpegurl|vnd\.apple\.mpegurl/i.test(contentType) || /\.m3u8(?:[?#]|$)/i.test(streamUrl);
+    const isHls = /mpegurl|vnd\.apple\.mpegurl/i.test(contentType) || /\.m3u8(?:[?#]|$)/i.test(streamUrl) || /\.m3u8(?:[?#]|$)/i.test(safeStreamUrl);
     if (isHls) {
       const firstText = await response.text();
       if (!firstText.includes('#EXTM3U')) throw new Error('Kaynak HLS bölüm akışı döndürmedi.');
       const cache = await caches.open(CACHE_NAME);
-      const bundle = await downloadHlsBundle(cache, key, response, firstText, onProgress);
+      const bundle = await downloadHlsBundle(cache, key, response, firstText, onProgress, signal);
       const db = await openDB();
       const itemRecord = {
         key, tmdbId: String(tmdbId), type: type || 'tv', title: title || 'İsimsiz İçerik', poster: poster || '', backdrop: backdrop || '',
@@ -306,6 +397,7 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}) {
       const reader = response.body.getReader();
       const chunks = [];
       while (true) {
+        if (signal?.aborted) throw new Error('İndirme iptal edildi');
         const { done, value } = await reader.read();
         if (done) break;
         chunks.push(value);
@@ -318,6 +410,8 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}) {
       onProgress({ percent: 50, loaded: 0, total: 0, status: 'Veri alınıyor...' });
       blob = await response.blob();
     }
+
+    if (signal?.aborted) throw new Error('İndirme iptal edildi');
 
     // Save to CacheStorage for fast zero-memory playback
     if ('caches' in window) {
@@ -362,6 +456,7 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}) {
     console.error('Offline download failed:', err);
     try {
       const cache = await caches.open(CACHE_NAME);
+      await cache.delete(cacheUrl);
       const prefix = new URL(`/__cinepulse_offline__/${encodeURIComponent(key)}/`, location.origin).href;
       await Promise.all((await cache.keys()).filter(request => request.url.startsWith(prefix)).map(request => cache.delete(request)));
     } catch (_) {}
