@@ -1368,19 +1368,26 @@ export async function openPlayerModal({
 
   async function refreshOfflineDownloadButton() {
     const button = modalContainer.querySelector('#btn-player-download');
-    const downloaded = await isMediaDownloaded(tmdbId, isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
+    const currentKey = getItemOfflineKey(isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
+    const isCurrentDownloading = isDownloadingOffline && activeDownloadTargetKey === currentKey;
+
+    // Paint active state before any IndexedDB work so a tap responds at once.
+    if (button && isCurrentDownloading) {
+      const label = button.querySelector('span');
+      button.dataset.downloading = 'true';
+      button.classList.add('is-downloading');
+      button.classList.remove('is-downloaded');
+      if (label) label.textContent = `%${activeDownloadProgress.percent}`;
+      button.title = `İndiriliyor: %${activeDownloadProgress.percent}`;
+      renderPlayerIcons(button);
+    }
+
+    const downloaded = isCurrentDownloading ? false : await isMediaDownloaded(tmdbId, isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
     if (closed) return;
 
-    if (button) {
+    if (button && !isCurrentDownloading) {
       const label = button.querySelector('span');
-      const currentKey = getItemOfflineKey(isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
-      if (isDownloadingOffline && activeDownloadTargetKey === currentKey) {
-        button.dataset.downloading = 'true';
-        button.classList.add('is-downloading');
-        button.classList.remove('is-downloaded');
-        if (label) label.textContent = `%${activeDownloadProgress.percent}`;
-        button.title = `İndiriliyor: %${activeDownloadProgress.percent}`;
-      } else if (downloaded) {
+      if (downloaded) {
         button.dataset.downloaded = 'true';
         button.classList.add('is-downloaded');
         button.classList.remove('is-downloading');
@@ -1778,8 +1785,13 @@ export async function openPlayerModal({
       } catch (_) {}
     }
 
-    const stream = streams.find(item => item.isDirectVideo && !item.isHls) || streams.find(item => !item.isTorrent) || streams[0];
-    if (!stream) {
+    const candidates = [
+      ...streams.filter(item => item.isDirectVideo && !item.isHls),
+      ...streams.filter(item => item.isHls),
+      ...streams.filter(item => item.isDirectVideo),
+      ...streams.filter(item => !item.isTorrent)
+    ].filter((item, index, list) => item && list.findIndex(other => other.streamUrl === item.streamUrl) === index);
+    if (candidates.length === 0) {
       showToast('Bu bölüm için indirilebilir yayın bulunamadı. Önce kaynakların yüklenmesini bekleyin.', 'error');
       return;
     }
@@ -1789,28 +1801,55 @@ export async function openPlayerModal({
     activeDownloadAbortController = new AbortController();
     activeDownloadProgress = { percent: 1, loaded: 0, status: 'Başlatılıyor...' };
     refreshOfflineDownloadButton();
-    showToast(`“${getDisplayTitle()}” indiriliyor…`, 'info');
+    showToast(`“${getDisplayTitle()}” için indirme başlatılıyor…`, 'info');
 
+    let completed = false;
+    let lastError = null;
+    let nativeFallbackUrl = '';
     try {
-      const resolved = await resolveDirectStream(stream.server || { streamUrl: stream.streamUrl }) || stream.server;
-      const downloadUrl = getStreamSafeUrl(resolved) || stream.streamUrl;
-      if (!downloadUrl || downloadUrl.startsWith('magnet:')) {
-        throw new Error('Seçilen kaynak doğrudan indirilebilir video sunmuyor.');
+      for (const stream of candidates.slice(0, 5)) {
+        if (activeDownloadAbortController.signal.aborted) throw new Error('İndirme iptal edildi');
+        try {
+          activeDownloadProgress = { ...activeDownloadProgress, status: `${stream.displayName || 'Kaynak'} deneniyor...` };
+          refreshOfflineDownloadButton();
+          const resolved = await resolveDirectStream(stream.server || { streamUrl: stream.streamUrl }) || stream.server;
+          const downloadUrl = getStreamSafeUrl(resolved) || stream.streamUrl;
+          if (!downloadUrl || downloadUrl.startsWith('magnet:')) throw new Error('Torrent kaynağı doğrudan indirilemez.');
+          if (!nativeFallbackUrl && (stream.isDirectVideo || stream.isHls)) nativeFallbackUrl = downloadUrl;
+          await startOfflineDownload({
+            tmdbId,
+            type: isSeries ? 'tv' : 'movie',
+            title: isSeries ? `${cleanSeriesName} · ${season}. Sezon ${episode}. Bölüm` : cleanSeriesName,
+            poster: posterPath,
+            backdrop: backdropPath,
+            season,
+            episode,
+            streamUrl: downloadUrl
+          }, progress => {
+            activeDownloadProgress = progress;
+            refreshOfflineDownloadButton();
+          }, activeDownloadAbortController.signal);
+          completed = true;
+          showToast(`“${getDisplayTitle()}” indirildi. İndirilenler bölümünden çevrimdışı izleyebilirsin.`, 'success');
+          break;
+        } catch (err) {
+          if (err?.message === 'İndirme iptal edildi') throw err;
+          lastError = err;
+          console.warn(`[Download] ${stream.displayName || 'Kaynak'} başarısız; sıradaki kaynak deneniyor.`, err);
+        }
       }
-      await startOfflineDownload({
-        tmdbId,
-        type: isSeries ? 'tv' : 'movie',
-        title: isSeries ? `${cleanSeriesName} · ${season}. Sezon ${episode}. Bölüm` : cleanSeriesName,
-        poster: posterPath,
-        backdrop: backdropPath,
-        season,
-        episode,
-        streamUrl: downloadUrl
-      }, progress => {
-        activeDownloadProgress = progress;
-        refreshOfflineDownloadButton();
-      }, activeDownloadAbortController.signal);
-      showToast(`“${getDisplayTitle()}” indirildi. İndirilenler bölümünden çevrimdışı izleyebilirsin.`, 'success');
+
+      if (!completed && nativeFallbackUrl) {
+        const fallbackFilename = isSeries
+          ? `${cleanSeriesName}_S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}.mp4`
+          : `${cleanSeriesName}.mp4`;
+        const started = triggerNativeDeviceDownload(nativeFallbackUrl, fallbackFilename);
+        if (started) {
+          completed = true;
+          showToast('Uygulama içi kayıt bu hatta açılamadı; indirme cihazın indiricisine aktarıldı.', 'info');
+        }
+      }
+      if (!completed) throw lastError || new Error('Bu kaynaklardan indirilebilir video alınamadı.');
     } catch (err) {
       if (err?.message !== 'İndirme iptal edildi') {
         console.error('[Download] Direct download failed:', err);
