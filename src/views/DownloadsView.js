@@ -21,7 +21,6 @@ export function renderDownloadsView() {
         <div class="downloads-list" id="downloads-list"><div class="downloads-loading"><i data-lucide="loader-circle"></i><span>İndirilenler yükleniyor…</span></div></div>
       </section>`,
     init: container => {
-      if (!isNativeAndroidApp()) return;
       const page = container.querySelector('#downloads-page');
       const list = page?.querySelector('#downloads-list');
       if (!page || !list) return;
