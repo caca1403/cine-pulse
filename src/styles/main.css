@@ -14519,7 +14519,36 @@ html.native-android #player-modal .player-modal-content {
 .downloads-storage-track { height:7px; overflow:hidden; border-radius:99px; background:rgba(148,163,184,.13); }.downloads-storage-track span { display:block; width:0; height:100%; border-radius:inherit; background:linear-gradient(90deg,#10b981,#2dd4bf); transition:width .3s ease; }
 .downloads-storage-card > small { display:block; margin-top:9px; color:#64748b; font-size:.66rem; }
 .downloads-list-heading { display:flex; align-items:center; justify-content:space-between; margin:30px 1px 12px; }.downloads-list-heading h2 { margin:0; font-size:.98rem; font-weight:800; }.downloads-list-heading > span { color:#94a3b8; font-size:.72rem; }
-.downloads-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr)); align-items:stretch; gap:14px; }
+.downloads-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr)); align-items:start; gap:15px; }
+.download-series-card,.download-movie-card { min-width:0; overflow:hidden; border:1px solid rgba(148,163,184,.16); border-radius:17px; background:linear-gradient(145deg,rgba(15,23,42,.94),rgba(7,10,18,.96)); box-shadow:0 10px 26px rgba(0,0,0,.16); }
+.download-series-open { display:grid; width:100%; padding:10px; gap:10px; border:0; color:inherit; text-align:left; background:transparent; cursor:pointer; }
+.download-series-poster { position:relative; display:block; width:100%; aspect-ratio:2/3; overflow:hidden; border-radius:11px; background:#111827; }
+.download-series-poster img { display:block; width:100%; height:100%; object-fit:cover; }
+.download-ready { position:absolute; left:8px; bottom:8px; display:flex; align-items:center; gap:4px; padding:5px 7px; border-radius:7px; color:#d1fae5; background:rgba(5,80,58,.9); font-size:.58rem; font-weight:850; letter-spacing:.05em; }
+.download-ready svg { width:12px; height:12px; }
+.download-series-info { display:grid; min-width:0; gap:5px; padding:2px 2px 3px; }
+.download-series-info strong { overflow:hidden; color:#f8fafc; font-size:.9rem; text-overflow:ellipsis; white-space:nowrap; }
+.download-series-info > span { color:#cbd5e1; font-size:.74rem; }
+.download-series-info small { color:#34d399; font-size:.67rem; }
+.download-series-chevron { display:grid; place-items:center; color:#94a3b8; }
+.download-series-chevron svg { width:19px; height:19px; transition:transform .2s ease; }
+.download-series-open[aria-expanded="true"] .download-series-chevron svg { transform:rotate(180deg); }
+.download-episodes { padding:0 10px 10px; border-top:1px solid rgba(148,163,184,.12); }
+.download-season h3 { margin:12px 0 7px; color:#6ee7b7; font-size:.73rem; font-weight:850; letter-spacing:.04em; }
+.download-season-list { display:grid; gap:6px; }
+.download-episode-row { display:grid; grid-template-columns:30px minmax(0,1fr) 34px 34px; align-items:center; gap:7px; padding:8px 6px; border:1px solid rgba(148,163,184,.1); border-radius:11px; background:rgba(2,6,23,.35); }
+.download-episode-number { display:grid; place-items:center; width:26px; height:26px; border-radius:8px; color:#a7f3d0; background:rgba(16,185,129,.12); font-size:.68rem; font-weight:850; }
+.download-episode-info { display:grid; min-width:0; gap:3px; }
+.download-episode-info strong { overflow:hidden; color:#e2e8f0; font-size:.69rem; text-overflow:ellipsis; white-space:nowrap; }
+.download-episode-info small { color:#94a3b8; font-size:.58rem; }
+.download-episode-play,.download-episode-delete,.download-movie-play { display:grid; place-items:center; min-height:32px; border:1px solid rgba(16,185,129,.25); border-radius:9px; color:#a7f3d0; background:rgba(5,150,105,.12); }
+.download-episode-play svg,.download-episode-delete svg { width:15px; height:15px; }
+.download-episode-delete { border-color:rgba(248,113,113,.2); color:#fca5a5; background:rgba(127,29,29,.12); }
+.download-movie-card { display:grid; padding:10px; gap:10px; }
+.download-movie-actions { display:flex; gap:8px; }
+.download-movie-play { display:flex; flex:1; align-items:center; justify-content:center; gap:7px; min-height:38px; font:inherit; font-size:.75rem; font-weight:800; }
+.download-movie-play svg { width:15px; height:15px; }
+.download-movie-actions .download-episode-delete { width:38px; }
 .download-item { position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; align-content:start; align-items:center; gap:12px; padding:12px; overflow:hidden; border:1px solid rgba(148,163,184,.15); border-radius:17px; background:linear-gradient(145deg,rgba(15,23,42,.94),rgba(7,10,18,.96)); box-shadow:0 10px 28px rgba(0,0,0,.16); transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease; }
 .download-item:hover { transform:translateY(-2px); border-color:rgba(52,211,153,.3); box-shadow:0 14px 32px rgba(0,0,0,.24); }
 .download-item-art { position:relative; aspect-ratio:16/9; overflow:hidden; display:grid; place-items:center; border-radius:11px; color:#6ee7b7; background:#111827; }.download-item-art img { width:100%; height:100%; object-fit:cover; }.download-item-art > span { position:absolute; left:8px; bottom:8px; display:flex; align-items:center; gap:4px; padding:4px 6px; border-radius:7px; color:#d1fae5; background:rgba(5,80,58,.88); font-size:.55rem; font-weight:850; letter-spacing:.06em; }.download-item-art > span svg { width:11px; height:11px; }
@@ -14538,10 +14567,16 @@ html.native-android #player-modal .player-modal-content {
   .downloads-page { min-height:calc(100dvh - 70px); padding:88px 15px calc(110px + env(safe-area-inset-bottom,0px)); }
   .downloads-page-header { gap:12px; margin-bottom:20px; }.downloads-page-icon { width:48px; height:48px; border-radius:15px; }.downloads-page-header p { font-size:.72rem; }
   .downloads-storage-card { padding:14px; }.downloads-storage-copy strong { font-size:.63rem; }
-  .download-item { grid-template-columns:minmax(0,1fr) 38px; gap:9px; padding:10px; border-radius:14px; }
-  .download-item-art { grid-row:auto; }
-  .download-item-main h3 { font-size:.78rem; }.download-item-main p,.download-item-main small { font-size:.62rem; line-height:1.35; }
-  .download-item-play { grid-column:2; min-height:34px; padding:0 9px; font-size:.69rem; }.download-item-delete { grid-column:3; grid-row:1; width:36px; min-height:36px; }
+  .downloads-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .download-series-card,.download-movie-card { border-radius:14px; }
+  .download-series-open { padding:8px; gap:8px; }
+  .download-series-info strong { font-size:.76rem; }.download-series-info > span,.download-series-info small { font-size:.62rem; line-height:1.35; }
+  .download-episodes { padding:0 7px 8px; }
+  .download-episode-row { grid-template-columns:24px minmax(0,1fr) 30px 30px; gap:4px; padding:6px 4px; }
+  .download-episode-number { width:22px; height:22px; font-size:.61rem; }
+  .download-episode-info strong { font-size:.62rem; }.download-episode-info small { font-size:.52rem; }
+  .download-episode-play,.download-episode-delete { min-height:29px; }
+  .download-movie-card { padding:8px; gap:8px; }
 }
 
 .player-cinema-bar {

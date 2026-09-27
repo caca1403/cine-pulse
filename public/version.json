@@ -1,9 +1,9 @@
 {
-  "version": "1.1.20",
-  "versionCode": 130,
+  "version": "1.1.21",
+  "versionCode": 131,
   "releaseDate": "2026-09-27",
-  "title": "CinePulse Android v1.1.20",
-  "releaseNotes": "• İnternet bağlantısı kesildiğinde uygulama İndirilenler bölümünü açar.\n• İndirilenler tüm cihazlarda erişilebilir ve içerikler düzenli kartlarla gösterilir.\n• İndirilen içerikler internet bağlantısı olmadan oynatılabilir.",
+  "title": "CinePulse Android v1.1.21",
+  "releaseNotes": "• İndirilen diziler dikey afiş kartlarında gruplanır.\n• Dizi kartına dokununca bölümler sezonlara ayrılmış ve sıralı biçimde açılır.\n• Bölümler tek tek oynatılabilir veya silinebilir; filmler kendi kartlarında görünür.",
   "downloadUrl": "https://cine-pulse-drab.vercel.app/api/download_apk",
   "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest",
   "mandatory": false
