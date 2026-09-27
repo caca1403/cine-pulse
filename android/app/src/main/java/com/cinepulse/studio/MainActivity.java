@@ -2,6 +2,10 @@ package com.cinepulse.studio;
 
 import android.app.DownloadManager;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.Manifest;
+import android.os.Build;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -14,6 +18,7 @@ import android.webkit.URLUtil;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 4402;
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -33,6 +38,41 @@ public class MainActivity extends BridgeActivity {
     }
 
     public final class DeviceStorageBridge {
+        @JavascriptInterface
+        public void startDownloadNotification(String title) {
+            runOnUiThread(() -> {
+                if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_REQUEST);
+                }
+                Intent intent = new Intent(MainActivity.this, DownloadProgressService.class)
+                        .setAction(DownloadProgressService.ACTION_START)
+                        .putExtra(DownloadProgressService.EXTRA_TITLE, title);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent);
+                else startService(intent);
+            });
+        }
+
+        @JavascriptInterface
+        public void updateDownloadNotification(String title, int percent, String status, long loaded, long total) {
+            Intent intent = new Intent(MainActivity.this, DownloadProgressService.class)
+                    .setAction(DownloadProgressService.ACTION_UPDATE)
+                    .putExtra(DownloadProgressService.EXTRA_TITLE, title)
+                    .putExtra(DownloadProgressService.EXTRA_PERCENT, percent)
+                    .putExtra(DownloadProgressService.EXTRA_STATUS, status)
+                    .putExtra(DownloadProgressService.EXTRA_LOADED, loaded)
+                    .putExtra(DownloadProgressService.EXTRA_TOTAL, total);
+            startService(intent);
+        }
+
+        @JavascriptInterface
+        public void finishDownloadNotification(boolean success, String message) {
+            Intent intent = new Intent(MainActivity.this, DownloadProgressService.class)
+                    .setAction(DownloadProgressService.ACTION_FINISH)
+                    .putExtra(DownloadProgressService.EXTRA_SUCCESS, success)
+                    .putExtra(DownloadProgressService.EXTRA_STATUS, message);
+            startService(intent);
+        }
+
         @JavascriptInterface
         public String getDeviceStorageInfo() {
             try {

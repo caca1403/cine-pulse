@@ -449,6 +449,14 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
         loaded += value.length;
         const percent = Math.min(99, Math.round((loaded / total) * 100));
         onProgress({ percent, loaded, total, status: `%${percent} indiriliyor...` });
+        // Some providers send the complete Content-Length but leave the
+        // connection open, so reader.read() never returns `done: true`.
+        // The declared byte count is authoritative; close the reader and
+        // continue committing the completed file once all bytes arrived.
+        if (loaded >= total) {
+          reader.cancel().catch(() => {});
+          break;
+        }
       }
       blob = new Blob(chunks, { type: response.headers.get('content-type') || 'video/mp4' });
     } else if (response.body) {

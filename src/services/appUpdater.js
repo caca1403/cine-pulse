@@ -7,11 +7,10 @@
 import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
 
-export const CURRENT_APP_VERSION = '1.1.24';
-export const CURRENT_VERSION_CODE = 134;
+export const CURRENT_APP_VERSION = '1.1.25';
+export const CURRENT_VERSION_CODE = 135;
 
 const REMOTE_VERSION_URL = 'https://github.com/caca1403/cine-pulse/releases/latest/download/version.json';
-const SNOOZE_KEY = 'cinepulse_update_snoozed_until';
 
 /**
  * Checks if running as a native Android app via Capacitor
@@ -204,10 +203,6 @@ export function showUpdateModal(updateInfo) {
   const laterBtn = modal.querySelector('#btn-update-later');
   if (laterBtn) {
     laterBtn.addEventListener('click', () => {
-      try {
-        // Snooze for 12 hours
-        localStorage.setItem(SNOOZE_KEY, String(Date.now() + 12 * 60 * 60 * 1000));
-      } catch (_) {}
       modal.remove();
     });
   }
@@ -260,16 +255,8 @@ function escapeText(str = '') {
  * Fetches latest version and prompts if update available
  */
 export async function checkForAppUpdates({ manual = false } = {}) {
-  // If not manual, check snooze timestamp
-  if (!manual) {
-    try {
-      const snoozedUntil = parseInt(localStorage.getItem(SNOOZE_KEY) || '0', 10);
-      if (Date.now() < snoozedUntil) return null;
-    } catch (_) {}
-  }
-
   try {
-    // Check GitHub raw /version.json first with cache buster
+    // Read the current manifest from the latest GitHub release with a cache buster.
     const res = await fetch(`${REMOTE_VERSION_URL}?_t=${Date.now()}`, {
       signal: AbortSignal.timeout(6000),
       cache: 'no-store'

@@ -1309,6 +1309,27 @@ export async function openPlayerModal({
   let activeDownloadAbortController = null;
   let activeDownloadTargetKey = null;
   let activeDownloadProgress = { percent: 0, loaded: 0, status: '' };
+  let lastNativeDownloadNotificationAt = 0;
+
+  function notifyNativeDownloadStart(title) {
+    try { window.CinePulseNative?.startDownloadNotification?.(String(title || 'CinePulse indirmesi')); } catch (_) {}
+  }
+
+  function notifyNativeDownloadProgress(title, progress) {
+    try {
+      const now = Date.now();
+      if (now - lastNativeDownloadNotificationAt < 500 && Number(progress?.percent) < 100) return;
+      lastNativeDownloadNotificationAt = now;
+      window.CinePulseNative?.updateDownloadNotification?.(
+        String(title || 'CinePulse indirmesi'), Number(progress?.percent) || 0,
+        String(progress?.status || 'İndiriliyor…'), Number(progress?.loaded) || 0, Number(progress?.total) || 0
+      );
+    } catch (_) {}
+  }
+
+  function notifyNativeDownloadFinished(success, message) {
+    try { window.CinePulseNative?.finishDownloadNotification?.(Boolean(success), String(message || '')); } catch (_) {}
+  }
 
   function getItemOfflineKey(season = null, episode = null) {
     if (season !== null && episode !== null && season !== undefined && episode !== undefined) {
@@ -1720,6 +1741,7 @@ export async function openPlayerModal({
         activeDownloadTargetKey = downloadKey;
         activeDownloadAbortController = new AbortController();
         activeDownloadProgress = { percent: 1, loaded: 0, status: 'Başlatılıyor...' };
+        notifyNativeDownloadStart(displayTitle);
         refreshOfflineDownloadButton();
         renderDownloadBody();
 
@@ -1741,6 +1763,7 @@ export async function openPlayerModal({
             streamUrl: downloadUrl
           }, (prog) => {
             activeDownloadProgress = prog;
+            notifyNativeDownloadProgress(displayTitle, prog);
             const bar = body.querySelector('.dl-progress-bar');
             const infoSpan = body.querySelector('.dl-progress-info span:first-child');
             const sizeSpan = body.querySelector('.dl-progress-info span:last-child');
@@ -1750,8 +1773,10 @@ export async function openPlayerModal({
             refreshOfflineDownloadButton();
           }, activeDownloadAbortController.signal);
 
+          notifyNativeDownloadFinished(true, 'Çevrimdışı izlemek için hazır');
           showToast(`🎉 “${displayTitle}” başarıyla cihaza indirildi! 'İndirilenler' sekmesinden internetsiz izleyebilirsiniz.`, 'success');
         } catch (err) {
+          notifyNativeDownloadFinished(false, err?.message === 'İndirme iptal edildi' ? 'İndirme iptal edildi' : (err?.message || 'İndirme tamamlanamadı'));
           if (err.message !== 'İndirme iptal edildi') {
             console.error('[Download] Failed:', err);
             showToast(err?.message || 'İndirme tamamlanamadı. Başka bir hat deneyin.', 'error');
@@ -1791,6 +1816,7 @@ export async function openPlayerModal({
     activeDownloadTargetKey = downloadKey;
     activeDownloadAbortController = new AbortController();
     activeDownloadProgress = { percent: 0, loaded: 0, total: 0, speedBytesPerSecond: 0, updatedAt: Date.now(), status: 'Kaynak aranıyor...' };
+    notifyNativeDownloadStart(getDisplayTitle());
     refreshOfflineDownloadButton();
     showToast(`“${getDisplayTitle()}” için indirme başlatılıyor…`, 'info');
 
@@ -1864,10 +1890,12 @@ export async function openPlayerModal({
                 : previous.speedBytesPerSecond,
               updatedAt: now
             };
+            notifyNativeDownloadProgress(getDisplayTitle(), activeDownloadProgress);
             if (Number(progress.loaded) > 0 || Number(progress.percent) > 5) transferStarted = true;
             refreshOfflineDownloadButton();
           }, activeDownloadAbortController.signal);
           completed = true;
+          notifyNativeDownloadFinished(true, 'Çevrimdışı izlemek için hazır');
           showToast(`“${getDisplayTitle()}” indirildi. İndirilenler bölümünden çevrimdışı izleyebilirsin.`, 'success');
           break;
         } catch (err) {
@@ -1880,6 +1908,7 @@ export async function openPlayerModal({
 
       if (!completed) throw lastError || new Error('Bu kaynaklardan indirilebilir video alınamadı.');
     } catch (err) {
+      notifyNativeDownloadFinished(false, err?.message === 'İndirme iptal edildi' ? 'İndirme iptal edildi' : (err?.message || 'İndirme tamamlanamadı'));
       if (err?.message !== 'İndirme iptal edildi') {
         console.error('[Download] Direct download failed:', err);
         showToast(err?.message || 'İndirme başlatılamadı. Kaynak indirilebilir biçimde değil.', 'error');
