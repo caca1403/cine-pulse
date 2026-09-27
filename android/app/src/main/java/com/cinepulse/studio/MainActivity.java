@@ -4,6 +4,7 @@ import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.ContentValues;
 import android.Manifest;
 import android.os.Build;
 import android.database.Cursor;
@@ -11,10 +12,14 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.StatFs;
+import android.provider.MediaStore;
 import android.webkit.JavascriptInterface;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.URLUtil;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -96,6 +101,43 @@ public class MainActivity extends BridgeActivity {
                 return "{\"total\":" + total + ",\"free\":" + free + "}";
             } catch (Exception error) {
                 return "";
+            }
+        }
+
+        @JavascriptInterface
+        public String saveJsonBackup(String json, String filename) {
+            try {
+                String safeName = (filename == null ? "cinepulse_yedek.json" : filename)
+                        .replaceAll("[^a-zA-Z0-9._-]", "_");
+                if (!safeName.endsWith(".json")) safeName += ".json";
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.MediaColumns.DISPLAY_NAME, safeName);
+                    values.put(MediaStore.MediaColumns.MIME_TYPE, "application/json");
+                    values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/CinePulse");
+                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (uri == null) return "ERROR:Dosya Downloads klasörüne kaydedilemedi";
+                    try (OutputStream output = getContentResolver().openOutputStream(uri)) {
+                        if (output == null) throw new IllegalStateException("Dosya açılamadı");
+                        output.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        output.flush();
+                    } catch (Exception error) {
+                        getContentResolver().delete(uri, null, null);
+                        throw error;
+                    }
+                } else {
+                    File downloads = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                    if (downloads == null || (!downloads.exists() && !downloads.mkdirs())) {
+                        return "ERROR:İndirme klasörü oluşturulamadı";
+                    }
+                    try (FileOutputStream output = new FileOutputStream(new File(downloads, safeName))) {
+                        output.write(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        output.flush();
+                    }
+                }
+                return "OK";
+            } catch (Exception error) {
+                return "ERROR:" + (error.getMessage() == null ? "Yedek kaydedilemedi" : error.getMessage());
             }
         }
     }

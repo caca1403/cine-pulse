@@ -1900,17 +1900,25 @@ export function exportDataAsJSON() {
   };
 
   const jsonStr = JSON.stringify(exportPayload, null, 2);
+  const filename = `cinepulse_yedek_${new Date().toISOString().split('T')[0]}.json`;
+  const nativeResult = window.CinePulseNative?.saveJsonBackup?.(jsonStr, filename);
+  if (nativeResult !== undefined) {
+    if (!String(nativeResult).startsWith('OK')) throw new Error(String(nativeResult).replace(/^ERROR:/, '') || 'JSON yedeği kaydedilemedi.');
+    return filename;
+  }
+
   const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `cinepulse_yedek_${new Date().toISOString().split('T')[0]}.json`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   setTimeout(() => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, 1000);
+  return filename;
 }
 
 export function importDataFromJSON(jsonInput, mode = 'merge') {

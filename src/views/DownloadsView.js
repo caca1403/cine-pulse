@@ -6,6 +6,9 @@ import { getImageUrl, SINEFLIX_POSTER_FALLBACK, TMDB_IMAGE_SIZES } from '../serv
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const episodeOrder = (a, b) => (Number(a.season) - Number(b.season)) || (Number(a.episode) - Number(b.episode));
+const getSeriesName = item => String(item?.seriesTitle || item?.title || '')
+  .replace(/\s*[·-]\s*\d+\.\s*Sezon\s+\d+\.\s*Bölüm.*$/i, '')
+  .trim();
 
 export function renderDownloadsView() {
   return {
@@ -46,10 +49,10 @@ export function renderDownloadsView() {
           const offlinePlaybackUrl = await getDownloadedPlaybackUrl(item.tmdbId, item.season, item.episode);
           if (!offlinePlaybackUrl) throw new Error('İndirilen video bulunamadı.');
           const isEpisode = item.season !== null && item.episode !== null;
-          const seriesTitle = item.seriesTitle || item.title.replace(/\s*[·-]\s*\d+\. Sezon\s+\d+\. Bölüm\s*$/i, '');
+          const seriesTitle = getSeriesName(item);
           openPlayerModal({
             type: item.type === 'movie' ? 'movie' : 'tv', isSeries: isEpisode, isAnime: item.type === 'anime',
-            tmdbId: item.tmdbId, title: item.title, seriesTitle: isEpisode ? seriesTitle : '',
+            tmdbId: item.tmdbId, title: isEpisode ? seriesTitle : item.title, seriesTitle: isEpisode ? seriesTitle : '',
             season: item.season || 1, episode: item.episode || 1,
             posterPath: item.poster || '', backdropPath: item.backdrop || '', offlinePlaybackUrl,
             offlineMediaKind: item.mediaKind || 'file'
@@ -80,7 +83,7 @@ export function renderDownloadsView() {
           } else movies.push(item);
         }
         const groups = [...seriesGroups.values()].map(episodes => ({
-          title: episodes[0].seriesTitle || episodes[0].title.replace(/\s*[·-]\s*\d+\. Sezon\s+\d+\. Bölüm\s*$/i, ''), tmdbId: episodes[0].tmdbId, poster: episodes.find(ep => ep.poster)?.poster || '',
+          title: getSeriesName(episodes[0]), tmdbId: episodes[0].tmdbId, poster: episodes.find(ep => ep.poster)?.poster || '',
           posterCacheKey: episodes.find(ep => ep.posterCacheKey)?.posterCacheKey || `series_${episodes[0].tmdbId}`,
           backdrop: episodes.find(ep => ep.backdrop)?.backdrop || '', episodes: episodes.sort(episodeOrder),
           latest: Math.max(...episodes.map(ep => ep.downloadedAt || 0)), type: 'series'

@@ -3046,6 +3046,16 @@ export async function openPlayerModal({
     </div>
   `;
 
+  // Offline playback is deliberately a separate surface. Remove online series
+  // details from the DOM so stale CSS or WebView style ordering cannot expose
+  // the online episode list underneath the downloaded video.
+  if (isOfflinePlayback) {
+    modalContainer.classList.add('player-offline-playback');
+    modalContainer.querySelector('.dizisol-cinema-body')?.remove();
+    modalContainer.querySelector('.player-footer-bar')?.remove();
+    modalContainer.querySelector('.player-header-toggle')?.remove();
+    modalContainer.querySelector('.short-drama-artwork')?.remove();
+  }
   modalContainer.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   renderPlayerIcons(modalContainer);

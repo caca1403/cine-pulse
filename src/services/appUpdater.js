@@ -8,8 +8,8 @@ import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
 import { App } from '@capacitor/app';
 
-export const CURRENT_APP_VERSION = '1.1.30';
-export const CURRENT_VERSION_CODE = 140;
+export const CURRENT_APP_VERSION = '1.1.31';
+export const CURRENT_VERSION_CODE = 141;
 
 // The deployed manifest has explicit CORS headers. GitHub's release URL redirects
 // through several hosts and can fail WebView fetches before the app can notify.

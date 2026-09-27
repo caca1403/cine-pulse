@@ -146,8 +146,12 @@ export function openDataManagerModal() {
   const exportBtn = document.getElementById('btn-export-json');
   if (exportBtn) {
     exportBtn.addEventListener('click', () => {
-      exportDataAsJSON();
-      showToast('JSON yedek dosyası indirildi!', 'success');
+      try {
+        exportDataAsJSON();
+        showToast('JSON yedekleme tamamlandı.', 'success');
+      } catch (error) {
+        showToast(error?.message || 'JSON yedeği kaydedilemedi.', 'error');
+      }
     });
   }
 

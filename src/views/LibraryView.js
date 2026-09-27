@@ -257,7 +257,7 @@ export function renderLibraryView() {
           const list = await getDownloadedMediaList();
           offlineItems = list.map(it => ({
             id: it.tmdbId,
-            title: it.seriesTitle || it.title.replace(/\s*[·-]\s*\d+\. Sezon\s+\d+\. Bölüm\s*$/i, ''),
+            title: String(it.seriesTitle || it.title).replace(/\s*[·-]\s*\d+\.\s*Sezon\s+\d+\.\s*Bölüm.*$/i, '').trim(),
             episodeTitle: it.title,
             poster_path: it.poster,
             backdrop_path: it.backdrop,
@@ -463,8 +463,10 @@ export function renderLibraryView() {
               const offlinePlaybackUrl = await getDownloadedPlaybackUrl(item.id, item.season, item.episode);
               if (!offlinePlaybackUrl) throw new Error('İndirilen video dosyası bulunamadı.');
               openPlayerModal({
-                type: item.type === 'movie' ? 'movie' : 'tv', tmdbId: item.id, title: item.title,
-                seriesTitle: item.title, season: item.season || 1, episode: item.episode || 1,
+                type: item.type === 'movie' ? 'movie' : 'tv', isSeries: item.season !== null && item.episode !== null,
+                tmdbId: item.id, title: item.season !== null && item.episode !== null ? item.title.replace(/\s*[·-]\s*\d+\.\s*Sezon\s+\d+\.\s*Bölüm.*$/i, '').trim() : item.title,
+                seriesTitle: item.season !== null && item.episode !== null ? item.title.replace(/\s*[·-]\s*\d+\.\s*Sezon\s+\d+\.\s*Bölüm.*$/i, '').trim() : '',
+                season: item.season || 1, episode: item.episode || 1,
                 posterPath: item.poster_path || '', backdropPath: item.backdrop_path || '', offlinePlaybackUrl, offlineMediaKind: item.mediaKind
               });
             } catch (error) { showToast(error?.message || 'İndirilen içerik açılamadı.', 'error'); }
@@ -782,7 +784,14 @@ export function renderLibraryView() {
       // Export JSON Button Handler
       const exportBtn = container.querySelector('#lib-export-btn');
       if (exportBtn) {
-        exportBtn.addEventListener('click', () => exportDataAsJSON());
+        exportBtn.addEventListener('click', () => {
+          try {
+            exportDataAsJSON();
+            showToast('JSON yedekleme tamamlandı.', 'success');
+          } catch (error) {
+            showToast(error?.message || 'JSON yedeği kaydedilemedi.', 'error');
+          }
+        });
       }
 
       // Quick Import JSON Button Handler
