@@ -1,9 +1,9 @@
 {
-  "version": "1.1.23",
-  "versionCode": 133,
+  "version": "1.1.24",
+  "versionCode": 134,
   "releaseDate": "2026-09-27",
-  "title": "CinePulse Android v1.1.23",
-  "releaseNotes": "• Uygulama içi güncelleme düğmesi en son imzalı APK dosyasına yönlendirilir.\n• Vercel APK indirme uç noktası eski sürümün önbellekten gelmesini engeller.\n• İndirilen diziler dikey afiş kartları ve sıralı bölüm listesiyle gösterilir.",
+  "title": "CinePulse Android v1.1.24",
+  "releaseNotes": "• Güncelleme denetimi GitHub Releases üzerindeki güncel version.json dosyasını okur; Raw CDN eski sürüm önbelleğine takılmaz.\n• Güncelleme düğmeleri en son imzalı APK dosyasına yönlenir.\n• İndirilen diziler afiş kartlarında, gerçek cihaz boş alanı depolama göstergesinde sunulur.",
   "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
   "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
   "mandatory": false
