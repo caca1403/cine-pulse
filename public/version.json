@@ -1,10 +1,10 @@
 {
-  "version": "1.1.31",
-  "versionCode": 141,
+  "version": "1.1.32",
+  "versionCode": 142,
   "releaseDate": "2026-09-27",
-  "title": "CinePulse Android v1.1.31",
-  "releaseNotes": "• İndirilen bölümler sezon listesinden açılsa bile ayrı çevrimdışı oynatıcıda açılır.\n• Android uygulamasında JSON yedeği İndirilenler/CinePulse klasörüne kaydedilir.\n• İndirilen oynatıcıdaki yinelenen dizi adı ve çevrimiçi bölüm alanı kaldırıldı.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.31/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.31/cinepulse.apk",
+  "title": "CinePulse Android v1.1.32",
+  "releaseNotes": "• İndirilen bölümler tüm açılış noktalarında cihazdan algılanıp çevrimdışı oynatıcıda açılır.\n• Aynı bölüm adı tek kez görünür ve çevrimiçi oynatma durumu değişmez.\n• İndir düğmesi içeriği doğrudan uygulama İndirilenler listesine kaydeder; JSON yedeği ayrı tutulur.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.32/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.32/cinepulse.apk",
   "mandatory": false
 }

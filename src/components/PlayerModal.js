@@ -40,6 +40,7 @@ import {
   getDownloadedPlaybackUrl,
   releaseDownloadedPlaybackUrls,
   deleteOfflineMedia,
+  getDownloadedMediaList,
   formatBytes,
   triggerNativeDeviceDownload
 } from '../services/offlineManager.js';
@@ -81,11 +82,53 @@ export async function openPlayerModal({
 }) {
   const modalContainer = document.getElementById('player-modal');
   if (!modalContainer) return;
-  const isOfflinePlayback = Boolean(offlinePlaybackUrl);
+  let offlineSavedItem = null;
+
+  // Make offline playback the default for a saved episode regardless of which
+  // screen launched it. Some entry points still call openPlayerModal directly.
+  if (!offlinePlaybackUrl && tmdbId && season !== null && episode !== null && season !== undefined && episode !== undefined) {
+    try {
+      offlineSavedItem = (await getDownloadedMediaList()).find(item =>
+        String(item.tmdbId) === String(tmdbId) && Number(item.season) === Number(season) && Number(item.episode) === Number(episode)
+      );
+    } catch (error) {
+      console.warn('[PlayerModal] Downloaded episode lookup failed; continuing online.', error);
+    }
+  }
 
   modalContainer.classList.toggle('player-variant-short-drama', playerVariant === 'short-drama');
 
   activeModalClose?.();
+
+  // Closing a previous player releases all cached blob URLs. Create the new
+  // playback URL only after that cleanup so the downloaded source stays alive.
+  if (offlineSavedItem || offlinePlaybackUrl) {
+    if (offlinePlaybackUrl) releaseDownloadedPlaybackUrls();
+    const localUrl = await getDownloadedPlaybackUrl(tmdbId, season, episode);
+    if (!localUrl) {
+      showToast('İndirilen video bulunamadı. İndirilenler listesini yenileyin.', 'error');
+      return;
+    }
+    offlinePlaybackUrl = localUrl;
+    if (offlineSavedItem) {
+      const seriesName = String(offlineSavedItem.seriesTitle || seriesTitle || title || offlineSavedItem.title || '')
+        .replace(/\s*[·-]\s*\d+\.\s*Sezon\s+\d+\.\s*Bölüm.*$/i, '')
+        .trim();
+      offlineMediaKind = offlineSavedItem.mediaKind || 'file';
+      initialIsSeries = true;
+      type = offlineSavedItem.type === 'anime' ? 'anime' : 'tv';
+      isAnime = offlineSavedItem.type === 'anime' || isAnime;
+      title = seriesName;
+      seriesTitle = seriesName;
+      originalTitle = originalTitle || seriesName;
+      posterPath = posterPath || offlineSavedItem.poster || '';
+      backdropPath = backdropPath || offlineSavedItem.backdrop || '';
+      currentTime = 0;
+      duration = 0;
+      roomSync = null;
+    }
+  }
+  const isOfflinePlayback = Boolean(offlinePlaybackUrl);
   modalContainer.classList.toggle('player-offline-playback', isOfflinePlayback);
   let closed = false;
   let discoveryGeneration = 0;
@@ -183,7 +226,7 @@ export async function openPlayerModal({
   const cleanSeriesName = rawSeries
     .replace(/\s*-\s*S\d+E\d+.*$/i, '')
     .replace(/\s*-\s*S\d+.*$/i, '')
-    .replace(/\s*-\s*\d+\.\s*Sezon.*$/i, '')
+    .replace(/\s*[·-]\s*\d+\.\s*Sezon.*$/i, '')
     .replace(/\s*:\s*.*$/, '')
     .replace(/\s*\(\d{4}\).*/, '')
     .trim();
