@@ -165,8 +165,7 @@ async function saveHlsResource(cache, key, index, url, onProgress, progress, sig
   }));
   progress.loaded += blob.size;
   progress.done += 1;
-  const pct = Math.min(99, 5 + Math.round((progress.done / progress.count) * 94));
-  onProgress({ percent: pct, loaded: progress.loaded, total: 0, status: `%${pct}` });
+  onProgress({ percent: 0, loaded: progress.loaded, total: 0, done: progress.done, count: progress.count, status: `${progress.done}/${progress.count} parça alındı` });
   return blob.size;
 }
 
@@ -434,9 +433,22 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
         onProgress({ percent, loaded, total, status: `%${percent} indiriliyor...` });
       }
       blob = new Blob(chunks, { type: response.headers.get('content-type') || 'video/mp4' });
+    } else if (response.body) {
+      const reader = response.body.getReader();
+      const chunks = [];
+      while (true) {
+        if (signal?.aborted) throw new Error('İndirme iptal edildi');
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loaded += value.length;
+        onProgress({ percent: 0, loaded, total: 0, status: `${formatBytes(loaded)} alındı` });
+      }
+      blob = new Blob(chunks, { type: response.headers.get('content-type') || 'video/mp4' });
     } else {
-      onProgress({ percent: 50, loaded: 0, total: 0, status: 'Veri alınıyor...' });
       blob = await response.blob();
+      loaded = blob.size;
+      onProgress({ percent: 0, loaded, total: 0, status: `${formatBytes(loaded)} alındı` });
     }
 
     if (signal?.aborted) throw new Error('İndirme iptal edildi');

@@ -1375,12 +1375,32 @@ export async function openPlayerModal({
     // Paint active state before any IndexedDB work so a tap responds at once.
     if (button && isCurrentDownloading) {
       const label = button.querySelector('span');
+      const progressPanel = modalContainer.querySelector('#player-download-progress');
+      const progress = activeDownloadProgress;
+      const hasKnownTotal = Number(progress.total) > 0;
+      const actualPercent = hasKnownTotal ? Math.min(100, Math.floor((progress.loaded / progress.total) * 100)) : 0;
       button.dataset.downloading = 'true';
       button.classList.add('is-downloading');
       button.classList.remove('is-downloaded');
-      const progressLabel = activeDownloadProgress.percent > 0 ? `%${activeDownloadProgress.percent}` : '…';
+      const progressLabel = hasKnownTotal ? `%${actualPercent}` : (progress.loaded > 0 ? formatBytes(progress.loaded) : '…');
       if (label) label.textContent = progressLabel;
-      button.title = activeDownloadProgress.status || 'İndirme başlatılıyor…';
+      button.title = progress.status || 'İndirme başlatılıyor…';
+      if (progressPanel) {
+        progressPanel.hidden = false;
+        progressPanel.classList.toggle('is-indeterminate', !hasKnownTotal && progress.loaded > 0);
+        const status = progressPanel.querySelector('[data-download-status]');
+        const amount = progressPanel.querySelector('[data-download-amount]');
+        const speed = progressPanel.querySelector('[data-download-speed]');
+        const bar = progressPanel.querySelector('[data-download-bar]');
+        if (status) status.textContent = progress.status || 'İndirme başlatılıyor…';
+        if (amount) amount.textContent = hasKnownTotal
+          ? `${formatBytes(progress.loaded)} / ${formatBytes(progress.total)} · %${actualPercent}`
+          : `${formatBytes(progress.loaded)} alındı`;
+        if (speed) speed.textContent = progress.speedBytesPerSecond > 0
+          ? `${formatBytes(progress.speedBytesPerSecond)}/sn`
+          : 'Hız hesaplanıyor…';
+        if (bar) bar.style.width = hasKnownTotal ? `${actualPercent}%` : '';
+      }
       renderPlayerIcons(button);
     }
 
@@ -1388,6 +1408,8 @@ export async function openPlayerModal({
     if (closed) return;
 
     if (button && !isCurrentDownloading) {
+      const progressPanel = modalContainer.querySelector('#player-download-progress');
+      if (progressPanel) progressPanel.hidden = true;
       const label = button.querySelector('span');
       if (downloaded) {
         button.dataset.downloaded = 'true';
@@ -1767,7 +1789,7 @@ export async function openPlayerModal({
     isDownloadingOffline = true;
     activeDownloadTargetKey = downloadKey;
     activeDownloadAbortController = new AbortController();
-    activeDownloadProgress = { percent: 0, loaded: 0, status: 'Kaynak aranıyor...' };
+    activeDownloadProgress = { percent: 0, loaded: 0, total: 0, speedBytesPerSecond: 0, updatedAt: Date.now(), status: 'Kaynak aranıyor...' };
     refreshOfflineDownloadButton();
     showToast(`“${getDisplayTitle()}” için indirme başlatılıyor…`, 'info');
 
@@ -1825,7 +1847,18 @@ export async function openPlayerModal({
             episode,
             streamUrl: downloadUrl
           }, progress => {
-            activeDownloadProgress = progress;
+            const previous = activeDownloadProgress;
+            const now = Date.now();
+            const elapsedSeconds = Math.max(0.1, (now - (previous.updatedAt || now)) / 1000);
+            const bytesDelta = Math.max(0, Number(progress.loaded || 0) - Number(previous.loaded || 0));
+            const measuredSpeed = bytesDelta / elapsedSeconds;
+            activeDownloadProgress = {
+              ...progress,
+              speedBytesPerSecond: measuredSpeed > 0
+                ? (previous.speedBytesPerSecond ? previous.speedBytesPerSecond * 0.65 + measuredSpeed * 0.35 : measuredSpeed)
+                : previous.speedBytesPerSecond,
+              updatedAt: now
+            };
             if (Number(progress.loaded) > 0 || Number(progress.percent) > 5) transferStarted = true;
             refreshOfflineDownloadButton();
           }, activeDownloadAbortController.signal);
@@ -2841,6 +2874,7 @@ export async function openPlayerModal({
             <button id="btn-player-theater" class="player-utility-action" title="Sinema Modu (Genişlet)"><i data-lucide="scan-line"></i><span>Sinema</span></button>
               <button id="btn-player-share" class="player-icon-action" type="button" title="Paylaş"><i data-lucide="share-2"></i></button>
             </div>
+            ${!offlinePlaybackUrl ? `<div id="player-download-progress" class="player-download-progress" hidden aria-live="polite"><div class="player-download-progress-head"><span data-download-status>İndirme başlatılıyor…</span><strong data-download-amount>0 B alındı</strong></div><div class="player-download-progress-track"><span data-download-bar></span></div><div class="player-download-progress-foot"><span>CinePulse İndirilenler’e kaydediliyor</span><span data-download-speed>Hız hesaplanıyor…</span></div></div>` : ''}
           </div>
         </section>
 
