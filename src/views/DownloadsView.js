@@ -45,9 +45,12 @@ export function renderDownloadsView() {
         try {
           const offlinePlaybackUrl = await getDownloadedPlaybackUrl(item.tmdbId, item.season, item.episode);
           if (!offlinePlaybackUrl) throw new Error('İndirilen video bulunamadı.');
+          const isEpisode = item.season !== null && item.episode !== null;
+          const seriesTitle = item.seriesTitle || item.title.replace(/\s*[·-]\s*\d+\. Sezon\s+\d+\. Bölüm\s*$/i, '');
           openPlayerModal({
-            type: item.type === 'movie' ? 'movie' : 'tv', tmdbId: item.tmdbId, title: item.title,
-            seriesTitle: item.title, season: item.season || 1, episode: item.episode || 1,
+            type: item.type === 'movie' ? 'movie' : 'tv', isSeries: isEpisode, isAnime: item.type === 'anime',
+            tmdbId: item.tmdbId, title: item.title, seriesTitle: isEpisode ? seriesTitle : '',
+            season: item.season || 1, episode: item.episode || 1,
             posterPath: item.poster || '', backdropPath: item.backdrop || '', offlinePlaybackUrl,
             offlineMediaKind: item.mediaKind || 'file'
           });

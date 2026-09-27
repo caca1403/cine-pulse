@@ -81,10 +81,12 @@ export async function openPlayerModal({
 }) {
   const modalContainer = document.getElementById('player-modal');
   if (!modalContainer) return;
+  const isOfflinePlayback = Boolean(offlinePlaybackUrl);
 
   modalContainer.classList.toggle('player-variant-short-drama', playerVariant === 'short-drama');
 
   activeModalClose?.();
+  modalContainer.classList.toggle('player-offline-playback', isOfflinePlayback);
   let closed = false;
   let discoveryGeneration = 0;
   let playbackGeneration = 0;
@@ -166,7 +168,7 @@ export async function openPlayerModal({
     isAnimeRecord({ id: tmdbId, title, seriesTitle, originalTitle })
   );
   if (effectiveIsAnime && tmdbId) {
-    registerAnimeId(tmdbId);
+    if (!isOfflinePlayback) registerAnimeId(tmdbId);
   }
 
   const isSeries = typeof initialIsSeries === 'boolean'
@@ -199,7 +201,7 @@ export async function openPlayerModal({
   let isSourcesPopoverOpen = false;
 
   // Async fetch TMDB metadata (seasons, missing poster/backdrop, movie details & cast/similar)
-  if (tmdbId) {
+  if (tmdbId && !isOfflinePlayback) {
     const isMovie = (!isSeries && type === 'movie');
     const tmdbEndpoint = isMovie 
       ? `https://api.themoviedb.org/3/movie/${tmdbId}?append_to_response=credits,similar,recommendations&api_key=${TMDB_API_KEY}&language=tr-TR`
@@ -261,9 +263,9 @@ export async function openPlayerModal({
       .catch(() => {});
   }
 
-  const existingRecord = getMediaProgress(tmdbId, currentSeason, currentEpisode);
+  const existingRecord = isOfflinePlayback ? null : getMediaProgress(tmdbId, currentSeason, currentEpisode);
   let initialTime = currentTime || (existingRecord ? existingRecord.currentTime : 0);
-  let isWatched = isMediaWatched(tmdbId, currentSeason, currentEpisode);
+  let isWatched = !isOfflinePlayback && isMediaWatched(tmdbId, currentSeason, currentEpisode);
   const estimatedDuration = duration > 0 ? duration : (type === 'movie' ? 6600 : 3000);
   let simulatedCurrentTime = initialTime;
   let isSwitchingEpisode = false;
@@ -318,7 +320,7 @@ export async function openPlayerModal({
 
   let lastProgressSaveTimestamp = 0;
   const persistCurrentProgress = (curTime, durTime, forceCompleted = null, immediate = false, isPaused = false) => {
-    if (!tmdbId) return;
+    if (!tmdbId || isOfflinePlayback) return;
     const cur = Math.max(0, Math.round(curTime ?? simulatedCurrentTime ?? 0));
     const dur = Math.max(0, Math.round(durTime || estimatedDuration || 0));
     simulatedCurrentTime = cur;
@@ -2085,7 +2087,7 @@ export async function openPlayerModal({
     if (currentSrv) {
       currentSrv.failed = true;
       currentSrv.failReason = reason;
-      rememberFailedSource({ category: currentCategory, source: currentSrv });
+      if (!isOfflinePlayback) rememberFailedSource({ category: currentCategory, source: currentSrv });
       console.warn(`[PlayerModal] Server failed: ${currentSrv.name} (${reason})`);
     }
 
@@ -2742,7 +2744,7 @@ export async function openPlayerModal({
     <!-- Ambient Backdrop Aura Glow -->
     <div class="player-ambient-backdrop" ${backdropPath ? `style="background-image: url('${backdropPath}');"` : ''}></div>
     
-    <div class="modal-content player-modal-content" id="cinema-modal-box">
+    <div class="modal-content player-modal-content${isOfflinePlayback ? ' player-offline-mode' : ''}" id="cinema-modal-box">
       ${roomSync ? `<aside id="room-player-hud" class="room-player-hud room-player-cloud-hud" aria-live="polite">
         <!-- Açılır Bulut Butonu (Cloud Floating Trigger) -->
         <button id="btn-room-cloud-toggle" class="room-cloud-pill-btn" type="button" aria-expanded="false" aria-label="Birlikte İzleme ve Sohbet Bulutu" title="Birlikte İzleme Menüsü">
@@ -2805,7 +2807,7 @@ export async function openPlayerModal({
           </button>
           
           <div class="player-title-box">
-            <span id="player-modal-title" class="player-header-title">${cleanSeriesName}</span>
+            <span id="player-modal-title" class="player-header-title">${isOfflinePlayback && isSeries ? `${cleanSeriesName} · S${currentSeason} B${currentEpisode}` : cleanSeriesName}</span>
             ${initialTime > 5 ? `
               <span id="player-resume-time-badge" class="player-resume-badge" title="Kaldığın Süre">
                 <i data-lucide="clock" style="width: 11px; height: 11px;"></i>
@@ -3461,10 +3463,10 @@ export async function openPlayerModal({
   }
 
   // Trigger initial drawer & mobile episode rail rendering for TV & Anime series, or movie info section
-  if (isSeries) {
+  if (isSeries && !isOfflinePlayback) {
     renderDrawerContent();
     updateEpisodeOverview(currentSeason, currentEpisode);
-  } else {
+  } else if (!isOfflinePlayback) {
     renderMovieInfoSection();
   }
 
@@ -3639,6 +3641,7 @@ export async function openPlayerModal({
     if (nextEpBtn) {
       nextEpBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        if (isOfflinePlayback) return;
         markEpisodeWatched(tmdbId, currentSeason, currentEpisode, true, {
           title: cleanSeriesName,
           posterPath,
@@ -3660,6 +3663,7 @@ export async function openPlayerModal({
   attachFooterNavEvents();
 
   const handleToggleWatched = () => {
+    if (isOfflinePlayback) return;
     isWatched = !isWatched;
     if (isSeries) {
       markEpisodeWatched(tmdbId, currentSeason, currentEpisode, isWatched, {
@@ -3700,6 +3704,7 @@ export async function openPlayerModal({
   };
 
   const handleHalfway = () => {
+    if (isOfflinePlayback) return;
     saveWatchProgress({
       id: tmdbId,
       title: cleanSeriesName,
@@ -5945,13 +5950,14 @@ export async function openPlayerModal({
         // probing every URL (which would consume mobile data and trigger CORS).
         let hasRecordedWorkingSource = false;
         const markSourceWorking = () => {
-          if (hasRecordedWorkingSource || closed || playbackRun !== playbackGeneration) return;
+          if (isOfflinePlayback || hasRecordedWorkingSource || closed || playbackRun !== playbackGeneration) return;
           hasRecordedWorkingSource = true;
           rememberWorkingSource({ contentKey: getSourceContentKey(), category: currentCategory, source: srv });
         };
         playbackScope.on(videoEl, 'playing', markSourceWorking);
         playbackScope.on(videoEl, 'timeupdate', markSourceWorking);
         playbackScope.on(videoEl, 'error', () => {
+          if (isOfflinePlayback) return;
           rememberFailedSource({ category: currentCategory, source: srv });
         });
 
@@ -6190,11 +6196,12 @@ export async function openPlayerModal({
   } else {
     startServerDiscovery();
   }
-  if (type === 'tv') renderDrawerContent();
+    if (type === 'tv' && !isOfflinePlayback) renderDrawerContent();
   startWatchProgressLoop();
 
   // In-Place Episode Switching
   async function switchEpisodeInPlayer(newSeason, newEpisode) {
+    if (isOfflinePlayback) return;
     if (isSwitchingEpisode) return;
     if (roomSync && !applyingRoomSync && !requireRoomModerator()) return;
     isSwitchingEpisode = true;
@@ -6486,6 +6493,7 @@ export async function openPlayerModal({
     });
 
     modalContainer.classList.add('hidden');
+    modalContainer.classList.remove('player-offline-playback');
     modalContainer.innerHTML = '';
     document.body.style.overflow = '';
     document.removeEventListener('keydown', handleKeydown);

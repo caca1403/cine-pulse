@@ -8,8 +8,8 @@ import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
 import { App } from '@capacitor/app';
 
-export const CURRENT_APP_VERSION = '1.1.29';
-export const CURRENT_VERSION_CODE = 139;
+export const CURRENT_APP_VERSION = '1.1.30';
+export const CURRENT_VERSION_CODE = 140;
 
 // The deployed manifest has explicit CORS headers. GitHub's release URL redirects
 // through several hosts and can fail WebView fetches before the app can notify.
@@ -220,7 +220,7 @@ export function showUpdateModal(updateInfo) {
       if (window.CinePulseNative?.downloadApk) {
         try {
           window.CinePulseNative.downloadApk(targetUrl);
-          showToast('APK Android İndirme Yöneticisi’ne eklendi. İlerleme bildirim çubuğunda görünecek.', 'success');
+          showToast('İndirme bildirimi açıldı. İndirme bitince bildirime dokunup Android kurulum ekranını aç.', 'success');
           modal.remove();
           return;
         } catch (_) {}

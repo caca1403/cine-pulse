@@ -14447,6 +14447,20 @@ video::cue {
   border-color: rgba(148, 163, 184, .17);
 }
 
+/* Offline playback is a focused video surface without online series navigation. */
+#player-modal.player-offline-playback .player-ambient-backdrop,
+#player-modal.player-offline-playback .dizisol-cinema-body,
+#player-modal.player-offline-playback .player-footer-bar,
+#player-modal.player-offline-playback .player-header-toggle { display:none !important; }
+#player-modal.player-offline-playback .player-modal-content { overflow:hidden !important; }
+#player-modal.player-offline-playback .player-stage-wrapper { flex:1 1 auto !important; width:100% !important; height:auto !important; max-height:none !important; min-height:0 !important; aspect-ratio:auto !important; }
+#player-modal.player-offline-playback .player-iframe-container { flex:1 1 auto; width:100%; height:100%; min-height:0; }
+#player-modal.player-offline-playback .player-header-right .desktop-only-tool { display:none !important; }
+@media (max-width:768px) {
+  #player-modal.player-offline-playback .player-modal-content { height:100dvh !important; max-height:100dvh !important; }
+  #player-modal.player-offline-playback .player-stage-wrapper { max-height:none !important; }
+}
+
 /* Keep the modal backdrop under the system status bar, while offsetting the
    player sheet itself. This paints an opaque black screen behind status icons
    so the page opened before the player can never show through there. */
