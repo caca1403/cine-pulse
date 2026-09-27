@@ -1,9 +1,14 @@
 package com.cinepulse.studio;
 
-import android.content.Intent;
+import android.app.DownloadManager;
+import android.content.Context;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
+import android.webkit.URLUtil;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -16,21 +21,37 @@ public class MainActivity extends BridgeActivity {
                     @Override
                     public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
                         try {
-                            Intent intent = new Intent(Intent.ACTION_VIEW);
-                            intent.setData(Uri.parse(url));
-                            intent.addCategory(Intent.CATEGORY_BROWSABLE);
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            startActivity(intent);
-                        } catch (Exception e1) {
-                            try {
-                                Intent chooserIntent = Intent.createChooser(new Intent(Intent.ACTION_VIEW, Uri.parse(url)), "İndirici Seçin");
-                                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                startActivity(chooserIntent);
-                            } catch (Exception ignored) {}
-                        }
+                            enqueueDownload(url, userAgent, contentDisposition, mimeType);
+                        } catch (Exception ignored) {}
                     }
                 });
             }
         } catch (Exception ignored) {}
+    }
+
+    private void enqueueDownload(String url, String userAgent, String contentDisposition, String mimeType) {
+        Uri uri = Uri.parse(url);
+        DownloadManager.Request request = new DownloadManager.Request(uri);
+        String cookie = CookieManager.getInstance().getCookie(url);
+        if (cookie != null && !cookie.isEmpty()) request.addRequestHeader("Cookie", cookie);
+        if (userAgent != null && !userAgent.isEmpty()) request.addRequestHeader("User-Agent", userAgent);
+        request.setTitle(URLUtil.guessFileName(url, contentDisposition, mimeType));
+        request.setDescription("CinePulse bölüm indiriliyor");
+        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,
+                URLUtil.guessFileName(url, contentDisposition, mimeType));
+        DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+        if (manager == null) throw new IllegalStateException("Android indirme servisi kullanılamıyor");
+        long downloadId = manager.enqueue(request);
+        Cursor cursor = manager.query(new DownloadManager.Query().setFilterById(downloadId));
+        if (cursor != null) {
+            try {
+                if (cursor.moveToFirst() && cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) == DownloadManager.STATUS_FAILED) {
+                    throw new IllegalStateException("Android indirme kuyruğu isteği reddetti");
+                }
+            } finally {
+                cursor.close();
+            }
+        }
     }
 }
