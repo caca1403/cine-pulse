@@ -1320,10 +1320,12 @@ export async function openPlayerModal({
     if (!srv) return false;
     const u = getStreamSafeUrl(srv);
     if (!u) return false;
-    if (srv.isDirectVideo || srv.isHls) return true;
+    if (srv.isDirectVideo || srv.isHls || srv.isTorrent) return true;
     if (/\.(?:m3u8|mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u)) return true;
     if (u.includes('/api/hls_proxy') || u.includes('/api/snx') || u.includes('/api/dzs') || u.includes('/api/rtv') || u.includes('/api/czm') || u.includes('/api/jet')) return true;
-    return false;
+    // Many providers expose only an embed/player URL. Keep it selectable so
+    // resolveDirectStream can turn supported players into a media URL below.
+    return /^https?:\/\//i.test(u) && !/^https?:\/\/[^/]+\/?$/i.test(u);
   }
 
   function getAllDownloadableStreams() {
@@ -1341,6 +1343,7 @@ export async function openPlayerModal({
         displayName: srv.displayName || srv.name || 'Yayın Hattı',
         isDirectVideo: Boolean(srv.isDirectVideo || /\.(?:mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u)),
         isHls: Boolean(srv.isHls || u.includes('.m3u8') || u.includes('/api/hls_proxy')),
+        isTorrent: Boolean(srv.isTorrent || u.startsWith('magnet:')),
         category: extraCategory || srv.category || currentCategory
       });
     };
@@ -1437,7 +1440,7 @@ export async function openPlayerModal({
     let streams = isCurrentEp ? getAllDownloadableStreams() : [];
     
     // If not current episode, fetch sources for that episode
-    if (!isCurrentEp && streams.length === 0) {
+    if (!isCurrentEp || streams.length === 0) {
       body.innerHTML = `
         <div class="drawer-loading" style="padding: 2.5rem 1rem; text-align: center;">
           <div class="drawer-spinner" style="margin: 0 auto 1rem;"></div>
@@ -1455,7 +1458,7 @@ export async function openPlayerModal({
           isDub: currentCategory === 'dubbed'
         });
         if (Array.isArray(episodeSources) && episodeSources.length > 0) {
-          streams = episodeSources.map(srv => ({
+          const extraStreams = episodeSources.map(srv => ({
             server: srv,
             streamUrl: getStreamSafeUrl(srv),
             displayName: srv.displayName || srv.name || 'DS 1080p',
@@ -1463,6 +1466,8 @@ export async function openPlayerModal({
             isHls: Boolean(srv.isHls),
             category: currentCategory
           })).filter(s => s.streamUrl);
+          const knownUrls = new Set(streams.map(s => s.streamUrl));
+          streams.push(...extraStreams.filter(s => !knownUrls.has(s.streamUrl)));
         }
       } catch (_) {}
     }
@@ -1645,10 +1650,17 @@ export async function openPlayerModal({
       });
 
       // Event: Native Device Download (1DM / ADM / Browser)
-      body.querySelector('#btn-dl-native-start')?.addEventListener('click', () => {
+      body.querySelector('#btn-dl-native-start')?.addEventListener('click', async () => {
         if (!selectedStream) return;
-        showToast('📥 İndirme başlatılıyor... İndirici (1DM, ADM veya Tarayıcı) açılıyor...', 'info');
-        triggerNativeDeviceDownload(selectedStream.streamUrl, filename);
+        try {
+          const resolved = await resolveDirectStream(selectedStream.server || { streamUrl: selectedStream.streamUrl }) || selectedStream.server;
+          const downloadUrl = getStreamSafeUrl(resolved) || selectedStream.streamUrl;
+          if (!downloadUrl || downloadUrl.startsWith('magnet:')) throw new Error('Bu kaynak doğrudan dosya indirmeyi desteklemiyor.');
+          showToast('📥 İndirme başlatılıyor...', 'info');
+          triggerNativeDeviceDownload(downloadUrl, filename);
+        } catch (err) {
+          showToast(err?.message || 'Kaynak indirme bağlantısına çözümlenemedi.', 'error');
+        }
       });
 
       // Event: Copy link
@@ -1683,6 +1695,9 @@ export async function openPlayerModal({
         showToast(`🚀 Çevrimdışı indirme başladı: ${displayTitle}`, 'info');
 
         try {
+          const resolved = await resolveDirectStream(selectedStream.server || { streamUrl: selectedStream.streamUrl }) || selectedStream.server;
+          const downloadUrl = getStreamSafeUrl(resolved) || selectedStream.streamUrl;
+          if (!downloadUrl || downloadUrl.startsWith('magnet:')) throw new Error('Bu kaynak uygulama içi indirme için doğrudan video sunmuyor.');
           await startOfflineDownload({
             tmdbId,
             type: isTargetSeries ? 'tv' : 'movie',
@@ -1691,7 +1706,7 @@ export async function openPlayerModal({
             backdrop: backdropPath,
             season: sNum,
             episode: epNum,
-            streamUrl: selectedStream.streamUrl
+            streamUrl: downloadUrl
           }, (prog) => {
             activeDownloadProgress = prog;
             const bar = body.querySelector('.dl-progress-bar');
@@ -1729,6 +1744,84 @@ export async function openPlayerModal({
     };
 
     renderDownloadBody();
+  }
+
+  async function downloadCurrentMediaDirectly() {
+    const season = isSeries ? currentSeason : null;
+    const episode = isSeries ? currentEpisode : null;
+    const downloadKey = getItemOfflineKey(season, episode);
+    if (isDownloadingOffline) {
+      showToast('Bir indirme zaten devam ediyor.', 'info');
+      return;
+    }
+
+    let streams = getAllDownloadableStreams();
+    if (streams.length === 0 && isSeries) {
+      try {
+        const episodeSources = await fetchDizisolEpisodeSources({
+          titles: [cleanSeriesName, seriesTitle, originalTitle].filter(Boolean),
+          seriesTitle: cleanSeriesName,
+          originalTitle,
+          season,
+          episode,
+          tmdbId,
+          isDub: currentCategory === 'dubbed'
+        });
+        streams = (episodeSources || []).map(server => ({
+          server,
+          streamUrl: getStreamSafeUrl(server),
+          displayName: server.displayName || server.name || 'Dizisol',
+          isDirectVideo: Boolean(server.isDirectVideo),
+          isHls: Boolean(server.isHls),
+          category: currentCategory
+        })).filter(stream => stream.streamUrl);
+      } catch (_) {}
+    }
+
+    const stream = streams.find(item => item.isDirectVideo && !item.isHls) || streams.find(item => !item.isTorrent) || streams[0];
+    if (!stream) {
+      showToast('Bu bölüm için indirilebilir yayın bulunamadı. Önce kaynakların yüklenmesini bekleyin.', 'error');
+      return;
+    }
+
+    isDownloadingOffline = true;
+    activeDownloadTargetKey = downloadKey;
+    activeDownloadAbortController = new AbortController();
+    activeDownloadProgress = { percent: 1, loaded: 0, status: 'Başlatılıyor...' };
+    refreshOfflineDownloadButton();
+    showToast(`“${getDisplayTitle()}” indiriliyor…`, 'info');
+
+    try {
+      const resolved = await resolveDirectStream(stream.server || { streamUrl: stream.streamUrl }) || stream.server;
+      const downloadUrl = getStreamSafeUrl(resolved) || stream.streamUrl;
+      if (!downloadUrl || downloadUrl.startsWith('magnet:')) {
+        throw new Error('Seçilen kaynak doğrudan indirilebilir video sunmuyor.');
+      }
+      await startOfflineDownload({
+        tmdbId,
+        type: isSeries ? 'tv' : 'movie',
+        title: isSeries ? `${cleanSeriesName} · ${season}. Sezon ${episode}. Bölüm` : cleanSeriesName,
+        poster: posterPath,
+        backdrop: backdropPath,
+        season,
+        episode,
+        streamUrl: downloadUrl
+      }, progress => {
+        activeDownloadProgress = progress;
+        refreshOfflineDownloadButton();
+      }, activeDownloadAbortController.signal);
+      showToast(`“${getDisplayTitle()}” indirildi. İndirilenler bölümünden çevrimdışı izleyebilirsin.`, 'success');
+    } catch (err) {
+      if (err?.message !== 'İndirme iptal edildi') {
+        console.error('[Download] Direct download failed:', err);
+        showToast(err?.message || 'İndirme başlatılamadı. Kaynak indirilebilir biçimde değil.', 'error');
+      }
+    } finally {
+      isDownloadingOffline = false;
+      activeDownloadTargetKey = null;
+      activeDownloadAbortController = null;
+      refreshOfflineDownloadButton();
+    }
   }
 
   function updateCategoryCounts() {
@@ -6158,7 +6251,7 @@ export async function openPlayerModal({
     btnPlayerDownload.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openDownloadModal(isSeries ? currentSeason : null, isSeries ? currentEpisode : null);
+      downloadCurrentMediaDirectly();
     });
   }
 
