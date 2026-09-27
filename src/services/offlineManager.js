@@ -68,6 +68,24 @@ export function extractTargetAndRef(urlStr) {
   }
 }
 
+// Android WebView's StorageManager/StatFs bridge reports real device storage.
+// Browsers intentionally expose only origin quota, so use that as a fallback.
+export async function getDeviceStorageInfo() {
+  try {
+    const nativeInfo = window.CinePulseNative?.getDeviceStorageInfo?.();
+    if (nativeInfo) {
+      const parsed = JSON.parse(nativeInfo);
+      if (Number.isFinite(parsed.total) && Number.isFinite(parsed.free)) return parsed;
+    }
+  } catch (_) {}
+  try {
+    const { quota = 0, usage = 0 } = await navigator.storage.estimate();
+    return { total: quota, free: Math.max(0, quota - usage), isOriginQuota: true };
+  } catch (_) {
+    return { total: 0, free: 0, isOriginQuota: true };
+  }
+}
+
 export function resolvePlaylistUrl(uri, baseUrl) {
   const cleanUri = (uri || '').trim();
   if (!cleanUri) return '';
@@ -373,7 +391,7 @@ export function releaseDownloadedPlaybackUrls() {
  * Save / Download video stream for offline viewing with progress callback
  */
 export async function startOfflineDownload(mediaData, onProgress = () => {}, signal = null) {
-  const { tmdbId, type, title, poster, backdrop, season, episode, streamUrl } = mediaData;
+  const { tmdbId, type, title, seriesTitle = '', poster, backdrop, season, episode, streamUrl } = mediaData;
   if (!streamUrl) throw new Error('İndirilecek medya bağlantısı bulunamadı.');
   if (!('caches' in window)) throw new Error('Bu cihaz çevrimdışı depolamayı desteklemiyor.');
 
@@ -401,7 +419,7 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
       const bundle = await downloadHlsBundle(cache, key, response, firstText, onProgress, signal);
       const db = await openDB();
       const itemRecord = {
-        key, tmdbId: String(tmdbId), type: type || 'tv', title: title || 'İsimsiz İçerik', poster: poster || '', backdrop: backdrop || '',
+        key, tmdbId: String(tmdbId), type: type || 'tv', title: title || 'İsimsiz İçerik', seriesTitle: seriesTitle || '', poster: poster || '', backdrop: backdrop || '',
         season: season !== null ? Number(season) : null, episode: episode !== null ? Number(episode) : null,
         sizeBytes: bundle.sizeBytes, downloadedAt: Date.now(), mediaKind: 'hls',
         playlistTemplate: bundle.playlistTemplate, resourceKeys: bundle.resourceKeys
@@ -471,6 +489,7 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
       tmdbId: String(tmdbId),
       type: type || 'movie',
       title: title || 'İsimsiz İçerik',
+      seriesTitle: seriesTitle || '',
       poster: poster || '',
       backdrop: backdrop || '',
       season: season !== null ? Number(season) : null,

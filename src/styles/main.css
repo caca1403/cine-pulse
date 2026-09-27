@@ -14507,6 +14507,32 @@ html.native-android #player-modal .player-modal-content {
 .offline-download-info small { color:#34d399; font-size:.7rem; }
 .offline-play-btn { display:inline-flex; align-items:center; gap:6px; padding:10px 13px; border:1px solid rgba(16,185,129,.4); border-radius:11px; color:#d1fae5; background:rgba(5,150,105,.2); font:inherit; font-size:.78rem; font-weight:750; }
 .offline-play-btn svg { width:16px; height:16px; }
+.offline-download-poster-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); align-items:start; gap:14px; }
+.offline-series-card { min-width:0; overflow:hidden; border:1px solid rgba(148,163,184,.16); border-radius:16px; background:linear-gradient(145deg,rgba(15,23,42,.94),rgba(7,10,18,.96)); }
+.offline-series-toggle { display:grid; width:100%; padding:9px; gap:8px; border:0; color:inherit; text-align:left; background:transparent; }
+.offline-series-poster { position:relative; display:block; width:100%; aspect-ratio:2/3; overflow:hidden; border-radius:10px; background:#111827; }
+.offline-series-poster img { display:block; width:100%; height:100%; object-fit:cover; }
+.offline-series-ready { position:absolute; left:7px; bottom:7px; display:flex; align-items:center; gap:4px; padding:4px 6px; border-radius:7px; color:#d1fae5; background:rgba(5,80,58,.9); font-size:.56rem; font-weight:850; }
+.offline-series-ready svg { width:11px; height:11px; }
+.offline-series-summary { display:grid; min-width:0; gap:4px; padding:0 2px 3px; }
+.offline-series-summary strong { overflow:hidden; color:#f8fafc; font-size:.82rem; text-overflow:ellipsis; white-space:nowrap; }
+.offline-series-summary small { color:#94a3b8; font-size:.66rem; }
+.offline-series-chevron { justify-self:center; width:18px; height:18px; color:#94a3b8; transition:transform .2s ease; }
+.offline-series-toggle[aria-expanded="true"] .offline-series-chevron { transform:rotate(180deg); }
+.offline-series-episodes { padding:0 8px 9px; border-top:1px solid rgba(148,163,184,.12); }
+.offline-series-season h3 { margin:11px 0 6px; color:#6ee7b7; font-size:.7rem; }
+.offline-series-episode { display:grid; grid-template-columns:23px minmax(0,1fr) 30px 30px; align-items:center; gap:4px; margin-top:5px; padding:6px 4px; border:1px solid rgba(148,163,184,.1); border-radius:9px; background:rgba(2,6,23,.35); }
+.offline-series-episode-no { display:grid; place-items:center; width:21px; height:21px; border-radius:6px; color:#a7f3d0; background:rgba(16,185,129,.12); font-size:.6rem; font-weight:850; }
+.offline-series-episode-copy { display:grid; min-width:0; gap:2px; }
+.offline-series-episode-copy strong { overflow:hidden; color:#e2e8f0; font-size:.6rem; text-overflow:ellipsis; white-space:nowrap; }
+.offline-series-episode-copy small { color:#94a3b8; font-size:.52rem; }
+.offline-series-episode .offline-play-btn,.offline-series-episode .btn-lib-delete { display:grid; place-items:center; width:30px; height:29px; min-height:0; padding:0; border:1px solid rgba(16,185,129,.25); border-radius:8px; color:#a7f3d0; background:rgba(5,150,105,.12); }
+.offline-series-episode .btn-lib-delete { border-color:rgba(248,113,113,.2); color:#fca5a5; background:rgba(127,29,29,.12); }
+.offline-series-episode svg { width:14px; height:14px; }
+.offline-movie-card { display:grid; padding:9px; gap:9px; }
+.offline-movie-actions { display:flex; gap:7px; }
+.offline-movie-actions .offline-play-btn { display:flex; flex:1; justify-content:center; min-height:34px; padding:7px; }
+.offline-movie-actions .btn-lib-delete { width:36px; }
 .downloads-page { max-width:980px; min-height:calc(100dvh - 88px); margin:0 auto; padding:clamp(100px,14vw,145px) 20px 120px; color:#f8fafc; }
 .downloads-page-header { display:flex; align-items:center; gap:16px; margin-bottom:25px; }
 .downloads-page-icon { display:grid; place-items:center; width:56px; height:56px; flex:none; border:1px solid rgba(52,211,153,.28); border-radius:17px; color:#6ee7b7; background:linear-gradient(145deg,rgba(16,185,129,.21),rgba(15,23,42,.55)); }

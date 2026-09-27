@@ -31,8 +31,10 @@ import { prefetchBackdrops } from '../services/fanartService.js';
 import { openDataManagerModal } from '../components/DataManagerModal.js';
 import { showToast } from '../components/Toast.js';
 import { getDownloadedMediaList, deleteOfflineMedia, getDownloadedPlaybackUrl, formatBytes } from '../services/offlineManager.js';
-import { isNativeAndroidApp } from '../services/appUpdater.js';
 import { openPlayerModal } from '../components/openPlayer.js';
+import { SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
+
+const escapeOfflineHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
 function renderLibraryCard(item, tabType) {
   const resolvedType = determineMediaType(item);
@@ -55,7 +57,7 @@ function renderLibraryCard(item, tabType) {
 }
 
 export function renderLibraryView() {
-  const showOfflineDownloads = isNativeAndroidApp();
+  const showOfflineDownloads = true;
   const allHistory = getWatchHistory();
   const groupedHistory = getGroupedWatchHistory();
   const favorites = getFavorites();
@@ -255,7 +257,8 @@ export function renderLibraryView() {
           const list = await getDownloadedMediaList();
           offlineItems = list.map(it => ({
             id: it.tmdbId,
-            title: it.title,
+            title: it.seriesTitle || it.title.replace(/\s*[·-]\s*\d+\. Sezon\s+\d+\. Bölüm\s*$/i, ''),
+            episodeTitle: it.title,
             poster_path: it.poster,
             backdrop_path: it.backdrop,
             type: it.type,
@@ -265,7 +268,8 @@ export function renderLibraryView() {
             sizeBytes: it.sizeBytes,
             mediaKind: it.mediaKind || 'file',
             isDownloaded: true,
-            key: it.key
+            key: it.key,
+            downloadedAt: it.downloadedAt
           }));
           const countEl = container.querySelector('#tab-count-downloads');
           if (countEl) countEl.textContent = offlineItems.length;
@@ -416,53 +420,87 @@ export function renderLibraryView() {
         if (filtered.length === 0) {
           activeContent.innerHTML = getEmptyState(currentTab);
         } else if (currentTab === 'downloads') {
+          const grouped = new Map();
+          const movies = [];
+          filtered.forEach(item => {
+            if (item.season !== null && item.episode !== null) {
+              const key = String(item.id);
+              if (!grouped.has(key)) grouped.set(key, []);
+              grouped.get(key).push(item);
+            } else movies.push(item);
+          });
+          const series = [...grouped.values()].map(episodes => ({
+            id: episodes[0].id,
+            title: episodes[0].title,
+            poster_path: episodes.find(ep => ep.poster_path)?.poster_path || '',
+            episodes: episodes.sort((a, b) => (a.season - b.season) || (a.episode - b.episode)),
+            latest: Math.max(...episodes.map(ep => ep.downloadedAt || 0))
+          }));
+          const cards = [...series.map(item => ({ ...item, cardType: 'series' })), ...movies.map(item => ({ ...item, cardType: 'movie' }))]
+            .sort((a, b) => (b.latest || b.downloadedAt || 0) - (a.latest || a.downloadedAt || 0));
           activeContent.innerHTML = `
-            <div class="offline-download-list">
-              ${filtered.map(item => `
-                <article class="offline-download-card" data-offline-id="${item.id}" data-season="${item.season ?? ''}" data-episode="${item.episode ?? ''}">
-                  <img src="${item.backdrop_path || item.poster_path || ''}" alt="" loading="lazy" />
-                  <div class="offline-download-info"><strong>${item.title}</strong><span>${item.isSeries ? `S${item.season} · B${item.episode}` : 'Film'} · ${formatBytes(item.sizeBytes)}</span><small>Bu cihaza kaydedildi · İnternetsiz izlenebilir</small></div>
-                  <button class="offline-play-btn" type="button"><i data-lucide="play"></i><span>Oynat</span></button>
-                  <button class="btn-delete-history btn-lib-delete" title="Cihazdan sil" aria-label="Cihazdan sil"><i data-lucide="trash-2"></i></button>
+            <div class="offline-download-list offline-download-poster-grid">
+              ${cards.map((card, index) => card.cardType === 'series' ? `
+                <article class="offline-series-card" data-series-index="${index}">
+                  <button class="offline-series-toggle" type="button" aria-expanded="false">
+                    <span class="offline-series-poster"><img src="${escapeOfflineHtml(card.poster_path || SINEFLIX_POSTER_FALLBACK)}" alt="${escapeOfflineHtml(card.title)} afişi" loading="lazy"><span class="offline-series-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
+                    <span class="offline-series-summary"><strong>${escapeOfflineHtml(card.title)}</strong><small>${card.episodes.length} bölüm · ${new Set(card.episodes.map(ep => ep.season)).size} sezon</small></span>
+                    <i data-lucide="chevron-down" class="offline-series-chevron"></i>
+                  </button>
+                  <div class="offline-series-episodes" hidden>${[...new Set(card.episodes.map(ep => ep.season))].sort((a,b) => a-b).map(season => `<section class="offline-series-season"><h3>Sezon ${season}</h3>${card.episodes.filter(ep => ep.season === season).map(ep => `<article class="offline-series-episode" data-offline-key="${escapeOfflineHtml(ep.key)}"><span class="offline-series-episode-no">${String(ep.episode).padStart(2, '0')}</span><span class="offline-series-episode-copy"><strong>${escapeOfflineHtml(ep.episodeTitle || ep.title)}</strong><small>Bölüm ${ep.episode} · ${formatBytes(ep.sizeBytes)}</small></span><button class="offline-play-btn" type="button" aria-label="Oynat"><i data-lucide="play"></i></button><button class="btn-delete-history btn-lib-delete" title="Cihazdan sil" aria-label="Cihazdan sil"><i data-lucide="trash-2"></i></button></article>`).join('')}</section>`).join('')}</div>
+                </article>` : `
+                <article class="offline-series-card offline-movie-card" data-offline-key="${escapeOfflineHtml(card.key)}">
+                  <span class="offline-series-poster"><img src="${escapeOfflineHtml(card.poster_path || SINEFLIX_POSTER_FALLBACK)}" alt="${escapeOfflineHtml(card.title)} afişi" loading="lazy"><span class="offline-series-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
+                  <span class="offline-series-summary"><strong>${escapeOfflineHtml(card.title)}</strong><small>Film · ${formatBytes(card.sizeBytes)}</small></span>
+                  <div class="offline-movie-actions"><button class="offline-play-btn" type="button"><i data-lucide="play"></i><span>Oynat</span></button><button class="btn-delete-history btn-lib-delete" title="Cihazdan sil" aria-label="Cihazdan sil"><i data-lucide="trash-2"></i></button></div>
                 </article>`).join('')}
             </div>`;
-          activeContent.querySelectorAll('.offline-play-btn').forEach(button => {
-            button.addEventListener('click', async () => {
-              const row = button.closest('.offline-download-card');
-              const id = row?.dataset.offlineId;
-              const season = row?.dataset.season ? Number(row.dataset.season) : null;
-              const episode = row?.dataset.episode ? Number(row.dataset.episode) : null;
-              const item = offlineItems.find(entry => String(entry.id) === String(id) && entry.season === season && entry.episode === episode);
-              if (!item) return;
-              button.disabled = true;
-              try {
-                const offlinePlaybackUrl = await getDownloadedPlaybackUrl(id, season, episode);
-                if (!offlinePlaybackUrl) throw new Error('İndirilen video dosyası bulunamadı.');
-                openPlayerModal({
-                  type: item.type === 'movie' ? 'movie' : 'tv', tmdbId: id, title: item.title,
-                  seriesTitle: item.title, season: season || 1, episode: episode || 1,
-                  posterPath: item.poster_path || '', backdropPath: item.backdrop_path || '', offlinePlaybackUrl, offlineMediaKind: item.mediaKind
-                });
-              } catch (error) {
-                showToast(error?.message || 'İndirilen içerik açılamadı.', 'error');
-              } finally { button.disabled = false; }
+          const playOfflineItem = async (row, item) => {
+            if (!item) return;
+            const button = row.querySelector('.offline-play-btn');
+            button.disabled = true;
+            try {
+              const offlinePlaybackUrl = await getDownloadedPlaybackUrl(item.id, item.season, item.episode);
+              if (!offlinePlaybackUrl) throw new Error('İndirilen video dosyası bulunamadı.');
+              openPlayerModal({
+                type: item.type === 'movie' ? 'movie' : 'tv', tmdbId: item.id, title: item.title,
+                seriesTitle: item.title, season: item.season || 1, episode: item.episode || 1,
+                posterPath: item.poster_path || '', backdropPath: item.backdrop_path || '', offlinePlaybackUrl, offlineMediaKind: item.mediaKind
+              });
+            } catch (error) { showToast(error?.message || 'İndirilen içerik açılamadı.', 'error'); }
+            finally { button.disabled = false; }
+          };
+          const deleteOfflineItem = async item => {
+            if (!item || !window.confirm(`“${item.title}” indirilenlerden silinsin mi?`)) return;
+            await deleteOfflineMedia(item.id, item.season, item.episode);
+            offlineItems = offlineItems.filter(entry => String(entry.key) !== String(item.key));
+            const badge = container.querySelector('#tab-count-downloads');
+            if (badge) badge.textContent = String(offlineItems.length);
+            renderActiveTabContent();
+            showToast('İndirilen içerik cihazdan silindi.', 'success');
+          };
+          activeContent.querySelectorAll('.offline-series-card:not(.offline-movie-card)').forEach((card, index) => {
+            const seriesItem = cards.filter(item => item.cardType === 'series')[index];
+            const toggle = card.querySelector('.offline-series-toggle');
+            const episodesWrap = card.querySelector('.offline-series-episodes');
+            toggle.addEventListener('click', () => {
+              const open = toggle.getAttribute('aria-expanded') !== 'true';
+              toggle.setAttribute('aria-expanded', String(open));
+              episodesWrap.hidden = !open;
+            });
+            card.querySelectorAll('.offline-series-episode').forEach(row => {
+              const item = seriesItem.episodes.find(ep => String(ep.key) === row.dataset.offlineKey);
+              row.querySelector('.offline-play-btn').addEventListener('click', () => playOfflineItem(row, item));
+              row.querySelector('.btn-lib-delete').addEventListener('click', () => deleteOfflineItem(item));
             });
           });
-          activeContent.querySelectorAll('.offline-download-card .btn-lib-delete').forEach(button => {
-            button.addEventListener('click', async () => {
-              const row = button.closest('.offline-download-card');
-              const id = row?.dataset.offlineId;
-              const season = row?.dataset.season ? Number(row.dataset.season) : null;
-              const episode = row?.dataset.episode ? Number(row.dataset.episode) : null;
-              if (!id || !window.confirm('Bu indirilen içerik cihazdan silinsin mi?')) return;
-              await deleteOfflineMedia(id, season, episode);
-              offlineItems = offlineItems.filter(item => !(String(item.id) === String(id) && item.season === season && item.episode === episode));
-              const badge = container.querySelector('#tab-count-downloads');
-              if (badge) badge.textContent = String(offlineItems.length);
-              renderActiveTabContent();
-              showToast('İndirilen içerik cihazdan silindi.', 'success');
-            });
+          activeContent.querySelectorAll('.offline-movie-card').forEach(card => {
+            const item = movies.find(movie => String(movie.key) === card.dataset.offlineKey);
+            card.querySelector('.offline-play-btn').addEventListener('click', () => playOfflineItem(card, item));
+            card.querySelector('.btn-lib-delete').addEventListener('click', () => deleteOfflineItem(item));
           });
+          renderIcons(activeContent);
+          return;
         } else {
           const visibleChunk = filtered.slice(0, tabLimit);
           const hasMore = filtered.length > tabLimit;

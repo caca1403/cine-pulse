@@ -6,6 +6,8 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.StatFs;
+import android.webkit.JavascriptInterface;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.URLUtil;
@@ -17,6 +19,7 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         try {
             if (this.bridge != null && this.bridge.getWebView() != null) {
+                this.bridge.getWebView().addJavascriptInterface(new DeviceStorageBridge(), "CinePulseNative");
                 this.bridge.getWebView().setDownloadListener(new DownloadListener() {
                     @Override
                     public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
@@ -27,6 +30,20 @@ public class MainActivity extends BridgeActivity {
                 });
             }
         } catch (Exception ignored) {}
+    }
+
+    public final class DeviceStorageBridge {
+        @JavascriptInterface
+        public String getDeviceStorageInfo() {
+            try {
+                StatFs stats = new StatFs(Environment.getDataDirectory().getAbsolutePath());
+                long total = stats.getTotalBytes();
+                long free = stats.getAvailableBytes();
+                return "{\"total\":" + total + ",\"free\":" + free + "}";
+            } catch (Exception error) {
+                return "";
+            }
+        }
     }
 
     private void enqueueDownload(String url, String userAgent, String contentDisposition, String mimeType) {
