@@ -30,9 +30,9 @@ import { renderMediaCard, attachMediaCardEvents, upgradeLandscapeBackdrops, dete
 import { prefetchBackdrops } from '../services/fanartService.js';
 import { openDataManagerModal } from '../components/DataManagerModal.js';
 import { showToast } from '../components/Toast.js';
-import { getDownloadedMediaList, deleteOfflineMedia, getDownloadedPlaybackUrl, formatBytes } from '../services/offlineManager.js';
+import { getDownloadedMediaList, deleteOfflineMedia, getDownloadedPlaybackUrl, getOfflinePosterUrl, formatBytes } from '../services/offlineManager.js';
 import { openPlayerModal } from '../components/openPlayer.js';
-import { SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
+import { getImageUrl, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
 
 const escapeOfflineHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
@@ -259,7 +259,9 @@ export function renderLibraryView() {
             id: it.tmdbId,
             title: String(it.seriesTitle || it.title).replace(/\s*[·-]\s*\d+\.\s*Sezon\s+\d+\.\s*Bölüm.*$/i, '').trim(),
             episodeTitle: it.title,
-            poster_path: it.poster,
+            poster_path: getImageUrl(it.poster),
+            poster_source: it.poster || '',
+            poster_cache_key: it.posterCacheKey || '',
             backdrop_path: it.backdrop,
             type: it.type,
             isSeries: it.type === 'tv' || (it.season !== null && it.episode !== null),
@@ -432,7 +434,9 @@ export function renderLibraryView() {
           const series = [...grouped.values()].map(episodes => ({
             id: episodes[0].id,
             title: episodes[0].title,
-            poster_path: episodes.find(ep => ep.poster_path)?.poster_path || '',
+            poster_path: episodes.find(ep => ep.poster_path)?.poster_path || SINEFLIX_POSTER_FALLBACK,
+            poster_source: episodes.find(ep => ep.poster_source)?.poster_source || '',
+            poster_cache_key: episodes.find(ep => ep.poster_cache_key)?.poster_cache_key || '',
             episodes: episodes.sort((a, b) => (a.season - b.season) || (a.episode - b.episode)),
             latest: Math.max(...episodes.map(ep => ep.downloadedAt || 0))
           }));
@@ -443,18 +447,29 @@ export function renderLibraryView() {
               ${cards.map((card, index) => card.cardType === 'series' ? `
                 <article class="offline-series-card" data-series-index="${index}">
                   <button class="offline-series-toggle" type="button" aria-expanded="false">
-                    <span class="offline-series-poster"><img src="${escapeOfflineHtml(card.poster_path || SINEFLIX_POSTER_FALLBACK)}" alt="${escapeOfflineHtml(card.title)} afişi" loading="lazy"><span class="offline-series-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
+                    <span class="offline-series-poster"><img src="${escapeOfflineHtml(card.poster_path || SINEFLIX_POSTER_FALLBACK)}" data-offline-poster-key="${escapeOfflineHtml(card.poster_cache_key)}" data-offline-poster-source="${escapeOfflineHtml(card.poster_source)}" alt="${escapeOfflineHtml(card.title)} afişi" loading="lazy"><span class="offline-series-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
                     <span class="offline-series-summary"><strong>${escapeOfflineHtml(card.title)}</strong><small>${card.episodes.length} bölüm · ${new Set(card.episodes.map(ep => ep.season)).size} sezon</small></span>
                     <i data-lucide="chevron-down" class="offline-series-chevron"></i>
                   </button>
                   <div class="offline-series-episodes" hidden>${[...new Set(card.episodes.map(ep => ep.season))].sort((a,b) => a-b).map(season => `<section class="offline-series-season"><h3>Sezon ${season}</h3>${card.episodes.filter(ep => ep.season === season).map(ep => `<article class="offline-series-episode" data-offline-key="${escapeOfflineHtml(ep.key)}"><span class="offline-series-episode-no">${String(ep.episode).padStart(2, '0')}</span><span class="offline-series-episode-copy"><strong>${escapeOfflineHtml(ep.episodeTitle || ep.title)}</strong><small>Bölüm ${ep.episode} · ${formatBytes(ep.sizeBytes)}</small></span><button class="offline-play-btn" type="button" aria-label="Oynat"><i data-lucide="play"></i></button><button class="btn-delete-history btn-lib-delete" title="Cihazdan sil" aria-label="Cihazdan sil"><i data-lucide="trash-2"></i></button></article>`).join('')}</section>`).join('')}</div>
                 </article>` : `
                 <article class="offline-series-card offline-movie-card" data-offline-key="${escapeOfflineHtml(card.key)}">
-                  <span class="offline-series-poster"><img src="${escapeOfflineHtml(card.poster_path || SINEFLIX_POSTER_FALLBACK)}" alt="${escapeOfflineHtml(card.title)} afişi" loading="lazy"><span class="offline-series-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
+                  <span class="offline-series-poster"><img src="${escapeOfflineHtml(card.poster_path || SINEFLIX_POSTER_FALLBACK)}" data-offline-poster-key="${escapeOfflineHtml(card.poster_cache_key)}" data-offline-poster-source="${escapeOfflineHtml(card.poster_source)}" alt="${escapeOfflineHtml(card.title)} afişi" loading="lazy"><span class="offline-series-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
                   <span class="offline-series-summary"><strong>${escapeOfflineHtml(card.title)}</strong><small>Film · ${formatBytes(card.sizeBytes)}</small></span>
                   <div class="offline-movie-actions"><button class="offline-play-btn" type="button"><i data-lucide="play"></i><span>Oynat</span></button><button class="btn-delete-history btn-lib-delete" title="Cihazdan sil" aria-label="Cihazdan sil"><i data-lucide="trash-2"></i></button></div>
                 </article>`).join('')}
             </div>`;
+          activeContent.querySelectorAll('.offline-series-poster img').forEach(async image => {
+            image.addEventListener('error', () => {
+              if (image.dataset.fallbackApplied === 'true') return;
+              image.dataset.fallbackApplied = 'true';
+              image.src = SINEFLIX_POSTER_FALLBACK;
+            }, { once: true });
+            const key = image.dataset.offlinePosterKey;
+            if (!key) return;
+            const cachedPoster = await getOfflinePosterUrl(key, image.dataset.offlinePosterSource || '');
+            if (cachedPoster && image.isConnected) image.src = cachedPoster;
+          });
           const playOfflineItem = async (row, item) => {
             if (!item) return;
             const button = row.querySelector('.offline-play-btn');

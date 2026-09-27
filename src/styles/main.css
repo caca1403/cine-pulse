@@ -14521,7 +14521,7 @@ html.native-android #player-modal .player-modal-content {
 .offline-download-info small { color:#34d399; font-size:.7rem; }
 .offline-play-btn { display:inline-flex; align-items:center; gap:6px; padding:10px 13px; border:1px solid rgba(16,185,129,.4); border-radius:11px; color:#d1fae5; background:rgba(5,150,105,.2); font:inherit; font-size:.78rem; font-weight:750; }
 .offline-play-btn svg { width:16px; height:16px; }
-.offline-download-poster-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); align-items:start; gap:14px; }
+.offline-download-poster-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),260px)); align-items:start; gap:14px; }
 .offline-series-card { min-width:0; overflow:hidden; border:1px solid rgba(148,163,184,.16); border-radius:16px; background:linear-gradient(145deg,rgba(15,23,42,.94),rgba(7,10,18,.96)); }
 .offline-series-toggle { display:grid; width:100%; padding:9px; gap:8px; border:0; color:inherit; text-align:left; background:transparent; }
 .offline-series-poster { position:relative; display:block; width:100%; aspect-ratio:2/3; overflow:hidden; border-radius:10px; background:#111827; }
