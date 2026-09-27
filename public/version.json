@@ -1,8 +1,8 @@
 {
-  "version": "1.1.8",
-  "versionCode": 118,
+  "version": "1.1.9",
+  "versionCode": 119,
   "releaseDate": "2026-09-27",
-  "title": "CinePulse Android v1.1.8",
+  "title": "CinePulse Android v1.1.9",
   "releaseNotes": "• Oynatıcı indirme butonu ve indirme merkezi (Cihaza indir / 1DM / ADM ve Uygulama içi çevrimdışı indirme) aktif hale getirildi.\n• Bölüm kartları üzerinden doğrudan indirme butonu eklendi.\n• HLS proxy segment çözümleme ve çevrimdışı indirme performansı iyileştirildi.\n• DMAX ve TLC canlı yayın akışı ve proxy çözünürlüğü düzeltildi.",
   "downloadUrl": "https://cine-pulse-drab.vercel.app/api/download_apk",
   "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest",
