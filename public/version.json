@@ -1,10 +1,9 @@
 {
-  "version": "1.1.19",
-  "versionCode": 129,
+  "version": "1.1.20",
+  "versionCode": 130,
   "releaseDate": "2026-09-27",
-  "title": "CinePulse Android v1.1.19",
-  "releaseNotes": "• Oynatıcı indirmesi seçili kaynağı CinePulse çevrimdışı İndirilenler deposuna kaydeder.\n• Oynatıcıda gerçek alınan boyut, bilinen toplam boyuta göre yüzde ve aktarım hızı gösterilir.
-• HLS yayınlarında parça sayısı ve alınan gerçek veri miktarı gösterilir; bilinmeyen toplam boyuta sahte yüzde yazılmaz.",
+  "title": "CinePulse Android v1.1.20",
+  "releaseNotes": "• İnternet bağlantısı kesildiğinde uygulama İndirilenler bölümünü açar.\n• İndirilenler tüm cihazlarda erişilebilir ve içerikler düzenli kartlarla gösterilir.\n• İndirilen içerikler internet bağlantısı olmadan oynatılabilir.",
   "downloadUrl": "https://cine-pulse-drab.vercel.app/api/download_apk",
   "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest",
   "mandatory": false
