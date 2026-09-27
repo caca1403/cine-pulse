@@ -1762,6 +1762,17 @@ export async function openPlayerModal({
       return;
     }
 
+    isDownloadingOffline = true;
+    activeDownloadTargetKey = downloadKey;
+    activeDownloadAbortController = new AbortController();
+    activeDownloadProgress = { percent: 1, loaded: 0, status: 'Kaynak aranıyor...' };
+    refreshOfflineDownloadButton();
+    showToast(`“${getDisplayTitle()}” için indirme başlatılıyor…`, 'info');
+
+    let completed = false;
+    let lastError = null;
+    let nativeFallbackUrl = '';
+    try {
     let streams = getAllDownloadableStreams();
     if (streams.length === 0 && isSeries) {
       try {
@@ -1792,21 +1803,9 @@ export async function openPlayerModal({
       ...streams.filter(item => !item.isTorrent)
     ].filter((item, index, list) => item && list.findIndex(other => other.streamUrl === item.streamUrl) === index);
     if (candidates.length === 0) {
-      showToast('Bu bölüm için indirilebilir yayın bulunamadı. Önce kaynakların yüklenmesini bekleyin.', 'error');
-      return;
+      throw new Error('Bu bölüm için indirilebilir yayın bulunamadı.');
     }
 
-    isDownloadingOffline = true;
-    activeDownloadTargetKey = downloadKey;
-    activeDownloadAbortController = new AbortController();
-    activeDownloadProgress = { percent: 1, loaded: 0, status: 'Başlatılıyor...' };
-    refreshOfflineDownloadButton();
-    showToast(`“${getDisplayTitle()}” için indirme başlatılıyor…`, 'info');
-
-    let completed = false;
-    let lastError = null;
-    let nativeFallbackUrl = '';
-    try {
       for (const stream of candidates.slice(0, 5)) {
         if (activeDownloadAbortController.signal.aborted) throw new Error('İndirme iptal edildi');
         try {

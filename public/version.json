@@ -1,9 +1,9 @@
 {
-  "version": "1.1.11",
-  "versionCode": 121,
+  "version": "1.1.12",
+  "versionCode": 122,
   "releaseDate": "2026-09-27",
-  "title": "CinePulse Android v1.1.11",
-  "releaseNotes": "• Oynatıcı indirmesi hemen görünür ilerleme durumu gösterir.\n• Kaynaklar sırayla denenir; uygulama içi indirme açılmazsa doğrudan indirilebilir hat cihaz indiricisine aktarılır.",
+  "title": "CinePulse Android v1.1.12",
+  "releaseNotes": "• İndirme düğmesine dokununca kaynak taraması sırasında da anında ilerleme durumu görünür.\n• Kaynaklar sırayla denenir; uygulama içi indirme açılmazsa doğrudan indirilebilir hat cihaz indiricisine aktarılır.",
   "downloadUrl": "https://cine-pulse-drab.vercel.app/api/download_apk",
   "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest",
   "mandatory": false
