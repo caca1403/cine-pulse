@@ -7,8 +7,8 @@
 import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
 
-export const CURRENT_APP_VERSION = '1.1.22';
-export const CURRENT_VERSION_CODE = 132;
+export const CURRENT_APP_VERSION = '1.1.23';
+export const CURRENT_VERSION_CODE = 133;
 
 const REMOTE_VERSION_URL = 'https://raw.githubusercontent.com/caca1403/cine-pulse/main/public/version.json';
 const SNOOZE_KEY = 'cinepulse_update_snoozed_until';
@@ -46,7 +46,7 @@ export function showUpdateModal(updateInfo) {
   // Prevent duplicate modals
   if (document.getElementById('cinepulse-update-modal')) return;
 
-  const directUrl = updateInfo.downloadUrl || 'https://cine-pulse-drab.vercel.app/api/download_apk';
+  const directUrl = updateInfo.downloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk';
   const githubUrl = updateInfo.githubDownloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest';
 
   const modal = document.createElement('div');
@@ -150,7 +150,7 @@ export function showUpdateModal(updateInfo) {
           transition: all 0.2s ease;
         ">
           <i data-lucide="download" style="width: 18px; height: 18px; stroke-width: 2.5;"></i>
-          <span>Hemen İndir (Hızlı Sunucu)</span>
+          <span>Hemen İndir (Güncel APK)</span>
         </a>
 
         <a id="btn-update-github" href="${githubUrl}" target="_blank" rel="noopener noreferrer" style="
@@ -169,7 +169,7 @@ export function showUpdateModal(updateInfo) {
           transition: all 0.2s ease;
         ">
           <i data-lucide="external-link" style="width: 15px; height: 15px;"></i>
-          <span>GitHub Releases (Yedek)</span>
+          <span>GitHub APK (Yedek)</span>
         </a>
 
         ${!updateInfo.mandatory ? `

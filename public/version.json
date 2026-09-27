@@ -1,10 +1,10 @@
 {
-  "version": "1.1.22",
-  "versionCode": 132,
+  "version": "1.1.23",
+  "versionCode": 133,
   "releaseDate": "2026-09-27",
-  "title": "CinePulse Android v1.1.22",
-  "releaseNotes": "• İndirilenler ekranı doğru sekmede dikey dizi afiş kartları gösterir; karta dokununca bölümler sezonlara göre sıralanır.\n• Android depolama göstergesi cihazın gerçek boş ve toplam alanını gösterir.\n• Web sürümünde site kotası cihaz hafızası gibi gösterilmez.",
-  "downloadUrl": "https://cine-pulse-drab.vercel.app/api/download_apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest",
+  "title": "CinePulse Android v1.1.23",
+  "releaseNotes": "• Uygulama içi güncelleme düğmesi en son imzalı APK dosyasına yönlendirilir.\n• Vercel APK indirme uç noktası eski sürümün önbellekten gelmesini engeller.\n• İndirilen diziler dikey afiş kartları ve sıralı bölüm listesiyle gösterilir.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
   "mandatory": false
 }
