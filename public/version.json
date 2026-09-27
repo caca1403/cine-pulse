@@ -1,9 +1,9 @@
 {
-  "version": "1.1.15",
-  "versionCode": 125,
+  "version": "1.1.16",
+  "versionCode": 126,
   "releaseDate": "2026-09-27",
-  "title": "CinePulse Android v1.1.15",
-  "releaseNotes": "• Oynatıcı indirmesi bölümü CinePulse çevrimdışı İndirilenler deposuna kaydeder.\n• HLS ve doğrudan kaynaklar CORS engellerine takılmadan uygulama içinden alınır; harici tarayıcıya yönlendirme kaldırıldı.",
+  "title": "CinePulse Android v1.1.16",
+  "releaseNotes": "• Oynatıcı indirmesi bölümü CinePulse çevrimdışı İndirilenler deposuna kaydeder.\n• HLS ve doğrudan kaynaklar CORS engellerine takılmadan uygulama içinden alınır; yanıt vermeyen kaynaklar zaman aşımıyla sıradakine geçer.",
   "downloadUrl": "https://cine-pulse-drab.vercel.app/api/download_apk",
   "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest",
   "mandatory": false

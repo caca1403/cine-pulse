@@ -15,6 +15,29 @@ const CACHE_NAME = 'cinepulse-offline-media-v1';
 let dbInstance = null;
 let activeOfflineObjectUrls = [];
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
+  const controller = new AbortController();
+  const parentSignal = options.signal;
+  const abortFromParent = () => controller.abort();
+  if (parentSignal?.aborted) throw new Error('İndirme iptal edildi');
+  parentSignal?.addEventListener('abort', abortFromParent, { once: true });
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (parentSignal?.aborted) throw new Error('İndirme iptal edildi');
+    if (timedOut) throw new Error('Kaynak 20 saniye içinde yanıt vermedi.');
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    parentSignal?.removeEventListener('abort', abortFromParent);
+  }
+}
+
 function getRecord(key) {
   return openDB().then(db => new Promise((resolve, reject) => {
     const req = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key);
@@ -123,7 +146,7 @@ async function saveHlsResource(cache, key, index, url, onProgress, progress, sig
     if (signal?.aborted) throw new Error('İndirme iptal edildi');
     const targetUrl = attempts[attempt];
     try {
-      response = await fetch(targetUrl, { cache: 'no-store', signal });
+      response = await fetchWithTimeout(targetUrl, { cache: 'no-store', signal });
       if (response && response.ok) break;
     } catch (err) {
       if (err.name === 'AbortError' || signal?.aborted) throw new Error('İndirme iptal edildi');
@@ -173,7 +196,7 @@ async function downloadHlsBundle(cache, key, response, firstText, onProgress, si
   while (mediaUrl && depth < 3) {
     if (signal?.aborted) throw new Error('İndirme iptal edildi');
     depth++;
-    const mediaResponse = await fetch(mediaUrl, { cache: 'no-store', signal });
+    const mediaResponse = await fetchWithTimeout(mediaUrl, { cache: 'no-store', signal });
     if (!mediaResponse.ok) throw new Error(`Bölüm listesi alınamadı (HTTP ${mediaResponse.status})`);
     playlistUrl = mediaResponse.url || mediaUrl;
     playlistText = await mediaResponse.text();
@@ -367,7 +390,7 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
 
   try {
     if (signal?.aborted) throw new Error('İndirme iptal edildi');
-    const response = await fetch(safeStreamUrl, { cache: 'no-store', signal });
+    const response = await fetchWithTimeout(safeStreamUrl, { cache: 'no-store', signal });
     if (!response.ok) throw new Error(`İndirme başarısız (${response.status})`);
 
     const contentType = response.headers.get('content-type') || '';
