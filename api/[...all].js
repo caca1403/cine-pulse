@@ -297,6 +297,7 @@ export default async function handler(req, res) {
 
     const rawTarget = urlObj.searchParams.get('url') || '';
     let ref = urlObj.searchParams.get('ref') || '';
+    const forceMediaDownload = urlObj.searchParams.get('download') === '1';
     if (!rawTarget) {
       return res.status(400).send('Missing url param');
     }
@@ -373,7 +374,7 @@ export default async function handler(req, res) {
         lowerCt.includes('video/')
       );
 
-      const isPlaylist = !isSegment && (
+      const isPlaylist = !forceMediaDownload && !isSegment && (
         lowerTarget.includes('.m3u8') || 
         lowerTarget.includes('/play') ||
         lowerTarget.includes('m3u8?') ||

@@ -35,8 +35,10 @@ export function extractTargetAndRef(urlStr) {
     const target = u.searchParams.get('url');
     const ref = u.searchParams.get('ref');
     return {
-      target: target ? decodeURIComponent(target) : null,
-      ref: ref ? decodeURIComponent(ref) : null
+      // URLSearchParams already percent-decodes values. Decoding again corrupts
+      // signed CDN URLs that contain encoded query parameters.
+      target: target || null,
+      ref: ref || null
     };
   } catch (_) {
     return { target: null, ref: null };
@@ -46,21 +48,26 @@ export function extractTargetAndRef(urlStr) {
 export function resolvePlaylistUrl(uri, baseUrl) {
   const cleanUri = (uri || '').trim();
   if (!cleanUri) return '';
-  if (/^https?:\/\//i.test(cleanUri)) {
-    return cleanUri;
-  }
-  const { target, ref } = extractTargetAndRef(baseUrl);
-  if (target) {
-    try {
-      const resolvedUpstream = new URL(cleanUri, target).href;
-      return apiUrl(`/api/hls_proxy?url=${encodeURIComponent(resolvedUpstream)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`);
-    } catch (_) {}
-  }
+  if (cleanUri.startsWith('/api/hls_proxy?')) return apiUrl(cleanUri);
+  if (/^https?:\/\//i.test(cleanUri) && cleanUri.includes('/api/hls_proxy?')) return cleanUri;
   try {
-    return new URL(cleanUri, baseUrl).href;
+    const { target, ref } = extractTargetAndRef(baseUrl);
+    const resolvedUpstream = new URL(cleanUri, target || baseUrl).href;
+    if (resolvedUpstream.includes('/api/hls_proxy?')) return resolvedUpstream;
+    return apiUrl(`/api/hls_proxy?url=${encodeURIComponent(resolvedUpstream)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`);
   } catch (_) {
     return cleanUri;
   }
+}
+
+function getOfflineFetchUrl(streamUrl) {
+  if (streamUrl.startsWith('/api/')) return apiUrl(streamUrl);
+  if (!/^https?:\/\//i.test(streamUrl)) return streamUrl;
+  if (streamUrl.includes('/api/hls_proxy?')) return streamUrl;
+  const { target, ref } = extractTargetAndRef(streamUrl);
+  const targetUrl = target || streamUrl;
+  const isHls = /\.m3u8(?:[?#]|$)/i.test(targetUrl);
+  return apiUrl(`/api/hls_proxy?url=${encodeURIComponent(targetUrl)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}${isHls ? '' : '&download=1'}`);
 }
 
 /**
@@ -101,16 +108,14 @@ async function saveHlsResource(cache, key, index, url, onProgress, progress, sig
   const { target, ref } = extractTargetAndRef(url);
   const attempts = [];
 
-  // 1. Direct target (often fastest for open CORS CDNs)
-  if (target && /^https?:\/\//i.test(target)) {
-    attempts.push(target);
-  }
-  // 2. Proxied URL with apiOrigin
+  // Go through CinePulse's same-origin API relay so provider CORS restrictions
+  // cannot send users out of the app or prevent saving segments offline.
   const fullUrl = url.startsWith('/api/') ? apiUrl(url) : url;
   attempts.push(fullUrl);
-  // 3. Fallback explicit proxy with ref
-  if (!url.includes('/api/hls_proxy') && !target) {
-    attempts.push(apiUrl(`/api/hls_proxy?url=${encodeURIComponent(url)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`));
+  if (target && /^https?:\/\//i.test(target)) {
+    attempts.push(apiUrl(`/api/hls_proxy?url=${encodeURIComponent(target)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`));
+  } else if (!url.includes('/api/hls_proxy')) {
+    attempts.push(getOfflineFetchUrl(url));
   }
 
   let lastError = null;
@@ -357,7 +362,7 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
   const key = getItemKey(tmdbId, season, episode);
   const cacheUrl = `/offline/${key}`;
 
-  const safeStreamUrl = typeof streamUrl === 'string' && streamUrl.startsWith('/api/') ? apiUrl(streamUrl) : streamUrl;
+  const safeStreamUrl = getOfflineFetchUrl(streamUrl);
   onProgress({ percent: 5, loaded: 0, total: 0, status: 'Başlatılıyor...' });
 
   try {

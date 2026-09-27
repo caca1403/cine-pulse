@@ -1772,7 +1772,6 @@ export async function openPlayerModal({
 
     let completed = false;
     let lastError = null;
-    let nativeFallbackUrl = '';
     try {
     let streams = getAllDownloadableStreams();
     if (streams.length === 0 && isSeries) {
@@ -1815,7 +1814,6 @@ export async function openPlayerModal({
           const resolved = await resolveDirectStream(stream.server || { streamUrl: stream.streamUrl }) || stream.server;
           const downloadUrl = getStreamSafeUrl(resolved) || stream.streamUrl;
           if (!downloadUrl || downloadUrl.startsWith('magnet:')) throw new Error('Torrent kaynağı doğrudan indirilemez.');
-          if (!nativeFallbackUrl && (stream.isDirectVideo || stream.isHls)) nativeFallbackUrl = downloadUrl;
           await startOfflineDownload({
             tmdbId,
             type: isSeries ? 'tv' : 'movie',
@@ -1839,16 +1837,6 @@ export async function openPlayerModal({
         }
       }
 
-      if (!completed && nativeFallbackUrl) {
-        const fallbackFilename = isSeries
-          ? `${cleanSeriesName}_S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}.mp4`
-          : `${cleanSeriesName}.mp4`;
-        const started = triggerNativeDeviceDownload(nativeFallbackUrl, fallbackFilename);
-        if (started) {
-          completed = true;
-          showToast('Uygulama içi kayıt bu hatta açılamadı; indirme cihazın indiricisine aktarıldı.', 'info');
-        }
-      }
       if (!completed) throw lastError || new Error('Bu kaynaklardan indirilebilir video alınamadı.');
     } catch (err) {
       if (err?.message !== 'İndirme iptal edildi') {
