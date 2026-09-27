@@ -2953,11 +2953,11 @@ export async function openPlayerModal({
               <button id="btn-report-issue" class="player-icon-action" type="button" title="Kaynakta sorun bildir"><i data-lucide="flag"></i></button>
             </div>
           <div class="player-utility-group">
-            ${!offlinePlaybackUrl ? `<button id="btn-player-download" class="player-utility-action player-download-action" type="button" title="Bölümü indir / çevrimdışı kaydet"><i data-lucide="download"></i><span>İndir</span></button>` : ''}
+            ${isNativeAndroidApp() && !offlinePlaybackUrl ? `<button id="btn-player-download" class="player-utility-action player-download-action" type="button" title="Bölümü indir / çevrimdışı kaydet"><i data-lucide="download"></i><span>İndir</span></button>` : ''}
             <button id="btn-player-theater" class="player-utility-action" title="Sinema Modu (Genişlet)"><i data-lucide="scan-line"></i><span>Sinema</span></button>
               <button id="btn-player-share" class="player-icon-action" type="button" title="Paylaş"><i data-lucide="share-2"></i></button>
             </div>
-            ${!offlinePlaybackUrl ? `<div id="player-download-progress" class="player-download-progress" hidden aria-live="polite"><div class="player-download-progress-head"><span data-download-status>İndirme başlatılıyor…</span><strong data-download-amount>0 B alındı</strong></div><div class="player-download-progress-track"><span data-download-bar></span></div><div class="player-download-progress-foot"><span>CinePulse İndirilenler’e kaydediliyor</span><span data-download-speed>Hız hesaplanıyor…</span></div></div>` : ''}
+            ${isNativeAndroidApp() && !offlinePlaybackUrl ? `<div id="player-download-progress" class="player-download-progress" hidden aria-live="polite"><div class="player-download-progress-head"><span data-download-status>İndirme başlatılıyor…</span><strong data-download-amount>0 B alındı</strong></div><div class="player-download-progress-track"><span data-download-bar></span></div><div class="player-download-progress-foot"><span>CinePulse İndirilenler’e kaydediliyor</span><span data-download-speed>Hız hesaplanıyor…</span></div></div>` : ''}
           </div>
         </section>
 
@@ -3070,7 +3070,7 @@ export async function openPlayerModal({
       </div>
     </div>
 
-    <!-- Floating Glassmorphism Download Hub Modal -->
+    ${isNativeAndroidApp() ? `<!-- Floating Glassmorphism Download Hub Modal -->
     <div class="player-download-popover hidden" id="player-download-popover">
       <div class="download-popover-backdrop" id="download-popover-backdrop"></div>
       <div class="download-popover-content">
@@ -3088,6 +3088,7 @@ export async function openPlayerModal({
         </div>
       </div>
     </div>
+    ` : ''}
   `;
 
   // Offline playback is deliberately a separate surface. Remove online series
@@ -3354,9 +3355,9 @@ export async function openPlayerModal({
                 <i data-lucide="${epWatched ? 'check-circle-2' : 'eye'}" style="width: 13px; height: 13px;"></i>
                 <span class="ep-watch-text">${epWatched ? 'İzlendi' : 'İşaretle'}</span>
               </button>
-              <button class="dizisol-ep-download-btn" data-season="${drawerSeason}" data-episode="${epNum}" title="Bu bölümü indir" type="button">
+              ${isNativeAndroidApp() ? `<button class="dizisol-ep-download-btn" data-season="${drawerSeason}" data-episode="${epNum}" title="Bu bölümü indir" type="button">
                 <i data-lucide="download" style="width:12px;height:12px"></i>
-              </button>
+              </button>` : ''}
               ${isCurrent ? `
                 <div class="dizisol-ep-play-circle">
                   <i data-lucide="play" style="width:16px;height:16px;fill:#fff;color:#fff;margin-left:2px;"></i>
@@ -3391,9 +3392,9 @@ export async function openPlayerModal({
                 <i data-lucide="${epWatched ? 'check-circle-2' : 'eye'}" style="width: 13px; height: 13px;"></i>
                 <span class="ep-watch-text">${epWatched ? 'İzlendi' : 'İşaretle'}</span>
               </button>
-              <button class="dizisol-ep-download-btn" data-season="${drawerSeason}" data-episode="${epNum}" title="Bu bölümü indir" type="button">
+              ${isNativeAndroidApp() ? `<button class="dizisol-ep-download-btn" data-season="${drawerSeason}" data-episode="${epNum}" title="Bu bölümü indir" type="button">
                 <i data-lucide="download" style="width:12px;height:12px"></i>
-              </button>
+              </button>` : ''}
               ${durationText ? `<span class="dizisol-ep-duration">${durationText}</span>` : ''}
               ${isCurrent ? `
                 <div class="dizisol-ep-play-circle">

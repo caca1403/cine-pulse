@@ -22,7 +22,7 @@ export function renderNavbar(currentView = 'home') {
   const activeProfile = getActiveProfile();
   const unreadCount = getUnreadNotificationCount();
   const isKid = activeProfile.isKid;
-  const showOfflineDownloads = true;
+  const showOfflineDownloads = isNativeAndroidApp();
 
   return `
     <!-- ================================================================

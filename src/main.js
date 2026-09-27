@@ -133,7 +133,7 @@ window.addEventListener('keydown', (event) => {
 const app = document.getElementById('app');
 document.documentElement.classList.toggle('cards-landscape', getUserSettings().cardLayout === 'landscape');
 
-if (typeof navigator !== 'undefined' && navigator.onLine === false && window.location.hash !== '#downloads') {
+if (isNativeAndroid && typeof navigator !== 'undefined' && navigator.onLine === false && window.location.hash !== '#downloads') {
   window.location.hash = '#downloads';
 }
 
@@ -186,6 +186,10 @@ async function route() {
   } else if (hash === '#library') {
     viewName = 'library';
   } else if (hash === '#downloads') {
+    if (!isNativeAndroid) {
+      window.location.replace('#library');
+      return;
+    }
     viewName = 'downloads';
   } else if (hash.startsWith('#dramas')) {
     viewName = 'dramas';
@@ -322,7 +326,7 @@ window.addEventListener('hashchange', route);
 // Keep saved videos one tap away when connectivity drops. `navigator.onLine`
 // is used as a signal; downloaded playback itself remains available locally.
 window.addEventListener('offline', () => {
-  if (window.location.hash !== '#downloads') window.location.hash = '#downloads';
+  if (isNativeAndroid && window.location.hash !== '#downloads') window.location.hash = '#downloads';
 });
 // Module scripts run after parsing, so one initial route is enough.
 route();
