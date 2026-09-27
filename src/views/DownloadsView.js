@@ -99,8 +99,8 @@ export function renderDownloadsView() {
             const seasons = [...new Set(entry.episodes.map(ep => Number(ep.season)))].sort((a, b) => a - b);
             return `<article class="download-series-card" data-group="${index}">
               <button type="button" class="download-series-open" aria-expanded="false">
-                <span class="download-series-poster"><img src="${poster || SINEFLIX_POSTER_FALLBACK}" data-offline-poster-key="${posterCacheKey}" data-offline-poster-source="${posterSource}" onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'" alt="${escapeHtml(entry.title)} afişi" loading="lazy"><span class="download-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
-                <span class="download-series-info"><strong>${escapeHtml(entry.title)}</strong><span>${entry.episodes.length} bölüm · ${seasons.length} sezon</span><small>${formatBytes(downloadedBytes)} · İnternetsiz izlenebilir</small></span>
+                <span class="download-series-poster"><img src="${poster || SINEFLIX_POSTER_FALLBACK}" data-offline-poster-key="${posterCacheKey}" data-offline-poster-source="${posterSource}" onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'" alt="${escapeHtml(entry.title)} afişi" loading="lazy"></span>
+                <span class="download-series-info"><strong>${escapeHtml(entry.title)}</strong><span>${entry.episodes.length} bölüm · ${seasons.length} sezon</span><small>${formatBytes(downloadedBytes)} · İnternetsiz izlenebilir</small><span class="download-ready-inline"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
                 <span class="download-series-chevron"><i data-lucide="chevron-down"></i></span>
               </button>
               <div class="download-episodes" hidden>${seasons.map(season => {
@@ -110,8 +110,8 @@ export function renderDownloadsView() {
             </article>`;
           }
           return `<article class="download-movie-card" data-item-key="${escapeHtml(entry.key)}">
-            <span class="download-series-poster"><img src="${poster || SINEFLIX_POSTER_FALLBACK}" data-offline-poster-key="${posterCacheKey}" data-offline-poster-source="${posterSource}" onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'" alt="${escapeHtml(entry.title)} afişi" loading="lazy"><span class="download-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
-            <div class="download-series-info"><strong>${escapeHtml(entry.title)}</strong><span>Film</span><small>${formatBytes(entry.sizeBytes)} · İnternetsiz izlenebilir</small></div>
+            <span class="download-series-poster"><img src="${poster || SINEFLIX_POSTER_FALLBACK}" data-offline-poster-key="${posterCacheKey}" data-offline-poster-source="${posterSource}" onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'" alt="${escapeHtml(entry.title)} afişi" loading="lazy"></span>
+            <div class="download-series-info"><strong>${escapeHtml(entry.title)}</strong><span>Film</span><small>${formatBytes(entry.sizeBytes)} · İnternetsiz izlenebilir</small><span class="download-ready-inline"><i data-lucide="check"></i> İNDİRİLDİ</span></div>
             <div class="download-movie-actions"><button class="download-movie-play" type="button"><i data-lucide="play"></i> Oynat</button><button class="download-episode-delete" type="button" aria-label="Filmi sil"><i data-lucide="trash-2"></i></button></div>
           </article>`;
         }).join('');
