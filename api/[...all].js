@@ -25,12 +25,24 @@ export default async function handler(req, res) {
   }
 
   if (pathname === '/api/download_apk' || pathname === '/cinepulse.apk') {
-    const fallbackUrl = 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk';
+    const fallbackUrl = 'https://github.com/caca1403/cine-pulse/releases/download/v1.1.26/cinepulse.apk';
     try {
-      const upstreamRes = await fetch(fallbackUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+      let downloadUrl = fallbackUrl;
+      const manifestResponse = await fetch(`https://github.com/caca1403/cine-pulse/releases/latest/download/version.json?_t=${Date.now()}`, {
+        headers: { 'User-Agent': 'CinePulse-Updater', 'Cache-Control': 'no-cache' },
+        cache: 'no-store'
       });
-      if (!upstreamRes.ok) return res.redirect(302, fallbackUrl);
+      if (manifestResponse.ok) {
+        const manifest = await manifestResponse.json();
+        if (/^https:\/\/github\.com\/caca1403\/cine-pulse\/releases\/download\/v[\d.]+\/cinepulse\.apk$/.test(manifest.downloadUrl || '')) {
+          downloadUrl = manifest.downloadUrl;
+        }
+      }
+      const upstreamRes = await fetch(downloadUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        cache: 'no-store'
+      });
+      if (!upstreamRes.ok) return res.redirect(302, downloadUrl);
       const arrayBuffer = await upstreamRes.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       res.setHeader('Content-Type', 'application/vnd.android.package-archive');
