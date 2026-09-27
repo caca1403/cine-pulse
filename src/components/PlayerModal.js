@@ -1378,8 +1378,9 @@ export async function openPlayerModal({
       button.dataset.downloading = 'true';
       button.classList.add('is-downloading');
       button.classList.remove('is-downloaded');
-      if (label) label.textContent = `%${activeDownloadProgress.percent}`;
-      button.title = `İndiriliyor: %${activeDownloadProgress.percent}`;
+      const progressLabel = activeDownloadProgress.percent > 0 ? `%${activeDownloadProgress.percent}` : '…';
+      if (label) label.textContent = progressLabel;
+      button.title = activeDownloadProgress.status || 'İndirme başlatılıyor…';
       renderPlayerIcons(button);
     }
 
@@ -1766,7 +1767,7 @@ export async function openPlayerModal({
     isDownloadingOffline = true;
     activeDownloadTargetKey = downloadKey;
     activeDownloadAbortController = new AbortController();
-    activeDownloadProgress = { percent: 1, loaded: 0, status: 'Kaynak aranıyor...' };
+    activeDownloadProgress = { percent: 0, loaded: 0, status: 'Kaynak aranıyor...' };
     refreshOfflineDownloadButton();
     showToast(`“${getDisplayTitle()}” için indirme başlatılıyor…`, 'info');
 
@@ -1796,16 +1797,16 @@ export async function openPlayerModal({
       } catch (_) {}
     }
 
-    const candidates = [
-      ...streams.filter(item => item.isDirectVideo && !item.isHls),
-      ...streams.filter(item => item.isHls),
-      ...streams.filter(item => item.isDirectVideo),
-      ...streams.filter(item => !item.isTorrent)
-    ].filter((item, index, list) => item && list.findIndex(other => other.streamUrl === item.streamUrl) === index);
+    // getAllDownloadableStreams() puts the currently playing source first.
+    // Keep that order: once bytes start arriving, finish this exact source.
+    const candidates = streams
+      .filter(item => item && !item.isTorrent)
+      .filter((item, index, list) => list.findIndex(other => other.streamUrl === item.streamUrl) === index);
     if (candidates.length === 0) {
       throw new Error('Bu bölüm için indirilebilir yayın bulunamadı.');
     }
 
+      let transferStarted = false;
       for (const stream of candidates.slice(0, 5)) {
         if (activeDownloadAbortController.signal.aborted) throw new Error('İndirme iptal edildi');
         try {
@@ -1825,6 +1826,7 @@ export async function openPlayerModal({
             streamUrl: downloadUrl
           }, progress => {
             activeDownloadProgress = progress;
+            if (Number(progress.loaded) > 0 || Number(progress.percent) > 5) transferStarted = true;
             refreshOfflineDownloadButton();
           }, activeDownloadAbortController.signal);
           completed = true;
@@ -1834,6 +1836,7 @@ export async function openPlayerModal({
           if (err?.message === 'İndirme iptal edildi') throw err;
           lastError = err;
           console.warn(`[Download] ${stream.displayName || 'Kaynak'} başarısız; sıradaki kaynak deneniyor.`, err);
+          if (transferStarted) break;
         }
       }
 
