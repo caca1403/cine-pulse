@@ -86,7 +86,7 @@ export async function openPlayerModal({
 
   // Make offline playback the default for a saved episode regardless of which
   // screen launched it. Some entry points still call openPlayerModal directly.
-  if (!offlinePlaybackUrl && tmdbId && season !== null && episode !== null && season !== undefined && episode !== undefined) {
+  if (isNativeAndroidApp() && !offlinePlaybackUrl && tmdbId && season !== null && episode !== null && season !== undefined && episode !== undefined) {
     try {
       offlineSavedItem = (await getDownloadedMediaList()).find(item =>
         String(item.tmdbId) === String(tmdbId) && Number(item.season) === Number(season) && Number(item.episode) === Number(episode)
@@ -129,7 +129,8 @@ export async function openPlayerModal({
     }
   }
   const isOfflinePlayback = Boolean(offlinePlaybackUrl);
-  modalContainer.classList.toggle('player-offline-playback', isOfflinePlayback);
+  const isNativeOfflinePlayback = isOfflinePlayback && isNativeAndroidApp();
+  modalContainer.classList.toggle('player-offline-playback', isNativeOfflinePlayback);
   let closed = false;
   let discoveryGeneration = 0;
   let playbackGeneration = 0;
@@ -2787,7 +2788,7 @@ export async function openPlayerModal({
     <!-- Ambient Backdrop Aura Glow -->
     <div class="player-ambient-backdrop" ${backdropPath ? `style="background-image: url('${backdropPath}');"` : ''}></div>
     
-    <div class="modal-content player-modal-content${isOfflinePlayback ? ' player-offline-mode' : ''}" id="cinema-modal-box">
+    <div class="modal-content player-modal-content${isNativeOfflinePlayback ? ' player-offline-mode' : ''}" id="cinema-modal-box">
       ${roomSync ? `<aside id="room-player-hud" class="room-player-hud room-player-cloud-hud" aria-live="polite">
         <!-- Açılır Bulut Butonu (Cloud Floating Trigger) -->
         <button id="btn-room-cloud-toggle" class="room-cloud-pill-btn" type="button" aria-expanded="false" aria-label="Birlikte İzleme ve Sohbet Bulutu" title="Birlikte İzleme Menüsü">
@@ -2850,7 +2851,7 @@ export async function openPlayerModal({
           </button>
           
           <div class="player-title-box">
-            <span id="player-modal-title" class="player-header-title">${isOfflinePlayback && isSeries ? `${cleanSeriesName} · S${currentSeason} B${currentEpisode}` : cleanSeriesName}</span>
+            <span id="player-modal-title" class="player-header-title">${isNativeOfflinePlayback && isSeries ? `${cleanSeriesName} · S${currentSeason} B${currentEpisode}` : cleanSeriesName}</span>
             ${initialTime > 5 ? `
               <span id="player-resume-time-badge" class="player-resume-badge" title="Kaldığın Süre">
                 <i data-lucide="clock" style="width: 11px; height: 11px;"></i>
@@ -3092,7 +3093,7 @@ export async function openPlayerModal({
   // Offline playback is deliberately a separate surface. Remove online series
   // details from the DOM so stale CSS or WebView style ordering cannot expose
   // the online episode list underneath the downloaded video.
-  if (isOfflinePlayback) {
+  if (isNativeOfflinePlayback) {
     modalContainer.classList.add('player-offline-playback');
     modalContainer.querySelector('.dizisol-cinema-body')?.remove();
     modalContainer.querySelector('.player-footer-bar')?.remove();

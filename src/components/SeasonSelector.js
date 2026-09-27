@@ -10,7 +10,6 @@ import { fetchSeasonDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALL
 import { getMediaProgress, getWatchHistory, isMediaWatched, toggleEpisodeWatched, markSeasonEpisodesWatched, isSeasonFullyWatched, setMediaHalfway } from '../services/storage.js';
 import { openPlayerModal } from './openPlayer.js';
 import { showToast } from './Toast.js';
-import { getDownloadedMediaList, getDownloadedPlaybackUrl } from '../services/offlineManager.js';
 
 export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = '', seriesOverview = '', seasons = [], posterPath = '', backdropPath = '', isAnime = false, spoilerFree = false }) {
   const validSeasons = seasons.filter(s => s.season_number > 0);
@@ -582,7 +581,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
 
   // Attach Episode Card & Play Triggers
   gridContainer.querySelectorAll('.episode-card').forEach(card => {
-    const playEpisode = async (e) => {
+    const playEpisode = (e) => {
       // Don't trigger if clicked on the action buttons
       if (e && e.target && (e.target.closest('.btn-mark-ep-watched') || e.target.closest('.btn-mark-ep-halfway') || e.target.closest('.btn-toggle-overview'))) {
         return;
@@ -597,24 +596,6 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
 
       const historyRecord = getMediaProgress(tvId, season, episode);
       const startTime = historyRecord ? historyRecord.currentTime : 0;
-
-      // If this exact episode is saved on-device, always route it through the
-      // isolated offline player, even when launched from the online season grid.
-      const downloadedItem = (await getDownloadedMediaList()).find(item =>
-          String(item.tmdbId) === String(tvId) && Number(item.season) === season && Number(item.episode) === episode
-      );
-      const offlinePlaybackUrl = downloadedItem
-        ? await getDownloadedPlaybackUrl(tvId, season, episode)
-        : null;
-      if (offlinePlaybackUrl) {
-        openPlayerModal({
-          type: isAnime ? 'anime' : 'tv', isAnime, isSeries: true, tmdbId: tvId,
-          title: seriesTitle, seriesTitle, originalTitle: originalTitle || seriesTitle,
-          season, episode, posterPath, backdropPath, offlinePlaybackUrl,
-          offlineMediaKind: downloadedItem?.mediaKind || 'file'
-        });
-        return;
-      }
 
       openPlayerModal({
         type: isAnime ? 'anime' : 'tv',
