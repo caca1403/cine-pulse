@@ -6,11 +6,18 @@
 
 import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
+import { App } from '@capacitor/app';
 
-export const CURRENT_APP_VERSION = '1.1.27';
-export const CURRENT_VERSION_CODE = 137;
+export const CURRENT_APP_VERSION = '1.1.28';
+export const CURRENT_VERSION_CODE = 138;
 
-const REMOTE_VERSION_URL = 'https://github.com/caca1403/cine-pulse/releases/latest/download/version.json';
+// The deployed manifest has explicit CORS headers. GitHub's release URL redirects
+// through several hosts and can fail WebView fetches before the app can notify.
+const REMOTE_VERSION_URL = 'https://cine-pulse-drab.vercel.app/version.json';
+let updateCheckPromise = null;
+let lastSuccessfulUpdateCheck = 0;
+let automaticChecksInitialized = false;
+const UPDATE_CHECK_COOLDOWN_MS = 60_000;
 
 /**
  * Checks if running as a native Android app via Capacitor
@@ -263,14 +270,26 @@ function escapeText(str = '') {
  * Fetches latest version and prompts if update available
  */
 export async function checkForAppUpdates({ manual = false } = {}) {
+  if (updateCheckPromise) return updateCheckPromise;
+  if (!manual && Date.now() - lastSuccessfulUpdateCheck < UPDATE_CHECK_COOLDOWN_MS) return null;
+
+  updateCheckPromise = performUpdateCheck({ manual }).finally(() => {
+    updateCheckPromise = null;
+  });
+  return updateCheckPromise;
+}
+
+async function performUpdateCheck({ manual }) {
   try {
-    // Read the current manifest from the latest GitHub release with a cache buster.
+    // Read the current manifest from the production app host with a cache buster.
     const res = await fetch(`${REMOTE_VERSION_URL}?_t=${Date.now()}`, {
       signal: AbortSignal.timeout(6000),
       cache: 'no-store'
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+    if (!data?.version) throw new Error('Sürüm bilgisi eksik');
+    lastSuccessfulUpdateCheck = Date.now();
 
     if (data && isNewerVersion(data.version, CURRENT_APP_VERSION)) {
       showUpdateModal(data);
@@ -291,10 +310,42 @@ export async function checkForAppUpdates({ manual = false } = {}) {
  * Initializes automatic background update checks on app launch
  */
 export function initAppUpdater() {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || automaticChecksInitialized) return;
+  automaticChecksInitialized = true;
 
-  // Run initial check 4 seconds after page load so it never impacts startup speed
-  window.setTimeout(() => {
-    checkForAppUpdates({ manual: false }).catch(() => {});
-  }, 4000);
+  let retryTimer = null;
+  let retryIndex = 0;
+  const retryDelays = [0, 5000, 15000, 30000];
+  const runCheck = async () => {
+    if (lastSuccessfulUpdateCheck && Date.now() - lastSuccessfulUpdateCheck < UPDATE_CHECK_COOLDOWN_MS) return;
+    const previousSuccess = lastSuccessfulUpdateCheck;
+    await checkForAppUpdates({ manual: false });
+    if (!lastSuccessfulUpdateCheck || lastSuccessfulUpdateCheck === previousSuccess) {
+      if (retryIndex < retryDelays.length) {
+        retryTimer = window.setTimeout(runCheck, retryDelays[retryIndex++]);
+      }
+    } else {
+      retryIndex = retryDelays.length;
+    }
+  };
+
+  // Delay the first request slightly, then retry transient launch/network failures.
+  retryTimer = window.setTimeout(runCheck, 2500);
+
+  // A warm Android WebView may resume without reloading the JavaScript bundle.
+  try {
+    App.addListener('appStateChange', ({ isActive }) => {
+      if (!isActive) return;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      retryIndex = 0;
+      retryTimer = window.setTimeout(runCheck, 1200);
+    });
+  } catch (_) {}
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (retryTimer) window.clearTimeout(retryTimer);
+    retryIndex = 0;
+    retryTimer = window.setTimeout(runCheck, 1200);
+  });
 }
