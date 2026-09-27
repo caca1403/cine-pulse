@@ -14690,7 +14690,7 @@ html.native-android #player-modal .player-modal-content {
   .player-utility-action.is-downloaded { width:auto !important; min-width:32px; padding:0 .45rem !important; }
   .player-utility-action.is-downloading span,
   .player-utility-action.is-downloaded span { display:inline !important; font-size:.68rem !important; font-weight:700 !important; }
-  .player-status-options { left:0; right:auto; width:215px; }
+  .player-status-options { left:auto; right:0; width:min(215px, calc(100vw - 24px)); max-width:calc(100vw - 24px); box-sizing:border-box; }
   .player-match-pill { font-size:.67rem; }.player-meta-pills { margin-top:.6rem; }.player-meta-dot { font-size:.65rem; }
   .player-why-match { padding:.72rem .76rem; }.dizisol-overview { font-size:.88rem !important; line-height:1.65 !important; }
   .player-movie-cast-chip { width:76px; }.player-cast-avatar { width:52px; height:52px; }.player-cast-name,.player-cast-role { max-width:76px; }

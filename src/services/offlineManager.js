@@ -15,7 +15,7 @@ const CACHE_NAME = 'cinepulse-offline-media-v1';
 let dbInstance = null;
 let activeOfflineObjectUrls = [];
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 120000) {
   const controller = new AbortController();
   const parentSignal = options.signal;
   const abortFromParent = () => controller.abort();
@@ -30,7 +30,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
     return await fetch(url, { ...options, signal: controller.signal });
   } catch (err) {
     if (parentSignal?.aborted) throw new Error('İndirme iptal edildi');
-    if (timedOut) throw new Error('Kaynak 20 saniye içinde yanıt vermedi.');
+    if (timedOut) throw new Error('Yayın kaynağı yanıt vermedi. İndirme durduruldu.');
     throw err;
   } finally {
     clearTimeout(timer);

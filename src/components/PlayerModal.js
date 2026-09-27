@@ -1834,7 +1834,10 @@ export async function openPlayerModal({
         try {
           activeDownloadProgress = { ...activeDownloadProgress, status: `${stream.displayName || 'Kaynak'} deneniyor...` };
           refreshOfflineDownloadButton();
-          const resolved = await resolveDirectStream(stream.server || { streamUrl: stream.streamUrl }) || stream.server;
+          const isCurrentPlayingSource = stream.server === activeServers[currentServerIndex];
+          const resolved = isCurrentPlayingSource
+            ? stream.server
+            : (await resolveDirectStream(stream.server || { streamUrl: stream.streamUrl }) || stream.server);
           const downloadUrl = getStreamSafeUrl(resolved) || stream.streamUrl;
           if (!downloadUrl || downloadUrl.startsWith('magnet:')) throw new Error('Torrent kaynağı doğrudan indirilemez.');
           await startOfflineDownload({
