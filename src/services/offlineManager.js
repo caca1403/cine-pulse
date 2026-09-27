@@ -14,6 +14,8 @@ const CACHE_NAME = 'cinepulse-offline-media-v1';
 
 let dbInstance = null;
 let activeOfflineObjectUrls = [];
+const activeOfflinePosterUrls = new Map();
+const pendingOfflinePosterJobs = new Map();
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = 120000) {
   const controller = new AbortController();
@@ -48,6 +50,65 @@ function getRecord(key) {
 
 function cacheRequest(key, index) {
   return new Request(new URL(`/__cinepulse_offline__/${encodeURIComponent(key)}/${index}`, location.origin));
+}
+
+function posterCacheRequest(key) {
+  return new Request(new URL(`/__cinepulse_offline_posters__/${encodeURIComponent(key)}`, location.origin));
+}
+
+function resolveOfflinePosterUrl(poster) {
+  if (!poster || poster === 'null' || poster === 'undefined' || poster.startsWith('data:')) return '';
+  if (/^https?:\/\//i.test(poster)) return poster;
+  if (poster.startsWith('/api/')) return apiUrl(poster);
+  return `https://image.tmdb.org/t/p/w342/${poster.replace(/^\/+/, '')}`;
+}
+
+async function cachePosterImage(cacheKey, poster) {
+  if (!cacheKey || !poster || poster.startsWith('data:')) return false;
+  if (pendingOfflinePosterJobs.has(cacheKey)) return pendingOfflinePosterJobs.get(cacheKey);
+  const job = (async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const request = posterCacheRequest(cacheKey);
+    if (await cache.match(request)) return true;
+    const imageUrl = resolveOfflinePosterUrl(poster);
+    if (!imageUrl) return false;
+    const attempts = [imageUrl];
+    if (!imageUrl.startsWith(apiUrl('/'))) {
+      attempts.push(apiUrl(`/api/img_proxy?url=${encodeURIComponent(imageUrl)}`));
+    }
+    for (const url of attempts) {
+      try {
+        const response = await fetchWithTimeout(url, { cache: 'no-store' }, 12000);
+        const type = response.headers.get('content-type') || '';
+        if (!response.ok || !type.startsWith('image/')) continue;
+        await cache.put(request, response.clone());
+        return true;
+      } catch (_) {}
+    }
+    return false;
+  })().finally(() => pendingOfflinePosterJobs.delete(cacheKey));
+  pendingOfflinePosterJobs.set(cacheKey, job);
+  return job;
+}
+
+export async function getOfflinePosterUrl(cacheKey, poster = '') {
+  if (!cacheKey) return '';
+  const activeUrl = activeOfflinePosterUrls.get(cacheKey);
+  if (activeUrl) return activeUrl;
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    let response = await cache.match(posterCacheRequest(cacheKey));
+    if (!response && poster && navigator.onLine !== false) {
+      await cachePosterImage(cacheKey, poster);
+      response = await cache.match(posterCacheRequest(cacheKey));
+    }
+    if (!response) return '';
+    const url = URL.createObjectURL(await response.blob());
+    activeOfflinePosterUrls.set(cacheKey, url);
+    return url;
+  } catch (_) {
+    return '';
+  }
 }
 
 export function extractTargetAndRef(urlStr) {
@@ -401,6 +462,12 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
 
   const key = getItemKey(tmdbId, season, episode);
   const cacheUrl = `/offline/${key}`;
+  const posterCacheKey = poster
+    ? (type === 'tv' ? `series_${tmdbId}` : `media_${key}`)
+    : '';
+  const posterSave = posterCacheKey
+    ? cachePosterImage(posterCacheKey, poster).catch(() => false)
+    : Promise.resolve(false);
 
   const safeStreamUrl = getOfflineFetchUrl(streamUrl);
   onProgress({ percent: 5, loaded: 0, total: 0, status: 'Başlatılıyor...' });
@@ -417,11 +484,15 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
       if (!firstText.includes('#EXTM3U')) throw new Error('Kaynak HLS bölüm akışı döndürmedi.');
       const cache = await caches.open(CACHE_NAME);
       const bundle = await downloadHlsBundle(cache, key, response, firstText, onProgress, signal);
+      if (posterCacheKey) {
+        onProgress({ percent: 99, loaded: bundle.sizeBytes, total: bundle.sizeBytes, status: 'Afiş çevrimdışı kullanıma kaydediliyor…' });
+        await posterSave;
+      }
       const db = await openDB();
       const itemRecord = {
         key, tmdbId: String(tmdbId), type: type || 'tv', title: title || 'İsimsiz İçerik', seriesTitle: seriesTitle || '', poster: poster || '', backdrop: backdrop || '',
         season: season !== null ? Number(season) : null, episode: episode !== null ? Number(episode) : null,
-        sizeBytes: bundle.sizeBytes, downloadedAt: Date.now(), mediaKind: 'hls',
+        sizeBytes: bundle.sizeBytes, downloadedAt: Date.now(), mediaKind: 'hls', posterCacheKey,
         playlistTemplate: bundle.playlistTemplate, resourceKeys: bundle.resourceKeys
       };
       await new Promise((resolve, reject) => {
@@ -491,6 +562,10 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
       }));
     }
     onProgress({ percent: 99, loaded: blob.size, total: total || blob.size, status: 'Video kaydedildi, İndirilenler listesi güncelleniyor…' });
+    if (posterCacheKey) {
+      onProgress({ percent: 99, loaded: blob.size, total: total || blob.size, status: 'Afiş çevrimdışı kullanıma kaydediliyor…' });
+      await posterSave;
+    }
 
     // Save metadata to IndexedDB
     const db = await openDB();
@@ -507,7 +582,8 @@ export async function startOfflineDownload(mediaData, onProgress = () => {}, sig
       sizeBytes: blob.size,
       downloadedAt: Date.now(),
       mimeType: blob.type || 'video/mp4',
-      mediaKind: 'file'
+      mediaKind: 'file',
+      posterCacheKey
     };
 
     await new Promise((resolve, reject) => {
@@ -556,6 +632,15 @@ export async function deleteOfflineMedia(tmdbId, season = null, episode = null) 
       const cache = await caches.open(CACHE_NAME);
       await cache.delete(`/offline/${key}`);
       for (const index of existing?.resourceKeys || []) await cache.delete(cacheRequest(key, index));
+      if (existing?.posterCacheKey) {
+        const remaining = await getDownloadedMediaList();
+        if (!remaining.some(item => item.posterCacheKey === existing.posterCacheKey)) {
+          await cache.delete(posterCacheRequest(existing.posterCacheKey));
+          const posterUrl = activeOfflinePosterUrls.get(existing.posterCacheKey);
+          if (posterUrl) URL.revokeObjectURL(posterUrl);
+          activeOfflinePosterUrls.delete(existing.posterCacheKey);
+        }
+      }
     }
 
     window.dispatchEvent(new CustomEvent('cinepulse_offline_changed', { detail: { action: 'delete', key } }));

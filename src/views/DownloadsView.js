@@ -1,8 +1,8 @@
-import { deleteOfflineMedia, formatBytes, getDeviceStorageInfo, getDownloadedMediaList, getDownloadedPlaybackUrl } from '../services/offlineManager.js';
+import { deleteOfflineMedia, formatBytes, getDeviceStorageInfo, getDownloadedMediaList, getDownloadedPlaybackUrl, getOfflinePosterUrl } from '../services/offlineManager.js';
 import { openPlayerModal } from '../components/openPlayer.js';
 import { renderIcons } from '../services/icons.js';
 import { showToast } from '../components/Toast.js';
-import { SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
+import { getImageUrl, SINEFLIX_POSTER_FALLBACK, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const episodeOrder = (a, b) => (Number(a.season) - Number(b.season)) || (Number(a.episode) - Number(b.episode));
@@ -78,6 +78,7 @@ export function renderDownloadsView() {
         }
         const groups = [...seriesGroups.values()].map(episodes => ({
           title: episodes[0].seriesTitle || episodes[0].title.replace(/\s*[·-]\s*\d+\. Sezon\s+\d+\. Bölüm\s*$/i, ''), tmdbId: episodes[0].tmdbId, poster: episodes.find(ep => ep.poster)?.poster || '',
+          posterCacheKey: episodes.find(ep => ep.posterCacheKey)?.posterCacheKey || `series_${episodes[0].tmdbId}`,
           backdrop: episodes.find(ep => ep.backdrop)?.backdrop || '', episodes: episodes.sort(episodeOrder),
           latest: Math.max(...episodes.map(ep => ep.downloadedAt || 0)), type: 'series'
         }));
@@ -90,32 +91,52 @@ export function renderDownloadsView() {
           return;
         }
         list.innerHTML = content.map((entry, index) => {
-          const poster = escapeHtml(entry.poster || '');
+          const poster = escapeHtml(getImageUrl(entry.poster || '', TMDB_IMAGE_SIZES.POSTER_MEDIUM));
+          const posterSource = escapeHtml(entry.poster || '');
+          const posterCacheKey = escapeHtml(entry.posterCacheKey || (entry.type === 'movie-card' ? `media_${entry.key}` : ''));
           if (entry.type === 'series') {
             const downloadedBytes = entry.episodes.reduce((sum, ep) => sum + (Number(ep.sizeBytes) || 0), 0);
             const seasons = [...new Set(entry.episodes.map(ep => Number(ep.season)))].sort((a, b) => a - b);
             return `<article class="download-series-card" data-group="${index}">
               <button type="button" class="download-series-open" aria-expanded="false">
-                <span class="download-series-poster"><img src="${poster || SINEFLIX_POSTER_FALLBACK}" onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'" alt="${escapeHtml(entry.title)} afişi" loading="lazy"><span class="download-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
+                <span class="download-series-poster"><img src="${poster || SINEFLIX_POSTER_FALLBACK}" data-offline-poster-key="${posterCacheKey}" data-offline-poster-source="${posterSource}" onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'" alt="${escapeHtml(entry.title)} afişi" loading="lazy"><span class="download-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
                 <span class="download-series-info"><strong>${escapeHtml(entry.title)}</strong><span>${entry.episodes.length} bölüm · ${seasons.length} sezon</span><small>${formatBytes(downloadedBytes)} · İnternetsiz izlenebilir</small></span>
                 <span class="download-series-chevron"><i data-lucide="chevron-down"></i></span>
               </button>
-              <div class="download-episodes" hidden>${seasons.map(season => `<section class="download-season"><h3>Sezon ${season}</h3><div class="download-season-list">${entry.episodes.filter(ep => Number(ep.season) === season).map(ep => `<article class="download-episode-row" data-item-key="${escapeHtml(ep.key)}"><span class="download-episode-number">${String(ep.episode).padStart(2, '0')}</span><span class="download-episode-info"><strong>${escapeHtml(ep.title)}</strong><small>Bölüm ${ep.episode} · ${formatBytes(ep.sizeBytes)} · ${new Date(ep.downloadedAt || Date.now()).toLocaleDateString('tr-TR')}</small></span><button class="download-episode-play" type="button" aria-label="Bölüm ${ep.episode} oynat"><i data-lucide="play"></i></button><button class="download-episode-delete" type="button" aria-label="Bölüm ${ep.episode} sil"><i data-lucide="trash-2"></i></button></article>`).join('')}</div></section>`).join('')}</div>
+              <div class="download-episodes" hidden>${seasons.map(season => {
+                const seasonEpisodes = entry.episodes.filter(ep => Number(ep.season) === season);
+                return `<details class="download-season"><summary>Sezon ${season}<small>${seasonEpisodes.length} indirilen bölüm</small></summary><div class="download-season-list">${seasonEpisodes.map(ep => `<article class="download-episode-row" data-item-key="${escapeHtml(ep.key)}"><span class="download-episode-number">${String(ep.episode).padStart(2, '0')}</span><span class="download-episode-info"><strong>${escapeHtml(ep.title)}</strong><small>Bölüm ${ep.episode} · ${formatBytes(ep.sizeBytes)} · ${new Date(ep.downloadedAt || Date.now()).toLocaleDateString('tr-TR')}</small></span><button class="download-episode-play" type="button" aria-label="Bölüm ${ep.episode} oynat"><i data-lucide="play"></i></button><button class="download-episode-delete" type="button" aria-label="Bölüm ${ep.episode} sil"><i data-lucide="trash-2"></i></button></article>`).join('')}</div></details>`;
+              }).join('')}</div>
             </article>`;
           }
           return `<article class="download-movie-card" data-item-key="${escapeHtml(entry.key)}">
-            <span class="download-series-poster"><img src="${poster || SINEFLIX_POSTER_FALLBACK}" onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'" alt="${escapeHtml(entry.title)} afişi" loading="lazy"><span class="download-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
+            <span class="download-series-poster"><img src="${poster || SINEFLIX_POSTER_FALLBACK}" data-offline-poster-key="${posterCacheKey}" data-offline-poster-source="${posterSource}" onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'" alt="${escapeHtml(entry.title)} afişi" loading="lazy"><span class="download-ready"><i data-lucide="check"></i> İNDİRİLDİ</span></span>
             <div class="download-series-info"><strong>${escapeHtml(entry.title)}</strong><span>Film</span><small>${formatBytes(entry.sizeBytes)} · İnternetsiz izlenebilir</small></div>
             <div class="download-movie-actions"><button class="download-movie-play" type="button"><i data-lucide="play"></i> Oynat</button><button class="download-episode-delete" type="button" aria-label="Filmi sil"><i data-lucide="trash-2"></i></button></div>
           </article>`;
         }).join('');
         renderIcons(list);
+        list.querySelectorAll('img[data-offline-poster-key]').forEach(async image => {
+          const cachedPoster = await getOfflinePosterUrl(image.dataset.offlinePosterKey, image.dataset.offlinePosterSource || '');
+          if (cachedPoster && image.isConnected) {
+            image.onerror = null;
+            image.src = cachedPoster;
+          }
+        });
         list.querySelectorAll('.download-series-card').forEach((card, index) => {
           const entry = content.filter(item => item.type === 'series')[index];
           const trigger = card.querySelector('.download-series-open');
           const episodes = card.querySelector('.download-episodes');
           trigger.addEventListener('click', () => {
             const open = trigger.getAttribute('aria-expanded') !== 'true';
+            if (open) {
+              list.querySelectorAll('.download-series-open[aria-expanded="true"]').forEach(other => {
+                if (other !== trigger) {
+                  other.setAttribute('aria-expanded', 'false');
+                  other.closest('.download-series-card')?.querySelector('.download-episodes')?.setAttribute('hidden', '');
+                }
+              });
+            }
             trigger.setAttribute('aria-expanded', String(open));
             episodes.hidden = !open;
           });

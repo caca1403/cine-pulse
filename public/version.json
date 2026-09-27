@@ -1,10 +1,10 @@
 {
-  "version": "1.1.26",
-  "versionCode": 136,
+  "version": "1.1.27",
+  "versionCode": 137,
   "releaseDate": "2026-09-27",
-  "title": "CinePulse Android v1.1.26",
-  "releaseNotes": "• APK güncellemesi Chrome'a aktarılmak yerine Android İndirme Yöneticisi'ne eklenir; ilerleme ve tamamlanma bildirimi burada gösterilir.\n• Uygulama içi indirmede dosyanın alınması, yerel depolamaya yazılması ve İndirilenler listesine kaydedilmesi ayrı ayrı gösterilir.\n• Yeni sürüm varsa uygulama her açılışta bildirilir; çevrimdışı indirmeler arka planda bildirimle sürer.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.26/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.26/cinepulse.apk",
+  "title": "CinePulse Android v1.1.27",
+  "releaseNotes": "• İndirilen film ve dizi afişleri video ile birlikte cihaza kaydedilir; mevcut indirmelerin afişleri de yeniden yüklenir.\n• İndirilenler kartları telefonda yatay ve kompakt gösterilir. Bölüm listesi sınırlı yükseklikte kayar; sezonlar ayrı açılır.\n• APK indirme adresi her sürümde güncel imzalı pakete bağlanır.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.27/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.27/cinepulse.apk",
   "mandatory": false
 }
