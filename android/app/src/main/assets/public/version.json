@@ -1,10 +1,10 @@
 {
-  "version": "1.1.32",
-  "versionCode": 142,
+  "version": "1.1.33",
+  "versionCode": 143,
   "releaseDate": "2026-09-27",
-  "title": "CinePulse Android v1.1.32",
+  "title": "CinePulse Android v1.1.33",
   "releaseNotes": "• İndirilen bölümler tüm açılış noktalarında cihazdan algılanıp çevrimdışı oynatıcıda açılır.\n• Aynı bölüm adı tek kez görünür ve çevrimiçi oynatma durumu değişmez.\n• İndir düğmesi içeriği doğrudan uygulama İndirilenler listesine kaydeder; JSON yedeği ayrı tutulur.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.32/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.32/cinepulse.apk",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.33/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.33/cinepulse.apk",
   "mandatory": false
 }

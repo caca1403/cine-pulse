@@ -7,7 +7,6 @@ import { createPlayerScope } from '../components/playerLifecycle.js';
    ========================================================================== */
 
 import { LIVE_TV_CATEGORIES, LIVE_TV_CHANNELS, getChannelBadgeSvg } from '../services/liveTvChannels.js';
-import { fetchRecTvLiveChannels, getRecTvChannelStreamUrl } from '../services/rectvService.js';
 import { getChannelEpg, initEpgService, stopEpgService } from '../services/epgService.js';
 import { showToast } from '../components/Toast.js';
 import { isKidProfileActive } from '../services/storage.js';
@@ -900,25 +899,6 @@ export function renderLiveTvView() {
           return false;
         }
 
-        async function tryFreshRecTvStream(failedUrl) {
-          if (channel.officialLiveId) return tryFreshOfficialStream(failedUrl);
-          if (freshStreamAttempted || !channel.isTvr || !channel.tvrId) return false;
-          freshStreamAttempted = true;
-          loadingEl.classList.remove('hidden');
-          errorEl.classList.add('hidden');
-
-          try {
-            const freshUrl = await getRecTvChannelStreamUrl(channel.tvrId, { forceRefresh: true });
-            if (channelPlaybackToken !== myToken) return true;
-            if (freshUrl && freshUrl !== failedUrl) {
-              channel.streamUrl = freshUrl;
-              startHls(freshUrl);
-              return true;
-            }
-          } catch (_) {}
-          return false;
-        }
-
         function showPlaybackError() {
           if (channelPlaybackToken !== myToken) return;
           loadingEl.classList.add('hidden');
@@ -993,10 +973,6 @@ export function renderLiveTvView() {
                     tryFreshOfficialStream(url).then(recovered => {
                       if (!recovered) showPlaybackError();
                     });
-                  } else if (channel.isTvr && channel.tvrId) {
-                    tryFreshRecTvStream(url).then(recovered => {
-                      if (!recovered && !tryProxyFallback(url)) showPlaybackError();
-                    });
                   } else if (directNetworkRetryCount < 1) {
                     directNetworkRetryCount += 1;
                     loadingEl.classList.remove('hidden');
@@ -1032,9 +1008,7 @@ export function renderLiveTvView() {
             }, { once: true });
             videoEl.addEventListener('error', () => {
               if (channelPlaybackToken !== myToken) return;
-              tryFreshRecTvStream(url).then(recovered => {
-                if (!recovered && !tryProxyFallback(url)) showPlaybackError();
-              });
+              if (!tryProxyFallback(url)) showPlaybackError();
             }, { once: true });
           } else {
             showPlaybackError();
@@ -1058,27 +1032,8 @@ export function renderLiveTvView() {
               if (!retried && channelPlaybackToken === myToken) showPlaybackError();
             });
           });
-        // Existing TVR channels start from their known URL immediately. Dynamic
-        // channels have no URL yet, so only those wait for a one-time resolve.
-        } else if (channel.isTvr && channel.tvrId && !channel.streamUrl) {
-          getRecTvChannelStreamUrl(channel.tvrId).then(freshUrl => {
-            if (channelPlaybackToken !== myToken) return;
-            if (freshUrl) {
-              channel.streamUrl = freshUrl;
-              startHls(freshUrl);
-            } else {
-              showPlaybackError();
-            }
-          }).catch(() => {
-            if (channelPlaybackToken === myToken) showPlaybackError();
-          });
         } else {
           startHls(channel.streamUrl);
-          if (channel.isTvr && channel.tvrId) {
-            getRecTvChannelStreamUrl(channel.tvrId).then(freshUrl => {
-              if (freshUrl) channel.streamUrl = freshUrl;
-            }).catch(() => {});
-          }
         }
         videoEl.muted = isMuted;
         videoEl.volume = currentVolume;
@@ -1148,7 +1103,6 @@ export function renderLiveTvView() {
                 <span class="tv-grid-name" title="${ch.name}">${ch.name}</span>
                 <div class="tv-grid-meta">
                   <span class="tv-grid-quality">${ch.quality}</span>
-                  ${ch.isTvr ? '<span class="tv-grid-vip-tag">VIP</span>' : ''}
                 </div>
               </div>
 
@@ -1386,14 +1340,11 @@ export function renderLiveTvView() {
       scope.on(document, 'keydown', handleKeyboard);
 
       // ─── Global Clean Up & Lifecycle Manager ───
-      let tvrRefreshTimer = null;
-      let tvrRefreshInFlight = false;
       const stopAllPlayback = () => {
         scope.dispose();
         stopEpgService();
         channelPlaybackToken++;
         clearInterval(epgInterval);
-        if (tvrRefreshTimer) clearInterval(tvrRefreshTimer);
         window.removeEventListener('epg-updated', onEpgUpdated);
         window.removeEventListener('scroll', handlePipScroll);
         if (activeHls) {
@@ -1432,81 +1383,6 @@ export function renderLiveTvView() {
       loadChannel(activeChannel);
       updateVolume(1.0);
 
-      // Keep the fixed 76-channel catalog instant. Recheck TVR while this view
-      // is open so short-lived match streams appear as soon as they unlock.
-      const refreshTvrExtras = async () => {
-        if (tvrRefreshInFlight || !document.contains(container)) return;
-        tvrRefreshInFlight = true;
-        try {
-          const tvrChannels = await fetchRecTvLiveChannels();
-          if (!document.contains(container) || !Array.isArray(tvrChannels)) return;
-          const fixedNames = new Set(LIVE_TV_CHANNELS.map(ch => normalizeChannelName(ch.name)));
-          const fixedTvrIds = new Set(LIVE_TV_CHANNELS.filter(ch => ch.tvrId).map(ch => String(ch.tvrId)));
-          const candidates = tvrChannels.filter(ch => {
-            const normalizedName = normalizeChannelName(ch.name);
-            return normalizedName && !fixedNames.has(normalizedName) && !fixedTvrIds.has(String(ch.tvrId));
-          });
-
-          // TVR can list match channels before their sources unlock. Force a
-          // fresh detail check and expose only streams that are playable now.
-          const resolved = await Promise.all(candidates.map(async ch => {
-            const streamUrl = await getRecTvChannelStreamUrl(ch.tvrId, { forceRefresh: true });
-            if (!streamUrl) return null;
-            const existing = allChannels.find(item => item.isDynamicTvr && String(item.tvrId) === String(ch.tvrId));
-            const data = {
-              ...ch,
-              isDynamicTvr: true,
-              streamUrl,
-              logo: ch.logo || getChannelBadgeSvg(ch.name, ch.category)
-            };
-            if (existing) {
-              Object.assign(existing, data);
-              return existing;
-            }
-            return data;
-          }));
-          if (!document.contains(container)) return;
-
-          const playable = resolved.filter(Boolean);
-          const playableIds = new Set(playable.map(ch => ch.id));
-          let changed = false;
-
-          for (let i = allChannels.length - 1; i >= 0; i--) {
-            const ch = allChannels[i];
-            if (ch.isDynamicTvr && !playableIds.has(ch.id) && ch.id !== activeChannel.id) {
-              allChannels.splice(i, 1);
-              changed = true;
-            }
-          }
-          for (const ch of playable) {
-            if (!allChannels.some(item => item.id === ch.id)) {
-              allChannels.push(ch);
-              changed = true;
-            }
-          }
-
-          if (isKid) {
-            for (let i = channelsPool.length - 1; i >= 0; i--) {
-              const ch = channelsPool[i];
-              if (ch.isDynamicTvr && !playableIds.has(ch.id) && ch.id !== activeChannel.id) {
-                channelsPool.splice(i, 1);
-              }
-            }
-            for (const ch of playable.filter(item => item.category === 'kids')) {
-              if (!channelsPool.some(item => item.id === ch.id)) channelsPool.push(ch);
-            }
-          }
-
-          if (changed) renderAllViews();
-        } catch (_) {
-          // Preserve the last good dynamic list during a temporary TVR outage.
-        } finally {
-          tvrRefreshInFlight = false;
-        }
-      };
-
-      refreshTvrExtras();
-      tvrRefreshTimer = setInterval(refreshTvrExtras, 30 * 1000);
     }
   };
 }

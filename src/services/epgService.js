@@ -26,23 +26,6 @@ const FALLBACK_CHANNEL_SCHEDULES = {
     { start: '23:00', end: '01:00', title: 'Late Night Show' },
     { start: '01:00', end: '07:00', title: 'Gece Finans & Belgesel' }
   ],
-  'tvr_ch_141': [
-    { start: '08:00', end: '11:00', title: 'İtalya Serie A Goller' },
-    { start: '11:00', end: '14:00', title: 'EuroLeague Özel Kuşağı' },
-    { start: '14:00', end: '17:00', title: 'La Liga Günlüğü & Özetler' },
-    { start: '17:00', end: '20:00', title: 'Maç Önü & Canlı Stüdyo' },
-    { start: '20:00', end: '23:00', title: 'Canlı Futbol / Basketbol Karşılaşması' },
-    { start: '23:00', end: '02:00', title: 'Günün Analizi & Tartışma' },
-    { start: '02:00', end: '08:00', title: 'Premier Maç Tekrarları' }
-  ],
-  'tvr_ch_140': [
-    { start: '08:00', end: '12:00', title: 'Formula 1 Özel Kuşağı' },
-    { start: '12:00', end: '15:00', title: 'NBA Action & En İyi Hareketler' },
-    { start: '15:00', end: '19:00', title: 'Uluslararası Voleybol Ligi' },
-    { start: '19:00', end: '22:00', title: 'Canlı Basketbol / Tenis Karşılaşması' },
-    { start: '22:00', end: '01:00', title: 'Motorsporları Kuşağı' },
-    { start: '01:00', end: '08:00', title: 'Gecenin Tekrarları' }
-  ]
 };
 
 // Generic genre schedules

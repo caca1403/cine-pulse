@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   }
 
   if (pathname === '/api/download_apk' || pathname === '/cinepulse.apk') {
-    const fallbackUrl = 'https://github.com/caca1403/cine-pulse/releases/download/v1.1.32/cinepulse.apk';
+    const fallbackUrl = 'https://github.com/caca1403/cine-pulse/releases/download/v1.1.33/cinepulse.apk';
     try {
       let downloadUrl = fallbackUrl;
       const manifestResponse = await fetch(`https://cine-pulse-drab.vercel.app/version.json?_t=${Date.now()}`, {

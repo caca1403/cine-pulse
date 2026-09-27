@@ -31,37 +31,15 @@ const CHANNEL_MAPPINGS = {
   'ch_ulketv': 'UlkeTV.tr',
 
   // Spor
-  'tvr_ch_165': 'beINSPORTSHABER.tr',
-  'tvr_ch_147': 'beINSPORTS3.tr',
-  'tvr_ch_137': 'Eurosport1.tr',
-  'tvr_ch_135': 'Eurosport2.tr',
   'ch_trtspor': 'TRTSPOR.tr',
   'ch_aspor': 'ASpor.tr',
-  'tvr_ch_128': 'FBTV.tr',
-  'tvr_ch_126': 'HTSPOR.tr',
-
-  // Sinema & Dizi
-  'tvr_ch_61': 'SinemaTV.tr',
-  'tvr_ch_60': 'SinemaTV2.tr',
-  'tvr_ch_59': 'SinemaTVAksiyon.tr',
-  'tvr_ch_55': 'SinemaTVAile.tr',
-  'tvr_ch_53': 'SinemaTV1001.tr',
-  'tvr_ch_52': 'SinemaTV1002.tr',
 
   // Belgesel
-  'tvr_ch_89': 'NationalGeographic.tr',
-  'tvr_ch_88': 'NatGeoWild.tr',
-  'tvr_ch_86': 'BBCEARTH.tr',
-  'tvr_ch_79': 'DiscoveryChannel.tr',
-  'tvr_ch_81': 'DMAX.tr',
-  'tvr_ch_83': 'TLC.tr',
-  'tvr_ch_85': 'TARIHTV.tr',
+  'ch_dmax': 'DMAX.tr',
+  'ch_tlc': 'TLC.tr',
   'ch_trtbelgesel': 'TRTBelgesel.tr',
 
   // Çocuk
-  'tvr_ch_36': 'CartoonNetwork.tr',
-  'tvr_ch_35': 'Nickelodeon.tr',
-  'tvr_ch_33': 'DisneyJunior.tr',
   'ch_trtcocuk': 'TRT&#xC7;ocuk.tr',
   'ch_minikago': 'MinikaGO.tr',
 
