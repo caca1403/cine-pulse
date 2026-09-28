@@ -1,28 +1,19 @@
-# 🎬 CinePulse Studio
+# CinePulse
 
-> **⚠️ TELİF VE KULLANIM HAKLARI UYARISI / PROPRIETARY SOFTWARE NOTICE**  
-> **Copyright (c) 2024-2026 Çağatay (caca1403). Tüm Hakları Saklıdır. / All Rights Reserved.**
+CinePulse uygulamasının herkese açık proje sayfası.
 
----
+- **Canlı demo:** [cine-pulse-drab.vercel.app](https://cine-pulse-drab.vercel.app/)
+- **Production deployment:** Vercel'de private caca1403/cine-pulse-production deposundan yayınlanır.
 
-### ⛔ YASAL BİLGİLENDİRME VE KULLANIM KOŞULLARI
-
-Bu projenin kaynak kodları, mimarisi, kullanıcı arayüz tasarımı, akış şemaları ve entegrasyonları **özel mülkiyete tabidir (proprietary software)**.
-
-* ❌ **Fork Yapılamaz ve Kopyalanamaz:** Bu deponun veya içeriğinin GitHub veya başka platformlar üzerinde forklanması, kopyalanması, klonlanması veya aynalanması (mirroring) kesinlikle yasaktır.
-* ❌ **Yeniden Dağıtılamaz:** Kodların tamamı veya herhangi bir parçası ticari veya ticari olmayan hiçbir amaçla üçüncü şahıslarla paylaşılamaz, dağıtılamaz veya yeniden yayınlanamaz.
-* ❌ **Değiştirilemez ve Yeniden Adlandırılamaz:** Projenin veya kodlarının başkası tarafından kendi eseriymiş gibi sunulması, yeniden paketlenmesi veya isim değiştirilerek yayınlanması telif hakkı ihlalidir.
-* ⚖️ **Hukuki Yaptırım:** Tespit edilen izinsiz fork, kopya veya yayınlar için doğrudan **GitHub DMCA Takedown** başvurusu yapılmakta ve ilgili hesaplar hakkında yasal işlem başlatılmaktadır.
+Bu public depo artık proje bağlantıları ve duyurular için vitrin olarak kullanılıyor. Kaynak kodun private depoda tutulması, bu public deponun eski Git geçmişini veya daha önce oluşturulmuş fork ve klonları silmez. Önceki commitlerdeki kod ve mevcut forklar GitHub'da erişilebilir kalabilir.
 
 ---
 
-### 🌐 ENGLISH NOTICE
+# CinePulse
 
-This repository and all associated source code, design assets, and architecture are the exclusive intellectual property of the author (**caca1403**).
+Public project page for the CinePulse app.
 
-* **No License Granted:** No permission is granted to copy, distribute, modify, fork, reverse engineer, or deploy this project, either commercially or non-commercially.
-* **Unauthorized Copies:** Any unauthorized forks, clones, or derivative works will be immediately subject to DMCA takedown requests and relevant copyright enforcement procedures.
+- **Live demo:** [cine-pulse-drab.vercel.app](https://cine-pulse-drab.vercel.app/)
+- **Production deployment:** served by Vercel from the private caca1403/cine-pulse-production repository.
 
----
-
-*İletişim ve Yetkilendirme için GitHub profili üzerinden iletişime geçiniz.*
+This public repository now serves as a project landing page for links and announcements. Keeping source code in the private repository does not erase this public repository's earlier Git history or forks and clones that were already created. Code in previous commits and existing forks may remain accessible on GitHub.
