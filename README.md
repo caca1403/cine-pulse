@@ -3,7 +3,7 @@
 CinePulse uygulamasının proje sayfası.
 
 - **Canlı demo:** [cine-pulse-drab.vercel.app](https://cine-pulse-drab.vercel.app/)
-- **Resmî production kaynağı:** Vercel, özel `caca1403/cine-pulse-production` deposundan dağıtım yapar.
+- **Resmî production kaynağı:** Vercel, bu public `caca1403/cine-pulse` deposunun `main` dalından dağıtım yapar.
 
 ## Kaynak kodu, kullanım ve izin
 
@@ -20,6 +20,8 @@ Yazılı izinle özelleştirme ya da yeniden dağıtım yapılıyorsa, izin kaps
 ## Source code, use, and permission
 
 CinePulse is shared on GitHub so its source can be inspected and its development and security reviewed. Public visibility alone does not grant a license to use, modify, distribute, or deploy the code. The current `LICENSE` reserves all rights; this project is **not offered under an OSI-approved open-source license**. Obtain written permission before reuse or distribution.
+
+**Official production deployment:** Vercel deploys the `main` branch of this public `caca1403/cine-pulse` repository.
 
 GitHub permits viewing and forking public repositories under its own terms of service. This README cannot disable GitHub's fork feature or remove existing forks, clones, or commit history.
 
