@@ -1,6 +1,6 @@
 # CinePulse
 
-CinePulse uygulamasının proje sayfası.
+CinePulse uygulaması ve kaynak kodu.
 
 - **Canlı demo:** [cine-pulse-drab.vercel.app](https://cine-pulse-drab.vercel.app/)
 - **Resmî production kaynağı:** Vercel, bu public `caca1403/cine-pulse` deposunun `main` dalından dağıtım yapar.
