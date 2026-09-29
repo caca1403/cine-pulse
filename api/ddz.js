@@ -43,15 +43,27 @@ export default async function handler(req, res) {
       }
     }
 
-    const upstreamRes = await fetch(targetUrl, {
-      method: req.method,
-      headers: customHeaders,
-      body: body
-    });
+    let upstreamRes;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        upstreamRes = await fetch(targetUrl, {
+          method: req.method,
+          headers: customHeaders,
+          body,
+          signal: AbortSignal.timeout(5500)
+        });
+        if (upstreamRes.status < 500) break;
+      } catch (error) {
+        if (attempt === 1) throw error;
+      }
+    }
 
     const contentType = upstreamRes.headers.get('content-type') || 'text/html; charset=utf-8';
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', contentType);
+    if (req.method === 'GET' && upstreamRes.ok) {
+      res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300');
+    }
 
     const buffer = await upstreamRes.arrayBuffer();
     return res.status(upstreamRes.status).send(Buffer.from(buffer));

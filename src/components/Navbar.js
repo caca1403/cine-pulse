@@ -412,16 +412,6 @@ export function renderNavbar(currentView = 'home') {
               </div>
               <i data-lucide="download" style="width:14px;height:14px;color:#10b981;margin-left:auto;flex-shrink:0;"></i>
             </a>
-            <a href="./cinepulse.zip" download="cinepulse.zip" target="_blank" rel="noopener noreferrer" class="hub-sheet-tool-btn" style="background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.12);">
-              <div class="hub-sheet-tool-icon" style="background:rgba(245,158,11,0.15);color:#fbbf24;">
-                <i data-lucide="archive" style="width:18px;height:18px;"></i>
-              </div>
-              <div class="hub-sheet-tool-text">
-                <span class="hub-sheet-tool-title">APK Zip Paketi (Chrome %100 Çözümü)</span>
-                <span class="hub-sheet-tool-sub">Takılma olmadan anında iner</span>
-              </div>
-              <i data-lucide="download" style="width:14px;height:14px;color:#fbbf24;margin-left:auto;flex-shrink:0;"></i>
-            </a>
           </div>
         </div>
       </div>

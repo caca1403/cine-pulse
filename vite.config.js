@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import dns from 'node:dns';
+import { dramaDevProxy } from './server/dramaDevProxy.js';
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -7,6 +8,7 @@ function epgDevPlugin() {
   return {
     name: 'epg-dev-plugin',
     configureServer(server) {
+      server.middlewares.use(dramaDevProxy);
       server.middlewares.use(async (req, res, next) => {
         if (req.url && req.url.startsWith('/api/epg')) {
           try {

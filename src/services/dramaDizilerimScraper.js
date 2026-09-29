@@ -175,9 +175,9 @@ export async function fetchDramaCatalog({ page = 1, query = '' } = {}) {
     return searchDramaDizilerim(query);
   }
 
-  const path = page > 1 ? `/dizi?page=${page}` : '/dizi';
-  const res = await fetchSafe(path);
-  if (!res) return [];
+  const path = `/dizi?page=${page}`;
+  const res = await fetchSafe(path, { timeout: 11000 });
+  if (!res) throw new Error(`Kısa dizi kataloğu yüklenemedi (sayfa ${page})`);
 
   const html = await res.text().catch(() => '');
   if (!html) return [];

@@ -17542,6 +17542,19 @@ html.native-android #player-modal .player-modal-content {
   margin-top: 2.5rem;
 }
 
+.drama-load-more-wrap.is-loading .btn-drama-load-more {
+  display: none;
+}
+.drama-load-more-wrap.is-loading::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(168, 85, 247, .2);
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
 .btn-drama-load-more {
   display: inline-flex;
   align-items: center;
@@ -19319,7 +19332,7 @@ html.native-android #player-modal .player-modal-content {
 .custom-controls-row .custom-controls-right-actions { flex: 0 0 auto; }
 @media (min-width: 1025px) {
   #custom-player-controls #custom-floating-pill-bar { display: inline-flex !important; }
-  #custom-btn-more { display: none !important; }
+  #custom-btn-more { display: inline-flex !important; }
   .custom-controls-row .custom-floating-pill-bar { left: 50%; }
 }
 @media (max-width: 1024px) {
@@ -19334,4 +19347,83 @@ html.native-android #player-modal .player-modal-content {
     height: 58px !important;
   }
   .custom-player-menu { bottom: 55px; right: 8px; z-index: 100; }
+}
+
+/* Overflow tools use the same readable, one-action-per-row rhythm as settings. */
+#custom-player-menu .custom-menu-view > #custom-floating-pill-bar {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  gap: 4px !important;
+  padding: 0 0 8px !important;
+  margin: 0 0 5px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, .08) !important;
+  overflow: visible !important;
+}
+#custom-player-menu #custom-floating-pill-bar .pill-bar-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex: none !important;
+  width: 100% !important;
+  min-height: 42px !important;
+  padding: 9px 12px !important;
+  gap: 11px !important;
+  border: 1px solid rgba(255, 255, 255, .07) !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, .045) !important;
+  font-size: .78rem !important;
+  text-align: left !important;
+}
+#custom-player-menu #custom-floating-pill-bar .pill-bar-btn:hover {
+  background: rgba(245, 158, 11, .13) !important;
+}
+#custom-player-menu #custom-floating-pill-bar .pill-bar-btn svg {
+  width: 17px !important;
+  height: 17px !important;
+}
+#custom-player-menu #custom-floating-pill-bar .pill-bar-btn span {
+  display: inline !important;
+}
+#custom-player-menu #pill-btn-speed::after {
+  content: 'Oynatma Hızı';
+  order: 1;
+}
+#custom-player-menu #pill-speed-label {
+  order: 2;
+  margin-left: auto;
+  color: #aeb9ca;
+}
+
+#custom-player-menu .custom-menu-view > #custom-floating-pill-bar {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+  border-bottom: 0 !important;
+}
+#custom-player-menu #custom-floating-pill-bar #pill-btn-speed {
+  display: none !important;
+}
+#custom-player-menu .custom-menu-item {
+  min-height: 42px;
+  padding: 9px 12px !important;
+  gap: 11px !important;
+  border: 1px solid rgba(255, 255, 255, .07);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .045);
+}
+#custom-player-menu .custom-menu-item:hover {
+  background: rgba(245, 158, 11, .13);
+}
+#custom-player-menu .custom-menu-item-icon {
+  width: 17px !important;
+  height: 17px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+#custom-player-menu .custom-menu-item-icon svg {
+  width: 17px !important;
+  height: 17px !important;
+  color: #cbd5e1 !important;
 }

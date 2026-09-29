@@ -17,7 +17,7 @@ import { showToast } from '../components/Toast.js';
 export async function renderDramaView(initialSlug = null, initialQuery = '') {
   let activeTab = initialQuery ? 'search' : 'trending';
   let currentSearchQuery = initialQuery || '';
-  let currentPage = 1;
+  let currentPage = 0;
   let hasMore = true;
   let isLoading = true;
   let dramasList = [];
@@ -111,6 +111,7 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
             </div>
           `).join('')}
         </div>
+        <div id="drama-scroll-sentinel" class="drama-scroll-sentinel" aria-hidden="true"></div>
 
         <!-- Load More / Pagination Button -->
         <div id="drama-load-more-wrap" class="drama-load-more-wrap hidden">
@@ -145,22 +146,96 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
       const cardsGrid = root.querySelector('#drama-cards-grid');
       const loadMoreWrap = root.querySelector('#drama-load-more-wrap');
       const loadMoreBtn = root.querySelector('#btn-drama-load-more');
+      const scrollSentinel = root.querySelector('#drama-scroll-sentinel');
       const detailModal = root.querySelector('#drama-detail-modal');
       const modalDialog = root.querySelector('#drama-modal-dialog');
 
       let searchDebounceTimer = null;
+      let requestVersion = 0;
+      let loadErrorCount = 0;
+      let prefetchedPage = 0;
+      let prefetchedResult = null;
 
-      async function fetchDramasData(isAppend = false) {
-        isLoading = true;
-        if (!isAppend) {
-          cardsGrid.innerHTML = Array.from({ length: 12 }).map(() => `
-            <div class="drama-card-skeleton">
-              <div class="skeleton-poster"></div>
-              <div class="skeleton-title"></div>
-            </div>
-          `).join('');
-          counterBadge.textContent = 'Yükleniyor...';
+      const primeCatalogPage = page => {
+        if (prefetchedPage === page) return;
+        prefetchedPage = page;
+        prefetchedResult = fetchDramaCatalog({ page }).catch(() => null);
+      };
+
+      const getCatalogPage = async page => {
+        if (prefetchedPage === page && prefetchedResult) {
+          const result = await prefetchedResult;
+          if (result) return result;
         }
+        return fetchDramaCatalog({ page });
+      };
+
+      const canLoadMore = () => (activeTab === 'trending' || activeTab === 'all') && !currentSearchQuery && hasMore;
+
+      const loadNextPage = async () => {
+        if (isLoading || !canLoadMore()) return;
+        const nextPage = currentPage + 1;
+        isLoading = true;
+        loadMoreBtn.disabled = true;
+        loadMoreWrap.classList.remove('hidden');
+        loadMoreWrap.classList.add('is-loading');
+        loadMoreWrap.classList.remove('is-error');
+        loadMoreBtn.querySelector('span').textContent = 'Diziler yükleniyor...';
+        let loaded = false;
+        try {
+          const version = requestVersion;
+          const results = await getCatalogPage(nextPage);
+          if (version !== requestVersion) return;
+          const known = new Set(dramasList.map(drama => drama.slug));
+          const fresh = results.filter(drama => !known.has(drama.slug) && known.add(drama.slug));
+          currentPage = nextPage;
+          hasMore = fresh.length > 0;
+          loaded = true;
+          loadErrorCount = 0;
+          if (hasMore) primeCatalogPage(nextPage + 1);
+          if (fresh.length) {
+            const previousCount = dramasList.length;
+            dramasList.push(...fresh);
+            renderCards(previousCount);
+          }
+        } catch (error) {
+          if (version !== requestVersion) return;
+          console.error('[DramaView] More dramas failed:', error);
+          loadErrorCount++;
+          if (loadErrorCount <= 2) setTimeout(() => {
+            if (version === requestVersion) loadNextPage();
+          }, loadErrorCount * 800);
+          return;
+        } finally {
+          if (version !== requestVersion) return;
+          isLoading = false;
+          loadMoreBtn.disabled = false;
+          loadMoreBtn.querySelector('span').textContent = 'Daha Fazla Dizi Yükle';
+          loadMoreWrap.classList.remove('is-loading');
+          loadMoreWrap.classList.toggle('is-error', loadErrorCount > 2 && canLoadMore());
+          loadMoreWrap.classList.toggle('hidden', loadErrorCount <= 2 || !canLoadMore());
+          if (loaded && canLoadMore() && scrollSentinel.getBoundingClientRect().top < window.innerHeight + 800) {
+            setTimeout(loadNextPage, 0);
+          }
+        }
+      };
+
+      const scrollObserver = new IntersectionObserver(entries => {
+        if (entries.some(entry => entry.isIntersecting)) loadNextPage();
+      }, { rootMargin: '800px 0px' });
+      scrollObserver.observe(scrollSentinel);
+
+      async function fetchDramasData() {
+        const version = ++requestVersion;
+        loadErrorCount = 0;
+        isLoading = true;
+        cardsGrid.innerHTML = Array.from({ length: 12 }).map(() => `
+          <div class="drama-card-skeleton">
+            <div class="skeleton-poster"></div>
+            <div class="skeleton-title"></div>
+          </div>
+        `).join('');
+        counterBadge.textContent = 'Yükleniyor...';
 
         try {
           let results = [];
@@ -174,14 +249,18 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
           } else {
             const currentTabConfig = CATEGORY_TABS.find(t => t.id === activeTab) || CATEGORY_TABS[0];
             if (activeTab === 'trending') {
+              primeCatalogPage(1);
               results = await fetchTrendingDramas();
+              currentPage = 0;
               sectionTitle.innerHTML = `
                 <i data-lucide="flame" style="width: 20px; height: 20px; color: #f43f5e;"></i>
                 <span>Trend Kısa Diziler</span>
               `;
               loadMoreWrap.classList.add('hidden');
             } else if (activeTab === 'all') {
-              results = await fetchDramaCatalog({ page: currentPage });
+              results = await getCatalogPage(1);
+              currentPage = 1;
+              primeCatalogPage(2);
               sectionTitle.innerHTML = `
                 <i data-lucide="layers" style="width: 20px; height: 20px; color: #3b82f6;"></i>
                 <span>Tüm Kısa Diziler Kataloğu (Sayfa ${currentPage})</span>
@@ -197,14 +276,16 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
             }
           }
 
-          if (isAppend) {
-            dramasList = [...dramasList, ...results];
-          } else {
-            dramasList = results;
-          }
+          if (version !== requestVersion) return;
+
+          dramasList = results;
+
+          hasMore = activeTab === 'trending' || (activeTab === 'all' && results.length > 0);
+          loadMoreWrap.classList.add('hidden');
 
           renderCards();
         } catch (err) {
+          if (version !== requestVersion) return;
           console.error('[DramaView] Error fetching dramas:', err);
           cardsGrid.innerHTML = `
             <div class="drama-empty-state">
@@ -217,11 +298,16 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
           root.querySelector('#btn-drama-retry')?.addEventListener('click', () => fetchDramasData(false));
           renderIcons(cardsGrid);
         } finally {
-          isLoading = false;
+          if (version === requestVersion) {
+            isLoading = false;
+            if (canLoadMore() && scrollSentinel.getBoundingClientRect().top < window.innerHeight + 800) {
+              setTimeout(loadNextPage, 0);
+            }
+          }
         }
       }
 
-      function renderCards() {
+      function renderCards(startIndex = 0) {
         if (!dramasList || dramasList.length === 0) {
           cardsGrid.innerHTML = `
             <div class="drama-empty-state">
@@ -237,7 +323,7 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
 
         counterBadge.textContent = `${dramasList.length} Dizi`;
 
-        cardsGrid.innerHTML = dramasList.map((drama, idx) => {
+        const cardsHTML = dramasList.slice(startIndex).map((drama, idx) => {
           const isDub = drama.isDubbed || drama.title.toLowerCase().includes('dublaj');
           const cleanPoster = drama.poster || '';
           return `
@@ -288,23 +374,24 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
           `;
         }).join('');
 
+        if (startIndex) cardsGrid.insertAdjacentHTML('beforeend', cardsHTML);
+        else cardsGrid.innerHTML = cardsHTML;
+
         renderIcons(cardsGrid);
 
-        // Attach card click handlers
-        cardsGrid.querySelectorAll('.drama-card').forEach(card => {
-          card.addEventListener('click', () => {
-            const slug = card.getAttribute('data-slug');
-            if (slug) openDramaDetail(slug);
-          });
-          card.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              const slug = card.getAttribute('data-slug');
-              if (slug) openDramaDetail(slug);
-            }
-          });
-        });
       }
+
+      cardsGrid.addEventListener('click', event => {
+        const slug = event.target.closest('.drama-card')?.getAttribute('data-slug');
+        if (slug) openDramaDetail(slug);
+      });
+      cardsGrid.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const slug = event.target.closest('.drama-card')?.getAttribute('data-slug');
+        if (!slug) return;
+        event.preventDefault();
+        openDramaDetail(slug);
+      });
 
       async function openDramaDetail(slug) {
         if (!slug) return;
@@ -516,7 +603,7 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         clearTimeout(searchDebounceTimer);
         searchDebounceTimer = setTimeout(() => {
           currentSearchQuery = val.trim();
-          currentPage = 1;
+          currentPage = 0;
           activeTab = currentSearchQuery ? 'search' : 'trending';
           categoryChips.forEach(chip => chip.classList.toggle('active', !currentSearchQuery && chip.getAttribute('data-tab-id') === 'trending'));
           fetchDramasData(false);
@@ -528,7 +615,7 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
           e.preventDefault();
           clearTimeout(searchDebounceTimer);
           currentSearchQuery = searchInput.value.trim();
-          currentPage = 1;
+          currentPage = 0;
           fetchDramasData(false);
         }
       });
@@ -552,7 +639,7 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
           currentSearchQuery = '';
           if (searchInput) searchInput.value = '';
           searchClearBtn?.classList.add('hidden');
-          currentPage = 1;
+          currentPage = 0;
 
           categoryChips.forEach(c => c.classList.toggle('active', c === chip));
           fetchDramasData(false);
@@ -560,13 +647,11 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
       });
 
       // Load More Event
-      loadMoreBtn?.addEventListener('click', () => {
-        currentPage++;
-        fetchDramasData(true);
-      });
+      loadMoreBtn?.addEventListener('click', loadNextPage);
 
       // Initial Data Load
       await fetchDramasData(false);
+      if (canLoadMore() && scrollSentinel.getBoundingClientRect().top < window.innerHeight + 800) loadNextPage();
 
       // If initialSlug provided in hash, open it directly!
       if (initialSlug) {
