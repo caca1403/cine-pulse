@@ -9481,10 +9481,10 @@ video::cue {
     inset: auto !important;
     left: auto !important;
     transform: none !important;
-    flex: 1 1 auto !important;
-    width: auto !important;
+    flex: 0 1 72% !important;
+    width: 72% !important;
     min-width: 0 !important;
-    max-width: none !important;
+    max-width: calc(100% - 76px) !important;
     padding: 2px 3px !important;
     gap: 1px !important;
     margin: 0 !important;
