@@ -2664,17 +2664,6 @@ export async function openPlayerModal({
 
           <!-- Center Transport Controls Overlay (Image 2 Stremio Style: Rewind 10, Play/Pause, Forward 10) -->
           <div class="custom-center-transport-overlay" id="custom-center-transport">
-            <button class="center-transport-btn" id="custom-btn-rewind-10" title="10 Saniye Geri (←)">
-              <i data-lucide="rotate-ccw" style="width: 24px; height: 24px;"></i>
-              <span class="center-btn-badge-10">10</span>
-            </button>
-            <button class="center-transport-btn center-play-pause-btn" id="custom-btn-play" title="Oynat / Duraklat (Space)">
-              <i data-lucide="pause" id="center-play-icon" style="width: 30px; height: 30px;"></i>
-            </button>
-            <button class="center-transport-btn" id="custom-btn-forward-10" title="10 Saniye İleri (→)">
-              <i data-lucide="rotate-cw" style="width: 24px; height: 24px;"></i>
-              <span class="center-btn-badge-10">10</span>
-            </button>
           </div>
 
           <!-- Bottom Custom Control Bar (Matching Image 2: Stremio Floating Capsule Player) -->
@@ -2691,9 +2680,22 @@ export async function openPlayerModal({
 
             <!-- Player tools sit on their own row directly below the timeline. -->
             <div class="custom-controls-row">
-              <div class="custom-controls-left-time" aria-label="Oynatma süresi">
-                <span class="custom-time-current" id="custom-time-current">00:00</span>
-                <span class="custom-time-duration" id="custom-time-duration">00:00</span>
+              <div class="custom-controls-left-stack">
+                <div class="custom-controls-left-time" aria-label="Oynatma süresi">
+                  <span class="custom-time-current" id="custom-time-current">00:00</span>
+                  <span class="custom-time-duration" id="custom-time-duration">00:00</span>
+                </div>
+                <div class="custom-controls-transport-row" aria-label="Oynatma kontrolleri">
+                  <button class="compact-transport-btn" id="custom-btn-rewind-10" title="10 Saniye Geri (←)">
+                    <i data-lucide="rotate-ccw" style="width: 13px; height: 13px;"></i><span>10</span>
+                  </button>
+                  <button class="compact-transport-btn compact-play-btn" id="custom-btn-play" title="Oynat / Duraklat (Space)">
+                    <i data-lucide="pause" id="center-play-icon" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  <button class="compact-transport-btn" id="custom-btn-forward-10" title="10 Saniye İleri (→)">
+                    <i data-lucide="rotate-cw" style="width: 13px; height: 13px;"></i><span>10</span>
+                  </button>
+                </div>
               </div>
               <!-- Center: Stremio-Style Glassmorphic Floating Pill Bar -->
               <div class="custom-floating-pill-bar" id="custom-floating-pill-bar">
@@ -2765,17 +2767,6 @@ export async function openPlayerModal({
           <div class="custom-player-menu hidden" id="custom-player-menu">
             <!-- Main View -->
             <div class="custom-menu-view" id="custom-menu-main">
-              <div class="custom-menu-transport-row" aria-label="Oynatma kontrolleri">
-                <button type="button" class="custom-menu-transport-btn" id="custom-menu-rewind-10" title="10 saniye geri">
-                  <i data-lucide="rotate-ccw" style="width:18px;height:18px;"></i><span>10 sn geri</span>
-                </button>
-                <button type="button" class="custom-menu-transport-btn" id="custom-menu-play-toggle" title="Oynat / duraklat">
-                  <i data-lucide="play" id="custom-menu-play-icon" style="width:18px;height:18px;"></i><span id="custom-menu-play-label">Oynat</span>
-                </button>
-                <button type="button" class="custom-menu-transport-btn" id="custom-menu-forward-10" title="10 saniye ileri">
-                  <i data-lucide="rotate-cw" style="width:18px;height:18px;"></i><span>10 sn ileri</span>
-                </button>
-              </div>
               <!-- Item 1: Oynatma hızı -->
               <div class="custom-menu-item" id="custom-menu-item-speed">
                 <div class="custom-menu-item-icon">
@@ -4136,11 +4127,6 @@ export async function openPlayerModal({
     const backBtn = wrapper.querySelector('#custom-menu-back-btn');
     const centerIndicator = wrapper.querySelector('#custom-center-play-indicator');
     const floatingPillBar = wrapper.querySelector('#custom-floating-pill-bar');
-    const menuRewindBtn = wrapper.querySelector('#custom-menu-rewind-10');
-    const menuPlayBtn = wrapper.querySelector('#custom-menu-play-toggle');
-    const menuForwardBtn = wrapper.querySelector('#custom-menu-forward-10');
-    const menuPlayIcon = wrapper.querySelector('#custom-menu-play-icon');
-    const menuPlayLabel = wrapper.querySelector('#custom-menu-play-label');
 
     // Long tool strip belongs inside the overflow menu; keep only the timeline
     // and the compact fullscreen/settings actions on the player edge.
@@ -4307,11 +4293,6 @@ export async function openPlayerModal({
         playBtn.innerHTML = `<i data-lucide="${isPaused ? 'play' : 'pause'}" style="width: 20px; height: 20px;"></i>`;
         renderPlayerIcons(playBtn);
       }
-      if (menuPlayIcon) {
-        menuPlayIcon.setAttribute('data-lucide', isPaused ? 'play' : 'pause');
-        renderPlayerIcons(menuPlayBtn);
-      }
-      if (menuPlayLabel) menuPlayLabel.textContent = isPaused ? 'Oynat' : 'Duraklat';
       if (isPaused) {
         wrapper.classList.remove('hide-controls');
       }
@@ -4341,9 +4322,6 @@ export async function openPlayerModal({
 
     if (rewindBtn) rewindBtn.onclick = (e) => { e.stopPropagation(); skipTime(-10); };
     if (forwardBtn) forwardBtn.onclick = (e) => { e.stopPropagation(); skipTime(10); };
-    if (menuRewindBtn) menuRewindBtn.onclick = (e) => { e.stopPropagation(); skipTime(-10); };
-    if (menuForwardBtn) menuForwardBtn.onclick = (e) => { e.stopPropagation(); skipTime(10); };
-    if (menuPlayBtn) menuPlayBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
 
     // Brightness Control
     let currentBrightness = roomPlaybackSettings.brightness;

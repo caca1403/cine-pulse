@@ -7772,6 +7772,57 @@ html.mobile-web .navbar {
   gap: 8px;
 }
 
+.custom-controls-left-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.custom-controls-transport-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.compact-transport-btn {
+  width: 26px;
+  height: 22px;
+  padding: 2px 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 7px;
+  background: rgba(15,23,42,.68);
+  color: #e2e8f0;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.compact-play-btn {
+  width: 28px;
+}
+
+.compact-transport-btn svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+.compact-transport-btn:hover,
+.compact-transport-btn:active {
+  border-color: rgba(245,158,11,.55);
+  color: #fbbf24;
+  background: rgba(245,158,11,.18);
+}
+
 .custom-time-current,
 .custom-time-duration {
   font-variant-numeric: tabular-nums;
@@ -7926,6 +7977,14 @@ html.mobile-web .navbar {
   border-radius: 8px;
   background: rgba(255,255,255,.055);
   font-size: .76rem;
+}
+
+#custom-player-controls #custom-floating-pill-bar {
+  display: none !important;
+}
+
+#custom-player-menu #custom-floating-pill-bar {
+  display: grid !important;
 }
 
 .direct-video-wrapper.hide-controls .custom-center-transport-overlay,
@@ -9518,8 +9577,8 @@ video::cue {
   .custom-controls-row {
     display: flex !important;
     align-items: center !important;
-    justify-content: flex-end !important;
-    min-height: 42px !important;
+    justify-content: space-between !important;
+    min-height: 48px !important;
     padding: 0 2px !important;
     gap: 6px !important;
   }
@@ -9540,11 +9599,21 @@ video::cue {
     margin-left: auto !important;
   }
   .custom-controls-left-time {
-    display: none !important;
+    min-width: 0 !important;
+    gap: 5px !important;
   }
   .custom-time-current,
   .custom-time-duration {
-    display: none !important;
+    display: inline !important;
+    font-size: .68rem !important;
+  }
+  .compact-transport-btn {
+    width: 25px !important;
+    height: 21px !important;
+    padding: 2px !important;
+  }
+  .compact-play-btn {
+    width: 27px !important;
   }
   /* Ses butonu mobilde dışarıda görünmesin — sadece üç nokta içinde */
   #custom-volume-wrap {
