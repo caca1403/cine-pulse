@@ -1,4 +1,7 @@
 import { defineConfig } from 'vite';
+import dns from 'node:dns';
+
+dns.setDefaultResultOrder('ipv4first');
 
 function epgDevPlugin() {
   return {
@@ -71,6 +74,16 @@ export default defineConfig({
     port: 3000,
     host: true,
     proxy: {
+      '/api/ddz': {
+        target: 'https://dramadizilerim.com',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          Referer: 'https://dramadizilerim.com/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/ddz/, '') || '/'
+      },
       '/api/subtitles': {
         target: 'http://localhost:4000',
         changeOrigin: true,
