@@ -9440,9 +9440,15 @@ video::cue {
   .custom-player-controls {
     padding: 0 8px 8px !important;
     gap: 4px !important;
+    z-index: 60 !important;
   }
   .custom-controls-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    min-height: 42px !important;
     padding: 0 2px !important;
+    gap: 6px !important;
   }
   .custom-controls-left,
   .custom-controls-right {
@@ -9453,20 +9459,38 @@ video::cue {
     width: 30px !important;
     height: 30px !important;
   }
+  .custom-controls-right-actions {
+    display: flex !important;
+    position: relative !important;
+    z-index: 2 !important;
+    gap: 3px !important;
+    margin-left: auto !important;
+  }
+  .custom-time-current,
+  .custom-time-duration {
+    display: none !important;
+  }
   /* Ses butonu mobilde dışarıda görünmesin — sadece üç nokta içinde */
   #custom-volume-wrap {
     display: none !important;
   }
 
-  /* Keep the tools capsule centered directly below the timeline. */
+  /* Keep tool pills and fullscreen/settings controls visible on narrow screens. */
   .custom-floating-pill-bar {
-    position: absolute !important;
-    top: auto !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    max-width: calc(100% - 16px) !important;
-    padding: 2px 6px !important;
-    gap: 3px !important;
+    position: relative !important;
+    inset: auto !important;
+    left: auto !important;
+    transform: none !important;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 2px 3px !important;
+    gap: 1px !important;
+    margin: 0 !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain !important;
     background: rgba(10, 14, 24, 0.88) !important;
     backdrop-filter: blur(16px) !important;
     -webkit-backdrop-filter: blur(16px) !important;
@@ -9474,15 +9498,17 @@ video::cue {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;
   }
   .pill-bar-btn {
-    padding: 4px 8px !important;
-    font-size: 0.72rem !important;
-    gap: 4px !important;
+    padding: 4px 5px !important;
+    font-size: 0.66rem !important;
+    gap: 3px !important;
+    flex: 0 0 auto !important;
   }
   .pill-bar-btn i,
   .pill-bar-btn svg {
-    width: 12px !important;
-    height: 12px !important;
+    width: 11px !important;
+    height: 11px !important;
   }
+  #pill-btn-similar span { display: none !important; }
   .custom-time-display {
     font-size: 11px !important;
     white-space: nowrap !important;
