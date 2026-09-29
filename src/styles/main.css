@@ -7931,7 +7931,7 @@ html.mobile-web .navbar {
 
 /* Playback actions are grouped in the three-dot menu; slider controls stay outside. */
 .custom-center-transport-overlay {
-  display: none !important;
+  display: flex !important;
 }
 
 .custom-menu-transport-row {
@@ -7997,7 +7997,7 @@ html.mobile-web .navbar {
 }
 
 #custom-player-controls #custom-floating-pill-bar {
-  display: none !important;
+  display: inline-flex !important;
 }
 
 #custom-player-menu #custom-floating-pill-bar {
@@ -8341,7 +8341,7 @@ html.mobile-web .navbar {
   position: absolute;
   bottom: 64px;
   right: 18px;
-  z-index: 60;
+  z-index: 100;
   background: rgba(12, 16, 26, 0.94);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
@@ -19250,27 +19250,88 @@ html.native-android #player-modal .player-modal-content {
 
 /* Compact the rhythm between home category headings in both card layouts. */
 .home-view .rail-section {
-  padding: 1rem 0 .35rem !important;
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin-block: 0 !important;
+  padding: .25rem 0 .1rem !important;
+  contain: none !important;
   content-visibility: visible !important;
-  contain-intrinsic-size: none !important;
+  contain-intrinsic-size: 0px !important;
 }
 .home-view .rail-header {
-  margin-bottom: .65rem !important;
+  margin: 0 0 .35rem !important;
 }
 .home-view .card-rail {
-  padding-top: .3rem !important;
-  padding-bottom: .65rem !important;
+  display: flex !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin-block: 0 !important;
+  padding: .05rem 0 .15rem !important;
 }
 
 @media (max-width: 768px) {
   .home-view .rail-section {
-    padding: .8rem 0 .2rem !important;
+    min-height: 0 !important;
+    margin-block: 0 !important;
+    padding: .25rem 0 .05rem !important;
+    contain: none !important;
     content-visibility: visible !important;
-    contain-intrinsic-size: none !important;
+    contain-intrinsic-size: 0 0 !important;
   }
-  .home-view .rail-header { margin-bottom: .55rem !important; }
+  .home-view .rail-header { margin-bottom: .4rem !important; }
   .home-view .card-rail {
-    padding-top: .2rem !important;
-    padding-bottom: .5rem !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: .1rem 0 .25rem !important;
   }
+}
+/* Player transport stays on the picture; time and tools have separate lanes. */
+.custom-center-transport-overlay .custom-controls-transport-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2vw, 28px);
+}
+.custom-center-transport-overlay .compact-transport-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, .84);
+  border-color: rgba(255, 255, 255, .28);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, .55);
+  font-size: 11px;
+}
+.custom-center-transport-overlay .compact-play-btn {
+  width: 64px;
+  height: 64px;
+  border-width: 2px;
+}
+.custom-center-transport-overlay .compact-transport-btn svg {
+  width: 22px !important;
+  height: 22px !important;
+}
+.custom-center-transport-overlay .compact-play-btn svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+.custom-controls-row .custom-controls-left-stack { flex: 0 0 auto; }
+.custom-controls-row .custom-floating-pill-bar { max-width: min(48%, 660px); }
+.custom-controls-row .custom-controls-right-actions { flex: 0 0 auto; }
+@media (min-width: 1025px) {
+  #custom-player-controls #custom-floating-pill-bar { display: inline-flex !important; }
+  #custom-btn-more { display: none !important; }
+  .custom-controls-row .custom-floating-pill-bar { left: 50%; }
+}
+@media (max-width: 1024px) {
+  #custom-player-controls #custom-floating-pill-bar { display: none !important; }
+  #custom-player-menu #custom-floating-pill-bar { display: grid !important; }
+  .custom-center-transport-overlay .compact-transport-btn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .custom-center-transport-overlay .compact-play-btn {
+    width: 58px !important;
+    height: 58px !important;
+  }
+  .custom-player-menu { bottom: 55px; right: 8px; z-index: 100; }
 }

@@ -4114,9 +4114,12 @@ export async function openPlayerModal({
     const centerIndicator = wrapper.querySelector('#custom-center-play-indicator');
     const floatingPillBar = wrapper.querySelector('#custom-floating-pill-bar');
 
-    // Long tool strip belongs inside the overflow menu; keep only the timeline
-    // and the compact fullscreen/settings actions on the player edge.
-    if (floatingPillBar && mainView) mainView.prepend(floatingPillBar);
+    // Keep desktop tools visible; compact screens use the overflow menu.
+    if (floatingPillBar && mainView && window.matchMedia('(max-width: 1024px)').matches) mainView.prepend(floatingPillBar);
+
+    const centerTransport = wrapper.querySelector('#custom-center-transport');
+    const transportRow = wrapper.querySelector('.custom-controls-transport-row');
+    if (centerTransport && transportRow) centerTransport.appendChild(transportRow);
 
     const audioSubPopover = wrapper.querySelector('#custom-audio-sub-popover');
     const tabAudioBtn = wrapper.querySelector('#audio-sub-tab-audio');
@@ -4306,7 +4309,7 @@ export async function openPlayerModal({
 
     // Delegate compact transport clicks from the controls layer. This keeps
     // them responsive even when the icon subtree is re-rendered by Lucide.
-    if (controlsBar) on(controlsBar, 'click', (e) => {
+    if (centerTransport) on(centerTransport, 'click', (e) => {
       const button = e.target.closest('#custom-btn-play, #custom-btn-rewind-10, #custom-btn-forward-10');
       if (!button) return;
       e.preventDefault();
