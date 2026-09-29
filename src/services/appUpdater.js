@@ -8,8 +8,8 @@ import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
 import { App } from '@capacitor/app';
 
-export const CURRENT_APP_VERSION = '1.1.33';
-export const CURRENT_VERSION_CODE = 143;
+export const CURRENT_APP_VERSION = '1.1.35';
+export const CURRENT_VERSION_CODE = 145;
 
 // The deployed manifest has explicit CORS headers. GitHub's release URL redirects
 // through several hosts and can fail WebView fetches before the app can notify.
@@ -43,6 +43,14 @@ function isNewerVersion(remote, current) {
   if (rMaj === cMaj && rMin > cMin) return true;
   if (rMaj === cMaj && rMin === cMin && rPat > cPat) return true;
   return false;
+}
+
+/**
+ * Version code compare: returns true if remote version code > current version code
+ */
+function isNewerVersionCode(remoteCode, currentCode) {
+  if (!remoteCode || !currentCode) return false;
+  return Number(remoteCode) > Number(currentCode);
 }
 
 /**
@@ -291,7 +299,11 @@ async function performUpdateCheck({ manual }) {
     if (!data?.version) throw new Error('Sürüm bilgisi eksik');
     lastSuccessfulUpdateCheck = Date.now();
 
-    if (data && isNewerVersion(data.version, CURRENT_APP_VERSION)) {
+    // Check both version string AND version code - only show update if BOTH are newer
+    const versionNewer = isNewerVersion(data.version, CURRENT_APP_VERSION);
+    const versionCodeNewer = isNewerVersionCode(data.versionCode, CURRENT_VERSION_CODE);
+    
+    if (data && versionNewer && versionCodeNewer) {
       showUpdateModal(data);
       return data;
     } else if (manual) {

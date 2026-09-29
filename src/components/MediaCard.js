@@ -248,9 +248,8 @@ export function renderMediaCard(item, options = {}) {
 
         <!-- Left Status Pill (Completed / In-Progress with actual progress) -->
         ${isCompleted ? `
-          <div class="card-status-badge card-status-completed" title="Tamamlandı">
+          <div class="card-status-badge card-status-completed minimal-watched" title="Tamamlandı">
             <i data-lucide="check" style="width:10px;height:10px;stroke-width:3;"></i>
-            <span>İZLENDİ</span>
           </div>
         ` : (isContinue && isSeries && (currentTime > 0 || progressPercent > 0) ? `
           <div class="card-status-badge card-status-continue" title="Kaldığın Bölüm">

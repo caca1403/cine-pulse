@@ -2941,6 +2941,25 @@ html.mobile-web .navbar {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
+/* Minimal Watched Badge - Small check icon only */
+.card-status-badge.minimal-watched {
+  padding: 0.15rem;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.95);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  width: 24px;
+  height: 24px;
+  justify-content: center;
+}
+
+.card-status-badge.minimal-watched i {
+  width: 12px;
+  height: 12px;
+  stroke-width: 3;
+}
+
 /* Top meta strip over poster - Floating Glass Chips (Stremio Style) */
 .card-top-strip {
   position: absolute;
@@ -19528,4 +19547,689 @@ html.native-android #player-modal .player-modal-content {
     padding: 10px 54px 52px 12px;
   }
   .netflix-trailers-showcase .trailer-expanded-desc { display: none; }
+}
+
+/* ==========================================================================
+   APK & Mobile Web Responsive Fixes
+   ========================================================================== */
+
+/* Ensure proper viewport handling on Android WebView */
+html.native-android {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+/* Mobile-first container adjustments */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 0.85rem;
+  }
+  
+  /* Prevent horizontal scroll on mobile */
+  body {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  /* Media grid responsive */
+  .media-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem 0.5rem;
+  }
+  
+  .media-card {
+    width: 100%;
+  }
+  
+  /* Card poster adjustments for mobile */
+  .card-poster-wrapper {
+    border-radius: 6px;
+  }
+  
+  .card-bottom-cinematic-overlay {
+    padding: 2rem 0.5rem 0.5rem 0.5rem;
+  }
+  
+  .card-cinematic-title {
+    font-size: 0.78rem;
+  }
+  
+  .card-cinematic-meta {
+    font-size: 0.62rem;
+    gap: 0.25rem;
+  }
+  
+  /* Minimal watched badge on mobile */
+  .card-status-badge.minimal-watched {
+    width: 20px;
+    height: 20px;
+    top: 6px;
+    left: 6px;
+  }
+  
+  .card-status-badge.minimal-watched i {
+    width: 10px;
+    height: 10px;
+  }
+  
+  /* Year/rating chips on mobile */
+  .card-top-year,
+  .card-top-rating {
+    padding: 2px 6px;
+    font-size: 0.62rem;
+    border-radius: 4px;
+  }
+  
+  /* Search overlay mobile */
+  .search-results-overlay {
+    left: -0.85rem;
+    right: -0.85rem;
+    width: calc(100% + 1.7rem);
+    min-width: auto;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    max-height: 50vh;
+  }
+  
+  .mobile-search-row {
+    margin: 0;
+    padding: 0.5rem 0.85rem;
+    border-radius: 0;
+  }
+  
+  .mobile-search-input {
+    padding: 0.6rem 2.2rem 0.6rem 2rem;
+    font-size: 0.85rem;
+  }
+  
+  /* Hero slider mobile */
+  .hero-slider {
+    height: 65vh;
+    min-height: 420px;
+    padding-bottom: 3rem;
+  }
+  
+  .hero-title {
+    font-size: 1.8rem;
+    line-height: 1.1;
+  }
+  
+  .hero-overview {
+    font-size: 0.82rem;
+    -webkit-line-clamp: 2;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    padding: 0.65rem 1rem;
+    font-size: 0.82rem;
+  }
+  
+  .hero-btn-list-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  /* Rail section mobile */
+  .rail-section {
+    padding: 1.2rem 0 0.5rem;
+  }
+  
+  .rail-title {
+    font-size: 1.1rem;
+  }
+  
+  .card-rail {
+    gap: 0.75rem;
+    padding: 0.4rem 0.15rem 1rem;
+  }
+  
+  /* Detail page mobile */
+  .detail-hero-banner {
+    min-height: 55vh;
+    padding: 5.5rem 1rem 2.5rem;
+  }
+  
+  .detail-heading-title {
+    font-size: 1.8rem;
+  }
+  
+  .detail-meta-line {
+    font-size: 0.78rem;
+    gap: 0.4rem;
+  }
+  
+  .detail-badge-deck {
+    gap: 0.4rem;
+  }
+  
+  .badge {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+  }
+  
+  .detail-storyline {
+    font-size: 0.92rem;
+  }
+  
+  /* Player modal mobile - already handled in PlayerModal.css but ensure consistency */
+  .player-modal-content {
+    border-radius: 0;
+    max-height: 100dvh;
+    height: 100dvh;
+  }
+  
+  .player-stage-wrapper {
+    border-radius: 0;
+  }
+  
+  .dizisol-cinema-body {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  
+  .dizisol-title {
+    font-size: 1.25rem;
+  }
+  
+  .dizisol-sub-row {
+    font-size: 0.78rem;
+    gap: 0.5rem;
+  }
+  
+  .dizisol-genre-chip {
+    padding: 0.15rem 0.5rem;
+    font-size: 0.7rem;
+  }
+  
+  .dizisol-overview {
+    font-size: 0.82rem;
+  }
+  
+  .btn-dizisol-action {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.76rem;
+  }
+  
+  .action-icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  /* Episodes carousel mobile */
+  .dizisol-ep-card {
+    flex: 0 0 155px;
+    max-width: 155px;
+  }
+  
+  .dizisol-ep-thumb-box {
+    border-radius: 8px;
+  }
+  
+  .dizisol-ep-title {
+    font-size: 0.76rem;
+  }
+  
+  .dizisol-ep-date {
+    font-size: 0.65rem;
+  }
+  
+  /* Season tabs mobile */
+  .dizisol-season-tab {
+    padding: 0.35rem 0.85rem;
+    font-size: 0.74rem;
+  }
+  
+  /* Mobile dock adjustments */
+  .mobile-dynamic-dock {
+    height: 56px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    max-width: 100%;
+    width: calc(100% - 16px);
+    border-radius: 16px;
+  }
+  
+  .dynamic-dock-item {
+    font-size: 0.55rem;
+    padding: 4px 0;
+  }
+  
+  .dynamic-dock-item span {
+    max-width: 48px;
+  }
+  
+  .dynamic-dock-item svg,
+  .dynamic-dock-item i {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .dynamic-dock-hub-orb {
+    width: 48px;
+    height: 48px;
+    top: -10px;
+  }
+  
+  .hub-orb-inner svg,
+  .hub-orb-inner i {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .hub-orb-label {
+    font-size: 0.45rem;
+  }
+  
+  /* Mobile hub sheet */
+  .mobile-hub-sheet {
+    max-height: 75vh;
+    border-radius: 22px 22px 0 0;
+  }
+  
+  .hub-sheet-body {
+    padding: 0 1rem 2rem;
+  }
+  
+  .hub-sheet-card {
+    padding: 0.75rem 0.7rem;
+  }
+  
+  .hub-sheet-card-title {
+    font-size: 0.82rem;
+  }
+  
+  .hub-sheet-chip {
+    padding: 0.5rem;
+    font-size: 0.72rem;
+  }
+  
+  .hub-sheet-tool-btn {
+    padding: 0.7rem 0.8rem;
+  }
+  
+  .hub-sheet-tool-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+  }
+  
+  .hub-sheet-tool-title {
+    font-size: 0.82rem;
+  }
+  
+  .hub-sheet-tool-sub {
+    font-size: 0.66rem;
+  }
+  
+  /* Toast mobile */
+  .toast-container {
+    bottom: 80px;
+    left: 0.85rem;
+    right: 0.85rem;
+  }
+  
+  .toast {
+    padding: 0.75rem 1rem;
+    font-size: 0.82rem;
+    border-radius: 10px;
+  }
+  
+  /* Profile modal mobile */
+  .profile-modal-content {
+    max-height: 85vh;
+    border-radius: 20px 20px 0 0;
+  }
+  
+  /* Notification center mobile */
+  .notification-modal-content {
+    max-height: 85vh;
+    border-radius: 20px 20px 0 0;
+  }
+  
+  /* Decision room modal mobile */
+  .decision-room-modal {
+    max-height: 90vh;
+  }
+  
+  /* Trakt modal mobile */
+  .trakt-modal-content {
+    max-height: 85vh;
+    border-radius: 20px 20px 0 0;
+  }
+  
+  /* Source popover mobile */
+  .sources-popover-content {
+    border-radius: 20px 20px 0 0;
+    max-height: 75vh;
+  }
+  
+  .sources-popover-body {
+    padding: 1rem;
+  }
+  
+  .source-list-item {
+    padding: 0.6rem 0.85rem;
+  }
+  
+  .source-item-name {
+    font-size: 0.8rem;
+  }
+  
+  /* Keyboard shortcuts popover mobile */
+  .shortcuts-popover {
+    max-width: 95vw;
+    padding: 1rem;
+    border-radius: 16px;
+  }
+  
+  .shortcut-item {
+    font-size: 0.78rem;
+  }
+  
+  .shortcut-item kbd {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    font-size: 0.68rem;
+  }
+}
+
+/* Small mobile phones (<= 480px) */
+@media (max-width: 480px) {
+  .container {
+    padding: 0 0.7rem;
+  }
+  
+  .media-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem 0.4rem;
+  }
+  
+  .hero-slider {
+    height: 60vh;
+    min-height: 380px;
+  }
+  
+  .hero-title {
+    font-size: 1.5rem;
+  }
+  
+  .hero-overview {
+    font-size: 0.78rem;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.78rem;
+  }
+  
+  .rail-title {
+    font-size: 1rem;
+  }
+  
+  .card-rail {
+    gap: 0.6rem;
+  }
+  
+  .detail-heading-title {
+    font-size: 1.5rem;
+  }
+  
+  .detail-meta-line {
+    font-size: 0.72rem;
+  }
+  
+  .detail-storyline {
+    font-size: 0.85rem;
+  }
+  
+  .dizisol-title {
+    font-size: 1.1rem;
+  }
+  
+  .dizisol-ep-card {
+    flex: 0 0 140px;
+    max-width: 140px;
+  }
+  
+  .dizisol-ep-title {
+    font-size: 0.7rem;
+  }
+  
+  .mobile-dynamic-dock {
+    height: 52px;
+    padding: 0 0.3rem;
+  }
+  
+  .dynamic-dock-item {
+    font-size: 0.5rem;
+  }
+  
+  .dynamic-dock-item span {
+    max-width: 42px;
+  }
+  
+  .dynamic-dock-hub-orb {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .toast-container {
+    left: 0.6rem;
+    right: 0.6rem;
+    bottom: 70px;
+  }
+}
+
+/* Landscape mobile */
+@media (max-width: 896px) and (orientation: landscape) {
+  .hero-slider {
+    height: 85vh;
+    min-height: 320px;
+    padding-bottom: 2rem;
+  }
+  
+  .hero-title {
+    font-size: 1.6rem;
+  }
+  
+  .hero-overview {
+    display: none;
+  }
+  
+  .hero-actions {
+    gap: 0.6rem;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    padding: 0.55rem 1rem;
+    font-size: 0.78rem;
+  }
+  
+  .mobile-dynamic-dock {
+    height: 48px;
+  }
+  
+  .dizisol-cinema-body {
+    padding: 0.75rem 1rem;
+  }
+  
+  .player-modal-content {
+    height: 100vh;
+    max-height: 100vh;
+  }
+  
+  .player-stage-wrapper {
+    aspect-ratio: 16/9;
+    max-height: 55vh;
+  }
+  
+  .dizisol-episodes-carousel {
+    max-height: 200px;
+  }
+}
+
+/* Touch target improvements for mobile */
+@media (pointer: coarse) {
+  .nav-link,
+  .btn-action-icon,
+  .dynamic-dock-item,
+  .hub-sheet-card,
+  .hub-sheet-chip,
+  .hub-sheet-tool-btn,
+  .btn-dizisol-action,
+  .pill-bar-btn,
+  .media-card {
+    touch-action: manipulation;
+  }
+  
+  /* Larger touch targets */
+  .dynamic-dock-item {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  .btn-action-icon {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  .nav-link {
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+  .navbar {
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+  }
+  
+  .mobile-dynamic-dock {
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    width: calc(100% - max(12px, env(safe-area-inset-left)) - max(12px, env(safe-area-inset-right)));
+    bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  
+  .mobile-search-row {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  
+  .container {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  
+  .toast-container {
+    left: max(1rem, env(safe-area-inset-left));
+    right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* Android WebView specific fixes */
+html.native-android .mobile-dynamic-dock {
+  bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+html.native-android .navbar {
+  padding-top: max(0.85rem, env(safe-area-inset-top));
+}
+
+html.native-android .player-modal-content {
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+html.native-android .player-stage-wrapper {
+  max-height: 60dvh;
+}
+
+/* Fix for mobile web (non-APK) */
+html.mobile-web body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+html.mobile-web .navbar {
+  top: 0;
+  padding-top: max(0.85rem, env(safe-area-inset-top));
+}
+
+html.mobile-web .mobile-dynamic-dock {
+  bottom: calc(14px + env(safe-area-inset-bottom));
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .hubOrbPulse,
+  .liveDotPulseAnim,
+  .pulse {
+    animation: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border-color: rgba(255, 255, 255, 0.3);
+    --border-light: rgba(255, 255, 255, 0.5);
+    --text-muted: #aaa;
+    --text-dim: #999;
+  }
+  
+  .card-status-badge.minimal-watched {
+    border: 2px solid #fff;
+  }
+  
+  .dynamic-dock-item.active svg,
+  .dynamic-dock-item.active i {
+    filter: none;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+@media (pointer: fine) {
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .navbar,
+  .mobile-dynamic-dock,
+  .mobile-hub-backdrop,
+  .modal-backdrop,
+  .toast-container,
+  .hero-slider,
+  .card-hover-overlay,
+  .card-play-btn-circle {
+    display: none !important;
+  }
+  
+  body {
+    background: #fff;
+    color: #000;
+  }
+  
+  .media-card {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
 }
