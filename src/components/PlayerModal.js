@@ -3039,11 +3039,6 @@ export async function openPlayerModal({
             <i data-lucide="chevron-left" style="width: 22px; height: 22px;"></i>
           </button>
           
-          <div class="player-disclaimer-badge" title="Foto-hassas uyarısı">
-            <i data-lucide="sun" style="width: 13px; height: 13px; color: #fbbf24;"></i>
-            <span>Foto-hassas izleyicileri etkileyebilecek ışık sekansları içerir</span>
-          </div>
-
           <div class="player-title-box">
             <span id="player-modal-title" class="player-header-title">${isNativeOfflinePlayback && isSeries ? `${cleanSeriesName} · S${currentSeason} B${currentEpisode}` : cleanSeriesName}</span>
             ${isSeries ? `<span class="player-header-ep-badge">S${currentSeason} B${currentEpisode}</span>` : ''}

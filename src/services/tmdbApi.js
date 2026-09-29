@@ -1080,12 +1080,16 @@ export async function fetchMediaDetails(type = 'tv', id) {
 
   // 2. Videos / Trailer Fallback
   let videosList = res.videos?.results || [];
-  const hasYoutubeTrailer = videosList.some(v => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'));
-  if (!hasYoutubeTrailer) {
+  const uniqueYoutubeVideos = new Set(videosList.filter(v => v.site === 'YouTube' && v.key).map(v => v.key));
+  if (uniqueYoutubeVideos.size < 4) {
     try {
-      const enVideos = await tmdbFetch(`/${type}/${id}/videos`, { language: 'en-US' });
-      const extraVideos = enVideos?.results || [];
-      if (extraVideos.length > 0) {
+      const [enVideos, internationalVideos] = await Promise.all([
+        tmdbFetch(`/${type}/${id}/videos`, { language: 'en-US' }).catch(() => null),
+        tmdbFetch(`/${type}/${id}/videos`, { include_video_language: 'tr,en,ja,ko,null' }).catch(() => null)
+      ]);
+      const extraVideos = [...(enVideos?.results || []), ...(internationalVideos?.results || [])]
+        .filter(video => video.site === 'YouTube' && video.key && !uniqueYoutubeVideos.has(video.key) && uniqueYoutubeVideos.add(video.key));
+      if (extraVideos.length) {
         res.videos = res.videos || {};
         res.videos.results = [...videosList, ...extraVideos];
       }

@@ -19427,3 +19427,105 @@ html.native-android #player-modal .player-modal-content {
   height: 17px !important;
   color: #cbd5e1 !important;
 }
+
+/* Detail trailers live in their tab; the hero keeps a quiet text link. */
+.detail-trailer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 12px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(245, 158, 11, .4);
+  color: #d6deea;
+  font-size: .79rem;
+  font-weight: 650;
+  text-decoration: none;
+  transition: color .16s ease, border-color .16s ease;
+}
+.detail-trailer-link:hover {
+  color: #fbbf24;
+  border-color: #fbbf24;
+}
+.netflix-trailers-showcase {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.netflix-trailers-showcase .hero-trailer-expand-card:not(.is-expanded) {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+.trailer-search-card {
+  min-width: 0;
+  aspect-ratio: 16 / 9;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 10px;
+  background: #151a24;
+  color: #e5e7eb;
+  text-decoration: none;
+  font-size: .82rem;
+  font-weight: 700;
+}
+.trailer-search-card svg { width: 20px; height: 20px; color: #fbbf24; }
+.trailer-search-card small { color: #9ca3af; font-size: .7rem; font-weight: 500; }
+.trailer-search-card:hover { border-color: #fbbf24; background: #1b2230; }
+.hero-trailer-expand-card.is-expanded .trailer-expanded-close {
+  position: absolute;
+  z-index: 6;
+  top: auto;
+  bottom: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  background: rgba(5, 8, 16, .92);
+  border-color: rgba(255, 255, 255, .45);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .6);
+}
+.hero-trailer-expand-card.is-expanded .trailer-expanded-info {
+  padding-bottom: 52px;
+}
+@media (max-width: 768px) {
+  .detail-action-main-row { align-items: stretch; }
+  .detail-action-main-row .btn-action-tile {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+  }
+}
+@media (max-width: 680px) {
+  .netflix-trailers-showcase {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  .netflix-trailers-showcase .hero-trailer-expand-card.is-expanded {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex-direction: column !important;
+  }
+  .netflix-trailers-showcase .hero-trailer-expand-card.is-expanded .trailer-expanded-view {
+    height: auto;
+    flex-direction: column;
+  }
+  .netflix-trailers-showcase .trailer-expanded-player {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    flex: none;
+  }
+  .netflix-trailers-showcase .trailer-expanded-info {
+    width: 100%;
+    flex: none;
+    padding: 10px 54px 52px 12px;
+  }
+  .netflix-trailers-showcase .trailer-expanded-desc { display: none; }
+}

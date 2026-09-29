@@ -6,12 +6,11 @@ import { renderIcons } from '../services/icons.js';
    Includes movie runtime, bulk series mark-watched, season selectors, and halfway in-progress states.
    ========================================================================== */
 
-import { fetchMediaDetails, fetchMediaTrailer, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK, generateCinematicOverview } from '../services/tmdbApi.js';
+import { fetchMediaDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK, generateCinematicOverview } from '../services/tmdbApi.js';
 import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway, registerAnimeId, isRegisteredAnimeId } from '../services/storage.js';
 import { renderSeasonSelector } from '../components/SeasonSelector.js';
 import { renderMediaCard, attachMediaCardEvents, isAnimeItem } from '../components/MediaCard.js';
 import { openPlayerModal } from '../components/openPlayer.js';
-import { openTrailerModal } from '../components/TrailerModal.js';
 import { openCastExplorerModal } from '../components/CastExplorerModal.js';
 import { showToast } from '../components/Toast.js';
 import { getNextEpisodeInfo } from '../services/tvmazeService.js';
@@ -148,7 +147,13 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
     const typeOrder = { 'Trailer': 1, 'Teaser': 2, 'Clip': 3, 'Behind the Scenes': 4 };
     return (typeOrder[a.type] || 9) - (typeOrder[b.type] || 9);
   });
-  const heroTrailers = allVideos.slice(0, 3);
+  const heroTrailers = allVideos.filter((video, index, videos) => video.key && videos.findIndex(item => item.key === video.key) === index).slice(0, 12);
+  const trailerSearches = [
+    { label: 'Resmi fragman ara', query: `${originalTitle || title} official trailer` },
+    { label: 'Türkçe fragman ara', query: `${title} Türkçe fragman` },
+    { label: 'Tanıtım ve teaser ara', query: `${originalTitle || title} official teaser` },
+    { label: 'Klipleri ara', query: `${originalTitle || title} official clip` }
+  ].slice(0, Math.max(0, 4 - heroTrailers.length));
 
   const html = `
     <div class="detail-view">
@@ -214,11 +219,6 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                     </button>
                   `}
 
-                  <button class="btn-detail-trailer" id="btn-watch-trailer">
-                    <i data-lucide="youtube" style="width: 18px; height: 18px;"></i>
-                    <span>Fragman İzle</span>
-                  </button>
-
                   <button class="btn-action-tile ${inWatch ? 'active-watch' : ''}" id="btn-toggle-watchlist">
                     <i data-lucide="${inWatch ? 'check' : 'plus'}"></i>
                     <span>${inWatch ? 'Listemde' : 'Listem'}</span>
@@ -251,47 +251,11 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                 ` : ''}
               </div>
 
-              <!-- Netflix Style Bottom "Trailers" Strip (Image 2) with Horizontal Inline Expansion -->
-              ${heroTrailers.length > 0 ? `
-                <div class="detail-hero-trailers-section">
-                  <span class="hero-trailers-label">Trailers</span>
-                  <div class="hero-trailers-track" id="hero-trailers-track">
-                    ${heroTrailers.map((t, idx) => `
-                      <div class="hero-trailer-expand-card" data-video-key="${t.key}" data-video-title="${t.name || ('Fragman ' + (idx + 1))}" data-video-type="${t.type || 'Fragman'}">
-                        <!-- Compact State -->
-                        <div class="trailer-compact-view">
-                          <img src="https://img.youtube.com/vi/${t.key}/mqdefault.jpg" alt="${t.name || 'Trailer'}" loading="lazy" />
-                          <div class="trailer-thumb-overlay">
-                            <div class="trailer-play-chip">
-                              <i data-lucide="play" style="width: 14px; height: 14px; fill: currentColor;"></i>
-                            </div>
-                            <span class="trailer-compact-name">${t.name || ('Fragman ' + (idx + 1))}</span>
-                          </div>
-                        </div>
-
-                        <!-- Inline Expanded State (Active on click) -->
-                        <div class="trailer-expanded-view">
-                          <div class="trailer-expanded-player"></div>
-                          <div class="trailer-expanded-info">
-                            <div class="trailer-expanded-header">
-                              <span class="trailer-expanded-tag">${t.type || 'FRAGMAN'}</span>
-                              <button class="trailer-expanded-close" title="Kapat" type="button">
-                                <i data-lucide="x" style="width: 14px; height: 14px;"></i>
-                              </button>
-                            </div>
-                            <h4 class="trailer-expanded-title">${t.name || `${title} Fragman`}</h4>
-                            <div class="trailer-expanded-meta">
-                              <span>HD 1080p</span>
-                              <span>•</span>
-                              <span>Orijinal Ses</span>
-                            </div>
-                            <p class="trailer-expanded-desc">${(overview || '').substring(0, 110)}...</p>
-                          </div>
-                        </div>
-                      </div>
-                    `).join('')}
-                  </div>
-                </div>
+              ${(heroTrailers.length > 0 || trailerSearches.length > 0) ? `
+                <a class="detail-trailer-link" id="btn-watch-trailer" href="#tab-pane-trailers">
+                  <i data-lucide="play-circle" style="width: 15px; height: 15px;"></i>
+                  Fragmanlara göz at <span aria-hidden="true">↗</span>
+                </a>
               ` : ''}
 
             </div>
@@ -495,7 +459,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                     <div class="trailer-expanded-info">
                       <div class="trailer-expanded-header">
                         <span class="trailer-expanded-tag">${t.type || 'RESMİ FRAGMAN'}</span>
-                        <button class="trailer-expanded-close" title="Kapat" type="button">
+                        <button class="trailer-expanded-close" title="Fragmanı kapat" aria-label="Fragmanı kapat" type="button">
                           <i data-lucide="x" style="width: 14px; height: 14px;"></i>
                         </button>
                       </div>
@@ -509,6 +473,13 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                     </div>
                   </div>
                 </div>
+              `).join('')}
+              ${trailerSearches.map(search => `
+                <a class="trailer-search-card" href="https://www.youtube.com/results?search_query=${encodeURIComponent(search.query)}" target="_blank" rel="noopener noreferrer" aria-label="${search.label}: YouTube'da aç">
+                  <i data-lucide="search" aria-hidden="true"></i>
+                  <span>${search.label}</span>
+                  <small>YouTube'da aç ↗</small>
+                </a>
               `).join('')}
             </div>
           </div>
@@ -661,23 +632,12 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
 
       const trailerBtn = container.querySelector('#btn-watch-trailer');
       if (trailerBtn) {
-        trailerBtn.addEventListener('click', async () => {
-          const firstExpandCard = container.querySelector('.hero-trailer-expand-card');
-          if (firstExpandCard) {
-            firstExpandCard.click();
-            firstExpandCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          } else {
-            trailerBtn.disabled = true;
-            try {
-              const trailer = await fetchMediaTrailer(effectiveType, id, title);
-              if (trailer) {
-                openTrailerModal({ title, trailerInfo: trailer, mediaId: id, mediaType: isAnime ? 'anime' : effectiveType });
-              } else {
-                showToast('Bu yapım için resmi fragman bulunamadı.', 'info');
-              }
-            } catch (_) {}
-            trailerBtn.disabled = false;
-          }
+        trailerBtn.addEventListener('click', event => {
+          event.preventDefault();
+          container.querySelectorAll('.netflix-tab-btn').forEach(button => button.classList.toggle('active', button.dataset.tab === 'trailers'));
+          container.querySelectorAll('.netflix-tab-pane').forEach(pane => pane.classList.toggle('active', pane.id === 'tab-pane-trailers'));
+          renderIcons(container.querySelector('#tab-pane-trailers'));
+          container.querySelector('#tab-pane-trailers')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
       }
 
@@ -953,6 +913,12 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
         btn.addEventListener('click', (e) => {
           e.preventDefault();
           const target = btn.getAttribute('data-tab');
+          if (target !== 'trailers') {
+            container.querySelectorAll('#tab-pane-trailers .hero-trailer-expand-card.is-expanded').forEach(card => {
+              card.classList.remove('is-expanded');
+              card.querySelector('.trailer-expanded-player').innerHTML = '';
+            });
+          }
           tabBtns.forEach(b => b.classList.remove('active'));
           tabPanes.forEach(p => p.classList.remove('active'));
           btn.classList.add('active');
