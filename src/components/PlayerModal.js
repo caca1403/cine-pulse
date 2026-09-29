@@ -2691,6 +2691,10 @@ export async function openPlayerModal({
 
             <!-- Player tools sit on their own row directly below the timeline. -->
             <div class="custom-controls-row">
+              <div class="custom-controls-left-time" aria-label="Oynatma süresi">
+                <span class="custom-time-current" id="custom-time-current">00:00</span>
+                <span class="custom-time-duration" id="custom-time-duration">00:00</span>
+              </div>
               <!-- Center: Stremio-Style Glassmorphic Floating Pill Bar -->
               <div class="custom-floating-pill-bar" id="custom-floating-pill-bar">
                 <button type="button" class="pill-bar-btn" id="pill-btn-speed" title="Oynatma Hızı">
@@ -2723,8 +2727,6 @@ export async function openPlayerModal({
 
               <!-- Times and playback actions stay on the lower row. -->
               <div class="custom-controls-right-actions">
-                <span class="custom-time-current" id="custom-time-current">00:00</span>
-                <span class="custom-time-duration" id="custom-time-duration">00:00</span>
                 <div class="custom-player-time-remaining hidden" id="custom-time-remaining">-00:00</div>
                 <div class="custom-time-display hidden" id="custom-time-display">0:00 / 0:00</div>
 
@@ -2763,6 +2765,17 @@ export async function openPlayerModal({
           <div class="custom-player-menu hidden" id="custom-player-menu">
             <!-- Main View -->
             <div class="custom-menu-view" id="custom-menu-main">
+              <div class="custom-menu-transport-row" aria-label="Oynatma kontrolleri">
+                <button type="button" class="custom-menu-transport-btn" id="custom-menu-rewind-10" title="10 saniye geri">
+                  <i data-lucide="rotate-ccw" style="width:18px;height:18px;"></i><span>10 sn geri</span>
+                </button>
+                <button type="button" class="custom-menu-transport-btn" id="custom-menu-play-toggle" title="Oynat / duraklat">
+                  <i data-lucide="play" id="custom-menu-play-icon" style="width:18px;height:18px;"></i><span id="custom-menu-play-label">Oynat</span>
+                </button>
+                <button type="button" class="custom-menu-transport-btn" id="custom-menu-forward-10" title="10 saniye ileri">
+                  <i data-lucide="rotate-cw" style="width:18px;height:18px;"></i><span>10 sn ileri</span>
+                </button>
+              </div>
               <!-- Item 1: Oynatma hızı -->
               <div class="custom-menu-item" id="custom-menu-item-speed">
                 <div class="custom-menu-item-icon">
@@ -2810,6 +2823,21 @@ export async function openPlayerModal({
               </div>
 
               <!-- Item 5: Ses Seviyesi inline slider -->
+              <div class="custom-menu-item custom-menu-item-volume" id="custom-menu-item-brightness-inline">
+                <div class="custom-menu-item-icon">
+                  <i data-lucide="sun" style="width: 17px; height: 17px; color: #fbbf24;"></i>
+                </div>
+                <div class="custom-menu-item-body" style="flex:1; overflow:hidden;">
+                  <span class="custom-menu-item-title">Parlaklık</span>
+                  <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                    <input type="range" id="custom-menu-brightness-slider" min="30" max="150" step="1" value="100"
+                      style="flex:1;height:4px;accent-color:#f59e0b;cursor:pointer;" />
+                    <span id="custom-menu-brightness-badge" style="font-size:11px;font-weight:700;color:#fbbf24;white-space:nowrap;min-width:34px;text-align:right;">%100</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ses seviyesi -->
               <div class="custom-menu-item custom-menu-item-volume" id="custom-menu-item-volume-inline">
                 <div class="custom-menu-item-icon">
                   <i data-lucide="volume-2" style="width: 17px; height: 17px; color: #60a5fa;" id="custom-menu-volume-icon"></i>
@@ -4107,6 +4135,16 @@ export async function openPlayerModal({
     const subviewList = wrapper.querySelector('#custom-menu-options-list');
     const backBtn = wrapper.querySelector('#custom-menu-back-btn');
     const centerIndicator = wrapper.querySelector('#custom-center-play-indicator');
+    const floatingPillBar = wrapper.querySelector('#custom-floating-pill-bar');
+    const menuRewindBtn = wrapper.querySelector('#custom-menu-rewind-10');
+    const menuPlayBtn = wrapper.querySelector('#custom-menu-play-toggle');
+    const menuForwardBtn = wrapper.querySelector('#custom-menu-forward-10');
+    const menuPlayIcon = wrapper.querySelector('#custom-menu-play-icon');
+    const menuPlayLabel = wrapper.querySelector('#custom-menu-play-label');
+
+    // Long tool strip belongs inside the overflow menu; keep only the timeline
+    // and the compact fullscreen/settings actions on the player edge.
+    if (floatingPillBar && mainView) mainView.prepend(floatingPillBar);
 
     const audioSubPopover = wrapper.querySelector('#custom-audio-sub-popover');
     const tabAudioBtn = wrapper.querySelector('#audio-sub-tab-audio');
@@ -4125,6 +4163,8 @@ export async function openPlayerModal({
     const brightSlider = wrapper.querySelector('#custom-brightness-slider');
     const brightBadge = wrapper.querySelector('#custom-brightness-badge');
     const brightPopover = wrapper.querySelector('#custom-brightness-popover');
+    const menuBrightnessSlider = wrapper.querySelector('#custom-menu-brightness-slider');
+    const menuBrightnessBadge = wrapper.querySelector('#custom-menu-brightness-badge');
 
     // Katılımcı kendi ekranındaki görüntü ve ses konforunu değiştirebilir;
     // akışı, zaman çizgisini, kaynakları ve bölüm seçimini yalnız moderatör
@@ -4267,6 +4307,11 @@ export async function openPlayerModal({
         playBtn.innerHTML = `<i data-lucide="${isPaused ? 'play' : 'pause'}" style="width: 20px; height: 20px;"></i>`;
         renderPlayerIcons(playBtn);
       }
+      if (menuPlayIcon) {
+        menuPlayIcon.setAttribute('data-lucide', isPaused ? 'play' : 'pause');
+        renderPlayerIcons(menuPlayBtn);
+      }
+      if (menuPlayLabel) menuPlayLabel.textContent = isPaused ? 'Oynat' : 'Duraklat';
       if (isPaused) {
         wrapper.classList.remove('hide-controls');
       }
@@ -4296,6 +4341,9 @@ export async function openPlayerModal({
 
     if (rewindBtn) rewindBtn.onclick = (e) => { e.stopPropagation(); skipTime(-10); };
     if (forwardBtn) forwardBtn.onclick = (e) => { e.stopPropagation(); skipTime(10); };
+    if (menuRewindBtn) menuRewindBtn.onclick = (e) => { e.stopPropagation(); skipTime(-10); };
+    if (menuForwardBtn) menuForwardBtn.onclick = (e) => { e.stopPropagation(); skipTime(10); };
+    if (menuPlayBtn) menuPlayBtn.onclick = (e) => { e.stopPropagation(); togglePlay(); };
 
     // Brightness Control
     let currentBrightness = roomPlaybackSettings.brightness;
@@ -4305,6 +4353,8 @@ export async function openPlayerModal({
       videoEl.style.filter = `brightness(${currentBrightness / 100})`;
       if (brightSlider) brightSlider.value = currentBrightness;
       if (brightBadge) brightBadge.textContent = `%${currentBrightness}`;
+      if (menuBrightnessSlider) menuBrightnessSlider.value = currentBrightness;
+      if (menuBrightnessBadge) menuBrightnessBadge.textContent = `%${currentBrightness}`;
       const brightMenuSub = wrapper.querySelector('#custom-menu-active-brightness');
       if (brightMenuSub) brightMenuSub.textContent = `%${currentBrightness}`;
       if (publish && typeof emitRoomSync === 'function') emitRoomSync('settings');
@@ -4320,6 +4370,12 @@ export async function openPlayerModal({
         e.stopPropagation();
         resetPopoverHideTimer();
         setBrightness(parseInt(brightSlider.value, 10));
+      };
+    }
+    if (menuBrightnessSlider) {
+      menuBrightnessSlider.oninput = (e) => {
+        e.stopPropagation();
+        setBrightness(parseInt(menuBrightnessSlider.value, 10));
       };
     }
     if (brightBtn) {

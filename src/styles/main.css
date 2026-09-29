@@ -7769,6 +7769,7 @@ html.mobile-web .navbar {
   align-items: center;
   flex-shrink: 0;
   min-width: 50px;
+  gap: 8px;
 }
 
 .custom-time-current,
@@ -7857,6 +7858,74 @@ html.mobile-web .navbar {
   pointer-events: auto;
   opacity: 1;
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Playback actions are grouped in the three-dot menu; fullscreen stays outside. */
+.custom-center-transport-overlay,
+#custom-volume-wrap {
+  display: none !important;
+}
+
+.custom-menu-transport-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  padding: 2px 0 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+
+.custom-menu-transport-btn {
+  min-width: 0;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 9px;
+  background: rgba(255,255,255,.06);
+  color: #e2e8f0;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.custom-menu-transport-btn:hover,
+.custom-menu-transport-btn:active {
+  background: rgba(245,158,11,.18);
+  color: #fbbf24;
+}
+
+.custom-menu-view > .custom-floating-pill-bar {
+  display: grid;
+  position: static;
+  inset: auto;
+  transform: none;
+  width: 100%;
+  max-width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0 0 6px;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.custom-menu-view > .custom-floating-pill-bar .pill-bar-btn {
+  min-width: 0;
+  justify-content: flex-start;
+  padding: 8px 9px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.055);
+  font-size: .76rem;
 }
 
 .direct-video-wrapper.hide-controls .custom-center-transport-overlay,
@@ -8204,6 +8273,9 @@ html.mobile-web .navbar {
   border-radius: 14px;
   min-width: 250px;
   max-width: 320px;
+  max-height: min(82vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.8), 0 0 24px rgba(245, 158, 11, 0.12);
   padding: 8px;
   animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -8293,6 +8365,7 @@ html.mobile-web .navbar {
   border-radius: 999px;
   height: 4px;
   outline: none;
+  touch-action: pan-x;
 }
 .custom-menu-item-volume input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -9466,6 +9539,9 @@ video::cue {
     gap: 3px !important;
     margin-left: auto !important;
   }
+  .custom-controls-left-time {
+    display: none !important;
+  }
   .custom-time-current,
   .custom-time-duration {
     display: none !important;
@@ -9496,6 +9572,20 @@ video::cue {
     -webkit-backdrop-filter: blur(16px) !important;
     border: 1px solid rgba(255, 255, 255, 0.14) !important;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;
+  }
+  .custom-menu-view > .custom-floating-pill-bar {
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+    margin: 0 0 6px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
   .pill-bar-btn {
     padding: 4px 5px !important;
