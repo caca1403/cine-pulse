@@ -9,7 +9,7 @@ import { renderIcons } from '../services/icons.js';
    • Cinematic crossfade backdrop transition
    ========================================================================== */
 
-import { getImageUrl, TMDB_IMAGE_SIZES, fetchMediaTrailer, generateCinematicOverview } from '../services/tmdbApi.js';
+import { getImageUrl, TMDB_IMAGE_SIZES, generateCinematicOverview } from '../services/tmdbApi.js';
 import { isWatchlist, toggleWatchlist, isKidProfileActive, isItemKidSafe, getUserSettings } from '../services/storage.js';
 import { openTrailerModal } from './TrailerModal.js';
 import { showToast } from './Toast.js';
@@ -27,7 +27,7 @@ export function stopHeroSlider() {
 
 function getHeroBackdropUrl(item) {
   const path = item?.backdrop_path || item?.poster_path;
-  const size = window.innerWidth <= 768
+  const size = window.innerWidth <= 768 || window.devicePixelRatio <= 1
     ? TMDB_IMAGE_SIZES.BACKDROP_LARGE
     : TMDB_IMAGE_SIZES.BACKDROP_XLARGE;
   return getImageUrl(path, size);
@@ -188,12 +188,6 @@ export function attachHeroSliderEvents(items = []) {
     setTimeout(warmUpcoming, 500);
   }
 
-  /* ---- trailer pre-warm ---- */
-  slides.slice(0, 2).forEach(item => {
-    const t = item.first_air_date || item.media_type === 'tv' ? 'tv' : 'movie';
-    fetchMediaTrailer(t, item.id).catch(() => null);
-  });
-
   /* ---- navigate helpers ---- */
   function goNext() {
     updateHeroSlide(slides[(currentSlideIndex + 1) % slides.length], (currentSlideIndex + 1) % slides.length);
@@ -293,9 +287,11 @@ export function attachHeroSliderEvents(items = []) {
     });
   });
 
-  /* ---- auto-rotate (both mobile + desktop) ---- */
+  /* Auto-rotate only on touch devices. Desktop transitions decode large
+     backdrops every few seconds and cause avoidable GPU work while browsing. */
   function resetAutoRotate() {
     clearInterval(slideInterval);
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     slideInterval = setInterval(() => {
       if (slides.length > 1) {
         const next = (currentSlideIndex + 1) % slides.length;

@@ -14,7 +14,7 @@ import {
 } from '../services/tmdbApi.js';
 import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile, isItemKidSafe } from '../services/storage.js';
 import { renderHeroSlider, attachHeroSliderEvents, stopHeroSlider } from '../components/HeroSlider.js';
-import { renderMediaCard, attachMediaCardEvents, upgradeLandscapeBackdrops } from '../components/MediaCard.js';
+import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
 import { railScrollMemory } from '../services/scrollManager.js';
 
@@ -24,6 +24,7 @@ let homeSecondaryPending = null;
 let homeCacheGeneration = 0;
 const railExtraItemsCache = new Map();
 const activeRailObservers = new Set();
+const railInitialQueues = new Map();
 const HOME_CACHE_TTL_MS = 10 * 60 * 1000;
 
 export function cleanupHomeView() {
@@ -72,6 +73,7 @@ export function clearHomeCache() {
     sessionStorage.removeItem('cinepulse_home_fast_v7_adult');
   } catch (_) {}
   railExtraItemsCache.clear();
+  railInitialQueues.clear();
   Object.keys(railState).forEach(k => {
     railState[k].page = 1;
     railState[k].loading = false;
@@ -99,8 +101,9 @@ const railState = {
 function renderInfiniteRail({ id, icon, title, accent, items }) {
   if (!items || items.length === 0) return '';
   const extraItems = railExtraItemsCache.get(id) || [];
-  const allRailItems = [...items, ...extraItems];
-  const cards = allRailItems.map(item => renderMediaCard(item)).join('');
+  const primaryItems = items.slice(0, 8);
+  const allRailItems = [...primaryItems, ...extraItems];
+  const cards = allRailItems.map(item => renderMediaCard(item, { skipProgressLookup: true })).join('');
   return `
     <section class="rail-section">
       <div class="container">
@@ -127,7 +130,7 @@ function renderInfiniteRail({ id, icon, title, accent, items }) {
 function renderContinueWatchingSection(watchHistory) {
   if (!watchHistory || watchHistory.length === 0) return '';
   // Display top 24 most recent in-progress items on the home rail (all remain accessible in Library)
-  const displayItems = watchHistory.slice(0, 24);
+  const displayItems = watchHistory.slice(0, 12);
   const cards = displayItems.map(item => `
     <div class="continue-card-wrapper" data-id="${item.id}" data-season="${item.season || 1}" data-episode="${item.episode || 1}">
       ${renderMediaCard(item, { isContinueSection: true })}
@@ -187,7 +190,14 @@ function initInfiniteRails(container) {
         );
         let newItems = [];
 
-        for (let attempt = 0; attempt < 4 && newItems.length === 0; attempt += 1) {
+        // Fill the rest of the API's first page before requesting page 2.
+        const initialQueue = railInitialQueues.get(railId) || [];
+        if (initialQueue.length > 0) {
+          newItems = initialQueue.splice(0, 8);
+          railInitialQueues.set(railId, initialQueue);
+        }
+
+        for (let attempt = 0; initialQueue.length === 0 && attempt < 4 && newItems.length === 0; attempt += 1) {
           state.page += 1;
           const fetchedItems = await state.fetcher(state.page);
           if (!fetchedItems || fetchedItems.length === 0) {
@@ -226,7 +236,6 @@ function initInfiniteRails(container) {
         });
 
         renderIcons(rail);
-        upgradeLandscapeBackdrops(rail);
       } catch (err) {
         spinner.remove();
         console.error('Rail load error:', err);
@@ -235,19 +244,15 @@ function initInfiniteRails(container) {
       state.loading = false;
     };
 
-    // 1. Scroll listener on the horizontal container
-    rail.addEventListener('scroll', () => {
-      if (rail.scrollWidth - (rail.scrollLeft + rail.clientWidth) < 600) {
-        loadMore();
-      }
-    }, { passive: true });
 
     // 2. IntersectionObserver with root = rail
     const obs = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
-        if (entry.isIntersecting) loadMore();
+        const state = railState[railId];
+        const hasQueuedItems = (railInitialQueues.get(railId)?.length || 0) > 0;
+        if (entry.isIntersecting && (hasQueuedItems || (state && !state.exhausted))) loadMore();
       });
-    }, { root: rail, rootMargin: '0px 400px 0px 0px', threshold: 0 });
+    }, { root: rail, rootMargin: '0px 100px 0px 0px', threshold: 0 });
     obs.observe(sentinel);
     activeRailObservers.add(obs);
   });
@@ -326,6 +331,30 @@ export async function renderHomeView() {
   } else {
     heroItems = trending;
   }
+
+  // Keep first paint light, then append the remaining page-one results only
+  // as each rail approaches the viewport.
+  const baseRailItems = isKid ? {
+    'rail-kids-movies': popularMovies,
+    'rail-kids-animation': kidsAnimationItems,
+    'rail-kids-classics': kidsClassicCartoonItems,
+    'rail-kids-adventures': kidsAdventures,
+    'rail-anime': animeItems
+  } : {
+    'rail-popular-tv': popularTV,
+    'rail-adult-animation': adultAnimationItems,
+    'rail-cartoon-series': cartoonSeriesItems,
+    'rail-popular-movies': popularMovies,
+    'rail-top-movies': topRatedMovies,
+    'rail-top-tv': topRatedTV,
+    'rail-anime': animeItems,
+    'rail-documentary': docItems
+  };
+  for (const [id, items] of Object.entries(baseRailItems)) {
+    const rest = (items || []).slice(8);
+    if (rest.length) railInitialQueues.set(id, rest);
+    else railInitialQueues.delete(id);
+  }
   const heroHTML = renderHeroSlider(heroItems);
 
   // Register infinite loaders without resetting page count
@@ -355,7 +384,7 @@ export async function renderHomeView() {
       ${renderInfiniteRail({
         id:    'rail-kids-movies',
         icon:  'sparkles',
-        title: '🎈 En Çok Sevilen Animasyon & Çocuk Filmleri',
+        title: '  En Çok Sevilen Animasyon & Çocuk Filmleri',
         accent:'#ec4899',
         items: popularMovies
       })}
@@ -379,7 +408,7 @@ export async function renderHomeView() {
       ${kidsAdventures && kidsAdventures.length > 0 ? renderInfiniteRail({
         id:    'rail-kids-adventures',
         icon:  'compass',
-        title: '⭐ Aile ve Fantastik Sinema Kuşağı',
+        title: '  Aile ve Fantastik Sinema Kuşağı',
         accent:'#38bdf8',
         items: kidsAdventures
       }) : ''}
@@ -387,7 +416,7 @@ export async function renderHomeView() {
       ${animeItems && animeItems.length > 0 ? renderInfiniteRail({
         id:    'rail-anime',
         icon:  'smile',
-        title: '🎌 Çocuk & Genç Anime Dünyası',
+        title: '  Çocuk & Genç Anime Dünyası',
         accent:'#a855f7',
         items: animeItems
       }) : ''}
@@ -429,7 +458,7 @@ export async function renderHomeView() {
       ${renderInfiniteRail({
         id:    'rail-top-movies',
         icon:  'award',
-        title: '⭐ Sinema Tarihinin Başyapıtları (IMDb 8.5+)',
+        title: '  Sinema Tarihinin Başyapıtları (IMDb 8.5+)',
         accent:'#fbbf24',
         items: topRatedMovies
       })}
@@ -445,7 +474,7 @@ export async function renderHomeView() {
       ${animeItems && animeItems.length > 0 ? renderInfiniteRail({
         id:    'rail-anime',
         icon:  'sparkles',
-        title: '🎌 Popüler Anime Evreni (TR Dublaj & Altyazı)',
+        title: '  Popüler Anime Evreni (TR Dublaj & Altyazı)',
         accent:'#ec4899',
         items: animeItems
       }) : ''}
@@ -453,7 +482,7 @@ export async function renderHomeView() {
       ${docItems && docItems.length > 0 ? renderInfiniteRail({
         id:    'rail-documentary',
         icon:  'globe',
-        title: '🌍 İlham Veren Kült Belgeseller',
+        title: '  İlham Veren Kült Belgeseller',
         accent:'#38bdf8',
         items: docItems
       }) : ''}
@@ -505,11 +534,13 @@ export async function renderHomeView() {
         }
 
         // Wheel → horizontal scroll
-        rail.addEventListener('wheel', (e) => {
-          if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-          e.preventDefault();
-          rail.scrollBy({ left: e.deltaY * 2.5, behavior: 'smooth' });
-        }, { passive: false });
+          rail.addEventListener('wheel', (e) => {
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+            // Let the browser handle wheel momentum directly. Repeated smooth
+            // scrollBy animations stack up and stutter on low-power devices.
+            e.preventDefault();
+            rail.scrollLeft += e.deltaY;
+          }, { passive: false });
       });
       };
       attachRailScrolling(container);
@@ -546,15 +577,15 @@ export async function renderHomeView() {
           extra.innerHTML = isKid ? `
             ${renderInfiniteRail({ id: 'rail-kids-animation', icon: 'sparkles', title: 'Çocuk Animasyonları & Yeni Çizgi Diziler', accent: '#fb7185', items: kidsAnimationItems })}
             ${renderInfiniteRail({ id: 'rail-kids-classics', icon: 'palette', title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler', accent: '#38bdf8', items: kidsClassicCartoonItems })}
-            ${renderInfiniteRail({ id: 'rail-kids-adventures', icon: 'compass', title: '⭐ Aile ve Fantastik Sinema Kuşağı', accent: '#38bdf8', items: kidsAdventures })}
-            ${renderInfiniteRail({ id: 'rail-anime', icon: 'smile', title: '🎌 Çocuk & Genç Anime Dünyası', accent: '#a855f7', items: animeItems })}
+            ${renderInfiniteRail({ id: 'rail-kids-adventures', icon: 'compass', title: '  Aile ve Fantastik Sinema Kuşağı', accent: '#38bdf8', items: kidsAdventures })}
+            ${renderInfiniteRail({ id: 'rail-anime', icon: 'smile', title: '  Çocuk & Genç Anime Dünyası', accent: '#a855f7', items: animeItems })}
           ` : `
             ${renderInfiniteRail({ id: 'rail-adult-animation', icon: 'sparkles', title: 'Yetişkin Animasyonları & Çizgi Diziler', accent: '#fb7185', items: adultAnimationItems })}
             ${renderInfiniteRail({ id: 'rail-cartoon-series', icon: 'wand-2', title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler', accent: '#38bdf8', items: cartoonSeriesItems })}
-            ${renderInfiniteRail({ id: 'rail-top-movies', icon: 'award', title: '⭐ Sinema Tarihinin Başyapıtları (IMDb 8.5+)', accent: '#fbbf24', items: topRatedMovies })}
+            ${renderInfiniteRail({ id: 'rail-top-movies', icon: 'award', title: '  Sinema Tarihinin Başyapıtları (IMDb 8.5+)', accent: '#fbbf24', items: topRatedMovies })}
             ${renderInfiniteRail({ id: 'rail-top-tv', icon: 'star', title: 'Kült & En Yüksek Puanlı Diziler', accent: '#34d399', items: topRatedTV })}
-            ${renderInfiniteRail({ id: 'rail-anime', icon: 'sparkles', title: '🎌 Popüler Anime Evreni (TR Dublaj & Altyazı)', accent: '#ec4899', items: animeItems })}
-            ${renderInfiniteRail({ id: 'rail-documentary', icon: 'globe', title: '🌍 İlham Veren Kült Belgeseller', accent: '#38bdf8', items: docItems })}
+            ${renderInfiniteRail({ id: 'rail-anime', icon: 'sparkles', title: '  Popüler Anime Evreni (TR Dublaj & Altyazı)', accent: '#ec4899', items: animeItems })}
+            ${renderInfiniteRail({ id: 'rail-documentary', icon: 'globe', title: '  İlham Veren Kült Belgeseller', accent: '#38bdf8', items: docItems })}
           `;
           homeView.append(extra);
           renderIcons(extra);

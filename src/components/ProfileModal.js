@@ -23,44 +23,61 @@ export function openProfileModal() {
   document.body.appendChild(modalContainer);
   activeProfileModal = modalContainer;
 
+  let isManaging = false;
+
   const renderModalContent = (viewState = 'select') => {
     const profiles = getProfiles();
     const active = getActiveProfile();
 
     if (viewState === 'select') {
       modalContainer.innerHTML = `
-        <div class="profile-dialog">
+        <div class="profile-dialog netflix-profile-dialog">
           <button class="profile-close-btn" id="btn-close-profile-modal" title="Kapat">
-            <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+            <i data-lucide="x" style="width: 22px; height: 22px;"></i>
           </button>
 
+          <div class="profile-brand-header">
+            <div class="brand-logo-icon">
+              <i data-lucide="clapperboard" style="width: 20px; height: 20px; color: #fff;"></i>
+            </div>
+            <span class="brand-name">Cine<span class="brand-highlight">Pulse</span></span>
+          </div>
+
           <div class="profile-top-title">
-            <h2>Kim İzliyor?</h2>
-            <p>Kaldığınız yerden devam etmek için kendi profilinizi seçin.</p>
+            <h2 class="profile-main-heading">Kim İzliyor?</h2>
           </div>
 
           <!-- Profiles Grid -->
-          <div class="profile-cards-grid">
+          <div class="profile-cards-grid netflix-cards-grid">
             ${profiles.map(p => {
               const isAct = p.id === active.id;
               const canDelete = p.id !== 'prof_1';
+              const pColor = p.color || (p.isKid ? '#e5a00d' : '#0071eb');
               return `
                 <div class="profile-card-wrapper">
-                  <div class="profile-card ${isAct ? 'is-active' : ''}" data-profile-id="${p.id}">
-                    <div class="profile-avatar-wrap" style="border-color: ${p.color || '#f59e0b'}; background: ${p.color || '#f59e0b'}22;">
-                      <i data-lucide="${p.avatar || 'user'}" style="width: 44px; height: 44px; color: ${p.color || '#f59e0b'};"></i>
-                      ${isAct ? `
-                        <div class="profile-active-check">
-                          <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+                  <div class="profile-card netflix-card ${isAct ? 'is-active' : ''} ${isManaging ? 'is-managing-mode' : ''}" data-profile-id="${p.id}">
+                    <div class="profile-avatar-wrap netflix-avatar-square ${p.isKid ? 'is-kid-square' : ''}" style="background: ${pColor};">
+                      <i data-lucide="${p.isKid ? 'smile' : (p.avatar || 'smile')}" class="netflix-smile-icon"></i>
+                      ${p.isKid ? `<div class="netflix-kids-bottom-banner">ÇOCUK</div>` : ''}
+                      
+                      ${isAct && !isManaging ? `
+                        <div class="profile-active-check" title="Aktif Profil">
+                          <i data-lucide="check" style="width: 14px; height: 14px; stroke-width: 3;"></i>
+                        </div>
+                      ` : ''}
+
+                      ${isManaging ? `
+                        <div class="netflix-avatar-manage-overlay">
+                          <i data-lucide="pencil" style="width: 28px; height: 28px; color: #fff;"></i>
                         </div>
                       ` : ''}
                     </div>
-                    <span class="profile-name">${p.name}</span>
-                    ${p.isKid ? `<span class="profile-kid-badge">Çocuk</span>` : ''}
+                    <span class="profile-name netflix-profile-name">${p.name}</span>
                   </div>
-                  ${canDelete ? `
-                    <button class="btn-delete-profile" data-delete-id="${p.id}" title="Profili Sil">
-                      <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+
+                  ${isManaging && canDelete ? `
+                    <button class="btn-delete-profile netflix-delete-btn" data-delete-id="${p.id}" title="Profili Sil">
+                      <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
                     </button>
                   ` : ''}
                 </div>
@@ -69,37 +86,44 @@ export function openProfileModal() {
 
             <!-- Add Profile Card -->
             <div class="profile-card-wrapper">
-              <div class="profile-card profile-card-add" id="btn-show-add-profile">
-                <div class="profile-avatar-wrap add-wrap">
-                  <i data-lucide="plus" style="width: 38px; height: 38px; color: #94a3b8;"></i>
+              <div class="profile-card netflix-card profile-card-add" id="btn-show-add-profile">
+                <div class="profile-avatar-wrap netflix-avatar-square netflix-avatar-add">
+                  <i data-lucide="plus-circle" style="width: 52px; height: 52px; color: #808080; stroke-width: 1.5;"></i>
                 </div>
-                <span class="profile-name">Profil Ekle</span>
+                <span class="profile-name netflix-profile-name">Profil Ekle</span>
               </div>
             </div>
           </div>
 
+          <!-- Netflix Manage Profiles Button -->
+          <div class="netflix-manage-action-bar">
+            <button class="btn-netflix-manage ${isManaging ? 'is-active-done' : ''}" id="btn-toggle-manage-profiles">
+              ${isManaging ? 'Tamamlandı' : 'Profilleri Yönet'}
+            </button>
+          </div>
+
           <!-- Bottom Management Bar -->
-          <div class="profile-footer-bar" style="gap: 8px; flex-wrap: wrap;">
+          <div class="profile-footer-bar netflix-footer-subbar">
             <button class="btn-manage-profiles" id="btn-modal-open-trakt" title="Trakt.tv Senkronizasyonu">
-              <i data-lucide="tv" style="width: 15px; height: 15px; color: #ed1c24;"></i>
+              <i data-lucide="tv" style="width: 14px; height: 14px; color: #ed1c24;"></i>
               <span>Trakt.tv</span>
             </button>
             <button class="btn-manage-profiles" id="btn-modal-open-backup" title="Yedekleme & Veri Yönetimi">
-              <i data-lucide="hard-drive-download" style="width: 15px; height: 15px;"></i>
+              <i data-lucide="hard-drive-download" style="width: 14px; height: 14px; color: #38bdf8;"></i>
               <span>Veri & Yedek</span>
             </button>
             ${isNativeAndroidApp() ? `
               <button class="btn-manage-profiles" id="btn-modal-check-update" title="Güncellemeleri Denetle">
-                <i data-lucide="refresh-cw" style="width: 15px; height: 15px; color: #10b981;"></i>
+                <i data-lucide="refresh-cw" style="width: 14px; height: 14px; color: #10b981;"></i>
                 <span>Güncelleme</span>
               </button>
             ` : `
               <a class="btn-manage-profiles" id="btn-modal-apk-download" href="https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" title="Android APK İndir" style="text-decoration: none;">
-                <i data-lucide="smartphone" style="width: 15px; height: 15px; color: #10b981;"></i>
+                <i data-lucide="smartphone" style="width: 14px; height: 14px; color: #10b981;"></i>
                 <span>Android APK</span>
               </a>
               <button class="btn-manage-profiles" id="btn-modal-pwa-install" title="CinePulse Web Uygulamasını Yükle">
-                <i data-lucide="download" style="width: 15px; height: 15px;"></i>
+                <i data-lucide="download" style="width: 14px; height: 14px; color: #f59e0b;"></i>
                 <span>Web Uygulaması</span>
               </button>
             `}
@@ -162,6 +186,14 @@ export function openProfileModal() {
     const addCardBtn = modalContainer.querySelector('#btn-show-add-profile');
     if (addCardBtn) addCardBtn.onclick = () => renderModalContent('add');
 
+    const toggleManageBtn = modalContainer.querySelector('#btn-toggle-manage-profiles');
+    if (toggleManageBtn) {
+      toggleManageBtn.onclick = () => {
+        isManaging = !isManaging;
+        renderModalContent('select');
+      };
+    }
+
     // Delete profile buttons
     modalContainer.querySelectorAll('.btn-delete-profile').forEach(btn => {
       btn.onclick = (e) => {
@@ -217,12 +249,25 @@ export function openProfileModal() {
     modalContainer.querySelectorAll('.profile-card[data-profile-id]').forEach(card => {
       card.onclick = () => {
         const pId = card.getAttribute('data-profile-id');
-        if (pId) {
+        if (!pId) return;
+
+        if (isManaging) {
+          // If in manage mode, allow user to rename or delete
           const p = getProfiles().find(x => x.id === pId);
-          setActiveProfile(pId);
-          closeProfileModal();
-          triggerProfileSwitchTransition(p);
+          if (!p) return;
+          const newName = prompt(`"${p.name}" profilinin yeni adını girin:`, p.name);
+          if (newName && newName.trim() && newName.trim() !== p.name) {
+            p.name = newName.trim();
+            showToast('Profil güncellendi.', 'info');
+            renderModalContent('select');
+          }
+          return;
         }
+
+        const p = getProfiles().find(x => x.id === pId);
+        setActiveProfile(pId);
+        closeProfileModal();
+        triggerProfileSwitchTransition(p);
       };
     });
 

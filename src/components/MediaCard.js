@@ -5,21 +5,15 @@ import { renderIcons } from '../services/icons.js';
    clean typography, smart type detection, and smooth responsive hover animations.
    ========================================================================== */
 
-import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK, hasNonLatinCharacters, fetchMediaTrailer } from '../services/tmdbApi.js';
+import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK, hasNonLatinCharacters } from '../services/tmdbApi.js';
 import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime, isRegisteredAnimeId, registerAnimeId, getUserSettings, KNOWN_ANIME_KEYWORDS as STORAGE_ANIME_KEYWORDS } from '../services/storage.js';
 import { openPlayerModal } from './openPlayer.js';
 import { saveAllScrollState } from '../services/scrollManager.js';
-import { getBestBackdrop, prefetchBackdrops } from '../services/fanartService.js';
+import { getBestBackdrop } from '../services/fanartService.js';
 
 const KNOWN_ANIME_KEYWORDS = STORAGE_ANIME_KEYWORDS || [
   'anime', 'kimetsu', 'yaiba', 'iblis keser', 'demon slayer', 'naruto', 'boruto', 'shingeki', 'titan'
 ];
-
-function escapePreviewText(value = '') {
-  return String(value).replace(/[&<>'"]/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-  }[char]));
-}
 
 function hasJapaneseCharacters(text) {
   if (!text) return false;
@@ -151,7 +145,8 @@ export function renderMediaCard(item, options = {}) {
   const fallbackLandscapeUrl = backdropPath
     ? getImageUrl(backdropPath, TMDB_IMAGE_SIZES.BACKDROP_LARGE)
     : posterUrl;
-  const usesLandscapeCards = getUserSettings().cardLayout === 'landscape';
+  const settings = getUserSettings();
+  const usesLandscapeCards = settings.cardLayout === 'landscape';
   const cardImageUrl = usesLandscapeCards ? fallbackLandscapeUrl : posterUrl;
   
   // Real rating or empty
@@ -172,10 +167,11 @@ export function renderMediaCard(item, options = {}) {
   if (options.isContinueSection || (item.currentTime > 0 && !isCompleted) || (item.progressPercent > 0 && !isCompleted)) {
     isContinue = true;
   } else {
-    const prog = getMediaProgress(id, season, episode);
+    const prog = options.skipProgressLookup ? null : getMediaProgress(id, season, episode);
     if (prog) {
       isCompleted = prog.completed || false;
       if (!isCompleted && prog.duration > 0 && prog.currentTime > 15) {
+        isContinue = true;
         progressPercent = Math.min(100, Math.round((prog.currentTime / prog.duration) * 100));
         currentTime = prog.currentTime;
         if (isSeries) {
@@ -221,6 +217,9 @@ export function renderMediaCard(item, options = {}) {
       data-originaltitle="${encodedOrigTitle}"
       data-poster="${encodedPoster}"
       data-backdrop="${encodedBackdrop}"
+      data-overview="${encodeURIComponent(item.overview || '')}"
+      data-year="${year}"
+      data-rating="${rating}"
       data-tmdbid="${id}"
       data-mediatype="${mediaType === 'tv' || isSeries ? 'tv' : 'movie'}"
       data-isseries="${isSeries ? 'true' : 'false'}"
@@ -260,11 +259,11 @@ export function renderMediaCard(item, options = {}) {
           </div>
         ` : '')}
 
-        <!-- Rating Pill Floating Top Right -->
-        ${rating ? `
-          <div class="card-rating-pill">
-            <i data-lucide="star" style="width:11px;height:11px;fill:#f59e0b;stroke:#f59e0b;"></i>
-            <span>${rating}</span>
+        <!-- Top meta strip: year + rating over poster -->
+        ${(year || rating) ? `
+          <div class="card-top-strip">
+            ${year ? `<span class="card-top-year">${year}</span>` : `<span></span>`}
+            ${rating ? `<span class="card-top-rating"><i data-lucide="star" style="width:10px;height:10px;fill:#f59e0b;stroke:#f59e0b;"></i>${rating}</span>` : ''}
           </div>
         ` : ''}
 
@@ -273,7 +272,17 @@ export function renderMediaCard(item, options = {}) {
           <div class="card-play-btn-circle">
             <i data-lucide="play" style="width:20px;height:20px;fill:currentColor;margin-left:2px;"></i>
           </div>
+          <span class="card-hover-title">${title}</span>
           <span class="card-hover-action-text">${isContinue ? 'İzlemeye Devam Et' : 'İncele & Oynat'}</span>
+        </div>
+
+        <!-- Bottom Cinematic Gradient Overlay with Title & Meta (Apple TV / Stremio Vurgusu) -->
+        <div class="card-bottom-cinematic-overlay">
+          <h3 class="card-cinematic-title" title="${title}">${title}</h3>
+          <div class="card-cinematic-meta">
+            <span class="card-cinematic-type">${detailedTypeLabel}</span>
+            ${year ? `<span class="card-cinematic-dot">•</span><span class="card-cinematic-year">${year}</span>` : ''}
+          </div>
         </div>
 
         <!-- Progress Bar at bottom if watch in progress -->
@@ -297,7 +306,8 @@ export function renderMediaCard(item, options = {}) {
 
 export function attachMediaCardEvents(container) {
   if (!container) return;
-  upgradeLandscapeBackdrops(container);
+  // Card artwork is supplied by the primary TMDB response. Avoid issuing a
+  // second artwork/logo lookup for every card in the home rails.
   if (container._hasMediaEventsDelegated) return;
   container._hasMediaEventsDelegated = true;
   let suppressCardNavigationUntil = 0;
@@ -334,7 +344,7 @@ export function attachMediaCardEvents(container) {
       ? isSeriesAttr === 'true'
       : (mediaTypeAttr === 'tv' || type === 'tv');
 
-    if (isContinue && (card.closest('#continue-watching-rail') || card.closest('.continue-card-wrapper') || currentTime > 0)) {
+  if (isContinue) {
       openPlayerModal({
         type: isAnime ? 'anime' : (isSeriesCard ? 'tv' : 'movie'),
         isAnime,
@@ -355,272 +365,7 @@ export function attachMediaCardEvents(container) {
     }
   });
 
-  // Preconnect to YouTube for faster iframe loading
-  if (!document.querySelector('link[rel=preconnect][href*=youtube-nocookie]')) {
-    ['https://www.youtube-nocookie.com', 'https://i.ytimg.com'].forEach(origin => {
-      const lnk = document.createElement('link');
-      lnk.rel = 'preconnect'; lnk.href = origin; lnk.crossOrigin = 'anonymous';
-      document.head.appendChild(lnk);
-    });
-  }
 
-  const isFinePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-  const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
-  const settings = getUserSettings();
-  const previewsAllowed = settings.hoverPreviewsEnabled !== false && settings.trailersEnabled !== false;
-
-  // --- Shared helper: show trailer preview popup on a card ---
-  function showTrailerPreview(card, trailerPromise) {
-    if (card.querySelector('.card-hover-video-preview')) return;
-    let previewSoundEnabled = sessionStorage.getItem('cinepulse_preview_sound') === 'on';
-
-    trailerPromise.then(trailer => {
-      if (!trailer || !trailer.key || !trailer.key.trim()) return;
-      if (!card.isConnected) return;
-      // On desktop check hover is still active
-      if (isFinePointer && !card.matches(':hover')) return;
-
-      const title = decodeURIComponent(card.getAttribute('data-title') || 'Fragman');
-      const typeLabel = card.querySelector('.card-type-tag')?.textContent?.trim() || '';
-      const year = card.querySelector('.card-year-tag')?.textContent?.trim() || '';
-      const rating = card.querySelector('.card-rating-pill span')?.textContent?.trim() || '';
-      const mediaId = card.getAttribute('data-id') || '';
-      const mediaType = card.getAttribute('data-type') || 'movie';
-      const detailUrl = `#detail?type=${encodeURIComponent(mediaType)}&id=${encodeURIComponent(mediaId)}`;
-      const safeKey = encodeURIComponent(trailer.key);
-      const previewBox = document.createElement('div');
-      previewBox.className = 'card-hover-video-preview';
-      // Screen width is the dependable signal here. Some Android browsers
-      // report a non-coarse pointer even though they are running in a narrow
-      // phone viewport; using the pointer media query hid the mobile close
-      // control in exactly that case.
-      const useMobileSheet = window.innerWidth <= 700;
-      if (useMobileSheet) {
-        // A card-relative popover is too easy to clip behind the bottom
-        // navigation on phones. Keep one compact preview sheet above it.
-        document.querySelectorAll('.card-hover-video-preview').forEach(existing => {
-          if (typeof existing._closePreview === 'function') existing._closePreview();
-          else {
-            existing.closest?.('.media-card')?.classList.remove('preview-active');
-            existing.remove();
-          }
-        });
-        document.querySelectorAll('.card-preview-mobile-close-portal').forEach(button => button.remove());
-        previewBox.classList.add('is-mobile-sheet');
-      }
-      previewBox.innerHTML = `
-        <div class="card-preview-media">
-          <iframe
-            src="https://www.youtube-nocookie.com/embed/${safeKey}?autoplay=1&mute=1&controls=0&disablekb=1&modestbranding=1&loop=1&playlist=${safeKey}&rel=0&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}"
-            frameborder="0"
-            allow="autoplay; encrypted-media; picture-in-picture"
-            tabindex="-1"
-            title="${escapePreviewText(title)} fragmanı">
-          </iframe>
-          <div class="card-preview-cinematic-shade"></div>
-          <span class="card-preview-badge">FRAGMAN</span>
-        </div>
-        <button class="card-preview-close-btn" type="button" aria-label="Fragmanı kapat" title="Fragmanı kapat"><i data-lucide="x"></i></button>
-        <div class="card-preview-details">
-          <div class="card-preview-copy">
-            <strong class="card-preview-title">${escapePreviewText(title)}</strong>
-            <div class="card-preview-meta">
-              ${rating ? `<span class="card-preview-match">${escapePreviewText(rating)} IMDb</span>` : ''}
-              ${year ? `<span>${escapePreviewText(year)}</span>` : ''}
-              ${typeLabel ? `<span>${escapePreviewText(typeLabel)}</span>` : ''}
-            </div>
-          </div>
-          <div class="card-preview-actions">
-            <a class="card-preview-detail" href="${escapePreviewText(detailUrl)}" aria-label="${escapePreviewText(title)} içerik sayfasına git"><i data-lucide="info"></i><span>İçeriğe Git</span></a>
-            <a class="card-preview-open" href="${escapePreviewText(trailer.watchUrl || `https://www.youtube.com/watch?v=${safeKey}`)}" target="_blank" rel="noopener noreferrer" title="YouTube'da aç" aria-label="Fragmanı YouTube'da aç"><i data-lucide="external-link"></i></a>
-            <button class="card-preview-sound ${previewSoundEnabled ? 'is-on' : ''}" type="button" aria-label="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}" title="${previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç'}">
-              <i data-lucide="${previewSoundEnabled ? 'volume-2' : 'volume-x'}"></i>
-            </button>
-          </div>
-        </div>
-      `;
-      if (!useMobileSheet) {
-        const rect = card.getBoundingClientRect();
-        const edgeTop = window.innerHeight < 520 ? 12 : 76;
-        const idealPreviewWidth = Math.min(460, Math.max(390, rect.width * 2.2), window.innerWidth - 32);
-        const maxWidthByHeight = Math.max(240, ((window.innerHeight - edgeTop - 94) * 16) / 9);
-        const previewWidth = Math.max(240, Math.min(idealPreviewWidth, maxWidthByHeight));
-        const previewHeight = (previewWidth * 9 / 16) + 82;
-        const left = Math.max(16, Math.min(window.innerWidth - previewWidth - 16, rect.left + (rect.width - previewWidth) / 2));
-        const top = Math.max(edgeTop, Math.min(window.innerHeight - previewHeight - 12, rect.top + (rect.height - previewHeight) / 2));
-        previewBox.style.left = `${left}px`;
-        previewBox.style.top = `${top}px`;
-        previewBox.style.width = `${previewWidth}px`;
-      }
-      card.classList.add('preview-active');
-      card.appendChild(previewBox);
-      renderIcons();
-
-      const iframe = previewBox.querySelector('iframe');
-      // Some mobile browsers composite a cross-origin YouTube iframe over its
-      // own siblings. Keep a second close control in the document top layer.
-      let mobileClosePortal = null;
-      let positionMobileClosePortal = null;
-      if (useMobileSheet) {
-        mobileClosePortal = document.createElement('button');
-        mobileClosePortal.type = 'button';
-        mobileClosePortal.className = 'card-preview-mobile-close-portal';
-        mobileClosePortal.setAttribute('aria-label', 'Fragmanı kapat');
-        mobileClosePortal.title = 'Fragmanı kapat';
-        mobileClosePortal.innerHTML = '<i data-lucide="x"></i>';
-        positionMobileClosePortal = () => {
-          const rect = previewBox.getBoundingClientRect();
-          mobileClosePortal.style.top = `${Math.max(8, rect.top + 12)}px`;
-          mobileClosePortal.style.left = `${Math.max(8, rect.right - 52)}px`;
-        };
-        document.body.appendChild(mobileClosePortal);
-        requestAnimationFrame(positionMobileClosePortal);
-        window.addEventListener('resize', positionMobileClosePortal, { passive: true });
-        renderIcons(mobileClosePortal);
-      }
-      // Preview actions must not trigger the card's normal detail navigation.
-      previewBox.addEventListener('click', event => event.stopPropagation());
-      previewBox.addEventListener('touchend', event => event.stopPropagation(), { passive: true });
-
-      const soundBtn = previewBox.querySelector('.card-preview-sound');
-      const closeBtn = previewBox.querySelector('.card-preview-close-btn');
-      previewBox.querySelector('.card-preview-detail')?.addEventListener('click', () => {
-        saveAllScrollState();
-        removePreview();
-      });
-      const sendPlayerCommand = (command, args = []) => {
-        iframe?.contentWindow?.postMessage(JSON.stringify({
-          event: 'command', func: command, args
-        }), '*');
-      };
-      const applySoundState = () => {
-        sendPlayerCommand(previewSoundEnabled ? 'unMute' : 'mute');
-        if (previewSoundEnabled) sendPlayerCommand('setVolume', [75]);
-        soundBtn.classList.toggle('is-on', previewSoundEnabled);
-        soundBtn.title = previewSoundEnabled ? 'Sesi kapat' : 'Sesi aç';
-        soundBtn.setAttribute('aria-label', soundBtn.title);
-        soundBtn.innerHTML = `<i data-lucide="${previewSoundEnabled ? 'volume-2' : 'volume-x'}"></i>`;
-        renderIcons();
-      };
-      const removePreview = () => {
-        if (positionMobileClosePortal) window.removeEventListener('resize', positionMobileClosePortal);
-        try { mobileClosePortal?.remove(); } catch (_) {}
-        try { previewBox.remove(); } catch (_) {}
-        card.classList.remove('preview-active');
-      };
-      previewBox._closePreview = removePreview;
-      // YouTube cross-origin iframes often skip the 'load' event — force show after 1.5s
-      const forceShowTimer = window.setTimeout(() => {
-        previewBox.classList.add('video-ready');
-      }, 1500);
-      iframe.addEventListener('load', () => {
-        window.clearTimeout(forceShowTimer);
-        previewBox.classList.add('video-ready');
-        if (previewSoundEnabled) window.setTimeout(applySoundState, 180);
-      }, { once: true });
-      soundBtn.addEventListener('click', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        previewSoundEnabled = !previewSoundEnabled;
-        sessionStorage.setItem('cinepulse_preview_sound', previewSoundEnabled ? 'on' : 'off');
-        applySoundState();
-        window.setTimeout(applySoundState, 180);
-      });
-      if (closeBtn) {
-        closeBtn.addEventListener('click', e => {
-          e.preventDefault();
-          e.stopPropagation();
-          removePreview();
-        });
-      }
-      mobileClosePortal?.addEventListener('click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        removePreview();
-      });
-    }).catch(() => {});
-  }
-
-  // --- Desktop: hover pointer device ---
-  if (isFinePointer && previewsAllowed) {
-    const hoverTimers = new WeakMap();
-
-    container.addEventListener('pointerover', (e) => {
-      const card = e.target.closest('.media-card');
-      if (!card) return;
-      if (e.relatedTarget && card.contains(e.relatedTarget)) return;
-
-      // Pre-fetch trailer immediately on hover intent
-      const id = card.getAttribute('data-id');
-      const type = card.getAttribute('data-type') || 'movie';
-      const trailerPromise = fetchMediaTrailer(type === 'tv' ? 'tv' : 'movie', id);
-      // Require a deliberate hover so moving across the grid does not open trailers.
-      const timer = setTimeout(() => showTrailerPreview(card, trailerPromise), 850);
-      hoverTimers.set(card, timer);
-    });
-
-    container.addEventListener('pointerout', (e) => {
-      const card = e.target.closest('.media-card');
-      if (!card) return;
-      if (e.relatedTarget && card.contains(e.relatedTarget)) return;
-      const timer = hoverTimers.get(card);
-      if (timer) clearTimeout(timer);
-      hoverTimers.delete(card);
-      const preview = card.querySelector('.card-hover-video-preview');
-      if (preview) {
-        try { preview.remove(); } catch (_) {}
-      }
-      card.classList.remove('preview-active');
-    });
-  }
-
-  // --- Mobile: long-press on card to show trailer preview ---
-  if (isTouchDevice && previewsAllowed) {
-    const LONG_PRESS_MS = 600;
-    const touchSessions = new WeakMap();
-
-    container.addEventListener('touchstart', (e) => {
-      if (e.target.closest('.card-hover-video-preview')) return;
-      const card = e.target.closest('.media-card');
-      if (!card) return;
-      const session = { opened: false, timer: null };
-      const id = card.getAttribute('data-id');
-      const type = card.getAttribute('data-type') || 'movie';
-      const trailerPromise = fetchMediaTrailer(type === 'tv' ? 'tv' : 'movie', id);
-      session.timer = setTimeout(() => {
-        session.timer = null;
-        session.opened = true;
-        suppressCardNavigationUntil = Date.now() + 900;
-        try { navigator.vibrate?.(40); } catch (_) {}
-        showTrailerPreview(card, trailerPromise);
-      }, LONG_PRESS_MS);
-      touchSessions.set(card, session);
-    }, { passive: true });
-
-    const cancelLongPress = (e) => {
-      const card = e.target.closest('.media-card');
-      const session = card && touchSessions.get(card);
-      if (!session) return;
-      if (session.timer) clearTimeout(session.timer);
-      session.timer = null;
-      // Releasing the same finger that opened a preview is not a dismissal.
-      // The previous handler removed the sheet immediately, so it stayed muted
-      // and the user could neither see its close button nor enable audio.
-      if (!session.opened || e.type !== 'touchend') touchSessions.delete(card);
-    };
-    container.addEventListener('touchend', cancelLongPress, { passive: true });
-    container.addEventListener('touchmove', cancelLongPress, { passive: true });
-    container.addEventListener('touchcancel', cancelLongPress, { passive: true });
-
-    // Mobile preview is persistent once opened: only its visible × button
-    // dismisses it. This leaves enough time to enable sound or use YouTube.
-    // A new long press still replaces an older preview in showTrailerPreview.
-    container.addEventListener('touchend', (e) => {
-      const card = e.target.closest('.media-card');
-      const session = card && touchSessions.get(card);
-      if (session?.opened) touchSessions.delete(card);
-    }, { passive: true });
-  }
 }
 
 let fanartObserver = null;
@@ -634,7 +379,7 @@ function getFanartObserver() {
       fanartObserver.unobserve(entry.target);
       loadLandscapeArtwork(entry.target);
     });
-  }, { rootMargin: '800px 0px' });
+  }, { rootMargin: '150px 0px' });
   return fanartObserver;
 }
 
@@ -676,6 +421,9 @@ async function loadLandscapeArtwork(card) {
 }
 
 export function upgradeLandscapeBackdrops(container = document, forceImmediate = false) {
+  const isLandscape = getUserSettings().cardLayout === 'landscape' || document.documentElement.classList.contains('cards-landscape');
+  if (!isLandscape) return;
+
   const root = (container && container.querySelectorAll) ? container : document;
   const cards = root.querySelectorAll('.media-card[data-tmdbid]:not([data-fanart-state="loaded"])');
   if (!cards.length) return;

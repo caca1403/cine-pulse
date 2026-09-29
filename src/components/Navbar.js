@@ -222,7 +222,7 @@ export function renderNavbar(currentView = 'home') {
           <!-- Desktop Search Box -->
           <div class="search-box desktop-search-box desktop-only">
             <i data-lucide="search" class="search-icon"></i>
-            <input type="text" id="nav-search-input" class="search-input" placeholder="Ara..." autocomplete="off" />
+            <input type="text" id="nav-search-input" class="search-input" placeholder="Dizi, film veya oyuncu ara..." autocomplete="off" />
             <span class="search-kbd">⌘K</span>
             <div id="search-overlay" class="search-results-overlay glass-panel hidden"></div>
           </div>
@@ -657,7 +657,7 @@ function setupSearchInput(inputId, overlayId) {
               <i data-lucide="sparkles" style="width:18px;height:18px;color:#c084fc;"></i>
             </div>
             <div class="search-item-info">
-              <div class="search-item-title" style="color:#f3e8ff;font-weight:750;">🎭 Kısa Dizilerde Ara: "${query}"</div>
+              <div class="search-item-title" style="color:#f3e8ff;font-weight:750;">Kısa Dizilerde Ara: "${query}"</div>
               <div class="search-item-meta">
                 <span class="search-badge" style="background:#a855f7;color:#fff;">Özel Hub</span>
                 <span style="color:#c4b5fd;">ReelShort & DramaBox</span>

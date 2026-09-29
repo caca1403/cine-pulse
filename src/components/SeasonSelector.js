@@ -114,14 +114,24 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
 
             if (badgeEl) {
               if (isCompleted) {
-                badgeEl.innerHTML = `<i data-lucide="check" style="width:11px; height:11px"></i> İZLENDİ`;
+                badgeEl.innerHTML = `<i data-lucide="check" style="width:10px; height:10px"></i> İZLENDİ`;
                 badgeEl.style.background = 'var(--accent-green)';
                 badgeEl.style.color = '#fff';
+                badgeEl.style.fontSize = '0.68rem';
+                badgeEl.style.fontWeight = '800';
+                badgeEl.style.padding = '0.2rem 0.45rem';
+                badgeEl.style.borderRadius = '4px';
+                badgeEl.style.whiteSpace = 'nowrap';
                 badgeEl.style.display = 'inline-flex';
               } else if (isHalfway) {
-                badgeEl.innerHTML = `<i data-lucide="clock" style="width:11px; height:11px"></i> YARIDA`;
-                badgeEl.style.background = 'rgba(245, 158, 11, 0.95)';
+                badgeEl.innerHTML = `<i data-lucide="clock" style="width:10px; height:10px"></i> YARIDA`;
+                badgeEl.style.background = '#f59e0b';
                 badgeEl.style.color = '#000';
+                badgeEl.style.fontSize = '0.68rem';
+                badgeEl.style.fontWeight = '850';
+                badgeEl.style.padding = '0.2rem 0.45rem';
+                badgeEl.style.borderRadius = '4px';
+                badgeEl.style.whiteSpace = 'nowrap';
                 badgeEl.style.display = 'inline-flex';
               } else {
                 badgeEl.style.display = 'none';
@@ -390,20 +400,20 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
     let badgeStatusHTML = '';
     if (isCompleted) {
       badgeStatusHTML = `
-        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green); z-index: 4;">
-          <i data-lucide="check" style="width:11px; height:11px"></i> İZLENDİ
+        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.4rem; left: 0.4rem; background: var(--accent-green); color: #fff; z-index: 4; font-size: 0.68rem; font-weight: 800; padding: 0.2rem 0.45rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; line-height: 1; white-space: nowrap;">
+          <i data-lucide="check" style="width:10px; height:10px"></i> İZLENDİ
         </span>
       `;
     } else if (isHalfway) {
       badgeStatusHTML = `
-        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: rgba(245, 158, 11, 0.95); color: #000; font-weight: 800; z-index: 4;">
-          <i data-lucide="clock" style="width:11px; height:11px"></i> YARIDA
+        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.4rem; left: 0.4rem; background: #f59e0b; color: #000; font-weight: 850; z-index: 4; font-size: 0.68rem; padding: 0.2rem 0.45rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; line-height: 1; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
+          <i data-lucide="clock" style="width:10px; height:10px"></i> YARIDA
         </span>
       `;
     } else {
       badgeStatusHTML = `
-        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.5rem; left: 0.5rem; background: var(--accent-green); display: none; z-index: 4;">
-          <i data-lucide="check" style="width:11px; height:11px"></i> İZLENDİ
+        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.4rem; left: 0.4rem; background: var(--accent-green); color: #fff; display: none; z-index: 4; font-size: 0.68rem; font-weight: 800; padding: 0.2rem 0.45rem; border-radius: 4px; line-height: 1; white-space: nowrap;">
+          <i data-lucide="check" style="width:10px; height:10px"></i> İZLENDİ
         </span>
       `;
     }
@@ -567,9 +577,14 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
       if (card) {
         const badgeEl = card.querySelector('.badge-watched-status');
         if (badgeEl) {
-          badgeEl.innerHTML = `<i data-lucide="clock" style="width:12px; height:12px"></i> YARIDA (20:00)`;
-          badgeEl.style.background = 'rgba(245, 158, 11, 0.9)';
+          badgeEl.innerHTML = `<i data-lucide="clock" style="width:10px; height:10px"></i> YARIDA`;
+          badgeEl.style.background = '#f59e0b';
           badgeEl.style.color = '#000';
+          badgeEl.style.fontWeight = '850';
+          badgeEl.style.padding = '0.2rem 0.45rem';
+          badgeEl.style.borderRadius = '4px';
+          badgeEl.style.fontSize = '0.68rem';
+          badgeEl.style.whiteSpace = 'nowrap';
           badgeEl.style.display = 'inline-flex';
         }
       }

@@ -147,19 +147,19 @@ function formatStreamName(s, category = '') {
     return 'SWX 1080p Direct';
   }
   if (id.startsWith('tvr_') || id.startsWith('rectv_') || raw.includes('rectv') || raw.includes('tvr')) {
-    return s.displayName || s.name || '⚡ TVR VIP 1080p';
+    return s.displayName || s.name || '  TVR VIP 1080p';
   }
   if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) {
-    return s.displayName || s.name || '🎬 LookMovie VIP 1080p';
+    return s.displayName || s.name || '  LookMovie VIP 1080p';
   }
   if (id.startsWith('twoembed_') || raw.includes('2embed')) {
-    return s.displayName || s.name || '⚡ 2Embed VIP 1080p';
+    return s.displayName || s.name || '  2Embed VIP 1080p';
   }
   if (id.startsWith('vidsrc_pm') || raw.includes('vidsrc alt')) {
-    return s.displayName || s.name || '⚡ VidSrc Alt 1080p';
+    return s.displayName || s.name || '  VidSrc Alt 1080p';
   }
   if (id.startsWith('vidsrc_') || raw.includes('vidsrc')) {
-    return s.displayName || s.name || '🎬 VidSrc VIP 1080p';
+    return s.displayName || s.name || '  VidSrc VIP 1080p';
   }
   if (id.startsWith('dzy_') || raw.includes('diziyo')) {
     if (url.includes('vidmoly')) return 'Diziyo VidMoly 1080p';
@@ -172,7 +172,7 @@ function formatStreamName(s, category = '') {
     return s.displayName || s.name || 'HDF 1080p';
   }
   if (id.startsWith('kvip_') || raw.includes('kids vip')) {
-    return s.displayName || s.name || '⚡ Kids VIP Direct 1080p';
+    return s.displayName || s.name || '  Kids VIP Direct 1080p';
   }
   if (id.startsWith('az_') || id.startsWith('anizium_') || raw.includes('anizium') || raw.includes('az ')) {
     return s.displayName || s.name || 'AZ 4K/1080p VIP';
@@ -193,26 +193,26 @@ function formatStreamItem(s, category, fallbackName) {
   const streamUrl = s.streamUrl || s.url || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '';
   const finalDisplayName = formatStreamName(s, category) || fallbackName;
 
-  let badge = s.badge || (category === 'dubbed' ? '⚡ TR Dublaj' : '💬 TR Altyazı');
+  let badge = s.badge || (category === 'dubbed' ? '  TR Dublaj' : '  TR Altyazı');
   const lowerName = (finalDisplayName || '').toLowerCase();
   if (lowerName.includes('hdfc') || lowerName.includes('hdfilmcehennemi')) {
-    badge = category === 'dubbed' ? '🔥 HDFC Dublaj 1080p' : '💬 HDFC Altyazı 1080p';
+    badge = category === 'dubbed' ? '  HDFC Dublaj 1080p' : '  HDFC Altyazı 1080p';
   } else if (lowerName.includes('dzb') || lowerName.includes('dizibal') || lowerName.includes('dp')) {
-    badge = category === 'dubbed' ? '⚡ DP Dublaj' : '💬 DP Altyazı';
+    badge = category === 'dubbed' ? '  DP Dublaj' : '  DP Altyazı';
   } else if (lowerName.includes('ds')) {
-    badge = category === 'dubbed' ? '⚡ DS Dublaj' : '💬 DS Altyazı';
+    badge = category === 'dubbed' ? '  DS Dublaj' : '  DS Altyazı';
   } else if (lowerName.includes('az ') || lowerName.includes('az 4k') || lowerName.includes('az 1080p') || lowerName.includes('anizium')) {
-    badge = s.badge || (category === 'dubbed' ? '⚡ AZ 4K Dublaj' : '⚡ AZ 4K Altyazı');
+    badge = s.badge || (category === 'dubbed' ? '  AZ 4K Dublaj' : '  AZ 4K Altyazı');
   } else if (lowerName.includes('swx')) {
-    badge = '⚡ SWX 1080p';
+    badge = '  SWX 1080p';
   } else if (lowerName.includes('tvr')) {
-    badge = '⚡ TVR 1080p';
+    badge = '  TVR 1080p';
   } else if (lowerName.includes('lookmovie')) {
-    badge = '🎬 LookMovie 1080p';
+    badge = '  LookMovie 1080p';
   } else if (lowerName.includes('2embed')) {
-    badge = '⚡ 2Embed 1080p';
+    badge = '  2Embed 1080p';
   } else if (lowerName.includes('vidsrc')) {
-    badge = '🎬 VidSrc 1080p';
+    badge = '  VidSrc 1080p';
   }
 
   return {
@@ -504,7 +504,7 @@ export async function getStreamingServersProgressive({
           id: `${s.id}_dub`,
           name: isMovie ? 'DP DiziBal Player (TR Dublaj)' : `DP DiziBal Player Dublaj S${season}B${episode}`,
           displayName: isMovie ? 'DP DiziBal Player (TR Dublaj)' : `DP DiziBal Player Dublaj (S${season}B${episode})`,
-          badge: '🌐 DiziBal Orijinal Player',
+          badge: '  DiziBal Orijinal Player',
           category: 'dubbed'
         }], 'dubbed');
 
@@ -513,7 +513,7 @@ export async function getStreamingServersProgressive({
           id: `${s.id}_sub`,
           name: isMovie ? 'DP DiziBal Player (TR Altyazı)' : `DP DiziBal Player Altyazı S${season}B${episode}`,
           displayName: isMovie ? 'DP DiziBal Player (TR Altyazı)' : `DP DiziBal Player Altyazı (S${season}B${episode})`,
-          badge: '🌐 DiziBal Orijinal Player',
+          badge: '  DiziBal Orijinal Player',
           category: 'subtitled'
         }], 'subtitled');
 
@@ -532,7 +532,7 @@ export async function getStreamingServersProgressive({
           id: `${s.id}_dub`,
           name: s.name ? s.name.replace(/\(Altyazı\)/i, '(TR Dublaj)') : 'DS 1080p (TR Dublaj)',
           displayName: s.displayName ? s.displayName.replace(/\(Altyazı\)/i, '(TR Dublaj)') : 'DS 1080p (TR Dublaj)',
-          badge: '⚡ TR Dublaj',
+          badge: '  TR Dublaj',
           category: 'dubbed'
         }], 'dubbed');
 
@@ -541,7 +541,7 @@ export async function getStreamingServersProgressive({
           id: `${s.id}_sub`,
           name: s.name ? s.name.replace(/\(Dublaj\)/i, '(TR Altyazı)') : 'DS 1080p (TR Altyazı)',
           displayName: s.displayName ? s.displayName.replace(/\(Dublaj\)/i, '(TR Altyazı)') : 'DS 1080p (TR Altyazı)',
-          badge: '💬 TR Altyazı',
+          badge: '  TR Altyazı',
           category: 'subtitled'
         }], 'subtitled');
       }
@@ -672,7 +672,7 @@ export async function getStreamingServersProgressive({
             id: `${s.id}_dub`,
             name: isMovie ? 'HDFilmCehennemi Dublaj 1080p' : `HDFilmCehennemi Dublaj S${season}B${episode}`,
             displayName: isMovie ? 'HDFilmCehennemi Dublaj (1080p)' : `HDFilmCehennemi Dublaj (S${season}B${episode})`,
-            badge: '🔥 HDFC Dublaj 1080p',
+            badge: '  HDFC Dublaj 1080p',
             category: 'dubbed'
           }], 'dubbed');
 
@@ -681,7 +681,7 @@ export async function getStreamingServersProgressive({
             id: `${s.id}_sub`,
             name: isMovie ? 'HDFilmCehennemi Altyazı 1080p' : `HDFilmCehennemi Altyazı S${season}B${episode}`,
             displayName: isMovie ? 'HDFilmCehennemi Altyazı (1080p)' : `HDFilmCehennemi Altyazı (S${season}B${episode})`,
-            badge: '💬 HDFC Altyazı 1080p',
+            badge: '  HDFC Altyazı 1080p',
             category: 'subtitled'
           }], 'subtitled');
         }

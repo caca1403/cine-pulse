@@ -19,11 +19,14 @@ function rememberScroll() {
 
 export function trackScrollState() {
   rememberScroll();
-  if (pendingScrollSave !== null) return;
+  if (pendingScrollSave !== null) {
+    clearTimeout(pendingScrollSave);
+  }
+  // Only flush to sessionStorage after user has stopped scrolling for 1.5 seconds
   pendingScrollSave = window.setTimeout(() => {
     pendingScrollSave = null;
     flushScrollState();
-  }, 300);
+  }, 1500);
 }
 
 export function flushScrollState() {

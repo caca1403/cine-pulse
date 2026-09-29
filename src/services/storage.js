@@ -1856,7 +1856,7 @@ export function getUserSettings() {
     theme: 'dark',
     subtitlesEnabled: true,
     cardLayout: 'portrait',
-    hoverPreviewsEnabled: true,
+    hoverPreviewsEnabled: false,
     trailersEnabled: true
   });
   return _userSettingsCache;

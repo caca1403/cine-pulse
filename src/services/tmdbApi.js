@@ -68,14 +68,21 @@ export async function translateToTurkish(text) {
   if (translationCache[text]) return translationCache[text];
 
   try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=tr&dt=t&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(1200) });
+    const url = `https://translate.googleapis.com/translate_a/single?client=dict-chrome-ex&sl=auto&tl=tr&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(3000),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
     if (res.ok) {
       const data = await res.json();
       if (data && data[0]) {
         const translatedStr = data[0].map(item => item[0]).join('');
-        translationCache[text] = translatedStr;
-        return translatedStr;
+        if (translatedStr && translatedStr.trim().length > 0) {
+          translationCache[text] = translatedStr;
+          return translatedStr;
+        }
       }
     }
   } catch (err) {
@@ -1050,14 +1057,14 @@ export async function fetchMediaDetails(type = 'tv', id) {
     registerAnimeId(res.id);
   }
 
-  // 1. Overview Fallback & Auto-Translation to Turkish
+  // 1. Overview Fallback & Auto-Translation to Turkish (Rich cinematic synopsis)
   let trOverview = (res.overview || '').trim();
-  if (!trOverview || trOverview.length < 15) {
+  if (!trOverview || trOverview.length < 180) {
     try {
       const enRes = await tmdbFetch(`/${type}/${id}`, { language: 'en-US' });
-      if (enRes && enRes.overview && enRes.overview.trim().length > 10) {
+      if (enRes && enRes.overview && enRes.overview.trim().length > trOverview.length + 30) {
         const translated = await translateToTurkish(enRes.overview.trim());
-        if (translated && translated.length > 15) {
+        if (translated && translated.length > trOverview.length) {
           res.overview = translated;
         }
       }
@@ -1066,8 +1073,8 @@ export async function fetchMediaDetails(type = 'tv', id) {
     }
   }
 
-  // If overview is still missing or short, dynamically generate a rich cinematic synopsis!
-  if (!res.overview || res.overview.trim().length < 15) {
+  // If overview is still missing or very short, dynamically generate a rich cinematic synopsis!
+  if (!res.overview || res.overview.trim().length < 20) {
     res.overview = generateCinematicOverview(res, type);
   }
 

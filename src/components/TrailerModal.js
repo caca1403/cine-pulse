@@ -27,7 +27,7 @@ export function openTrailerModal({ title = 'Fragman', trailerInfo, mediaId = nul
         <div class="trailer-header">
           <div class="trailer-header-left">
             <span class="trailer-badge">
-              <i data-lucide="youtube" style="width: 14px; height: 14px; fill: #ef4444; color: #ef4444;"></i>
+              <i data-lucide="youtube" style="width: 14px; height: 14px; fill: #f59e0b; color: #f59e0b;"></i>
               <span>FRAGMAN</span>
             </span>
             <h3 class="trailer-title" title="${title} • ${trailerName}">
@@ -59,7 +59,7 @@ export function openTrailerModal({ title = 'Fragman', trailerInfo, mediaId = nul
           ></iframe>
         </div>
 
-        ${detailUrl ? `<div class="trailer-footer"><a class="btn-trailer-detail" href="${detailUrl}"><i data-lucide="info"></i><span>İçerik Sayfasına Git</span><i data-lucide="arrow-right"></i></a></div>` : ''}
+        ${detailUrl && !window.location.hash.startsWith('#detail') ? `<div class="trailer-footer"><a class="btn-trailer-detail" href="${detailUrl}"><i data-lucide="info"></i><span>İçerik Sayfasına Git</span><i data-lucide="arrow-right"></i></a></div>` : ''}
 
       </div>
     </div>
