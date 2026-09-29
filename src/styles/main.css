@@ -7572,7 +7572,7 @@ html.mobile-web .navbar {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 40;
+  z-index: 80;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.5) 60%, transparent 100%);
   padding: 0 16px max(14px, env(safe-area-inset-bottom, 14px));
   display: flex;
@@ -7748,9 +7748,19 @@ html.mobile-web .navbar {
   justify-content: space-between;
   width: 100%;
   position: relative;
+  z-index: 2;
   min-height: 48px;
   gap: 12px;
+  pointer-events: auto;
 }
+
+.custom-controls-row button,
+.custom-controls-row input {
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.custom-timeline-container { pointer-events: auto; }
 
 /* Keep tools centered on the row immediately below the timeline. */
 .custom-controls-row .custom-floating-pill-bar {
@@ -7768,16 +7778,24 @@ html.mobile-web .navbar {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  min-width: 50px;
-  gap: 8px;
+  min-width: 0;
+  gap: 3px;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.custom-time-separator {
+  color: #64748b;
 }
 
 .custom-controls-left-stack {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 9px;
   flex: 0 0 auto;
 }
 
@@ -7788,9 +7806,9 @@ html.mobile-web .navbar {
 }
 
 .compact-transport-btn {
-  width: 26px;
-  height: 22px;
-  padding: 2px 3px;
+  width: 32px;
+  height: 28px;
+  padding: 3px 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -7800,7 +7818,7 @@ html.mobile-web .navbar {
   background: rgba(15,23,42,.68);
   color: #e2e8f0;
   font: inherit;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 750;
   line-height: 1;
   cursor: pointer;
@@ -7808,12 +7826,12 @@ html.mobile-web .navbar {
 }
 
 .compact-play-btn {
-  width: 28px;
+  width: 34px;
 }
 
 .compact-transport-btn svg {
-  width: 12px !important;
-  height: 12px !important;
+  width: 16px !important;
+  height: 16px !important;
 }
 
 .compact-transport-btn:hover,
@@ -7911,9 +7929,8 @@ html.mobile-web .navbar {
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Playback actions are grouped in the three-dot menu; fullscreen stays outside. */
-.custom-center-transport-overlay,
-#custom-volume-wrap {
+/* Playback actions are grouped in the three-dot menu; slider controls stay outside. */
+.custom-center-transport-overlay {
   display: none !important;
 }
 
@@ -8337,6 +8354,8 @@ html.mobile-web .navbar {
   overscroll-behavior: contain;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.8), 0 0 24px rgba(245, 158, 11, 0.12);
   padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245,158,11,.45) transparent;
   animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -8410,6 +8429,38 @@ html.mobile-web .navbar {
   border-top: 1px solid rgba(245, 158, 11, 0.12);
   margin-top: 2px;
   padding-top: 11px;
+}
+
+.custom-menu-item-volume {
+  margin: 0;
+  padding: 5px 8px;
+  border-top: 0;
+  border-radius: 8px;
+}
+
+.custom-menu-inline-slider {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 3px;
+}
+
+.custom-menu-inline-slider input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 6px;
+  accent-color: #f59e0b;
+  cursor: pointer;
+  touch-action: pan-x;
+}
+
+.custom-menu-inline-slider span {
+  min-width: 36px;
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 750;
+  text-align: right;
+  white-space: nowrap;
 }
 .custom-menu-item-volume:hover {
   background: transparent;
@@ -9572,13 +9623,13 @@ video::cue {
   .custom-player-controls {
     padding: 0 8px 8px !important;
     gap: 4px !important;
-    z-index: 60 !important;
+    z-index: 80 !important;
   }
   .custom-controls-row {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    min-height: 48px !important;
+    min-height: 40px !important;
     padding: 0 2px !important;
     gap: 6px !important;
   }
@@ -9600,24 +9651,29 @@ video::cue {
   }
   .custom-controls-left-time {
     min-width: 0 !important;
-    gap: 5px !important;
+    gap: 2px !important;
+    font-size: 10px !important;
   }
   .custom-time-current,
   .custom-time-duration {
     display: inline !important;
-    font-size: .68rem !important;
+    font-size: 10px !important;
+  }
+  .custom-time-separator {
+    display: inline !important;
+    font-size: 10px !important;
   }
   .compact-transport-btn {
-    width: 25px !important;
-    height: 21px !important;
-    padding: 2px !important;
+    width: 30px !important;
+    height: 28px !important;
+    padding: 3px !important;
   }
   .compact-play-btn {
-    width: 27px !important;
+    width: 32px !important;
   }
-  /* Ses butonu mobilde dışarıda görünmesin — sadece üç nokta içinde */
-  #custom-volume-wrap {
-    display: none !important;
+  .compact-transport-btn svg {
+    width: 17px !important;
+    height: 17px !important;
   }
 
   /* Keep tool pills and fullscreen/settings controls visible on narrow screens. */

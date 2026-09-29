@@ -2683,6 +2683,7 @@ export async function openPlayerModal({
               <div class="custom-controls-left-stack">
                 <div class="custom-controls-left-time" aria-label="Oynatma süresi">
                   <span class="custom-time-current" id="custom-time-current">00:00</span>
+                  <span class="custom-time-separator">/</span>
                   <span class="custom-time-duration" id="custom-time-duration">00:00</span>
                 </div>
                 <div class="custom-controls-transport-row" aria-label="Oynatma kontrolleri">
@@ -2741,6 +2742,19 @@ export async function openPlayerModal({
                     <span class="custom-slider-val-badge" id="custom-volume-badge">%100</span>
                     <div class="custom-vertical-track-wrap">
                       <input type="range" class="custom-vertical-slider" id="custom-volume-slider" min="0" max="1" step="0.05" value="1" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Brightness Wrap (Vertical Popover Upwards) -->
+                <div class="custom-slider-popup-wrap custom-brightness-wrap" id="custom-brightness-wrap" title="Parlaklık">
+                  <button class="custom-ctrl-btn" id="custom-btn-brightness" title="Parlaklık">
+                    <i data-lucide="sun" style="width: 20px; height: 20px;"></i>
+                  </button>
+                  <div class="custom-vertical-slider-popover" id="custom-brightness-popover">
+                    <span class="custom-slider-val-badge" id="custom-brightness-badge">%100</span>
+                    <div class="custom-vertical-track-wrap">
+                      <input type="range" class="custom-vertical-slider" id="custom-brightness-slider" min="30" max="150" step="1" value="100" />
                     </div>
                   </div>
                 </div>
@@ -2813,35 +2827,6 @@ export async function openPlayerModal({
                 <i data-lucide="chevron-right" style="width: 15px; height: 15px; color: #94a3b8;"></i>
               </div>
 
-              <!-- Item 5: Ses Seviyesi inline slider -->
-              <div class="custom-menu-item custom-menu-item-volume" id="custom-menu-item-brightness-inline">
-                <div class="custom-menu-item-icon">
-                  <i data-lucide="sun" style="width: 17px; height: 17px; color: #fbbf24;"></i>
-                </div>
-                <div class="custom-menu-item-body" style="flex:1; overflow:hidden;">
-                  <span class="custom-menu-item-title">Parlaklık</span>
-                  <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-                    <input type="range" id="custom-menu-brightness-slider" min="30" max="150" step="1" value="100"
-                      style="flex:1;height:4px;accent-color:#f59e0b;cursor:pointer;" />
-                    <span id="custom-menu-brightness-badge" style="font-size:11px;font-weight:700;color:#fbbf24;white-space:nowrap;min-width:34px;text-align:right;">%100</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Ses seviyesi -->
-              <div class="custom-menu-item custom-menu-item-volume" id="custom-menu-item-volume-inline">
-                <div class="custom-menu-item-icon">
-                  <i data-lucide="volume-2" style="width: 17px; height: 17px; color: #60a5fa;" id="custom-menu-volume-icon"></i>
-                </div>
-                <div class="custom-menu-item-body" style="flex:1; overflow:hidden;">
-                  <span class="custom-menu-item-title">Ses Seviyesi</span>
-                  <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-                    <input type="range" id="custom-menu-volume-slider" min="0" max="1" step="0.05" value="1"
-                      style="flex:1;height:4px;accent-color:#f59e0b;cursor:pointer;" />
-                    <span id="custom-menu-volume-badge" style="font-size:11px;font-weight:700;color:#f59e0b;white-space:nowrap;min-width:28px;text-align:right;">%100</span>
-                  </div>
-                </div>
-              </div>
             </div>
 
             <!-- Submenu View -->
@@ -4105,6 +4090,7 @@ export async function openPlayerModal({
     const { on, setTimeout, clearTimeout, setInterval, clearInterval } = playbackScope;
 
     const playBtn = wrapper.querySelector('#custom-btn-play');
+    const controlsBar = wrapper.querySelector('#custom-player-controls');
     const timeDisplay = wrapper.querySelector('#custom-time-display');
     const timelineContainer = wrapper.querySelector('#custom-timeline-container');
     const playedBar = wrapper.querySelector('#custom-timeline-played');
@@ -4149,8 +4135,6 @@ export async function openPlayerModal({
     const brightSlider = wrapper.querySelector('#custom-brightness-slider');
     const brightBadge = wrapper.querySelector('#custom-brightness-badge');
     const brightPopover = wrapper.querySelector('#custom-brightness-popover');
-    const menuBrightnessSlider = wrapper.querySelector('#custom-menu-brightness-slider');
-    const menuBrightnessBadge = wrapper.querySelector('#custom-menu-brightness-badge');
 
     // Katılımcı kendi ekranındaki görüntü ve ses konforunu değiştirebilir;
     // akışı, zaman çizgisini, kaynakları ve bölüm seçimini yalnız moderatör
@@ -4320,8 +4304,17 @@ export async function openPlayerModal({
       showToast(seconds > 0 ? '⏩ +10 saniye' : '⏪ -10 saniye', 'info');
     };
 
-    if (rewindBtn) rewindBtn.onclick = (e) => { e.stopPropagation(); skipTime(-10); };
-    if (forwardBtn) forwardBtn.onclick = (e) => { e.stopPropagation(); skipTime(10); };
+    // Delegate compact transport clicks from the controls layer. This keeps
+    // them responsive even when the icon subtree is re-rendered by Lucide.
+    if (controlsBar) on(controlsBar, 'click', (e) => {
+      const button = e.target.closest('#custom-btn-play, #custom-btn-rewind-10, #custom-btn-forward-10');
+      if (!button) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (button.id === 'custom-btn-play') togglePlay();
+      else if (button.id === 'custom-btn-rewind-10') skipTime(-10);
+      else skipTime(10);
+    }, true);
 
     // Brightness Control
     let currentBrightness = roomPlaybackSettings.brightness;
@@ -4331,8 +4324,6 @@ export async function openPlayerModal({
       videoEl.style.filter = `brightness(${currentBrightness / 100})`;
       if (brightSlider) brightSlider.value = currentBrightness;
       if (brightBadge) brightBadge.textContent = `%${currentBrightness}`;
-      if (menuBrightnessSlider) menuBrightnessSlider.value = currentBrightness;
-      if (menuBrightnessBadge) menuBrightnessBadge.textContent = `%${currentBrightness}`;
       const brightMenuSub = wrapper.querySelector('#custom-menu-active-brightness');
       if (brightMenuSub) brightMenuSub.textContent = `%${currentBrightness}`;
       if (publish && typeof emitRoomSync === 'function') emitRoomSync('settings');
@@ -4348,12 +4339,6 @@ export async function openPlayerModal({
         e.stopPropagation();
         resetPopoverHideTimer();
         setBrightness(parseInt(brightSlider.value, 10));
-      };
-    }
-    if (menuBrightnessSlider) {
-      menuBrightnessSlider.oninput = (e) => {
-        e.stopPropagation();
-        setBrightness(parseInt(menuBrightnessSlider.value, 10));
       };
     }
     if (brightBtn) {
@@ -4620,6 +4605,12 @@ export async function openPlayerModal({
     on(videoEl, 'loadedmetadata', updateTimeAndTimeline);
     on(videoEl, 'canplay', updateTimeAndTimeline);
     on(videoEl, 'progress', updateTimeAndTimeline);
+    // Some HLS/native WebView combinations throttle `timeupdate` for long
+    // stretches. Keep the visible clock and seek bar in sync with currentTime
+    // while playback is active, without polling while paused.
+    const timelineRefreshTimer = setInterval(() => {
+      if (!videoEl.paused && !videoEl.ended) updateTimeAndTimeline();
+    }, 300);
 
     // Commit one seek per drag, avoiding a decoder/network restart per mousemove.
     if (timelineContainer) {
@@ -4665,10 +4656,6 @@ export async function openPlayerModal({
     }
 
     // 3. Volume Control
-    const menuVolSlider = wrapper.querySelector('#custom-menu-volume-slider');
-    const menuVolBadge = wrapper.querySelector('#custom-menu-volume-badge');
-    const menuVolIcon = wrapper.querySelector('#custom-menu-volume-icon');
-
     const updateVolumeUI = () => {
       const vol = videoEl.muted ? 0 : videoEl.volume;
       if (volSlider) volSlider.value = vol;
@@ -4680,26 +4667,7 @@ export async function openPlayerModal({
         volBtn.innerHTML = `<i data-lucide="${iconName}" style="width: 20px; height: 20px;"></i>`;
         renderPlayerIcons(volBtn);
       }
-      // Also sync the inline menu slider
-      if (menuVolSlider) menuVolSlider.value = vol;
-      if (menuVolBadge) menuVolBadge.textContent = videoEl.muted ? '%0' : `%${Math.round(vol * 100)}`;
-      if (menuVolIcon) {
-        let iconName = 'volume-2';
-        if (videoEl.muted || vol === 0) iconName = 'volume-x';
-        else if (vol < 0.5) iconName = 'volume-1';
-        menuVolIcon.setAttribute('data-lucide', iconName);
-        renderPlayerIcons(menuVolIcon.parentElement);
-      }
     };
-
-    if (menuVolSlider) {
-      menuVolSlider.oninput = (e) => {
-        e.stopPropagation();
-        videoEl.volume = parseFloat(menuVolSlider.value);
-        videoEl.muted = false;
-        updateVolumeUI();
-      };
-    }
 
     if (volPopover) {
       volPopover.onclick = (e) => e.stopPropagation();
