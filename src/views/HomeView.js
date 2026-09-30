@@ -103,7 +103,7 @@ function renderInfiniteRail({ id, icon, title, accent, items }) {
   const extraItems = railExtraItemsCache.get(id) || [];
   const primaryItems = items.slice(0, 8);
   const allRailItems = [...primaryItems, ...extraItems];
-  const cards = allRailItems.map(item => renderMediaCard(item, { skipProgressLookup: true })).join('');
+  const cards = allRailItems.map(item => renderMediaCard(item)).join('');
   return `
     <section class="rail-section">
       <div class="container">
