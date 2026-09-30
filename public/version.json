@@ -1,10 +1,10 @@
 {
-  "version": "1.1.40",
-  "versionCode": 150,
+  "version": "1.1.41",
+  "versionCode": 151,
   "releaseDate": "2026-09-30",
-  "title": "CinePulse Android v1.1.40",
-  "releaseNotes": "• Kartlarda Netflix/Apple TV tarzı izlendi ve devam ediyor göstergesi eklendi.\n• Profil ekranı mobilde responsive hale getirildi, dock altına kaçma düzeltildi.\n• Ana ekran kartlarında izlendi rozeti gösteriliyor.\n• Mobil alt menü (dock) ekranın altına kayma sorunu düzeltildi.\n• Dikey kart görünümünde boyut bozukluğu düzeltildi.\n• Gereksiz güncelleme bildirimi sorunu çözüldü.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.40/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.40/cinepulse.apk",
+  "title": "CinePulse Android v1.1.41",
+  "releaseNotes": "• İzlendi / Devam Ediyor bilgisi kart posterinin altında tam genişlikte gösteriliyor.\n• Poster'a hiç dokunulmadan durum şeridi eklendi.\n• Profil ekranı mobilde dock altına kaçma düzeltildi.\n• Mobil alt menü ve dikey kart boyut sorunları giderildi.\n• Gereksiz güncelleme bildirimi sorunu çözüldü.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.41/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.41/cinepulse.apk",
   "mandatory": false
 }
