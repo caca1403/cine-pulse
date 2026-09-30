@@ -246,17 +246,12 @@ export function renderMediaCard(item, options = {}) {
         
         <div class="card-glass-glow"></div>
 
-        <!-- Left Status Pill (Completed / In-Progress with actual progress) -->
+        <!-- Completed badge: Netflix-style green check circle, top-right corner -->
         ${isCompleted ? `
-          <div class="card-status-badge card-status-completed minimal-watched" title="Tamamlandı">
-            <i data-lucide="check" style="width:10px;height:10px;stroke-width:3;"></i>
+          <div class="card-status-badge card-status-completed" title="İzlendi">
+            <i data-lucide="check" style="width:11px;height:11px;stroke-width:3.5;"></i>
           </div>
-        ` : (isContinue && isSeries && (currentTime > 0 || progressPercent > 0) ? `
-          <div class="card-status-badge card-status-continue" title="Kaldığın Bölüm">
-            <i data-lucide="clock" style="width:10px;height:10px;"></i>
-            <span>S${season} B${episode}</span>
-          </div>
-        ` : '')}
+        ` : ''}
 
         <!-- Top meta strip: year + rating over poster -->
         ${(year || rating) ? `
@@ -275,17 +270,36 @@ export function renderMediaCard(item, options = {}) {
           <span class="card-hover-action-text">${isContinue ? 'İzlemeye Devam Et' : 'İncele & Oynat'}</span>
         </div>
 
-        <!-- Bottom Cinematic Gradient Overlay with Title & Meta (Apple TV / Stremio Vurgusu) -->
+        <!-- Bottom Cinematic Gradient Overlay with Title & Meta -->
         <div class="card-bottom-cinematic-overlay">
           <h3 class="card-cinematic-title" title="${title}">${title}</h3>
           <div class="card-cinematic-meta">
+            ${isContinue && isSeries ? `
+              <span class="card-cinematic-continue-pill">
+                <i data-lucide="play" style="width:8px;height:8px;fill:currentColor;"></i>
+                S${season} B${episode}
+              </span>
+              <span class="card-cinematic-dot">•</span>
+            ` : isContinue && !isSeries && currentTime > 0 ? `
+              <span class="card-cinematic-continue-pill">
+                <i data-lucide="play" style="width:8px;height:8px;fill:currentColor;"></i>
+                %${progressPercent} izlendi
+              </span>
+              <span class="card-cinematic-dot">•</span>
+            ` : isCompleted ? `
+              <span class="card-cinematic-watched-label">
+                <i data-lucide="check" style="width:9px;height:9px;stroke-width:3;"></i>
+                İzlendi
+              </span>
+              <span class="card-cinematic-dot">•</span>
+            ` : ''}
             <span class="card-cinematic-type">${detailedTypeLabel}</span>
             ${year ? `<span class="card-cinematic-dot">•</span><span class="card-cinematic-year">${year}</span>` : ''}
           </div>
         </div>
 
-        <!-- Progress Bar at bottom if watch in progress -->
-        ${progressPercent > 0 && !isCompleted ? `
+        <!-- Thin progress bar at very bottom edge (Netflix style) -->
+        ${isContinue && progressPercent > 0 ? `
           <div class="card-progress-bar-bg">
             <div class="card-progress-bar-fill" style="width: ${progressPercent}%;"></div>
           </div>
