@@ -2904,12 +2904,12 @@ html.mobile-web .navbar {
   border-radius: 8px;
 }
 
-/* Completed badge — Netflix-style: small green circle, top-right corner */
+/* Completed badge — small green circle, bottom-right, above title area, never overlaps rating */
 .card-status-badge {
   position: absolute;
-  top: 8px;
+  bottom: 36px;
   right: 8px;
-  z-index: 5;
+  z-index: 6;
   width: 26px;
   height: 26px;
   border-radius: 50%;
@@ -3105,61 +3105,21 @@ html.mobile-web .navbar {
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
 }
 
-/* Card Progress Bar — Netflix style: thin red bar at very bottom edge */
+/* Card Progress Bar */
 .card-progress-bar-bg {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.18);
-  z-index: 6;
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  height: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 4;
 }
 
 .card-progress-bar-fill {
   height: 100%;
   background: #e50914;
-  border-radius: 0 0 0 var(--radius-sm);
-  box-shadow: 0 0 6px rgba(229, 9, 20, 0.6);
-}
-
-/* Continue watching pill inside cinematic meta row */
-.card-cinematic-continue-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  background: rgba(124, 58, 237, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  padding: 1px 5px;
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 750;
-  letter-spacing: 0.01em;
-  line-height: 1.4;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  white-space: nowrap;
-}
-
-/* İzlendi label inside cinematic meta row */
-.card-cinematic-watched-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  background: rgba(16, 185, 129, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  padding: 1px 5px;
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 750;
-  letter-spacing: 0.01em;
-  line-height: 1.4;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  white-space: nowrap;
+  box-shadow: none;
 }
 
 /* Card Typography: Hidden by default (Stremio style clean poster) */
@@ -19640,15 +19600,15 @@ html.native-android {
     gap: 0.25rem;
   }
   
-  /* Minimal watched badge on mobile */
-  .card-status-badge.minimal-watched {
-    width: 20px;
-    height: 20px;
-    top: 6px;
-    left: 6px;
+  /* Completed badge on mobile — slightly smaller */
+  .card-status-badge {
+    width: 22px;
+    height: 22px;
+    bottom: 32px;
+    right: 6px;
   }
   
-  .card-status-badge.minimal-watched i {
+  .card-status-badge i {
     width: 10px;
     height: 10px;
   }
@@ -20334,8 +20294,8 @@ html.mobile-web .mobile-dynamic-dock {
     --text-dim: #999;
   }
   
-  .card-status-badge.minimal-watched {
-    border: 2px solid #fff;
+  .card-status-badge {
+    border: 2px solid rgba(255, 255, 255, 0.9);
   }
   
   .dynamic-dock-item.active svg,
