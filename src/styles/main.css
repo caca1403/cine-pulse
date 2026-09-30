@@ -2928,6 +2928,40 @@ html.mobile-web .navbar {
   -webkit-backdrop-filter: blur(6px);
 }
 
+/* Watch status strip — OUTSIDE the poster, full card width */
+.card-watch-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  border-radius: 0 0 6px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.card-watch-status--done {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-top: none;
+  color: #34d399;
+}
+
+.card-watch-status--continue {
+  background: rgba(124, 58, 237, 0.18);
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  border-top: none;
+  color: #a78bfa;
+}
+
 /* Top meta strip over poster - Floating Glass Chips (Stremio Style) */
 .card-top-strip {
   position: absolute;

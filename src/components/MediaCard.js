@@ -246,13 +246,6 @@ export function renderMediaCard(item, options = {}) {
         
         <div class="card-glass-glow"></div>
 
-        <!-- Completed badge: Netflix-style green check circle, top-right corner -->
-        ${isCompleted ? `
-          <div class="card-status-badge card-status-completed" title="İzlendi">
-            <i data-lucide="check" style="width:11px;height:11px;stroke-width:3.5;"></i>
-          </div>
-        ` : ''}
-
         <!-- Top meta strip: year + rating over poster -->
         ${(year || rating) ? `
           <div class="card-top-strip">
@@ -270,41 +263,40 @@ export function renderMediaCard(item, options = {}) {
           <span class="card-hover-action-text">${isContinue ? 'İzlemeye Devam Et' : 'İncele & Oynat'}</span>
         </div>
 
-        <!-- Bottom Cinematic Gradient Overlay with Title & Meta -->
+        <!-- Bottom Cinematic Gradient: title + meta only, NO status here -->
         <div class="card-bottom-cinematic-overlay">
           <h3 class="card-cinematic-title" title="${title}">${title}</h3>
           <div class="card-cinematic-meta">
-            ${isContinue && isSeries ? `
-              <span class="card-cinematic-continue-pill">
-                <i data-lucide="play" style="width:8px;height:8px;fill:currentColor;"></i>
-                S${season} B${episode}
-              </span>
-              <span class="card-cinematic-dot">•</span>
-            ` : isContinue && !isSeries && currentTime > 0 ? `
-              <span class="card-cinematic-continue-pill">
-                <i data-lucide="play" style="width:8px;height:8px;fill:currentColor;"></i>
-                %${progressPercent} izlendi
-              </span>
-              <span class="card-cinematic-dot">•</span>
-            ` : isCompleted ? `
-              <span class="card-cinematic-watched-label">
-                <i data-lucide="check" style="width:9px;height:9px;stroke-width:3;"></i>
-                İzlendi
-              </span>
-              <span class="card-cinematic-dot">•</span>
-            ` : ''}
             <span class="card-cinematic-type">${detailedTypeLabel}</span>
             ${year ? `<span class="card-cinematic-dot">•</span><span class="card-cinematic-year">${year}</span>` : ''}
           </div>
         </div>
 
-        <!-- Thin progress bar at very bottom edge (Netflix style) -->
+        <!-- Progress bar inside poster (thin red line at very bottom edge) -->
         ${isContinue && progressPercent > 0 ? `
           <div class="card-progress-bar-bg">
             <div class="card-progress-bar-fill" style="width: ${progressPercent}%;"></div>
           </div>
         ` : ''}
       </div>
+
+      <!-- Watch status strip: OUTSIDE the poster, full card width, below Dizi/Yıl row -->
+      ${isCompleted ? `
+        <div class="card-watch-status card-watch-status--done">
+          <i data-lucide="check-circle" style="width:11px;height:11px;stroke-width:2.5;flex-shrink:0;"></i>
+          <span>İzlendi</span>
+        </div>
+      ` : isContinue && isSeries ? `
+        <div class="card-watch-status card-watch-status--continue">
+          <i data-lucide="play" style="width:10px;height:10px;fill:currentColor;flex-shrink:0;"></i>
+          <span>S${season} B${episode} devam ediyor</span>
+        </div>
+      ` : isContinue && !isSeries && progressPercent > 0 ? `
+        <div class="card-watch-status card-watch-status--continue">
+          <i data-lucide="play" style="width:10px;height:10px;fill:currentColor;flex-shrink:0;"></i>
+          <span>%${progressPercent} izlendi</span>
+        </div>
+      ` : ''}
 
       <div class="card-info">
         <h3 class="card-title" title="${title}">${title}</h3>
