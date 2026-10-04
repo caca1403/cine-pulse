@@ -10,6 +10,10 @@ import {
   fetchDramaCatalog,
   fetchDramaDetails
 } from '../services/dramaDizilerimScraper.js';
+import {
+  searchDramalar,
+  fetchDramalarDetails
+} from '../services/dramalarScraper.js';
 import { openPlayerModal } from '../components/openPlayer.js';
 import { isMediaWatched, markEpisodeWatched } from '../services/storage.js';
 import { showToast } from '../components/Toast.js';
@@ -177,9 +181,33 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         return CATEGORY_TABS.find(tab => tab.id === activeTab)?.query || '';
       };
 
-      const fetchResultPage = page => {
+      const fetchResultPage = async page => {
         const query = getActiveQuery();
-        return query ? fetchDramaCatalog({ query, page }) : getCatalogPage(page);
+        if (query) {
+          const [ddzResults, dmlResults] = await Promise.allSettled([
+            fetchDramaCatalog({ query, page }),
+            searchDramalar(query, page)
+          ]);
+          const ddz = ddzResults.status === 'fulfilled' && Array.isArray(ddzResults.value) ? ddzResults.value : [];
+          const dml = dmlResults.status === 'fulfilled' && Array.isArray(dmlResults.value) ? dmlResults.value.map(d => ({
+            ...d,
+            badge: d.title.toLowerCase().includes('dublaj') ? '🇹🇷 DUBLAJ' : 'TR ALTYAZI',
+            isDubbed: d.title.toLowerCase().includes('dublaj')
+          })) : [];
+
+          // Deduplicate by clean slug
+          const seen = new Set();
+          const combined = [];
+          for (const item of [...dml, ...ddz]) {
+            const cleanSlug = item.slug.replace(/^(ddz_|dml_)/, '');
+            if (!seen.has(cleanSlug)) {
+              seen.add(cleanSlug);
+              combined.push(item);
+            }
+          }
+          return combined;
+        }
+        return getCatalogPage(page);
       };
 
       const canLoadMore = () => (activeTab === 'trending' || activeTab === 'all' || Boolean(getActiveQuery())) && hasMore;
@@ -252,12 +280,13 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         try {
           let results = [];
           if (currentSearchQuery && currentSearchQuery.trim().length >= 2) {
-            results = await fetchDramaCatalog({ query: currentSearchQuery.trim() });
+            results = await fetchResultPage(1);
+            currentPage = 1;
             sectionTitle.innerHTML = `
               <i data-lucide="search" style="width: 20px; height: 20px; color: #a855f7;"></i>
               <span>"${currentSearchQuery}" İçin Arama Sonuçları</span>
             `;
-            loadMoreWrap.classList.add('hidden');
+            loadMoreWrap.classList.toggle('hidden', results.length === 0);
           } else {
             const currentTabConfig = CATEGORY_TABS.find(t => t.id === activeTab) || CATEGORY_TABS[0];
             if (activeTab === 'trending') {
@@ -279,12 +308,13 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
               `;
               loadMoreWrap.classList.toggle('hidden', results.length === 0);
             } else if (currentTabConfig.query) {
-              results = await fetchDramaCatalog({ query: currentTabConfig.query });
+              results = await fetchResultPage(1);
+              currentPage = 1;
               sectionTitle.innerHTML = `
                 <i data-lucide="${currentTabConfig.icon}" style="width: 20px; height: 20px; color: #c084fc;"></i>
                 <span>${currentTabConfig.label} Serileri</span>
               `;
-              loadMoreWrap.classList.add('hidden');
+              loadMoreWrap.classList.toggle('hidden', results.length === 0);
             }
           }
 
@@ -423,7 +453,16 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         renderIcons(modalDialog);
 
         try {
-          const details = await fetchDramaDetails(slug);
+          let details = null;
+          if (slug.startsWith('dml_')) {
+            details = await fetchDramalarDetails(slug.replace('dml_', ''));
+          } else {
+            details = await fetchDramaDetails(slug);
+            if (!details) {
+              details = await fetchDramalarDetails(slug);
+            }
+          }
+
           if (!details) {
             modalDialog.innerHTML = `
               <div class="drama-empty-state">
@@ -602,9 +641,11 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
 
         try {
           closeDramaDetail();
+          const cleanSlug = slug.replace(/^(ddz_|dml_)/, '');
+          const dramaPrefix = slug.startsWith('dml_') ? 'dml_' : 'ddz_';
           await openPlayerModal({
             type: 'tv',
-            tmdbId: `ddz_${slug}`,
+            tmdbId: `${dramaPrefix}${cleanSlug}`,
             title: `${title} - B${episode}`,
             seriesTitle: title,
             season,

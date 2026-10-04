@@ -86,6 +86,16 @@ export default defineConfig({
         },
         rewrite: (path) => path.replace(/^\/api\/ddz/, '') || '/'
       },
+      '/api/dml': {
+        target: 'https://dramalar.com',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          Referer: 'https://dramalar.com/'
+        },
+        rewrite: (path) => path.replace(/^\/api\/dml/, '') || '/'
+      },
       '/api/subtitles': {
         target: 'http://localhost:4000',
         changeOrigin: true,

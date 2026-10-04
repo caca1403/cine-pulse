@@ -1,7 +1,6 @@
 /* ==========================================================================
    CinePulse Studio - VIP Global Embed Source Service
    Only official, stable, verified embeds:
-   - VidSrc.me (En kararlı normal VidSrc, TMDB destekli, multi-sub)
    - SmashyStream VIP (Doğrudan player.smashystream.com - anyembed döngüsüz)
    ========================================================================== */
 
@@ -12,32 +11,12 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
   const sNum = parseInt(season, 10) || 1;
   const epNum = parseInt(episode, 10) || 1;
 
-  // 1. VidSrc.me - Normal kararlı VidSrc
-  const vidSrcMeUrl = isMovie
-    ? `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`
-    : `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&season=${sNum}&episode=${epNum}`;
-
-  // 2. SmashyStream VIP - Doğrudan player.smashystream.com resmi rotası (?s=...&e=...)
+  // SmashyStream VIP - Doğrudan player.smashystream.com resmi rotası (?s=...&e=...)
   const smashyUrl = isMovie
     ? `https://player.smashystream.com/movie/${tmdbId}`
     : `https://player.smashystream.com/tv/${tmdbId}?s=${sNum}&e=${epNum}`;
 
   return [
-    {
-      id: `vidsrc_me_${tmdbId}_s${sNum}e${epNum}`,
-      name: isMovie ? 'VidSrc 1080p (Multi-Sub)' : `VidSrc S${sNum}B${epNum}`,
-      displayName: 'VidSrc (1080p HD)',
-      badge: '🎬 VidSrc 1080p',
-      source: 'VidSrc',
-      url: vidSrcMeUrl,
-      streamUrl: vidSrcMeUrl,
-      quality: '1080p HD',
-      isHls: false,
-      isDirectVideo: false,
-      category: 'subtitled',
-      type: 'embed',
-      getUrl: () => vidSrcMeUrl
-    },
     {
       id: `smashystream_${tmdbId}_s${sNum}e${epNum}`,
       name: isMovie ? 'SmashyStream VIP (1080p)' : `SmashyStream S${sNum}B${epNum}`,

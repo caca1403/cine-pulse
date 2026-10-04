@@ -1,4 +1,4 @@
-import{ac as v,ad as b,r as p,ae as k,af as x,ag as w,ah as z,ai as S,aj as E,ak as P,al as A,am as m,an as q,ao as C,ap as I}from"./index-D6oEAyiX.js";import"./vendor-capacitor-VGCIBgSg.js";async function K(){if(!I())return{html:`
+import{ac as v,ad as b,r as p,ae as k,af as x,ag as w,ah as z,ai as S,aj as E,ak as P,al as A,am as m,an as q,ao as C,ap as I}from"./index-1v-iW0I5.js";import"./vendor-capacitor-VGCIBgSg.js";async function K(){if(!I())return{html:`
         <div class="admin-auth-container animate-fade-in">
           <div class="admin-auth-card">
             <div class="admin-shield-icon">

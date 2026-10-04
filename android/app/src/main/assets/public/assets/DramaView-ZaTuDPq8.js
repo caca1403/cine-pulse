@@ -1,4 +1,4 @@
-import{r as b,s as R,x as ia,o as ra}from"./index-D6oEAyiX.js";import{f as sa,a as z,b as da}from"./dramaDizilerimScraper-k681Hg-U.js";import"./vendor-capacitor-VGCIBgSg.js";async function ua(_=null,U=""){let l=U?"search":"trending",d=U||"",m=0,A=!0,S=!0,v=[],f=null,L="";const H=[{id:"trending",label:"Trendler",icon:"flame",query:""},{id:"all",label:"Tüm Katalog",icon:"layers",query:""},{id:"dubbed",label:"Türkçe Dublaj",icon:"sparkles",query:"dublaj"},{id:"patron",label:"CEO & Patron",icon:"briefcase",query:"patron"},{id:"kurt",label:"Kurt & Alfa",icon:"moon",query:"kurt"},{id:"intikam",label:"İntikam & Aşk",icon:"heart-crack",query:"intikam"},{id:"milyarder",label:"Milyarder",icon:"crown",query:"milyarder"},{id:"evlilik",label:"Yasak Aşk & Evlilik",icon:"ring",query:"evlilik"}];return{html:`
+import{r as w,s as R,x as ra,o as sa}from"./index-1v-iW0I5.js";import{f as ta,a as la,b as da,c as W,s as na}from"./dramalarScraper-BUEPBRCz.js";import"./vendor-capacitor-VGCIBgSg.js";async function ha(U=null,J=""){let o=J?"search":"trending",c=J||"",m=0,A=!0,z=!0,f=[],k=null,D="";const C=[{id:"trending",label:"Trendler",icon:"flame",query:""},{id:"all",label:"Tüm Katalog",icon:"layers",query:""},{id:"dubbed",label:"Türkçe Dublaj",icon:"sparkles",query:"dublaj"},{id:"patron",label:"CEO & Patron",icon:"briefcase",query:"patron"},{id:"kurt",label:"Kurt & Alfa",icon:"moon",query:"kurt"},{id:"intikam",label:"İntikam & Aşk",icon:"heart-crack",query:"intikam"},{id:"milyarder",label:"Milyarder",icon:"crown",query:"milyarder"},{id:"evlilik",label:"Yasak Aşk & Evlilik",icon:"ring",query:"evlilik"}];return{html:`
     <div class="drama-view-container" id="drama-view-root">
       <!-- Ambient Glow Elements -->
       <div class="drama-ambient-glow glow-primary"></div>
@@ -27,10 +27,10 @@ import{r as b,s as R,x as ia,o as ra}from"./index-D6oEAyiX.js";import{f as sa,a 
                 id="drama-search-input" 
                 class="drama-search-input" 
                 placeholder="Kısa dizi adı veya konu ara... (Örn: Patron, Kurt Kızı, Milyarder, Dublaj)" 
-                value="${d.replace(/"/g,"&quot;")}"
+                value="${c.replace(/"/g,"&quot;")}"
                 autocomplete="off"
               />
-              <button id="btn-drama-search-clear" class="btn-drama-search-clear ${d?"":"hidden"}" title="Temizle">
+              <button id="btn-drama-search-clear" class="btn-drama-search-clear ${c?"":"hidden"}" title="Temizle">
                 <i data-lucide="x" style="width: 16px; height: 16px;"></i>
               </button>
             </div>
@@ -39,14 +39,14 @@ import{r as b,s as R,x as ia,o as ra}from"./index-D6oEAyiX.js";import{f as sa,a 
 
           <!-- Category Quick Filter Chips -->
           <div class="drama-category-chips" id="drama-category-chips">
-            ${H.map(w=>`
+            ${C.map(L=>`
               <button 
-                class="drama-chip ${l===w.id?"active":""}" 
-                data-tab-id="${w.id}"
-                data-tab-query="${w.query}"
+                class="drama-chip ${o===L.id?"active":""}" 
+                data-tab-id="${L.id}"
+                data-tab-query="${L.query}"
               >
-                <i data-lucide="${w.icon}" style="width: 14px; height: 14px;"></i>
-                <span>${w.label}</span>
+                <i data-lucide="${L.icon}" style="width: 14px; height: 14px;"></i>
+                <span>${L.label}</span>
               </button>
             `).join("")}
           </div>
@@ -92,42 +92,42 @@ import{r as b,s as R,x as ia,o as ra}from"./index-D6oEAyiX.js";import{f as sa,a 
         </div>
       </div>
     </div>
-  `,init:async w=>{const r=w.querySelector("#drama-view-root");if(!r)return;const x=r.querySelector("#drama-search-input"),C=r.querySelector("#btn-drama-search-clear");r.querySelector("#drama-search-feedback");const P=r.querySelectorAll(".drama-chip"),B=r.querySelector("#drama-section-title"),V=r.querySelector("#drama-counter-badge"),u=r.querySelector("#drama-cards-grid"),c=r.querySelector("#drama-load-more-wrap"),q=r.querySelector("#btn-drama-load-more"),K=r.querySelector("#drama-scroll-sentinel"),j=r.querySelector("#drama-detail-modal"),o=r.querySelector("#drama-modal-dialog");let Y=null,h=0,k=0,Z=0,F=null;const O=a=>{Z!==a&&(Z=a,F=z({page:a}).catch(()=>null))},W=async a=>{if(Z===a&&F){const e=await F;if(e)return e}return z({page:a})},G=()=>{const a=d.trim();return a.length>=2?a:H.find(e=>e.id===l)?.query||""},aa=a=>{const e=G();return e?z({query:e,page:a}):W(a)},D=()=>(l==="trending"||l==="all"||!!G())&&A,T=async()=>{if(S||!D())return;const a=m+1,e=h;S=!0,q.disabled=!0,c.classList.remove("hidden"),c.classList.add("is-loading"),c.classList.remove("is-error"),q.querySelector("span").textContent="Diziler yükleniyor...";let t=!1;try{const g=await aa(a);if(e!==h)return;const s=new Set(v.map(p=>p.slug)),n=g.filter(p=>!s.has(p.slug)&&s.add(p.slug));if(m=a,A=n.length>0,t=!0,k=0,A&&!G()&&O(a+1),n.length){const p=v.length;v.push(...n),J(p)}}catch{if(e!==h)return;k++,k<=2&&setTimeout(()=>{e===h&&T()},k*800);return}finally{if(e!==h)return;S=!1,q.disabled=!1,q.querySelector("span").textContent="Daha Fazla Dizi Yükle",c.classList.remove("is-loading"),c.classList.toggle("is-error",k>2&&D()),c.classList.toggle("hidden",k<=2||!D()),t&&D()&&K.getBoundingClientRect().top<window.innerHeight+800&&setTimeout(T,0)}};new IntersectionObserver(a=>{a.some(e=>e.isIntersecting)&&T()},{rootMargin:"800px 0px"}).observe(K);async function $(){const a=++h;k=0,S=!0,u.innerHTML=Array.from({length:12}).map(()=>`
+  `,init:async L=>{const s=L.querySelector("#drama-view-root");if(!s)return;const T=s.querySelector("#drama-search-input"),H=s.querySelector("#btn-drama-search-clear");s.querySelector("#drama-search-feedback");const P=s.querySelectorAll(".drama-chip"),B=s.querySelector("#drama-section-title"),I=s.querySelector("#drama-counter-badge"),g=s.querySelector("#drama-cards-grid"),p=s.querySelector("#drama-load-more-wrap"),M=s.querySelector("#btn-drama-load-more"),K=s.querySelector("#drama-scroll-sentinel"),j=s.querySelector("#drama-detail-modal"),u=s.querySelector("#drama-modal-dialog");let _=null,b=0,x=0,V=0,Y=null;const Z=a=>{V!==a&&(V=a,Y=W({page:a}).catch(()=>null))},Q=async a=>{if(V===a&&Y){const e=await Y;if(e)return e}return W({page:a})},F=()=>{const a=c.trim();return a.length>=2?a:C.find(e=>e.id===o)?.query||""},O=async a=>{const e=F();if(e){const[t,d]=await Promise.allSettled([W({query:e,page:a}),na(e,a)]),r=t.status==="fulfilled"&&Array.isArray(t.value)?t.value:[],l=d.status==="fulfilled"&&Array.isArray(d.value)?d.value.map(h=>({...h,badge:h.title.toLowerCase().includes("dublaj")?"🇹🇷 DUBLAJ":"TR ALTYAZI",isDubbed:h.title.toLowerCase().includes("dublaj")})):[],n=new Set,y=[];for(const h of[...l,...r]){const i=h.slug.replace(/^(ddz_|dml_)/,"");n.has(i)||(n.add(i),y.push(h))}return y}return Q(a)},$=()=>(o==="trending"||o==="all"||!!F())&&A,S=async()=>{if(z||!$())return;const a=m+1,e=b;z=!0,M.disabled=!0,p.classList.remove("hidden"),p.classList.add("is-loading"),p.classList.remove("is-error"),M.querySelector("span").textContent="Diziler yükleniyor...";let t=!1;try{const d=await O(a);if(e!==b)return;const r=new Set(f.map(n=>n.slug)),l=d.filter(n=>!r.has(n.slug)&&r.add(n.slug));if(m=a,A=l.length>0,t=!0,x=0,A&&!F()&&Z(a+1),l.length){const n=f.length;f.push(...l),X(n)}}catch{if(e!==b)return;x++,x<=2&&setTimeout(()=>{e===b&&S()},x*800);return}finally{if(e!==b)return;z=!1,M.disabled=!1,M.querySelector("span").textContent="Daha Fazla Dizi Yükle",p.classList.remove("is-loading"),p.classList.toggle("is-error",x>2&&$()),p.classList.toggle("hidden",x<=2||!$()),t&&$()&&K.getBoundingClientRect().top<window.innerHeight+800&&setTimeout(S,0)}};new IntersectionObserver(a=>{a.some(e=>e.isIntersecting)&&S()},{rootMargin:"800px 0px"}).observe(K);async function E(){const a=++b;x=0,z=!0,g.innerHTML=Array.from({length:12}).map(()=>`
           <div class="drama-card-skeleton">
             <div class="skeleton-poster"></div>
             <div class="skeleton-title"></div>
           </div>
-        `).join(""),V.textContent="Yükleniyor...";try{let e=[];if(d&&d.trim().length>=2)e=await z({query:d.trim()}),B.innerHTML=`
+        `).join(""),I.textContent="Yükleniyor...";try{let e=[];if(c&&c.trim().length>=2)e=await O(1),m=1,B.innerHTML=`
               <i data-lucide="search" style="width: 20px; height: 20px; color: #a855f7;"></i>
-              <span>"${d}" İçin Arama Sonuçları</span>
-            `,c.classList.add("hidden");else{const t=H.find(g=>g.id===l)||H[0];l==="trending"?(O(1),e=await da(),m=0,B.innerHTML=`
+              <span>"${c}" İçin Arama Sonuçları</span>
+            `,p.classList.toggle("hidden",e.length===0);else{const t=C.find(d=>d.id===o)||C[0];o==="trending"?(Z(1),e=await da(),m=0,B.innerHTML=`
                 <i data-lucide="flame" style="width: 20px; height: 20px; color: #f43f5e;"></i>
                 <span>Trend Kısa Diziler</span>
-              `,c.classList.add("hidden")):l==="all"?(e=await W(1),m=1,O(2),B.innerHTML=`
+              `,p.classList.add("hidden")):o==="all"?(e=await Q(1),m=1,Z(2),B.innerHTML=`
                 <i data-lucide="layers" style="width: 20px; height: 20px; color: #3b82f6;"></i>
                 <span>Tüm Kısa Diziler Kataloğu (Sayfa ${m})</span>
-              `,c.classList.toggle("hidden",e.length===0)):t.query&&(e=await z({query:t.query}),B.innerHTML=`
+              `,p.classList.toggle("hidden",e.length===0)):t.query&&(e=await O(1),m=1,B.innerHTML=`
                 <i data-lucide="${t.icon}" style="width: 20px; height: 20px; color: #c084fc;"></i>
                 <span>${t.label} Serileri</span>
-              `,c.classList.add("hidden"))}if(a!==h)return;v=e,l!=="trending"&&(m=1),A=l==="trending"||e.length>0,c.classList.add("hidden"),J()}catch{if(a!==h)return;u.innerHTML=`
+              `,p.classList.toggle("hidden",e.length===0))}if(a!==b)return;f=e,o!=="trending"&&(m=1),A=o==="trending"||e.length>0,p.classList.add("hidden"),X()}catch{if(a!==b)return;g.innerHTML=`
             <div class="drama-empty-state">
               <i data-lucide="alert-circle" style="width: 44px; height: 44px; color: #ef4444;"></i>
               <h3>Diziler yüklenirken bir sorun oluştu</h3>
               <p>Lütfen internet bağlantınızı kontrol edip tekrar deneyin.</p>
               <button class="btn-primary" id="btn-drama-retry">Tekrar Dene</button>
             </div>
-          `,r.querySelector("#btn-drama-retry")?.addEventListener("click",()=>$()),b(u)}finally{a===h&&(S=!1,D()&&K.getBoundingClientRect().top<window.innerHeight+800&&setTimeout(T,0))}}function J(a=0){if(!v||v.length===0){u.innerHTML=`
+          `,s.querySelector("#btn-drama-retry")?.addEventListener("click",()=>E()),w(g)}finally{a===b&&(z=!1,$()&&K.getBoundingClientRect().top<window.innerHeight+800&&setTimeout(S,0))}}function X(a=0){if(!f||f.length===0){g.innerHTML=`
             <div class="drama-empty-state">
               <i data-lucide="film" style="width: 48px; height: 48px; color: #94a3b8;"></i>
               <h3>Eşleşen Kısa Dizi Bulunamadı</h3>
               <p>Farklı bir anahtar kelime ile arama yapabilir veya Trend kategorisine göz atabilirsiniz.</p>
             </div>
-          `,V.textContent="0 Dizi",b(u);return}V.textContent=`${v.length} Dizi`;const e=v.slice(a).map((t,g)=>{const s=t.isDubbed||t.title.toLowerCase().includes("dublaj"),n=t.poster||"";return`
+          `,I.textContent="0 Dizi",w(g);return}I.textContent=`${f.length} Dizi`;const e=f.slice(a).map((t,d)=>{const r=t.isDubbed||t.title.toLowerCase().includes("dublaj"),l=t.poster||"";return`
             <article class="drama-card" data-slug="${t.slug}" tabindex="0" role="button" aria-label="${t.title}">
               <div class="drama-card-poster-wrap">
-                ${n?`
+                ${l?`
                   <img 
-                    src="${n}" 
+                    src="${l}" 
                     alt="${t.title}" 
                     class="drama-card-poster" 
                     loading="lazy" 
@@ -144,8 +144,8 @@ import{r as b,s as R,x as ia,o as ra}from"./index-D6oEAyiX.js";import{f as sa,a 
 
                 <!-- Badges -->
                 <div class="drama-card-badges">
-                  <span class="drama-badge-pill ${s?"badge-dub":"badge-sub"}">
-                    ${s?"🇹🇷 DUBLAJ":"TR ALTYAZI"}
+                  <span class="drama-badge-pill ${r?"badge-dub":"badge-sub"}">
+                    ${r?"🇹🇷 DUBLAJ":"TR ALTYAZI"}
                   </span>
                   <span class="drama-badge-pill badge-type">MİNİ DİZİ</span>
                 </div>
@@ -167,18 +167,18 @@ import{r as b,s as R,x as ia,o as ra}from"./index-D6oEAyiX.js";import{f as sa,a 
                 </div>
               </div>
             </article>
-          `}).join("");a?u.insertAdjacentHTML("beforeend",e):u.innerHTML=e,b(u)}u.addEventListener("click",a=>{const e=a.target.closest(".drama-card")?.getAttribute("data-slug");e&&N(e)}),u.addEventListener("keydown",a=>{if(a.key!=="Enter"&&a.key!==" ")return;const e=a.target.closest(".drama-card")?.getAttribute("data-slug");e&&(a.preventDefault(),N(e))});async function N(a){if(a){f=null,j.classList.remove("hidden"),document.body.style.overflow="hidden",o.innerHTML=`
+          `}).join("");a?g.insertAdjacentHTML("beforeend",e):g.innerHTML=e,w(g)}g.addEventListener("click",a=>{const e=a.target.closest(".drama-card")?.getAttribute("data-slug");e&&G(e)}),g.addEventListener("keydown",a=>{if(a.key!=="Enter"&&a.key!==" ")return;const e=a.target.closest(".drama-card")?.getAttribute("data-slug");e&&(a.preventDefault(),G(e))});async function G(a){if(a){k=null,j.classList.remove("hidden"),document.body.style.overflow="hidden",u.innerHTML=`
           <div class="drama-detail-loading">
             <div class="spin-loader"></div>
             <span>Dizi bilgileri ve bölümler yükleniyor...</span>
           </div>
-        `,b(o);try{const e=await sa(a);if(!e){o.innerHTML=`
+        `,w(u);try{let e=null;if(a.startsWith("dml_")?e=await ta(a.replace("dml_","")):(e=await la(a),e||(e=await ta(a))),!e){u.innerHTML=`
               <div class="drama-empty-state">
                 <i data-lucide="alert-circle" style="width: 38px; height: 38px; color: #ef4444;"></i>
                 <h3>Dizi bilgisi alınamadı</h3>
                 <button class="btn-primary" id="btn-close-drama-modal">Kapat</button>
               </div>
-            `,r.querySelector("#btn-close-drama-modal")?.addEventListener("click",M),b(o);return}f=e,Q()}catch{M(),R("Dizi detayları yüklenemedi.","error")}}}function Q(){if(!f)return;const{slug:a,title:e,poster:t,description:g,episodes:s=[],isDubbed:n}=f,p=s.length,E=L?s.filter(i=>i.title.toLowerCase().includes(L)||String(i.episode).includes(L)):s;o.innerHTML=`
+            `,s.querySelector("#btn-close-drama-modal")?.addEventListener("click",q),w(u);return}k=e,aa()}catch{q(),R("Dizi detayları yüklenemedi.","error")}}}function aa(){if(!k)return;const{slug:a,title:e,poster:t,description:d,episodes:r=[],isDubbed:l}=k,n=r.length,y=D?r.filter(i=>i.title.toLowerCase().includes(D)||String(i.episode).includes(D)):r;u.innerHTML=`
           <button class="drama-modal-close-btn" id="btn-close-drama-modal" title="Kapat">
             <i data-lucide="x" style="width: 20px; height: 20px;"></i>
           </button>
@@ -191,15 +191,15 @@ import{r as b,s as R,x as ia,o as ra}from"./index-D6oEAyiX.js";import{f as sa,a 
               </div>
               <div class="drama-detail-info">
                 <div class="drama-detail-badges">
-                  <span class="drama-badge-pill ${n?"badge-dub":"badge-sub"}">
-                    ${n?"🇹🇷 TÜRKÇE DUBLAJ":"TR ALTYAZI"}
+                  <span class="drama-badge-pill ${l?"badge-dub":"badge-sub"}">
+                    ${l?"🇹🇷 TÜRKÇE DUBLAJ":"TR ALTYAZI"}
                   </span>
                   <span class="drama-badge-pill badge-type">MİNİ DİZİ</span>
-                  <span class="drama-badge-pill badge-ep-count">${p} BÖLÜM</span>
+                  <span class="drama-badge-pill badge-ep-count">${n} BÖLÜM</span>
                   <span class="drama-badge-pill badge-server">DDZ VIP HLS</span>
                 </div>
                 <h2 class="drama-detail-title">${e}</h2>
-                <p class="drama-detail-desc">${g||"Bu kısa dizi için henüz özet girilmedi."}</p>
+                <p class="drama-detail-desc">${d||"Bu kısa dizi için henüz özet girilmedi."}</p>
                 <div class="drama-detail-actions">
                   <button class="btn-primary drama-btn-play-all" id="btn-play-drama-start">
                     <i data-lucide="play" style="width: 18px; height: 18px; fill: currentColor;"></i>
@@ -218,7 +218,7 @@ import{r as b,s as R,x as ia,o as ra}from"./index-D6oEAyiX.js";import{f as sa,a 
           <div class="drama-episodes-explorer">
             <div class="drama-episodes-toolbar">
               <div class="drama-episodes-title-wrap">
-                <h3>Bölümler (${p})</h3>
+                <h3>Bölümler (${n})</h3>
                 <span class="drama-episodes-sub">Bölüme tıklayarak reklamsız izleyin</span>
               </div>
               <div class="drama-episodes-filter-box">
@@ -227,15 +227,15 @@ import{r as b,s as R,x as ia,o as ra}from"./index-D6oEAyiX.js";import{f as sa,a 
                   type="text" 
                   id="drama-ep-filter-input" 
                   placeholder="Bölüm ara... (Örn: 25)" 
-                  value="${L}"
+                  value="${D}"
                 />
               </div>
             </div>
 
             <div class="drama-episodes-grid" id="drama-episodes-grid">
-              ${E.map(i=>{const y=ia(`ddz_${a}`,i.season,i.episode);return`
+              ${y.map(i=>{const v=ra(`ddz_${a}`,i.season,i.episode);return`
                   <button 
-                    class="drama-ep-card ${y?"is-watched":""}" 
+                    class="drama-ep-card ${v?"is-watched":""}" 
                     data-season="${i.season}" 
                     data-episode="${i.episode}"
                   >
@@ -248,7 +248,7 @@ import{r as b,s as R,x as ia,o as ra}from"./index-D6oEAyiX.js";import{f as sa,a 
                         </div>
                       `}
                       <span class="drama-ep-num-pill">${i.episode}</span>
-                      ${y?'<div class="drama-ep-watched-tag"><i data-lucide="check" style="width: 12px; height: 12px;"></i></div>':""}
+                      ${v?'<div class="drama-ep-watched-tag"><i data-lucide="check" style="width: 12px; height: 12px;"></i></div>':""}
                     </div>
                     <div class="drama-ep-title-wrap">
                       <span class="drama-ep-name">${i.title}</span>
@@ -258,4 +258,4 @@ import{r as b,s as R,x as ia,o as ra}from"./index-D6oEAyiX.js";import{f as sa,a 
                 `}).join("")}
             </div>
           </div>
-        `,b(o),o.querySelector("#btn-close-drama-modal")?.addEventListener("click",M),o.querySelector("#btn-play-drama-start")?.addEventListener("click",i=>{s.length>0&&X(s[0].season,s[0].episode,i.currentTarget)}),o.querySelector("#btn-share-drama")?.addEventListener("click",()=>{const i=`${window.location.origin}${window.location.pathname}#dramas?slug=${a}`;navigator.clipboard?.writeText(i).then(()=>{R("Dizi bağlantısı panoya kopyalandı!","success")}).catch(()=>{R(`Bağlantı: ${i}`,"info")})});const I=o.querySelector("#drama-ep-filter-input");I&&I.addEventListener("input",i=>{L=i.target.value.toLowerCase().trim(),Q(),o.querySelector("#drama-ep-filter-input")?.focus()}),o.querySelectorAll(".drama-ep-card").forEach(i=>{i.addEventListener("click",y=>{const ea=parseInt(i.getAttribute("data-season"),10)||1,ta=parseInt(i.getAttribute("data-episode"),10)||1;X(ea,ta,y.currentTarget)})})}function M(){j.classList.add("hidden"),document.body.style.overflow="",f=null,L=""}j.addEventListener("click",a=>{a.target===j&&M()});async function X(a=1,e=1,t=null){if(!f)return;const{slug:g,title:s,poster:n,description:p,episodes:E=[]}=f,I=E.find(y=>y.season===a&&y.episode===e)?.thumb||"",i=t?t.innerHTML:null;t&&(t.disabled=!0,t.innerHTML='<i data-lucide="loader-2" class="spin-loader" style="width:14px;height:14px"></i> <span>Yükleniyor...</span>',b(t));try{M(),await ra({type:"tv",tmdbId:`ddz_${g}`,title:`${s} - B${e}`,seriesTitle:s,season:a,episode:e,posterPath:n,backdropPath:n,playerVariant:"short-drama",seriesOverview:p||"",episodeArtworkPath:I||n,shortDramaEpisodes:E,maxEpisodes:E.length,seasonsList:[{season_number:a,episode_count:E.length}]})}catch{R("Bölüm açılırken bir sorun oluştu, lütfen tekrar deneyin.","error")}finally{t&&i&&(t.disabled=!1,t.innerHTML=i,b(t))}}x?.addEventListener("input",a=>{const e=a.target.value;C.classList.toggle("hidden",!e),clearTimeout(Y),Y=setTimeout(()=>{d=e.trim(),m=0,l=d?"search":"trending",P.forEach(t=>t.classList.toggle("active",!d&&t.getAttribute("data-tab-id")==="trending")),$()},350)}),x?.addEventListener("keydown",a=>{a.key==="Enter"&&(a.preventDefault(),clearTimeout(Y),d=x.value.trim(),m=0,$())}),C?.addEventListener("click",()=>{x.value="",C.classList.add("hidden"),d="",l="trending",P.forEach(a=>a.classList.toggle("active",a.getAttribute("data-tab-id")==="trending")),$()}),P.forEach(a=>{a.addEventListener("click",()=>{const e=a.getAttribute("data-tab-id");l===e&&!d||(l=e,d="",x&&(x.value=""),C?.classList.add("hidden"),m=0,P.forEach(t=>t.classList.toggle("active",t===a)),$())})}),q?.addEventListener("click",T),await $(),D()&&K.getBoundingClientRect().top<window.innerHeight+800&&T(),_&&N(_)}}}export{ua as renderDramaView};
+        `,w(u),u.querySelector("#btn-close-drama-modal")?.addEventListener("click",q),u.querySelector("#btn-play-drama-start")?.addEventListener("click",i=>{r.length>0&&ea(r[0].season,r[0].episode,i.currentTarget)}),u.querySelector("#btn-share-drama")?.addEventListener("click",()=>{const i=`${window.location.origin}${window.location.pathname}#dramas?slug=${a}`;navigator.clipboard?.writeText(i).then(()=>{R("Dizi bağlantısı panoya kopyalandı!","success")}).catch(()=>{R(`Bağlantı: ${i}`,"info")})});const h=u.querySelector("#drama-ep-filter-input");h&&h.addEventListener("input",i=>{D=i.target.value.toLowerCase().trim(),aa(),u.querySelector("#drama-ep-filter-input")?.focus()}),u.querySelectorAll(".drama-ep-card").forEach(i=>{i.addEventListener("click",v=>{const N=parseInt(i.getAttribute("data-season"),10)||1,ia=parseInt(i.getAttribute("data-episode"),10)||1;ea(N,ia,v.currentTarget)})})}function q(){j.classList.add("hidden"),document.body.style.overflow="",k=null,D=""}j.addEventListener("click",a=>{a.target===j&&q()});async function ea(a=1,e=1,t=null){if(!k)return;const{slug:d,title:r,poster:l,description:n,episodes:y=[]}=k,h=y.find(v=>v.season===a&&v.episode===e)?.thumb||"",i=t?t.innerHTML:null;t&&(t.disabled=!0,t.innerHTML='<i data-lucide="loader-2" class="spin-loader" style="width:14px;height:14px"></i> <span>Yükleniyor...</span>',w(t));try{q();const v=d.replace(/^(ddz_|dml_)/,""),N=d.startsWith("dml_")?"dml_":"ddz_";await sa({type:"tv",tmdbId:`${N}${v}`,title:`${r} - B${e}`,seriesTitle:r,season:a,episode:e,posterPath:l,backdropPath:l,playerVariant:"short-drama",seriesOverview:n||"",episodeArtworkPath:h||l,shortDramaEpisodes:y,maxEpisodes:y.length,seasonsList:[{season_number:a,episode_count:y.length}]})}catch{R("Bölüm açılırken bir sorun oluştu, lütfen tekrar deneyin.","error")}finally{t&&i&&(t.disabled=!1,t.innerHTML=i,w(t))}}T?.addEventListener("input",a=>{const e=a.target.value;H.classList.toggle("hidden",!e),clearTimeout(_),_=setTimeout(()=>{c=e.trim(),m=0,o=c?"search":"trending",P.forEach(t=>t.classList.toggle("active",!c&&t.getAttribute("data-tab-id")==="trending")),E()},350)}),T?.addEventListener("keydown",a=>{a.key==="Enter"&&(a.preventDefault(),clearTimeout(_),c=T.value.trim(),m=0,E())}),H?.addEventListener("click",()=>{T.value="",H.classList.add("hidden"),c="",o="trending",P.forEach(a=>a.classList.toggle("active",a.getAttribute("data-tab-id")==="trending")),E()}),P.forEach(a=>{a.addEventListener("click",()=>{const e=a.getAttribute("data-tab-id");o===e&&!c||(o=e,c="",T&&(T.value=""),H?.classList.add("hidden"),m=0,P.forEach(t=>t.classList.toggle("active",t===a)),E())})}),M?.addEventListener("click",S),await E(),$()&&K.getBoundingClientRect().top<window.innerHeight+800&&S(),U&&G(U)}}}export{ha as renderDramaView};

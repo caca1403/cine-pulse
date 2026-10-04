@@ -32,6 +32,7 @@ import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
 import { fetchAniziumSources } from './aniziumScraper.js';
 import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
+import { fetchDramalarEpisodeSources } from './dramalarScraper.js';
 
 // Cache version
 const CACHE_VERSION = 'v39';
@@ -155,11 +156,11 @@ function formatStreamName(s, category = '') {
   if (id.startsWith('twoembed_') || raw.includes('2embed')) {
     return s.displayName || s.name || '  2Embed VIP 1080p';
   }
-  if (id.startsWith('vidsrc_pm') || raw.includes('vidsrc alt')) {
-    return s.displayName || s.name || '  VidSrc Alt 1080p';
+  if (id.startsWith('dml_') || raw.includes('dramalar')) {
+    return s.displayName || s.name || '  Dramalar VIP 1080p';
   }
-  if (id.startsWith('vidsrc_') || raw.includes('vidsrc')) {
-    return s.displayName || s.name || '  VidSrc VIP 1080p';
+  if (id.startsWith('ddz_') || raw.includes('dramadizilerim')) {
+    return s.displayName || s.name || '  DDZ VIP 1080p';
   }
   if (id.startsWith('dzy_') || raw.includes('diziyo')) {
     if (url.includes('vidmoly')) return 'Diziyo VidMoly 1080p';
@@ -211,8 +212,10 @@ function formatStreamItem(s, category, fallbackName) {
     badge = '  LookMovie 1080p';
   } else if (lowerName.includes('2embed')) {
     badge = '  2Embed 1080p';
-  } else if (lowerName.includes('vidsrc')) {
-    badge = '  VidSrc 1080p';
+  } else if (lowerName.includes('dramalar') || id.startsWith('dml_')) {
+    badge = '👑 Dramalar VIP';
+  } else if (lowerName.includes('dramadizilerim') || id.startsWith('ddz_')) {
+    badge = '🎭 DDZ VIP';
   }
 
   return {
@@ -295,8 +298,9 @@ function getStreamPriorityScore(s) {
   // 5. TVR VIP (RecTV 1080p HLS)
   if (id.startsWith('tvr_') || raw.includes('tvr') || raw.includes('rectv')) return 4;
 
-  // 5b. DramaDizilerim (Short Drama VIP - Direct 1080p HLS)
-  if (id.startsWith('ddz_') || raw.includes('dramadizilerim') || raw.includes('ddz vip')) return 4;
+  // 5b. Short Dramas (Dramalar VIP & DramaDizilerim - Direct 1080p HLS)
+  if (id.startsWith('dml_') || raw.includes('dramalar')) return 1;
+  if (id.startsWith('ddz_') || raw.includes('dramadizilerim') || raw.includes('ddz vip')) return 2;
 
   // 6. LookMovie VIP (1080p HLS)
   if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) return 5;
@@ -310,8 +314,7 @@ function getStreamPriorityScore(s) {
   // 8. VIP P2P Torrent Akışları
   if (id.startsWith('torrent_p2p_')) return 10;
 
-  // 9. Embed Oynatıcılar (VidSrc, 2Embed, SmashyStream)
-  if (id.startsWith('vidsrc_') || raw.includes('vidsrc')) return 11;
+  // 9. Embed Oynatıcılar (2Embed, SmashyStream)
   if (id.startsWith('twoembed_') || raw.includes('2embed')) return 12;
   if (id.startsWith('smashystream_') || raw.includes('smashy')) return 13;
 
@@ -458,9 +461,43 @@ export async function getStreamingServersProgressive({
   };
 
   const isAnime = type === 'anime';
+  const isShortDrama = Boolean(
+    (tmdbId && (String(tmdbId).startsWith('ddz_') || String(tmdbId).startsWith('dml_'))) ||
+    type === 'short-drama'
+  );
 
+  // Kısa diziler için özel izole sağlayıcı listesi (SmashyStream, LookMovie, Sinewix vb. film sağlayıcıları çağrılmaz)
+  if (isShortDrama) {
+    const dramaTasks = [
+      // 1. Dramalar.com VIP (Doğrudan kesintisiz CDN 1080p HLS)
+      fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
+        .then(res => addStreams(res, 'dubbed')).catch(() => []),
+      fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
+        .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
+      // 2. DramaDizilerim VIP (NetShort, FlexTV, DramaBox HLS / Direct Video)
+      fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
+        .then(res => addStreams(res, 'dubbed')).catch(() => []),
+      fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
+        .then(res => addStreams(res, 'subtitled')).catch(() => [])
+    ];
 
+    await Promise.allSettled(dramaTasks);
+
+    const finalDubbed = currentDubbed.sort((a, b) => getStreamPriorityScore(a) - getStreamPriorityScore(b));
+    const finalSubtitled = currentSubtitled.sort((a, b) => getStreamPriorityScore(a) - getStreamPriorityScore(b));
+
+    const payload = {
+      dubbed: finalDubbed,
+      subtitled: finalSubtitled,
+      totalServers: finalDubbed.length + finalSubtitled.length,
+      isComplete: true
+    };
+
+    onUpdate(payload);
+    streamServersCache.set(cacheKey, payload);
+    return payload;
+  }
 
   const tasks = [
     // 1. RecTV VIP (1080p VIP direct streams)
@@ -620,7 +657,7 @@ export async function getStreamingServersProgressive({
       : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // 10. Clean Global VIP Embeds: VidSrc, SmashyStream, 2Embed, SuperEmbed, EmbedSu
+    // 10. Clean Global VIP Embed: SmashyStream (Filmler ve diziler için, kısa diziler hariç)
     Promise.resolve(fetchSmashyStreamSources({ type, tmdbId, season, episode }))
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
@@ -628,8 +665,7 @@ export async function getStreamingServersProgressive({
     fetchOfficialLookMovieSources({ type, title: targetTitle, originalTitle, season, episode })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // 11. Anime catalogues are genre-specific. Searching them for every film
-    // can return a similarly named episode and attach it to the wrong title.
+    // 11. Anime catalogues
     isAnime
       ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
@@ -639,7 +675,6 @@ export async function getStreamingServersProgressive({
       ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
-
 
     isAnime
       ? fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
@@ -653,7 +688,7 @@ export async function getStreamingServersProgressive({
     fetchAniziumSources({ type, titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
-    // 12. VIP P2P Streams (2-3 high-seed torrent streams with multi-sub / OpenSubtitles)
+    // 12. VIP P2P Streams
     fetchTorrentStreamSources({ type, tmdbId, season, episode })
       .then(res => {
         if (Array.isArray(res) && res.length > 0) {
@@ -661,10 +696,9 @@ export async function getStreamingServersProgressive({
         }
       }).catch(() => []),
 
-    // 13. HDFilmCehennemi VIP (Direct 1080p HLS + TR Subtitles & Dubbed/Dual)
+    // 13. HDFilmCehennemi VIP
     fetchHdfilmcehennemiSources({ type, tmdbId, imdbId, title: targetTitle, originalTitle, season, episode })
       .then(res => {
-        console.log('[providerAggregator] HDFC fetched, count:', Array.isArray(res) ? res.length : res);
         if (!Array.isArray(res) || res.length === 0) return [];
         for (const s of res) {
           addStreams([{
@@ -690,7 +724,17 @@ export async function getStreamingServersProgressive({
         return [];
       }),
 
-    // 14. DramaDizilerim (Short Drama / Mini Dizi VIP - Direct 1080p HLS)
+    // 14. DramaDizilerim & Dramalar (Fallback to short drama sources if requested as standard series)
+    !isMovie
+      ? fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : Promise.resolve([]),
+
+    !isMovie
+      ? fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
+          .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      : Promise.resolve([]),
+
     !isMovie
       ? fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
