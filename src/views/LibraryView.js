@@ -478,7 +478,7 @@ export function renderLibraryView() {
             try {
               const offlinePlaybackUrl = await getDownloadedPlaybackUrl(item.id, item.season, item.episode);
               if (!offlinePlaybackUrl) throw new Error('İndirilen video dosyası bulunamadı.');
-              openPlayerModal({
+              await openPlayerModal({
                 type: item.type === 'movie' ? 'movie' : 'tv', isSeries: item.season !== null && item.episode !== null,
                 tmdbId: item.id, title: item.season !== null && item.episode !== null ? item.title.replace(/\s*[·-]\s*\d+\.\s*Sezon\s+\d+\.\s*Bölüm.*$/i, '').trim() : item.title,
                 seriesTitle: item.season !== null && item.episode !== null ? item.title.replace(/\s*[·-]\s*\d+\.\s*Sezon\s+\d+\.\s*Bölüm.*$/i, '').trim() : '',

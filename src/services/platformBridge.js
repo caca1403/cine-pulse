@@ -13,9 +13,11 @@ export function isNativeAndroidApp() {
   return Boolean(
     (window.Capacitor?.isNativePlatform?.() && window.Capacitor?.getPlatform?.() === 'android') ||
     window.Capacitor?.isNativePlatform?.() ||
-    navigator.userAgent.includes('CinePulseAndroid')
+    (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.includes('CinePulseAndroid'))
   );
 }
+
+export const isNativeAndroid = typeof window !== 'undefined' ? isNativeAndroidApp() : false;
 
 /**
  * Web tarayıcı ortamında (Masaüstü, Mobil Tarayıcı veya PWA) olup olmadığını belirler.

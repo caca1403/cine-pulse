@@ -546,8 +546,8 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
 
         // Attach events inside modal
         modalDialog.querySelector('#btn-close-drama-modal')?.addEventListener('click', closeDramaDetail);
-        modalDialog.querySelector('#btn-play-drama-start')?.addEventListener('click', () => {
-          if (episodes.length > 0) playDramaEpisode(episodes[0].season, episodes[0].episode);
+        modalDialog.querySelector('#btn-play-drama-start')?.addEventListener('click', (e) => {
+          if (episodes.length > 0) playDramaEpisode(episodes[0].season, episodes[0].episode, e.currentTarget);
         });
 
         modalDialog.querySelector('#btn-share-drama')?.addEventListener('click', () => {
@@ -569,10 +569,10 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         }
 
         modalDialog.querySelectorAll('.drama-ep-card').forEach(btn => {
-          btn.addEventListener('click', () => {
+          btn.addEventListener('click', (e) => {
             const season = parseInt(btn.getAttribute('data-season'), 10) || 1;
             const episode = parseInt(btn.getAttribute('data-episode'), 10) || 1;
-            playDramaEpisode(season, episode);
+            playDramaEpisode(season, episode, e.currentTarget);
           });
         });
       }
@@ -588,27 +588,46 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         if (e.target === detailModal) closeDramaDetail();
       });
 
-      function playDramaEpisode(season = 1, episode = 1) {
+      async function playDramaEpisode(season = 1, episode = 1, triggerBtn = null) {
         if (!selectedDrama) return;
         const { slug, title, poster, description, episodes = [] } = selectedDrama;
         const episodeArtwork = episodes.find(ep => ep.season === season && ep.episode === episode)?.thumb || '';
 
-        openPlayerModal({
-          type: 'tv',
-          tmdbId: `ddz_${slug}`,
-          title: `${title} - B${episode}`,
-          seriesTitle: title,
-          season,
-          episode,
-          posterPath: poster,
-          backdropPath: poster,
-          playerVariant: 'short-drama',
-          seriesOverview: description || '',
-          episodeArtworkPath: episodeArtwork || poster,
-          shortDramaEpisodes: episodes,
-          maxEpisodes: episodes.length,
-          seasonsList: [{ season_number: season, episode_count: episodes.length }]
-        });
+        const origText = triggerBtn ? triggerBtn.innerHTML : null;
+        if (triggerBtn) {
+          triggerBtn.disabled = true;
+          triggerBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:14px;height:14px"></i> <span>Yükleniyor...</span>`;
+          renderIcons(triggerBtn);
+        }
+
+        try {
+          closeDramaDetail();
+          await openPlayerModal({
+            type: 'tv',
+            tmdbId: `ddz_${slug}`,
+            title: `${title} - B${episode}`,
+            seriesTitle: title,
+            season,
+            episode,
+            posterPath: poster,
+            backdropPath: poster,
+            playerVariant: 'short-drama',
+            seriesOverview: description || '',
+            episodeArtworkPath: episodeArtwork || poster,
+            shortDramaEpisodes: episodes,
+            maxEpisodes: episodes.length,
+            seasonsList: [{ season_number: season, episode_count: episodes.length }]
+          });
+        } catch (err) {
+          console.error('[DramaView] Kısa dizi bölümü açılamadı:', err);
+          showToast('Bölüm açılırken bir sorun oluştu, lütfen tekrar deneyin.', 'error');
+        } finally {
+          if (triggerBtn && origText) {
+            triggerBtn.disabled = false;
+            triggerBtn.innerHTML = origText;
+            renderIcons(triggerBtn);
+          }
+        }
       }
 
       // Search Events

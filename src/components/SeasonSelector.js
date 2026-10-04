@@ -322,6 +322,15 @@ function getSpoilerBoundary(tvId) {
   }, { season: 1, episode: 1 });
 }
 
+function escapeHtmlAttr(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, container, posterPath = '', backdropPath = '', originalTitle = '', validSeasons = [], onStatusChange = null, isAnime = false, spoilerSafe = false) {
   const gridContainer = container.querySelector('#episode-grid-container');
   if (!gridContainer) return;
@@ -418,10 +427,13 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
       `;
     }
 
+    const safeTitle = escapeHtmlAttr(epTitle);
+    const safeOverview = escapeHtmlAttr(rawOverview);
+
     return `
-      <div class="episode-card" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" data-title="${epTitle}">
+      <div class="episode-card" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" data-title="${safeTitle}">
         <div class="episode-thumb-wrap">
-          <img src="${stillUrl}" alt="${epTitle}" loading="lazy" onerror="this.onerror=null; this.src='${SINEFLIX_POSTER_FALLBACK}';" />
+          <img src="${stillUrl}" alt="${safeTitle}" loading="lazy" onerror="this.onerror=null; this.src='${SINEFLIX_POSTER_FALLBACK}';" />
           <span class="episode-number-chip">${seasonNum}x${epNum < 10 ? '0' + epNum : epNum}</span>
           ${badgeStatusHTML}
           
@@ -447,12 +459,12 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
 
         <div class="episode-info">
           <div class="episode-header-row">
-            <span class="episode-title" title="${epTitle}">${epTitle}</span>
+            <span class="episode-title" title="${safeTitle}">${epTitle}</span>
             <span class="episode-duration">${runtime || airDate}</span>
           </div>
           
           <div class="episode-overview-container">
-            <div class="episode-overview ${isLongText ? 'truncated' : ''}" data-full="${rawOverview}">
+            <div class="episode-overview ${isLongText ? 'truncated' : ''}" data-full="${safeOverview}">
               ${rawOverview}
             </div>
             ${isLongText ? `
@@ -594,9 +606,10 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
     });
   });
 
-  // Attach Episode Card & Play Triggers
+  // Attach Episode Card Click & Play Triggers
   gridContainer.querySelectorAll('.episode-card').forEach(card => {
-    const playEpisode = (e) => {
+    let isOpening = false;
+    const playEpisode = async (e) => {
       // Don't trigger if clicked on the action buttons
       if (e && e.target && (e.target.closest('.btn-mark-ep-watched') || e.target.closest('.btn-mark-ep-halfway') || e.target.closest('.btn-toggle-overview'))) {
         return;
@@ -605,36 +618,63 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
         e.preventDefault();
         e.stopPropagation();
       }
+      if (isOpening) return;
+      isOpening = true;
+
       const season = parseInt(card.getAttribute('data-season'), 10);
       const episode = parseInt(card.getAttribute('data-episode'), 10);
-      const epTitle = card.getAttribute('data-title');
+      const epTitle = card.getAttribute('data-title') || `${episode}. Bölüm`;
 
-      const historyRecord = getMediaProgress(tvId, season, episode);
-      const startTime = historyRecord ? historyRecord.currentTime : 0;
+      card.classList.add('is-loading-episode');
+      const playTrigger = card.querySelector('.btn-play-episode-trigger');
+      const origTriggerHTML = playTrigger ? playTrigger.innerHTML : '';
+      if (playTrigger) {
+        playTrigger.innerHTML = `<span>Yükleniyor...</span><i data-lucide="loader-2" class="spin-loader" style="width: 12px; height: 12px;"></i>`;
+        renderIcons();
+      }
+      const playOverlayIcon = card.querySelector('.episode-play-overlay i');
+      if (playOverlayIcon) {
+        playOverlayIcon.setAttribute('data-lucide', 'loader-2');
+        playOverlayIcon.classList.add('spin-loader');
+        renderIcons();
+      }
 
-      openPlayerModal({
-        type: isAnime ? 'anime' : 'tv',
-        isAnime,
-        tmdbId: tvId,
-        title: `${seriesTitle} - S${season}E${episode}: ${epTitle}`,
-        seriesTitle,
-        originalTitle: originalTitle || seriesTitle,
-        season,
-        episode,
-        posterPath,
-        backdropPath,
-        currentTime: startTime,
-        seasonsList: validSeasons,
-        maxEpisodes: seasonData.episodes ? seasonData.episodes.length : 0
-      });
+      try {
+        const historyRecord = getMediaProgress(tvId, season, episode);
+        const startTime = historyRecord ? historyRecord.currentTime : 0;
+
+        await openPlayerModal({
+          type: isAnime ? 'anime' : 'tv',
+          isAnime,
+          tmdbId: tvId,
+          title: `${seriesTitle} - S${season}E${episode}: ${epTitle}`,
+          seriesTitle,
+          originalTitle: originalTitle || seriesTitle,
+          season,
+          episode,
+          posterPath,
+          backdropPath,
+          currentTime: startTime,
+          seasonsList: validSeasons,
+          maxEpisodes: seasonData.episodes ? seasonData.episodes.length : 0
+        });
+      } catch (err) {
+        console.error('[SeasonSelector] Bölüm açılırken hata oluştu:', err);
+        showToast('Bölüm açılırken bir sorun oluştu, lütfen tekrar deneyin.', 'error');
+      } finally {
+        isOpening = false;
+        card.classList.remove('is-loading-episode');
+        if (playTrigger && origTriggerHTML) {
+          playTrigger.innerHTML = origTriggerHTML;
+        }
+        if (playOverlayIcon) {
+          playOverlayIcon.setAttribute('data-lucide', 'play');
+          playOverlayIcon.classList.remove('spin-loader');
+        }
+        renderIcons();
+      }
     };
 
     card.addEventListener('click', playEpisode);
-    
-    const thumbWrapper = card.querySelector('.episode-thumb-wrap');
-    if (thumbWrapper) thumbWrapper.addEventListener('click', playEpisode);
-
-    const playTrigger = card.querySelector('.btn-play-episode-trigger');
-    if (playTrigger) playTrigger.addEventListener('click', playEpisode);
   });
 }

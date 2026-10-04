@@ -279,18 +279,23 @@ export function openRandomPickerModal({ type = 'all' } = {}) {
     // Winner play action
     const winnerPlayBtn = stage.querySelector('#btn-winner-play');
     if (winnerPlayBtn) {
-      winnerPlayBtn.onclick = () => {
+      winnerPlayBtn.onclick = async () => {
         closeRandomPickerModal();
-        openPlayerModal({
-          type: winnerType,
-          tmdbId: winner.id,
-          title: winnerTitle,
-          originalTitle: winnerOriginalTitle,
-          posterPath: winner.poster_path,
-          backdropPath: winner.backdrop_path,
-          season: 1,
-          episode: 1
-        });
+        try {
+          await openPlayerModal({
+            type: winnerType,
+            tmdbId: winner.id,
+            title: winnerTitle,
+            originalTitle: winnerOriginalTitle,
+            posterPath: winner.poster_path,
+            backdropPath: winner.backdrop_path,
+            season: 1,
+            episode: 1
+          });
+        } catch (err) {
+          console.error('[RandomPickerModal] Film oynatılamadı:', err);
+          showToast('İçerik açılırken bir sorun oluştu.', 'error');
+        }
       };
     }
 

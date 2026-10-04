@@ -8,6 +8,7 @@ import { renderIcons } from '../services/icons.js';
 import { getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK, hasNonLatinCharacters } from '../services/tmdbApi.js';
 import { getMediaProgress, getLastWatchedEpisode, formatSecondsToTime, formatRemainingTime, isRegisteredAnimeId, registerAnimeId, getUserSettings, KNOWN_ANIME_KEYWORDS as STORAGE_ANIME_KEYWORDS } from '../services/storage.js';
 import { openPlayerModal } from './openPlayer.js';
+import { showToast } from './Toast.js';
 import { saveAllScrollState } from '../services/scrollManager.js';
 import { getBestBackdrop } from '../services/fanartService.js';
 
@@ -344,20 +345,27 @@ export function attachMediaCardEvents(container) {
       : (mediaTypeAttr === 'tv' || type === 'tv');
 
   if (isContinue) {
-      openPlayerModal({
-        type: isAnime ? 'anime' : (isSeriesCard ? 'tv' : 'movie'),
-        isAnime,
-        isSeries: isSeriesCard,
-        tmdbId: id,
-        title: isSeriesCard ? `${title} - S${season}E${episode}` : title,
-        seriesTitle: title,
-        originalTitle: originalTitle || title,
-        season: isSeriesCard ? season : undefined,
-        episode: isSeriesCard ? episode : undefined,
-        posterPath,
-        backdropPath,
-        currentTime
-      });
+      (async () => {
+        try {
+          await openPlayerModal({
+            type: isAnime ? 'anime' : (isSeriesCard ? 'tv' : 'movie'),
+            isAnime,
+            isSeries: isSeriesCard,
+            tmdbId: id,
+            title: isSeriesCard ? `${title} - S${season}E${episode}` : title,
+            seriesTitle: title,
+            originalTitle: originalTitle || title,
+            season: isSeriesCard ? season : undefined,
+            episode: isSeriesCard ? episode : undefined,
+            posterPath,
+            backdropPath,
+            currentTime
+          });
+        } catch (err) {
+          console.error('[MediaCard] Devam et oynatılamadı:', err);
+          showToast('İçerik açılırken bir sorun oluştu, lütfen tekrar deneyin.', 'error');
+        }
+      })();
     } else {
       saveAllScrollState();
       window.location.hash = `#detail?type=${isAnime ? 'anime' : type}&id=${id}`;

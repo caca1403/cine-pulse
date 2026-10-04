@@ -50,7 +50,7 @@ export function renderDownloadsView() {
           if (!offlinePlaybackUrl) throw new Error('İndirilen video bulunamadı.');
           const isEpisode = item.season !== null && item.episode !== null;
           const seriesTitle = getSeriesName(item);
-          openPlayerModal({
+          await openPlayerModal({
             type: item.type === 'movie' ? 'movie' : 'tv', isSeries: isEpisode, isAnime: item.type === 'anime',
             tmdbId: item.tmdbId, title: isEpisode ? seriesTitle : item.title, seriesTitle: isEpisode ? seriesTitle : '',
             season: item.season || 1, episode: item.episode || 1,

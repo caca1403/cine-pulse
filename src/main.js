@@ -23,7 +23,7 @@ import { grantAdminEntry, isAdminRouteAllowed } from './services/adminAccess.js'
 import { openDecisionRoomModal } from './components/DecisionRoomModal.js';
 import { initTraktAutoSync } from './services/traktService.js';
 import { getWatchHistory, saveWatchProgress, saveBatchWatchProgress } from './services/storage.js';
-import { initPlatformBridge } from './services/platformBridge.js';
+import { initPlatformBridge, isNativeAndroidApp, isNativeAndroid } from './services/platformBridge.js';
 
 // Platform Köprüsünü Çalıştır:
 // Ortam tespitine göre Web veya Android platform modüllerini dinamik (lazy) yükler.
@@ -48,7 +48,7 @@ window.addEventListener('keydown', (event) => {
 const app = document.getElementById('app');
 document.documentElement.classList.toggle('cards-landscape', getUserSettings().cardLayout === 'landscape');
 
-if (isNativeAndroid && typeof navigator !== 'undefined' && navigator.onLine === false && window.location.hash !== '#downloads') {
+if (isNativeAndroidApp() && typeof navigator !== 'undefined' && navigator.onLine === false && window.location.hash !== '#downloads') {
   window.location.hash = '#downloads';
 }
 
@@ -101,7 +101,7 @@ async function route() {
   } else if (hash === '#library') {
     viewName = 'library';
   } else if (hash === '#downloads') {
-    if (!isNativeAndroid) {
+    if (!isNativeAndroidApp()) {
       window.location.replace('#library');
       return;
     }
