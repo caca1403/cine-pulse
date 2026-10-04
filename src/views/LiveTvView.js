@@ -951,7 +951,8 @@ export function renderLiveTvView() {
         videoEl.addEventListener('loadeddata', onVideoReady, { once: true });
         setTimeout(() => {
           videoEl.removeEventListener('loadeddata', onVideoReady);
-          if (channelPlaybackToken === myToken && videoEl.readyState < 2) showPlaybackError();
+          // 20sn'de görüntü yoksa hata ekranı yerine denenmemiş kaynağa geç
+          if (channelPlaybackToken === myToken && videoEl.readyState < 2) advanceOrError();
         }, 20000);
 
         let freshStreamAttempted = false;
@@ -959,6 +960,7 @@ export function renderLiveTvView() {
         let directNetworkRetryCount = 0;
         let proxyFallbackAttempted = false;
         let mediaRecoveryAttempted = false;
+        const triedSrc = new Set();
         async function tryFreshOfficialStream(failedUrl, forceRefresh = true) {
           if (!channel.officialLiveId) return false;
           if (forceRefresh && officialRefreshAttempts >= 2) return false;
@@ -991,6 +993,22 @@ export function renderLiveTvView() {
           errorEl.classList.remove('hidden');
         }
 
+        // Denenmemiş sonraki kaynağa geç; kalmadıysa hata göster.
+        function advanceOrError() {
+          if (channelPlaybackToken !== myToken) return;
+          const next = srcList.findIndex((_, i) => !triedSrc.has(i));
+          if (next >= 0) {
+            srcIdx = next;
+            renderSrcMenu();
+            loadingEl.classList.remove('hidden');
+            errorEl.classList.add('hidden');
+            showToast(`Alternatif kaynağa geçiliyor: ${srcList[next].label}`, 'info');
+            playSrc(next);
+          } else {
+            showPlaybackError();
+          }
+        }
+
         function tryProxyFallback(failedUrl) {
           if (proxyFallbackAttempted || !/^https?:\/\//i.test(failedUrl)) return false;
           proxyFallbackAttempted = true;
@@ -1018,16 +1036,23 @@ export function renderLiveTvView() {
         function playSrc(i) {
           const s = srcList[i];
           if (!s) {
-            showPlaybackError();
+            advanceOrError();
             return;
           }
+          triedSrc.add(i);
           if (s.isTs) startTs(s.url);
           else startHls(s.url);
         }
 
         function startTs(url) {
           if (channelPlaybackToken !== myToken) return;
-          url = apiUrl(url);
+          // Yerel geliştirmede göreli proxy (localhost:4000) kullanılır; çünkü
+          // apiUrl() localhost'u bile production proxy'ye yönlendirir ve panel
+          // Cloudflare'ı Vercel IP'lerini engeller. Üretimde göreli URL yine
+          // aynı origin'e gider ve zarifçe sonraki kaynağa geçilir.
+          const host = (typeof window !== 'undefined' && window.location?.hostname) || '';
+          const isLocalDev = host === 'localhost' || host === '127.0.0.1';
+          url = isLocalDev ? url : apiUrl(url);
           loadMpegtsLib().then((mpegts) => {
             if (channelPlaybackToken !== myToken) return;
             if (!mpegts.isSupported()) {
@@ -1056,14 +1081,7 @@ export function renderLiveTvView() {
               player.on(mpegts.Events.ERROR, () => {
                 if (channelPlaybackToken !== myToken) return;
                 console.warn('[LiveTV] mpegts error on:', url);
-                if (srcIdx < srcList.length - 1) {
-                  srcIdx += 1;
-                  renderSrcMenu();
-                  showToast(`Alternatif kaynağa geçiliyor: ${srcList[srcIdx].label}`, 'info');
-                  playSrc(srcIdx);
-                } else {
-                  showPlaybackError();
-                }
+                advanceOrError();
               });
             } catch (_) {
               showPlaybackError();
@@ -1130,18 +1148,15 @@ export function renderLiveTvView() {
               if (channelPlaybackToken !== myToken || activeHls !== hls) return;
               if (data.fatal) {
                 console.warn('[LiveTV] Fatal HLS error on:', url, data.type, data.details);
-                // Otomatik alternatif kaynak denemesi: listede sonraki kaynağa geç
-                if (srcIdx < srcList.length - 1) {
-                  srcIdx += 1;
-                  renderSrcMenu();
-                  showToast(`Alternatif kaynağa geçiliyor: ${srcList[srcIdx].label}`, 'info');
-                  playSrc(srcIdx);
+                // Panel (alternatif) kaynakta hata varsa beklemeden sonrakini dene
+                if (srcList[srcIdx] && !srcList[srcIdx].isDefault) {
+                  advanceOrError();
                   return;
                 }
                 if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                   if (channel.officialLiveId) {
                     tryFreshOfficialStream(url).then(recovered => {
-                      if (!recovered) showPlaybackError();
+                      if (!recovered) advanceOrError();
                     });
                   } else if (directNetworkRetryCount < 1) {
                     directNetworkRetryCount += 1;
@@ -1150,21 +1165,21 @@ export function renderLiveTvView() {
                       if (channelPlaybackToken === myToken && activeHls === hls) startHls(url);
                     }, 700);
                   } else if (!tryProxyFallback(url)) {
-                    showPlaybackError();
+                    advanceOrError();
                   }
                 } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                   if (mediaRecoveryAttempted) {
-                    showPlaybackError();
+                    advanceOrError();
                   } else {
                     mediaRecoveryAttempted = true;
                     try {
                       hls.recoverMediaError();
                     } catch (_) {
-                      showPlaybackError();
+                      advanceOrError();
                     }
                   }
                 } else {
-                  showPlaybackError();
+                  advanceOrError();
                 }
               }
             });
@@ -1178,10 +1193,10 @@ export function renderLiveTvView() {
             }, { once: true });
             videoEl.addEventListener('error', () => {
               if (channelPlaybackToken !== myToken) return;
-              if (!tryProxyFallback(url)) showPlaybackError();
+              if (!tryProxyFallback(url)) advanceOrError();
             }, { once: true });
           } else {
-            showPlaybackError();
+            advanceOrError();
           }
         }
 
@@ -1195,12 +1210,12 @@ export function renderLiveTvView() {
         if (channelPlaybackToken !== myToken) return;
 
         // Official DMAX/TLC playback URLs are signed and short-lived; resolve a fresh URL on every selection.
-        // Alternatif kaynak seçiliyse resmi çözümleme atlanır, panel HLS'i direkt oynatılır.
+        // Alternatif kaynak seçiliyse resmi çözümleme atlanır, panel TS'i direkt oynatılır.
         if (channel.officialLiveId && !useAlt) {
           tryFreshOfficialStream('', true).then(recovered => {
             if (recovered || channelPlaybackToken !== myToken) return;
             tryFreshOfficialStream('', true).then(retried => {
-              if (!retried && channelPlaybackToken === myToken) showPlaybackError();
+              if (!retried && channelPlaybackToken === myToken) advanceOrError();
             });
           });
         } else {
@@ -1227,7 +1242,14 @@ export function renderLiveTvView() {
       if (prevChBtn) prevChBtn.addEventListener('click', (e) => { e.stopPropagation(); zapChannel('prev'); });
       if (nextChBtn) nextChBtn.addEventListener('click', (e) => { e.stopPropagation(); zapChannel('next'); });
       if (errorNextBtn) errorNextBtn.addEventListener('click', () => zapChannel('next'));
-      if (retryBtn) retryBtn.addEventListener('click', () => loadChannel(activeChannel));
+      if (retryBtn) retryBtn.addEventListener('click', () => {
+        // Tekrar düğmesi sıradaki kaynağı dener (aynı ölü kaynağa takılmaz)
+        if (srcList.length > 1) {
+          const next = (srcIdx + 1) % srcList.length;
+          setPreferredSourceKey(activeChannel.id, srcList[next].key);
+          loadChannel(activeChannel, next);
+        } else loadChannel(activeChannel);
+      });
       if (reloadBtn) reloadBtn.addEventListener('click', () => {
         showToast('Yayın yeniden yükleniyor...', 'info');
         loadChannel(activeChannel);
