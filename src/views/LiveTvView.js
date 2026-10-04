@@ -11,6 +11,7 @@ import { getChannelEpg, initEpgService, stopEpgService } from '../services/epgSe
 import { showToast } from '../components/Toast.js';
 import { isKidProfileActive } from '../services/storage.js';
 import { apiUrl } from '../services/apiOrigin.js';
+import { getAltSources, getPreferredSourceKey, setPreferredSourceKey } from '../services/xtreamAltSources.js';
 
 const FAVS_STORAGE_KEY = 'cinepulse_live_favs';
 
@@ -46,6 +47,7 @@ export function renderLiveTvView() {
     : (allChannels.find(c => c.id === 'ch_trt1') || allChannels[0]);
   let searchQuery = '';
   let activeHls = null;
+  let activeMpegts = null;
   let isMuted = false;
   let currentVolume = 1.0;
   let controlsTimeout = null;
@@ -231,6 +233,21 @@ export function renderLiveTvView() {
                 </div>
               </div>
 
+              <!-- Alternatif Kaynak Seçici (aynı kanal, birden fazla panel) -->
+              <div class="tv-quality-wrapper" id="tv-source-wrapper">
+                <button class="tv-ctrl-action-btn tv-quality-btn" id="tv-btn-source" title="Alternatif Kaynak Seç">
+                  <i data-lucide="layers" style="width:17px;height:17px;"></i>
+                  <span class="tv-quality-badge-text" id="tv-source-badge">SRC 1</span>
+                </button>
+                <div class="tv-quality-menu hidden" id="tv-source-menu">
+                  <div class="tv-quality-menu-header">
+                    <i data-lucide="layers" style="width:13px;height:13px;color:#38bdf8;"></i>
+                    <span>Yayın Kaynağı</span>
+                  </div>
+                  <div class="tv-quality-options" id="tv-source-options"></div>
+                </div>
+              </div>
+
               <button class="tv-ctrl-action-btn" id="tv-btn-reload" title="Akışı Yenile (R)">
                 <i data-lucide="rotate-cw" style="width:18px;height:18px;"></i>
               </button>
@@ -383,6 +400,61 @@ export function renderLiveTvView() {
       const qualityMenu = container.querySelector('#tv-quality-menu');
       const qualityOptions = container.querySelector('#tv-quality-options');
 
+      // Alternatif kaynak seçici
+      const srcBtn = container.querySelector('#tv-btn-source');
+      const srcBadge = container.querySelector('#tv-source-badge');
+      const srcMenu = container.querySelector('#tv-source-menu');
+      const srcOptions = container.querySelector('#tv-source-options');
+      const srcWrapper = container.querySelector('#tv-source-wrapper');
+      let srcList = [];
+      let srcIdx = 0;
+
+      function buildSrcList(channel) {
+        const alts = getAltSources(channel);
+        srcList = [{ key: 'default', label: `Varsayılan Yayın (${channel.quality || 'HD'})`, url: channel.streamUrl, isDefault: true }, ...alts];
+        const pref = getPreferredSourceKey(channel.id);
+        const pi = pref ? srcList.findIndex(s => s.key === pref) : -1;
+        const hasAlts = alts.length > 0;
+        if (srcWrapper) srcWrapper.style.display = hasAlts ? '' : 'none';
+        srcIdx = pi >= 0 ? pi : 0;
+        renderSrcMenu();
+      }
+
+      function renderSrcMenu() {
+        if (!srcOptions || !srcBadge) return;
+        if (srcBadge) srcBadge.textContent = srcList.length > 1 ? `SRC ${srcIdx + 1}/${srcList.length}` : 'SRC 1';
+        srcOptions.innerHTML = srcList.map((s, i) => `
+          <button class="tv-quality-opt ${i === srcIdx ? 'active' : ''}" data-src="${i}">
+            ${i === srcIdx ? '<i data-lucide="check" style="width:12px;height:12px;"></i>' : '<span style="width:13px;display:inline-block;"></span>'}
+            <span>${s.label}</span>
+          </button>
+        `).join('');
+        srcOptions.querySelectorAll('[data-src]').forEach(opt => {
+          opt.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const i = parseInt(opt.dataset.src, 10);
+            if (i !== srcIdx) {
+              setPreferredSourceKey(activeChannel.id, srcList[i].key);
+              loadChannel(activeChannel, i);
+              showToast(`Kaynak değişti: ${srcList[i].label}`, 'success');
+            }
+            if (srcMenu) srcMenu.classList.add('hidden');
+          });
+        });
+        renderIcons();
+      }
+
+      if (srcBtn && srcMenu) {
+        srcBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          srcMenu.classList.toggle('hidden');
+          keepControlsActive();
+        });
+        scope.on(document, 'click', (e) => {
+          if (!e.target.closest('#tv-source-wrapper')) srcMenu.classList.add('hidden');
+        });
+      }
+
       const numpadBtn = container.querySelector('#tv-btn-numpad');
       const numpadModal = container.querySelector('#tv-numpad-modal');
       const numpadBackdrop = container.querySelector('#tv-numpad-modal-backdrop');
@@ -517,6 +589,7 @@ export function renderLiveTvView() {
         controlsTimeout = setTimeout(() => {
           screenEl.classList.remove('user-active');
           if (qualityMenu) qualityMenu.classList.add('hidden');
+          if (typeof srcMenu !== 'undefined' && srcMenu) srcMenu.classList.add('hidden');
         }, 3500);
       }
 
@@ -531,6 +604,7 @@ export function renderLiveTvView() {
             screenEl.classList.remove('user-active');
             if (controlsTimeout) clearTimeout(controlsTimeout);
             if (qualityMenu) qualityMenu.classList.add('hidden');
+            if (typeof srcMenu !== 'undefined' && srcMenu) srcMenu.classList.add('hidden');
           } else {
             keepControlsActive();
           }
@@ -823,10 +897,16 @@ export function renderLiveTvView() {
       // ─── HLS Stream Engine with Sequential Cancellation Token ───
       let channelPlaybackToken = 0;
 
-      async function loadChannel(channel) {
+      async function loadChannel(channel, forceSrcIdx = -1) {
         const myToken = ++channelPlaybackToken;
         activeChannel = channel;
         isPipDismissed = false;
+
+        // Alternatif kaynak listesini kur (tercih + varsayılan)
+        buildSrcList(channel);
+        if (forceSrcIdx >= 0 && forceSrcIdx < srcList.length) srcIdx = forceSrcIdx;
+        const useAlt = srcIdx > 0;
+        renderSrcMenu();
 
         // Update the zap UI immediately. Rebuilding the entire catalog here
         // made every switch feel delayed before playback even started.
@@ -842,6 +922,12 @@ export function renderLiveTvView() {
             activeHls.destroy();
           } catch (_) {}
           activeHls = null;
+        }
+        if (activeMpegts) {
+          try {
+            activeMpegts.destroy();
+          } catch (_) {}
+          activeMpegts = null;
         }
 
         if (videoEl) {
@@ -915,9 +1001,85 @@ export function renderLiveTvView() {
           return true;
         }
 
+        // mpegts.js CDN yükleyici (Xtream düz MPEG-TS kaynakları için, MSE transmux)
+        function loadMpegtsLib() {
+          if (window.mpegts) return Promise.resolve(window.mpegts);
+          if (window.__mpegtsPromise) return window.__mpegtsPromise;
+          window.__mpegtsPromise = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js';
+            s.onload = () => (window.mpegts ? resolve(window.mpegts) : reject(new Error('mpegts missing')));
+            s.onerror = () => reject(new Error('mpegts load failed'));
+            document.head.appendChild(s);
+          });
+          return window.__mpegtsPromise;
+        }
+
+        function playSrc(i) {
+          const s = srcList[i];
+          if (!s) {
+            showPlaybackError();
+            return;
+          }
+          if (s.isTs) startTs(s.url);
+          else startHls(s.url);
+        }
+
+        function startTs(url) {
+          if (channelPlaybackToken !== myToken) return;
+          url = apiUrl(url);
+          loadMpegtsLib().then((mpegts) => {
+            if (channelPlaybackToken !== myToken) return;
+            if (!mpegts.isSupported()) {
+              showPlaybackError();
+              return;
+            }
+            if (activeMpegts) {
+              try { activeMpegts.destroy(); } catch (_) {}
+              activeMpegts = null;
+            }
+            if (activeHls) {
+              try {
+                activeHls.stopLoad();
+                activeHls.detachMedia();
+                activeHls.destroy();
+              } catch (_) {}
+              activeHls = null;
+            }
+            try {
+              const player = mpegts.createPlayer({ type: 'mpegts', isLive: true, url });
+              activeMpegts = player;
+              player.attachMediaElement(videoEl);
+              player.load();
+              player.play().catch(() => {});
+              setupQualityMenu(null);
+              player.on(mpegts.Events.ERROR, () => {
+                if (channelPlaybackToken !== myToken) return;
+                console.warn('[LiveTV] mpegts error on:', url);
+                if (srcIdx < srcList.length - 1) {
+                  srcIdx += 1;
+                  renderSrcMenu();
+                  showToast(`Alternatif kaynağa geçiliyor: ${srcList[srcIdx].label}`, 'info');
+                  playSrc(srcIdx);
+                } else {
+                  showPlaybackError();
+                }
+              });
+            } catch (_) {
+              showPlaybackError();
+            }
+          }).catch(() => {
+            if (channelPlaybackToken === myToken) showPlaybackError();
+          });
+        }
+
         function startHls(url) {
           if (channelPlaybackToken !== myToken) return;
           url = apiUrl(url);
+          if (activeMpegts) {
+            try { activeMpegts.destroy(); } catch (_) {}
+            activeMpegts = null;
+          }
 
           if (Hls.isSupported()) {
             if (activeHls) {
@@ -968,6 +1130,14 @@ export function renderLiveTvView() {
               if (channelPlaybackToken !== myToken || activeHls !== hls) return;
               if (data.fatal) {
                 console.warn('[LiveTV] Fatal HLS error on:', url, data.type, data.details);
+                // Otomatik alternatif kaynak denemesi: listede sonraki kaynağa geç
+                if (srcIdx < srcList.length - 1) {
+                  srcIdx += 1;
+                  renderSrcMenu();
+                  showToast(`Alternatif kaynağa geçiliyor: ${srcList[srcIdx].label}`, 'info');
+                  playSrc(srcIdx);
+                  return;
+                }
                 if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                   if (channel.officialLiveId) {
                     tryFreshOfficialStream(url).then(recovered => {
@@ -1025,7 +1195,8 @@ export function renderLiveTvView() {
         if (channelPlaybackToken !== myToken) return;
 
         // Official DMAX/TLC playback URLs are signed and short-lived; resolve a fresh URL on every selection.
-        if (channel.officialLiveId) {
+        // Alternatif kaynak seçiliyse resmi çözümleme atlanır, panel HLS'i direkt oynatılır.
+        if (channel.officialLiveId && !useAlt) {
           tryFreshOfficialStream('', true).then(recovered => {
             if (recovered || channelPlaybackToken !== myToken) return;
             tryFreshOfficialStream('', true).then(retried => {
@@ -1033,7 +1204,7 @@ export function renderLiveTvView() {
             });
           });
         } else {
-          startHls(channel.streamUrl);
+          playSrc(srcIdx);
         }
         videoEl.muted = isMuted;
         videoEl.volume = currentVolume;
