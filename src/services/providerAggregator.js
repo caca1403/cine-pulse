@@ -44,10 +44,13 @@ const streamServersCache = new Map();
 function cleanTitle(raw) {
   if (!raw) return '';
   return raw
+    .replace(/\s*-\s*B\d+.*$/i, '')
+    .replace(/\s*-\s*Bölüm\s*\d+.*$/i, '')
     .replace(/\s*-\s*S\d+E\d+.*$/i, '')
     .replace(/\s*-\s*S\d+.*$/i, '')
     .replace(/\s*-\s*\d+\.\s*Sezon.*$/i, '')
     .replace(/\s*\(\d{4}\).*/, '')
+    .replace(/\s+poster$/i, '')
     .trim();
 }
 
@@ -82,6 +85,16 @@ function resolveCandidateTitlesSync(targetTitle, originalTitle) {
       .replace(/\b(II|III|IV|V|VI)\b/g, '')
       .trim();
     if (noNums && noNums.length > 2) expanded.add(noNums);
+
+    // Strip [Dublajlı] / (Dublajlı) prefix or suffix for cross-provider matching
+    const noDub = t
+      .replace(/\s*[\(\[]\s*dublajl[ıi]\s*[\)\]]\s*/gi, '')
+      .replace(/\s+dublajl[ıi]$/gi, '')
+      .trim();
+    if (noDub && noDub.length > 2) {
+      expanded.add(noDub);
+      expanded.add(cleanTitle(noDub));
+    }
   }
 
   return Array.from(expanded).filter(Boolean);
@@ -196,6 +209,7 @@ function formatStreamItem(s, category, fallbackName) {
 
   let badge = s.badge || (category === 'dubbed' ? '  TR Dublaj' : '  TR Altyazı');
   const lowerName = (finalDisplayName || '').toLowerCase();
+  const streamId = (s.id || '').toLowerCase();
   if (lowerName.includes('hdfc') || lowerName.includes('hdfilmcehennemi')) {
     badge = category === 'dubbed' ? '  HDFC Dublaj 1080p' : '  HDFC Altyazı 1080p';
   } else if (lowerName.includes('dzb') || lowerName.includes('dizibal') || lowerName.includes('dp')) {
@@ -212,9 +226,9 @@ function formatStreamItem(s, category, fallbackName) {
     badge = '  LookMovie 1080p';
   } else if (lowerName.includes('2embed')) {
     badge = '  2Embed 1080p';
-  } else if (lowerName.includes('dramalar') || id.startsWith('dml_')) {
+  } else if (lowerName.includes('dramalar') || streamId.startsWith('dml_')) {
     badge = '👑 Dramalar VIP';
-  } else if (lowerName.includes('dramadizilerim') || id.startsWith('ddz_')) {
+  } else if (lowerName.includes('dramadizilerim') || streamId.startsWith('ddz_')) {
     badge = '🎭 DDZ VIP';
   }
 
@@ -468,6 +482,11 @@ export async function getStreamingServersProgressive({
 
   // Kısa diziler için özel izole sağlayıcı listesi (SmashyStream, LookMovie, Sinewix vb. film sağlayıcıları çağrılmaz)
   if (isShortDrama) {
+    const rawDramaSlug = tmdbId ? String(tmdbId).replace(/^(ddz_|dml_)/, '') : '';
+    if (rawDramaSlug) {
+      candidateTitles = [...new Set([...candidateTitles, rawDramaSlug, tmdbId])];
+    }
+
     const dramaTasks = [
       // 1. Dramalar.com VIP (Doğrudan kesintisiz CDN 1080p HLS)
       fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })

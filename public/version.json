@@ -1,10 +1,10 @@
 {
-  "version": "1.1.45",
-  "versionCode": 155,
+  "version": "1.1.46",
+  "versionCode": 156,
   "releaseDate": "2026-10-04",
-  "title": "CinePulse Android v1.1.45",
-  "releaseNotes": "• Yeni nesil Dramalar.com 1080p yüksek hızlı HLS akış motoru eklendi.\n• Kısa dizilerde (Short Dramas) çalışmayan linkler ve link bulunamama sorunları giderildi.\n• VidSrc küresel olarak kaldırıldı, SmashyStream kısa dizilerden izole edildi.\n• Performans ve oynatıcı iyileştirmeleri yapıldı.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.45/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.45/cinepulse.apk",
+  "title": "CinePulse Android v1.1.46",
+  "releaseNotes": "• Kısa dizi kataloğu tamamen DramaDizilerim ile stabilize edildi ve mükerrer kartlar engellendi.\n• Başlıklardaki bölüm ve poster ekleri temizlenerek kaynak bulamama hatası giderildi.\n• Bölüm oynatıldığında hem Dramalar VIP hem DramaDizilerim VIP 1080p HLS kaynakları eş zamanlı olarak sunuluyor.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.46/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.46/cinepulse.apk",
   "mandatory": false
 }

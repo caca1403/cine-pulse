@@ -11,7 +11,6 @@ import {
   fetchDramaDetails
 } from '../services/dramaDizilerimScraper.js';
 import {
-  searchDramalar,
   fetchDramalarDetails
 } from '../services/dramalarScraper.js';
 import { openPlayerModal } from '../components/openPlayer.js';
@@ -184,28 +183,14 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
       const fetchResultPage = async page => {
         const query = getActiveQuery();
         if (query) {
-          const [ddzResults, dmlResults] = await Promise.allSettled([
-            fetchDramaCatalog({ query, page }),
-            searchDramalar(query, page)
-          ]);
-          const ddz = ddzResults.status === 'fulfilled' && Array.isArray(ddzResults.value) ? ddzResults.value : [];
-          const dml = dmlResults.status === 'fulfilled' && Array.isArray(dmlResults.value) ? dmlResults.value.map(d => ({
-            ...d,
-            badge: d.title.toLowerCase().includes('dublaj') ? '🇹🇷 DUBLAJ' : 'TR ALTYAZI',
-            isDubbed: d.title.toLowerCase().includes('dublaj')
-          })) : [];
-
-          // Deduplicate by clean slug
+          const results = await fetchDramaCatalog({ query, page });
           const seen = new Set();
-          const combined = [];
-          for (const item of [...dml, ...ddz]) {
-            const cleanSlug = item.slug.replace(/^(ddz_|dml_)/, '');
-            if (!seen.has(cleanSlug)) {
-              seen.add(cleanSlug);
-              combined.push(item);
-            }
-          }
-          return combined;
+          return (Array.isArray(results) ? results : []).filter(item => {
+            const cleanSlug = (item.slug || '').replace(/^(ddz_|dml_)/, '');
+            if (!cleanSlug || seen.has(cleanSlug)) return false;
+            seen.add(cleanSlug);
+            return true;
+          });
         }
         return getCatalogPage(page);
       };

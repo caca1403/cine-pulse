@@ -88,6 +88,17 @@ export function extractCleanImageUrl(raw) {
   return raw;
 }
 
+function cleanDramaTitle(rawTitle, fallback = '') {
+  if (!rawTitle) return fallback;
+  return rawTitle
+    .replace(/<[^>]+>/g, '')
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+poster$/i, '')
+    .trim();
+}
+
 /**
  * Searches DramaDizilerim for candidate short dramas.
  * The site paginates search results, so `page` selects which result page to read.
@@ -115,7 +126,7 @@ export async function searchDramaDizilerim(query, page = 1) {
     const slug = match[1];
     const inner = match[2];
     const titleMatch = inner.match(/alt=["']([^"']+)["']/i) || inner.match(/<h[2-6][^>]*>(.*?)<\/h[2-6]>/i);
-    const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").trim() : slug;
+    const title = cleanDramaTitle(titleMatch ? titleMatch[1] : null, slug);
     const imgMatch = inner.match(/src=["']([^"']+)["']/i);
     const poster = imgMatch ? extractCleanImageUrl(imgMatch[1].replace(/&amp;/g, '&')) : '';
     const isDubbed = title.toLowerCase().includes('dublaj');
@@ -153,7 +164,7 @@ export async function fetchTrendingDramas() {
     const inner = match[2];
     const imgMatch = inner.match(/src=["']([^"']+)["']/i);
     const titleMatch = inner.match(/alt=["']([^"']+)["']/i) || inner.match(/<h[2-6][^>]*>(.*?)<\/h[2-6]>/i);
-    const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").trim() : slug;
+    const title = cleanDramaTitle(titleMatch ? titleMatch[1] : null, slug);
     const poster = imgMatch ? extractCleanImageUrl(imgMatch[1].replace(/&amp;/g, '&')) : '';
     const isDubbed = title.toLowerCase().includes('dublaj');
 
@@ -196,7 +207,7 @@ export async function fetchDramaCatalog({ page = 1, query = '' } = {}) {
     const inner = match[2];
     const imgMatch = inner.match(/src=["']([^"']+)["']/i);
     const titleMatch = inner.match(/alt=["']([^"']+)["']/i) || inner.match(/<h[2-6][^>]*>(.*?)<\/h[2-6]>/i);
-    const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").trim() : slug;
+    const title = cleanDramaTitle(titleMatch ? titleMatch[1] : null, slug);
     const poster = imgMatch ? extractCleanImageUrl(imgMatch[1].replace(/&amp;/g, '&')) : '';
     const isDubbed = title.toLowerCase().includes('dublaj');
 
@@ -228,7 +239,7 @@ export async function fetchDramaDetails(slug) {
   if (!html) return null;
 
   const titleMatch = html.match(/<h1[^>]*>(.*?)<\/h1>/i);
-  const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").trim() : slug;
+  const title = cleanDramaTitle(titleMatch ? titleMatch[1] : null, slug);
 
   // Extract complete, untruncated drama synopsis
   let description = '';
