@@ -8,8 +8,8 @@ import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
 import { App } from '@capacitor/app';
 
-export const CURRENT_APP_VERSION = '1.1.41';
-export const CURRENT_VERSION_CODE = 151;
+export const CURRENT_APP_VERSION = '1.1.42';
+export const CURRENT_VERSION_CODE = 152;
 
 // The deployed manifest has explicit CORS headers. GitHub's release URL redirects
 // through several hosts and can fail WebView fetches before the app can notify.
@@ -19,17 +19,8 @@ let lastSuccessfulUpdateCheck = 0;
 let automaticChecksInitialized = false;
 const UPDATE_CHECK_COOLDOWN_MS = 60_000;
 
-/**
- * Checks if running as a native Android app via Capacitor
- */
-export function isNativeAndroidApp() {
-  if (typeof window === 'undefined') return false;
-  return Boolean(
-    window.Capacitor?.isNativePlatform?.() ||
-    window.Capacitor?.getPlatform?.() === 'android' ||
-    navigator.userAgent.includes('CinePulseAndroid')
-  );
-}
+import { isNativeAndroidApp } from './platformBridge.js';
+export { isNativeAndroidApp };
 
 /**
  * Semver compare: returns true if remote > current

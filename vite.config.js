@@ -241,7 +241,19 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     minify: 'esbuild',
-    cssMinify: true
+    cssMinify: true,
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('/hls.js/')) return 'vendor-hls';
+          if (id.includes('/@capacitor/')) return 'vendor-capacitor';
+          if (id.includes('/lucide/')) return 'vendor-icons';
+          return undefined;
+        }
+      }
+    }
   },
   esbuild: {
     drop: ['console', 'debugger'],

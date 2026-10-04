@@ -33,7 +33,7 @@ import { showToast } from '../components/Toast.js';
 import { getDownloadedMediaList, deleteOfflineMedia, getDownloadedPlaybackUrl, getOfflinePosterUrl, formatBytes } from '../services/offlineManager.js';
 import { openPlayerModal } from '../components/openPlayer.js';
 import { getImageUrl, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { isNativeAndroidApp } from '../services/appUpdater.js';
+import { isNativeAndroidApp } from '../services/platformBridge.js';
 
 const escapeOfflineHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 

@@ -46,7 +46,7 @@ import {
 } from '../services/offlineManager.js';
 import { fetchDizisolEpisodeSources } from '../services/dizisolScraper.js';
 import { apiUrl } from '../services/apiOrigin.js';
-import { isNativeAndroidApp } from '../services/appUpdater.js';
+import { isNativeAndroidApp } from '../services/platformBridge.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 

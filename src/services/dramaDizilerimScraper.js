@@ -89,15 +89,20 @@ export function extractCleanImageUrl(raw) {
 }
 
 /**
- * Searches DramaDizilerim for candidate short dramas
+ * Searches DramaDizilerim for candidate short dramas.
+ * The site paginates search results, so `page` selects which result page to read.
  */
-export async function searchDramaDizilerim(query) {
+export async function searchDramaDizilerim(query, page = 1) {
   if (!query || typeof query !== 'string' || query.trim().length < 2) return [];
 
   const cleanQuery = query.trim();
-  const searchPath = `/search?q=${encodeURIComponent(cleanQuery)}`;
-  const res = await fetchSafe(searchPath);
-  if (!res) return [];
+  const pageNumber = Math.max(1, Number(page) || 1);
+  const searchPath = `/search?q=${encodeURIComponent(cleanQuery)}${pageNumber > 1 ? `&page=${pageNumber}` : ''}`;
+  const res = await fetchSafe(searchPath, { timeout: pageNumber > 1 ? 11000 : 6000 });
+  if (!res) {
+    if (pageNumber > 1) throw new Error(`Arama sonuçları yüklenemedi (sayfa ${pageNumber})`);
+    return [];
+  }
 
   const html = await res.text().catch(() => '');
   if (!html) return [];
@@ -172,7 +177,7 @@ export async function fetchTrendingDramas() {
  */
 export async function fetchDramaCatalog({ page = 1, query = '' } = {}) {
   if (query && query.trim().length >= 2) {
-    return searchDramaDizilerim(query);
+    return searchDramaDizilerim(query, page);
   }
 
   const path = `/dizi?page=${page}`;

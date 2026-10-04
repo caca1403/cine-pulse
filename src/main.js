@@ -5,119 +5,34 @@ import { renderIcons } from './services/icons.js';
 
 import { renderNavbar, attachNavbarEvents } from './components/Navbar.js';
 import { renderHomeView, clearHomeCache, cleanupHomeView } from './views/HomeView.js';
-import { renderDetailView } from './views/DetailView.js';
-import { renderLibraryView } from './views/LibraryView.js';
-import { renderDownloadsView } from './views/DownloadsView.js';
-import { renderDiscoverView } from './views/DiscoverView.js';
-import { renderPopularListView } from './views/PopularListView.js';
-import { renderLiveTvView } from './views/LiveTvView.js';
-import { renderAdminView } from './views/AdminView.js';
-import { renderDramaView } from './views/DramaView.js';
-import { checkAndShowProfileOnboarding } from './components/ProfileOnboardingModal.js';
-import { checkAndShowProductTour } from './components/ProductTour.js';
+// Non-home views and first-run modals are loaded on demand (code splitting).
+const loadView = {
+  detail: () => import('./views/DetailView.js'),
+  library: () => import('./views/LibraryView.js'),
+  downloads: () => import('./views/DownloadsView.js'),
+  discover: () => import('./views/DiscoverView.js'),
+  popular: () => import('./views/PopularListView.js'),
+  livetv: () => import('./views/LiveTvView.js'),
+  admin: () => import('./views/AdminView.js'),
+  drama: () => import('./views/DramaView.js')
+};
 import { trackScrollState, flushScrollState, restoreAllScrollState } from './services/scrollManager.js';
-import { initPwa } from './services/pwaManager.js';
 import { getUserSettings } from './services/storage.js';
 import { renderCardLayoutSwitcher, attachCardLayoutSwitcherEvents } from './components/CardLayoutSwitcher.js';
 import { grantAdminEntry, isAdminRouteAllowed } from './services/adminAccess.js';
 import { openDecisionRoomModal } from './components/DecisionRoomModal.js';
 import { initTraktAutoSync } from './services/traktService.js';
 import { getWatchHistory, saveWatchProgress, saveBatchWatchProgress } from './services/storage.js';
-import { initAppUpdater } from './services/appUpdater.js';
-import { App } from '@capacitor/app';
+import { initPlatformBridge } from './services/platformBridge.js';
 
-// Keep the native APK runtime distinct from mobile browsers. API routes are
-// hosted by Vercel, so relative /api requests must not resolve to the local
-// Capacitor WebView origin (https://localhost).
-const isNativeAndroid = Boolean(
-  window.Capacitor?.isNativePlatform?.() &&
-  window.Capacitor?.getPlatform?.() === 'android'
-);
-document.documentElement.classList.toggle('native-android', isNativeAndroid);
-const mobileWebQuery = matchMedia('(max-width: 768px)');
-document.documentElement.classList.toggle('mobile-web', !isNativeAndroid && mobileWebQuery.matches);
-mobileWebQuery.addEventListener?.('change', (event) => {
-  document.documentElement.classList.toggle('mobile-web', !isNativeAndroid && event.matches);
-});
-
-if (isNativeAndroid) {
-  const nativeFetch = window.fetch.bind(window);
-  const apiOrigin = 'https://cine-pulse-drab.vercel.app';
-  window.fetch = (input, init) => {
-    if (typeof input === 'string' && input.startsWith('/api/')) {
-      input = `${apiOrigin}${input}`;
-    } else if (input instanceof URL && input.origin === window.location.origin && input.pathname.startsWith('/api/')) {
-      input = `${apiOrigin}${input.pathname}${input.search}${input.hash}`;
-    } else if (typeof Request !== 'undefined' && input instanceof Request) {
-      const url = new URL(input.url);
-      if (url.origin === window.location.origin && url.pathname.startsWith('/api/')) {
-        input = new Request(`${apiOrigin}${url.pathname}${url.search}${url.hash}`, input);
-      }
-    }
-    return nativeFetch(input, init);
-  };
-}
-
-// Native Android Hardware Back-Button Support for APK
-if (typeof window !== 'undefined') {
-  try {
-    App.addListener('backButton', ({ canGoBack }) => {
-      const playerContainer = document.getElementById('player-modal-container') || document.querySelector('.player-modal-overlay');
-      if (playerContainer) {
-        const closeBtn = document.getElementById('player-close-btn');
-        if (closeBtn) closeBtn.click();
-        else playerContainer.remove();
-        return;
-      }
-
-      const openModal = document.querySelector('.modal-overlay, .decision-modal-overlay, .profile-modal-overlay, .data-manager-modal');
-      if (openModal) {
-        const closeBtn = openModal.querySelector('.modal-close, .btn-modal-close, [data-action="close"]');
-        if (closeBtn) closeBtn.click();
-        else openModal.remove();
-        return;
-      }
-
-      const currentHash = window.location.hash || '#home';
-      if (currentHash !== '#home' && currentHash !== '') {
-        if (canGoBack) {
-          window.history.back();
-        } else {
-          window.location.hash = '#home';
-        }
-        return;
-      }
-
-      App.exitApp();
-    });
-  } catch (_) {}
-}
+// Platform Köprüsünü Çalıştır:
+// Ortam tespitine göre Web veya Android platform modüllerini dinamik (lazy) yükler.
+initPlatformBridge();
 
 // Disable browser default scroll jump on SPA hash changes
 if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
-
-// Register PWA Service Worker for Mobile Web App capabilities.
-// Explicitly check for a new worker on every launch: mobile browsers otherwise
-// may keep a previous JavaScript bundle for up to a day after deployment.
-if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-  window.addEventListener('load', () => {
-    const workerBuild = '20260920-mobile-preview-2';
-    const reloadMarker = `cinepulse-sw-reloaded-${workerBuild}`;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (sessionStorage.getItem(reloadMarker)) return;
-      sessionStorage.setItem(reloadMarker, '1');
-      window.location.reload();
-    });
-    navigator.serviceWorker.register(`/sw.js?build=${workerBuild}`, { updateViaCache: 'none' })
-      .then((registration) => registration.update())
-      .catch(() => {});
-  });
-}
-
-// Initialize PWA installation events
-initPwa();
 
 // Private admin entry: Ctrl + Alt + Shift + F10. Kept at the application root
 // so it is registered exactly once and works from every regular view.
@@ -228,6 +143,7 @@ async function route() {
 
   // Dedicated Full-Screen Admin Screen (NO NAVBAR, NO BOTTOM DOCK, NO FOOTER)
   if (viewName === 'admin') {
+    const { renderAdminView } = await loadView.admin();
     const viewResult = await renderAdminView();
     if (generation !== routeGeneration) return;
     app.innerHTML = `
@@ -257,26 +173,26 @@ async function route() {
   if (viewName === 'home') {
     viewResult = await renderHomeView();
   } else if (viewName === 'detail') {
+    const { renderDetailView } = await loadView.detail();
     viewResult = await renderDetailView(params.type, params.id);
-  } else if (viewName === 'series') {
-    viewResult = await renderPopularListView('tv');
-  } else if (viewName === 'cartoons') {
-    viewResult = await renderPopularListView('cartoon');
-  } else if (viewName === 'movies') {
-    viewResult = await renderPopularListView('movie');
-  } else if (viewName === 'anime') {
-    viewResult = await renderPopularListView('anime');
-  } else if (viewName === 'documentary') {
-    viewResult = await renderPopularListView('documentary');
+  } else if (['series', 'cartoons', 'movies', 'anime', 'documentary'].includes(viewName)) {
+    const listTypes = { series: 'tv', cartoons: 'cartoon', movies: 'movie', anime: 'anime', documentary: 'documentary' };
+    const { renderPopularListView } = await loadView.popular();
+    viewResult = await renderPopularListView(listTypes[viewName]);
   } else if (viewName === 'livetv') {
+    const { renderLiveTvView } = await loadView.livetv();
     viewResult = renderLiveTvView();
   } else if (viewName === 'discover') {
+    const { renderDiscoverView } = await loadView.discover();
     viewResult = await renderDiscoverView('tv');
   } else if (viewName === 'library') {
+    const { renderLibraryView } = await loadView.library();
     viewResult = renderLibraryView();
   } else if (viewName === 'downloads') {
+    const { renderDownloadsView } = await loadView.downloads();
     viewResult = renderDownloadsView();
   } else if (viewName === 'dramas') {
+    const { renderDramaView } = await loadView.drama();
     viewResult = await renderDramaView(params.slug, params.q);
   }
 
@@ -325,9 +241,6 @@ window.addEventListener('hashchange', route);
 
 // Keep saved videos one tap away when connectivity drops. `navigator.onLine`
 // is used as a signal; downloaded playback itself remains available locally.
-window.addEventListener('offline', () => {
-  if (isNativeAndroid && window.location.hash !== '#downloads') window.location.hash = '#downloads';
-});
 // Module scripts run after parsing, so one initial route is enough.
 route();
 
@@ -344,14 +257,20 @@ setTimeout(async () => {
 }, 700);
 
 // Check if first-time visitor needs to create their personal profile
-setTimeout(() => {
-  checkAndShowProfileOnboarding();
+setTimeout(async () => {
+  try {
+    const { checkAndShowProfileOnboarding } = await import('./components/ProfileOnboardingModal.js');
+    checkAndShowProfileOnboarding();
+  } catch (_) {}
 }, 400);
 
 // Profile setup is completed before this guide; it then explains the core
 // parts of the product once and stores completion locally.
-setTimeout(() => {
-  checkAndShowProductTour();
+setTimeout(async () => {
+  try {
+    const { checkAndShowProductTour } = await import('./components/ProductTour.js');
+    checkAndShowProductTour();
+  } catch (_) {}
 }, 1200);
 
 // Keep Trakt synced on launch, after connecting, and when returning to the app.
@@ -360,9 +279,6 @@ window.addEventListener('cinepulse_trakt_auth_changed', (event) => {
   if (event.detail?.connected) initTraktAutoSync(traktStorageMethods);
 });
 initTraktAutoSync(traktStorageMethods);
-
-// Initialize mobile app auto-updater check (checks GitHub releases for latest version)
-initAppUpdater();
 
 // Data change event listeners (Only reload whole route when backup data is imported or cleared)
 const onExternalDataImport = (e) => {

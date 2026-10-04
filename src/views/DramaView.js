@@ -170,11 +170,24 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         return fetchDramaCatalog({ page });
       };
 
-      const canLoadMore = () => (activeTab === 'trending' || activeTab === 'all') && !currentSearchQuery && hasMore;
+      // Active text query: the search box wins, otherwise the selected category chip's keyword.
+      const getActiveQuery = () => {
+        const typed = currentSearchQuery.trim();
+        if (typed.length >= 2) return typed;
+        return CATEGORY_TABS.find(tab => tab.id === activeTab)?.query || '';
+      };
+
+      const fetchResultPage = page => {
+        const query = getActiveQuery();
+        return query ? fetchDramaCatalog({ query, page }) : getCatalogPage(page);
+      };
+
+      const canLoadMore = () => (activeTab === 'trending' || activeTab === 'all' || Boolean(getActiveQuery())) && hasMore;
 
       const loadNextPage = async () => {
         if (isLoading || !canLoadMore()) return;
         const nextPage = currentPage + 1;
+        const version = requestVersion;
         isLoading = true;
         loadMoreBtn.disabled = true;
         loadMoreWrap.classList.remove('hidden');
@@ -183,8 +196,7 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         loadMoreBtn.querySelector('span').textContent = 'Diziler yükleniyor...';
         let loaded = false;
         try {
-          const version = requestVersion;
-          const results = await getCatalogPage(nextPage);
+          const results = await fetchResultPage(nextPage);
           if (version !== requestVersion) return;
           const known = new Set(dramasList.map(drama => drama.slug));
           const fresh = results.filter(drama => !known.has(drama.slug) && known.add(drama.slug));
@@ -192,7 +204,7 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
           hasMore = fresh.length > 0;
           loaded = true;
           loadErrorCount = 0;
-          if (hasMore) primeCatalogPage(nextPage + 1);
+          if (hasMore && !getActiveQuery()) primeCatalogPage(nextPage + 1);
           if (fresh.length) {
             const previousCount = dramasList.length;
             dramasList.push(...fresh);
@@ -280,7 +292,10 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
 
           dramasList = results;
 
-          hasMore = activeTab === 'trending' || (activeTab === 'all' && results.length > 0);
+          // Trending is the front page only, so the catalog continues after it (page 1 next).
+          // Everything else (all / search / category keyword) continues from page 2.
+          if (activeTab !== 'trending') currentPage = 1;
+          hasMore = activeTab === 'trending' || results.length > 0;
           loadMoreWrap.classList.add('hidden');
 
           renderCards();

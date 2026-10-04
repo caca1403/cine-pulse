@@ -16,7 +16,7 @@ import { getActiveProfile } from '../services/storage.js';
 import { openNotificationCenterModal, getUnreadNotificationCount } from './NotificationCenterModal.js';
 import { openDecisionRoomModal } from './DecisionRoomModal.js';
 import { openTraktModal } from './TraktModal.js';
-import { isNativeAndroidApp } from '../services/appUpdater.js';
+import { isNativeAndroidApp } from '../services/platformBridge.js';
 
 export function renderNavbar(currentView = 'home') {
   const activeProfile = getActiveProfile();

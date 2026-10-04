@@ -9,8 +9,7 @@ import { getProfiles, getActiveProfile, setActiveProfile, addProfile, deleteProf
 import { showToast } from './Toast.js';
 import { openDataManagerModal } from './DataManagerModal.js';
 import { openTraktModal } from './TraktModal.js';
-import { promptInstall } from '../services/pwaManager.js';
-import { isNativeAndroidApp, checkForAppUpdates } from '../services/appUpdater.js';
+import { isNativeAndroidApp, checkForAppUpdates, promptAppInstall } from '../services/platformBridge.js';
 
 let activeProfileModal = null;
 
@@ -234,7 +233,7 @@ export function openProfileModal() {
     const pwaBtn = modalContainer.querySelector('#btn-modal-pwa-install');
     if (pwaBtn) {
       pwaBtn.onclick = () => {
-        promptInstall();
+        promptAppInstall();
       };
     }
 
