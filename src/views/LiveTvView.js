@@ -11,7 +11,7 @@ import { getChannelEpg, initEpgService, stopEpgService } from '../services/epgSe
 import { showToast } from '../components/Toast.js';
 import { isKidProfileActive } from '../services/storage.js';
 import { apiUrl } from '../services/apiOrigin.js';
-import { getAltSources, getPreferredSourceKey, setPreferredSourceKey } from '../services/xtreamAltSources.js';
+import { getAltSources, getPreferredSourceKey, setPreferredSourceKey, getRelayOrigin, setRelayOrigin } from '../services/xtreamAltSources.js';
 
 const FAVS_STORAGE_KEY = 'cinepulse_live_favs';
 
@@ -428,7 +428,12 @@ export function renderLiveTvView() {
             ${i === srcIdx ? '<i data-lucide="check" style="width:12px;height:12px;"></i>' : '<span style="width:13px;display:inline-block;"></span>'}
             <span>${s.label}</span>
           </button>
-        `).join('');
+        `).join('') + `
+          <button class="tv-quality-opt" data-relay="1" title="Panel kaynakları için ev relay adresi">
+            <span style="width:13px;display:inline-block;">🔧</span>
+            <span>Relay: ${getRelayOrigin() ? '✅ ayarlı' : '❌ yok (dokun)'}</span>
+          </button>
+        `;
         srcOptions.querySelectorAll('[data-src]').forEach(opt => {
           opt.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -441,6 +446,19 @@ export function renderLiveTvView() {
             if (srcMenu) srcMenu.classList.add('hidden');
           });
         });
+        const relayBtn = srcOptions.querySelector('[data-relay]');
+        if (relayBtn) {
+          relayBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const cur = getRelayOrigin();
+            const next = window.prompt('Ev relay adresi (cloudflared https URL):', cur || 'https://');
+            if (next === null) return;
+            setRelayOrigin(next);
+            showToast(next.trim() ? `Relay kaydedildi: ${next.trim()}` : 'Relay temizlendi', 'success');
+            loadChannel(activeChannel);
+            if (srcMenu) srcMenu.classList.add('hidden');
+          });
+        }
         renderIcons();
       }
 

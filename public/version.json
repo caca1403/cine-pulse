@@ -1,10 +1,10 @@
 {
-  "version": "1.1.48",
-  "versionCode": 158,
+  "version": "1.1.49",
+  "versionCode": 159,
   "releaseDate": "2026-10-05",
-  "title": "CinePulse Android v1.1.48",
-  "releaseNotes": "• SRC kaynak geçişi sağlamlaştırıldı: hata veren kaynak atlanıp denenmemiş sonrakine geçiliyor, takılma yok.\n• Tekrar düğmesi sıradaki kaynağı dener; 20sn donma yerine otomatik kaynak değişimi.\n• Yerel geliştirmede panel TS akışları yerel proxy üzerinden oynatılıyor.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.48/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.48/cinepulse.apk",
+  "title": "CinePulse Android v1.1.49",
+  "releaseNotes": "• Ev relay (Cloudflare Tunnel) desteği: SRC menüsüne Relay adresi girilerek panel kaynakları ev IPsi üzerinden oynatılır.\n• Panel Cloudflare engeline takılan üretim/APK ortamında kaynaklar zarifçe atlanır.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.49/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.49/cinepulse.apk",
   "mandatory": false
 }

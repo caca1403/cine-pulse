@@ -72,8 +72,44 @@ export function buildXtreamTs(panel, streamId) {
   return `http://${HOST}/${panel.user}/${panel.pass}/${streamId}`;
 }
 
+// Ev relay (Cloudflare Tunnel) adresi: önce build-time env, sonra localStorage.
+// Relay yoksa üretimde göreli URL (Vercel) kullanılır ve zarifçe geçilir.
+const RELAY_KEY = 'cinepulse_xtream_relay';
+
+export function getRelayOrigin() {
+  try {
+    const env = String(import.meta.env?.VITE_XTREAM_RELAY_ORIGIN || '').replace(/\/$/, '');
+    if (env) return env;
+  } catch (_) {}
+  try {
+    return String(localStorage.getItem(RELAY_KEY) || '').replace(/\/$/, '');
+  } catch (_) {
+    return '';
+  }
+}
+
+export function setRelayOrigin(url) {
+  try {
+    localStorage.setItem(RELAY_KEY, String(url || '').trim().replace(/\/$/, ''));
+  } catch (_) {}
+}
+
+function tsProxyBase() {
+  try {
+    const loc = window.location;
+    const host = loc?.hostname || '';
+    const isNative = Boolean(window.Capacitor?.isNativePlatform?.()) || loc?.protocol === 'capacitor:';
+    // Yerel geliştirme: vite -> localhost:4000 (ev IP'sinden panele erişir)
+    if (!isNative && (host === 'localhost' || host === '127.0.0.1')) return '';
+    // Üretim/APK: ev relay'i varsa oraya, yoksa göreli URL (başarısız olur, geçilir)
+    return getRelayOrigin();
+  } catch (_) {
+    return '';
+  }
+}
+
 export function toProxiedTs(tsUrl) {
-  return `/api/hls_proxy?url=${encodeURIComponent(tsUrl)}`;
+  return `${tsProxyBase()}/api/hls_proxy?url=${encodeURIComponent(tsUrl)}`;
 }
 
 // Bir kanal için alternatif kaynak listesi: [{ key, label, url(proxied TS), isTs }]
