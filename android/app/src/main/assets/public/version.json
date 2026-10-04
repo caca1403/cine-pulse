@@ -1,10 +1,10 @@
 {
-  "version": "1.1.43",
-  "versionCode": 153,
+  "version": "1.1.44",
+  "versionCode": 154,
   "releaseDate": "2026-10-04",
-  "title": "CinePulse Android v1.1.43",
-  "releaseNotes": "• Yeni nesil kompakt ve akıllı yayın kaynakları & dil çubuğu (Smart Sources Bar) eklendi.\n• Web ve APK kod mimarisi Platform Köprüsü ile ayrıldı.\n• Kısa diziler & Drama kataloğunda arama ve kategori sonuçları için tam sayfalı sonsuz kaydırma desteği eklendi.\n• Başlangıç paket boyutu %40 hafifletilerek açılış ve gezinme performansı artırıldı.\n• Kararlılık ve hata düzeltmeleri yapıldı.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.43/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.43/cinepulse.apk",
+  "title": "CinePulse Android v1.1.44",
+  "releaseNotes": "• İzleme durumu ve bölüm şeridi kart görselinin hemen altına yapışık tam genişlikte geri yüklendi.\n• Yeni nesil kompakt ve akıllı yayın kaynakları çubuğu (Smart Sources Bar) eklendi.\n• Web ve APK kod mimarisi Platform Köprüsü ile ayrıldı.\n• Kararlılık ve hata düzeltmeleri yapıldı.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.44/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.44/cinepulse.apk",
   "mandatory": false
 }

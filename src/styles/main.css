@@ -2928,7 +2928,13 @@ html.mobile-web .navbar {
   -webkit-backdrop-filter: blur(6px);
 }
 
-/* Watch status strip — OUTSIDE the poster, full card width */
+/* Watch status strip — OUTSIDE the poster, full card width, attached to poster bottom */
+.media-card:has(.card-watch-status) .card-poster-wrapper {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: none;
+}
+
 .card-watch-status {
   display: flex;
   align-items: center;
