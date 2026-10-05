@@ -1034,7 +1034,7 @@ export function renderLiveTvView() {
             setTsBaseIdx(nb);
             buildSrcList(channel);
             triedSrc.clear();
-            const baseName = nb === 0 && bases[nb] !== '' ? 'ev relay' : (bases[nb] === '' ? 'doğrudan' : 'yedek ağ');
+            const baseName = !bases[nb] ? 'doğrudan' : (bases[nb].includes('workers.dev') ? 'yedek ağ' : `relay ${nb + 1}`);
             loadingEl.classList.remove('hidden');
             errorEl.classList.add('hidden');
             showToast(`Ağ değişti (${baseName}), tekrar deneniyor...`, 'info');

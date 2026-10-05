@@ -76,16 +76,25 @@ export function buildXtreamTs(panel, streamId) {
 // Relay yoksa üretimde göreli URL (Vercel) kullanılır ve zarifçe geçilir.
 const RELAY_KEY = 'cinepulse_xtream_relay';
 
-export function getRelayOrigin() {
+// Birden fazla relay desteklenir (virgülle ayrılır): birincil Oracle VPS,
+// yedek ev tunnel'ı gibi. Biri ölürse oynatıcı diğerine sessizce geçer.
+export function getRelayOrigins() {
+  const all = [];
   try {
-    const env = String(import.meta.env?.VITE_XTREAM_RELAY_ORIGIN || '').replace(/\/$/, '');
-    if (env) return env;
+    const env = String(import.meta.env?.VITE_XTREAM_RELAY_ORIGIN || '');
+    env.split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean)
+      .forEach(u => { if (!all.includes(u)) all.push(u); });
   } catch (_) {}
   try {
-    return String(localStorage.getItem(RELAY_KEY) || '').replace(/\/$/, '');
-  } catch (_) {
-    return '';
-  }
+    String(localStorage.getItem(RELAY_KEY) || '').split(',')
+      .map(s => s.trim().replace(/\/$/, '')).filter(Boolean)
+      .forEach(u => { if (!all.includes(u)) all.push(u); });
+  } catch (_) {}
+  return all;
+}
+
+export function getRelayOrigin() {
+  return getRelayOrigins()[0] || '';
 }
 
 export function setRelayOrigin(url) {
@@ -121,8 +130,7 @@ export function getTsBases() {
     if (!isNative && (host === 'localhost' || host === '127.0.0.1')) return [''];
   } catch (_) {}
   const bases = [];
-  const relay = getRelayOrigin();
-  if (relay) bases.push(relay);
+  for (const relay of getRelayOrigins()) bases.push(relay);
   bases.push(CF_WORKER);
   bases.push('');
   return bases;
