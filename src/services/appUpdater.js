@@ -7,9 +7,12 @@
 import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
 import { App } from '@capacitor/app';
+import pkg from '../../package.json';
 
-export const CURRENT_APP_VERSION = '1.1.46';
-export const CURRENT_VERSION_CODE = 156;
+// Tek doğruluk kaynağı package.json — release'te bump otomatik yansır,
+// çakılı sabit unutulup "güncelle" döngüsüne girilmez.
+export const CURRENT_APP_VERSION = pkg.version;
+export const CURRENT_VERSION_CODE = pkg.versionCode;
 
 // The deployed manifest has explicit CORS headers. GitHub's release URL redirects
 // through several hosts and can fail WebView fetches before the app can notify.

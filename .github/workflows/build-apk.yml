@@ -38,6 +38,8 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Build Web Application (Vite)
+        env:
+          VITE_XTREAM_RELAY_ORIGIN: ${{ secrets.VITE_XTREAM_RELAY_ORIGIN }}
         run: npm run build
 
       - name: Sync Web Assets to Android

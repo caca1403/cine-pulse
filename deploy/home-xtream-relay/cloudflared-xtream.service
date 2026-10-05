@@ -1,0 +1,14 @@
+[Unit]
+Description=Cloudflared Xtream Relay Tunnel
+After=network-online.target cinepulse-mediaserver.service
+Wants=network-online.target
+Requires=cinepulse-mediaserver.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cloudflared tunnel --config /etc/cloudflared/config.yml run
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

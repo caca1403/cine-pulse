@@ -108,8 +108,49 @@ function tsProxyBase() {
   }
 }
 
+// Değişen bazlarla (relay/worker/direct) otomatik devir için baz listesi.
+// '' = göreli URL (yerelde :4000, üretimde Vercel). WORKER sabit.
+const CF_WORKER = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+let tsBaseIdx = 0;
+
+export function getTsBases() {
+  try {
+    const loc = window.location;
+    const host = loc?.hostname || '';
+    const isNative = Boolean(window.Capacitor?.isNativePlatform?.()) || loc?.protocol === 'capacitor:';
+    if (!isNative && (host === 'localhost' || host === '127.0.0.1')) return [''];
+  } catch (_) {}
+  const bases = [];
+  const relay = getRelayOrigin();
+  if (relay) bases.push(relay);
+  bases.push(CF_WORKER);
+  bases.push('');
+  return bases;
+}
+
+export function getTsBaseIdx() {
+  const bases = getTsBases();
+  return Math.min(tsBaseIdx, bases.length - 1);
+}
+
+export function setTsBaseIdx(i) {
+  tsBaseIdx = Math.max(0, i);
+}
+
+export function currentTsBase() {
+  const bases = getTsBases();
+  return bases[getTsBaseIdx()] ?? '';
+}
+
 export function toProxiedTs(tsUrl) {
-  return `${tsProxyBase()}/api/hls_proxy?url=${encodeURIComponent(tsUrl)}`;
+  const base = currentTsBase();
+  if (base === CF_WORKER) return toWorkerTs(tsUrl);
+  return `${base}/api/hls_proxy?url=${encodeURIComponent(tsUrl)}`;
+}
+
+// Worker '?url=' formunda proxy'ler (hls_proxy değil)
+export function toWorkerTs(tsUrl) {
+  return `${CF_WORKER}?url=${encodeURIComponent(tsUrl)}`;
 }
 
 // Bir kanal için alternatif kaynak listesi: [{ key, label, url(proxied TS), isTs }]

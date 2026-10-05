@@ -1,0 +1,14 @@
+[Unit]
+Description=CinePulse MediaServer (Xtream relay)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/İndirilenler/cine-pulse-main
+ExecStart=/usr/bin/node server/mediaServer.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

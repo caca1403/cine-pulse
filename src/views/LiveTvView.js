@@ -11,7 +11,7 @@ import { getChannelEpg, initEpgService, stopEpgService } from '../services/epgSe
 import { showToast } from '../components/Toast.js';
 import { isKidProfileActive } from '../services/storage.js';
 import { apiUrl } from '../services/apiOrigin.js';
-import { getAltSources, getPreferredSourceKey, setPreferredSourceKey, getRelayOrigin, setRelayOrigin } from '../services/xtreamAltSources.js';
+import { getAltSources, getPreferredSourceKey, setPreferredSourceKey, getRelayOrigin, setRelayOrigin, getTsBases, getTsBaseIdx, setTsBaseIdx } from '../services/xtreamAltSources.js';
 
 const FAVS_STORAGE_KEY = 'cinepulse_live_favs';
 
@@ -922,6 +922,7 @@ export function renderLiveTvView() {
 
         // Alternatif kaynak listesini kur (tercih + varsayılan)
         buildSrcList(channel);
+        triedBases.add(getTsBaseIdx());
         if (forceSrcIdx >= 0 && forceSrcIdx < srcList.length) srcIdx = forceSrcIdx;
         const useAlt = srcIdx > 0;
         renderSrcMenu();
@@ -979,6 +980,7 @@ export function renderLiveTvView() {
         let proxyFallbackAttempted = false;
         let mediaRecoveryAttempted = false;
         const triedSrc = new Set();
+        const triedBases = new Set();
         async function tryFreshOfficialStream(failedUrl, forceRefresh = true) {
           if (!channel.officialLiveId) return false;
           if (forceRefresh && officialRefreshAttempts >= 2) return false;
@@ -1011,7 +1013,8 @@ export function renderLiveTvView() {
           errorEl.classList.remove('hidden');
         }
 
-        // Denenmemiş sonraki kaynağa geç; kalmadıysa hata göster.
+        // Denenmemiş sonraki kaynağa geç; kaynaklar biterse baz değiştir
+        // (relay -> worker -> direct); bazlar da biterse hata göster.
         function advanceOrError() {
           if (channelPlaybackToken !== myToken) return;
           const next = srcList.findIndex((_, i) => !triedSrc.has(i));
@@ -1022,9 +1025,23 @@ export function renderLiveTvView() {
             errorEl.classList.add('hidden');
             showToast(`Alternatif kaynağa geçiliyor: ${srcList[next].label}`, 'info');
             playSrc(next);
-          } else {
-            showPlaybackError();
+            return;
           }
+          const bases = getTsBases();
+          const nb = bases.findIndex((_, i) => !triedBases.has(i));
+          if (nb >= 0) {
+            triedBases.add(nb);
+            setTsBaseIdx(nb);
+            buildSrcList(channel);
+            triedSrc.clear();
+            const baseName = nb === 0 && bases[nb] !== '' ? 'ev relay' : (bases[nb] === '' ? 'doğrudan' : 'yedek ağ');
+            loadingEl.classList.remove('hidden');
+            errorEl.classList.add('hidden');
+            showToast(`Ağ değişti (${baseName}), tekrar deneniyor...`, 'info');
+            playSrc(srcIdx);
+            return;
+          }
+          showPlaybackError();
         }
 
         function tryProxyFallback(failedUrl) {
