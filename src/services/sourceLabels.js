@@ -45,5 +45,5 @@ export function getAnonymousSourceLabel(source, siblings = []) {
     .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
   const index = peers.findIndex(s => s === source || (s.id && s.id === source?.id));
   const label = peers.length > 1 && index >= 0 ? `${family.alias} ${letter(index)}` : family.alias;
-  return source?.requiresVerification ? `${label} · Doğrulama gerekli` : label;
+  return source?.requiresVerification && !source?.verificationCompleted ? `${label} · Doğrulama gerekli` : label;
 }

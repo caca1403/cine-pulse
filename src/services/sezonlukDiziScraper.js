@@ -92,7 +92,7 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
     if (rres && rres.ok) {
       const rdata = await rres.json().catch(() => null);
       const verification = rdata?.requiresVerification && /^https:\/\/sezonlukdizi\.cc\//.test(rdata.pageUrl || '')
-        ? (rdata.verificationSources?.length ? rdata.verificationSources : [{ id: 'verification', language: isDub ? '0' : '1' }]).map(item => {
+        ? (rdata.verificationSources?.length ? rdata.verificationSources : [{ id: 'verification', language: isDub ? '0' : '1' }]).filter(item => !/pixel|filemoon/i.test(item.provider || '')).map(item => {
           const page = new URL(rdata.pageUrl);
           if (isDub && !page.pathname.includes('/dublaj/')) page.pathname = page.pathname.replace(/\/([^/]+\.html)$/, '/dublaj/$1');
           page.searchParams.set('cpAlternative', item.id);
@@ -186,6 +186,7 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
       const extractedSources = [];
 
       const sourceResults = await Promise.all(altJson.data.map(async item => {
+        if (/pixel|filemoon/i.test(item.baslik || '')) return null;
         const embedUrlEndpoint = `${baseDomain}/ajax/dataEmbed22.asp`;
 
         const emRes = await fetchWithWorkerFallback(embedUrlEndpoint, {
@@ -202,7 +203,7 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
         let iframeUrl = srcMatch ? srcMatch[1] : null;
 
         if (iframeUrl && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
-          if (/filemoon|bysejikuar|bysezoxexe/i.test(`${item.baslik || ''} ${iframeUrl}`)) return null;
+          if (/pixel|filemoon|bysejikuar|bysezoxexe/i.test(`${item.baslik || ''} ${iframeUrl}`)) return null;
           if (iframeUrl.startsWith('//')) {
             iframeUrl = 'https:' + iframeUrl;
           }

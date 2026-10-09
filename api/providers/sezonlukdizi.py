@@ -98,7 +98,7 @@ def resolve_episode(title='', original_title='', titles=None, season=1, episode=
             for item in alt['data']:
                 if not isinstance(item, dict) or not item.get('id'):
                     continue
-                if 'filemoon' in str(item.get('baslik') or '').lower():
+                if any(name in str(item.get('baslik') or '').lower() for name in ('filemoon', 'pixel')):
                     continue
                 em = post_form(f"{BASE}/ajax/dataEmbed22.asp", page_url,
                                {'id': str(item['id'])}, session_cookie=cookie)
@@ -106,7 +106,7 @@ def resolve_episode(title='', original_title='', titles=None, season=1, episode=
                 if not iframe or len(iframe) < 10:
                     continue
                 low = iframe.lower() + str(item.get('baslik') or '').lower()
-                if any(host in low for host in ('filemoon', 'bysejikuar', 'bysezoxexe')):
+                if any(host in low for host in ('filemoon', 'bysejikuar', 'bysezoxexe', 'pixeldrain')):
                     continue
                 if 'recaptcha' in low:
                     verification_page = page_url

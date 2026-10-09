@@ -8,6 +8,7 @@ import { showToast } from './Toast.js';
 import { getProviders, setProviderEnabled, persistProviderState } from '../services/providers/providerRegistry.js';
 import { getUserSettings, saveUserSettings } from '../services/storage.js';
 import { isDesktopApp } from '../services/platformBridge.js';
+import { canUseDesktopSetup } from '../services/desktopSetupPolicy.js';
 
 let currentStep = 1;
 const TOTAL_STEPS = 4;
@@ -147,6 +148,10 @@ export function closeSetupWizardModal() {
  * Kurulum Sihirbazı Modalı Aç
  */
 export async function openSetupWizardModal(options = {}) {
+  if (!canUseDesktopSetup(window.CinePulseDesktop, window.Capacitor)) {
+    closeSetupWizardModal();
+    return { opened: false, reason: 'desktop-only' };
+  }
   let container = document.getElementById('setup-wizard-modal');
   if (!container) {
     container = document.createElement('div');
@@ -324,7 +329,7 @@ function renderStep1Requirements() {
       <div>
         <div style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">1. Sistem & Motor Tanılaması</div>
         <p style="font-size: 0.84rem; color: #94a3b8; margin: 0; line-height: 1.5;">
-          CinePulse'ın kesintisiz 1080p/4K akış yapabilmesi için yerel servisler ve donanım hızlandırma durumu aşağıda doğrulanmaktadır.
+          Yerel servislerin ve donanım hızlandırmanın durumu aşağıda gösterilir. Oynatma uyumluluğu seçilen kaynağa bağlıdır.
         </p>
       </div>
 
@@ -379,7 +384,7 @@ function renderStep1Requirements() {
           </div>
           <div>
             <span style="font-size: 0.76rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; background: ${gpu.ok ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.15)'}; color: ${gpu.ok ? '#10b981' : '#cbd5e1'};">
-              ${gpu.ok ? 'Etkin (1080p/4K Akıcı)' : 'Yazılımsal'}
+              ${gpu.ok ? 'Donanım hızlandırma kullanılabilir' : 'Yazılımsal'}
             </span>
           </div>
         </div>
@@ -391,13 +396,13 @@ function renderStep1Requirements() {
               <i data-lucide="shield-check" style="width: 18px; height: 18px;"></i>
             </div>
             <div>
-              <div style="font-weight: 600; font-size: 0.92rem; color: #f1f5f9;">Cloudflare & Stealth Kalkanı</div>
-              <div style="font-size: 0.78rem; color: #94a3b8;">Ghost WebView anti-bot çözücü hazır</div>
+              <div style="font-weight: 600; font-size: 0.92rem; color: #f1f5f9;">Uygulama İçi Doğrulama</div>
+              <div style="font-size: 0.78rem; color: #94a3b8;">Destekli kaynaklarda kullanıcı doğrulama alanı</div>
             </div>
           </div>
           <div>
             <span style="font-size: 0.76rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; background: rgba(16,185,129,0.15); color: #10b981;">
-              Tam Koruma
+              Kaynağa bağlı
             </span>
           </div>
         </div>

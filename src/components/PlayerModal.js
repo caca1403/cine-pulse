@@ -357,7 +357,9 @@ export async function openPlayerModal({
       if (!btn) return;
       const span = btn.querySelector('span');
       const icon = btn.querySelector('[data-lucide]');
-      if (span) span.textContent = watched ? 'İzlendi' : 'İzlendi Yap';
+      if (span) span.textContent = watched ? 'İzlendi' : 'İzlendi olarak işaretle';
+      btn.setAttribute('aria-pressed', String(watched));
+      btn.title = watched ? 'İzlendi işaretini kaldır' : 'Bu bölümü izlendi olarak işaretle';
       if (icon) icon.setAttribute('data-lucide', watched ? 'check-circle-2' : 'check');
       if (watched) btn.classList.add('watched-active');
       else btn.classList.remove('watched-active');
@@ -3430,6 +3432,7 @@ export async function openPlayerModal({
           </div>
 
           <div class="player-action-cluster" aria-label="Oynatıcı seçenekleri">
+            ${isSeries ? `<button id="btn-toggle-watched-player" type="button" class="player-utility-action player-watched-action ${isWatched ? 'watched-active' : ''}" aria-pressed="${isWatched}" title="${isWatched ? 'İzlendi işaretini kaldır' : 'Bu bölümü izlendi olarak işaretle'}"><i data-lucide="${isWatched ? 'check-circle-2' : 'check'}"></i><span>${isWatched ? 'İzlendi' : 'İzlendi olarak işaretle'}</span></button>` : ''}
             <details class="player-status-menu">
               <summary class="player-status-trigger" title="İzleme durumu"><i data-lucide="bookmark"></i><span id="list-action-label">${isWatched ? 'İzlendi' : 'Listeme ekle'}</span><i data-lucide="chevron-down"></i></summary>
               <div class="player-status-options">
@@ -4011,18 +4014,9 @@ export async function openPlayerModal({
       });
     }
 
-    [document.getElementById('btn-toggle-watched-player'), document.getElementById('btn-toggle-watched-mobile')].forEach(btn => {
-      if (!btn) return;
-      const span = btn.querySelector('span');
-      const icon = btn.querySelector('[data-lucide]');
-      if (span) span.textContent = isWatched ? 'İzlendi' : 'İzlendi Yap';
-      if (icon) icon.setAttribute('data-lucide', isWatched ? 'check-circle-2' : 'check');
-      if (isWatched) {
-        btn.classList.add('watched-active');
-      } else {
-        btn.classList.remove('watched-active');
-      }
-    });
+    updateWatchedUI(isWatched);
+    const watchOption = modalContainer.querySelector('[data-watch-state="toggle"]');
+    if (watchOption) watchOption.innerHTML = `<i data-lucide="check-circle-2"></i>${isWatched ? 'İzlenmedi olarak işaretle' : 'İzlendi olarak işaretle'}`;
 
     showToast(isWatched ? '✓ İzlendi olarak işaretlendi.' : 'İzlendi işareti kaldırıldı.', 'success');
     if (isSeries) renderDrawerContent();
@@ -6063,13 +6057,10 @@ export async function openPlayerModal({
       });
       const unsubscribe = bridge.onVerificationPlayerResolved(({ requestId: resolvedId, url }) => {
         if (disposed || closed || resolvedId !== requestId || playbackRun !== playbackGeneration) return;
-        srv.url = srv.streamUrl = url;
-        srv.getUrl = () => url;
-        srv.requiresVerification = false;
-        srv.isIframe = true;
-        srv.type = 'embed';
+        // Continue in the same native view: cookies, click handlers and
+        // provider language/source controls must survive verification.
+        srv.verificationCompleted = true;
         updateActiveSourceLabel();
-        updatePlayerContainer();
       });
       playbackScope.add(unsubscribe);
       try {

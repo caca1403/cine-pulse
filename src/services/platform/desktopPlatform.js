@@ -4,6 +4,7 @@
    ========================================================================== */
 
 import { showToast } from '../../components/Toast.js';
+import { canUseDesktopSetup, needsDesktopSetup } from '../desktopSetupPolicy.js';
 
 export async function initDesktopPlatform() {
   console.log('[Platform] Desktop (Electron DEB/EXE) ortamı etkinleştirildi.');
@@ -26,18 +27,18 @@ export async function initDesktopPlatform() {
     console.warn('[DesktopPlatform] Provider durumu yüklenirken hata:', err);
   }
 
-  // 5. İlk Çalıştırma / Kurulum Sihirbazı Kontrolü
-  // SADECE ve SADECE Masaüstü (DEB/EXE) ortamında ilk açılışta açılır!
-  // Web veya APK ortamlarında bu kod asla çalışmaz.
-  if (!localStorage.getItem('cp_setup_done_v1')) {
-    setTimeout(async () => {
-      try {
+  // A URL flag or desktop-looking UA is not a native installation bridge.
+  // Healthy installations do not need an optimization wizard at every first run.
+  if (canUseDesktopSetup(window.CinePulseDesktop, window.Capacitor)) {
+    try {
+      const info = await window.CinePulseDesktop.getSystemInfo?.();
+      if (needsDesktopSetup(info)) {
         const { openSetupWizardModal } = await import('../../components/SetupWizardModal.js');
-        openSetupWizardModal();
-      } catch (e) {
-        console.warn('[DesktopPlatform] Setup wizard açılamadı:', e);
+        await openSetupWizardModal();
       }
-    }, 300);
+    } catch (error) {
+      console.warn('[DesktopPlatform] Gereksinim denetimi:', error);
+    }
   }
 }
 

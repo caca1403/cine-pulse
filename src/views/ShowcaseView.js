@@ -17,7 +17,7 @@ const benefits = [
 const comparison = [
   ['Keşif, arama ve yapım detayları', 'Var', 'Var', 'Var'],
   ['Listeler ve izleme ilerlemesi', 'Var', 'Var', 'Var'],
-  ['Film / dizi oynatma', 'Kaynağa bağlı', 'Daha geniş uyumluluk', 'Kaynağa bağlı'],
+  ['Film / dizi oynatma', 'Kaynağa bağlı', 'Kaynağa bağlı', 'Kaynağa bağlı'],
   ['Canlı TV ve yayın akışı', 'Yok', 'Var', 'Var'],
   ['İndirme ve çevrimdışı kütüphane', 'Yok', 'Yok', 'Desteklenen içeriklerde'],
   ['Uygulama içi gerçek tarayıcıyla doğrulama', 'Yok', 'Destekli yayınlarda', 'Kaynağa bağlı'],
@@ -26,7 +26,7 @@ const comparison = [
 const faqs = [
   ['Siteye girmek için uygulama indirmem gerekiyor mu?', 'Hayır. “Siteye Gir” ile normal CinePulse ekranına geçebilirsin. Keşif, arama, içerik detayları ve listeler tarayıcıda kullanılabilir. Uygulama, ek platform özellikleri isteyenler için bir seçenek.'],
   ['Web sürümünde tam olarak ne eksik?', 'Canlı TV, Android’in indirme / çevrimdışı kütüphanesi ve masaüstündeki gerçek dahili tarayıcıyla doğrulama webde bulunmuyor. Bazı yayınlar da tarayıcının bağlantı ve yerleştirme kuralları nedeniyle açılamayabilir. Webde oynatma seçilen kaynağa bağlıdır.'],
-  ['Uygulamada bütün yayınlar kesin çalışıyor mu?', 'Hayır. Masaüstünün yerel medya desteği ve doğrulama alanı daha fazla bağlantıyla uyumluluk sağlar; yine de yayın kaldırılmış, erişime kapalı veya geçici olarak bozuk olabilir. Böyle bir durumda başka bir alternatifi dene.'],
+  ['Uygulamada bütün yayınlar kesin çalışıyor mu?', 'Hayır. Masaüstünün yerel medya desteği ve doğrulama alanı bazı bağlantılarda ek imkân sağlar; yine de yayın kaldırılmış, erişime kapalı veya geçici olarak bozuk olabilir. Böyle bir durumda başka bir alternatifi dene.'],
   ['Hesap açmam veya giriş yapmam şart mı?', 'Temel kullanıma hesap açmadan başlayabilirsin. Kişisel profil bu cihazdaki deneyimini düzenler. Trakt bağlantısı ise izleme geçmişi ve listelerini senkronize etmek istediğinde kullanabileceğin isteğe bağlı bir özellik.'],
   ['Listelerim başka cihazda da görünür mü?', 'Yerel listelerin ve ilerlemen kullandığın tarayıcı / cihazda saklanır; kendiliğinden bütün cihazlara taşınmaz. Profildeki JSON yedekleme ve içe aktarma seçeneklerini kullanabilirsin. Trakt bağlantısı desteklediği veriler için ayrı bir senkronizasyon seçeneğidir.'],
   ['Android, EXE, DEB ve AppImage arasından hangisini seçmeliyim?', 'Android telefon veya tablet için APK; Windows için EXE; Debian / Ubuntu tabanlı Linux için DEB; diğer uygun Linux sistemleri için AppImage seç. Mac için bu sürümde bir masaüstü kurulum paketi sunulmuyor; web sürümünü kullanabilirsin.'],

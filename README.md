@@ -16,7 +16,7 @@ Film, dizi ve anime keşfi; kişisel listeler, kaldığın yerden devam etme ve 
 <a href="https://cine-pulse-drab.vercel.app/#showcase"><img src="docs/assets/view-tour.svg" alt="Sitedeki açılış tanıtımını gör" height="48" /></a>
 
 **Web · Windows · Linux · Android**  
-Güncel sürüm: **[v1.1.51](https://github.com/caca1403/cine-pulse/releases/tag/v1.1.51)**
+Güncel sürüm: **[v1.1.52](https://github.com/caca1403/cine-pulse/releases/tag/v1.1.52)**
 
 [Özellikler](#cinepulse-ile-neler-yapabilirsin) · [Platformunu seç](#platformunu-seç) · [İlk kullanım](#i̇lk-kullanım) · [Sürüm yenilikleri](#v1151-ile-gelenler)
 
@@ -56,10 +56,10 @@ Kurulum yapmadan bakmak istersen **[siteyi aç](https://cine-pulse-drab.vercel.a
 | Platform | Nasıl başlarsın? | İndirme / açılış |
 | :--- | :--- | :--- |
 | **Web** | Tarayıcıda aç; keşif, arama, listeler ve içerik detaylarından başla. | **[Siteyi aç](https://cine-pulse-drab.vercel.app/)** |
-| **Windows** | EXE kurulum sihirbazını çalıştır; uygulamayı masaüstü veya Başlat menüsünden aç. | [v1.1.51 EXE](https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-Setup-1.1.51.exe) |
-| **Linux / DEB** | Debian / Ubuntu tabanlı sistemlerde DEB paketini paket yöneticinle kur. | [v1.1.51 DEB](https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-1.1.51.deb) |
-| **Linux / AppImage** | Dosyaya çalıştırma izni ver ve aç; sistemine göre AppImage desteği gerekebilir. | [v1.1.51 AppImage](https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-1.1.51.AppImage) |
-| **Android** | `cinepulse.apk` dosyasını indir, Android'in uygulama kurulum adımlarını tamamla. | [v1.1.51 APK](https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/cinepulse.apk) |
+| **Windows** | EXE kurulum sihirbazını çalıştır; uygulamayı masaüstü veya Başlat menüsünden aç. | [v1.1.52 EXE](https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-Setup-1.1.52.exe) |
+| **Linux / DEB** | Debian / Ubuntu tabanlı sistemlerde DEB paketini paket yöneticinle kur. | [v1.1.52 DEB](https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-1.1.52.deb) |
+| **Linux / AppImage** | Dosyaya çalıştırma izni ver ve aç; sistemine göre AppImage desteği gerekebilir. | [v1.1.52 AppImage](https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-1.1.52.AppImage) |
+| **Android** | `cinepulse.apk` dosyasını indir, Android'in uygulama kurulum adımlarını tamamla. | [v1.1.52 APK](https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/cinepulse.apk) |
 
 **Dosyalar doğrudan indirilir; ZIP açman gerekmez.** EXE, DEB, AppImage ve APK sürüm sayfasında bulunur; bu depodaki ana dal uygulamanın kaynak kodunu içerir.
 
@@ -76,17 +76,16 @@ Windows'ta yeni EXE kurucusu mevcut kurulumun üzerine kurulur; Linux'ta kendi p
 3. **Dilini ve yayınını seç.** Dublaj / altyazılı listesinde mevcut seçenekleri gör. Gerektiğinde başka bir alternatife geç.
 4. **Kütüphaneni oluştur.** İlgini çekenleri listene ekle; izlemeye ara verdiğinde devam bölümünden geri dön.
 
-## v1.1.51 ile gelenler
+## v1.1.52 ile gelenler
 
-- **Oynatma ve hata yönetimi:** Medya bağlantıları iyileştirildi; eksik araçlar sessizce takılmak yerine açıklamalı hata verir.
-- **Daha kısa bekleme:** Kaynak istekleri paralel çalışır ve süre sınırları uygulanır. Ana sayfa yüklemesi başarısız olduğunda yeniden deneme seçeneği gösterilir.
-- **Daha sade yayın menüsü:** Anonim kaynak aileleri, ayrı dil seçimi; tekrarlanan dil, emoji ve kalite etiketleri kaldırıldı.
-- **Masaüstüne uygun yerleşim:** Yan panelde kesilen yayın menüsü düzeltildi; kaynak listesi kaydırılabilir.
-- **Uygulama içi doğrulama alanı:** Destekli yayınlarda kullanıcı doğrulaması için gerçek dahili tarayıcı eklendi. Gerçek doğrulama sonrası oynatma kontrolü devam ediyor.
-- **Kurulum ve güncelleme:** Windows gereksinim kontrolleri ve zaman aşımı iyileştirildi; güncelleme bağlantıları GitHub Releases ile eşlendi.
-- **Kalıcı Android imzası:** APK, önceki sürümlerle aynı release sertifikası kullanılarak imzalandı.
+- **Web için yeni açılış:** Platform karşılaştırması, sık sorulanlar ve doğrudan indirme seçenekleri; uygulamalar içerik ekranıyla açılır.
+- **Kesintisiz doğrulama oturumu:** Masaüstünde doğrulamadan sonra aynı dahili tarayıcı devam eder; üstteki dil ve alternatif çubuğu korunur.
+- **Daha kararlı alternatifler:** Çalışmayan seçenekler listeden ve dahili oynatıcı menüsünden kaldırıldı.
+- **Bölümü tamamla:** Oynatıcıdaki görünür “İzlendi olarak işaretle” düğmesi bölüm listesini günceller; mobilde de yazısı görünür.
+- **Gerektiğinde kurulum:** Web ve Android'de yerel kurulum sihirbazı gösterilmez. Masaüstünde yalnızca doğrulanmış eksik gereksinimlerde açılır.
+- **Tüm platformlar:** EXE, DEB, AppImage ve önceki Android sürümleriyle aynı kalıcı anahtarı kullanan APK.
 
-**[Sürüm notlarını ve tüm dosyaları görüntüle →](https://github.com/caca1403/cine-pulse/releases/tag/v1.1.51)**
+**[Sürüm notlarını ve tüm dosyaları görüntüle →](https://github.com/caca1403/cine-pulse/releases/tag/v1.1.52)**
 
 <details>
 <summary><strong>Geliştirici olarak çalıştırmak istiyorum</strong></summary>

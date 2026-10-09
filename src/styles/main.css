@@ -21129,3 +21129,8 @@ html.lowfx .onboarding-modal-card { backdrop-filter: none; }
   #player-modal .player-yt-sidebar { overflow: visible; max-height: none; }
   #player-modal .yt-sticky-top { position: static; }
 }
+
+/* Episode completion stays discoverable on phones as well as desktops. */
+.player-utility-action.player-watched-action { width:auto; padding:.45rem .65rem; border:1px solid rgba(223,255,118,.25); border-radius:10px; }
+.player-utility-action.player-watched-action span { display:inline; }
+.player-watched-action.watched-active { color:#dfff76; background:rgba(223,255,118,.1); }

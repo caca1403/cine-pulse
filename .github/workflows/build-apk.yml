@@ -86,11 +86,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         with:
-          name: CinePulse Mobil Uygulama (${{ github.ref_name }})
+          name: CinePulse ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           files: |
             cinepulse.apk
             public/version.json
-          draft: false
+          draft: true
           prerelease: false
-          generate_release_notes: true
+          generate_release_notes: false
+          body_path: docs/release-notes.md
