@@ -1,9 +1,122 @@
-# CinePulse
+<div align="center">
 
-CinePulse uygulaması ve kaynak kodu.
+<a href="https://cine-pulse-drab.vercel.app/">
+  <img src="docs/assets/cinepulse-cover.svg" alt="CinePulse — film, dizi, anime ve kişisel kütüphane; web, Windows, Linux ve Android" width="100%" />
+</a>
 
-- **Canlı demo:** [cine-pulse-drab.vercel.app](https://cine-pulse-drab.vercel.app/)
-- **Resmî production kaynağı:** Vercel, bu public `caca1403/cine-pulse` deposunun `main` dalından dağıtım yapar.
+### Keşfetmekten izlemeye. Tek bir akışta.
+
+Film, dizi ve anime keşfi; kişisel listeler, kaldığın yerden devam etme ve uygulamada canlı TV.  
+**CinePulse, izleme deneyimini kendi ekranında toplar.**
+
+<a href="https://cine-pulse-drab.vercel.app/"><img src="docs/assets/open-site.svg" alt="Siteyi Aç" height="48" /></a>
+&nbsp;
+<a href="https://github.com/caca1403/cine-pulse/releases"><img src="docs/assets/get-app.svg" alt="Uygulamayı İndir — tüm sürümler" height="48" /></a>
+&nbsp;
+<a href="https://cine-pulse-drab.vercel.app/#showcase"><img src="docs/assets/view-tour.svg" alt="Sitedeki açılış tanıtımını gör" height="48" /></a>
+
+**Web · Windows · Linux · Android**  
+Güncel sürüm: **[v1.1.51](https://github.com/caca1403/cine-pulse/releases/tag/v1.1.51)**
+
+[Özellikler](#cinepulse-ile-neler-yapabilirsin) · [Platformunu seç](#platformunu-seç) · [İlk kullanım](#ilk-kullanım) · [Sürüm yenilikleri](#v1151-ile-gelenler)
+
+</div>
+
+---
+
+## İzleyeceğin şeyi bul. Deneyimini kendin seç.
+
+CinePulse'un merkezinde içerik keşfi var. Ana sayfadaki önerilerden ilerle, bir yapımı ara veya kategorilere göz at. Detay ekranında konuyu, oyuncuları, sezonları ve bölümleri incele; ilgini çekenleri kişisel listene ekle.
+
+Oynatıcıyı açtığında dil ve yayın seçenekleri aynı ekranda kalır. Dublaj ve altyazılı seçenekler ayrı listelenir; alternatifler sade, anonim adlarla gösterilir. Bir seçenek çalışmadığında listeden diğerine geçebilirsin. İzleme ilerlemen bu cihazda saklanır, sonraki gelişinde kaldığın yerden devam edebilirsin.
+
+Koyu arayüz, neon yeşil vurgular ve sinema modu içeriği öne çıkarır. Masaüstünde detaylar ve bölüm listesi yan panelde durur; daha dar ekranlarda düzen ekran genişliğine uyum sağlar.
+
+## CinePulse ile neler yapabilirsin?
+
+| Deneyim | Seni ne bekliyor? |
+| :--- | :--- |
+| **İçerik keşfi** | Film, dizi, anime ve diğer kategoriler; arama, öneriler ve yapım detayları. |
+| **Dizi takibi** | Sezon ve bölüm seçimi, bölüm bilgileri ve izleme ilerlemesi. |
+| **Kendi kütüphanen** | Favoriler, izleme listesi, tamamlanan yapımlar ve devam ettiğin içerikler. |
+| **Dil ve yayın seçimi** | Dublaj / altyazılı ayrımı; aynı yapım için mevcut alternatiflere tek menüden erişim. |
+| **Oynatıcı kontrolleri** | Destekleyen yayınlarda ileri / geri sarma, hız, ses, altyazı, tam ekran ve sinema modu. |
+| **Profil seçenekleri** | Ayrı profiller, profil özelleştirmesi ve çocuk profiline uygun içerik filtreleri. |
+| **Trakt bağlantısı** | İsteğe bağlı hesap bağlantısıyla izleme geçmişi ve liste senkronizasyonu. |
+| **Canlı TV** | Masaüstü ve Android uygulamasında kanal listeleri ile mevcut yayın akışı bilgileri. |
+| **Android indirmeleri** | Desteklenen içerikleri indirip uygulamanın indirmeler / kütüphane bölümünden çevrimdışı açma. |
+| **Masaüstü doğrulaması** | Doğrulama isteyen destekli yayınlarda uygulama içindeki tarayıcı alanını kullanma; tamamlandığında oynatıcıya dönüş. |
+
+Yayınların erişilebilirliği ve kullanılabilen kontroller seçilen bağlantıya ve platforma göre değişebilir. Canlı TV web sürümünde kapalıdır; bunun için masaüstü veya Android uygulamasını seç.
+
+## Platformunu seç
+
+Kurulum yapmadan bakmak istersen **[siteyi aç](https://cine-pulse-drab.vercel.app/)**. Uygulama deneyimi için işletim sistemine uygun dosyayı **[GitHub Releases](https://github.com/caca1403/cine-pulse/releases)** üzerinden indir.
+
+| Platform | Nasıl başlarsın? | İndirme / açılış |
+| :--- | :--- | :--- |
+| **Web** | Tarayıcıda aç; keşif, arama, listeler ve içerik detaylarından başla. | **[Siteyi aç](https://cine-pulse-drab.vercel.app/)** |
+| **Windows** | EXE kurulum sihirbazını çalıştır; uygulamayı masaüstü veya Başlat menüsünden aç. | [v1.1.51 EXE](https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-Setup-1.1.51.exe) |
+| **Linux / DEB** | Debian / Ubuntu tabanlı sistemlerde DEB paketini paket yöneticinle kur. | [v1.1.51 DEB](https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-1.1.51.deb) |
+| **Linux / AppImage** | Dosyaya çalıştırma izni ver ve aç; sistemine göre AppImage desteği gerekebilir. | [v1.1.51 AppImage](https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-1.1.51.AppImage) |
+| **Android** | `cinepulse.apk` dosyasını indir, Android'in uygulama kurulum adımlarını tamamla. | [v1.1.51 APK](https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/cinepulse.apk) |
+
+**Dosyalar doğrudan indirilir; ZIP açman gerekmez.** EXE, DEB, AppImage ve APK sürüm sayfasında bulunur; bu depodaki ana dal uygulamanın kaynak kodunu içerir.
+
+### Güncelleme nasıl çalışır?
+
+Masaüstündeki güncelleme simgesi seni **[Releases listesine](https://github.com/caca1403/cine-pulse/releases)** götürür. Otomatik sürüm denetimi de daha yeni sürüm kodu yayımlandığında uygun platformun paketini önerir.
+
+Windows'ta yeni EXE kurucusu mevcut kurulumun üzerine kurulur; Linux'ta kendi paket biçimini kullanmalısın. Android sürümleri aynı kalıcı release anahtarıyla imzalanır, böylece imzası eşleşen yeni APK mevcut uygulamayı güncelleyebilir. Aynı sürüm numarasıyla yenilenen paketler için dosyayı yeniden indirip kur.
+
+## İlk kullanım
+
+1. **Siteyi veya uygulamayı aç.** Tarayıcıda ilk açılış tanıtımından başlayabilir, **[tanıtımı tekrar görüntüleyebilirsin](https://cine-pulse-drab.vercel.app/#showcase)**.
+2. **Bir yapım keşfet.** Arama yap veya ana sayfadaki kategorilerden ilerle. Dizilerde sezon ve bölümünü seç.
+3. **Dilini ve yayınını seç.** Dublaj / altyazılı listesinde mevcut seçenekleri gör. Gerektiğinde başka bir alternatife geç.
+4. **Kütüphaneni oluştur.** İlgini çekenleri listene ekle; izlemeye ara verdiğinde devam bölümünden geri dön.
+
+## v1.1.51 ile gelenler
+
+- **Oynatma ve hata yönetimi:** Medya bağlantıları iyileştirildi; eksik araçlar sessizce takılmak yerine açıklamalı hata verir.
+- **Daha kısa bekleme:** Kaynak istekleri paralel çalışır ve süre sınırları uygulanır. Ana sayfa yüklemesi başarısız olduğunda yeniden deneme seçeneği gösterilir.
+- **Daha sade yayın menüsü:** Anonim kaynak aileleri, ayrı dil seçimi; tekrarlanan dil, emoji ve kalite etiketleri kaldırıldı.
+- **Masaüstüne uygun yerleşim:** Yan panelde kesilen yayın menüsü düzeltildi; kaynak listesi kaydırılabilir.
+- **Uygulama içi doğrulama alanı:** Destekli yayınlarda kullanıcı doğrulaması için gerçek dahili tarayıcı eklendi. Gerçek doğrulama sonrası oynatma kontrolü devam ediyor.
+- **Kurulum ve güncelleme:** Windows gereksinim kontrolleri ve zaman aşımı iyileştirildi; güncelleme bağlantıları GitHub Releases ile eşlendi.
+- **Kalıcı Android imzası:** APK, önceki sürümlerle aynı release sertifikası kullanılarak imzalandı.
+
+**[Sürüm notlarını ve tüm dosyaları görüntüle →](https://github.com/caca1403/cine-pulse/releases/tag/v1.1.51)**
+
+<details>
+<summary><strong>Geliştirici olarak çalıştırmak istiyorum</strong></summary>
+
+Node.js 20 veya daha yeni bir sürüm kullan. Bağımlılıkları kurup geliştirme sunucusunu başlat:
+
+```bash
+npm install
+npm run dev
+```
+
+Masaüstü medya servisinin de gerekli olduğu geliştirmelerde ayrı bir terminalde:
+
+```bash
+npm run server
+```
+
+Windows, DEB ve AppImage paketlerini birlikte oluşturmak için:
+
+```bash
+npm run pack:all
+```
+
+Android'in release imzası GitHub Actions'taki kalıcı imzalama bilgilerini kullanır. Anahtar ve parolalar kaynak kodunda tutulmaz.
+
+**Resmî site:** Vercel, bu public `caca1403/cine-pulse` deposunun `main` dalından dağıtım yapar.
+
+</details>
+
+---
 
 ## Kaynak kodu, kullanım ve izin
 

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540" role="img" aria-labelledby="title desc">
+<title id="title">CinePulse — keşfet, seç, kaldığın yerden devam et</title>
+<desc id="desc">Koyu zemin ve neon yeşil çizgilerle CinePulse tanıtımı; sağda oynatıcı ve kişisel kütüphaneyi temsil eden bir arayüz illüstrasyonu.</desc>
+<defs>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#121a20"/><stop offset="1" stop-color="#07090e"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#dfff76" stop-opacity=".17"/><stop offset="1" stop-color="#dfff76" stop-opacity="0"/></radialGradient>
+ <linearGradient id="scene" x2="1" y2="1"><stop stop-color="#354840"/><stop offset=".5" stop-color="#182c32"/><stop offset="1" stop-color="#0b111a"/></linearGradient>
+ <linearGradient id="poster" x2="0" y2="1"><stop stop-color="#456654"/><stop offset="1" stop-color="#15261d"/></linearGradient>
+ <linearGradient id="poster2" x2="0" y2="1"><stop stop-color="#575079"/><stop offset="1" stop-color="#201b33"/></linearGradient>
+</defs>
+<rect x="1" y="1" width="1198" height="538" rx="28" fill="url(#bg)" stroke="#283036"/>
+<ellipse cx="915" cy="185" rx="350" ry="290" fill="url(#glow)"/>
+<path d="M0 450H115l24-34 24 65 25-106 25 75H450" fill="none" stroke="#dfff76" stroke-opacity=".1" stroke-width="2"/>
+<g font-family="Arial, Helvetica, sans-serif">
+ <rect x="58" y="55" width="184" height="30" rx="15" fill="#dfff76" fill-opacity=".09" stroke="#dfff76" stroke-opacity=".28"/>
+ <circle cx="77" cy="70" r="4" fill="#dfff76"/>
+ <text x="90" y="75" font-size="12" font-weight="700" letter-spacing="1.4" fill="#dfff76">CINEPULSE STUDIO</text>
+ <text x="55" y="160" font-size="65" font-weight="800" fill="#f5f7f8">Cine<tspan fill="#dfff76">Pulse</tspan></text>
+ <text x="58" y="219" font-size="32" font-weight="700" fill="#f5f7f8">Bir sonraki hikâyen,</text>
+ <text x="58" y="261" font-size="32" font-weight="700" fill="#f5f7f8">tek bir ekranda.</text>
+ <text x="58" y="308" font-size="17" fill="#abb7c1">Film, dizi, anime ve kişisel kütüphanen.</text>
+ <text x="58" y="335" font-size="17" fill="#abb7c1">Keşfet. Kaynağını seç. Devam et.</text>
+ <path d="M58 375H485" stroke="#2d363e"/>
+ <text x="58" y="408" font-size="13" letter-spacing="2" fill="#dfff76">WEB / WINDOWS / LINUX / ANDROID</text>
+ <text x="58" y="472" font-size="12" letter-spacing="1.4" fill="#77848f">SENİN EKRANIN. SENİN AKIŞIN.</text>
+ <g transform="translate(564 66)">
+  <rect width="574" height="408" rx="18" fill="#0b0f14" stroke="#3a463c"/>
+  <path d="M0 42H574" stroke="#252e35"/>
+  <circle cx="20" cy="21" r="4" fill="#dfff76"/><circle cx="35" cy="21" r="4" fill="#596270"/><circle cx="50" cy="21" r="4" fill="#596270"/>
+  <text x="73" y="26" fill="#b4bec9" font-size="11" letter-spacing="1.8">CINEPULSE / KEŞİF</text>
+  <rect x="20" y="61" width="534" height="186" rx="10" fill="url(#scene)"/>
+  <circle cx="459" cy="108" r="29" fill="#deedb2" fill-opacity=".13"/>
+  <path d="M20 211l98-61 71 49 89-87 79 89 111-60 86 70v36H20z" fill="#101c22"/>
+  <path d="M20 239l116-46 92 46 95-60 114 48 117-15v35H20z" fill="#081017"/>
+  <rect x="37" y="79" width="94" height="23" rx="11" fill="#dfff76"/>
+  <text x="48" y="95" fill="#182015" font-size="10" font-weight="700" letter-spacing="1">SANA ÖZEL</text>
+  <circle cx="287" cy="149" r="26" fill="#090d12" fill-opacity=".7" stroke="#dfff76" stroke-opacity=".7"/>
+  <path d="M280 137l19 12-19 12z" fill="#dfff76"/>
+  <text x="38" y="217" fill="#eef3f4" font-size="14" font-weight="700">Yeni bir hikâyeye hazır mısın?</text>
+  <text x="20" y="275" fill="#b8c3cb" font-size="11" font-weight="700" letter-spacing="1.2">KALDIĞIN YERDEN</text>
+  <g transform="translate(20 290)">
+   <rect width="164" height="85" rx="8" fill="url(#poster)"/>
+   <path d="M0 65l37-39 36 22 30-34 61 55v16H0z" fill="#101e1b"/>
+   <rect x="10" y="72" width="144" height="3" rx="1.5" fill="#9ba8a2" fill-opacity=".25"/><rect x="10" y="72" width="96" height="3" rx="1.5" fill="#dfff76"/>
+  </g>
+  <g transform="translate(204 290)">
+   <rect width="164" height="85" rx="8" fill="url(#poster2)"/>
+   <circle cx="114" cy="34" r="18" fill="#9e89c6" fill-opacity=".25"/>
+   <rect x="10" y="72" width="144" height="3" rx="1.5" fill="#9ba8a2" fill-opacity=".25"/><rect x="10" y="72" width="45" height="3" rx="1.5" fill="#dfff76"/>
+  </g>
+  <g transform="translate(388 290)">
+   <rect width="166" height="85" rx="8" fill="#222d39"/>
+   <path d="M36 55l23-32 32 38 25-45 26 42" fill="none" stroke="#70849b" stroke-width="2"/>
+   <rect x="10" y="72" width="146" height="3" rx="1.5" fill="#9ba8a2" fill-opacity=".25"/><rect x="10" y="72" width="118" height="3" rx="1.5" fill="#dfff76"/>
+  </g>
+ </g>
+</g>
+</svg>
