@@ -1,96 +1,38 @@
-name: Build and Release CinePulse Android APK
-
+name: Sign current CinePulse APK
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
-
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  build-apk:
-    name: Build & Package Android APK
+  sign:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Java JDK 21
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '21'
-
-      - name: Setup Android SDK (API 36)
-        uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v3
         with:
-          packages: 'platforms;android-36 build-tools;36.0.0'
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Node Dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Build Web Application (Vite)
+          packages: 'build-tools;36.0.0'
+      - name: Retrieve encrypted build and sign with existing release key
         env:
-          VITE_XTREAM_RELAY_ORIGIN: ${{ secrets.VITE_XTREAM_RELAY_ORIGIN }}
-        run: npm run build
-
-      - name: Sync Web Assets to Android
-        run: |
-          mkdir -p android/app/src/main/assets/public
-          cp -r dist/* android/app/src/main/assets/public/
-          cp capacitor.config.json android/app/src/main/assets/capacitor.config.json
-          npx cap copy android || true
-          node scripts/clean-android-apk.mjs
-
-      - name: Grant Execute Permission to Gradlew
-        run: chmod +x android/gradlew
-
-      - name: Prepare release signing key
-        run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/cinepulse.keystore"
-          test -s "$RUNNER_TEMP/cinepulse.keystore"
-        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CP_PAYLOAD_PASSWORD: ${{ secrets.CP_SIGNING_PAYLOAD_PASSWORD }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-
-      - name: Build Android Release APK
-        env:
-          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/cinepulse.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          cd android
-          ./gradlew assembleRelease --no-daemon --stacktrace
-
-      - name: Prepare APK Asset
-        run: |
-          cp android/app/build/outputs/apk/release/app-release.apk cinepulse.apk
-          ls -la cinepulse.apk
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+          set -euo pipefail
+          gh release download v1.1.51 --repo caca1403/cine-pulse --pattern cinepulse-signing-payload.enc
+          openssl enc -d -aes-256-cbc -pbkdf2 -in cinepulse-signing-payload.enc -out input.apk -pass env:CP_PAYLOAD_PASSWORD
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/cinepulse.keystore"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks "$RUNNER_TEMP/cinepulse.keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD --out cinepulse.apk input.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs cinepulse.apk > certificate.txt
+          grep -q '429f07887bd3ff17992faa552ff32f4f6eaea5a1dc7cfe27978578905e15e3d5' certificate.txt
+          rm -f input.apk cinepulse-signing-payload.enc "$RUNNER_TEMP/cinepulse.keystore"
+      - uses: actions/upload-artifact@v4
         with:
-          name: cinepulse-apk
+          name: cinepulse-apk-existing-key
           path: cinepulse.apk
-          retention-days: 14
-
-      - name: Publish to GitHub Releases (latest)
-        uses: softprops/action-gh-release@v2
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        with:
-          name: CinePulse Mobil Uygulama (${{ github.ref_name }})
-          tag_name: ${{ github.ref_name }}
-          files: |
-            cinepulse.apk
-            public/version.json
-          draft: false
-          prerelease: false
-          generate_release_notes: true
+          retention-days: 1
