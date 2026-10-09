@@ -22,12 +22,14 @@ function toTurkishSlug(title) {
 async function fetchWithWorkerFallback(targetUrl, options = {}) {
   const isBrowser = typeof window !== 'undefined';
 
-  // The same-origin proxy avoids an extra cross-origin round trip and behaves
-  // consistently in Chrome and Firefox. Keep the Worker as a fallback.
+  // Localhost'ta vite proxy -> :4000 (cookie'li SZD hatti); canlida Vercel API.
   if (isBrowser) {
     try {
+      const host = window.location?.hostname || '';
+      const isLocal = host === 'localhost' || host === '127.0.0.1';
       const u = new URL(targetUrl);
-      const res = await fetch(apiUrl(`/api/szd${u.pathname}${u.search}`), {
+      const szdUrl = isLocal ? `/api/szd${u.pathname}${u.search}` : apiUrl(`/api/szd${u.pathname}${u.search}`);
+      const res = await fetch(szdUrl, {
         ...options,
         headers: {
           ...(options.headers || {}),
@@ -74,6 +76,64 @@ async function fetchWithWorkerFallback(targetUrl, options = {}) {
 }
 
 export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
+  // Ozel backend resolver (birincil); basarisizsa klasik akisa dus.
+  try {
+    const host = typeof window !== 'undefined' ? (window.location?.hostname || '') : '';
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    const qs = new URLSearchParams({
+      provider: 'szd', type: 'tv', title: seriesTitle || (titles || [])[0] || '',
+      originalTitle: originalTitle || '', season: String(season || 1), episode: String(episode || 1),
+      isDub: isDub ? '1' : '0'
+    });
+    (titles || []).forEach((t, i) => { if (i < 4 && t) qs.append(`t${i}`, t); });
+    const rpath = `/api/resolve?${qs.toString()}`;
+    const rendpoint = (isLocal || typeof window === 'undefined') ? rpath : apiUrl(rpath);
+    const rres = await fetch(rendpoint, { signal: AbortSignal.timeout(50000) }).catch(() => null);
+    if (rres && rres.ok) {
+      const rdata = await rres.json().catch(() => null);
+      const verification = rdata?.requiresVerification && /^https:\/\/sezonlukdizi\.cc\//.test(rdata.pageUrl || '')
+        ? (rdata.verificationSources?.length ? rdata.verificationSources : [{ id: 'verification', language: isDub ? '0' : '1' }]).map(item => {
+          const page = new URL(rdata.pageUrl);
+          if (isDub && !page.pathname.includes('/dublaj/')) page.pathname = page.pathname.replace(/\/([^/]+\.html)$/, '/dublaj/$1');
+          page.searchParams.set('cpAlternative', item.id);
+          page.searchParams.set('cpLanguage', item.language ?? (isDub ? '0' : '1'));
+          const pageUrl = page.href;
+          return {
+            id: `szd_${item.id}_s${season}e${episode}`,
+            name: `SZ ${item.provider || 'Player'}`, displayName: `SZ ${item.provider || 'Player'}`,
+            category: isDub ? 'dubbed' : 'subtitled',
+            url: pageUrl, streamUrl: pageUrl, isIframe: true, type: 'embed',
+            requiresVerification: true, isDirectVideo: false, source: 'SZ',
+            getUrl: () => pageUrl
+          };
+        }) : [];
+      if (rdata && rdata.success && Array.isArray(rdata.streams) && rdata.streams.length > 0) {
+        const mapped = rdata.streams.map((s, i) => {
+          const prov = s.provider || 'SZ';
+          const label = `${prov} S${season}B${episode}`;
+          return {
+            id: `szd_${s.tag || i}_s${season}e${episode}`,
+            name: label,
+            displayName: label,
+            badge: `⚡ ${prov}`,
+            category: isDub ? 'dubbed' : 'subtitled',
+            url: s.streamUrl,
+            streamUrl: s.streamUrl,
+            isHls: /\.m3u8/i.test(s.streamUrl || ''),
+            isIframe: !/\.m3u8/i.test(s.streamUrl || ''),
+            type: /\.m3u8/i.test(s.streamUrl || '') ? 'hls' : 'embed',
+            isDirectVideo: false,
+            source: 'SZ',
+            subtitles: Array.isArray(s.subtitles) ? s.subtitles : [],
+            getUrl: () => s.streamUrl
+          };
+        }).filter((s) => s.streamUrl);
+        if (mapped.length > 0) return [...mapped, ...verification];
+      }
+      if (verification.length) return verification;
+    }
+  } catch (_) {}
+
   const allTitles = [...new Set([...titles, seriesTitle, originalTitle])].filter(t => t && typeof t === 'string' && t.trim().length > 1);
   if (allTitles.length === 0) return [];
 
@@ -142,16 +202,7 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
         let iframeUrl = srcMatch ? srcMatch[1] : null;
 
         if (iframeUrl && !iframeUrl.includes('reCAPTCHA') && iframeUrl.length > 10) {
-          if (
-            item.baslik?.toLowerCase().includes('filemoon') ||
-            item.baslik?.toLowerCase().includes('videosoft') ||
-            iframeUrl.includes('bysejikuar') ||
-            iframeUrl.includes('filemoon') ||
-            iframeUrl.includes('videoseyred')
-          ) {
-            return null;
-          }
-
+          if (/filemoon|bysejikuar|bysezoxexe/i.test(`${item.baslik || ''} ${iframeUrl}`)) return null;
           if (iframeUrl.startsWith('//')) {
             iframeUrl = 'https:' + iframeUrl;
           }

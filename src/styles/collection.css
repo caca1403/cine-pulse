@@ -1,0 +1,148 @@
+/* Library and discovery use the same graphite / lime visual system. */
+.cine-discovery-theme .cp-view-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 0 0 26px !important; margin-bottom: 24px !important; border: 0 !important; border-bottom: 1px solid #ffffff12 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.cine-discovery-theme .cp-view-header h1 { display: flex; align-items: center; gap: 12px; margin: 8px 0 10px; color: #f6f7f8; font-size: clamp(26px,2.8vw,38px); line-height: 1.15; font-weight: 800; letter-spacing: -1.1px; }
+.cine-discovery-theme .cp-view-header h1 svg { width: 25px; height: 25px; color: var(--cp-lime); flex-shrink: 0; }
+.cine-discovery-theme .cp-view-header p { color: #969fab; font-size: 13px; line-height: 1.6; margin: 0; max-width: 560px; }
+.cine-discovery-theme .cp-view-header-actions, .cine-discovery-theme .library-action-group { display: flex; align-items: center; flex-shrink: 0; gap: 10px; }
+.cine-discovery-theme .library-view, .cine-discovery-theme .discover-view { padding-top: calc(var(--cp-header-height,78px) + 30px) !important; padding-bottom: 40px !important; }
+.cine-discovery-theme #app > main:has(.library-view), .cine-discovery-theme #app > main:has(.discover-view) { padding-top: 0 !important; }
+.cine-discovery-theme .library-view > .container, .cine-discovery-theme .discover-view > .container { max-width: 1440px; }
+.cine-discovery-theme .card-layout-switcher { position: static !important; inset: auto !important; z-index: auto !important; display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; margin: 0; padding: 4px !important; opacity: 1 !important; transform: none !important; background: #14191f !important; border: 1px solid #ffffff18 !important; border-radius: 10px !important; box-shadow: none !important; }
+.cine-discovery-theme .card-layout-switcher-label { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 11px; padding-left: 8px; color: #aeb7c3; }
+.cine-discovery-theme .card-layout-switcher-options { padding: 0; background: transparent; }
+.cine-discovery-theme .card-layout-option { min-height: 32px; padding: 6px 9px; border-radius: 7px; font-size: 11px; font-weight: 600; }
+.cine-discovery-theme .home-view .rail-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cine-discovery-theme .home-view .rail-header .rail-title { min-width: 0; }
+.cp-layout-toolbar { display: flex; justify-content: flex-end; padding-top: calc(var(--cp-header-height,78px) + 20px); }
+.cp-home-layout-toolbar { display: flex; justify-content: flex-end; padding-block: 18px 0; }
+.cine-discovery-theme .cp-home-layout-toolbar .card-layout-switcher { gap: 12px; }
+.cine-discovery-theme .cp-home-layout-toolbar .card-layout-switcher-label { display: inline !important; }
+.cine-discovery-theme .card-layout-option span { display: inline !important; }
+.cine-discovery-theme .card-layout-switcher .card-layout-option { min-height: 40px; padding-inline: 10px !important; }
+.cine-discovery-theme .card-layout-option:focus-visible { outline: 2px solid var(--cp-lime); outline-offset: 2px; }
+/* Native filter selects remain native, including touch and keyboard navigation. */
+.cine-discovery-theme .discover-controls-wrap { padding: 20px !important; background: #11151a !important; border: 1px solid #ffffff14 !important; border-radius: 16px !important; margin-bottom: 22px !important; box-shadow: none !important; }
+.cine-discovery-theme .discover-segmented-deck { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); padding: 4px; gap: 4px; margin-bottom: 22px; background: #0b0e12; border: 1px solid #ffffff10; border-radius: 11px; }
+.cine-discovery-theme .discover-type-tab { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; min-width: 0; padding: 8px; color: #9da8b8; background: transparent; border: 1px solid transparent; border-radius: 8px; font-size: 12px; font-weight: 650; box-shadow: none; }
+.cine-discovery-theme .discover-type-tab.active { background: #dfff7610 !important; color: var(--cp-lime) !important; border-color: #dfff7640 !important; box-shadow: none !important; }
+.cp-filter-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 18px; align-items: end; }
+.cp-filter-grid > div { min-width: 0; }
+.cine-discovery-theme .cp-filter-grid label { display: flex !important; align-items: center; gap: 6px; color: #a8b0bc !important; font-size: 11px !important; font-weight: 500 !important; letter-spacing: 0 !important; text-transform: none !important; margin-bottom: 8px !important; }
+.cine-discovery-theme .discover-filter-select { width: 100%; min-width: 0; height: 44px; border: 1px solid #ffffff1c; border-radius: 9px; background-color: #1a1f26; color: #edf0f4; padding: 0 34px 0 12px; font-size: 12px; font-weight: 500; box-shadow: none; }
+.cine-discovery-theme .discover-filter-select:focus-visible { outline: 2px solid #dfff7660; outline-offset: 2px; border-color: #dfff7640; }
+.cine-discovery-theme .discover-view .genre-pills-bar { margin-bottom: 18px !important; padding-bottom: 8px !important; gap: 8px !important; }
+.cine-discovery-theme .discover-view .genre-pill-btn { flex-shrink: 0; min-height: 36px; padding: 7px 13px; border-radius: 9px; background: #151a21; border: 1px solid #ffffff15; color: #aab4c1; font-size: 11px; font-weight: 550; box-shadow: none; }
+.cine-discovery-theme .discover-view .genre-pill-btn.active { background: #dfff7610 !important; border-color: #dfff7650 !important; color: var(--cp-lime) !important; box-shadow: none !important; }
+/* Quiet stats, deliberate tool placement and a scrollable tab track. */
+.cine-discovery-theme .library-view .stats-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin-bottom: 24px; }
+.cine-discovery-theme .library-view .stat-card { min-width: 0; padding: 20px; gap: 13px; border: 1px solid #ffffff14 !important; border-radius: 14px; background: #11161c; box-shadow: none; }
+.cine-discovery-theme .library-view .stat-card-icon { width: 38px; height: 38px; border-radius: 10px; border: 0; background: #dfff760c !important; color: var(--cp-lime) !important; }
+.cine-discovery-theme .library-view .stat-card-icon svg { width: 21px; height: 21px; }
+.cine-discovery-theme .library-view .stat-card-label { color: #969fab !important; text-transform: none; font-size: 11px; font-weight: 550; letter-spacing: 0; }
+.cine-discovery-theme .library-view .stat-card-val { font-size: clamp(17px,1.45vw,23px); line-height: 1.3; letter-spacing: -.6px; }
+.cine-discovery-theme .library-segmented-nav-track { width: 100%; min-width: 0; max-width: 100%; border-radius: 12px; padding: 5px; gap: 4px; background: #11161c; border: 1px solid #ffffff14; box-shadow: none; overflow-x: auto; scrollbar-width: none; margin-bottom: 18px; }
+.cine-discovery-theme .lib-nav-tab { min-height: 40px; border: 1px solid transparent; border-radius: 8px; padding: 8px 13px; gap: 7px; white-space: nowrap; flex-shrink: 0; font-size: 12px; color: #aab4c1; }
+.cine-discovery-theme .lib-nav-tab.active { background: #dfff7610 !important; color: var(--cp-lime) !important; border-color: #dfff7628 !important; box-shadow: none !important; }
+.cine-discovery-theme .lib-tab-badge { font-size: 10px; background: #ffffff08; color: #aab4c1; }
+.cine-discovery-theme .lib-nav-tab.active .lib-tab-badge { background: #dfff7618; color: var(--cp-lime); }
+.cine-discovery-theme .library-toolbar-deck { display: grid; grid-template-columns: minmax(180px,1fr) auto auto; gap: 14px; padding: 14px; border: 1px solid #ffffff14; border-radius: 13px; background: #11161c; margin-bottom: 24px; box-shadow: none; }
+.cine-discovery-theme .library-search-wrapper { width: 100%; min-width: 0; }
+.cine-discovery-theme .library-search-input { border-radius: 9px; min-height: 40px; background: #0b0f14; border-color: #ffffff15; font-size: 12px; }
+.cine-discovery-theme .library-filter-segment-track { min-width: 0; padding: 3px; gap: 2px; border-radius: 9px; background: #0b0f14; border-color: #ffffff12; overflow-x: auto; }
+.cine-discovery-theme .lib-segment-btn { min-height: 32px; padding: 6px 10px; font-size: 11px; border-radius: 7px; white-space: nowrap; }
+.cine-discovery-theme .lib-segment-btn.active { color: var(--cp-lime); background: #dfff7610; box-shadow: none; }
+.cp-library-sort-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+.cine-discovery-theme .library-sort-pill-wrap { border-radius: 9px; border-color: #ffffff14; background: #0b0f14; }
+.cine-discovery-theme .library-sort-select { min-height: 38px; font-size: 11px; }
+.cine-discovery-theme .btn-lib-clear-batch { border-radius: 9px; min-height: 38px; font-size: 11px; }
+.cine-discovery-theme #lib-data-modal-btn { min-height: 40px; padding: 8px 12px !important; border: 1px solid #ffffff1c; border-radius: 9px !important; background: #171d24; font-size: 11px !important; color: #cbd3de; }
+.cine-discovery-theme .library-empty-state { padding: 40px 24px; border: 1px dashed #ffffff1c; border-radius: 14px; background: #0d1116; }
+.cine-discovery-theme .library-empty-state h3 { font-size: 19px; color: #edf0f4; letter-spacing: -.4px; }
+.cine-discovery-theme .library-empty-state p { font-size: 12px; max-width: 400px; color: #969fab; line-height: 1.7; }
+.cine-discovery-theme .library-view .empty-state-icon-wrap { background: #dfff760a !important; color: var(--cp-lime) !important; border-color: #dfff7620 !important; box-shadow: none; }
+.cine-discovery-theme .library-view .media-card .card-poster-wrapper { border-radius: 12px; border: 1px solid #ffffff14; }
+.cine-discovery-theme .library-view .card-top-rating { color: var(--cp-lime); background: #111820dc; }
+.cine-discovery-theme .library-view .card-top-rating svg { stroke: var(--cp-lime) !important; fill: var(--cp-lime) !important; }
+.cine-discovery-theme .library-view .card-top-year { display: none; }
+.cine-discovery-theme .library-view .card-watch-status { background: transparent !important; border: 0 !important; justify-content: flex-start; color: #65dc95; padding: 6px 2px; font-size: 10px; }
+.cine-discovery-theme .library-view .btn-delete-history { background: #131922d9; border: 1px solid #ffffff22; color: #c9d0d9; width: 30px; height: 30px; box-shadow: none; }
+.cine-discovery-theme .library-view .btn-delete-history:hover { background: #422128; color: #ff9b9b; }
+.cine-discovery-theme .home-view .hero-btn-play { background: var(--cp-lime) !important; color: #151a0c !important; border-color: transparent !important; }
+@media (max-width: 1100px) and (min-width: 861px) {
+  .cine-discovery-theme .library-toolbar-deck { grid-template-columns: minmax(140px,1fr) auto; }
+  .cine-discovery-theme .library-filter-segment-track { grid-column: 1 / -1; grid-row: 2; justify-content: center; }
+  .cine-discovery-theme .library-view .stat-card { flex-direction: column; align-items: flex-start; gap: 10px; }
+}
+@media (max-width: 860px) {
+  .cine-discovery-theme .cp-view-header { flex-wrap: wrap; gap: 18px; padding-bottom: 20px !important; margin-bottom: 20px !important; }
+  .cine-discovery-theme .cp-view-header h1 { font-size: 28px; letter-spacing: -.8px; margin: 6px 0 9px; }
+  .cine-discovery-theme .cp-view-header h1 svg { width: 22px; height: 22px; }
+  .cine-discovery-theme .cp-view-header p { font-size: 12px; }
+  .cine-discovery-theme .library-view, .cine-discovery-theme .discover-view { padding-top: calc(var(--cp-header-height,155px) + 24px) !important; }
+  .cine-discovery-theme .library-view > .container, .cine-discovery-theme .discover-view > .container { padding-inline: 18px; }
+  .cine-discovery-theme .cp-view-header-actions, .cine-discovery-theme .library-action-group { width: 100%; justify-content: space-between; gap: 8px; }
+  .cine-discovery-theme .card-layout-switcher-label { display: none !important; }
+  .cine-discovery-theme .card-layout-option { min-height: 34px; padding: 7px !important; }
+  .cine-discovery-theme .home-view .rail-header:has(.card-layout-switcher) { align-items: center; }
+  .cine-discovery-theme .home-view .rail-header:has(.card-layout-switcher) .rail-title { font-size: 16px !important; }
+  .cine-discovery-theme .discover-controls-wrap { padding: 14px !important; border-radius: 14px !important; }
+  .cine-discovery-theme .discover-segmented-deck { gap: 2px; margin-bottom: 20px; }
+  .cine-discovery-theme .discover-type-tab { min-height: 42px; font-size: 11px; gap: 4px; padding: 7px 3px; }
+  .cine-discovery-theme .discover-type-tab svg { width: 13px !important; height: 13px !important; }
+  .cp-filter-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px 10px; }
+  .cine-discovery-theme .cp-filter-grid label { font-size: 10px !important; min-height: 14px; }
+  .cine-discovery-theme .cp-filter-grid label svg { display: none; }
+  .cine-discovery-theme .discover-filter-select { height: 44px; padding-left: 9px; padding-right: 24px; font-size: 12px; background-position: right 8px center; }
+  .cine-discovery-theme .library-view .stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-bottom: 20px; }
+  .cine-discovery-theme .library-view .stat-card { flex-direction: column; align-items: flex-start; gap: 10px; padding: 15px; border-radius: 12px; }
+  .cine-discovery-theme .library-view .stat-card-icon { width: 30px; height: 30px; border-radius: 8px; }
+  .cine-discovery-theme .library-view .stat-card-icon svg { width: 18px; height: 18px; }
+  .cine-discovery-theme .library-view .stat-card-label { font-size: 10px; }
+  .cine-discovery-theme .library-view .stat-card-val { font-size: 18px; overflow-wrap: anywhere; }
+  .cine-discovery-theme .library-segmented-nav-track { padding: 4px; margin-bottom: 16px; }
+  .cine-discovery-theme .lib-nav-tab { padding: 8px 10px; font-size: 11px; min-height: 40px; }
+  .cine-discovery-theme .library-toolbar-deck { grid-template-columns: minmax(0,1fr); gap: 10px; padding: 12px; }
+  .cine-discovery-theme .library-search-wrapper { max-width: none; }
+  .cine-discovery-theme .library-filter-segment-track { width: 100%; justify-content: space-between; }
+  .cine-discovery-theme .cp-library-sort-actions { justify-content: space-between; width: 100%; }
+  .cine-discovery-theme .library-sort-pill-wrap { flex: 1; }
+  .cine-discovery-theme .library-sort-select { width: 100%; }
+  .cine-discovery-theme .library-view .media-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 12px; }
+  .cine-discovery-theme .library-view .library-card-item, .cine-discovery-theme .library-view .library-card-item .media-card { width: 100%; min-width: 0; max-width: none; }
+}
+@media (max-width: 360px) {
+  .cine-discovery-theme .library-view > .container, .cine-discovery-theme .discover-view > .container { padding-inline: 12px; }
+  .cine-discovery-theme .discover-type-tab svg { display: none; }
+  .cine-discovery-theme .library-view .stat-card-val { font-size: 16px; }
+}
+.cine-discovery-theme .cp-view-header > div:first-child { text-align: left; }
+.cine-discovery-theme .library-header-title { justify-content: flex-start; }
+.cine-discovery-theme .discover-view .card-top-rating { color: var(--cp-lime); background: #111820dc; border-color: #ffffff14; }
+.cine-discovery-theme .discover-view .card-top-rating svg { stroke: var(--cp-lime) !important; fill: var(--cp-lime) !important; }
+.cine-discovery-theme .discover-view .card-top-year { display: none; }
+.cine-discovery-theme .discover-view .card-poster-wrapper { border-radius: 12px; border-color: #ffffff14; }
+@media (min-width: 380px) and (max-width: 860px) {
+  .cine-discovery-theme .discover-header-card { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 12px; }
+  .cine-discovery-theme .discover-header-card h1 { font-size: 25px; gap: 8px; margin-top: 4px; }
+  .cine-discovery-theme .discover-header-card .cp-view-header-actions { width: auto; padding-top: 1px; }
+}
+/* Independent image lanes and readable foregrounds for episode controls. */
+.cine-discovery-theme .season-pill.active, .cine-discovery-theme .season-pill.active span { color: #15200b !important; }
+.cine-discovery-theme .season-pill.active { box-shadow: none; }
+.cine-discovery-theme .episode-card { background: #11161c; border-color: #ffffff18; box-shadow: none; }
+.cine-discovery-theme .episode-card .episode-number-chip { top: 8px !important; left: 8px !important; bottom: auto !important; right: auto !important; background: #10151de6; color: #e7f9b5; border: 1px solid #ffffff18; font-size: 10px; }
+.cine-discovery-theme .episode-card .badge-watched-status { top: auto !important; bottom: 8px !important; left: 8px !important; right: auto !important; color: #15200b !important; max-width: calc(100% - 16px) !important; z-index: 4; }
+.cine-discovery-theme .episode-status-actions { display: flex; align-items: center; gap: 6px; position: static; }
+.cine-discovery-theme .episode-status-actions button.is-halfway, .cine-discovery-theme .episode-status-actions button.watched { color: #15200b !important; }
+.cine-discovery-theme .episode-footer { display: grid !important; grid-template-columns: minmax(0,1fr) auto auto; gap: 14px; align-items: center; }
+.cine-discovery-theme .episode-info { min-width: 0; }
+.cine-discovery-theme .episode-header-row { align-items: flex-start; gap: 8px; }
+.cine-discovery-theme .episode-duration { white-space: nowrap; flex-shrink: 0; }
+.cine-discovery-theme .netflix-detail-tabs-bar { top: var(--cp-nav-bottom,78px) !important; z-index: 900; }
+@media (max-width: 768px) {
+  .cine-discovery-theme .episode-airdate { display: none; }
+  .cine-discovery-theme .episode-footer { grid-template-columns: 1fr auto; gap: 8px; }
+  .cine-discovery-theme .episode-status-actions button { width: 30px !important; height: 30px !important; }
+  .cine-discovery-theme .episode-card .badge-watched-status { font-size: 9px !important; padding: 4px 5px !important; }
+  .cine-discovery-theme .episode-card .episode-thumb-wrap { border-radius: 10px 0 0 0; }
+}

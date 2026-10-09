@@ -16,6 +16,7 @@ import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive
 import { renderHeroSlider, attachHeroSliderEvents, stopHeroSlider } from '../components/HeroSlider.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
+import { collectWithin } from '../services/startupBudget.js';
 import { railScrollMemory } from '../services/scrollManager.js';
 
 // Cache home TMDB data & rail state across navigations
@@ -45,7 +46,13 @@ function getPersistentHomeCache(isKid) {
   }
 }
 
+function hasPrimaryContent(data) {
+  return Boolean(data && ((data.trending || []).length > 0 || (data.popularTV || []).length > 0 || (data.popularMovies || []).length > 0));
+}
+
 function persistHomeCache(data) {
+  // Bos birincil veriyi onbellege yazma (hero/populer railler kaybolur ve 10 dk duzelmez).
+  if (!hasPrimaryContent(data)) return;
   try {
     sessionStorage.setItem(`cinepulse_home_fast_v7_${data.isKid ? 'kids' : 'adult'}`, JSON.stringify({
       savedAt: Date.now(),
@@ -267,6 +274,13 @@ export async function renderHomeView() {
   let trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems, kidsAnimationItems, kidsClassicCartoonItems;
 
   if (!homeDataCache) homeDataCache = getPersistentHomeCache(isKid);
+  // Zehirlenmis (bos birincil verili) onbellegi kullanma, yeniden cek.
+  if (homeDataCache && !hasPrimaryContent(homeDataCache)) {
+    homeDataCache = null;
+    try {
+      sessionStorage.removeItem(`cinepulse_home_fast_v7_${isKid ? 'kids' : 'adult'}`);
+    } catch (_) {}
+  }
 
   let secondaryReady = null;
   let secondarySettled = false;
@@ -288,7 +302,7 @@ export async function renderHomeView() {
     }).catch(() => { secondarySettled = true; });
     homeSecondaryPending = secondaryReady;
     secondaryReady.then(() => { if (homeSecondaryPending === secondaryReady) homeSecondaryPending = null; });
-    [popularTV, popularMovies] = await Promise.all([
+    [popularTV, popularMovies] = await collectWithin([
       fetchKidsPopularSeries(1), fetchKidsPopularMovies(1)
     ]);
     trending = [...(popularMovies || []), ...(popularTV || [])]
@@ -309,7 +323,7 @@ export async function renderHomeView() {
     }).catch(() => { secondarySettled = true; });
     homeSecondaryPending = secondaryReady;
     secondaryReady.then(() => { if (homeSecondaryPending === secondaryReady) homeSecondaryPending = null; });
-    [trending, popularTV, popularMovies] = await Promise.all([
+    [trending, popularTV, popularMovies] = await collectWithin([
       fetchTrending('all', 'week', 1),
       fetchPopularSeries(1), fetchPopularMovies(1)
     ]);
@@ -329,7 +343,9 @@ export async function renderHomeView() {
     const kidsHeroPool = [...(popularMovies || []), ...(popularTV || [])].filter(i => i.backdrop_path && isItemKidSafe(i));
     heroItems = kidsHeroPool.slice(0, 10);
   } else {
-    heroItems = trending;
+    const trendingPool = Array.isArray(trending) ? trending : [];
+    const fallbackPool = [...(popularMovies || []), ...(popularTV || [])].filter(i => i && i.backdrop_path);
+    heroItems = (trendingPool.length > 0 ? trendingPool : fallbackPool).slice(0, 10);
   }
 
   // Keep first paint light, then append the remaining page-one results only
@@ -400,7 +416,7 @@ export async function renderHomeView() {
       ${kidsClassicCartoonItems && kidsClassicCartoonItems.length > 0 ? renderInfiniteRail({
         id:    'rail-kids-classics',
         icon:  'palette',
-        title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler',
+        title: 'Çocukluğun favorileri',
         accent:'#38bdf8',
         items: kidsClassicCartoonItems
       }) : ''}
@@ -434,7 +450,7 @@ export async function renderHomeView() {
       ${adultAnimationItems && adultAnimationItems.length > 0 ? renderInfiniteRail({
         id:    'rail-adult-animation',
         icon:  'sparkles',
-        title: 'Yetişkin Animasyonları & Çizgi Diziler',
+        title: 'Animasyonun diğer yüzü',
         accent:'#fb7185',
         items: adultAnimationItems
       }) : ''}
@@ -442,7 +458,7 @@ export async function renderHomeView() {
       ${cartoonSeriesItems && cartoonSeriesItems.length > 0 ? renderInfiniteRail({
         id:    'rail-cartoon-series',
         icon:  'wand-2',
-        title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler',
+        title: 'Çocukluğun favorileri',
         accent:'#38bdf8',
         items: cartoonSeriesItems
       }) : ''}
@@ -450,7 +466,7 @@ export async function renderHomeView() {
       ${renderInfiniteRail({
         id:    'rail-popular-movies',
         icon:  'clapperboard',
-        title: 'Tüm Zamanların En Popüler Filmleri',
+        title: 'Sinema, en iyi hâliyle',
         accent:'#a78bfa',
         items: popularMovies
       })}
@@ -459,7 +475,7 @@ export async function renderHomeView() {
         id:    'rail-top-movies',
         icon:  'award',
         title: '  Sinema Tarihinin Başyapıtları (IMDb 8.5+)',
-        accent:'#fbbf24',
+        accent:'#dfff76',
         items: topRatedMovies
       })}
 
@@ -491,7 +507,8 @@ export async function renderHomeView() {
 
   const viewHTML = `
     <div class="home-view ${isKid ? 'is-kids-mode' : ''}">
-      ${heroHTML}
+      ${!hasPrimaryContent({ trending, popularTV, popularMovies }) ? '<div class="container" role="status" style="padding:5rem 1rem 2rem"><p>İçerik servisine ulaşılamadı. Bağlantını kontrol edip yeniden deneyebilirsin.</p><button class="btn btn-primary" id="btn-home-retry">Yeniden Dene</button></div>' : ''}
+      ${heroHTML || '<div class="home-hero-spacer" style="height:84px;flex:none;"></div>'}
 
       ${renderContinueWatchingSection(watchHistory)}
 
@@ -502,6 +519,10 @@ export async function renderHomeView() {
   return {
     html: viewHTML,
     init: (container) => {
+      container.querySelector('#btn-home-retry')?.addEventListener('click', () => {
+        clearHomeCache();
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      });
       const sliderItems = (heroItems && heroItems.length > 0) ? heroItems : trending;
       if (sliderItems && sliderItems.length > 0) attachHeroSliderEvents(sliderItems);
       attachMediaCardEvents(container);
@@ -576,13 +597,13 @@ export async function renderHomeView() {
           extra.className = 'home-more-rails';
           extra.innerHTML = isKid ? `
             ${renderInfiniteRail({ id: 'rail-kids-animation', icon: 'sparkles', title: 'Çocuk Animasyonları & Yeni Çizgi Diziler', accent: '#fb7185', items: kidsAnimationItems })}
-            ${renderInfiniteRail({ id: 'rail-kids-classics', icon: 'palette', title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler', accent: '#38bdf8', items: kidsClassicCartoonItems })}
+            ${renderInfiniteRail({ id: 'rail-kids-classics', icon: 'palette', title: 'Çocukluğun favorileri', accent: '#38bdf8', items: kidsClassicCartoonItems })}
             ${renderInfiniteRail({ id: 'rail-kids-adventures', icon: 'compass', title: '  Aile ve Fantastik Sinema Kuşağı', accent: '#38bdf8', items: kidsAdventures })}
             ${renderInfiniteRail({ id: 'rail-anime', icon: 'smile', title: '  Çocuk & Genç Anime Dünyası', accent: '#a855f7', items: animeItems })}
           ` : `
-            ${renderInfiniteRail({ id: 'rail-adult-animation', icon: 'sparkles', title: 'Yetişkin Animasyonları & Çizgi Diziler', accent: '#fb7185', items: adultAnimationItems })}
-            ${renderInfiniteRail({ id: 'rail-cartoon-series', icon: 'wand-2', title: 'Çizgi Dizi Dünyası & Unutulmaz Klasikler', accent: '#38bdf8', items: cartoonSeriesItems })}
-            ${renderInfiniteRail({ id: 'rail-top-movies', icon: 'award', title: '  Sinema Tarihinin Başyapıtları (IMDb 8.5+)', accent: '#fbbf24', items: topRatedMovies })}
+            ${renderInfiniteRail({ id: 'rail-adult-animation', icon: 'sparkles', title: 'Animasyonun diğer yüzü', accent: '#fb7185', items: adultAnimationItems })}
+            ${renderInfiniteRail({ id: 'rail-cartoon-series', icon: 'wand-2', title: 'Çocukluğun favorileri', accent: '#38bdf8', items: cartoonSeriesItems })}
+            ${renderInfiniteRail({ id: 'rail-top-movies', icon: 'award', title: '  Sinema Tarihinin Başyapıtları (IMDb 8.5+)', accent: '#dfff76', items: topRatedMovies })}
             ${renderInfiniteRail({ id: 'rail-top-tv', icon: 'star', title: 'Kült & En Yüksek Puanlı Diziler', accent: '#34d399', items: topRatedTV })}
             ${renderInfiniteRail({ id: 'rail-anime', icon: 'sparkles', title: '  Popüler Anime Evreni (TR Dublaj & Altyazı)', accent: '#ec4899', items: animeItems })}
             ${renderInfiniteRail({ id: 'rail-documentary', icon: 'globe', title: '  İlham Veren Kült Belgeseller', accent: '#38bdf8', items: docItems })}

@@ -9,7 +9,7 @@ import { renderIcons } from '../services/icons.js';
    • Cinematic crossfade backdrop transition
    ========================================================================== */
 
-import { getImageUrl, TMDB_IMAGE_SIZES, generateCinematicOverview } from '../services/tmdbApi.js';
+import { getImageUrl, TMDB_IMAGE_SIZES, generateCinematicOverview, fetchMediaTrailer } from '../services/tmdbApi.js';
 import { isWatchlist, toggleWatchlist, isKidProfileActive, isItemKidSafe, getUserSettings } from '../services/storage.js';
 import { openTrailerModal } from './TrailerModal.js';
 import { showToast } from './Toast.js';
@@ -27,7 +27,9 @@ export function stopHeroSlider() {
 
 function getHeroBackdropUrl(item) {
   const path = item?.backdrop_path || item?.poster_path;
-  const size = window.innerWidth <= 768 || window.devicePixelRatio <= 1
+  // Hero tam ekran gerilir; dusuk cozunurluk bulanik gorunur.
+  // Mobilde w780, masaustunde w1280 (Netflix ayari).
+  const size = window.innerWidth <= 768
     ? TMDB_IMAGE_SIZES.BACKDROP_LARGE
     : TMDB_IMAGE_SIZES.BACKDROP_XLARGE;
   return getImageUrl(path, size);
@@ -179,6 +181,14 @@ export function attachHeroSliderEvents(items = []) {
     });
   };
   revealFirstSlide();
+  // Güvenlik: backdrop takilirsa hero gorunmez kalmasin (Netflix davranisi).
+  setTimeout(() => {
+    const hs = document.getElementById('hero-slider-section');
+    if (hs?.isConnected && hs.classList.contains('is-loading')) {
+      hs.classList.remove('is-loading');
+      hs.setAttribute('aria-busy', 'false');
+    }
+  }, 4000);
 
   /* ---- preload upcoming backdrops ---- */
   const warmUpcoming = () => slides.slice(1, 4).forEach(item => preloadHeroBackdrop(getHeroBackdropUrl(item)));
@@ -287,17 +297,15 @@ export function attachHeroSliderEvents(items = []) {
     });
   });
 
-  /* Auto-rotate only on touch devices. Desktop transitions decode large
-     backdrops every few seconds and cause avoidable GPU work while browsing. */
+  /* ---- Netflix tarzi otomatik donus (tum cihazlar, 7 sn) ---- */
   function resetAutoRotate() {
     clearInterval(slideInterval);
-    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     slideInterval = setInterval(() => {
-      if (slides.length > 1) {
+      if (slides.length > 1 && document.getElementById('hero-slider-section')?.isConnected) {
         const next = (currentSlideIndex + 1) % slides.length;
         updateHeroSlide(slides[next], next);
       }
-    }, 6000);
+    }, 7000);
   }
   resetAutoRotate();
 }

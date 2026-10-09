@@ -27,7 +27,7 @@ export function openTrailerModal({ title = 'Fragman', trailerInfo, mediaId = nul
         <div class="trailer-header">
           <div class="trailer-header-left">
             <span class="trailer-badge">
-              <i data-lucide="youtube" style="width: 14px; height: 14px; fill: #f59e0b; color: #f59e0b;"></i>
+              <i data-lucide="youtube" style="width: 14px; height: 14px; fill: #dfff76; color: #dfff76;"></i>
               <span>FRAGMAN</span>
             </span>
             <h3 class="trailer-title" title="${title} • ${trailerName}">

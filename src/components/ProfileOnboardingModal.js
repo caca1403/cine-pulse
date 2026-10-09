@@ -1,3 +1,4 @@
+import { renderSiteLogo } from './BrandLogo.js';
 import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - Profile Onboarding Modal
@@ -8,13 +9,13 @@ import { renderIcons } from '../services/icons.js';
 import { isProfileSetupComplete, completeProfileSetup } from '../services/storage.js';
 
 const AVATAR_OPTIONS = [
-  { id: 'user-circle', icon: 'user', label: 'Klasik', color: '#f59e0b' },
+  { id: 'user-circle', icon: 'user', label: 'Klasik', color: '#dfff76' },
   { id: 'clapperboard', icon: 'clapperboard', label: 'Sinema', color: '#ec4899' },
   { id: 'film', icon: 'film', label: 'Yıldız', color: '#8b5cf6' },
   { id: 'sparkles', icon: 'sparkles', label: 'Sihirli', color: '#10b981' },
   { id: 'tv', icon: 'tv', label: 'Dizi Kolik', color: '#3b82f6' },
   { id: 'baby', icon: 'baby', label: 'Çocuk', color: '#38bdf8' },
-  { id: 'smile', icon: 'smile', label: 'Neşeli', color: '#eab308' },
+  { id: 'smile', icon: 'smile', label: 'Neşeli', color: '#cbe768' },
   { id: 'flame', icon: 'flame', label: 'Ateşli', color: '#ef4444' }
 ];
 
@@ -28,9 +29,7 @@ export function checkAndShowProfileOnboarding() {
   overlay.innerHTML = `
     <div class="onboarding-modal-card animate-scale-in">
       <div class="onboarding-header">
-        <div class="brand-logo-icon" style="width: 48px; height: 48px; border-radius: 12px; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--accent-primary, #6366f1), var(--accent-secondary, #ec4899));">
-          <i data-lucide="clapperboard" style="width: 24px; height: 24px; color: #fff;"></i>
-        </div>
+        ${renderSiteLogo('cp-onboarding-logo')}
         <h2 style="font-size: 1.5rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem;">CinePulse'a Hoş Geldiniz!</h2>
         <p style="font-size: 0.9rem; color: var(--text-muted, #94a3b8); max-width: 340px; margin: 0 auto;">
           Kişiselleştirilmiş dizi & film deneyiminiz için profilinizi belirleyin.

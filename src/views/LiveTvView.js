@@ -1,3 +1,5 @@
+import { disposeLiveMedia } from '../services/livePlayback.js';
+import Hls from 'hls.js';
 import { renderIcons } from '../services/icons.js';
 import { createPlayerScope } from '../components/playerLifecycle.js';
 /* ==========================================================================
@@ -7,6 +9,52 @@ import { createPlayerScope } from '../components/playerLifecycle.js';
    ========================================================================== */
 
 import { LIVE_TV_CATEGORIES, LIVE_TV_CHANNELS, getChannelBadgeSvg } from '../services/liveTvChannels.js';
+import {
+  getCachedCanliChannels, refreshCanliChannels, toLiveChannels as toCanliLiveChannels,
+  normalizeCanliName
+} from '../services/canliTvChannels.js';
+import { fetchRecTvLiveChannels, getRecTvChannelStreamUrl } from '../services/rectvService.js';
+
+const TVR_LIVE_CACHE_KEY = 'cp_tvr_live_v1';
+const TVR_LIVE_TTL_MS = 12 * 60 * 60 * 1000;
+
+function readTvrLiveCache() {
+  try {
+    const raw = localStorage.getItem(TVR_LIVE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.channels)) return null;
+    if (Date.now() - (parsed.savedAt || 0) > TVR_LIVE_TTL_MS) return null;
+    return parsed.channels;
+  } catch (_) {
+    return null;
+  }
+}
+
+function toTvrLiveChannels(list) {
+  const out = [];
+  for (const ch of list || []) {
+    if (!ch || (!ch.tvrId && !ch.id)) continue;
+    const tvrId = String(ch.tvrId || ch.id || '').replace(/^tvr_ch_/, '');
+    if (!tvrId || !ch.name) continue;
+    out.push({
+      id: `tvr_live_${tvrId}`,
+      name: ch.name,
+      logo: ch.logo || '',
+      category: ch.category || 'national',
+      tvrId,
+      isTvr: true,
+      officialLiveId: `tvr:${tvrId}`,
+      streamUrl: ch.streamUrl || '',
+      quality: ch.quality || '1080p TVR'
+    });
+  }
+  return out;
+}
+import {
+  getCachedIptvChannels, refreshIptvChannels, toLiveChannels as toIptvLiveChannels,
+  sortByPopularity, resolveLocalLogo
+} from '../services/iptvOrgChannels.js';
 import { getChannelEpg, initEpgService, stopEpgService } from '../services/epgService.js';
 import { showToast } from '../components/Toast.js';
 import { isKidProfileActive } from '../services/storage.js';
@@ -36,15 +84,61 @@ export function renderLiveTvView() {
     .toLocaleUpperCase('tr-TR')
     .replace(/\b(?:HD|FHD|4K|KANALI)\b/g, '')
     .replace(/[^A-ZÇĞİÖŞÜ0-9]/g, '');
-  const allChannels = [...LIVE_TV_CHANNELS];
+  function toProxiedLiveUrl(url) {
+    if (!url) return '';
+    if (url.startsWith('/api/') || url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) return url;
+    let ref = '';
+    try {
+      if (url.includes('trt')) ref = 'https://www.trt1.com.tr/';
+      else if (url.includes('atv')) ref = 'https://www.atv.com.tr/';
+      else if (url.includes('showtv')) ref = 'https://www.showtv.com.tr/';
+      else if (url.includes('kanald') || url.includes('teve2') || url.includes('dreamturk')) ref = 'https://www.kanald.com.tr/';
+      else if (url.includes('startv') || url.includes('ntv') || url.includes('kralpop')) ref = 'https://www.startv.com.tr/';
+      else if (url.includes('nowtv')) ref = 'https://www.nowtv.com.tr/';
+      else if (url.includes('tv8')) ref = 'https://www.tv8.com.tr/';
+      else if (url.includes('dmax')) ref = 'https://www.dmax.com.tr/';
+      else if (url.includes('tlc')) ref = 'https://www.tlctv.com.tr/';
+      else ref = `${new URL(url).origin}/`;
+    } catch (_) {
+      ref = '';
+    }
+    return `/api/hls_proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(ref)}&live=1`;
+  }
+
+  // Omurga: LIVE_TV_CHANNELS (dogrudan CDN / resmi akislar) + iptv-org (tamamlayici)
+  const curatedBase = (LIVE_TV_CHANNELS || []).map(c => ({
+    ...c,
+    streamUrl: toProxiedLiveUrl(c.streamUrl),
+    logo: resolveLocalLogo(c.name) || c.logo || getChannelBadgeSvg(c.name, c.category)
+  }));
+  const curatedNames = new Set(curatedBase.map((c) => normalizeCanliName(c.name)));
+
+  const iptvInitial = toIptvLiveChannels(getCachedIptvChannels())
+    .filter(c => !curatedNames.has(normalizeCanliName(c.name)))
+    .map(c => ({ ...c, streamUrl: toProxiedLiveUrl(c.streamUrl) }));
+  const iptvNames = new Set([
+    ...curatedNames,
+    ...iptvInitial.map((c) => normalizeCanliName(c.name))
+  ]);
+  const kidOk = (c) => !isKid || c.category === 'kids';
+  const tvrInitial = isKid ? [] : toTvrLiveChannels(readTvrLiveCache());
+  const tvrFresh = tvrInitial.filter((c) => !iptvNames.has(normalizeCanliName(c.name)));
+  const allChannels = [
+    ...curatedBase.filter(kidOk),
+    ...iptvInitial.filter(kidOk),
+    ...tvrFresh.filter(kidOk)
+  ];
+  const EMPTY_CH = { id: 'ctv_loading', name: 'Kanallar yükleniyor...', logo: '', category: 'canlitv', streamUrl: '', quality: 'HD' };
+  const visibleCategories = [
+    ...LIVE_TV_CATEGORIES,
+    { id: 'canlitv', name: 'CanlıTV', icon: 'radio-tower' }
+  ];
   const channelsPool = isKid
     ? allChannels.filter(c => c.category === 'kids')
     : allChannels;
 
   let activeCategory = isKid ? 'kids' : 'all';
-  let activeChannel = isKid
-    ? (channelsPool.find(c => c.id === 'ch_trtcocuk') || channelsPool[0])
-    : (allChannels.find(c => c.id === 'ch_trt1') || allChannels[0]);
+  let activeChannel = channelsPool[0] || { ...EMPTY_CH };
   let searchQuery = '';
   let activeHls = null;
   let activeMpegts = null;
@@ -71,7 +165,7 @@ export function renderLiveTvView() {
   }
 
   function getFilteredChannels() {
-    return channelsPool.filter(ch => {
+    const list = channelsPool.filter(ch => {
       let matchCat = true;
       if (activeCategory === 'favorites') {
         matchCat = isFav(ch.id);
@@ -81,6 +175,8 @@ export function renderLiveTvView() {
       const matchSearch = !searchQuery || ch.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchCat && matchSearch;
     });
+    // "Tumu"nde Turkiye populerligine gore sirala
+    return activeCategory === 'all' ? sortByPopularity(list) : list;
   }
 
   function getChannelIndex(ch) {
@@ -221,7 +317,7 @@ export function renderLiveTvView() {
                 </button>
                 <div class="tv-quality-menu hidden" id="tv-quality-menu">
                   <div class="tv-quality-menu-header">
-                    <i data-lucide="sliders" style="width:13px;height:13px;color:#fbbf24;"></i>
+                    <i data-lucide="sliders" style="width:13px;height:13px;color:#dfff76;"></i>
                     <span>Yayın Çözünürlüğü</span>
                   </div>
                   <div class="tv-quality-options" id="tv-quality-options">
@@ -309,7 +405,7 @@ export function renderLiveTvView() {
               <i data-lucide="chevron-left" style="width:16px;height:16px;"></i>
             </button>
             <div class="tv-catalog-categories" id="tv-category-strip">
-              ${LIVE_TV_CATEGORIES.map(cat => `
+              ${visibleCategories.map(cat => `
                 <button class="tv-cat-filter-btn ${cat.id === activeCategory ? 'active' : ''}" data-cat="${cat.id}">
                   <i data-lucide="${cat.icon}" style="width:14px;height:14px;"></i>
                   <span>${cat.name}</span>
@@ -490,6 +586,17 @@ export function renderLiveTvView() {
       const catPrevBtn = container.querySelector('#tv-cat-prev');
       const catNextBtn = container.querySelector('#tv-cat-next');
       const countLabel = container.querySelector('#tv-guide-count');
+
+      // Localhost'ta goreli path'ler vite proxy ile :4000'e gider; apiUrl()
+      // localhost'u bile production'a goturur, o yuzden localde relative kal.
+      function locApi(path) {
+        if (!path || /^https?:\/\//i.test(path)) return path;
+        if (typeof window !== 'undefined') {
+          const host = window.location?.hostname || '';
+          if (host === 'localhost' || host === '127.0.0.1') return path;
+        }
+        return apiUrl(path);
+      }
 
       // ─── Update UI & Top Bar & EPG ───
       function updateTopBar() {
@@ -712,7 +819,7 @@ export function renderLiveTvView() {
           qualityBadge.textContent = activeChannel.quality ? activeChannel.quality.split(' ')[0] : 'HD';
           qualityOptions.innerHTML = `
             <button class="tv-quality-opt active" data-level="-1">
-              <i data-lucide="check" style="width:13px;height:13px;color:#fbbf24;"></i>
+              <i data-lucide="check" style="width:13px;height:13px;color:#dfff76;"></i>
               <span>Kaynak Kalite (${activeChannel.quality || '1080p'})</span>
             </button>
           `;
@@ -725,7 +832,7 @@ export function renderLiveTvView() {
 
         let html = `
           <button class="tv-quality-opt ${currentLvl === -1 ? 'active' : ''}" data-level="-1">
-            ${currentLvl === -1 ? '<i data-lucide="check" style="width:13px;height:13px;color:#fbbf24;"></i>' : '<span style="width:13px;display:inline-block;"></span>'}
+            ${currentLvl === -1 ? '<i data-lucide="check" style="width:13px;height:13px;color:#dfff76;"></i>' : '<span style="width:13px;display:inline-block;"></span>'}
             <span>Otomatik (Adaptive)</span>
           </button>
         `;
@@ -736,7 +843,7 @@ export function renderLiveTvView() {
           const isLvlActive = currentLvl === idx;
           html += `
             <button class="tv-quality-opt ${isLvlActive ? 'active' : ''}" data-level="${idx}">
-              ${isLvlActive ? '<i data-lucide="check" style="width:13px;height:13px;color:#fbbf24;"></i>' : '<span style="width:13px;display:inline-block;"></span>'}
+              ${isLvlActive ? '<i data-lucide="check" style="width:13px;height:13px;color:#dfff76;"></i>' : '<span style="width:13px;display:inline-block;"></span>'}
               <span>${label}</span>
             </button>
           `;
@@ -915,14 +1022,44 @@ export function renderLiveTvView() {
       // ─── HLS Stream Engine with Sequential Cancellation Token ───
       let channelPlaybackToken = 0;
 
+      function stopCurrentMedia() {
+        const hls = activeHls;
+        const mpegts = activeMpegts;
+        activeHls = null;
+        activeMpegts = null;
+        disposeLiveMedia({ video: videoEl, hls, mpegts, frames: container.querySelectorAll('#tv-embed-player') });
+      }
+
       async function loadChannel(channel, forceSrcIdx = -1) {
         const myToken = ++channelPlaybackToken;
         activeChannel = channel;
         isPipDismissed = false;
+        stopCurrentMedia();
+        let embeddedPlayback = false;
+        let lastPlaybackError = '';
+        for (const control of [playPauseBtn, muteBtn, container.querySelector('#tv-btn-quality')]) { if (control) control.style.display = ''; }
 
         // Alternatif kaynak listesini kur (tercih + varsayılan)
+        // TVR: akis URL'sini oynatmadan hemen once coz (tarayici WebCrypto,
+        // 2 dk cache; imza taze kalir). Basarisizsa hata goster, listede kalir.
+        if (channel.isTvr && !channel.streamUrl) {
+          try {
+            if (loadingEl) loadingEl.classList.remove('hidden');
+            if (errorEl) errorEl.classList.add('hidden');
+          } catch (_) {}
+          const fresh = await getRecTvChannelStreamUrl(channel.tvrId, { forceRefresh: true }).catch(() => null);
+          if (channelPlaybackToken !== myToken) return;
+          if (fresh) {
+            channel.streamUrl = fresh;
+          } else {
+            try {
+              if (loadingEl) loadingEl.classList.add('hidden');
+              if (errorEl) errorEl.classList.remove('hidden');
+            } catch (_) {}
+            return;
+          }
+        }
         buildSrcList(channel);
-        triedBases.add(getTsBaseIdx());
         if (forceSrcIdx >= 0 && forceSrcIdx < srcList.length) srcIdx = forceSrcIdx;
         const useAlt = srcIdx > 0;
         renderSrcMenu();
@@ -932,30 +1069,6 @@ export function renderLiveTvView() {
         updateTopBar();
         showOSD();
         updateActiveChannelCard();
-
-        // 1. Immediately HARD STOP and detach previous playback to prevent audio echo
-        if (activeHls) {
-          try {
-            activeHls.stopLoad();
-            activeHls.detachMedia();
-            activeHls.destroy();
-          } catch (_) {}
-          activeHls = null;
-        }
-        if (activeMpegts) {
-          try {
-            activeMpegts.destroy();
-          } catch (_) {}
-          activeMpegts = null;
-        }
-
-        if (videoEl) {
-          try {
-            videoEl.pause();
-            videoEl.removeAttribute('src');
-            videoEl.load();
-          } catch (_) {}
-        }
 
         loadingEl.classList.remove('hidden');
         errorEl.classList.add('hidden');
@@ -971,7 +1084,7 @@ export function renderLiveTvView() {
         setTimeout(() => {
           videoEl.removeEventListener('loadeddata', onVideoReady);
           // 20sn'de görüntü yoksa hata ekranı yerine denenmemiş kaynağa geç
-          if (channelPlaybackToken === myToken && videoEl.readyState < 2) advanceOrError();
+          if (channelPlaybackToken === myToken && videoEl.readyState < 2 && !embeddedPlayback) advanceOrError();
         }, 20000);
 
         let freshStreamAttempted = false;
@@ -979,22 +1092,81 @@ export function renderLiveTvView() {
         let directNetworkRetryCount = 0;
         let proxyFallbackAttempted = false;
         let mediaRecoveryAttempted = false;
+        let resolutionGeneration = 0;
         const triedSrc = new Set();
         const triedBases = new Set();
+        triedBases.add(getTsBaseIdx());
         async function tryFreshOfficialStream(failedUrl, forceRefresh = true) {
           if (!channel.officialLiveId) return false;
+          // TVR: WebCrypto ile taze cozum (proxy'li m3u8 doner)
+          if (String(channel.officialLiveId).startsWith('tvr:')) {
+            try {
+              const tvrId = String(channel.officialLiveId).slice(4);
+              const fresh = await getRecTvChannelStreamUrl(tvrId, { forceRefresh }).catch(() => null);
+              if (fresh && fresh !== failedUrl) {
+                channel.streamUrl = fresh;
+                startHls(fresh);
+                return true;
+              }
+            } catch (_) {}
+            return false;
+          }
           if (forceRefresh && officialRefreshAttempts >= 2) return false;
           if (forceRefresh) officialRefreshAttempts += 1;
+          const resolutionRun = ++resolutionGeneration;
           freshStreamAttempted = true;
           loadingEl.classList.remove('hidden');
           errorEl.classList.add('hidden');
           try {
-            const resolver = apiUrl(`/api/live_tv_stream?channel=${encodeURIComponent(channel.officialLiveId)}&json=1&refresh=1&_=${Date.now()}`);
+            const resolver = locApi(`/api/live_tv_stream?channel=${encodeURIComponent(channel.officialLiveId)}&playerId=${encodeURIComponent(channel.playerId || '')}&json=1&refresh=${forceRefresh ? 1 : 0}&_=${Date.now()}`);
             const response = await fetch(resolver, { cache: 'no-store', headers: { Accept: 'application/json' } });
-            if (!response.ok) throw new Error(`Live resolver ${response.status}`);
+            if (!response.ok) {
+              const failure = await response.json().catch(() => null);
+              lastPlaybackError = failure?.error || 'Yayın kaynağı şu anda yanıt vermiyor';
+              throw new Error(lastPlaybackError);
+            }
             const data = await response.json();
+            if (channelPlaybackToken !== myToken || resolutionRun !== resolutionGeneration) return true;
+            if (data.kind === 'external' && /^https:\/\//.test(data.externalUrl || '')) {
+              stopCurrentMedia();
+              resolutionGeneration++;
+              embeddedPlayback = true;
+              const panel = document.createElement('div');
+              panel.id = 'tv-embed-player';
+              panel.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2';
+              const link = document.createElement('a');
+              link.href = data.externalUrl;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              link.textContent = `${channel.name} resmî canlı yayınını aç`;
+              link.className = 'btn btn-primary';
+              panel.appendChild(link);
+              screenEl.appendChild(panel);
+              loadingEl.classList.add('hidden');
+              errorEl.classList.add('hidden');
+              return true;
+            }
+            if ((data.kind === 'embed' && /^https:\/\//.test(data.embedUrl || '')) || (data.kind === 'youtube' && /^https:\/\/www\.youtube\.com\/embed\/[a-zA-Z0-9_-]{11}\?/.test(data.embedUrl || ''))) {
+              stopCurrentMedia();
+              resolutionGeneration++;
+              embeddedPlayback = true;
+              for (const control of [playPauseBtn, muteBtn, container.querySelector('#tv-btn-quality')]) { if (control) control.style.display = 'none'; }
+              const frame = document.createElement('iframe');
+              frame.id = 'tv-embed-player';
+              frame.title = `${channel.name} canlı yayını`;
+              frame.allow = 'autoplay; fullscreen; picture-in-picture';
+              frame.allowFullscreen = true;
+              frame.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;z-index:1';
+              frame.src = data.embedUrl;
+              screenEl.appendChild(frame);
+              loadingEl.classList.add('hidden');
+              errorEl.classList.add('hidden');
+              setupQualityMenu(null);
+              return true;
+            }
             const chosenPath = data?.proxiedUrl || data?.url || '';
-            const freshUrl = chosenPath ? apiUrl(chosenPath) : '';
+            if (channelPlaybackToken !== myToken || resolutionRun !== resolutionGeneration) return true;
+            const freshUrl = chosenPath ? locApi(chosenPath) : '';
             if (!freshUrl) throw new Error('Live stream URL missing');
             channel.streamUrl = freshUrl;
             if (freshUrl !== failedUrl || forceRefresh) {
@@ -1002,6 +1174,7 @@ export function renderLiveTvView() {
               return true;
             }
           } catch (error) {
+            if (channelPlaybackToken !== myToken || resolutionRun !== resolutionGeneration) return true;
             console.warn('[LiveTV] Official stream refresh failed:', channel.name, error?.message || error);
           }
           return false;
@@ -1011,6 +1184,8 @@ export function renderLiveTvView() {
           if (channelPlaybackToken !== myToken) return;
           loadingEl.classList.add('hidden');
           errorEl.classList.remove('hidden');
+          const message = errorEl.querySelector('.tv-error-msg');
+          if (message) message.textContent = lastPlaybackError || 'Yayın akışı geçici olarak yanıt vermedi';
         }
 
         // Denenmemiş sonraki kaynağa geç; kaynaklar biterse baz değiştir
@@ -1048,7 +1223,8 @@ export function renderLiveTvView() {
           if (proxyFallbackAttempted || !/^https?:\/\//i.test(failedUrl)) return false;
           proxyFallbackAttempted = true;
           const ref = `${new URL(failedUrl).origin}/`;
-          const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(failedUrl)}&ref=${encodeURIComponent(ref)}`;
+          // Canli TV: tum segmentler proxy'den gecsin (CORS'suz CDN + yonlendirme zinciri)
+          const proxiedUrl = locApi(`/api/hls_proxy?url=${encodeURIComponent(failedUrl)}&ref=${encodeURIComponent(ref)}&live=1`);
           channel.streamUrl = proxiedUrl;
           startHls(proxiedUrl);
           return true;
@@ -1069,6 +1245,7 @@ export function renderLiveTvView() {
         }
 
         function playSrc(i) {
+          resolutionGeneration++;
           const s = srcList[i];
           if (!s) {
             advanceOrError();
@@ -1094,18 +1271,7 @@ export function renderLiveTvView() {
               showPlaybackError();
               return;
             }
-            if (activeMpegts) {
-              try { activeMpegts.destroy(); } catch (_) {}
-              activeMpegts = null;
-            }
-            if (activeHls) {
-              try {
-                activeHls.stopLoad();
-                activeHls.detachMedia();
-                activeHls.destroy();
-              } catch (_) {}
-              activeHls = null;
-            }
+            stopCurrentMedia();
             try {
               const player = mpegts.createPlayer({ type: 'mpegts', isLive: true, url });
               activeMpegts = player;
@@ -1128,38 +1294,28 @@ export function renderLiveTvView() {
 
         function startHls(url) {
           if (channelPlaybackToken !== myToken) return;
-          url = apiUrl(url);
-          if (activeMpegts) {
-            try { activeMpegts.destroy(); } catch (_) {}
-            activeMpegts = null;
-          }
-
+          url = locApi(url);
+          resolutionGeneration++;
+          embeddedPlayback = false;
+          stopCurrentMedia();
           if (Hls.isSupported()) {
-            if (activeHls) {
-              try {
-                activeHls.stopLoad();
-                activeHls.detachMedia();
-                activeHls.destroy();
-              } catch (_) {}
-              activeHls = null;
-            }
-
             const hls = new Hls({
               enableWorker: true,
               lowLatencyMode: true,
               startLevel: 0,
               capLevelToPlayerSize: true,
               backBufferLength: 10,
-              maxBufferLength: 8,
-              maxMaxBufferLength: 15,
-              liveSyncDurationCount: 2,
+              maxBufferLength: 20,
+              maxMaxBufferLength: 40,
+              liveSyncDurationCount: 3,
               liveMaxLatencyDurationCount: 5,
               manifestLoadingTimeOut: 12000,
-              manifestLoadingMaxRetry: 1,
-              manifestLoadingRetryDelay: 350,
-              levelLoadingTimeOut: 14000,
-              levelLoadingMaxRetry: 1,
-              fragLoadingTimeOut: 12000
+              manifestLoadingMaxRetry: 3,
+              manifestLoadingRetryDelay: 1000,
+              levelLoadingTimeOut: 12000,
+              levelLoadingMaxRetry: 3,
+              fragLoadingTimeOut: 10000,
+              fragLoadingMaxRetry: 3
             });
             activeHls = hls;
 
@@ -1167,7 +1323,7 @@ export function renderLiveTvView() {
             hls.attachMedia(videoEl);
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-              if (channelPlaybackToken !== myToken) {
+              if (channelPlaybackToken !== myToken || activeHls !== hls) {
                 try {
                   hls.stopLoad();
                   hls.detachMedia();
@@ -1176,7 +1332,14 @@ export function renderLiveTvView() {
                 return;
               }
               setupQualityMenu(hls);
-              videoEl.play().catch(() => {});
+              videoEl.play().catch((error) => {
+                if (error.name !== 'NotAllowedError' || channelPlaybackToken !== myToken) return;
+                isMuted = true;
+                videoEl.muted = true;
+                if (muteBtn) muteBtn.innerHTML = '<i data-lucide="volume-x" style="width:18px;height:18px;"></i>';
+                renderIcons();
+                videoEl.play().catch(() => {});
+              });
             });
 
             hls.on(Hls.Events.ERROR, (_, data) => {
@@ -1193,13 +1356,9 @@ export function renderLiveTvView() {
                     tryFreshOfficialStream(url).then(recovered => {
                       if (!recovered) advanceOrError();
                     });
-                  } else if (directNetworkRetryCount < 1) {
-                    directNetworkRetryCount += 1;
-                    loadingEl.classList.remove('hidden');
-                    setTimeout(() => {
-                      if (channelPlaybackToken === myToken && activeHls === hls) startHls(url);
-                    }, 700);
                   } else if (!tryProxyFallback(url)) {
+                    // Dogrudan tekrar deneme yok: ikinci deneme de ayni
+                    // CORS/403'e takilir, vakit kaybi. Hemen proxy.
                     advanceOrError();
                   }
                 } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
@@ -1224,7 +1383,14 @@ export function renderLiveTvView() {
             videoEl.addEventListener('loadedmetadata', () => {
               if (channelPlaybackToken !== myToken) return;
               setupQualityMenu(null);
-              videoEl.play().catch(() => {});
+              videoEl.play().catch((error) => {
+                if (error.name !== 'NotAllowedError' || channelPlaybackToken !== myToken) return;
+                isMuted = true;
+                videoEl.muted = true;
+                if (muteBtn) muteBtn.innerHTML = '<i data-lucide="volume-x" style="width:18px;height:18px;"></i>';
+                renderIcons();
+                videoEl.play().catch(() => {});
+              });
             }, { once: true });
             videoEl.addEventListener('error', () => {
               if (channelPlaybackToken !== myToken) return;
@@ -1247,11 +1413,9 @@ export function renderLiveTvView() {
         // Official DMAX/TLC playback URLs are signed and short-lived; resolve a fresh URL on every selection.
         // Alternatif kaynak seçiliyse resmi çözümleme atlanır, panel TS'i direkt oynatılır.
         if (channel.officialLiveId && !useAlt) {
-          tryFreshOfficialStream('', true).then(recovered => {
-            if (recovered || channelPlaybackToken !== myToken) return;
-            tryFreshOfficialStream('', true).then(retried => {
-              if (!retried && channelPlaybackToken === myToken) advanceOrError();
-            });
+          triedSrc.add(srcIdx);
+          tryFreshOfficialStream('', false).then(recovered => {
+            if (!recovered && channelPlaybackToken === myToken) advanceOrError();
           });
         } else {
           playSrc(srcIdx);
@@ -1319,7 +1483,7 @@ export function renderLiveTvView() {
               <div class="tv-grid-card-top">
                 <span class="tv-grid-num">${String(globalIdx).padStart(2, '0')}</span>
                 <button class="tv-grid-fav-btn ${isFavorited ? 'is-fav' : ''}" data-favid="${ch.id}" title="${isFavorited ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}">
-                  <i data-lucide="star" style="width:15px;height:15px;${isFavorited ? 'fill:#fbbf24;color:#fbbf24;' : ''}"></i>
+                  <i data-lucide="star" style="width:15px;height:15px;${isFavorited ? 'fill:#dfff76;color:#dfff76;' : ''}"></i>
                 </button>
               </div>
 
@@ -1397,6 +1561,74 @@ export function renderLiveTvView() {
         updateTopBar();
         renderIcons();
       };
+
+      // Omurga + yedek listeleri arka planda tazele (gunluk cache); degisirse izgara guncellenir
+      {
+        const refreshAll = async () => {
+          if (!document.contains(container)) return;
+          const [iptvFresh, tvrFreshRaw] = await Promise.all([
+            refreshIptvChannels().catch(() => null),
+            (!isKid ? fetchRecTvLiveChannels().catch(() => null) : Promise.resolve(null))
+          ]);
+          if (!document.contains(container)) return;
+          let changed = false;
+          if (iptvFresh && iptvFresh.length > 0) {
+            const mapped = toIptvLiveChannels(iptvFresh)
+              .filter(kidOk)
+              .filter(c => !curatedNames.has(normalizeCanliName(c.name)))
+              .map(c => ({ ...c, streamUrl: toProxiedLiveUrl(c.streamUrl) }));
+            const before = allChannels.filter((c) => c.iptvOrg).map((c) => c.id).join(',');
+            if (before !== mapped.map((c) => c.id).join(',')) {
+              for (let i = allChannels.length - 1; i >= 0; i--) {
+                if (allChannels[i].iptvOrg) allChannels.splice(i, 1);
+              }
+              const insertIdx = allChannels.filter(c => !c.iptvOrg && !c.isTvr).length;
+              allChannels.splice(insertIdx, 0, ...mapped);
+              changed = true;
+            }
+          }
+          // CanliTV kapali (dengesiz) — blogu pasif birakildi.
+          if (tvrFreshRaw && tvrFreshRaw.length > 0) {
+            try {
+              localStorage.setItem(TVR_LIVE_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), channels: tvrFreshRaw }));
+            } catch (_) {}
+            const known = new Set(allChannels.filter((c) => !c.isTvr).map((c) => normalizeCanliName(c.name)));
+            const mapped = toTvrLiveChannels(tvrFreshRaw).filter((c) => kidOk(c) && !known.has(normalizeCanliName(c.name)));
+            const before = allChannels.filter((c) => c.isTvr).map((c) => c.id).join(',');
+            if (before !== mapped.map((c) => c.id).join(',')) {
+              for (let i = allChannels.length - 1; i >= 0; i--) {
+                if (allChannels[i].isTvr) allChannels.splice(i, 1);
+              }
+              allChannels.push(...mapped);
+              changed = true;
+            }
+          }
+          const updatedActive = allChannels.find((c) => c.id === activeChannel.id);
+          if (updatedActive) activeChannel = { ...activeChannel, logo: updatedActive.logo };
+          else if ((!activeChannel.streamUrl || activeChannel.id === 'ctv_loading') && allChannels[0]) {
+            activeChannel = allChannels[0];
+            try {
+              renderAllViews();
+            } catch (_) {}
+            loadChannel(activeChannel);
+            return;
+          }
+          if (changed) {
+            // Cocuk modu havuzu ayri referansta tutuldugu icin esitle
+            // (yetiskin modda channelsPool === allChannels, dokunma).
+            try {
+              if (isKid && channelsPool !== allChannels) {
+                channelsPool.length = 0;
+                channelsPool.push(...allChannels.filter((c) => c.category === 'kids'));
+              }
+            } catch (_) {}
+            try {
+              renderAllViews();
+            } catch (_) {}
+          }
+        };
+        refreshAll().catch(() => {});
+      }
 
       // ─── Search Handlers ───
       if (searchInput) {
@@ -1569,27 +1801,13 @@ export function renderLiveTvView() {
 
       // ─── Global Clean Up & Lifecycle Manager ───
       const stopAllPlayback = () => {
+        channelPlaybackToken++;
+        stopCurrentMedia();
         scope.dispose();
         stopEpgService();
-        channelPlaybackToken++;
         clearInterval(epgInterval);
         window.removeEventListener('epg-updated', onEpgUpdated);
         window.removeEventListener('scroll', handlePipScroll);
-        if (activeHls) {
-          try {
-            activeHls.stopLoad();
-            activeHls.detachMedia();
-            activeHls.destroy();
-          } catch (_) {}
-          activeHls = null;
-        }
-        if (videoEl) {
-          try {
-            videoEl.pause();
-            videoEl.removeAttribute('src');
-            videoEl.load();
-          } catch (_) {}
-        }
         document.removeEventListener('keydown', handleKeyboard);
       };
 
@@ -1608,7 +1826,7 @@ export function renderLiveTvView() {
 
       // ─── Initial Start ───
       renderAllViews();
-      loadChannel(activeChannel);
+      if (activeChannel && activeChannel.streamUrl) loadChannel(activeChannel);
       updateVolume(1.0);
 
     }

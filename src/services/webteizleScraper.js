@@ -28,6 +28,15 @@ function slugify(text) {
   return normalizeTitle(text).replace(/\s+/g, '-');
 }
 
+function loc(path) {
+  if (!path || /^https?:\/\//i.test(path)) return path;
+  if (typeof window !== 'undefined') {
+    const host = window.location?.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1') return path;
+  }
+  return apiUrl(path);
+}
+
 /**
  * Resolves streams from Webteizle
  */
@@ -51,7 +60,51 @@ export async function fetchWebteizleSources({
 
   if (candidateQueries.length === 0) return [];
 
-  // 1. Try dedicated backend resolver (bypasses Cloudflare Turnstile/Bot Challenge cleanly)
+  // 1. Ozel backend resolver (SezonlukDizi ile ayni mantik: /api/resolve?provider=wtz).
+  //    Vercel'de python webteizle.py calisir, datacenter IP'si engellenirse
+  //    asagidaki webteizle_stream + CF worker fallback'lari devreye girer.
+  try {
+    const qs = new URLSearchParams({
+      provider: 'wtz', type: 'movie',
+      title: title || candidateQueries[0] || '',
+      originalTitle: originalTitle || '',
+      season: String(season), episode: String(episode),
+      isDub: isDub ? '1' : '0'
+    });
+    candidateQueries.slice(0, 4).forEach((t, i) => { if (t) qs.append(`t${i}`, t); });
+    // Local'de vite proxy -> :4000 (python cozuculer); canlida Vercel API.
+    // (Eskiden apiUrl() local'de uzak Vercel'e gidiyor, local cozuculer
+    // hic kullanilmiyor ve CloseLoad/FastPlay local'de bos donuyordu.)
+    const resolveUrl = loc(`/api/resolve?${qs.toString()}`);
+    const rres = await fetch(resolveUrl, { signal: AbortSignal.timeout(15000) }).catch(() => null);
+    if (rres && rres.ok) {
+      const rdata = await rres.json().catch(() => null);
+      if (rdata && rdata.success && Array.isArray(rdata.streams) && rdata.streams.length > 0) {
+        return rdata.streams.map((s, i) => {
+          const prov = s.provider || 'Webteizle';
+          const url = s.streamUrl || s.url;
+          if (!url) return null;
+          return {
+            id: `wtz_${String(prov).toLowerCase().replace(/[^a-z0-9]+/g, '') || i}_movie`,
+            name: `WTZ ${prov} 1080p`,
+            displayName: `WTZ ${prov}`,
+            badge: `🎬 ${prov} 1080p`,
+            source: 'Webteizle',
+            url,
+            streamUrl: url,
+            quality: '1080p',
+            isIframe: true,
+            category: isDub ? 'dubbed' : 'subtitled',
+            type: 'embed',
+            subtitles: Array.isArray(s.subtitles) ? s.subtitles : [],
+            getUrl: () => url
+          };
+        }).filter(Boolean);
+      }
+    }
+  } catch (_) {}
+
+  // 2. Try dedicated backend resolver (bypasses Cloudflare Turnstile/Bot Challenge cleanly)
   try {
     const params = new URLSearchParams({
       title: title || candidateQueries[0] || '',
@@ -63,7 +116,7 @@ export async function fetchWebteizleSources({
       isDub: isDub ? 'true' : 'false'
     });
 
-    const serverUrl = apiUrl(`/api/webteizle_stream?${params.toString()}`);
+    const serverUrl = loc(`/api/webteizle_stream?${params.toString()}`);
     const res = await fetch(serverUrl, { signal: AbortSignal.timeout(10000) }).catch(() => null);
     if (res && res.ok) {
       const data = await res.json().catch(() => null);
@@ -177,12 +230,12 @@ export async function fetchWebteizleSources({
 
           if (playerUrl && !seenEmbeds.has(playerUrl)) {
             seenEmbeds.add(playerUrl);
-            const providerName = alt.baslik || 'Webteizle';
+            const providerName = alt.baslik || 'WTZ';
 
             sources.push({
               id: `webteizle_${alt.id}`,
-              name: `Webteizle - ${providerName} (${dilPath === 'dublaj' ? 'Dublaj' : 'Altyazılı'})`,
-              displayName: `Webteizle ${providerName}`,
+              name: `WTZ - ${providerName} (${dilPath === 'dublaj' ? 'Dublaj' : 'Altyazılı'})`,
+              displayName: `WTZ ${providerName}`,
               badge: `🎬 ${providerName} 1080p`,
               source: 'Webteizle',
               url: playerUrl,

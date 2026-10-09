@@ -109,7 +109,64 @@ export async function fetchSinewixSources({
 }) {
   const isMovie = type === 'movie';
 
+  const locUrl = (p) => {
+    if (!p || /^https?:\/\//i.test(p)) return p;
+    if (typeof window !== 'undefined') {
+      const host = window.location?.hostname || '';
+      if (host === 'localhost' || host === '127.0.0.1') return p;
+    }
+    return apiUrl(p);
+  };
+  const resolvePath = (p) => locUrl(p);
+
   try {
+    // Ozel backend resolver (birincil); basarisizsa klasik akisa dus.
+    try {
+      const qs = new URLSearchParams({
+        provider: 'snx', type: isMovie ? 'movie' : 'tv',
+        title: title || seriesTitle || '', originalTitle: originalTitle || '',
+        season: String(season || 1), episode: String(episode || 1),
+        ...(year ? { year: String(year) } : {}), ...(imdbId ? { imdbId } : {}),
+        ...(typeof isDub === 'boolean' ? { isDub: isDub ? '1' : '0' } : {})
+      });
+      [...(Array.isArray(titles) ? titles : []), seriesTitle].forEach((t, i) => {
+        if (i < 4 && t && typeof t === 'string') qs.append(`t${i}`, t);
+      });
+      const rres = await fetch(resolvePath(`/api/resolve?${qs.toString()}`), {
+        signal: AbortSignal.timeout(15000)
+      }).catch(() => null);
+      if (rres && rres.ok) {
+        const rdata = await rres.json().catch(() => null);
+        if (rdata && rdata.success && Array.isArray(rdata.streams) && rdata.streams.length > 0) {
+          const mapped = rdata.streams.map((s) => {
+            const url = locUrl(s.streamUrl);
+            const isMkv = Boolean(s.isMkv) || /\.mkv/i.test(s.rawStreamUrl || '');
+            const isHls = /\.m3u8/i.test(s.rawStreamUrl || '');
+            const isDirect = isMkv || /\.mp4|\.webm/i.test(s.rawStreamUrl || '') || isHls;
+            const audio = s.audio || 'dual';
+            const serverTitle = isDirect ? (isMkv ? 'SWX 1080p (MKV)' : 'SWX 1080p Direct') : 'SWX VIP 1080p';
+            return {
+              id: `snx_${s.tag || Math.random().toString(36).substring(7)}`,
+              name: serverTitle,
+              displayName: serverTitle,
+              badge: audio === 'sub' ? '💬 TR Altyazı 1080p' : (audio === 'dual' ? '⚡ SWX Dual 1080p' : '⚡ SWX 1080p'),
+              category: audio === 'sub' ? 'subtitled' : 'dubbed',
+              streamUrl: url,
+              url,
+              originalEmbedUrl: s.rawStreamUrl,
+              isHls,
+              isDirectVideo: true,
+              isMkv,
+              source: 'SWX',
+              subtitles: Array.isArray(s.subtitles) ? s.subtitles : [],
+              getUrl: () => url
+            };
+          }).filter((s) => s.streamUrl);
+          if (mapped.length > 0) return mapped;
+        }
+      }
+    } catch (_) {}
+
     const rawQueries = [
       ...(Array.isArray(titles) ? titles : []),
       seriesTitle,

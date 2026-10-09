@@ -194,7 +194,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
               <!-- Clean Metadata Line (Directly under story, matching Netflix Mulan) -->
               <div class="detail-meta-line">
                 <span class="detail-meta-rating">
-                  <i data-lucide="star" style="width:14px; height:14px; fill: #f59e0b; color: #f59e0b;"></i> ${rating}
+                  <i data-lucide="star" style="width:14px; height:14px; fill: #dfff76; color: #dfff76;"></i> ${rating}
                 </span>
                 <span>${year}</span>
                 ${genres.length > 0 ? `<span>${genres.slice(0, 3).map(g => g.name).join(' • ')}</span>` : ''}
@@ -235,7 +235,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                   </button>
 
                   <button class="btn-action-tile" id="btn-mark-halfway-detail" title="Kaldığım Yer">
-                    <i data-lucide="clock" style="color: #fbbf24;"></i>
+                    <i data-lucide="clock" style="color: #dfff76;"></i>
                     <span>Yarıda Bırak</span>
                   </button>
                 </div>
@@ -311,7 +311,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
             <div class="netflix-pane-header">
               <div class="netflix-pane-title-group">
                 <h2 class="netflix-pane-title">
-                  <i data-lucide="users" style="color: #f59e0b; width: 20px; height: 20px;"></i>
+                  <i data-lucide="users" style="color: #dfff76; width: 20px; height: 20px;"></i>
                   <span>Oyuncu Kadrosu & Karakterler</span>
                 </h2>
                 <p class="netflix-pane-subtitle">Karakteri canlandıran oyuncular ve filmografileri</p>
@@ -339,7 +339,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                         <h4 class="netflix-cast-name">${actor.name}</h4>
                         ${character ? `<p class="netflix-cast-character">As ${character}</p>` : ''}
                         <div class="netflix-cast-rating">
-                          <i data-lucide="star" style="width:11px;height:11px;fill:#f59e0b;stroke:#f59e0b;"></i>
+                          <i data-lucide="star" style="width:11px;height:11px;fill:#dfff76;stroke:#dfff76;"></i>
                           <span>${score} / 10</span>
                         </div>
                       </div>
@@ -419,7 +419,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                   ` : ''}
                   <div class="spec-row">
                     <span class="spec-label">IMDb Puanı</span>
-                    <span class="spec-val" style="color: #fbbf24; font-weight: 750;">★ ${rating} / 10</span>
+                    <span class="spec-val" style="color: #dfff76; font-weight: 750;">★ ${rating} / 10</span>
                   </div>
                   <div class="spec-row">
                     <span class="spec-label">Letterboxd</span>
@@ -435,7 +435,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
             <div class="netflix-pane-header">
               <div class="netflix-pane-title-group">
                 <h2 class="netflix-pane-title">
-                  <i data-lucide="youtube" style="color: #f59e0b; width: 20px; height: 20px;"></i>
+                  <i data-lucide="youtube" style="color: #dfff76; width: 20px; height: 20px;"></i>
                   <span>Resmi Fragmanlar & Klipler</span>
                 </h2>
                 <p class="netflix-pane-subtitle">Resmi Türkçe ve orijinal tanıtım fragmanları</p>
@@ -490,7 +490,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
               <div class="netflix-pane-header">
                 <div class="netflix-pane-title-group">
                   <h2 class="netflix-pane-title">
-                    <i data-lucide="thumbs-up" style="color: #f59e0b; width: 20px; height: 20px;"></i>
+                    <i data-lucide="thumbs-up" style="color: #dfff76; width: 20px; height: 20px;"></i>
                     <span>Benzer Önerilen Yapımlar</span>
                   </h2>
                   <p class="netflix-pane-subtitle">Bu yapımı seven izleyicilerin en çok beğendiği diğer içerikler</p>

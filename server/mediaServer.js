@@ -1,3 +1,6 @@
+import dns from 'dns';
+try { dns.setDefaultResultOrder('ipv4first'); } catch (_) {}
+import { resolveCanliChannel } from '../api/_canlitv.js';
 /**
  * CinePulse Autonomous Media Server
  * Converts torrents into direct HTTP video streams via WebTorrent.
@@ -18,8 +21,33 @@ import zlib from 'zlib';
 import { Readable, PassThrough } from 'stream';
 import { fileURLToPath } from 'url';
 import { execFile, spawn } from 'child_process';
+import { promisify } from 'util';
 import { createRequire } from 'module';
 import { resolveWebteizleStreams } from './webteizleExtractor.js';
+
+const execFileAsync = promisify(execFile);
+
+// Windows'ta `python3` genelde yoktur (`python` vardir). EXE sidecar PYTHON_BIN
+// env'iyle gelir; yoksa platforma gore varsayilan secilir.
+const PYTHON_BIN =
+  process.env.PYTHON_BIN || (process.platform === 'win32' ? 'python' : 'python3');
+
+async function fetchTextSafe(url, headers = {}) {
+  try {
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
+    if (res.ok) return await res.text();
+  } catch (_) {}
+  try {
+    const args = ['-s', '-L', '-4', '--connect-timeout', '4', '--max-time', '8', '--tlsv1.2'];
+    if (headers['User-Agent']) args.push('-A', headers['User-Agent']);
+    if (headers['Referer']) args.push('-e', headers['Referer']);
+    args.push(url);
+    const { stdout } = await execFileAsync('curl', args, { timeout: 10000, maxBuffer: 5 * 1024 * 1024 });
+    return stdout || '';
+  } catch (_) {
+    return '';
+  }
+}
 
 // Resolve @ffmpeg-installer/ffmpeg path (CommonJS package)
 let _ffmpegBin = null;
@@ -757,34 +785,56 @@ const server = http.createServer(async (req, res) => {
     const scriptPath = path.join(__dirname, 'hdfc_extractor.py');
     const args = [scriptPath, query, originalTitle, season, episode, type];
 
-    execFile('python3', args, { timeout: 25000 }, (err, stdout, stderr) => {
+    execFile(PYTHON_BIN, args, { timeout: 10500 }, (err, stdout, stderr) => {
+      // Basarisizlikta bayat cache'i don (24s): site kissa bile liste bos kalmaz
+      const serveStale = () => {
+        const cached = globalThis._hdfcCache?.get(cacheKey);
+        if (cached?.data?.streamUrl && Date.now() - cached.time < 24 * 3600 * 1000) {
+          res.writeHead(200);
+          res.end(JSON.stringify({ ...cached.data, stale: true }));
+          return true;
+        }
+        return false;
+      };
       if (err || !stdout) {
-        res.writeHead(200);
-        res.end(JSON.stringify({ success: false, error: err?.message || 'Extraction failed' }));
+        if (!serveStale()) {
+          res.writeHead(200);
+          res.end(JSON.stringify({ success: false, error: err?.message || 'Extraction failed' }));
+        }
         return;
       }
       try {
         const data = JSON.parse(stdout.trim());
         if (data.success && data.streamUrl) {
-          const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(data.streamUrl)}&ref=${encodeURIComponent('https://hdfilmcehennemi.mobi/')}`;
+          // Extractor ciktisi zaten /api/hls_proxy ile per-provider ref icerir
+          // (CloseLoad -> mobi, Rapidrame -> nl). Oldugu gibi geçir.
           const resultData = {
             success: true,
-            streamUrl: proxiedUrl,
-            rawStreamUrl: data.streamUrl,
+            streamUrl: data.streamUrl,
+            rawStreamUrl: data.rawStreamUrl || data.streamUrl,
             movieUrl: data.movieUrl,
-            subtitles: data.subtitles || []
+            embedUrl: data.embedUrl,
+            subtitles: data.subtitles || [],
+            streams: Array.isArray(data.streams) ? data.streams : []
           };
           if (!globalThis._hdfcCache) globalThis._hdfcCache = new Map();
           globalThis._hdfcCache.set(cacheKey, { time: Date.now(), data: resultData });
+          // Bayat yedekler sisme yapmasin: 200 kaydi gecince en eskileri at
+          if (globalThis._hdfcCache.size > 200) {
+            const first = globalThis._hdfcCache.keys().next().value;
+            globalThis._hdfcCache.delete(first);
+          }
           res.writeHead(200);
           res.end(JSON.stringify(resultData));
-        } else {
+        } else if (!serveStale()) {
           res.writeHead(200);
           res.end(JSON.stringify({ success: false, message: data.message || 'Stream not found' }));
         }
       } catch (parseErr) {
-        res.writeHead(200);
-        res.end(JSON.stringify({ success: false, error: 'Invalid JSON output from extractor' }));
+        if (!serveStale()) {
+          res.writeHead(200);
+          res.end(JSON.stringify({ success: false, error: 'Invalid JSON output from extractor' }));
+        }
       }
     });
     return;
@@ -838,6 +888,148 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200);
       res.end(JSON.stringify({ success: false, error: err?.message || 'Resolution failed', streams: [] }));
     }
+    return;
+  }
+
+  // ============ SezonlukDizi Proxy (sayfa + AJAX POST, cookie'li) ============
+  if (reqUrl.pathname.startsWith('/api/szd') || reqUrl.pathname.startsWith('/szd')) {
+    const pathParam = reqUrl.searchParams.get('path');
+    const subPath = pathParam
+      ? (pathParam.startsWith('/') ? pathParam : `/${pathParam}`)
+      : reqUrl.pathname.replace(/^(\/api)?\/szd/, '');
+    const cleanSearch = reqUrl.search ? reqUrl.search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
+    const targetUrl = `https://sezonlukdizi.cc${subPath}${cleanSearch}`;
+    try {
+      const fwdHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': 'https://sezonlukdizi.cc/',
+        'Origin': 'https://sezonlukdizi.cc',
+        'X-Requested-With': 'XMLHttpRequest'
+      };
+      let body;
+      if (req.method === 'POST') {
+        fwdHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+        body = await new Promise((resolve) => {
+          const chunks = [];
+          req.on('data', (c) => chunks.push(c));
+          req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+          req.on('error', () => resolve(''));
+        });
+        // AJAX uclari bolum sayfasinin session cookie'sini ister
+        const incomingCookie = req.headers.cookie;
+        if (incomingCookie) {
+          fwdHeaders['Cookie'] = incomingCookie;
+        } else {
+          try {
+            const sessionRes = await fetch('https://sezonlukdizi.cc/', {
+              headers: { 'User-Agent': fwdHeaders['User-Agent'] },
+              signal: AbortSignal.timeout(5000)
+            });
+            const setCookie = sessionRes.headers.get('set-cookie');
+            if (setCookie) fwdHeaders['Cookie'] = setCookie.split(';')[0];
+          } catch (_) {}
+        }
+      }
+      const upstreamRes = await fetch(targetUrl, {
+        method: req.method,
+        headers: fwdHeaders,
+        body: body || undefined,
+        signal: AbortSignal.timeout(10000)
+      });
+      const setCookie = upstreamRes.headers.get('set-cookie');
+      const outHeaders = {
+        'Content-Type': upstreamRes.headers.get('content-type') || 'text/html; charset=utf-8',
+        'Access-Control-Allow-Origin': '*'
+      };
+      if (setCookie) outHeaders['Set-Cookie'] = setCookie;
+      const data = await upstreamRes.text();
+      res.writeHead(upstreamRes.status, outHeaders);
+      res.end(data);
+      return;
+    } catch (err) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+      return;
+    }
+  }
+
+  // ============ Image Proxy (logo/hotlink safe, edge cached) ============
+  if (reqUrl.pathname === '/img_proxy' || reqUrl.pathname === '/api/img_proxy') {
+    const rawTarget = reqUrl.searchParams.get('url') || '';
+    if (!rawTarget) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Missing url param');
+      return;
+    }
+    try {
+      const imgRes = await fetch(rawTarget, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+        },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!imgRes.ok) throw new Error(`Upstream ${imgRes.status}`);
+      const buf = Buffer.from(await imgRes.arrayBuffer());
+      res.writeHead(200, {
+        'Content-Type': imgRes.headers.get('content-type') || 'image/png',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=86400'
+      });
+      res.end(buf);
+      return;
+    } catch (err) {
+      res.writeHead(502, { 'Content-Type': 'text/plain' });
+      res.end('Image fetch failed');
+      return;
+    }
+  }
+
+  // ============ Unified Provider Resolver (hdfc/dzs/snx/szd) ============
+  if (reqUrl.pathname === '/resolve' || reqUrl.pathname === '/api/resolve') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const get = (k, d = '') => reqUrl.searchParams.get(k) ?? d;
+    const scriptPath = path.join(__dirname, '..', 'api', 'resolve.py');
+    const args = [
+      scriptPath,
+      get('provider'), get('title') || get('query'), get('originalTitle'),
+      get('season', '1'), get('episode', '1'), get('type', 'movie'),
+      get('tmdbId') || 'null', get('imdbId') || 'null', get('isDub') || 'null',
+      get('slug') || 'null'
+    ];
+    const envTitles = [];
+    for (let i = 0; i < 6; i++) {
+      const t = reqUrl.searchParams.get(`t${i}`);
+      if (t) envTitles.push(t);
+    }
+
+    execFile(PYTHON_BIN, args, {
+      timeout: get('provider') === 'ctv' ? 60000 : 45000,
+      env: { ...process.env, CP_TITLES: JSON.stringify(envTitles) }
+    }, (err, stdout) => {
+      if (err || !stdout) {
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: false, error: err?.message || 'Resolution failed' }));
+        return;
+      }
+      try {
+        const data = JSON.parse(stdout.trim());
+        res.writeHead(200);
+        res.end(JSON.stringify(data));
+      } catch (_) {
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: false, error: 'Invalid resolver output' }));
+      }
+    });
     return;
   }
 
@@ -1055,6 +1247,31 @@ const server = http.createServer(async (req, res) => {
   // ============ Live TV Dynamic Stream Resolver (DMAX, TLC) ============
   if (reqUrl.pathname === '/live_tv_stream' || reqUrl.pathname === '/api/live_tv_stream') {
     const channel = (reqUrl.searchParams.get('channel') || '').toLowerCase();
+    // CanliTV (canlitv.you): channel=ctv:<slug> -> taze imzali m3u8'e 302
+    if (channel.startsWith('ctv:')) {
+      const slug = channel.slice(4).replace(/[^a-z0-9-]/g, '');
+      if (!slug) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing slug' }));
+        return;
+      }
+      try {
+        const result = await resolveCanliChannel(slug, reqUrl.searchParams.get('playerId'), reqUrl.searchParams.get('refresh') === '1');
+        res.setHeader('Cache-Control', 'no-store');
+        if (reqUrl.searchParams.get('json') === '1') {
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify(result));
+        } else {
+          res.writeHead(302, { Location: result.proxiedUrl || result.embedUrl || result.externalUrl });
+          res.end();
+        }
+        return;
+      } catch (e) {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+        return;
+      }
+    }
     try {
       let pageUrl = '';
       let refUrl = '';
@@ -1072,20 +1289,24 @@ const server = http.createServer(async (req, res) => {
 
       const now = Date.now();
       if (globalThis._liveTvCache && globalThis._liveTvCache[channel] && globalThis._liveTvCache[channel].exp > now) {
-        res.writeHead(302, { 'Location': globalThis._liveTvCache[channel].url });
-        res.end();
+        if (reqUrl.searchParams.get('json') === '1') {
+          res.setHeader('Cache-Control', 'no-store');
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ success: true, proxiedUrl: globalThis._liveTvCache[channel].url, streamUrl: globalThis._liveTvCache[channel].url }));
+        } else {
+          res.writeHead(302, { 'Location': globalThis._liveTvCache[channel].url });
+          res.end();
+        }
         return;
       }
 
-      const pageRes = await fetch(pageUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-        }
+      const html = await fetchTextSafe(pageUrl, {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': refUrl
       });
-      const html = await pageRes.text();
       const m = html.match(/daionUrl\s*:\s*['"]([^'"]+)['"]/);
       if (!m || !m[1]) {
-        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ error: 'Failed to extract live stream URL' }));
         return;
       }
@@ -1095,14 +1316,20 @@ const server = http.createServer(async (req, res) => {
       if (!globalThis._liveTvCache) globalThis._liveTvCache = {};
       globalThis._liveTvCache[channel] = {
         url: proxiedUrl,
-        exp: now + 5 * 60 * 1000
+        exp: now + 45 * 1000
       };
 
-      res.writeHead(302, { 'Location': proxiedUrl });
-      res.end();
+      if (reqUrl.searchParams.get('json') === '1') {
+        res.setHeader('Cache-Control', 'no-store');
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ success: true, proxiedUrl, streamUrl: proxiedUrl, rawUrl: daionUrl }));
+      } else {
+        res.writeHead(302, { 'Location': proxiedUrl });
+        res.end();
+      }
       return;
     } catch (e) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ error: e.message }));
       return;
     }
@@ -1112,6 +1339,7 @@ const server = http.createServer(async (req, res) => {
   if (reqUrl.pathname === '/hls_proxy' || reqUrl.pathname === '/api/hls_proxy') {
     const rawTarget = reqUrl.searchParams.get('url') || '';
     const rawRef = reqUrl.searchParams.get('ref') || '';
+    const rawXSp = reqUrl.searchParams.get('xsp') || '';
     if (!rawTarget) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       res.end('Missing url param');
@@ -1119,7 +1347,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      const decodedTarget = decodeURIComponent(rawTarget);
+      const decodedTarget = rawTarget;
       if (!isSafePublicUrl(decodedTarget)) {
         res.writeHead(403, { 'Content-Type': 'text/plain' });
         res.end('Target blocked');
@@ -1136,6 +1364,8 @@ const server = http.createServer(async (req, res) => {
           ref = 'https://a.prectv70.lol/';
         } else if (decodedTarget.includes('hdfilmcehennemi')) {
           ref = 'https://hdfilmcehennemi.mobi/';
+        } else if (decodedTarget.includes('fastplay.mom') || decodedTarget.includes('fastplay.')) {
+          ref = 'https://fastplay.mom/';
         } else if (decodedTarget.includes('meatort') || decodedTarget.includes('lookmovie')) {
           ref = 'https://lookmovie2.la/';
         } else if (decodedTarget.includes('.xyz') || decodedTarget.includes('/file/snw') || decodedTarget.includes('4astras') || decodedTarget.includes('saf45sfa') || decodedTarget.includes('4sa') || decodedTarget.includes('7862564') || decodedTarget.includes('959565') || decodedTarget.includes('45464654')) {
@@ -1158,15 +1388,19 @@ const server = http.createServer(async (req, res) => {
         'User-Agent': ua
       };
 
+      if (rawXSp) {
+        upstreamHeaders['X-Sp'] = rawXSp;
+      }
+
       if (req.headers.range) {
         upstreamHeaders['Range'] = req.headers.range;
       }
 
       if (ref) {
         upstreamHeaders['Referer'] = ref;
-        if (targetOrigin && !isRecTv && !ref.includes('ag2m4')) {
-          upstreamHeaders['Origin'] = targetOrigin;
-        }
+        // Origin BILEREK gonderilmiyor: fastplay/pichive gibi CDN'ler
+        // Origin basligi gorunce 403 bos doner (olcutuldu). Tarayicilar
+        // da medya GET'lerinde Origin gondermez; Referer yeterlidir.
       }
 
       let fetchUrl = decodedTarget;
@@ -1176,27 +1410,68 @@ const server = http.createServer(async (req, res) => {
         fetchUrl = encodeURI(decodedTarget);
       }
 
-      const upstreamRes = await fetch(fetchUrl, {
-        method: req.method === 'HEAD' ? 'HEAD' : 'GET',
-        headers: upstreamHeaders,
-        signal: AbortSignal.timeout(15000)  // 15s — segment geç gelirse HLS.js retry yapar
-      });
-
-      const contentType = upstreamRes.headers.get('content-type') || '';
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization, X-Sp');
       res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
 
-      if (decodedTarget.includes('.m3u8') || decodedTarget.includes('.txt') || contentType.includes('mpegurl') || contentType.includes('application/x-mpegURL') || contentType.includes('text/plain')) {
-        const text = await upstreamRes.text();
-        if (!upstreamRes.ok || !text.trimStart().startsWith('#EXTM3U')) {
-          res.writeHead(upstreamRes.ok ? 502 : upstreamRes.status, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
-          res.end('Live playlist unavailable');
-          return;
-        }
-        const baseOrigin = new URL(decodedTarget).origin;
+      const isPlaylist = decodedTarget.includes('.m3u8') || decodedTarget.includes('.txt');
+      let upstreamRes = null;
+      let text = '';
+      let isHls = false;
+      let contentType = '';
+      let upstreamStatus = 200;
+      let finalUpstreamUrl = fetchUrl;
 
+      // 1. For playlists (.m3u8), prioritize curl with HTTP/2 & TLS1.2 for instant response & no ECONNRESET
+      if (isPlaylist) {
+        try {
+          const curlArgs = ['-s', '-L', '-4', '--connect-timeout', '3', '--max-time', '6', '--tlsv1.2'];
+          if (ua) curlArgs.push('-A', ua);
+          if (ref) curlArgs.push('-e', ref);
+          if (rawXSp) curlArgs.push('-H', `X-Sp: ${rawXSp}`);
+          curlArgs.push(fetchUrl);
+          const { stdout } = await execFileAsync('curl', curlArgs, { timeout: 8000, maxBuffer: 10 * 1024 * 1024 });
+          if (stdout && stdout.includes('#EXTM3U')) {
+            text = stdout;
+            isHls = true;
+            upstreamStatus = 200;
+            contentType = 'application/vnd.apple.mpegurl';
+          }
+        } catch (_) {}
+      }
+
+      // 2. Fallback to native fetch if curl didn't handle it.
+      // DIKKAT: text() govdeyi tuketir; tuketilen govde bir daha
+      // pipe'lanamaz ("ReadableStream is locked" + cift header yazimi
+      // tum HLS oynatmayi olduruyordu). Bu yuzden text SADECE liste
+      // benzeri icerikte okunur, ikili icerikte govdeye dokunulmaz.
+      let bodyConsumed = false;
+      if (!isHls) {
+        try {
+          upstreamRes = await fetch(fetchUrl, {
+            method: req.method === 'HEAD' ? 'HEAD' : 'GET',
+            headers: upstreamHeaders,
+            signal: AbortSignal.timeout(8000)
+          });
+          upstreamStatus = upstreamRes.status;
+          contentType = upstreamRes.headers.get('content-type') || '';
+          finalUpstreamUrl = (upstreamRes.url && upstreamRes.url.startsWith('http')) ? upstreamRes.url : fetchUrl;
+
+          if (isPlaylist || contentType.includes('mpegurl') || contentType.includes('application/x-mpegURL') || contentType.includes('text/plain')) {
+            text = await upstreamRes.text();
+            bodyConsumed = true;
+            if (text.includes('#EXTM3U')) isHls = true;
+          }
+        } catch (_) {
+          upstreamRes = null;
+        }
+      }
+
+      // 3. Handle HLS playlist rewriting
+      if (isHls) {
+        const baseOrigin = new URL(finalUpstreamUrl).origin;
+        const forceProxyAll = reqUrl.searchParams.get('live') === '1';
         const rewritten = text.split('\n').map(line => {
           let currentLine = line;
           const trimmed = currentLine.trim();
@@ -1208,13 +1483,14 @@ const server = http.createServer(async (req, res) => {
               if (u.startsWith('http')) fullU = u;
               else if (u.startsWith('/')) fullU = `${baseOrigin}${u}`;
               else {
-                const urlPath = new URL(decodedTarget).pathname;
+                const urlPath = new URL(finalUpstreamUrl).pathname;
                 const lastSlash = urlPath.lastIndexOf('/');
                 const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
                 fullU = `${baseOrigin}${dir}${u}`;
               }
-              const childRef = fullU.includes('dizisol.com') ? 'https://dizisol.com/' : (fullU.includes('ag2m4') || fullU.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : ref);
-              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(childRef)}"`;
+              const childRef = fullU.includes('dizisol.com') ? 'https://dizisol.com/' : (fullU.includes('ag2m4') || fullU.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : (fullU.includes('fastplay.mom') ? 'https://fastplay.mom/' : ref));
+              const xspParam = rawXSp ? `&xsp=${encodeURIComponent(rawXSp)}` : '';
+              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(childRef)}${forceProxyAll ? '&live=1' : ''}${xspParam}"`;
             });
           }
 
@@ -1226,20 +1502,15 @@ const server = http.createServer(async (req, res) => {
           } else if (trimmed.startsWith('/')) {
             fullLineUrl = `${baseOrigin}${trimmed}`;
           } else {
-            const urlPath = new URL(decodedTarget).pathname;
+            const urlPath = new URL(finalUpstreamUrl).pathname;
             const lastSlash = urlPath.lastIndexOf('/');
             const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
             fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
           }
 
-          // Dizisol URL analizi:
-          // - s5.dizisol.com/play? ve /m3u8? → Referer zorunlu → proxy'den geç
-          // - s5.dizisol.com/ts? → Access-Control-Allow-Origin: * → bypass et
           const isDizisolPlaylist = fullLineUrl.includes('dizisol.com') &&
             !fullLineUrl.includes('/ts?') && !fullLineUrl.includes('/ts/');
-          // Direct CDN bypass for video segments and sub-playlists with open CORS
-          // Bypasses proxy for 10x faster playback (<200ms start)
-          const needsProxy = isDizisolPlaylist || /prectv/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi|mariuannastluisborg|moveonjoy)/i.test(fullLineUrl);
+          const needsProxy = forceProxyAll || isDizisolPlaylist || /(?:prectv|hdfilmcehennemi|rapidrame|daioncdn|ercdn|fastplay\.mom)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi|rapidrame|mariuannastluisborg|moveonjoy|daioncdn|ercdn)/i.test(fullLineUrl);
           if (
             !needsProxy &&
             (
@@ -1267,19 +1538,34 @@ const server = http.createServer(async (req, res) => {
             return fullLineUrl;
           }
 
-          const childRef = fullLineUrl.includes('dizisol.com') ? 'https://dizisol.com/' : (fullLineUrl.includes('ag2m4') || fullLineUrl.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : ref);
-          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(childRef)}`;
+          const childRef = fullLineUrl.includes('dizisol.com') ? 'https://dizisol.com/' : (fullLineUrl.includes('ag2m4') || fullLineUrl.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : (fullLineUrl.includes('fastplay.mom') ? 'https://fastplay.mom/' : ref));
+          const xspParam = rawXSp ? `&xsp=${encodeURIComponent(rawXSp)}` : '';
+          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(childRef)}${forceProxyAll ? '&live=1' : ''}${xspParam}`;
         }).join('\n');
 
-        res.writeHead(upstreamRes.status, {
+        res.writeHead(upstreamStatus || 200, {
           'Content-Type': 'application/vnd.apple.mpegurl',
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'no-cache'
         });
         res.end(rewritten);
-      } else {
+        return;
+      }
+
+      // 4. Handle binary streaming (video segments: .ts, .m4s, etc.)
+      if (text) {
+        if (!res.writableEnded && !res.headersSent) {
+          res.writeHead(upstreamStatus || 200, {
+            'Content-Type': contentType || 'text/plain',
+            'Access-Control-Allow-Origin': '*'
+          });
+        }
+        if (!res.writableEnded) res.end(text);
+        return;
+      }
+      if (upstreamRes && upstreamRes.body && !bodyConsumed) {
         const isMkv = contentType.includes('matroska') || decodedTarget.includes('.mkv');
-        const finalContentType = isMkv ? 'video/mp4' : (contentType || 'video/mp4');
+        const finalContentType = isMkv ? 'video/mp4' : (contentType || 'video/mp2t');
         const headers = {
           'Content-Type': finalContentType,
           'Access-Control-Allow-Origin': '*',
@@ -1293,24 +1579,59 @@ const server = http.createServer(async (req, res) => {
         const contentRange = upstreamRes.headers.get('content-range');
         if (contentRange) headers['Content-Range'] = contentRange;
 
-        res.writeHead(upstreamRes.status, headers);
-        if (upstreamRes.body) {
+        try {
+          if (!res.headersSent) res.writeHead(upstreamRes.status, headers);
           const stream = Readable.fromWeb(upstreamRes.body);
-          stream.on('error', () => {
-            if (!res.writableEnded) res.end();
-          });
-          req.on('close', () => {
-            stream.destroy();
-          });
+          stream.on('error', () => { if (!res.writableEnded) res.end(); });
+          req.on('close', () => { try { stream.destroy(); } catch (_) {} });
           stream.pipe(res);
-        } else {
-          res.end();
+        } catch (_) {
+          if (!res.writableEnded) res.end();
         }
+        return;
       }
+
+      // 5. Fallback: stream binary segment via curl spawn (bypasses ECONNRESET on HTTP/2-only CDNs)
+      const curlArgs = ['-s', '--fail', '-L', '-4', '--connect-timeout', '4', '--max-time', '20', '--tlsv1.2'];
+      if (ua) curlArgs.push('-A', ua);
+      if (ref) curlArgs.push('-e', ref);
+      curlArgs.push(fetchUrl);
+
+      // Wait for output before claiming success: Wine may have no curl.exe.
+      const curlProc = spawn('curl', curlArgs);
+      let started = false;
+      const fail = (message) => {
+        console.warn('[MediaServer] curl fallback:', message);
+        if (res.writableEnded || res.destroyed) return;
+        if (started) { res.destroy(new Error(message)); return; }
+        res.writeHead(502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ error: 'Media transport failed', detail: message }));
+      };
+      curlProc.stdout.once('data', (chunk) => {
+        started = true;
+        res.writeHead(200, {
+          'Content-Type': 'video/mp2t',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-store'
+        });
+        res.write(chunk);
+        curlProc.stdout.pipe(res);
+      });
+      curlProc.on('error', (err) => fail(err.code === 'ENOENT'
+        ? 'curl is unavailable. Install curl or choose another source.' : err.message));
+      curlProc.on('close', (code) => {
+        if (code !== 0 || !started) fail(`curl exited without playable media (code ${code})`);
+      });
+      res.on('close', () => curlProc.kill());
+      return;
     } catch (err) {
       console.error('[MediaServer] HLS Proxy error:', err.message);
-      res.writeHead(500, { 'Content-Type': 'text/plain' });
-      res.end(`HLS Proxy Error: ${err.message}`);
+      if (!res.writableEnded && !res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end(`HLS Proxy Error: ${err.message}`);
+      } else if (!res.writableEnded) {
+        try { res.end(); } catch (_) {}
+      }
     }
     return;
   }

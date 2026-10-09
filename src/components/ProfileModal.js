@@ -1,3 +1,4 @@
+import { renderSiteLogo, getProfileAccent } from './BrandLogo.js';
 import { renderIcons } from '../services/icons.js';
 /* ==========================================================================
    CinePulse Studio - "Kim İzliyor?" Çoklu Profil Yönetimi Modal
@@ -5,20 +6,28 @@ import { renderIcons } from '../services/icons.js';
    isolated watch histories and watchlists.
    ========================================================================== */
 
-import { getProfiles, getActiveProfile, setActiveProfile, addProfile, deleteProfile } from '../services/storage.js';
+import { getProfiles, getActiveProfile, setActiveProfile, addProfile, deleteProfile, saveProfiles } from '../services/storage.js';
 import { showToast } from './Toast.js';
 import { openDataManagerModal } from './DataManagerModal.js';
 import { openTraktModal } from './TraktModal.js';
 import { isNativeAndroidApp, checkForAppUpdates, promptAppInstall } from '../services/platformBridge.js';
 
 let activeProfileModal = null;
+let profileEvents;
+let previousProfileFocus;
+const escapeProfileText = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 
 export function openProfileModal() {
   closeProfileModal();
+  previousProfileFocus = document.activeElement;
+  profileEvents = new AbortController();
 
   const modalContainer = document.createElement('div');
   modalContainer.id = 'profile-modal-root';
   modalContainer.className = 'profile-backdrop';
+  modalContainer.setAttribute('role', 'dialog');
+  modalContainer.setAttribute('aria-modal', 'true');
+  modalContainer.setAttribute('aria-labelledby', 'cp-profile-heading');
   document.body.appendChild(modalContainer);
   activeProfileModal = modalContainer;
 
@@ -36,14 +45,14 @@ export function openProfileModal() {
           </button>
 
           <div class="profile-brand-header">
-            <div class="brand-logo-icon">
-              <i data-lucide="clapperboard" style="width: 20px; height: 20px; color: #fff;"></i>
-            </div>
+            ${renderSiteLogo()}
             <span class="brand-name">Cine<span class="brand-highlight">Pulse</span></span>
           </div>
 
           <div class="profile-top-title">
-            <h2 class="profile-main-heading">Kim İzliyor?</h2>
+            <span class="cp-eyebrow">SANA AİT BİR SİNEMA DENEYİMİ.</span>
+            <h2 class="profile-main-heading" id="cp-profile-heading">Kim izliyor?</h2>
+            <p>Profilini seç, hikâyene devam et.</p>
           </div>
 
           <!-- Profiles Grid -->
@@ -51,11 +60,11 @@ export function openProfileModal() {
             ${profiles.map(p => {
               const isAct = p.id === active.id;
               const canDelete = p.id !== 'prof_1';
-              const pColor = p.color || (p.isKid ? '#e5a00d' : '#0071eb');
+              const pColor = getProfileAccent(p.color);
               return `
                 <div class="profile-card-wrapper">
-                  <div class="profile-card netflix-card ${isAct ? 'is-active' : ''} ${isManaging ? 'is-managing-mode' : ''}" data-profile-id="${p.id}">
-                    <div class="profile-avatar-wrap netflix-avatar-square ${p.isKid ? 'is-kid-square' : ''}" style="background: ${pColor};">
+                  <button type="button" aria-label="${escapeProfileText(p.name)} profilini ${isManaging ? 'düzenle' : 'seç'}" aria-pressed="${isAct}" class="profile-card netflix-card ${isAct ? 'is-active' : ''} ${isManaging ? 'is-managing-mode' : ''}" data-profile-id="${p.id}">
+                    <div class="profile-avatar-wrap netflix-avatar-square ${p.isKid ? 'is-kid-square' : ''}" style="--profile-accent: ${pColor};">
                       <i data-lucide="${p.isKid ? 'smile' : (p.avatar || 'smile')}" class="netflix-smile-icon"></i>
                       ${p.isKid ? `<div class="netflix-kids-bottom-banner">ÇOCUK</div>` : ''}
                       
@@ -71,8 +80,8 @@ export function openProfileModal() {
                         </div>
                       ` : ''}
                     </div>
-                    <span class="profile-name netflix-profile-name">${p.name}</span>
-                  </div>
+                    <span class="profile-name netflix-profile-name">${escapeProfileText(p.name)}</span>
+                  </button>
 
                   ${isManaging && canDelete ? `
                     <button class="btn-delete-profile netflix-delete-btn" data-delete-id="${p.id}" title="Profili Sil">
@@ -85,12 +94,12 @@ export function openProfileModal() {
 
             <!-- Add Profile Card -->
             <div class="profile-card-wrapper">
-              <div class="profile-card netflix-card profile-card-add" id="btn-show-add-profile">
+              <button type="button" class="profile-card netflix-card profile-card-add" id="btn-show-add-profile" aria-label="Yeni profil ekle">
                 <div class="profile-avatar-wrap netflix-avatar-square netflix-avatar-add">
                   <i data-lucide="plus-circle" style="width: 52px; height: 52px; color: #808080; stroke-width: 1.5;"></i>
                 </div>
                 <span class="profile-name netflix-profile-name">Profil Ekle</span>
-              </div>
+              </button>
             </div>
           </div>
 
@@ -122,7 +131,7 @@ export function openProfileModal() {
                 <span>Android APK</span>
               </a>
               <button class="btn-manage-profiles" id="btn-modal-pwa-install" title="CinePulse Web Uygulamasını Yükle">
-                <i data-lucide="download" style="width: 14px; height: 14px; color: #f59e0b;"></i>
+                <i data-lucide="download" style="width: 14px; height: 14px; color: #dfff76;"></i>
                 <span>Web Uygulaması</span>
               </button>
             `}
@@ -137,13 +146,13 @@ export function openProfileModal() {
           </button>
 
           <div class="profile-top-title">
-            <h2>Yeni Profil Oluştur</h2>
+            <h2 id="cp-profile-heading">Yeni profil oluştur</h2>
             <p>Kişiselleştirilmiş izleme geçmişi için yeni bir profil ekleyin.</p>
           </div>
 
           <form id="form-add-profile" class="profile-add-form">
             <div class="profile-input-group">
-              <label>Profil Adı</label>
+              <label for="new-profile-name">Profil adı</label>
               <input type="text" id="new-profile-name" placeholder="Örn: Ayşe, Sinema Odası" required maxlength="20" autofocus />
             </div>
 
@@ -161,7 +170,7 @@ export function openProfileModal() {
             <div class="profile-color-picker-row">
               <label>Profil Rengi</label>
               <div class="profile-colors-wrap">
-                ${['#f59e0b', '#38bdf8', '#ec4899', '#10b981', '#a855f7', '#ef4444'].map((c, i) => `
+                ${['#dfff76', '#38bdf8', '#ec4899', '#10b981', '#a855f7', '#ef4444'].map((c, i) => `
                   <button type="button" class="color-dot ${i === 0 ? 'active' : ''}" data-color="${c}" style="background: ${c};"></button>
                 `).join('')}
               </div>
@@ -177,6 +186,7 @@ export function openProfileModal() {
     }
 
     renderIcons(modalContainer);
+    (modalContainer.querySelector('#new-profile-name') || modalContainer.querySelector('#btn-close-profile-modal'))?.focus();
 
     // --- SELECT VIEW EVENTS ---
     const closeBtn = modalContainer.querySelector('#btn-close-profile-modal');
@@ -257,6 +267,7 @@ export function openProfileModal() {
           const newName = prompt(`"${p.name}" profilinin yeni adını girin:`, p.name);
           if (newName && newName.trim() && newName.trim() !== p.name) {
             p.name = newName.trim();
+            saveProfiles(getProfiles());
             showToast('Profil güncellendi.', 'info');
             renderModalContent('select');
           }
@@ -282,7 +293,7 @@ export function openProfileModal() {
     // Form Add Profile
     const form = modalContainer.querySelector('#form-add-profile');
     if (form) {
-      let selectedColor = '#f59e0b';
+      let selectedColor = '#dfff76';
       form.querySelectorAll('.color-dot').forEach(dot => {
         dot.onclick = () => {
           form.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
@@ -319,19 +330,25 @@ export function openProfileModal() {
     if (e.target === modalContainer) closeProfileModal();
   };
 
-  const handleEsc = (e) => {
-    if (e.key === 'Escape') {
-      closeProfileModal();
-      window.removeEventListener('keydown', handleEsc);
+  const handleKeys = e => {
+    if (e.key === 'Escape') closeProfileModal();
+    if (e.key === 'Tab') {
+      const focusable = [...modalContainer.querySelectorAll('button,a[href],input,select')].filter(el => !el.disabled && el.getClientRects().length);
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
     }
   };
-  window.addEventListener('keydown', handleEsc);
+  window.addEventListener('keydown', handleKeys, { signal: profileEvents.signal });
 }
 
 export function closeProfileModal() {
+  profileEvents?.abort();
   if (activeProfileModal) {
     try { activeProfileModal.remove(); } catch (_) {}
     activeProfileModal = null;
+    if (previousProfileFocus?.isConnected) previousProfileFocus.focus();
+    previousProfileFocus = null;
   }
 }
 
@@ -348,10 +365,10 @@ export function triggerProfileSwitchTransition(profile) {
   curtain.className = 'profile-switch-curtain is-entering';
   curtain.innerHTML = `
     <div class="profile-switch-card">
-      <div class="profile-switch-avatar" style="border-color: ${profile?.color || '#f59e0b'}; background: ${profile?.color || '#f59e0b'}22;">
-        <i data-lucide="${profile?.avatar || (profile?.isKid ? 'smile' : 'user')}" style="width: 50px; height: 50px; color: ${profile?.color || '#f59e0b'};"></i>
+      <div class="profile-switch-avatar" style="border-color: ${getProfileAccent(profile?.color)}; background: ${getProfileAccent(profile?.color)}22;">
+        <i data-lucide="${profile?.avatar || (profile?.isKid ? 'smile' : 'user')}" style="width: 50px; height: 50px; color: ${getProfileAccent(profile?.color)};"></i>
       </div>
-      <h2 class="profile-switch-name">${profile?.name || 'Profil'}</h2>
+      <h2 class="profile-switch-name">${escapeProfileText(profile?.name || 'Profil')}</h2>
       <p class="profile-switch-subtitle">
         ${profile?.isKid ? '🎈 Güvenli Çocuk Moduna Geçiliyor...' : '✨ Profiline Geçiliyor...'}
       </p>

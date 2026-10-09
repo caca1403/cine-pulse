@@ -1,0 +1,70 @@
+.cine-discovery-theme {
+  --primary-light: #edffc7;
+  --primary-dark: #b7d45c;
+  --primary-gradient: #dfff76;
+  --accent-amber: #dfff76;
+}
+.cp-site-logo { display: block; width: 40px; height: 40px; flex-shrink: 0; object-fit: contain; border-radius: 10px; }
+.cp-brand .cp-site-logo { width: 38px; height: 38px; }
+.cp-footer-logo { width: 30px; height: 30px; }
+.cp-onboarding-logo { width: 56px; height: 56px; margin: 0 auto 18px; }
+.cine-discovery-theme .profile-backdrop { background: #06090dd9; backdrop-filter: blur(10px); padding: 24px !important; align-items: center !important; justify-content: center; overflow-y: auto !important; }
+.cine-discovery-theme .profile-dialog { width: min(100%,660px) !important; max-width: 660px !important; max-height: calc(100dvh - 48px) !important; margin: auto !important; padding: 32px; gap: 24px; align-items: stretch; overflow-y: auto !important; border: 1px solid #ffffff1c; border-radius: 24px !important; background: #10151b; box-shadow: 0 28px 90px #0008; }
+.cine-discovery-theme .profile-brand-header { margin: 0; gap: 10px; }
+.cine-discovery-theme .profile-brand-header .cp-site-logo { width: 34px; height: 34px; }
+.cine-discovery-theme .profile-brand-header .brand-name { font-size: 23px; letter-spacing: -.6px; }
+.cine-discovery-theme .profile-close-btn { width: 34px; height: 34px; top: 25px; right: 25px; border: 1px solid #ffffff18; background: #1b222b; color: #9ba7b7; }
+.cine-discovery-theme .profile-top-title { text-align: left; }
+.cine-discovery-theme .profile-top-title .cp-eyebrow { display: block; font-size: 9px; margin-bottom: 9px; }
+.cine-discovery-theme .profile-top-title h2 { margin: 0 0 8px; font-size: 32px; font-weight: 750; letter-spacing: -.9px; color: #f3f6f8; line-height: 1.15; }
+.cine-discovery-theme .profile-top-title p { margin: 0; color: #96a1af; font-size: 12px; line-height: 1.6; }
+.cine-discovery-theme .profile-cards-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(110px,1fr)); gap: 14px; margin: 0; width: 100%; max-width: none; align-items: start; }
+.cine-discovery-theme .profile-card-wrapper { width: 100%; min-width: 0; }
+.cine-discovery-theme .profile-card { width: 100%; border: 0; background: none; padding: 0; font: inherit; text-align: center; cursor: pointer; }
+.cine-discovery-theme .profile-avatar-wrap { width: 100%; height: auto; aspect-ratio: 1; min-width: 0; max-height: 170px; border: 1px solid #ffffff18; border-radius: 15px; background: color-mix(in srgb,var(--profile-accent,#dfff76) 10%,#151b22); box-shadow: none; }
+.cine-discovery-theme .netflix-smile-icon { width: 48px; height: 48px; color: var(--profile-accent,#dfff76); stroke-width: 1.7; }
+.cine-discovery-theme .is-kid-square { background: linear-gradient(150deg,#162923,#131e25) !important; }
+.cine-discovery-theme .is-kid-square .netflix-smile-icon { color: #8be5b3; }
+.cine-discovery-theme .netflix-kids-bottom-banner { font-size: 9px; letter-spacing: .1em; font-weight: 700; color: #8be5b3; bottom: 12px; text-shadow: none; }
+.cine-discovery-theme .profile-card.is-active .profile-avatar-wrap { border-color: #dfff7670; background: #dfff7610; }
+.cine-discovery-theme .profile-card:hover .profile-avatar-wrap { border-color: #dfff7670; transform: translateY(-2px); box-shadow: none; }
+.cine-discovery-theme .profile-active-check { width: 22px; height: 22px; top: 8px; right: 8px; background: #dfff76; color: #17200c; border: 2px solid #17200c; box-shadow: none; }
+.cine-discovery-theme .netflix-profile-name { max-width: 100%; width: 100%; margin-top: 10px; color: #bec7d2; font-size: 13px; font-weight: 600; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+.cine-discovery-theme .profile-card.is-active .netflix-profile-name { color: var(--cp-lime); }
+.cine-discovery-theme .netflix-avatar-add { background: #151b22 !important; border: 1px dashed #ffffff30 !important; }
+.cine-discovery-theme .netflix-avatar-add svg { width: 38px !important; height: 38px !important; color: #a5b0be !important; }
+.cine-discovery-theme .profile-card:hover .netflix-avatar-add { background: #dfff760a !important; border-color: #dfff7670 !important; }
+.cine-discovery-theme .netflix-avatar-manage-overlay { border-color: #dfff7633; border-radius: 14px; background: #0c1117b0; }
+.cine-discovery-theme .netflix-delete-btn { width: 26px; height: 26px; top: -5px; right: -5px; border: 2px solid #10151b; box-shadow: none; }
+.cine-discovery-theme .netflix-manage-action-bar { margin: 0; }
+.cine-discovery-theme .btn-netflix-manage { width: 100%; min-height: 42px; padding: 10px 16px; border: 1px solid #dfff7630; border-radius: 9px; background: #dfff7608; color: #dfff76; font-size: 12px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.cine-discovery-theme .btn-netflix-manage:hover { background: #dfff7615; border-color: #dfff7660; }
+.cine-discovery-theme .btn-netflix-manage.is-active-done { background: #dfff76 !important; border-color: #dfff76 !important; color: #15200b !important; }
+.cine-discovery-theme .netflix-footer-subbar { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px !important; margin-top: 0; padding: 18px 0 0 !important; border-top: 1px solid #ffffff12; opacity: 1; }
+.cine-discovery-theme .profile-footer-bar .btn-manage-profiles { min-width: 0; min-height: 40px; padding: 9px 11px; gap: 8px; justify-content: flex-start !important; border-radius: 9px; background: #171e26; border: 1px solid #ffffff13; color: #aebacb; font-size: 11px; font-weight: 550; }
+.cine-discovery-theme .profile-footer-bar .btn-manage-profiles:hover { background: #202b32; border-color: #dfff7630; color: #eff4f8; }
+.cine-discovery-theme .profile-input-group input { min-height: 44px; background: #171e26; border: 1px solid #ffffff20; border-radius: 9px; color: #f4f6f8; font-size: 16px; }
+.cine-discovery-theme .profile-input-group input:focus { border-color: #dfff7660; outline: 2px solid #dfff7620; }
+.cine-discovery-theme .profile-kid-toggle-row { background: #141d24; border: 1px solid #ffffff13; border-radius: 12px; }
+.cine-discovery-theme .color-dot.active { border-color: #fff; box-shadow: 0 0 0 3px #dfff7620; }
+.cine-discovery-theme .profile-form-actions button { border-radius: 9px; min-height: 42px; }
+.cine-discovery-theme .profile-form-actions .btn-primary { background: #dfff76; color: #15200b; }
+.cine-discovery-theme .profile-dialog :is(button,a,input):focus-visible { outline: 2px solid #dfff76; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .cp-brand .cp-site-logo { width: 34px; height: 34px; }
+  .cine-discovery-theme .profile-backdrop { padding: 16px !important; padding-top: max(16px,env(safe-area-inset-top,0px)) !important; padding-bottom: max(16px,env(safe-area-inset-bottom,0px)) !important; }
+  .cine-discovery-theme .profile-dialog { max-height: calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) !important; width: 100% !important; margin: auto !important; padding: 22px 18px; border-radius: 20px !important; gap: 22px; }
+  .cine-discovery-theme .profile-close-btn { top: 22px; right: 16px; }
+  .cine-discovery-theme .profile-top-title h2 { font-size: 28px; }
+  .cine-discovery-theme .profile-cards-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+  .cine-discovery-theme .profile-avatar-wrap { border-radius: 12px; }
+  .cine-discovery-theme .netflix-smile-icon { width: 37px; height: 37px; }
+  .cine-discovery-theme .netflix-profile-name { font-size: 11px; }
+  .cine-discovery-theme .netflix-kids-bottom-banner { font-size: 8px; bottom: 8px; }
+}
+@media (max-width: 360px) {
+  .cine-discovery-theme .profile-brand-header .brand-name { font-size: 21px; }
+  .cine-discovery-theme .profile-brand-header .cp-site-logo { width: 30px; height: 30px; }
+  .cine-discovery-theme .profile-cards-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .cine-discovery-theme .profile-top-title .cp-eyebrow { font-size: 8px; }
+}

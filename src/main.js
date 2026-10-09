@@ -1,3 +1,10 @@
+import { renderSiteLogo } from './components/BrandLogo.js';
+import { applyPerfMode } from './services/performanceMode.js';
+// Ilk boyamadan once agir efektleri kis (yazilimsal cizimde kasmayi onler).
+applyPerfMode();
+import './styles/navigation.css';
+import './styles/collection.css';
+import './styles/profile.css';
 import { renderIcons } from './services/icons.js';
 /* ==========================================================================
    CinePulse Pro - Main Application Router & Entry Point
@@ -12,21 +19,20 @@ const loadView = {
   downloads: () => import('./views/DownloadsView.js'),
   discover: () => import('./views/DiscoverView.js'),
   popular: () => import('./views/PopularListView.js'),
+  showcase: () => import('./views/ShowcaseView.js'),
   livetv: () => import('./views/LiveTvView.js'),
-  admin: () => import('./views/AdminView.js'),
   drama: () => import('./views/DramaView.js')
 };
 import { trackScrollState, flushScrollState, restoreAllScrollState } from './services/scrollManager.js';
 import { getUserSettings } from './services/storage.js';
-import { renderCardLayoutSwitcher, attachCardLayoutSwitcherEvents } from './components/CardLayoutSwitcher.js';
-import { grantAdminEntry, isAdminRouteAllowed } from './services/adminAccess.js';
+import { renderCardLayoutSwitcher, placeCardLayoutSwitcher, attachCardLayoutSwitcherEvents } from './components/CardLayoutSwitcher.js';
 import { openDecisionRoomModal } from './components/DecisionRoomModal.js';
 import { initTraktAutoSync } from './services/traktService.js';
 import { getWatchHistory, saveWatchProgress, saveBatchWatchProgress } from './services/storage.js';
-import { initPlatformBridge, isNativeAndroidApp, isNativeAndroid } from './services/platformBridge.js';
+import { initPlatformBridge, isNativeAndroidApp, isNativeAndroid, isAppPlatform, isDesktopApp, isWebPlatform } from './services/platformBridge.js';
 
 // Platform Köprüsünü Çalıştır:
-// Ortam tespitine göre Web veya Android platform modüllerini dinamik (lazy) yükler.
+// Ortam tespitine göre Web, Android veya Desktop modüllerini dinamik yükler.
 initPlatformBridge();
 
 // Disable browser default scroll jump on SPA hash changes
@@ -34,18 +40,8 @@ if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
 
-// Private admin entry: Ctrl + Alt + Shift + F10. Kept at the application root
-// so it is registered exactly once and works from every regular view.
-window.addEventListener('keydown', (event) => {
-  if (event.ctrlKey && event.altKey && event.shiftKey && event.key === 'F10') {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    grantAdminEntry();
-    window.location.hash = '#admin';
-  }
-}, true);
-
 const app = document.getElementById('app');
+document.body.classList.add('cine-discovery-theme');
 document.documentElement.classList.toggle('cards-landscape', getUserSettings().cardLayout === 'landscape');
 
 if (isNativeAndroidApp() && typeof navigator !== 'undefined' && navigator.onLine === false && window.location.hash !== '#downloads') {
@@ -59,7 +55,7 @@ window.addEventListener('scroll', () => {
 window.addEventListener('pagehide', flushScrollState);
 
 let routeGeneration = 0;
-async function route() {
+async function renderRoute() {
   const generation = ++routeGeneration;
   cleanupHomeView();
   flushScrollState();
@@ -95,11 +91,21 @@ async function route() {
   } else if (hash === '#documentary') {
     viewName = 'documentary';
   } else if (hash === '#livetv') {
+    // Canli TV yalnizca uygulamada (APK/EXE); webden gelinirse tanitima yonlendir
+    if (!isAppPlatform()) {
+      try {
+        sessionStorage.setItem('cp_livetv_web_block', '1');
+      } catch (_) {}
+      window.location.replace('#showcase');
+      return;
+    }
     viewName = 'livetv';
   } else if (hash === '#discover') {
     viewName = 'discover';
   } else if (hash === '#library') {
     viewName = 'library';
+  } else if (hash === '#showcase') {
+    viewName = 'showcase';
   } else if (hash === '#downloads') {
     if (!isNativeAndroidApp()) {
       window.location.replace('#library');
@@ -114,14 +120,6 @@ async function route() {
       params.slug = urlParams.get('slug');
       params.q = urlParams.get('q');
     }
-  } else if (hash === '#admin') {
-    // Access grants live only in module memory. Typing #admin or forging a
-    // sessionStorage key can never open the authentication screen/dashboard.
-    if (!isAdminRouteAllowed()) {
-      window.location.replace('#home');
-      return;
-    }
-    viewName = 'admin';
   }
 
   window.__popularListCleanup?.();
@@ -140,23 +138,6 @@ async function route() {
       el.load();
     } catch (_) {}
   });
-
-  // Dedicated Full-Screen Admin Screen (NO NAVBAR, NO BOTTOM DOCK, NO FOOTER)
-  if (viewName === 'admin') {
-    const { renderAdminView } = await loadView.admin();
-    const viewResult = await renderAdminView();
-    if (generation !== routeGeneration) return;
-    app.innerHTML = `
-      <div class="admin-standalone-wrapper" style="min-height: 100vh; background: #07090e; display: flex; flex-direction: column; width: 100%;">
-        ${viewResult ? viewResult.html : ''}
-      </div>
-    `;
-    if (viewResult && typeof viewResult.init === 'function') {
-      viewResult.init(app);
-    }
-    renderIcons();
-    return;
-  }
 
   // Render Navbar for regular application views
   const navbarHTML = renderNavbar(viewName);
@@ -188,6 +169,9 @@ async function route() {
   } else if (viewName === 'library') {
     const { renderLibraryView } = await loadView.library();
     viewResult = renderLibraryView();
+  } else if (viewName === 'showcase') {
+    const { renderShowcaseView } = await loadView.showcase();
+    viewResult = renderShowcaseView();
   } else if (viewName === 'downloads') {
     const { renderDownloadsView } = await loadView.downloads();
     viewResult = renderDownloadsView();
@@ -207,9 +191,7 @@ async function route() {
     <footer style="padding: 3rem 0; background: var(--bg-surface); border-top: 1px solid var(--border-color); margin-top: 5rem;">
       <div class="container" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
         <div style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
-          <div class="brand-logo-icon" style="width: 28px; height: 28px; border-radius: 8px;">
-            <i data-lucide="clapperboard" style="width:15px; height:15px; color:#fff;"></i>
-          </div>
+          ${renderSiteLogo('cp-footer-logo')}
           <span>Cine<span class="brand-highlight">Pulse</span></span>
         </div>
         <div style="font-size: 0.85rem; color: var(--text-muted);">
@@ -221,6 +203,7 @@ async function route() {
 
   // Attach navbar events
   attachNavbarEvents();
+  placeCardLayoutSwitcher(app);
   attachCardLayoutSwitcherEvents(app);
 
   // Initialize view scripts & icons
@@ -237,6 +220,20 @@ async function route() {
 }
 
 // Router Event Listeners
+async function route() {
+  const generation = routeGeneration + 1;
+  try {
+    await renderRoute();
+  } catch (error) {
+    if (generation !== routeGeneration) return;
+    console.error('[Router] Sayfa yüklenemedi:', error);
+    app.innerHTML = `${renderNavbar('home')}<main class="container" role="alert" style="padding:6rem 1rem"><p>Sayfa yüklenemedi. Yeniden deneyebilirsin.</p><button class="btn btn-primary" id="btn-route-retry">Yeniden Dene</button></main>`;
+    attachNavbarEvents();
+    app.querySelector('#btn-route-retry')?.addEventListener('click', route);
+    renderIcons(app);
+  }
+}
+
 window.addEventListener('hashchange', route);
 
 // Keep saved videos one tap away when connectivity drops. `navigator.onLine`
@@ -294,7 +291,6 @@ window.addEventListener('sineflix_profile_changed', async () => {
   clearHomeCache();
   await route();
 });
-window.addEventListener('cinepulse_admin_state_changed', route);
 window.addEventListener('storage', (event) => {
   if (event.key !== 'sineflix_user_settings_v1') return;
   const settings = getUserSettings();

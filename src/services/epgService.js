@@ -231,8 +231,21 @@ export function getChannelEpg(channel) {
   const nowMs = Date.now();
 
   // 1. Check Real-Time Live TV schedule (if loaded)
-  if (liveSchedules && liveSchedules[channel.id] && liveSchedules[channel.id].length > 0) {
-    const list = liveSchedules[channel.id];
+  // Yeni iptv/canlitv kanallari tvg-id ile eslesir (orn. TRT1.tr@SD -> trt1.tr)
+  const scheduleKeys = [channel.id];
+  if (channel.tvgId) {
+    const norm = String(channel.tvgId).toLowerCase().replace(/&#x[0-9a-f]+;/g, (m) => {
+      try {
+        return String.fromCharCode(parseInt(m.slice(3, -1), 16));
+      } catch (_) {
+        return m;
+      }
+    });
+    scheduleKeys.push(norm, norm.split('@')[0]);
+  }
+  const liveList = scheduleKeys.map((k) => liveSchedules && liveSchedules[k]).find((l) => Array.isArray(l) && l.length > 0);
+  if (liveList) {
+    const list = liveList;
 
     // Find current active program
     for (let i = 0; i < list.length; i++) {

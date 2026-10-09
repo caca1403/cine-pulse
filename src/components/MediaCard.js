@@ -251,7 +251,7 @@ export function renderMediaCard(item, options = {}) {
         ${(year || rating) ? `
           <div class="card-top-strip">
             ${year ? `<span class="card-top-year">${year}</span>` : `<span></span>`}
-            ${rating ? `<span class="card-top-rating"><i data-lucide="star" style="width:10px;height:10px;fill:#f59e0b;stroke:#f59e0b;"></i>${rating}</span>` : ''}
+            ${rating ? `<span class="card-top-rating"><i data-lucide="star" style="width:10px;height:10px;fill:#dfff76;stroke:#dfff76;"></i>${rating}</span>` : ''}
           </div>
         ` : ''}
 

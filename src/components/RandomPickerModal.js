@@ -50,7 +50,7 @@ export function openRandomPickerModal({ type = 'all' } = {}) {
       <!-- Modal Title -->
       <div class="random-picker-top">
         <div class="random-picker-sparkle-icon">
-          <i data-lucide="dices" style="width: 28px; height: 28px; color: #f59e0b;"></i>
+          <i data-lucide="dices" style="width: 28px; height: 28px; color: #dfff76;"></i>
         </div>
         <h2>${selectedType === 'tv' ? 'Dizi Öneri Sistemi 📺' : 'Şanslı Çark 🍿'}</h2>
         <p>Popüler yapımlar arasından rastgele bir öneri seçin. Tür ve puan filtrelerini değiştirebilirsiniz.</p>
@@ -93,7 +93,7 @@ export function openRandomPickerModal({ type = 'all' } = {}) {
       <!-- Spin / Roulette Stage -->
       <div class="random-spin-stage" id="random-spin-stage">
         <div class="random-idle-placeholder">
-          <i data-lucide="sparkles" style="width: 44px; height: 44px; color: #f59e0b;"></i>
+          <i data-lucide="sparkles" style="width: 44px; height: 44px; color: #dfff76;"></i>
           <span>Aşağıdaki butona basarak şansınızı deneyin!</span>
         </div>
       </div>

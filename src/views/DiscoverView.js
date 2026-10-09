@@ -38,38 +38,38 @@ export async function renderDiscoverView(initialType = 'tv') {
 
   const tvGenres = [
     { id: null, name: 'Tüm Türler' },
-    { id: GENRE_MAP_TV.MYSTERY, name: '🩸 Korku & Gerilim' },
-    { id: GENRE_MAP_TV.ACTION_ADVENTURE, name: '💥 Aksiyon & Macera' },
-    { id: GENRE_MAP_TV.SCI_FI_FANTASY, name: '🚀 Bilim Kurgu & Fantastik' },
-    { id: GENRE_MAP_TV.DRAMA, name: '🎭 Dram' },
-    { id: GENRE_MAP_TV.COMEDY, name: '😂 Komedi' },
-    { id: GENRE_MAP_TV.CRIME, name: '🕵️ Suç & Polisiye' },
-    { id: GENRE_MAP_TV.ANIMATION, name: '🎌 Animasyon & Anime' },
-    { id: GENRE_MAP_TV.DOCUMENTARY, name: '🌍 Belgesel' },
-    { id: GENRE_MAP_TV.FAMILY, name: '👨‍👩‍👧‍👦 Aile & Gençlik' },
-    { id: GENRE_MAP_TV.WAR_POLITICS, name: '⚔️ Savaş & Politika' },
-    { id: GENRE_MAP_TV.WESTERN, name: '🤠 Western' }
+    { id: GENRE_MAP_TV.MYSTERY, name: 'Korku & Gerilim' },
+    { id: GENRE_MAP_TV.ACTION_ADVENTURE, name: 'Aksiyon & Macera' },
+    { id: GENRE_MAP_TV.SCI_FI_FANTASY, name: 'Bilim Kurgu & Fantastik' },
+    { id: GENRE_MAP_TV.DRAMA, name: 'Dram' },
+    { id: GENRE_MAP_TV.COMEDY, name: 'Komedi' },
+    { id: GENRE_MAP_TV.CRIME, name: 'Suç & Polisiye' },
+    { id: GENRE_MAP_TV.ANIMATION, name: 'Animasyon & Anime' },
+    { id: GENRE_MAP_TV.DOCUMENTARY, name: 'Belgesel' },
+    { id: GENRE_MAP_TV.FAMILY, name: 'Aile & Gençlik' },
+    { id: GENRE_MAP_TV.WAR_POLITICS, name: 'Savaş & Politika' },
+    { id: GENRE_MAP_TV.WESTERN, name: 'Western' }
   ];
 
   const movieGenres = [
     { id: null, name: 'Tüm Türler' },
-    { id: GENRE_MAP_MOVIE.HORROR, name: '🩸 Korku' },
-    { id: GENRE_MAP_MOVIE.THRILLER, name: '⚡ Gerilim' },
-    { id: GENRE_MAP_MOVIE.ACTION, name: '💥 Aksiyon' },
-    { id: GENRE_MAP_MOVIE.ADVENTURE, name: '🗺️ Macera' },
-    { id: GENRE_MAP_MOVIE.SCI_FI, name: '🚀 Bilim Kurgu' },
-    { id: GENRE_MAP_MOVIE.FANTASY, name: '🧙‍♂️ Fantastik' },
-    { id: GENRE_MAP_MOVIE.DRAMA, name: '🎭 Dram' },
-    { id: GENRE_MAP_MOVIE.COMEDY, name: '😂 Komedi' },
-    { id: GENRE_MAP_MOVIE.CRIME, name: '🕵️ Suç' },
-    { id: GENRE_MAP_MOVIE.ANIMATION, name: '🎌 Animasyon' },
-    { id: GENRE_MAP_MOVIE.MYSTERY, name: '🔍 Gizem' },
-    { id: GENRE_MAP_MOVIE.ROMANCE, name: '💖 Romantik' },
-    { id: GENRE_MAP_MOVIE.DOCUMENTARY, name: '🌍 Belgesel' },
-    { id: GENRE_MAP_MOVIE.HISTORY, name: '🏰 Tarih & Savaş' },
-    { id: GENRE_MAP_MOVIE.FAMILY, name: '👨‍👩‍👧‍👦 Aile' },
-    { id: GENRE_MAP_MOVIE.MUSIC, name: '🎵 Müzikal' },
-    { id: GENRE_MAP_MOVIE.WESTERN, name: '🤠 Western' }
+    { id: GENRE_MAP_MOVIE.HORROR, name: 'Korku' },
+    { id: GENRE_MAP_MOVIE.THRILLER, name: 'Gerilim' },
+    { id: GENRE_MAP_MOVIE.ACTION, name: 'Aksiyon' },
+    { id: GENRE_MAP_MOVIE.ADVENTURE, name: 'Macera' },
+    { id: GENRE_MAP_MOVIE.SCI_FI, name: 'Bilim Kurgu' },
+    { id: GENRE_MAP_MOVIE.FANTASY, name: 'Fantastik' },
+    { id: GENRE_MAP_MOVIE.DRAMA, name: 'Dram' },
+    { id: GENRE_MAP_MOVIE.COMEDY, name: 'Komedi' },
+    { id: GENRE_MAP_MOVIE.CRIME, name: 'Suç' },
+    { id: GENRE_MAP_MOVIE.ANIMATION, name: 'Animasyon' },
+    { id: GENRE_MAP_MOVIE.MYSTERY, name: 'Gizem' },
+    { id: GENRE_MAP_MOVIE.ROMANCE, name: 'Romantik' },
+    { id: GENRE_MAP_MOVIE.DOCUMENTARY, name: 'Belgesel' },
+    { id: GENRE_MAP_MOVIE.HISTORY, name: 'Tarih & Savaş' },
+    { id: GENRE_MAP_MOVIE.FAMILY, name: 'Aile' },
+    { id: GENRE_MAP_MOVIE.MUSIC, name: 'Müzikal' },
+    { id: GENRE_MAP_MOVIE.WESTERN, name: 'Western' }
   ];
 
   const getActiveGenres = () => currentType === 'movie' ? movieGenres : tvGenres;
@@ -82,19 +82,13 @@ export async function renderDiscoverView(initialType = 'tv') {
     <div class="discover-view" style="padding-top: 6.5rem; padding-bottom: 5rem;">
       <div class="container">
         
-        <!-- Header Banner -->
-        <div class="discover-header-card glass-panel" style="padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(20, 184, 166, 0.08) 100%); border: 1px solid var(--border-light);">
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem;">
-            <div>
-              <h1 style="font-size: 2.2rem; font-weight: 800; display: flex; align-items: center; gap: 0.75rem; color: #fff;">
-                <i data-lucide="compass" style="color: var(--primary)"></i> Özelleştirilebilir Sinema Filtresi
-              </h1>
-              <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.35rem;">
-                Platforma, türe, IMDb puanına ve çıkış yılına göre nokta atışı arama yapın
-              </p>
-            </div>
+        <header class="discover-header-card cp-view-header">
+          <div><span class="cp-eyebrow">TAM SENLİK.</span>
+            <h1><i data-lucide="compass" aria-hidden="true"></i> Detaylı Keşif</h1>
+            <p>Türünü, yılını ve puanını seç. Sıradaki hikâyeni bul.</p>
           </div>
-        </div>
+          <div class="cp-view-header-actions"></div>
+        </header>
 
         <!-- Filter Controls Container -->
         <div class="discover-controls-wrap glass-panel" style="padding: 1.5rem; border-radius: var(--radius-md); margin-bottom: 2rem; border: 1px solid var(--border-color);">
@@ -102,7 +96,7 @@ export async function renderDiscoverView(initialType = 'tv') {
           <!-- Type Filter Tabs Segmented Track (Apple TV+ Capsule) -->
           <div class="discover-segmented-deck">
             <button id="discover-type-tv" class="discover-type-tab ${currentType === 'tv' ? 'active' : ''}">
-              <i data-lucide="tv-2" style="width:16px; height:16px;"></i> Diziler
+              <i data-lucide="tv" style="width:16px; height:16px;"></i> Diziler
             </button>
             <button id="discover-type-movie" class="discover-type-tab ${currentType === 'movie' ? 'active' : ''}">
               <i data-lucide="clapperboard" style="width:16px; height:16px;"></i> Filmler
@@ -116,63 +110,63 @@ export async function renderDiscoverView(initialType = 'tv') {
           </div>
 
           <!-- Secondary Filters Row (Mega Filter) -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1.2rem; align-items: end;">
+          <div class="cp-filter-grid">
             
             <!-- Platform Filter -->
             <div>
-              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              <label for="discover-platform-select" style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
                 <i data-lucide="tv" style="width:12px; height:12px;"></i> Yayın Platformu
               </label>
               <select id="discover-platform-select" class="discover-filter-select">
-                <option value="" ${!currentPlatform ? 'selected' : ''}>🌐 Tüm Platformlar</option>
-                <option value="213" ${currentPlatform === '213' ? 'selected' : ''}>🔴 Netflix</option>
-                <option value="49" ${currentPlatform === '49' ? 'selected' : ''}>🟣 HBO / Max</option>
-                <option value="2739" ${currentPlatform === '2739' ? 'selected' : ''}>🔵 Disney+</option>
-                <option value="1024" ${currentPlatform === '1024' ? 'selected' : ''}>🟡 Amazon Prime</option>
-                <option value="2552" ${currentPlatform === '2552' ? 'selected' : ''}>⚪ Apple TV+</option>
+                <option value="" ${!currentPlatform ? 'selected' : ''}>Tüm Platformlar</option>
+                <option value="213" ${currentPlatform === '213' ? 'selected' : ''}>Netflix</option>
+                <option value="49" ${currentPlatform === '49' ? 'selected' : ''}>HBO / Max</option>
+                <option value="2739" ${currentPlatform === '2739' ? 'selected' : ''}>Disney+</option>
+                <option value="1024" ${currentPlatform === '1024' ? 'selected' : ''}>Amazon Prime</option>
+                <option value="2552" ${currentPlatform === '2552' ? 'selected' : ''}>Apple TV+</option>
               </select>
             </div>
 
             <!-- Year Range Filter -->
             <div>
-              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              <label for="discover-year-select" style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
                 <i data-lucide="calendar" style="width:12px; height:12px;"></i> Çıkış Yılı Aralığı
               </label>
               <select id="discover-year-select" class="discover-filter-select">
-                <option value="all" ${currentYearRange === 'all' ? 'selected' : ''}>📅 Tüm Yıllar</option>
-                <option value="2024-2026" ${currentYearRange === '2024-2026' ? 'selected' : ''}>✨ 2024 - 2026 (En Yeniler)</option>
-                <option value="2020-2023" ${currentYearRange === '2020-2023' ? 'selected' : ''}>🌟 2020 - 2023 (Son Yıllar)</option>
-                <option value="2010-2019" ${currentYearRange === '2010-2019' ? 'selected' : ''}>🎬 2010 - 2019 (2010'lar)</option>
-                <option value="2000-2009" ${currentYearRange === '2000-2009' ? 'selected' : ''}>📼 2000 - 2009 (2000'ler)</option>
-                <option value="1990-1999" ${currentYearRange === '1990-1999' ? 'selected' : ''}>🎞️ 1990 - 1999 (90'lar)</option>
-                <option value="before-1990" ${currentYearRange === 'before-1990' ? 'selected' : ''}>🏛️ 1990 Öncesi (Klasikler)</option>
+                <option value="all" ${currentYearRange === 'all' ? 'selected' : ''}>Tüm Yıllar</option>
+                <option value="2024-2026" ${currentYearRange === '2024-2026' ? 'selected' : ''}>2024 - 2026 (En Yeniler)</option>
+                <option value="2020-2023" ${currentYearRange === '2020-2023' ? 'selected' : ''}>2020 - 2023 (Son Yıllar)</option>
+                <option value="2010-2019" ${currentYearRange === '2010-2019' ? 'selected' : ''}>2010 - 2019 (2010'lar)</option>
+                <option value="2000-2009" ${currentYearRange === '2000-2009' ? 'selected' : ''}>2000 - 2009 (2000'ler)</option>
+                <option value="1990-1999" ${currentYearRange === '1990-1999' ? 'selected' : ''}>1990 - 1999 (90'lar)</option>
+                <option value="before-1990" ${currentYearRange === 'before-1990' ? 'selected' : ''}>1990 Öncesi (Klasikler)</option>
               </select>
             </div>
 
             <!-- Sort Filter -->
             <div>
-              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              <label for="discover-sort-select" style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
                 <i data-lucide="arrow-down-up" style="width:12px; height:12px;"></i> Sıralama Ölçütü
               </label>
               <select id="discover-sort-select" class="discover-filter-select">
-                <option value="popularity.desc" ${currentSortBy === 'popularity.desc' ? 'selected' : ''}>🔥 En Popülerler (Trend)</option>
-                <option value="vote_average.desc" ${currentSortBy === 'vote_average.desc' ? 'selected' : ''}>⭐ En Yüksek IMDb Puanı</option>
-                <option value="vote_count.desc" ${currentSortBy === 'vote_count.desc' ? 'selected' : ''}>👥 En Çok Oylananlar</option>
-                <option value="first_air_date.desc" ${currentSortBy === 'first_air_date.desc' ? 'selected' : ''}>📅 En Yeniler (Vizyon / Çıkış)</option>
+                <option value="popularity.desc" ${currentSortBy === 'popularity.desc' ? 'selected' : ''}>En Popülerler (Trend)</option>
+                <option value="vote_average.desc" ${currentSortBy === 'vote_average.desc' ? 'selected' : ''}>En Yüksek IMDb Puanı</option>
+                <option value="vote_count.desc" ${currentSortBy === 'vote_count.desc' ? 'selected' : ''}>En Çok Oylananlar</option>
+                <option value="first_air_date.desc" ${currentSortBy === 'first_air_date.desc' ? 'selected' : ''}>En Yeniler (Vizyon / Çıkış)</option>
               </select>
             </div>
 
             <!-- Min IMDb Rating Slider/Select -->
             <div>
-              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              <label for="discover-rating-select" style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
                 <i data-lucide="star" style="width:12px; height:12px;"></i> Minimum IMDb Puanı
               </label>
               <select id="discover-rating-select" class="discover-filter-select">
                 <option value="0" ${currentMinRating === 0 ? 'selected' : ''}>Tümü (Puan Sınırı Yok)</option>
-                <option value="8.0" ${currentMinRating === 8.0 ? 'selected' : ''}>⭐ 8.0 ve Üzeri (Başyapıtlar)</option>
-                <option value="7.5" ${currentMinRating === 7.5 ? 'selected' : ''}>⭐ 7.5 ve Üzeri (Çok Yüksek)</option>
-                <option value="7.0" ${currentMinRating === 7.0 ? 'selected' : ''}>⭐ 7.0 ve Üzeri (Çok İyi)</option>
-                <option value="6.0" ${currentMinRating === 6.0 ? 'selected' : ''}>⭐ 6.0 ve Üzeri (İyi)</option>
+                <option value="8.0" ${currentMinRating === 8.0 ? 'selected' : ''}>8.0 ve Üzeri (Başyapıtlar)</option>
+                <option value="7.5" ${currentMinRating === 7.5 ? 'selected' : ''}>7.5 ve Üzeri (Çok Yüksek)</option>
+                <option value="7.0" ${currentMinRating === 7.0 ? 'selected' : ''}>7.0 ve Üzeri (Çok İyi)</option>
+                <option value="6.0" ${currentMinRating === 6.0 ? 'selected' : ''}>6.0 ve Üzeri (İyi)</option>
               </select>
             </div>
           </div>
@@ -358,7 +352,7 @@ export async function renderDiscoverView(initialType = 'tv') {
         isLoading = false;
         grid.innerHTML = `
           <div style="grid-column: 1/-1; padding: 4rem; text-align: center; color: var(--text-muted);">
-            <div class="spin-loader" style="width: 32px; height: 32px; border: 3px solid rgba(245,158,11,0.2); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem;"></div>
+            <div class="spin-loader" style="width: 32px; height: 32px; border: 3px solid rgba(223, 255, 118,0.2); border-top-color: #dfff76; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem;"></div>
             <div>İçerikler yükleniyor...</div>
           </div>
         `;

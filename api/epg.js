@@ -171,14 +171,19 @@ export default async function handler(req, res) {
         const startMs = parseXmltvDate(p[1]);
         const stopMs = parseXmltvDate(p[2]);
         if (startMs && stopMs && stopMs >= windowStart && startMs <= windowEnd) {
-          if (!channels[ourId]) channels[ourId] = [];
-          channels[ourId].push({
+          const entry = {
             startTs: startMs,
             endTs: stopMs,
             start: formatTrTime(startMs),
             end: formatTrTime(stopMs),
             title: cleanHtmlEntities(p[4])
-          });
+          };
+          if (!channels[ourId]) channels[ourId] = [];
+          channels[ourId].push(entry);
+          // Ayni listeyi xml-id anahtariyla da sakla (yeni iptv/canlitv
+          // kanallari tvg-id ile eslesir).
+          if (!channels[chAttr]) channels[chAttr] = [];
+          channels[chAttr].push(entry);
         }
       }
     }

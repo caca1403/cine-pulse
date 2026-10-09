@@ -1,10 +1,13 @@
 {
-  "version": "1.1.46",
-  "versionCode": 156,
-  "releaseDate": "2026-10-04",
-  "title": "CinePulse Android v1.1.46",
-  "releaseNotes": "• Kısa dizi kataloğu tamamen DramaDizilerim ile stabilize edildi ve mükerrer kartlar engellendi.\n• Başlıklardaki bölüm ve poster ekleri temizlenerek kaynak bulamama hatası giderildi.\n• Bölüm oynatıldığında hem Dramalar VIP hem DramaDizilerim VIP 1080p HLS kaynakları eş zamanlı olarak sunuluyor.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.46/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.46/cinepulse.apk",
+  "version": "1.1.51",
+  "versionCode": 161,
+  "releaseDate": "2026-10-09",
+  "title": "CinePulse v1.1.51",
+  "releaseNotes": "Oynatma ve kaynak yükleme iyileştirildi. Masaüstü görünümü, kurulum ve güncelleme bağlantıları düzeltildi.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-Setup-1.1.51.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-1.1.51.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-1.1.51.deb",
   "mandatory": false
 }

@@ -4,6 +4,8 @@
    Supports instant TMDB lookup & keyword search.
    ========================================================================== */
 
+import { apiUrl } from './apiOrigin.js';
+
 const DIZISOL_API_BASE = 'https://dizisol.com/api';
 
 async function fetchDizisolApi(endpoint, options = {}) {
@@ -161,8 +163,65 @@ function getDizisolStreamPriority(url, provider = '') {
   return score;
 }
 
+function isLocalHost() {
+  if (typeof window === 'undefined') return false;
+  const host = window.location?.hostname || '';
+  return host === 'localhost' || host === '127.0.0.1';
+}
+
+function locStreamUrl(p) {
+  if (!p || /^https?:\/\//i.test(p)) return p;
+  if (typeof window !== 'undefined') {
+    const host = window.location?.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1') return p;
+  }
+  return apiUrl(p);
+}
+
+async function mapResolveStreams(rres, { isDub, tagPrefix, epSuffix }) {
+  try {
+    if (!rres || !rres.ok) return [];
+    const rdata = await rres.json().catch(() => null);
+    if (!rdata || !rdata.success || !Array.isArray(rdata.streams)) return [];
+    return rdata.streams.map((s, index) => {
+      const prov = String(s.provider || 'VIP').replace(/^DS\s+/i, '') || 'VIP';
+      const base = index === 0 ? 'Ana Yayın' : `Alternatif Yayın ${index}`;
+      const label = epSuffix ? `${base} (${epSuffix})`.replace(' (HLS) (', ' (') : base;
+      const url = locStreamUrl(s.streamUrl);
+      const subs = Array.isArray(s.subtitles) ? s.subtitles : [];
+      return {
+        id: `${tagPrefix}_${s.tag || prov.toLowerCase().replace(/\s+/g, '')}_${index}`,
+        name: label,
+        displayName: label,
+        badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
+        source: 'DS',
+        url,
+        streamUrl: url,
+        originalEmbedUrl: s.rawStreamUrl,
+        quality: '1080p',
+        isHls: true,
+        isDirectVideo: true,
+        type: 'hls',
+        subtitles: subs,
+        isDub,
+        getUrl: () => url
+      };
+    }).filter((s) => s.streamUrl);
+  } catch (_) {
+    return [];
+  }
+}
+
+function resolveEndpoint(provider, params = {}) {
+  const qs = new URLSearchParams({ provider, ...params });
+  const path = `/api/resolve?${qs.toString()}`;
+  // Localhost'ta vite proxy -> :4000 (guncel resolver); canlida Vercel API.
+  if (isLocalHost() || typeof window === 'undefined') return path;
+  return apiUrl(path);
+}
+
 /**
- * Extracts Movie streams from Dizisol
+ * Extracts Movie streams from Dizisol (ozel backend resolver).
  */
 export async function fetchDizisolMovieSources({
   titles = [],
@@ -172,6 +231,20 @@ export async function fetchDizisolMovieSources({
   isDub = true
 }) {
   try {
+    // Ozel backend resolver (birincil); basarisizsa klasik akisa dus.
+    try {
+      const params = {
+        type: 'movie', title: title || '', originalTitle: originalTitle || '',
+        ...(tmdbId ? { tmdbId: String(tmdbId) } : {})
+      };
+      (titles || []).forEach((t, i) => { if (i < 4 && t) params[`t${i}`] = t; });
+      const rres = await fetch(resolveEndpoint('dzs', params), {
+        signal: AbortSignal.timeout(15000)
+      }).catch(() => null);
+      const mapped = await mapResolveStreams(rres, { isDub, tagPrefix: `dzs_mov_${tmdbId || 'q'}`, epSuffix: '' });
+      if (mapped.length > 0) return mapped;
+    } catch (_) {}
+
     let targetTmdbId = tmdbId ? Number(tmdbId) : null;
 
     if (!targetTmdbId) {
@@ -236,8 +309,8 @@ export async function fetchDizisolMovieSources({
 
       return {
         id: `dzs_mov_${targetTmdbId}_${item.id || item.provider || index}`,
-        name: index === 0 ? 'DS 1080p (HLS)' : `DS ${item.provider} 1080p`,
-        displayName: index === 0 ? 'DS 1080p (HLS)' : `DS ${item.provider} 1080p`,
+        name: index === 0 ? 'Ana Yayın' : `Alternatif Yayın ${index}`,
+        displayName: index === 0 ? 'Ana Yayın' : `Alternatif Yayın ${index}`,
         badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
         source: 'DS',
         url: proxiedUrl,
@@ -273,6 +346,24 @@ export async function fetchDizisolEpisodeSources({
   isDub = true
 }) {
   try {
+    // Ozel backend resolver (birincil); basarisizsa klasik akisa dus.
+    try {
+      const params = {
+        type: 'tv', title: seriesTitle || title || '', originalTitle: originalTitle || '',
+        season: String(season || 1), episode: String(episode || 1),
+        ...(tmdbId ? { tmdbId: String(tmdbId) } : {})
+      };
+      (titles || []).forEach((t, i) => { if (i < 4 && t) params[`t${i}`] = t; });
+      const rres = await fetch(resolveEndpoint('dzs', params), {
+        signal: AbortSignal.timeout(15000)
+      }).catch(() => null);
+      const mapped = await mapResolveStreams(rres, {
+        isDub, tagPrefix: `dzs_tv_${tmdbId || 'q'}_s${season || 1}_e${episode || 1}`,
+        epSuffix: `S${season || 1}B${episode || 1}`
+      });
+      if (mapped.length > 0) return mapped;
+    } catch (_) {}
+
     let targetTmdbId = tmdbId ? Number(tmdbId) : null;
 
     if (!targetTmdbId) {
@@ -340,8 +431,8 @@ export async function fetchDizisolEpisodeSources({
 
       return {
         id: `dzs_tv_${targetTmdbId}_s${season}_e${episode}_${item.id || item.provider || index}`,
-        name: index === 0 ? `DS 1080p (S${season}B${episode})` : `DS ${item.provider} 1080p (S${season}B${episode})`,
-        displayName: index === 0 ? `DS 1080p (S${season}B${episode})` : `DS ${item.provider} 1080p (S${season}B${episode})`,
+        name: index === 0 ? 'Ana Yayın' : `Alternatif Yayın ${index}`,
+        displayName: index === 0 ? 'Ana Yayın' : `Alternatif Yayın ${index}`,
         badge: isDub ? '⚡ TR Dublaj' : '💬 TR Altyazı',
         source: 'DS',
         url: proxiedUrl,

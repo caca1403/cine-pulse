@@ -26,15 +26,43 @@ export function renderCardLayoutSwitcher() {
     <div class="card-layout-switcher" id="card-layout-switcher" role="group" aria-label="Kart görünümü">
       <span class="card-layout-switcher-label">Kart Görünümü</span>
       <div class="card-layout-switcher-options">
-        <button class="card-layout-option ${currentLayout === 'portrait' ? 'active' : ''}" data-layout="portrait" aria-pressed="${currentLayout === 'portrait'}">
+        <button class="card-layout-option ${currentLayout === 'portrait' ? 'active' : ''}" data-layout="portrait" aria-label="Dikey kart görünümü" title="Dikey kart görünümü" aria-pressed="${currentLayout === 'portrait'}">
           <i data-lucide="rectangle-vertical"></i><span>Dikey</span>
         </button>
-        <button class="card-layout-option ${currentLayout === 'landscape' ? 'active' : ''}" data-layout="landscape" aria-pressed="${currentLayout === 'landscape'}">
+        <button class="card-layout-option ${currentLayout === 'landscape' ? 'active' : ''}" data-layout="landscape" aria-label="Yatay kart görünümü" title="Yatay kart görünümü" aria-pressed="${currentLayout === 'landscape'}">
           <i data-lucide="rectangle-horizontal"></i><span>Yatay</span>
         </button>
       </div>
     </div>
   `;
+}
+
+// Keep the layout control in the view toolbar instead of floating over content.
+export function placeCardLayoutSwitcher(container = document) {
+  const switcher = container.querySelector('#card-layout-switcher');
+  if (!switcher) return;
+  const home = container.querySelector('.home-view');
+  if (home) {
+    const toolbar = document.createElement('div');
+    toolbar.className = 'container cp-home-layout-toolbar';
+    toolbar.append(switcher);
+    const firstRail = home.querySelector('.rail-section');
+    if (firstRail) firstRail.before(toolbar);
+    else home.append(toolbar);
+    return;
+  }
+  const host = container.querySelector('.library-action-group')
+    || container.querySelector('.cp-view-header-actions');
+  if (host) {
+    host.append(switcher);
+  } else {
+    const main = container.querySelector('main');
+    if (!main) return;
+    const toolbar = document.createElement('div');
+    toolbar.className = 'container cp-layout-toolbar';
+    toolbar.append(switcher);
+    main.prepend(toolbar);
+  }
 }
 
 export function attachCardLayoutSwitcherEvents(container = document) {

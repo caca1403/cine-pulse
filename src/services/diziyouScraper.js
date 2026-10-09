@@ -111,6 +111,54 @@ export async function fetchDiziyouSources({
     ...(titles || [])
   ])).filter(Boolean);
 
+  // Ozel backend resolver (birincil); basarisizsa klasik akisa dus.
+  try {
+    const host = typeof window !== 'undefined' ? (window.location?.hostname || '') : '';
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    const qs = new URLSearchParams({
+      provider: 'dyu', type: 'tv', title: seriesTitle || title || (titles || [])[0] || '',
+      originalTitle: originalTitle || '', season: String(sNum), episode: String(epNum)
+    });
+    (titles || []).forEach((t, i) => { if (i < 4 && t) qs.append(`t${i}`, t); });
+    const rpath = `/api/resolve?${qs.toString()}`;
+    const rendpoint = (isLocal || typeof window === 'undefined') ? rpath : apiUrl(rpath);
+    const rres = await fetch(rendpoint, { signal: AbortSignal.timeout(15000) }).catch(() => null);
+    if (rres && rres.ok) {
+      const rdata = await rres.json().catch(() => null);
+      if (rdata && rdata.success && Array.isArray(rdata.streams) && rdata.streams.length > 0) {
+        const mapped = rdata.streams.map((s) => {
+          const isM3u8 = /\.m3u8/i.test(s.rawStreamUrl || s.streamUrl || '');
+          const url = s.streamUrl;
+          const pid = (s.rawStreamUrl || '').match(/episodes\/(\d+)/)?.[1] || Math.random().toString(36).substring(2, 6);
+          const base = {
+            url, streamUrl: url,
+            source: 'Diziyou',
+            subtitles: Array.isArray(s.subtitles) ? s.subtitles : [],
+            getUrl: () => url
+          };
+          return isM3u8 ? {
+            ...base,
+            id: `dyu_m3u8_${pid}`,
+            name: 'Diziyou 1080p (TR Altyazı)',
+            displayName: 'Diziyou 1080p',
+            badge: '💬 Diziyou Altyazı',
+            isHls: true,
+            isDirectVideo: true
+          } : {
+            ...base,
+            id: `dyu_frame_${pid}`,
+            name: 'Diziyou VIP (TR Altyazı)',
+            displayName: 'Diziyou VIP',
+            badge: '💬 Diziyou Web',
+            isHls: false,
+            isDirectVideo: false
+          };
+        }).filter((s) => s.streamUrl);
+        if (mapped.length > 0) return mapped;
+      }
+    }
+  } catch (_) {}
+
   const candidatePaths = new Set();
   for (const t of allTitles) {
     const slug = slugify(t);

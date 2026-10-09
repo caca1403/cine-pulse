@@ -89,11 +89,15 @@
     },
     {
       "source": "/api/hdfc/(.*)",
-      "destination": "https://www.hdfilmcehennemi.now/$1"
+      "destination": "https://www.hdfilmcehennemi.nl/$1"
     },
     {
       "source": "/api/hdfc_stream",
       "destination": "/api/hdfc_stream.py"
+    },
+    {
+      "source": "/api/resolve",
+      "destination": "/api/resolve.py"
     },
     {
       "source": "/api/webteizle_stream",

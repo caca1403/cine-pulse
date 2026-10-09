@@ -25,7 +25,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
     <div class="season-selector-wrapper">
       <div class="season-selector-header">
         <div style="display: flex; align-items: center; gap: 0.65rem;">
-          <span class="rail-icon-pill" style="--rail-color: #f59e0b; width: 28px; height: 28px;">
+          <span class="rail-icon-pill" style="--rail-color: #dfff76; width: 28px; height: 28px;">
             <i data-lucide="layers" style="width: 15px; height: 15px;"></i>
           </span>
           <h2 class="season-selector-title" style="margin: 0;">Sezonlar ve Bölümler</h2>
@@ -125,7 +125,7 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
                 badgeEl.style.display = 'inline-flex';
               } else if (isHalfway) {
                 badgeEl.innerHTML = `<i data-lucide="clock" style="width:10px; height:10px"></i> YARIDA`;
-                badgeEl.style.background = '#f59e0b';
+                badgeEl.style.background = '#dfff76';
                 badgeEl.style.color = '#000';
                 badgeEl.style.fontSize = '0.68rem';
                 badgeEl.style.fontWeight = '850';
@@ -153,13 +153,14 @@ export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = 
             }
 
             if (halfwayBtn) {
-              halfwayBtn.style.background = isHalfway ? '#f59e0b' : 'rgba(0,0,0,0.65)';
-              halfwayBtn.style.borderColor = isHalfway ? '#f59e0b' : 'rgba(255,255,255,0.3)';
+              halfwayBtn.classList.toggle('is-halfway', Boolean(isHalfway));
+              halfwayBtn.style.background = isHalfway ? '#dfff76' : 'rgba(0,0,0,0.65)';
+              halfwayBtn.style.borderColor = isHalfway ? '#dfff76' : 'rgba(255,255,255,0.3)';
             }
 
             if (fillEl) {
               fillEl.style.width = `${progressPercent}%`;
-              fillEl.style.background = isCompleted ? 'var(--accent-green)' : '#fbbf24';
+              fillEl.style.background = isCompleted ? 'var(--accent-green)' : '#dfff76';
             }
           });
           renderIcons();
@@ -402,7 +403,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
 
     const progressHTML = progressPercent > 0 ? `
       <div class="card-progress-bar">
-        <div class="card-progress-fill" style="width: ${progressPercent}%; background: ${isCompleted ? 'var(--accent-green)' : '#fbbf24'};"></div>
+        <div class="card-progress-fill" style="width: ${progressPercent}%; background: ${isCompleted ? 'var(--accent-green)' : '#dfff76'};"></div>
       </div>
     ` : '';
 
@@ -415,7 +416,7 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
       `;
     } else if (isHalfway) {
       badgeStatusHTML = `
-        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.4rem; left: 0.4rem; background: #f59e0b; color: #000; font-weight: 850; z-index: 4; font-size: 0.68rem; padding: 0.2rem 0.45rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; line-height: 1; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
+        <span class="badge badge-primary badge-watched-status" style="position: absolute; top: 0.4rem; left: 0.4rem; background: #dfff76; color: #000; font-weight: 850; z-index: 4; font-size: 0.68rem; padding: 0.2rem 0.45rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; line-height: 1; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
           <i data-lucide="clock" style="width:10px; height:10px"></i> YARIDA
         </span>
       `;
@@ -439,20 +440,12 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
           
           <div class="episode-play-overlay">
             <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-gradient); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
-              <i data-lucide="play" style="width: 20px; height: 20px; fill: #fff; color: #fff; margin-left: 2px;"></i>
+              <i data-lucide="play" style="width: 20px; height: 20px; fill: #15200b; color: #15200b; margin-left: 2px;"></i>
             </div>
           </div>
 
           <!-- Top Right Action Controls: Mark Watched & Halfway -->
-          <div style="position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.35rem; z-index: 5;">
-            <button class="btn-mark-ep-halfway" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" title="Yarıda Bırakıldı (20. dk)" style="width: 28px; height: 28px; border-radius: 50%; background: ${isHalfway ? '#f59e0b' : 'rgba(0,0,0,0.65)'}; border: 1px solid ${isHalfway ? '#f59e0b' : 'rgba(255,255,255,0.3)'}; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
-              <i data-lucide="clock" style="width: 13px; height: 13px;"></i>
-            </button>
 
-            <button class="btn-mark-ep-watched ${isCompleted ? 'watched' : ''}" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" title="${isCompleted ? 'İzlendi işaretini kaldır' : 'İzlendi olarak işaretle'}" style="width: 28px; height: 28px; border-radius: 50%; background: ${isCompleted ? '#10b981' : 'rgba(0,0,0,0.65)'}; border: 1px solid ${isCompleted ? '#10b981' : 'rgba(255,255,255,0.3)'}; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
-              <i data-lucide="check" style="width: 14px; height: 14px;"></i>
-            </button>
-          </div>
 
           ${progressHTML}
         </div>
@@ -475,8 +468,17 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
             ` : ''}
           </div>
 
-          <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: auto; padding-top: 0.45rem; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.06);">
-            <span>${airDate}</span>
+          <div class="episode-footer" style="font-size: 0.76rem; color: var(--text-muted); margin-top: auto; padding-top: 0.45rem; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.06);">
+            <span class="episode-airdate">${airDate}</span>
+          <div class="episode-status-actions">
+            <button class="btn-mark-ep-halfway ${isHalfway ? 'is-halfway' : ''}" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" title="Yarıda Bırakıldı (20. dk)" aria-label="Bu bölümü yarıda bırakıldı olarak işaretle" style="width: 28px; height: 28px; border-radius: 50%; background: ${isHalfway ? '#dfff76' : 'rgba(0,0,0,0.65)'}; border: 1px solid ${isHalfway ? '#dfff76' : 'rgba(255,255,255,0.3)'}; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
+              <i data-lucide="clock" style="width: 13px; height: 13px;"></i>
+            </button>
+
+            <button class="btn-mark-ep-watched ${isCompleted ? 'watched' : ''}" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" title="${isCompleted ? 'İzlendi işaretini kaldır' : 'İzlendi olarak işaretle'}" aria-label="Bölümün izlendi durumunu değiştir" style="width: 28px; height: 28px; border-radius: 50%; background: ${isCompleted ? '#10b981' : 'rgba(0,0,0,0.65)'}; border: 1px solid ${isCompleted ? '#10b981' : 'rgba(255,255,255,0.3)'}; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
+              <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+            </button>
+          </div>
             <span class="btn-play-episode-trigger" style="color: var(--primary); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
               <span>Oynat</span>
               <i data-lucide="play" style="width: 11px; height: 11px; fill: currentColor;"></i>
@@ -583,14 +585,15 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
         duration: 2700
       });
 
-      btn.style.background = '#f59e0b';
-      btn.style.borderColor = '#f59e0b';
+      btn.classList.add('is-halfway');
+      btn.style.background = '#dfff76';
+      btn.style.borderColor = '#dfff76';
 
       if (card) {
         const badgeEl = card.querySelector('.badge-watched-status');
         if (badgeEl) {
           badgeEl.innerHTML = `<i data-lucide="clock" style="width:10px; height:10px"></i> YARIDA`;
-          badgeEl.style.background = '#f59e0b';
+          badgeEl.style.background = '#dfff76';
           badgeEl.style.color = '#000';
           badgeEl.style.fontWeight = '850';
           badgeEl.style.padding = '0.2rem 0.45rem';

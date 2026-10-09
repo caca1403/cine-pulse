@@ -91,7 +91,7 @@ export function openNotificationCenterModal() {
       <div class="notif-header">
         <div class="notif-title-row">
           <div class="notif-bell-icon">
-            <i data-lucide="bell" style="width: 20px; height: 20px; color: #f59e0b;"></i>
+            <i data-lucide="bell" style="width: 20px; height: 20px; color: #dfff76;"></i>
           </div>
           <div>
             <h3>Bildirimler & Alarmlar</h3>

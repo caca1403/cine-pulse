@@ -73,7 +73,7 @@ export async function renderPopularListView(type = 'tv') {
       <div class="container">
         <div class="popular-list-header">
           <h1 class="popular-list-title">
-            <span class="rail-icon-pill" style="--rail-color: #f59e0b; width: 32px; height: 32px; flex-shrink: 0;">
+            <span class="rail-icon-pill" style="--rail-color: #dfff76; width: 32px; height: 32px; flex-shrink: 0;">
               <i data-lucide="${iconName}" style="width: 17px; height: 17px;"></i>
             </span>
             <span>${titleText}</span>
@@ -83,7 +83,7 @@ export async function renderPopularListView(type = 'tv') {
 
         <div class="media-grid" id="popular-media-grid">
           <div class="popular-loading-placeholder" style="grid-column: 1/-1; padding: 3rem 2rem; text-align: center; color: var(--text-muted);">
-            <div class="spin-loader" style="width: 36px; height: 36px; border: 3px solid rgba(245,158,11,0.2); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.25rem;"></div>
+            <div class="spin-loader" style="width: 36px; height: 36px; border: 3px solid rgba(223, 255, 118,0.2); border-top-color: #dfff76; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.25rem;"></div>
             <p style="font-size: 1.05rem;">Popüler içerikler hazırlanıyor...</p>
           </div>
         </div>
@@ -113,7 +113,7 @@ export async function renderPopularListView(type = 'tv') {
         } else {
           sentinel.innerHTML = `
             <div style="display: flex; align-items: center; gap: 0.6rem; color: var(--text-muted); font-size: 0.9rem;">
-              <div class="spin-loader" style="width: 20px; height: 20px; border: 2px solid rgba(245,158,11,0.25); border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+              <div class="spin-loader" style="width: 20px; height: 20px; border: 2px solid rgba(223, 255, 118,0.25); border-top-color: #dfff76; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
               <span>Daha fazla içerik akıyor...</span>
             </div>
           `;

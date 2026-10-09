@@ -1,18 +1,31 @@
 {
   "name": "cinepulse-studio",
   "private": true,
-  "version": "1.1.50",
+  "version": "1.1.51",
+  "description": "CinePulse Studio - yerli ve global kaynakli hibrit medya merkezi",
+  "author": {
+    "name": "CinePulse Studio",
+    "email": "destek@cinepulse.studio"
+  },
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
   },
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
     "server": "node server/mediaServer.js",
     "tunnel": "npx localtunnel --port 4000",
-    "cap:sync": "cap sync android && node scripts/clean-android-apk.mjs"
+    "electro:dev": "electron electron/main.cjs",
+    "electro:pack": "npm run build && electron-builder --win nsis",
+    "pack:deb": "npm run build && electron-builder --linux deb -c.electronDist=node_modules/electron/dist",
+    "pack:appimage": "npm run build && electron-builder --linux AppImage -c.electronDist=node_modules/electron/dist",
+    "pack:linux": "npm run build && electron-builder --linux deb AppImage -c.electronDist=node_modules/electron/dist",
+    "pack:win": "npm run build && electron-builder --win nsis",
+    "cap:sync": "cap sync android && node scripts/clean-android-apk.mjs",
+    "pack:all": "node node_modules/vite/bin/vite.js build && node node_modules/electron-builder/cli.js --win nsis --linux deb AppImage"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
@@ -29,7 +42,63 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",
+    "electron": "^34.3.0",
+    "electron-builder": "^25.1.8",
     "vite": "^5.1.4"
   },
-  "versionCode": 160
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild",
+      "bufferutil",
+      "utf-8-validate",
+      "utp-native"
+    ]
+  },
+  "build": {
+    "appId": "com.cinepulse.studio",
+    "productName": "CinePulse",
+    "asar": false,
+    "npmRebuild": false,
+    "directories": {
+      "output": "release"
+    },
+    "linux": {
+      "target": [
+        "deb",
+        "AppImage"
+      ],
+      "icon": "public/icon-512.png",
+      "category": "AudioVideo",
+      "artifactName": "CinePulse-${version}.${ext}",
+      "synopsis": "CinePulse Studio - Media Center",
+      "description": "CinePulse Studio - yerli ve global kaynakli hibrit medya merkezi"
+    },
+    "deb": {
+      "compression": "gz"
+    },
+    "files": [
+      "dist/**/*",
+      "server/**/*",
+      "api/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "public/favicon.ico",
+      "artifactName": "CinePulse-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CinePulse",
+      "runAfterFinish": true
+    }
+  },
+  "versionCode": 161
 }

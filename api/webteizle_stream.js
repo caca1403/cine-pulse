@@ -191,12 +191,12 @@ export default async function handler(req, res) {
 
         if (playerUrl && !seenEmbeds.has(playerUrl)) {
           seenEmbeds.add(playerUrl);
-          const providerName = alt.baslik || 'Webteizle';
+          const providerName = alt.baslik || 'WTZ';
 
           streams.push({
             id: `webteizle_${alt.id}`,
-            name: `Webteizle - ${providerName} (${dilPath === 'dublaj' ? 'Dublaj' : 'Altyazılı'})`,
-            displayName: `Webteizle ${providerName}`,
+            name: `WTZ - ${providerName} (${dilPath === 'dublaj' ? 'Dublaj' : 'Altyazılı'})`,
+            displayName: `WTZ ${providerName}`,
             badge: `🎬 ${providerName} 1080p`,
             source: 'Webteizle',
             url: playerUrl,

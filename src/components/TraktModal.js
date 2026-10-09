@@ -214,12 +214,12 @@ export function openTraktModal() {
               </div>
 
               <!-- Wipe Remote Trakt History Panel -->
-              <div class="backup-card" style="border: 1px solid rgba(245, 158, 11, 0.25); background: rgba(245, 158, 11, 0.05); display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; gap: 10px;">
+              <div class="backup-card" style="border: 1px solid rgba(223, 255, 118, 0.25); background: rgba(223, 255, 118, 0.05); display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; gap: 10px;">
                 <div>
-                  <div style="font-size: 0.85rem; font-weight: 600; color: #fbbf24;">Trakt.tv Geçmişini Tamamen Sıfırla</div>
+                  <div style="font-size: 0.85rem; font-weight: 600; color: #dfff76;">Trakt.tv Geçmişini Tamamen Sıfırla</div>
                   <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">Trakt hesabındaki tüm eski ve karışmış izleme kayıtlarını tamamen siler (temiz sayfa).</div>
                 </div>
-                <button id="btn-wipe-trakt-history" class="btn-secondary" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.4); padding: 0.45rem 0.9rem; font-size: 0.8rem; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;">
+                <button id="btn-wipe-trakt-history" class="btn-secondary" style="color: #dfff76; border-color: rgba(223, 255, 118, 0.4); padding: 0.45rem 0.9rem; font-size: 0.8rem; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;">
                   <i data-lucide="eraser" style="width: 14px; height: 14px;"></i>
                   <span>Trakt'ı Sıfırla</span>
                 </button>

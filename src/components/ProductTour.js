@@ -7,7 +7,7 @@ const TOUR_STEPS = [
     eyebrow: 'CinePulse rehberi',
     title: 'İzlemeye hazır bir ana ekran',
     text: 'Ana sayfadaki satırları yatay kaydırarak yapımları gez. Arama simgesinden dizi veya film adını yazdığında sonuçlar anında görünür.',
-    hint: 'Mobilde alt menüden Diziler, Filmler, Keşfet ve Listem’e geçebilirsin.'
+    hint: 'Filmler, Diziler ve Keşfet üst menüde; Birlikte ve Listem logo yanındaki simgelerde.'
   },
   {
     icon: 'clapperboard',

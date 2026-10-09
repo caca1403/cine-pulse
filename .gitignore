@@ -12,3 +12,12 @@ cinepulse_yedek*.json
 *.backup.json
 __pycache__/
 *.pyc
+
+# Installers are published as GitHub Release assets.
+release/
+*.keystore
+*.jks
+
+# Local validation and private source mappings.
+reports/
+androguard.db

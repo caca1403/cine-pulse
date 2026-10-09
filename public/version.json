@@ -1,10 +1,13 @@
 {
-  "version": "1.1.50",
-  "versionCode": 160,
-  "releaseDate": "2026-10-05",
-  "title": "CinePulse Android v1.1.50",
-  "releaseNotes": "• ACİL DÜZELTME: uygulama kendini eski sürüm sanıp sürekli güncelleme uyarısı veriyordu; sürüm artık tek kaynaktan (package.json) okunuyor.\n• Canlı TV kaynak geçişi ve ev relay desteği (SRC menüsü).",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.50/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.50/cinepulse.apk",
+  "version": "1.1.51",
+  "versionCode": 161,
+  "releaseDate": "2026-10-09",
+  "title": "CinePulse v1.1.51",
+  "releaseNotes": "Oynatma ve kaynak yükleme iyileştirildi. Masaüstü görünümü, kurulum ve güncelleme bağlantıları düzeltildi.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-Setup-1.1.51.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-1.1.51.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.51/CinePulse-1.1.51.deb",
   "mandatory": false
 }

@@ -92,10 +92,32 @@ export async function translateToTurkish(text) {
 }
 
 const tmdbApiCache = new Map();
+const TMDB_CACHE_TTL = 10 * 60 * 1000;
+function readTmdbSessionCache(key) {
+  try {
+    const raw = sessionStorage.getItem(`cp_tmdb_${key}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || Date.now() - parsed.time > TMDB_CACHE_TTL) return null;
+    return parsed.data;
+  } catch (_) {
+    return null;
+  }
+}
+function writeTmdbSessionCache(key, data) {
+  try {
+    sessionStorage.setItem(`cp_tmdb_${key}`, JSON.stringify({ time: Date.now(), data }));
+  } catch (_) {}
+}
 async function tmdbFetch(endpoint, params = {}) {
   const cacheKey = `${endpoint}_${JSON.stringify(params)}`;
   if (tmdbApiCache.has(cacheKey)) {
     return tmdbApiCache.get(cacheKey);
+  }
+  const sess = readTmdbSessionCache(cacheKey);
+  if (sess) {
+    tmdbApiCache.set(cacheKey, sess);
+    return sess;
   }
 
   for (let attempt = 0; attempt < API_KEYS.length; attempt++) {
@@ -109,10 +131,11 @@ async function tmdbFetch(endpoint, params = {}) {
         }
       }
 
-      const response = await fetch(url.toString(), { signal: AbortSignal.timeout(6000) });
+      const response = await fetch(url.toString(), { signal: AbortSignal.timeout(3000) });
       if (response.ok) {
         const data = await response.json();
         tmdbApiCache.set(cacheKey, data);
+        writeTmdbSessionCache(cacheKey, data);
         return data;
       } else {
         rotateApiKey();

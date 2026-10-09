@@ -9,6 +9,9 @@
    - Diziyou (FastCDN 1080p HLS)
    - HDFilmizle Best (1080p HLS)
    - SezonlukDizi (1080p VIP)
+   - SetFilmizle (SetPlay/FastPlay 1080p, Movie+TvSeries cift tip)
+   - SelcukFlix (Pichive 1080p HLS, Movie+TvSeries cift tip)
+   - Dizilla (Pichive 1080p, TvSeries dizi-only)
    - Kids VIP / CizgiMax (Direct 1080p Sibnet for Cartoons & Animation)
    - AnimeciX / TürkAnime / AnimeTR (1080p Anime & Western Cartoons)
    - LookMovie VIP / 2Embed VIP / VidSrc VIP (Clean, low-ad 1080p embeds)
@@ -33,9 +36,11 @@ import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScrape
 import { fetchAniziumSources } from './aniziumScraper.js';
 import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
 import { fetchDramalarEpisodeSources } from './dramalarScraper.js';
+import './providers/index.js';
+import { getProviders } from './providers/providerRegistry.js';
 
 // Cache version
-const CACHE_VERSION = 'v39';
+const CACHE_VERSION = 'v43';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -140,6 +145,16 @@ function formatStreamName(s, category = '') {
   const id = (s.id || '').toLowerCase();
 
   if (id.startsWith('hdfc_') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) {
+    // Not: DS rapidrame gibi baska saglayicilarin 'rapidrame' adlari buraya
+    // girmesin diye CloseLoad/Rapidrame dallari sadece hdfc id'lerine bakar.
+    if (id.includes('rapid')) {
+      if (category === 'dubbed' || raw.includes('dub')) return 'Rapidrame Dublaj 1080p';
+      return 'Rapidrame Altyazı 1080p';
+    }
+    if (id.includes('close')) {
+      if (category === 'dubbed' || raw.includes('dub')) return 'CloseLoad Dublaj 1080p';
+      return 'CloseLoad Altyazı 1080p';
+    }
     if (category === 'dubbed' || raw.includes('dub')) return 'HDFilmCehennemi Dublaj 1080p';
     return 'HDFilmCehennemi Altyazı 1080p';
   }
@@ -152,9 +167,7 @@ function formatStreamName(s, category = '') {
     return 'DP 1080p';
   }
   if (id.startsWith('dzs_') || raw.includes('dizisol')) {
-    let base = (s.displayName || s.name || 'DS 1080p (HLS)').replace(/dizisol/gi, 'DS').trim();
-    if (!base.startsWith('DS')) base = `DS ${base}`;
-    return base;
+    return (s.displayName || s.name || 'Ana Yayın').replace(/^DS\s*/i, 'Yayın ').replace(/dizisol/gi, 'Yayın').trim();
   }
   if (id.startsWith('snx') || raw.includes('sinewix') || raw.includes('swx')) {
     if (raw.includes('mkv')) return 'SWX 1080p (MKV)';
@@ -194,6 +207,34 @@ function formatStreamName(s, category = '') {
   if (id.startsWith('acx_') || raw.includes('animecix')) {
     return s.displayName || s.name || 'AX Tau Direct 1080p';
   }
+  if (id.startsWith('setf_') || raw.includes('setfilm') || raw.includes('setplay') || raw.includes('fastplay')) {
+    const low = raw;
+    if (low.includes('fastplay')) return category === 'dubbed' ? 'FastPlay Dublaj 1080p' : 'FastPlay Altyazı 1080p';
+    if (low.includes('setplay')) return category === 'dubbed' ? 'SetPlay Dublaj 1080p' : 'SetPlay Altyazı 1080p';
+    if (low.includes('closeload')) return category === 'dubbed' ? 'CloseLoad Dublaj 1080p' : 'CloseLoad Altyazı 1080p';
+    if (low.includes('rapid')) return category === 'dubbed' ? 'Rapidrame Dublaj 1080p' : 'Rapidrame Altyazı 1080p';
+    return s.displayName || s.name || 'SetFilm 1080p';
+  }
+  if (id.startsWith('wtz_') || id.startsWith('webteizle_') || raw.includes('webteizle') || raw.includes('wtz')) {
+    if (url.includes('vidmoly')) return 'WTZ VidMoly 1080p';
+    if (url.includes('filemoon') || url.includes('bysezoxexe')) return 'WTZ Filemoon 1080p';
+    if (url.includes('pixeldrain')) return 'WTZ Pixel 1080p';
+    if (url.includes('ok.ru')) return 'WTZ Okru 1080p';
+    if (raw.includes('closeload')) return 'WTZ CloseLoad 1080p';
+    if (raw.includes('rapid')) return 'WTZ Rapid 1080p';
+    return s.displayName || s.name || 'WTZ 1080p';
+  }
+  // Cloudstream cift-tip mantigi: SelcukFlix (Pichive HLS) hem film hem dizide ayni etiket.
+  if (id.startsWith('slc_') || raw.includes('selcukflix') || raw.includes('selcuk') || raw.includes('pichive')) {
+    return s.displayName || s.name || (category === 'dubbed' ? 'SelcukFlix Dublaj 1080p' : 'SelcukFlix Altyazı 1080p');
+  }
+  // Cloudstream dizi-only mantigi: Dizilla (Pichive iframe/HLS) sadece dizide.
+  if (id.startsWith('dzl_') || raw.includes('dizilla')) {
+    return s.displayName || s.name || (category === 'dubbed' ? 'Dizilla Dublaj 1080p' : 'Dizilla Altyazı 1080p');
+  }
+  if (id.startsWith('fhdf_') || id.startsWith('fullhd') || raw.includes('fullhd') || raw.includes('fullhdfilm')) {
+    return s.displayName || s.name || 'FullHD 1080p';
+  }
   if (id.startsWith('szd_')) {
     if (url.includes('vidmoly')) return 'SZ VidMoly 1080p';
     if (url.includes('sibnet')) return 'SZ Sibnet HD';
@@ -205,13 +246,20 @@ function formatStreamName(s, category = '') {
 
 function formatStreamItem(s, category, fallbackName) {
   const streamUrl = s.streamUrl || s.url || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '';
-  const finalDisplayName = formatStreamName(s, category) || fallbackName;
+  const finalDisplayName = (formatStreamName(s, category) || fallbackName)
+    .replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D]/gu, '')
+    .replace(/(?:Türkçe|TR)\s*(?:Dublaj|Altyazılı|Altyazı)|Dublaj|Altyazılı|Altyazı/gi, '')
+    .replace(/\(\s*\)/g, '').replace(/\s+/g, ' ').trim();
 
   let badge = s.badge || (category === 'dubbed' ? '  TR Dublaj' : '  TR Altyazı');
   const lowerName = (finalDisplayName || '').toLowerCase();
   const streamId = (s.id || '').toLowerCase();
-  if (lowerName.includes('hdfc') || lowerName.includes('hdfilmcehennemi')) {
-    badge = category === 'dubbed' ? '  HDFC Dublaj 1080p' : '  HDFC Altyazı 1080p';
+  if (streamId.startsWith('hdfc_') && lowerName.includes('rapidrame')) {
+    badge = category === 'dubbed' ? '🚀 Rapidrame Dublaj 1080p' : '🚀 Rapidrame Altyazı 1080p';
+  } else if (streamId.startsWith('hdfc_') && lowerName.includes('closeload')) {
+    badge = category === 'dubbed' ? '⚡ CloseLoad Dublaj 1080p' : '⚡ CloseLoad Altyazı 1080p';
+  } else if (lowerName.includes('hdfc') || lowerName.includes('hdfilmcehennemi')) {
+    badge = category === 'dubbed' ? '🔥 HDFC Dublaj 1080p' : '🔥 HDFC Altyazı 1080p';
   } else if (lowerName.includes('dzb') || lowerName.includes('dizibal') || lowerName.includes('dp')) {
     badge = category === 'dubbed' ? '  DP Dublaj' : '  DP Altyazı';
   } else if (lowerName.includes('ds')) {
@@ -230,6 +278,18 @@ function formatStreamItem(s, category, fallbackName) {
     badge = '👑 Dramalar VIP';
   } else if (lowerName.includes('dramadizilerim') || streamId.startsWith('ddz_')) {
     badge = '🎭 DDZ VIP';
+  } else if (streamId.startsWith('setf_') || lowerName.includes('setplay')) {
+    badge = category === 'dubbed' ? '🎬 SetPlay Dublaj 1080p' : '🎬 SetPlay Altyazı 1080p';
+  } else if (lowerName.includes('fastplay')) {
+    badge = category === 'dubbed' ? '⚡ FastPlay Dublaj 1080p' : '⚡ FastPlay Altyazı 1080p';
+  } else if (streamId.startsWith('wtz_') || streamId.startsWith('webteizle_') || lowerName.includes('webteizle') || lowerName.includes('wtz')) {
+    badge = s.badge || (category === 'dubbed' ? '🎬 WTZ Dublaj 1080p' : '🎬 WTZ Altyazı 1080p');
+  } else if (streamId.startsWith('slc_') || lowerName.includes('selcuk') || lowerName.includes('pichive')) {
+    badge = s.badge || (category === 'dubbed' ? '🦅 SelcukFlix Dublaj 1080p' : '🦅 SelcukFlix Altyazı 1080p');
+  } else if (streamId.startsWith('dzl_') || lowerName.includes('dizilla')) {
+    badge = s.badge || (category === 'dubbed' ? '🎭 Dizilla Dublaj 1080p' : '🎭 Dizilla Altyazı 1080p');
+  } else if (streamId.startsWith('fhdf_') || lowerName.includes('fullhd')) {
+    badge = s.badge || (category === 'dubbed' ? '🎬 FullHD Dublaj 1080p' : '🎬 FullHD Altyazı 1080p');
   }
 
   return {
@@ -239,7 +299,7 @@ function formatStreamItem(s, category, fallbackName) {
     displayName: finalDisplayName,
     streamUrl,
     url: streamUrl,
-    badge,
+    badge: finalDisplayName,
     category,
     isHls: Boolean(s.isHls || streamUrl.includes('.m3u8')),
     isDirectVideo: Boolean(s.isDirectVideo || s.isHls || streamUrl.includes('.m3u8') || streamUrl.includes('.mp4') || streamUrl.includes('.mkv')),
@@ -254,6 +314,8 @@ function isValidStream(s) {
   const id = (s.id || '').toLowerCase();
   const raw = (s.displayName || s.name || '').toLowerCase();
 
+  if (/filemoon|bysejikuar|bysezoxexe/.test(`${raw} ${urlStr}`)) return false;
+
   // Allow clean torrent_p2p_ streams from torrentStreamService
   if (id.startsWith('torrent_p2p_')) {
     return true;
@@ -267,8 +329,16 @@ function isValidStream(s) {
     return false;
   }
 
-  // Strictly block broken / anti-adblock domains
-  if (urlStr.includes('pichive') || urlStr.includes('hotlinger') || (urlStr.includes('diziyo.so') && !urlStr.includes('.m3u8'))) {
+  // Pichive / Hotlinger: Cloudstream SetFilm/SelcukFlix/Dizilla birincil host'udur.
+  // Direkt (proxisiz) m3u8 denemeleri CF engeline takilir, ancak
+  // /api/hls_proxy uzerinden gecenler ve iframe embed'ler oynatilir.
+  // Bu yuzden sadece ciplak, ne proxy ne iframe olanlari ele.
+  if (urlStr.includes('pichive') || urlStr.includes('hotlinger')) {
+    const isProxied = urlStr.includes('hls_proxy') || urlStr.includes('%3a%2f%2f') || urlStr.includes('%3A%2F%2F');
+    const isEmbed = Boolean(s.isIframe) || (s.type === 'embed');
+    if (!isProxied && !isEmbed) return false;
+  }
+  if ((urlStr.includes('diziyo.so') && !urlStr.includes('.m3u8'))) {
     return false;
   }
 
@@ -278,8 +348,6 @@ function isValidStream(s) {
     'cloudvideo.tv',
     'vidoza.net',
     'voe.sx',
-    'bysejikuar',
-    'filemoon',
     'hdfilmdelisi',
     'play.liderfilm'
   ];
@@ -295,11 +363,20 @@ function getStreamPriorityScore(s) {
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
-  // 1. HDFilmCehennemi (En yüksek stabilite, Türkçe Dublaj + Altyazı + Orijinal Ses)
-  if (id.startsWith('hdfc_') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) return 0;
+  // 1. HDFilmCehennemi (CloseLoad & Rapidrame - En yüksek stabilite)
+  if (id.startsWith('hdfc_') || raw.includes('closeload') || raw.includes('rapidrame') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) return 0;
+
+  // 1b. SetFilmizle (SetPlay & FastPlay - Özel 1080p Türk Oynatıcıları)
+  if (id.startsWith('setf_') || raw.includes('setplay') || raw.includes('fastplay') || raw.includes('setfilm')) return 1;
+
+  // 1c. SelcukFlix (Pichive 1080p HLS - cift tip: film+dizi, Cloudstream ile birebir)
+  if (id.startsWith('slc_') || raw.includes('selcukflix') || raw.includes('selcuk')) return 1;
+
+  // 1d. Dizilla (Pichive 1080p - dizi-only, Cloudstream TvSeries ile birebir)
+  if (id.startsWith('dzl_') || raw.includes('dizilla')) return 2;
 
   // 2. DP (DiziBal AlphaStream HLS - Doğrudan 1080p)
-  if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dp 1080p') || raw.includes('dp ') || raw.includes('dizibal')) return 1;
+  if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dp 1080p') || raw.includes('dp ') || raw.includes('dizibal')) return 2;
 
   // 3. DS (Dizisol HLS - Doğrudan 1080p Dual Ses)
   if (id.startsWith('dzs_') || raw.includes('dizisol') || raw.includes('ds 1080p') || raw.includes('ds ')) return 2;
@@ -313,17 +390,18 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('tvr_') || raw.includes('tvr') || raw.includes('rectv')) return 4;
 
   // 5b. Short Dramas (Dramalar VIP & DramaDizilerim - Direct 1080p HLS)
-  if (id.startsWith('dml_') || raw.includes('dramalar')) return 1;
-  if (id.startsWith('ddz_') || raw.includes('dramadizilerim') || raw.includes('ddz vip')) return 2;
+  if (id.startsWith('dml_') || raw.includes('dramalar')) return 2;
+  if (id.startsWith('ddz_') || raw.includes('dramadizilerim') || raw.includes('ddz vip')) return 3;
 
   // 6. LookMovie VIP (1080p HLS)
   if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) return 5;
 
-  // 7. İkincil Yerli Sağlayıcılar (Diziyo, Diziyou, SezonlukDizi, HDF)
-  if (id.startsWith('dzy_') || raw.includes('diziyo')) return 6;
-  if (id.startsWith('dyu_') || raw.includes('diziyou')) return 7;
+  // 7. İkincil Yerli Sağlayıcılar (Webteizle, Diziyo, Diziyou, SezonlukDizi, HDF)
+  if (id.startsWith('wtz_') || id.startsWith('webteizle_') || raw.includes('webteizle')) return 6;
+  if (id.startsWith('dzy_') || raw.includes('diziyo')) return 7;
+  if (id.startsWith('dyu_') || raw.includes('diziyou')) return 8;
   if (id.startsWith('szd_') || raw.includes('sezonluk')) return 8;
-  if (id.startsWith('hdfb_') || raw.includes('hdfilmizle') || raw.includes('hdf ')) return 9;
+  if (id.startsWith('hdfb_') || id.startsWith('fhdf_') || raw.includes('fullhd') || raw.includes('hdfilmizle') || raw.includes('hdf ')) return 9;
 
   // 8. VIP P2P Torrent Akışları
   if (id.startsWith('torrent_p2p_')) return 10;
@@ -401,7 +479,10 @@ export async function getStreamingServersProgressive({
     // Show cached sources immediately, then revalidate every provider below.
     // Previously this returned early, so stale DS entries could never recover
     // and late Sezonluk/SWX sources were permanently hidden.
-    onUpdate({ ...hydrated, isComplete: false });
+    // Bayat onbellekten (5dk+) otomatik BASLATMA yapma: sureli HLS
+    // baglantilari son kullanmali olur, hata verip durur. Liste gosterilir,
+    // oynatma taze tarama sonucunu bekler.
+    onUpdate({ ...hydrated, isComplete: false, fromCache: true });
     streamServersCache.delete(cacheKey);
     try { sessionStorage.removeItem(`cp_streams_${CACHE_VERSION}_${cacheKey}`); } catch (_) {}
   }
@@ -519,6 +600,19 @@ export async function getStreamingServersProgressive({
   }
 
   const tasks = [
+    // 0. Registry provider'ları (setf/wtz dahil — asagidaki ayri 8c/8d
+    // bloklari kaldirildi, cift cagri yavaslatiyordu)
+    ...getProviders()
+      .filter((p) => p.id !== 'hdfc') // hdfc aşağıda özel kategorili ekleniyor
+      .map((p) => (async () => {
+        try {
+          const res = await p.fetchSources({ type, tmdbId, imdbId, title: targetTitle, originalTitle, seriesTitle: targetTitle, season, episode });
+          if (Array.isArray(res) && res.length) {
+            addStreams(res.filter((s) => s.category === 'dubbed'), 'dubbed');
+            addStreams(res.filter((s) => s.category !== 'dubbed'), 'subtitled');
+          }
+        } catch (_) {}
+      })()),
     // 1. RecTV VIP (1080p VIP direct streams)
     fetchRecTvSources({ type, title: targetTitle, originalTitle, season, episode, year: targetYear })
       .then(res => {
@@ -663,6 +757,10 @@ export async function getStreamingServersProgressive({
       : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
+    // 8c/8d kaldirildi: setf+wtz registry (task 0) uzerinden tek sefer
+    // cagriliyor; ayri direct cagrilar ayni backend'e 2. kez vurup
+    // listeyi yavaslatiyordu (FastPlay/SetPlay/CloseLoad cift yuk).
+
     // 9. Kids VIP (Cartoons & Animations - Direct High-Speed)
     !isMovie
       ? fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
@@ -715,29 +813,12 @@ export async function getStreamingServersProgressive({
         }
       }).catch(() => []),
 
-    // 13. HDFilmCehennemi VIP
+    // 13. HDF players — CloseLoad & Rapidrame ayri kaynak (kosullu: basaran player listelenir)
     fetchHdfilmcehennemiSources({ type, tmdbId, imdbId, title: targetTitle, originalTitle, season, episode })
       .then(res => {
         if (!Array.isArray(res) || res.length === 0) return [];
-        for (const s of res) {
-          addStreams([{
-            ...s,
-            id: `${s.id}_dub`,
-            name: isMovie ? 'HDFilmCehennemi Dublaj 1080p' : `HDFilmCehennemi Dublaj S${season}B${episode}`,
-            displayName: isMovie ? 'HDFilmCehennemi Dublaj (1080p)' : `HDFilmCehennemi Dublaj (S${season}B${episode})`,
-            badge: '  HDFC Dublaj 1080p',
-            category: 'dubbed'
-          }], 'dubbed');
-
-          addStreams([{
-            ...s,
-            id: `${s.id}_sub`,
-            name: isMovie ? 'HDFilmCehennemi Altyazı 1080p' : `HDFilmCehennemi Altyazı S${season}B${episode}`,
-            displayName: isMovie ? 'HDFilmCehennemi Altyazı (1080p)' : `HDFilmCehennemi Altyazı (S${season}B${episode})`,
-            badge: '  HDFC Altyazı 1080p',
-            category: 'subtitled'
-          }], 'subtitled');
-        }
+        addStreams(res.filter(s => s.category === 'dubbed'), 'dubbed');
+        addStreams(res.filter(s => s.category !== 'dubbed'), 'subtitled');
       }).catch(err => {
         console.error('[providerAggregator] HDFC error:', err);
         return [];
@@ -852,7 +933,10 @@ export async function getStreamingServersProgressive({
     dubbed: finalDubbed,
     subtitled: finalSubtitled,
     totalServers: finalDubbed.length + finalSubtitled.length,
-    isComplete: true
+    isComplete: true,
+    // Sureli baglantilar (DS HLS vb.) bayatlayabilir; listedeki yas
+    // oto-baslatma kararinda kullanilir.
+    cachedAt: Date.now()
   };
 
   if (payload.totalServers > 0) {

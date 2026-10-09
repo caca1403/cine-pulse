@@ -1,3 +1,4 @@
+import { resolveCanliChannel } from './_canlitv.js';
 import { guardNodeRequest, isSafePublicUrl } from './_security.js';
 import { Readable } from 'stream';
 import webteizleHandler from './webteizle_stream.js';
@@ -89,6 +90,18 @@ export default async function handler(req, res) {
 
   if (pathname.startsWith('/api/live_tv_stream')) {
     const channel = (urlObj.searchParams.get('channel') || '').toLowerCase();
+    // CanliTV (canlitv.you) kanallari: channel=ctv:<slug> -> taze imzali m3u8'e 302
+    if (channel.startsWith('ctv:')) {
+      const slug = channel.slice(4).replace(/[^a-z0-9-]/g, '');
+      if (!slug) return res.status(400).json({ error: 'Missing slug' });
+      try {
+        const result = await resolveCanliChannel(slug, urlObj.searchParams.get('playerId'), urlObj.searchParams.get('refresh') === '1');
+        if (urlObj.searchParams.get('json') === '1') return res.json(result);
+        return res.redirect(302, (result.proxiedUrl || result.embedUrl || result.externalUrl));
+      } catch (e) {
+        return res.status(500).json({ error: e.message });
+      }
+    }
     try {
       let pageUrl = '';
       let refUrl = '';
@@ -127,7 +140,7 @@ export default async function handler(req, res) {
           'upgrade-insecure-requests': '1'
         }
       });
-      if (!pageRes.ok) {
+      if (!pageRes?.ok) {
         return res.status(502).json({ error: 'Official channel page unavailable', httpStatus: pageRes.status });
       }
       const html = await pageRes.text();
@@ -311,6 +324,7 @@ export default async function handler(req, res) {
 
     const rawTarget = urlObj.searchParams.get('url') || '';
     let ref = urlObj.searchParams.get('ref') || '';
+    const rawXSp = urlObj.searchParams.get('xsp') || '';
     const forceMediaDownload = urlObj.searchParams.get('download') === '1';
     if (!rawTarget) {
       return res.status(400).send('Missing url param');
@@ -333,6 +347,8 @@ export default async function handler(req, res) {
           ref = 'https://a.prectv70.lol/';
         } else if (decodedTarget.includes('hdfilmcehennemi')) {
           ref = 'https://hdfilmcehennemi.mobi/';
+        } else if (decodedTarget.includes('fastplay.mom') || decodedTarget.includes('fastplay.')) {
+          ref = 'https://fastplay.mom/';
         } else if (decodedTarget.includes('meatort') || decodedTarget.includes('lookmovie')) {
           ref = 'https://lookmovie2.la/';
         } else if (decodedTarget.includes('4astras') || decodedTarget.includes('saf45sfa') || decodedTarget.includes('4sa') || decodedTarget.includes('7862564') || decodedTarget.includes('959565') || decodedTarget.includes('45464654')) {
@@ -340,10 +356,6 @@ export default async function handler(req, res) {
         }
       }
 
-      let targetOrigin = '';
-      try {
-        if (ref) targetOrigin = new URL(ref).origin;
-      } catch (_) {}
 
       const isRecTv = decodedTarget.includes('prectv') || 
                       decodedTarget.includes('mariuannastluisborg') || 
@@ -354,14 +366,15 @@ export default async function handler(req, res) {
       const upstreamHeaders = {
         'User-Agent': ua
       };
+      if (rawXSp) {
+        upstreamHeaders['X-Sp'] = rawXSp;
+      }
       if (req.headers.range) {
         upstreamHeaders['Range'] = req.headers.range;
       }
       if (ref) {
         upstreamHeaders['Referer'] = ref;
-        if (targetOrigin && !isRecTv && !ref.includes('ag2m4')) {
-          upstreamHeaders['Origin'] = targetOrigin;
-        }
+        // Media CDNs reject Origin; Referer is sufficient.
       }
 
       const upstreamRes = await fetch(decodedTarget, {
@@ -371,7 +384,7 @@ export default async function handler(req, res) {
       const contentType = upstreamRes.headers.get('content-type') || '';
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization, X-Sp');
       res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
 
       const lowerTarget = decodedTarget.toLowerCase();
@@ -402,8 +415,11 @@ export default async function handler(req, res) {
         if (!upstreamRes.ok || !text.trimStart().startsWith('#EXTM3U')) {
           return res.status(upstreamRes.ok ? 502 : upstreamRes.status).send('Live playlist unavailable');
         }
-        const baseOrigin = new URL(decodedTarget).origin;
+        // Upstream yonlendirme yaparsa goreceli URL'ler SON adrese gore cozulur.
+        const finalUpstreamUrl = (upstreamRes.url && upstreamRes.url.startsWith('http')) ? upstreamRes.url : decodedTarget;
+        const baseOrigin = new URL(finalUpstreamUrl).origin;
 
+        const forceProxyAll = urlObj.searchParams.get('live') === '1';
         const rewritten = text.split('\n').map(line => {
           let currentLine = line;
           const trimmed = currentLine.trim();
@@ -415,14 +431,15 @@ export default async function handler(req, res) {
               if (u.startsWith('http')) fullU = u;
               else if (u.startsWith('/')) fullU = `${baseOrigin}${u}`;
               else {
-                const urlPath = new URL(decodedTarget).pathname;
+                const urlPath = new URL(finalUpstreamUrl).pathname;
                 const lastSlash = urlPath.lastIndexOf('/');
                 const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
                 fullU = `${baseOrigin}${dir}${u}`;
               }
 
-              const childRef = fullU.includes('dizisol.com') ? 'https://dizisol.com/' : (fullU.includes('ag2m4') || fullU.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : ref);
-              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(childRef)}"`;
+              const childRef = fullU.includes('dizisol.com') ? 'https://dizisol.com/' : (fullU.includes('ag2m4') || fullU.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : (fullU.includes('fastplay.mom') ? 'https://fastplay.mom/' : ref));
+              const xspParam = rawXSp ? `&xsp=${encodeURIComponent(rawXSp)}` : '';
+              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(childRef)}${forceProxyAll ? '&live=1' : ''}${xspParam}"`;
             });
           }
 
@@ -434,7 +451,7 @@ export default async function handler(req, res) {
           } else if (trimmed.startsWith('/')) {
             fullLineUrl = `${baseOrigin}${trimmed}`;
           } else {
-            const urlPath = new URL(decodedTarget).pathname;
+            const urlPath = new URL(finalUpstreamUrl).pathname;
             const lastSlash = urlPath.lastIndexOf('/');
             const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
             fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
@@ -447,7 +464,9 @@ export default async function handler(req, res) {
             !fullLineUrl.includes('/ts?') && !fullLineUrl.includes('/ts/');
           // Direct CDN bypass for video segments and sub-playlists with open CORS
           // Bypasses proxy for 10x faster playback (<200ms start)
-          const needsProxy = isDizisolPlaylist || /(?:hdfilmizle\.best|prectv|dmax|tlc|daioncdn)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi|mariuannastluisborg|moveonjoy|daioncdn)/i.test(fullLineUrl);
+          // Canli TV (live=1): segmentler CORS'suz CDN'lerde dogrudan oynayamaz,
+          // hepsi proxy'den gecmeli. VOD bypass kurallari burada uygulanmaz.
+          const needsProxy = forceProxyAll || isDizisolPlaylist || /(?:hdfilmizle\.best|hdfilmcehennemi|prectv|dmax|tlc|daioncdn|fastplay\.mom)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi|rapidrame|mariuannastluisborg|moveonjoy|daioncdn)/i.test(fullLineUrl);
           if (
             !needsProxy &&
             (
@@ -475,14 +494,15 @@ export default async function handler(req, res) {
             return fullLineUrl;
           }
 
-          const childRef = fullLineUrl.includes('dizisol.com') ? 'https://dizisol.com/' : (fullLineUrl.includes('ag2m4') || fullLineUrl.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : ref);
+          const childRef = fullLineUrl.includes('dizisol.com') ? 'https://dizisol.com/' : (fullLineUrl.includes('ag2m4') || fullLineUrl.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : (fullLineUrl.includes('fastplay.mom') ? 'https://fastplay.mom/' : ref));
           // Version the HDF transport cache key after correcting its MIME type;
           // otherwise CDN-cached image/png responses linger for a full day.
           const hdfTransportVersion = /\.cfd\/hdfilm\//i.test(fullLineUrl)
             && /\.(?:png|jpg)(?:$|\?)/i.test(fullLineUrl)
             ? '&hdf_ts=2'
             : '';
-          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(childRef)}${hdfTransportVersion}`;
+          const xspParam = rawXSp ? `&xsp=${encodeURIComponent(rawXSp)}` : '';
+          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(childRef)}${hdfTransportVersion}${forceProxyAll ? '&live=1' : ''}${xspParam}`;
         }).join('\n');
 
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
@@ -626,9 +646,9 @@ export default async function handler(req, res) {
 
   if (pathname.startsWith('/api/hdfc')) {
     const subPath = pathname.replace(/^\/api\/hdfc/, '');
-    targetUrl = `https://www.hdfilmcehennemi.now${subPath}${search}`;
-    customHeaders['Referer'] = 'https://www.hdfilmcehennemi.now/';
-    customHeaders['Origin'] = 'https://www.hdfilmcehennemi.now';
+    targetUrl = `https://www.hdfilmcehennemi.nl${subPath}${search}`;
+    customHeaders['Referer'] = 'https://www.hdfilmcehennemi.nl/';
+    customHeaders['Origin'] = 'https://www.hdfilmcehennemi.nl';
   } else if (pathname.startsWith('/api/fin')) {
     const subPath = pathname.replace(/^\/api\/fin/, '');
     targetUrl = `https://filmizle.now${subPath}${search}`;

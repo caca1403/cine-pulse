@@ -1,10 +1,11 @@
+import { getAnonymousSourceLabel } from '../services/sourceLabels.js';
 import { createPlayerScope, renderPlayerIcons } from './playerLifecycle.js';
 /* ==========================================================================
    CinePulse Studio - Ultra-Luxury Cinematic Video Player Modal Component
    Exceeds Netflix, Amazon Prime & Apple TV+ Standards.
    Features:
    - Ambient Glow Aura Backdrop & Glassmorphism Floating Top Bar
-   - Sliding Dubbed (🇹🇷) / Subtitled (💬) Segmented Switcher
+   - Sliding Dubbed (🎙️) / Subtitled (💬) Segmented Switcher
    - Live VIP Server Selector Chips with Ping Dots & Glow Highlights
    - Netflix-Style In-Player Season & Episode Selector Drawer
    - Seamless In-Place Episode Switching with 0ms Reload
@@ -46,7 +47,8 @@ import {
 } from '../services/offlineManager.js';
 import { fetchDizisolEpisodeSources } from '../services/dizisolScraper.js';
 import { apiUrl } from '../services/apiOrigin.js';
-import { isNativeAndroidApp } from '../services/platformBridge.js';
+import { isNativeAndroidApp, isAppPlatform } from '../services/platformBridge.js';
+import { appPromoHtml, attachAppPromoEvents } from './AppPromo.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
@@ -242,6 +244,14 @@ export async function openPlayerModal({
   let movieReleaseYear = '';
   let movieVoteAverage = 0;
   let movieSimilar = [];
+  let seriesCast = [];
+  let seriesFirstAirYear = '';
+  let seriesVoteAverage = 0;
+  let seriesSeasonCount = 0;
+  let seriesEpisodeCount = 0;
+  let seriesStatus = '';
+  let seriesCreators = '';
+  let seriesNetwork = '';
   let isSourcesPopoverOpen = false;
 
   // Async fetch TMDB metadata (seasons, missing poster/backdrop, movie details & cast/similar)
@@ -292,6 +302,27 @@ export async function openPlayerModal({
             if (isSeries) {
               renderSeriesSimilarSection();
             }
+          }
+
+          if (isSeries) {
+            if (data.first_air_date) seriesFirstAirYear = data.first_air_date.substring(0, 4);
+            if (data.vote_average) seriesVoteAverage = Number(data.vote_average.toFixed(1));
+            if (data.number_of_seasons) seriesSeasonCount = data.number_of_seasons;
+            if (data.number_of_episodes) seriesEpisodeCount = data.number_of_episodes;
+            if (data.status) {
+              const statusMap = { 'Returning Series': 'Devam Ediyor', 'Ended': 'Tamamlandı', 'Canceled': 'İptal Edildi' };
+              seriesStatus = statusMap[data.status] || data.status;
+            }
+            if (Array.isArray(data.created_by) && data.created_by.length > 0) {
+              seriesCreators = data.created_by.map(c => c.name).filter(Boolean).slice(0, 2).join(', ');
+            }
+            if (Array.isArray(data.networks) && data.networks.length > 0) {
+              seriesNetwork = data.networks[0].name || '';
+            }
+            if (data.credits && Array.isArray(data.credits.cast)) {
+              seriesCast = data.credits.cast.slice(0, 10);
+            }
+            renderSeriesSimilarSection();
           }
 
           updateHeroMetaUI();
@@ -1161,6 +1192,11 @@ export async function openPlayerModal({
         if (currentEpisodeOverview) {
           overviewEl.textContent = currentEpisodeOverview;
         }
+        // Dizi genel ozeti ayri blokta gosterilir (bolum ozeti kisa olunca kolon bos kalmasin).
+        const seriesAboutText = document.getElementById('dizisol-series-about-text');
+        if (seriesAboutText && mediaOverview) {
+          seriesAboutText.textContent = mediaOverview;
+        }
       } else if (mediaOverview) {
         overviewEl.textContent = mediaOverview;
       }
@@ -1180,43 +1216,122 @@ export async function openPlayerModal({
   function renderSeriesSimilarSection() {
     const similarContainer = document.getElementById('dizisol-similar-section');
     if (!similarContainer) return;
-    if (!movieSimilar || movieSimilar.length === 0) {
+
+    const castHTML = (seriesCast && seriesCast.length > 0)
+      ? seriesCast.map(actor => {
+          const profileImg = actor.profile_path ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` : 'https://image.tmdb.org/t/p/w185/null';
+          return `
+            <div class="player-movie-cast-chip" title="${actor.name} (${actor.character || ''})">
+              <img src="${profileImg}" alt="${actor.name}" class="player-cast-avatar" onerror="this.onerror=null; this.style.display='none';" />
+              <div class="player-cast-meta">
+                <span class="player-cast-name">${actor.name}</span>
+                ${actor.character ? `<span class="player-cast-role">${actor.character}</span>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '';
+
+    const similarHTML = (movieSimilar && movieSimilar.length > 0)
+      ? movieSimilar.map(sim => {
+          const poster = sim.poster_path ? `https://image.tmdb.org/t/p/w342${sim.poster_path}` : '';
+          const rating = sim.vote_average ? sim.vote_average.toFixed(1) : '';
+          const year = (sim.first_air_date || sim.release_date || '').substring(0, 4);
+          const title = sim.name || sim.title || '';
+          return `
+            <div class="player-sim-card" data-sim-id="${sim.id}" data-sim-type="tv" data-sim-title="${title}" title="${title} • İncele / İzle">
+              <div class="player-sim-poster-box">
+                ${poster ? `<img src="${poster}" alt="${title}" class="player-sim-poster" loading="lazy" />` : ''}
+                <div class="player-sim-play-hover">
+                  <i data-lucide="play" style="width:24px;height:24px;fill:#dfff76;color:#dfff76;"></i>
+                </div>
+                ${rating ? `<span class="player-sim-badge">★ ${rating}</span>` : ''}
+              </div>
+              <div class="player-sim-info">
+                <span class="player-sim-title">${title}</span>
+                ${year ? `<span class="player-sim-year">${year}</span>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '';
+
+    if (!castHTML && !similarHTML && !seriesFirstAirYear && !seriesVoteAverage) {
       similarContainer.innerHTML = '';
       return;
     }
-    const similarHTML = movieSimilar.map(sim => {
-      const poster = sim.poster_path ? `https://image.tmdb.org/t/p/w342${sim.poster_path}` : '';
-      const rating = sim.vote_average ? sim.vote_average.toFixed(1) : '';
-      const year = (sim.first_air_date || sim.release_date || '').substring(0, 4);
-      const title = sim.name || sim.title || '';
-      return `
-        <div class="player-sim-card" data-sim-id="${sim.id}" data-sim-type="tv" data-sim-title="${title}" title="${title} • İncele / İzle">
-          <div class="player-sim-poster-box">
-            ${poster ? `<img src="${poster}" alt="${title}" class="player-sim-poster" loading="lazy" />` : ''}
-            <div class="player-sim-play-hover">
-              <i data-lucide="play" style="width:24px;height:24px;fill:#f59e0b;color:#f59e0b;"></i>
-            </div>
-            ${rating ? `<span class="player-sim-badge">★ ${rating}</span>` : ''}
-          </div>
-          <div class="player-sim-info">
-            <span class="player-sim-title">${title}</span>
-            ${year ? `<span class="player-sim-year">${year}</span>` : ''}
-          </div>
-        </div>
-      `;
-    }).join('');
 
     similarContainer.innerHTML = `
-      <div class="dizisol-seasons-header" style="margin-top: 2rem; margin-bottom: 0.85rem;">
-        <h4 style="display:flex; align-items:center; gap: 8px; font-size: 1.05rem; font-weight: 800; letter-spacing: 0.04em; color: #fff;">
-          <i data-lucide="sparkles" style="width:16px;height:16px;color:#f59e0b;"></i>
-          BENZER YAPIMLAR & ÖNERİLER
-        </h4>
-        <span class="player-sim-count" style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">${movieSimilar.length} Yapım</span>
+      <!-- Dizi Künye Barı (filmlerdeki gibi) -->
+      <div class="player-movie-meta-bar">
+        ${seriesCreators ? `
+          <div class="player-movie-director-tag">
+            <span class="meta-tag-label">YARATICI:</span>
+            <span class="meta-tag-val">${seriesCreators}</span>
+          </div>
+        ` : ''}
+        ${seriesFirstAirYear ? `
+          <div class="player-movie-pill">
+            <i data-lucide="calendar" style="width:13px;height:13px;color:#60a5fa"></i>
+            <span>${seriesFirstAirYear}</span>
+          </div>
+        ` : ''}
+        ${seriesVoteAverage > 0 ? `
+          <div class="player-movie-pill highlight">
+            <i data-lucide="star" style="width:13px;height:13px;color:#cbe768;fill:#cbe768"></i>
+            <span>${seriesVoteAverage} / 10</span>
+          </div>
+        ` : ''}
+        ${seriesSeasonCount > 0 ? `
+          <div class="player-movie-pill">
+            <i data-lucide="layers" style="width:13px;height:13px;color:#dfff76"></i>
+            <span>${seriesSeasonCount} Sezon</span>
+          </div>
+        ` : ''}
+        ${seriesEpisodeCount > 0 ? `
+          <div class="player-movie-pill">
+            <i data-lucide="list-video" style="width:13px;height:13px;color:#dfff76"></i>
+            <span>${seriesEpisodeCount} Bölüm</span>
+          </div>
+        ` : ''}
+        ${seriesStatus ? `
+          <div class="player-movie-pill">
+            <i data-lucide="activity" style="width:13px;height:13px;color:#10b981"></i>
+            <span>${seriesStatus}</span>
+          </div>
+        ` : ''}
+        ${seriesNetwork ? `
+          <div class="player-movie-pill">
+            <i data-lucide="tv" style="width:13px;height:13px;color:#a78bfa"></i>
+            <span>${seriesNetwork}</span>
+          </div>
+        ` : ''}
       </div>
-      <div class="player-sim-rail" style="display:flex; gap:1rem; overflow-x:auto; padding-bottom:0.75rem; scrollbar-width:none;">
-        ${similarHTML}
-      </div>
+
+      <!-- Oyuncu Kadrosu -->
+      ${castHTML ? `
+        <div class="player-movie-block">
+          <div class="player-movie-block-header">
+            <h4>OYUNCULAR & EKİP</h4>
+          </div>
+          <div class="player-movie-cast-rail">
+            ${castHTML}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Benzer Diziler -->
+      ${similarHTML ? `
+        <div class="player-movie-block">
+          <div class="player-movie-block-header">
+            <h4>BENZER DİZİLER & ÖNERİLER</h4>
+            <span class="player-sim-count">${movieSimilar.length} Yapım</span>
+          </div>
+          <div class="player-sim-carousel">
+            ${similarHTML}
+          </div>
+        </div>
+      ` : ''}
     `;
 
     renderPlayerIcons(similarContainer);
@@ -1231,6 +1346,7 @@ export async function openPlayerModal({
         }
       });
     });
+    renderYtSidebar();
   }
 
   function renderMovieInfoSection() {
@@ -1291,13 +1407,13 @@ export async function openPlayerModal({
         ` : ''}
         ${runtimeFormatted ? `
           <div class="player-movie-pill">
-            <i data-lucide="clock" style="width:13px;height:13px;color:#f59e0b"></i>
+            <i data-lucide="clock" style="width:13px;height:13px;color:#dfff76"></i>
             <span>${runtimeFormatted}</span>
           </div>
         ` : ''}
         ${movieVoteAverage > 0 ? `
           <div class="player-movie-pill highlight">
-            <i data-lucide="star" style="width:13px;height:13px;color:#eab308;fill:#eab308"></i>
+            <i data-lucide="star" style="width:13px;height:13px;color:#cbe768;fill:#cbe768"></i>
             <span>${movieVoteAverage} / 10</span>
           </div>
         ` : ''}
@@ -1352,6 +1468,58 @@ export async function openPlayerModal({
     });
 
     renderPlayerIcons(movieSection);
+    renderYtSidebar();
+  }
+
+  // --- Sağ sidebar: Sıradaki Bölümler (benzerler ana alanda kart olarak durur) ---
+  function ytThumb(url, title) {
+    if (url) return `<img src="${url}" alt="${(title || '').replace(/"/g, '')}" loading="lazy" />`;
+    const initial = String(title || '?').trim().charAt(0).toUpperCase() || '?';
+    return `<span class="yt-thumb-fallback">${initial}</span>`;
+  }
+  async function renderYtSidebar() {
+    const upnextEl = document.getElementById('yt-upnext-list');
+    if (!upnextEl) return;
+
+    let episodesHtml = '';
+    if (isSeries) {
+      const listSeason = drawerSeason || currentSeason;
+      let eps = drawerEpisodesCache.get(listSeason) || [];
+      if (!eps.length && tmdbId && !isOfflinePlayback) {
+        eps = await fetchSeasonEpisodes(listSeason);
+        if (closed) return;
+      }
+      const count = getSeasonEpisodeCount(listSeason) || eps.length || (listSeason === currentSeason ? currentMaxEpisodes : 0) || 0;
+      const total = eps.length || count;
+      if (total > 0) {
+        const rows = [];
+        const limit = Math.min(total, 30);
+        for (let n = 1; n <= limit; n++) {
+          const ep = eps.find(e => e.episode_number === n);
+          const isCurrent = listSeason === currentSeason && n === currentEpisode;
+          const still = ep?.still_path ? `https://image.tmdb.org/t/p/w342${ep.still_path}` : (backdropPath ? (backdropPath.startsWith('http') ? backdropPath : `https://image.tmdb.org/t/p/w342${backdropPath}`) : '');
+          const epTitle = ep?.name ? `${n}. Bölüm · ${ep.name}` : `${n}. Bölüm`;
+          const meta = `Sezon ${listSeason} · Bölüm ${n}${ep?.air_date ? ` · ${String(ep.air_date).substring(0, 4)}` : ''}`;
+          rows.push(`
+            <button type="button" class="yt-card ${isCurrent ? 'is-current' : ''}" data-yt-season="${listSeason}" data-yt-episode="${n}">
+              <span class="yt-thumb">${ytThumb(still, epTitle)}${isCurrent ? '<b class="yt-now">OYNATILIYOR</b>' : ''}</span>
+              <span class="yt-meta"><strong>${epTitle}</strong><small>${cleanSeriesName}</small><small>${meta}</small></span>
+            </button>`);
+        }
+        episodesHtml = `<p class="yt-section-title">Sıradaki Bölümler · S${listSeason}</p><div class="yt-rows" data-yt-group="episodes">${rows.join('')}</div>`;
+      }
+    }
+
+    upnextEl.innerHTML = episodesHtml;
+    upnextEl.querySelectorAll('[data-yt-season]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        const s = Number(btn.getAttribute('data-yt-season')) || currentSeason;
+        const ep = Number(btn.getAttribute('data-yt-episode')) || 1;
+        if (s === currentSeason && ep === currentEpisode) return;
+        switchEpisodeInPlayer(s, ep);
+      };
+    });
   }
 
   async function updateEpisodeOverview(seasonNum, epNum) {
@@ -1399,31 +1567,21 @@ export async function openPlayerModal({
     }
   }
 
+  function getSourceLabel(srv, index = activeServers.indexOf(srv)) {
+    return getAnonymousSourceLabel(srv, activeServers);
+  }
+
   function getActiveServerName() {
     const srv = activeServers[currentServerIndex];
     if (!srv) return isSearching ? 'Kaynak aranıyor...' : 'Kaynak Bulunamadı';
-    return srv.displayName || srv.name || 'Sunucu';
+    return getSourceLabel(srv);
   }
 
   function updateActiveSourceLabel() {
-    const label = document.getElementById('active-source-chip-label');
-    if (label) {
-      label.textContent = `Kaynak: ${getActiveServerName()} (Değiştir)`;
-    }
-    const topChip = document.getElementById('player-top-source-chip');
-    if (topChip) {
-      const srvName = getActiveServerName();
-      const span = topChip.querySelector('span');
-      if (span) span.textContent = srvName;
-      topChip.title = `Aktif Yayın Hattı: ${srvName}`;
-      if (activeServers && activeServers.length > 0 && activeServers[currentServerIndex]) {
-        topChip.style.display = 'inline-flex';
-      }
-    }
-    if (isSourcesPopoverOpen) {
-      renderSourcesPopoverList();
-    }
+    // Tek kaynak sistemi: üst chips rail + akıllı bar aynı state'i paylaşır.
+    // Ayrı "Kaynak:" butonu ve popover kaldırıldı — etiket senkronu gerekmez.
     renderCinemaSourcesRail();
+    updateServerPillsEvents();
     if (roomSync) renderRoomPlayerHud();
     refreshOfflineDownloadButton();
   }
@@ -1679,7 +1837,7 @@ export async function openPlayerModal({
             <h4>${displayTitle}</h4>
             <div class="dl-modal-tags">
               <span class="dl-tag-badge dl-badge-res">1080p Full HD</span>
-              <span class="dl-tag-badge dl-badge-cat">${currentCategory === 'dubbed' ? '🇹🇷 Türkçe Dublaj' : '💬 Türkçe Altyazı'}</span>
+              <span class="dl-tag-badge dl-badge-cat">${currentCategory === 'dubbed' ? '🎙️ Türkçe Dublaj' : '💬 Türkçe Altyazı'}</span>
               ${downloaded ? '<span class="dl-tag-badge dl-badge-ready"><i data-lucide="check-circle-2" style="width:12px;height:12px"></i> İndirildi</span>' : ''}
             </div>
           </div>
@@ -1721,7 +1879,7 @@ export async function openPlayerModal({
 
         ${!selectedStream && !downloaded ? `
           <div class="dl-no-stream-warning">
-            <i data-lucide="alert-circle" style="width:20px;height:20px;color:#f59e0b"></i>
+            <i data-lucide="alert-circle" style="width:20px;height:20px;color:#dfff76"></i>
             <p>Bu bölüm için şu anda doğrudan indirilebilir hat taranıyor. Lütfen birkaç saniye sonra tekrar deneyin veya oynatıcıdan başka bir hat seçin.</p>
           </div>
         ` : ''}
@@ -2052,149 +2210,55 @@ export async function openPlayerModal({
     const subCount = document.getElementById('tab-subtitled-count');
     if (dubCount) dubCount.textContent = String(categorizedServers.dubbed?.length || 0);
     if (subCount) subCount.textContent = String(categorizedServers.subtitled?.length || 0);
+    const smartDub = document.getElementById('smart-cat-dubbed-count');
+    const smartSub = document.getElementById('smart-cat-subtitled-count');
+    if (smartDub) smartDub.textContent = `(${(categorizedServers.dubbed || []).length})`;
+    if (smartSub) smartSub.textContent = `(${(categorizedServers.subtitled || []).length})`;
+  }
+
+  // TEK KAYNAK SİSTEMİ: ayrı popover yok. Tüm seçimler akıllı bar + üst chips
+  // rail üzerinden yapılır. Eski popover çağrıları akıllı dropdown'a yönlenir.
+  function openSmartSourcesDropdown() {
+    const dropdown = document.getElementById('smart-sources-dropdown');
+    const trigger = document.getElementById('smart-source-trigger');
+    const bar = document.getElementById('player-smart-sources-bar');
+    if (!dropdown) return;
+    renderSmartSourcesBar();
+    dropdown.classList.remove('hidden');
+    trigger?.classList.add('is-open');
+    bar?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   function toggleSourcesPopover(forceState) {
-    const pop = document.getElementById('player-sources-popover');
-    if (!pop) return;
-    isSourcesPopoverOpen = (typeof forceState === 'boolean') ? forceState : !isSourcesPopoverOpen;
-    if (isSourcesPopoverOpen) {
-      pop.classList.remove('hidden');
-      renderSourcesPopoverList();
-    } else {
-      pop.classList.add('hidden');
+    const dropdown = document.getElementById('smart-sources-dropdown');
+    if (!dropdown) return;
+    const shouldOpen = typeof forceState === 'boolean' ? forceState : dropdown.classList.contains('hidden');
+    if (shouldOpen) openSmartSourcesDropdown();
+    else {
+      dropdown.classList.add('hidden');
+      document.getElementById('smart-source-trigger')?.classList.remove('is-open');
     }
+    isSourcesPopoverOpen = shouldOpen;
+  }
+
+  function switchSourceCategory(nextCategory) {
+    if (currentCategory === nextCategory) return;
+    if (!requireRoomModerator()) return;
+    currentCategory = nextCategory;
+    failoverCountInSession = 0;
+    try { localStorage.setItem('cp_preferred_category', nextCategory); } catch (_) {}
+    disposePlayback();
+    activeServers = categorizedServers[nextCategory] || [];
+    currentServerIndex = getRoomPreferredServerIndex(activeServers);
+    hasPlayerStartedPlaying = activeServers.length > 0;
+    updateActiveSourceLabel();
+    updatePlayerContainer();
+    showToast(nextCategory === 'dubbed' ? '🎙️ Türkçe Dublaj kaynaklarına geçildi.' : '💬 Türkçe Altyazılı kaynaklara geçildi.', 'info');
   }
 
   function renderSourcesPopoverList() {
-    const listEl = document.getElementById('sources-popover-list');
-    if (!listEl) return;
-
-    // Update Category Filter Tabs (Dubbed / Subtitled)
-    const tabDubbed = document.getElementById('sources-tab-dubbed');
-    const tabSubtitled = document.getElementById('sources-tab-subtitled');
-    const dubbedCountEl = document.getElementById('sources-cat-dubbed-count');
-    const subCountEl = document.getElementById('sources-cat-subtitled-count');
-
-    const dubbedList = categorizedServers?.dubbed || [];
-    const subList = categorizedServers?.subtitled || [];
-    if (dubbedCountEl) dubbedCountEl.textContent = dubbedList.length ? `(${dubbedList.length})` : '(0)';
-    if (subCountEl) subCountEl.textContent = subList.length ? `(${subList.length})` : '(0)';
-
-    if (tabDubbed) {
-      tabDubbed.classList.toggle('active', currentCategory === 'dubbed');
-      tabDubbed.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (currentCategory === 'dubbed') return;
-        if (!requireRoomModerator()) return;
-        currentCategory = 'dubbed';
-        failoverCountInSession = 0;
-        try { localStorage.setItem('cp_preferred_category', 'dubbed'); } catch (_) {}
-        disposePlayback();
-        activeServers = categorizedServers['dubbed'] || [];
-        currentServerIndex = getRoomPreferredServerIndex(activeServers);
-        hasPlayerStartedPlaying = activeServers.length > 0;
-        updateActiveSourceLabel();
-        renderSourcesPopoverList();
-        updatePlayerContainer();
-        showToast('🇹🇷 Türkçe Dublaj kaynaklarına geçildi.', 'info');
-      };
-    }
-
-    if (tabSubtitled) {
-      tabSubtitled.classList.toggle('active', currentCategory === 'subtitled');
-      tabSubtitled.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (currentCategory === 'subtitled') return;
-        if (!requireRoomModerator()) return;
-        currentCategory = 'subtitled';
-        failoverCountInSession = 0;
-        try { localStorage.setItem('cp_preferred_category', 'subtitled'); } catch (_) {}
-        disposePlayback();
-        activeServers = categorizedServers['subtitled'] || [];
-        currentServerIndex = getRoomPreferredServerIndex(activeServers);
-        hasPlayerStartedPlaying = activeServers.length > 0;
-        updateActiveSourceLabel();
-        renderSourcesPopoverList();
-        updatePlayerContainer();
-        showToast('💬 Türkçe Altyazılı kaynaklara geçildi.', 'info');
-      };
-    }
-
-    if (!activeServers || activeServers.length === 0) {
-      const otherCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
-      const otherCount = categorizedServers?.[otherCat]?.length || 0;
-      listEl.innerHTML = `
-        <div style="padding: 1.5rem 1rem; text-align: center; color: #94a3b8; display:flex; flex-direction:column; align-items:center; gap:10px;">
-          <p class="sources-empty-text" style="margin:0;">Bu dilde (${currentCategory === 'dubbed' ? 'Türkçe Dublaj' : 'Türkçe Altyazılı'}) yayın hattı bulunamadı.</p>
-          ${otherCount > 0 ? `
-            <button type="button" class="btn-footer-pill" id="sources-empty-fallback-btn" style="color:#f59e0b; border-color:rgba(245,158,11,0.4);">
-              <span>${otherCat === 'dubbed' ? '🇹🇷 Türkçe Dublaj Kaynaklarını Göster' : '💬 Türkçe Altyazılı Kaynakları Göster'} (${otherCount})</span>
-            </button>
-          ` : ''}
-        </div>
-      `;
-      const fallbackBtn = listEl.querySelector('#sources-empty-fallback-btn');
-      if (fallbackBtn) {
-        fallbackBtn.onclick = (e) => {
-          e.preventDefault();
-          if (otherCat === 'dubbed') tabDubbed?.click();
-          else tabSubtitled?.click();
-        };
-      }
-      return;
-    }
-
-    listEl.innerHTML = activeServers.map((srv, idx) => {
-      const isActive = idx === currentServerIndex;
-      const isFailed = Boolean(srv.failed);
-      let statusDot = 'dot-amber';
-      let statusTag = '<span class="source-ready-tag">Hazır</span>';
-
-      if (isFailed) {
-        statusDot = 'dot-red';
-        statusTag = `<span class="source-failed-tag"><i data-lucide="alert-triangle" style="width:12px;height:12px"></i> ${srv.failReason || 'Yanıt Vermedi'}</span>`;
-      } else if (isActive) {
-        statusDot = 'dot-green';
-        statusTag = `<span class="source-active-tag">🟢 Oynatılıyor</span>`;
-      }
-
-      return `
-        <div class="source-list-item ${isActive ? 'active' : ''} ${isFailed ? 'failed' : ''}" data-index="${idx}">
-          <div class="source-item-left">
-            <span class="server-status-dot ${statusDot}"></span>
-            <span class="source-item-name">${srv.displayName || srv.name}</span>
-            <span class="source-item-badge">${srv.quality || '1080p'}</span>
-          </div>
-          <div class="source-item-right">
-            ${statusTag}
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    listEl.querySelectorAll('.source-list-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const idx = parseInt(item.getAttribute('data-index'), 10);
-        if (idx === currentServerIndex) return;
-        if (!requireRoomModerator()) return;
-        if (roomSync && !isRoomControllableServer(activeServers[idx])) {
-          showToast('Birlikte izleme için senkronlanabilir doğrudan bir yayın hattı seçin.', 'info');
-          return;
-        }
-        currentServerIndex = idx;
-        failoverCountInSession = 0;
-        toggleSourcesPopover(false);
-        updateActiveSourceLabel();
-        updatePlayerContainer();
-      });
-    });
-
-    renderPlayerIcons(listEl);
+    // Geriye dönük uyumluluk: eski popover listesi artık akıllı bar'dır.
+    renderSmartSourcesBar();
   }
 
   // Alias to prevent any ReferenceError
@@ -2225,6 +2289,7 @@ export async function openPlayerModal({
       const trigger = document.getElementById('smart-source-trigger');
       if (dropdown) dropdown.classList.add('hidden');
       if (trigger) trigger.classList.remove('is-open');
+      isSourcesPopoverOpen = false;
     };
 
     if (tabDubbed) {
@@ -2233,8 +2298,7 @@ export async function openPlayerModal({
         e.preventDefault();
         e.stopPropagation();
         closeSmartDropdown();
-        const tabDub = document.getElementById('sources-tab-dubbed');
-        if (tabDub) tabDub.click();
+        switchSourceCategory('dubbed');
       };
     }
 
@@ -2244,8 +2308,7 @@ export async function openPlayerModal({
         e.preventDefault();
         e.stopPropagation();
         closeSmartDropdown();
-        const tabSub = document.getElementById('sources-tab-subtitled');
-        if (tabSub) tabSub.click();
+        switchSourceCategory('subtitled');
       };
     }
 
@@ -2259,7 +2322,7 @@ export async function openPlayerModal({
     const dropdownCount = document.getElementById('smart-sources-dropdown-count');
 
     const currentSrv = activeServers && activeServers[currentServerIndex];
-    const srvName = currentSrv ? (currentSrv.displayName || currentSrv.name || 'Sunucu') : (isSearching ? 'Aranıyor...' : 'Kaynak Yok');
+    const srvName = currentSrv ? getSourceLabel(currentSrv) : (isSearching ? 'Aranıyor...' : 'Kaynak Yok');
     const isFailed = Boolean(currentSrv?.failed);
 
     if (nameEl) nameEl.textContent = srvName;
@@ -2267,7 +2330,14 @@ export async function openPlayerModal({
       dotEl.className = 'smart-source-dot ' + (currentSrv ? (isFailed ? 'dot-failed' : 'dot-active') : 'dot-ready');
     }
 
-    const totalServers = activeServers ? activeServers.length : 0;
+    // Sayaç ve liste AYNI temiz diziden beslenir: bozuk girdi ikisini de
+    // aynı anda etkiler, "sayı var ama liste boş" hali oluşamaz.
+    const safeServers = Array.isArray(activeServers) ? activeServers : [];
+    const escHtml = (v) => String(v ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+    const totalServers = safeServers.length;
     if (dropdownCount) dropdownCount.textContent = `${totalServers} Kaynak`;
 
     const switchToSmartSource = (idx) => {
@@ -2281,7 +2351,7 @@ export async function openPlayerModal({
       failoverCountInSession = 0;
       updateActiveSourceLabel();
       updatePlayerContainer();
-      showToast(`⚡ ${activeServers[idx]?.displayName || 'Kaynak'} yayınına geçildi.`, 'info');
+      showToast(`⚡ ${getSourceLabel(activeServers[idx], idx)} yayınına geçildi.`, 'info');
     };
 
     const hasMultiple = totalServers > 1;
@@ -2316,24 +2386,30 @@ export async function openPlayerModal({
         if (!dropdown) return;
         const willOpen = dropdown.classList.contains('hidden');
         if (willOpen) {
+          // Her açışta güncel veriden yeniden çiz: eski anlık görüntü
+          // "sayı var liste boş" takılması yaşatmaz.
+          renderSmartSourcesBar();
           dropdown.classList.remove('hidden');
           trigger.classList.add('is-open');
+          isSourcesPopoverOpen = true;
         } else {
           closeSmartDropdown();
+          isSourcesPopoverOpen = false;
         }
       };
     }
 
     if (dropdownList) {
-      if (!activeServers || activeServers.length === 0) {
+      const prevListScroll = dropdownList.scrollTop || 0;
+      if (safeServers.length === 0) {
         const otherCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
         const otherCount = categorizedServers?.[otherCat]?.length || 0;
         dropdownList.innerHTML = `
           <div style="padding: 0.75rem; text-align: center; color: #94a3b8; font-size: 0.76rem;">
             ${isSearching ? 'Yayın kaynakları taranıyor...' : 'Bu dilde kaynak bulunamadı.'}
             ${otherCount > 0 ? `
-              <button type="button" class="smart-dropdown-item" id="btn-smart-fallback-cat" style="margin-top: 0.5rem; justify-content: center; width: 100%; border: 1px solid rgba(245,158,11,0.3); color: #fbbf24;">
-                ${otherCat === 'dubbed' ? '🇹🇷 Dublaj Kaynaklarını Aç' : '💬 Altyazılı Kaynakları Aç'} (${otherCount})
+              <button type="button" class="smart-dropdown-item" id="btn-smart-fallback-cat" style="margin-top: 0.5rem; justify-content: center; width: 100%; border: 1px solid rgba(223, 255, 118,0.3); color: #dfff76;">
+                ${otherCat === 'dubbed' ? 'Dublaj Kaynaklarını Aç' : 'Altyazılı Kaynakları Aç'} (${otherCount})
               </button>
             ` : ''}
           </div>
@@ -2343,33 +2419,42 @@ export async function openPlayerModal({
           fbBtn.onclick = (e) => {
             e.preventDefault();
             closeSmartDropdown();
-            if (otherCat === 'dubbed') tabDubbed?.click();
-            else tabSubtitled?.click();
+            switchSourceCategory(otherCat);
           };
         }
       } else {
-        dropdownList.innerHTML = activeServers.map((srv, idx) => {
-          const isActive = idx === currentServerIndex;
-          const srvFailed = Boolean(srv.failed);
-          const dotClass = isActive ? 'dot-active' : srvFailed ? 'dot-failed' : 'dot-ready';
-          return `
+        let itemsHtml = '';
+        try {
+          itemsHtml = safeServers.map((srv, idx) => {
+            const s = (srv && typeof srv === 'object') ? srv : {};
+            const isActive = idx === currentServerIndex;
+            const sourceLabel = getSourceLabel(s, idx);
+            const srvFailed = Boolean(s.failed);
+            const dotClass = isActive ? 'dot-active' : srvFailed ? 'dot-failed' : 'dot-ready';
+            return `
             <button type="button" class="smart-dropdown-item ${isActive ? 'active' : ''} ${srvFailed ? 'failed' : ''}" data-server-idx="${idx}">
               <div class="smart-dropdown-item-left">
                 <span class="smart-source-dot ${dotClass}"></span>
-                <span class="smart-dropdown-item-name">${srv.displayName || srv.name || 'Sunucu'}</span>
+                <span class="smart-dropdown-item-name">${escHtml(sourceLabel)}</span>
               </div>
               <div class="smart-dropdown-item-right">
-                <span class="smart-dropdown-badge">${srv.quality || '1080p'}</span>
                 ${isActive ? '<span class="smart-dropdown-playing">Aktif</span>' : ''}
               </div>
             </button>
           `;
-        }).join('') + `
-          <button type="button" class="smart-dropdown-item" id="btn-smart-advanced-settings" style="margin-top: 0.35rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.5rem; color: #94a3b8; font-size: 0.72rem; justify-content: center;">
-            <i data-lucide="sliders-horizontal" style="width:12px;height:12px;margin-right:4px;"></i>
-            <span>Gelişmiş Kaynak Ayarları</span>
-          </button>
+          }).join('');
+        } catch (_) {
+          itemsHtml = '';
+        }
+        if (!itemsHtml) {
+          dropdownList.innerHTML = `
+          <div style="padding: 0.75rem; text-align: center; color: #94a3b8; font-size: 0.76rem;">
+            Liste hazırlanırken bir sorun oluştu. Kapatıp tekrar açın.
+          </div>
         `;
+        } else {
+          dropdownList.innerHTML = itemsHtml;
+        }
 
         dropdownList.querySelectorAll('.smart-dropdown-item[data-server-idx]').forEach(item => {
           item.addEventListener('click', (e) => {
@@ -2380,17 +2465,8 @@ export async function openPlayerModal({
             switchToSmartSource(idx);
           });
         });
-
-        const advBtn = dropdownList.querySelector('#btn-smart-advanced-settings');
-        if (advBtn) {
-          advBtn.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeSmartDropdown();
-            toggleSourcesPopover(true);
-          };
-        }
       }
+      dropdownList.scrollTop = prevListScroll;
     }
 
     if (!bar._hasOutsideClickListener) {
@@ -2430,20 +2506,24 @@ export async function openPlayerModal({
     wrapper.innerHTML = `
       <div class="player-error-view" style="display:flex;align-items:center;justify-content:center;height:100%;text-align:center;padding:2rem;">
         <div class="player-error-card" style="background:rgba(20,24,35,0.92);backdrop-filter:blur(16px);padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.12);max-width:460px;box-shadow:0 20px 40px rgba(0,0,0,0.6);">
-          <i data-lucide="alert-circle" style="width:44px;height:44px;color:#f59e0b;margin-bottom:1rem;"></i>
-          <h3 style="color:#fff;font-size:1.15rem;margin-bottom:0.5rem;">${currentSrv?.displayName || currentSrv?.name || 'Seçili Kaynak'} Yanıt Vermedi</h3>
+          <i data-lucide="alert-circle" style="width:44px;height:44px;color:#dfff76;margin-bottom:1rem;"></i>
+          <h3 style="color:#fff;font-size:1.15rem;margin-bottom:0.5rem;">${getSourceLabel(currentSrv)} Yanıt Vermedi</h3>
           <p style="color:#94a3b8;font-size:0.85rem;line-height:1.5;margin-bottom:1.25rem;">
             ${reason}. Alternatif yayın hatlarından birine geçiş yapabilir veya diğer dildeki kaynakları deneyebilirsiniz.
           </p>
           <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
-            ${hasNext ? `<button class="btn-primary" id="btn-err-try-next" style="padding:0.55rem 1.1rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;"><i data-lucide="skip-forward" style="width:14px;height:14px"></i> Sıradaki Kaynağa Geç (${activeServers[nextIndex].displayName || 'Alternatif'})</button>` : ''}
+            ${hasNext ? `<button class="btn-primary" id="btn-err-try-next" style="padding:0.55rem 1.1rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;"><i data-lucide="skip-forward" style="width:14px;height:14px"></i> Sıradaki Kaynağa Geç (${getSourceLabel(activeServers[nextIndex], nextIndex)})</button>` : ''}
             <button class="btn-secondary" id="btn-err-open-sources" style="padding:0.55rem 1.1rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;"><i data-lucide="layers" style="width:14px;height:14px"></i> Tüm Kaynaklar (${activeServers.length})</button>
-            ${hasSubtitled ? `<button class="btn-secondary" id="btn-err-switch-sub" style="padding:0.55rem 1.1rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;color:#f59e0b;"><i data-lucide="message-square" style="width:14px;height:14px"></i> 💬 Altyazılıya Geç</button>` : ''}
+            ${hasSubtitled ? `<button class="btn-secondary" id="btn-err-switch-sub" style="padding:0.55rem 1.1rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;color:#dfff76;"><i data-lucide="message-square" style="width:14px;height:14px"></i> Altyazılıya Geç</button>` : ''}
+            ${!hasNext && !isAppPlatform() ? appPromoHtml('Tüm hatlar denendi — uygulamada açmayı dene') : ''}
           </div>
         </div>
       </div>
     `;
     renderPlayerIcons(wrapper);
+    try {
+      attachAppPromoEvents(wrapper);
+    } catch (_) {}
 
     document.getElementById('btn-err-try-next')?.addEventListener('click', () => {
       if (hasNext) {
@@ -2455,13 +2535,12 @@ export async function openPlayerModal({
     });
 
     document.getElementById('btn-err-open-sources')?.addEventListener('click', () => {
-      toggleSourcesPopover(true);
+      openSmartSourcesDropdown();
     });
 
     document.getElementById('btn-err-switch-sub')?.addEventListener('click', () => {
       failoverCountInSession = 0;
-      const tabSub = document.getElementById('tab-subtitled');
-      if (tabSub) tabSub.click();
+      switchSourceCategory('subtitled');
     });
   }
 
@@ -2520,7 +2599,7 @@ export async function openPlayerModal({
     }
     if (nextIndex !== -1) {
       const nextSrv = activeServers[nextIndex];
-      showToast(`⚠️ ${currentSrv?.displayName || currentSrv?.name || 'Mevcut kaynak'} yanıt vermedi. ${nextSrv.displayName || nextSrv.name} deneniyor...`, 'warning');
+      showToast(`⚠️ ${getSourceLabel(currentSrv)} yanıt vermedi. ${getSourceLabel(nextSrv)} deneniyor...`, 'warning');
       currentServerIndex = nextIndex;
       updateActiveSourceLabel();
       updatePlayerContainer();
@@ -2556,7 +2635,33 @@ export async function openPlayerModal({
   }
 
   function renderServerPills() {
-    return '';
+    if (!activeServers || activeServers.length === 0) {
+      return '<div class="server-toolbar-empty" style="color: #64748b; font-size: 0.78rem; padding: 0.2rem 0.6rem; display: inline-flex; align-items: center; gap: 0.4rem;"><span class="server-status-dot dot-amber"></span> Yayın hatları taranıyor...</div>';
+    }
+
+    return activeServers.map((srv, idx) => {
+      const isActive = idx === currentServerIndex;
+      const isFailed = Boolean(srv.failed);
+      let statusDot = 'dot-amber';
+      if (isFailed) statusDot = 'dot-red';
+      else if (isActive) statusDot = 'dot-green';
+
+      const cleanLabel = getSourceLabel(srv, idx);
+
+
+      return `
+        <button class="server-btn ${isActive ? 'active' : ''} ${isFailed ? 'failed' : ''}" 
+                data-index="${idx}" 
+                type="button" 
+                role="tab" 
+                aria-selected="${isActive ? 'true' : 'false'}" 
+                title="${cleanLabel}">
+          <span class="server-status-dot ${statusDot}"></span>
+          <span class="server-name">${cleanLabel}</span>
+          ${isFailed ? '<span style="font-size:0.65rem;color:#f87171;">(Hata)</span>' : ''}
+        </button>
+      `;
+    }).join('');
   }
 
   function resolveEffectiveSubtitles(srv) {
@@ -2657,7 +2762,7 @@ export async function openPlayerModal({
           </div>
           <div class="player-loader-text">
             <h3>${cleanSeriesName}</h3>
-            <p class="player-loader-sub">${currentCategory === 'subtitled' ? '💬 Türkçe Altyazılı' : '🇹🇷 Türkçe Dublaj'} Yayınlar Aranıyor...</p>
+            <p class="player-loader-sub">${currentCategory === 'subtitled' ? '💬 Türkçe Altyazılı' : '🎙️ Türkçe Dublaj'} Yayınlar Aranıyor...</p>
             <p class="player-loader-hint">Türkiye ve küresel CDN hatları taranıyor...</p>
           </div>
         </div>
@@ -2668,7 +2773,7 @@ export async function openPlayerModal({
       return `
         <div class="player-not-found-container">
           <div class="not-found-icon-wrap">
-            <i data-lucide="volume-x" style="width: 38px; height: 38px; color: #f59e0b;"></i>
+            <i data-lucide="volume-x" style="width: 38px; height: 38px; color: #dfff76;"></i>
           </div>
           <h3>Türkçe Dublaj Henüz Mevcut Değil</h3>
           <p>
@@ -2705,7 +2810,7 @@ export async function openPlayerModal({
             </button>
             <button id="btn-switch-subtitled-fallback" class="btn-secondary" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem;">
               <i data-lucide="repeat" style="width: 14px; height: 14px;"></i>
-              <span>${currentCategory === 'dubbed' ? '💬 Altyazılıya Geç' : '🇹🇷 Dublaja Geç'}</span>
+              <span>${currentCategory === 'dubbed' ? 'Altyazılıya Geç' : 'Dublaja Geç'}</span>
             </button>
           </div>
         </div>
@@ -2726,7 +2831,7 @@ export async function openPlayerModal({
           <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
             <button id="btn-switch-subtitled-fallback" class="btn-primary btn-switch-category-fallback">
               <i data-lucide="repeat" style="width: 16px; height: 16px;"></i>
-              <span>${currentCategory === 'dubbed' ? '💬 Türkçe Altyazılı VidAPI & VIP Sunuculara Geç' : '🇹🇷 Türkçe Dublaj Sunucularına Geç'}</span>
+              <span>${currentCategory === 'dubbed' ? '💬 Türkçe Altyazılı VidAPI & VIP Sunuculara Geç' : '🎙️ Türkçe Dublaj Sunucularına Geç'}</span>
             </button>
             <button id="btn-retry-discovery" class="btn-secondary" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem;">
               <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
@@ -2752,7 +2857,7 @@ export async function openPlayerModal({
       const dualAudioBarHTML = hasDubbedAudio ? `
         <div class="dual-audio-bar" id="dual-audio-bar">
           <div class="dual-audio-label">
-            <i data-lucide="headphones" style="width: 14px; height: 14px; color: #f59e0b;"></i>
+            <i data-lucide="headphones" style="width: 14px; height: 14px; color: #dfff76;"></i>
             <span>Ses Kaynağı:</span>
           </div>
           <div class="dual-audio-toggle">
@@ -2760,7 +2865,7 @@ export async function openPlayerModal({
               <span>🇬🇧 Orijinal</span>
             </button>
             <button id="btn-audio-dubbed" class="dual-audio-btn ${currentCategory === 'dubbed' ? 'active' : ''}" title="Türkçe Dublaj Sesi">
-              <span>🇹🇷 TR Dublaj</span>
+              <span>🎙️ TR Dublaj</span>
             </button>
           </div>
           <span class="dual-audio-source-name" title="${srv.dubbedAudioName || ''}">
@@ -2819,7 +2924,7 @@ export async function openPlayerModal({
             <i data-lucide="unlock" style="width: 16px; height: 16px;"></i>
           </button>
           <button class="custom-screen-unlock-badge hidden" id="custom-btn-screen-unlock" title="Kilidi Aç">
-            <i data-lucide="lock" style="width: 15px; height: 15px; color: #fbbf24;"></i>
+            <i data-lucide="lock" style="width: 15px; height: 15px; color: #dfff76;"></i>
             <span>Ekran Kilitli • Dokunarak Aç</span>
           </button>
 
@@ -2920,20 +3025,6 @@ export async function openPlayerModal({
                   <i data-lucide="headphones" style="width: 14px; height: 14px;"></i>
                   <span>Ses</span>
                 </button>
-                <button type="button" class="pill-bar-btn" id="pill-btn-sources" title="Yayın Hatları / Sunucular">
-                  <i data-lucide="layers" style="width: 14px; height: 14px;"></i>
-                  <span>Kaynaklar</span>
-                </button>
-                ${isSeries ? `
-                  <button type="button" class="pill-bar-btn" id="pill-btn-episodes" title="Bölümler">
-                    <i data-lucide="list-video" style="width: 14px; height: 14px;"></i>
-                    <span>Bölümler</span>
-                  </button>
-                ` : ''}
-                <button type="button" class="pill-bar-btn" id="pill-btn-similar" title="${isSeries ? 'Benzer Diziler' : 'Benzer Filmler'}">
-                  <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
-                  <span>Benzerleri</span>
-                </button>
               </div>
 
               <!-- Times and playback actions stay on the lower row. -->
@@ -2992,7 +3083,7 @@ export async function openPlayerModal({
               <!-- Item 1: Oynatma hızı -->
               <div class="custom-menu-item" id="custom-menu-item-speed">
                 <div class="custom-menu-item-icon">
-                  <i data-lucide="gauge" style="width: 17px; height: 17px; color: #f59e0b;"></i>
+                  <i data-lucide="gauge" style="width: 17px; height: 17px; color: #dfff76;"></i>
                 </div>
                 <div class="custom-menu-item-body">
                   <span class="custom-menu-item-title">Oynatma Hızı</span>
@@ -3004,7 +3095,7 @@ export async function openPlayerModal({
               <!-- Item 2: Uygulama Zamanlayıcısı -->
               <div class="custom-menu-item" id="custom-menu-item-sleep-menu">
                 <div class="custom-menu-item-icon">
-                  <i data-lucide="timer" style="width: 17px; height: 17px; color: #fbbf24;"></i>
+                  <i data-lucide="timer" style="width: 17px; height: 17px; color: #dfff76;"></i>
                 </div>
                 <div class="custom-menu-item-body">
                   <span class="custom-menu-item-title">Uygulama Zamanlayıcısı</span>
@@ -3085,6 +3176,9 @@ export async function openPlayerModal({
       `;
     }
 
+    if (srv.requiresVerification && window.CinePulseDesktop?.openVerificationPlayer) {
+      return '<div class="native-verification-placeholder" role="status" style="display:grid;place-items:center;height:100%;color:var(--text-muted)">Doğrulama alanı açılıyor…</div>';
+    }
     const finalIframeUrl = getStreamSafeUrl(srv);
     const iframeName = (srv.displayName || srv.name || 'Kaynak').replace(/[^a-z0-9]/gi, '_');
     return `
@@ -3250,10 +3344,6 @@ export async function openPlayerModal({
           <div class="player-title-box">
             <span id="player-modal-title" class="player-header-title">${isNativeOfflinePlayback && isSeries ? `${cleanSeriesName} · S${currentSeason} B${currentEpisode}` : cleanSeriesName}</span>
             ${isSeries ? `<span class="player-header-ep-badge">S${currentSeason} B${currentEpisode}</span>` : ''}
-            <span class="player-active-stream-badge" id="player-top-source-chip" style="${activeServers[currentServerIndex] ? '' : 'display: none !important;'}" title="Aktif Yayın Hattı: ${getActiveServerName()}">
-              <i data-lucide="zap" style="width: 12px; height: 12px; color: #f59e0b;"></i>
-              <span>${getActiveServerName()}</span>
-            </span>
             ${initialTime > 5 ? `
               <span id="player-resume-time-badge" class="player-resume-badge" title="Kaldığın Süre">
                 <i data-lucide="clock" style="width: 11px; height: 11px;"></i>
@@ -3266,7 +3356,7 @@ export async function openPlayerModal({
         <!-- Hidden proxy for backward compatibility with tab-dubbed / tab-subtitled -->
         <div class="player-header-toggle" style="display: none !important;">
           <button id="tab-dubbed" class="cinema-tab-btn ${currentCategory === 'dubbed' ? 'active' : ''}">
-            <span class="tab-flag">🇹🇷</span>
+            <span class="tab-flag">🎙️</span>
             <span>Dublaj</span>
             <span class="tab-source-count" id="tab-dubbed-count">0</span>
           </button>
@@ -3277,7 +3367,7 @@ export async function openPlayerModal({
           </button>
         </div>
 
-        <!-- Right: Action Icons (Shortcuts, Fullscreen, External) -->
+        <!-- Right: Action Icons (Shortcuts, Fullscreen) -->
         <div class="player-header-right">
           <button id="btn-player-shortcuts" class="btn-player-tool desktop-only-tool" title="Klavye Kısayolları (?)">
             <i data-lucide="keyboard" style="width: 16px; height: 16px;"></i>
@@ -3286,15 +3376,14 @@ export async function openPlayerModal({
           <button id="btn-player-fullscreen" class="btn-player-tool" title="Tam Ekran / Sinema Modu (F)">
             <i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i>
           </button>
-
-          <a id="player-popout-btn" href="#" target="_blank" class="btn-player-tool desktop-only-tool" title="Harici Pencerede Aç">
-            <i data-lucide="external-link" style="width: 16px; height: 16px;"></i>
-          </a>
         </div>
       </div>
 
+      <!-- YouTube tarzı 2 kolon: sol ana video + bilgi, sağ sıradakiler -->
+      <div class="player-yt-layout">
+      <div class="player-yt-main">
       <!-- Center Player Video Container -->
-          <div class="player-stage-wrapper">
+      <div class="player-stage-wrapper">
         <div class="player-iframe-container" id="player-iframe-wrapper">
           ${renderPlayerContent()}
         </div>
@@ -3352,10 +3441,6 @@ export async function openPlayerModal({
               <button id="btn-report-issue" class="player-icon-action" type="button" title="Kaynakta sorun bildir"><i data-lucide="flag"></i></button>
             </div>
           <div class="player-utility-group">
-            <button id="btn-open-sources-drawer" class="player-utility-action active-source-action" type="button" title="Yayın Hatları & Sunucu Seçimi">
-              <i data-lucide="layers" style="color: #f59e0b;"></i>
-              <span id="active-source-chip-label">Kaynak: ${getActiveServerName()}</span>
-            </button>
             ${isNativeAndroidApp() && !offlinePlaybackUrl ? `<button id="btn-player-download" class="player-utility-action player-download-action" type="button" title="Bölümü indir / çevrimdışı kaydet"><i data-lucide="download"></i><span>İndir</span></button>` : ''}
             <button id="btn-player-theater" class="player-utility-action" title="Sinema Modu (Genişlet)"><i data-lucide="scan-line"></i><span>Sinema</span></button>
               <button id="btn-player-share" class="player-icon-action" type="button" title="Paylaş"><i data-lucide="share-2"></i></button>
@@ -3373,54 +3458,13 @@ export async function openPlayerModal({
             <p class="dizisol-overview" id="dizisol-overview">
             ${playerVariant === 'short-drama' ? (seriesOverview || 'Bu kısa dizi için henüz özet girilmedi.') : (isSeries ? (currentEpisodeOverview || 'Bölüm özeti hazırlanıyor...') : (mediaOverview || 'İçerik bilgileri hazırlanıyor...'))}
             </p>
-          </div>
-
-        <!-- AKILLI VE KOMPAKT KAYNAK & DİL ÇUBUĞU (Smart Sources Bar) -->
-        <div class="player-smart-sources-bar" id="player-smart-sources-bar" ${playerVariant === 'short-drama' ? 'style="display:none;"' : ''}>
-          <div class="smart-sources-lang-group">
-            <span class="smart-sources-label"><i data-lucide="layers" style="width:13px;height:13px;color:#f59e0b;"></i> Ses &amp; Dil:</span>
-            <div class="smart-sources-cat-tabs" id="smart-sources-cat-tabs">
-              <button type="button" class="smart-cat-tab ${currentCategory === 'dubbed' ? 'active' : ''}" data-cat="dubbed" id="smart-tab-dubbed">
-                <span>🇹🇷 Dublaj</span>
-                <span class="smart-cat-count" id="smart-cat-dubbed-count"></span>
-              </button>
-              <button type="button" class="smart-cat-tab ${currentCategory === 'subtitled' ? 'active' : ''}" data-cat="subtitled" id="smart-tab-subtitled">
-                <span>💬 Altyazılı</span>
-                <span class="smart-cat-count" id="smart-cat-subtitled-count"></span>
-              </button>
+            ${isSeries && playerVariant !== 'short-drama' ? `
+            <div class="dizisol-series-about" id="dizisol-series-about">
+              <h4 class="dizisol-series-about-title">DİZİ HAKKINDA</h4>
+              <p class="dizisol-series-about-text" id="dizisol-series-about-text">${mediaOverview || 'Dizi özeti yükleniyor...'}</p>
             </div>
+            ` : ''}
           </div>
-
-          <div class="smart-sources-picker-wrap">
-            <span class="smart-sources-label">Yayın:</span>
-            <div class="smart-sources-picker-controls">
-              <button type="button" class="smart-source-nav-btn" id="btn-smart-source-prev" title="Önceki Kaynak (1 tıkla geç)">
-                <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
-              </button>
-
-              <button type="button" class="smart-source-trigger" id="smart-source-trigger" title="Yayın Kaynağını Değiştir">
-                <span class="smart-source-dot dot-active" id="smart-source-dot"></span>
-                <span class="smart-source-name" id="smart-source-name">${getActiveServerName()}</span>
-                <i data-lucide="chevron-down" class="smart-source-arrow" id="smart-source-arrow" style="width:13px;height:13px;"></i>
-              </button>
-
-              <button type="button" class="smart-source-nav-btn" id="btn-smart-source-next" title="Sonraki Kaynak (1 tıkla geç)">
-                <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
-              </button>
-            </div>
-
-            <!-- Floating Glassmorphic Dropdown for Fast Direct Selection -->
-            <div class="smart-sources-dropdown hidden" id="smart-sources-dropdown">
-              <div class="smart-sources-dropdown-header">
-                <span>Tüm Yayın Sunucuları</span>
-                <span id="smart-sources-dropdown-count">0 Kaynak</span>
-              </div>
-              <div class="smart-sources-dropdown-list" id="smart-sources-dropdown-list">
-                <!-- Dynamically rendered list of servers -->
-              </div>
-            </div>
-          </div>
-        </div>
 
         <!-- SEZONLAR SECTION (Only for TV Series) -->
         ${isSeries && playerVariant === 'short-drama' ? `
@@ -3434,53 +3478,57 @@ export async function openPlayerModal({
                 </button>`).join('')}
             </div>
           </section>
-        ` : isSeries ? `
-          <div class="dizisol-seasons-section">
-            <div class="dizisol-seasons-header">
-              <h4>SEZONLAR</h4>
-              <span class="dizisol-episodes-count" id="dizisol-episodes-total">Bölümler Yükleniyor...</span>
-            </div>
-            
-            <!-- Season Tabs -->
-            <div class="dizisol-season-tabs-rail">
-              <div class="dizisol-season-tabs" id="dizisol-season-tabs">
-                <!-- Injected dynamically -->
+        ` : ''}
+      </div>
+      </div><!-- /player-yt-main -->
+      <aside class="player-yt-sidebar" aria-label="Sıradakiler ve öneriler">
+        <div class="yt-sticky-top" id="yt-sticky-top">
+        ${playerVariant === 'short-drama' ? '' : `
+        <section class="yt-source-panel" id="yt-source-panel" aria-label="Yayın kaynakları">
+          <div class="player-smart-sources-bar" id="player-smart-sources-bar">
+            <div class="smart-sources-lang-group">
+              <span class="smart-sources-label">Ses &amp; Dil:</span>
+              <div class="smart-sources-cat-tabs" id="smart-sources-cat-tabs">
+                <button type="button" class="smart-cat-tab ${currentCategory === 'dubbed' ? 'active' : ''}" data-cat="dubbed" id="smart-tab-dubbed">
+                  <span>Dublaj</span>
+                  <span class="smart-cat-count" id="smart-cat-dubbed-count"></span>
+                </button>
+                <button type="button" class="smart-cat-tab ${currentCategory === 'subtitled' ? 'active' : ''}" data-cat="subtitled" id="smart-tab-subtitled">
+                  <span>Altyazılı</span>
+                  <span class="smart-cat-count" id="smart-cat-subtitled-count"></span>
+                </button>
               </div>
             </div>
-
-            <!-- Episodes Carousel -->
-            <div class="dizisol-carousel-wrapper">
-              <button class="carousel-nav-btn left" id="btn-carousel-left" title="Önceki Bölümler">
-                <i data-lucide="chevron-left" style="width:20px;height:20px"></i>
-              </button>
-              <div class="dizisol-episodes-carousel" id="dizisol-episodes-carousel">
-                <div class="drawer-loading">
-                  <div class="drawer-spinner"></div>
-                  <p>Bölümler hazırlanıyor...</p>
+            <div class="smart-sources-picker-wrap">
+              <span class="smart-sources-label">Yayın:</span>
+              <div class="smart-sources-picker-controls">
+                <button type="button" class="smart-source-nav-btn" id="btn-smart-source-prev" title="Önceki Kaynak (1 tıkla geç)">
+                  <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
+                </button>
+                <button type="button" class="smart-source-trigger" id="smart-source-trigger" title="Yayın Kaynağını Değiştir">
+                  <span class="smart-source-dot dot-active" id="smart-source-dot"></span>
+                  <span class="smart-source-name" id="smart-source-name">${getActiveServerName()}</span>
+                  <i data-lucide="chevron-down" class="smart-source-arrow" id="smart-source-arrow" style="width:13px;height:13px;"></i>
+                </button>
+                <button type="button" class="smart-source-nav-btn" id="btn-smart-source-next" title="Sonraki Kaynak (1 tıkla geç)">
+                  <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+                </button>
+              </div>
+              <div class="smart-sources-dropdown hidden" id="smart-sources-dropdown">
+                <div class="smart-sources-dropdown-header">
+                  <span>Tüm Yayın Sunucuları</span>
+                  <span id="smart-sources-dropdown-count">0 Kaynak</span>
                 </div>
+                <div class="smart-sources-dropdown-list" id="smart-sources-dropdown-list"></div>
               </div>
-              <button class="carousel-nav-btn right" id="btn-carousel-right" title="Sonraki Bölümler">
-                <i data-lucide="chevron-right" style="width:20px;height:20px"></i>
-              </button>
-            </div>
-            <div class="dizisol-carousel-scroll-track" id="dizisol-carousel-scroll-track">
-              <div class="dizisol-carousel-scroll-thumb" id="dizisol-carousel-scroll-thumb"></div>
             </div>
           </div>
-          <!-- BENZER DİZİLER SECTION — collapsible -->
-          <button type="button" class="player-reco-toggle" id="btn-player-reco-toggle">
-            <i data-lucide="sparkles"></i>
-            <span>Benzer Yapımlar &amp; Öneriler</span>
-            <i data-lucide="chevron-down" class="chevron-icon"></i>
-          </button>
-          <div class="player-reco-panel" id="player-reco-panel">
-            <div class="player-reco-panel-inner">
-              <div class="dizisol-similar-section" id="dizisol-similar-section"></div>
-            </div>
-          </div>
-        ` : `
-          <!-- FILM BILGI, EKIP VE BENZER FILMLER (Only for Movies) -->
-          <!-- Reco toggle for movies -->
+        </section>
+        `}
+        </div>
+        ${!isSeries ? `
+        <!-- FILM BILGI, EKIP VE BENZER FILMLER — filmlerde yan panelde -->
+        <section class="yt-side-reco" aria-label="Film detayları ve öneriler">
           <button type="button" class="player-reco-toggle" id="btn-player-reco-toggle">
             <i data-lucide="sparkles"></i>
             <span>Film Detayları &amp; Öneriler</span>
@@ -3490,20 +3538,40 @@ export async function openPlayerModal({
             <div class="player-reco-panel-inner">
               <div class="dizisol-movie-section" id="dizisol-movie-section">
                 <div class="drawer-loading" style="display:flex;align-items:center;gap:0.75rem;padding:1.5rem;color:#9ca3af;">
-                  <div class="drawer-spinner" style="width:20px;height:20px;border:2px solid rgba(245,158,11,0.2);border-top-color:#f59e0b;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                  <div class="drawer-spinner" style="width:20px;height:20px;border:2px solid rgba(223, 255, 118,0.2);border-top-color:#dfff76;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
                   <p style="margin:0;font-size:0.85rem;">Film detayları ve benzer öneriler hazırlanıyor...</p>
                 </div>
               </div>
             </div>
           </div>
-        `}
-      </div>
+        </section>
+        ` : (isSeries && playerVariant !== 'short-drama' ? `
+        <!-- DIZI BILGI, EKIP VE BENZER DIZILER — dizilerde yan panelde (bolumler hemen altinda) -->
+        <section class="yt-side-reco" aria-label="Dizi detayları ve öneriler">
+          <button type="button" class="player-reco-toggle" id="btn-player-reco-toggle">
+            <i data-lucide="sparkles"></i>
+            <span>Dizi Detayları &amp; Öneriler</span>
+            <i data-lucide="chevron-down" class="chevron-icon"></i>
+          </button>
+          <div class="player-reco-panel" id="player-reco-panel">
+            <div class="player-reco-panel-inner">
+              <div class="dizisol-similar-section" id="dizisol-similar-section"></div>
+            </div>
+          </div>
+        </section>
+        ` : '')}
+        ${isSeries && playerVariant !== 'short-drama' ? `<div class="yt-season-tabs" id="yt-season-tabs" role="tablist" aria-label="Sezon seçimi"></div>` : ''}
+        <div class="yt-upnext-list" id="yt-upnext-list">
+          <div class="yt-sidebar-loading"><div class="drawer-spinner"></div><p>Sıradakiler hazırlanıyor...</p></div>
+        </div>
+      </aside>
+      </div><!-- /player-yt-layout -->
 
       <!-- Modern Footer Action Bar -->
       <div class="player-footer-bar">
         <div class="player-footer-left">
           <button id="btn-halfway-player" class="btn-footer-pill" title="Kaldığım Yeri Kaydet (20. dk)">
-            <i data-lucide="clock" style="width: 14px; height: 14px; color: #fbbf24;"></i>
+            <i data-lucide="clock" style="width: 14px; height: 14px; color: #dfff76;"></i>
             <span>⏳ Yarıda Bırak</span>
           </button>
           <span class="player-status-badge">
@@ -3513,42 +3581,6 @@ export async function openPlayerModal({
         </div>
         <div id="player-nav-btn-group" class="player-footer-right player-nav-btn-row">
           ${renderFooterNavButtonsHTML()}
-        </div>
-      </div>
-    </div>
-
-    <!-- Floating Glassmorphism Source Selector Modal -->
-    <div class="player-sources-popover hidden" id="player-sources-popover">
-      <div class="sources-popover-backdrop" id="sources-popover-backdrop"></div>
-      <div class="sources-popover-content">
-        <div class="sources-popover-header">
-          <div class="sources-header-title">
-            <i data-lucide="layers" style="width:16px;height:16px;color:#f59e0b"></i>
-            <h4>Yayın Hatları & Sunucular</h4>
-          </div>
-          <button class="btn-close-popover" id="btn-close-sources-popover">
-            <i data-lucide="x" style="width:16px;height:16px"></i>
-          </button>
-        </div>
-        <div class="sources-popover-body">
-          <div class="sources-category-tabs" id="sources-category-tabs">
-            <button type="button" class="sources-cat-tab ${currentCategory === 'dubbed' ? 'active' : ''}" data-cat="dubbed" id="sources-tab-dubbed">
-              <span class="cat-tab-icon">🇹🇷</span>
-              <span class="cat-tab-label">Türkçe Dublaj</span>
-              <span class="cat-tab-count" id="sources-cat-dubbed-count"></span>
-            </button>
-            <button type="button" class="sources-cat-tab ${currentCategory === 'subtitled' ? 'active' : ''}" data-cat="subtitled" id="sources-tab-subtitled">
-              <span class="cat-tab-icon">💬</span>
-              <span class="cat-tab-label">Türkçe Altyazılı</span>
-              <span class="cat-tab-count" id="sources-cat-subtitled-count"></span>
-            </button>
-          </div>
-          <p class="sources-popover-info">
-            Yayınlar güven sıralamasına göre otomatik açılır. Herhangi bir hat yanıt vermezse sistem sıradaki hatta kesintisiz geçiş yapar.
-          </p>
-          <div class="sources-list" id="sources-popover-list">
-            <!-- Rendered sources -->
-          </div>
         </div>
       </div>
     </div>
@@ -3580,6 +3612,7 @@ export async function openPlayerModal({
   if (isNativeOfflinePlayback) {
     modalContainer.classList.add('player-offline-playback');
     modalContainer.querySelector('.dizisol-cinema-body')?.remove();
+    modalContainer.querySelector('.player-yt-sidebar')?.remove();
     modalContainer.querySelector('.player-footer-bar')?.remove();
     modalContainer.querySelector('.player-header-toggle')?.remove();
     modalContainer.querySelector('.short-drama-artwork')?.remove();
@@ -3719,287 +3752,34 @@ export async function openPlayerModal({
     return [];
   }
 
+  // Sidebar: kompakt sezon sekmeleri + dikey bölüm listesi (tek bölüm UI)
   async function renderDrawerContent() {
-    const tabsContainer = document.getElementById('dizisol-season-tabs');
-    const carouselContainer = document.getElementById('dizisol-episodes-carousel');
-    const totalCountEl = document.getElementById('dizisol-episodes-total');
-
-    // Render Season Tabs
-    const seasons = currentSeasonsList;
-
-    const seasonPillsHTML = seasons.map(s => {
-      let displayName = `${s.season_number}. Sezon`;
-      if (s.season_number === 0) {
-        displayName = s.name || 'Özel Bölümler';
-      } else if (s.name && (s.name.toLowerCase().includes('sezon') || !s.name.toLowerCase().includes(cleanSeriesName.toLowerCase()))) {
-        displayName = s.name;
-      }
-
-      return `
-        <button class="dizisol-season-tab ${s.season_number === drawerSeason ? 'active' : ''}" data-season="${s.season_number}">
-          <span>${displayName}</span>
-        </button>
-      `;
-    }).join('');
-
-    if (tabsContainer) {
-      tabsContainer.innerHTML = seasonPillsHTML;
-      renderPlayerIcons(tabsContainer);
-      tabsContainer.querySelectorAll('.dizisol-season-tab').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const s = parseInt(btn.getAttribute('data-season'), 10);
-          drawerSeason = s;
-          btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-          renderDrawerContent();
-        });
-      });
-
-      const activeTab = tabsContainer.querySelector('.dizisol-season-tab.active');
-      if (activeTab) {
-        setTimeout(() => {
-          activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        }, 120);
-      }
-
-      // PC Mouse wheel horizontal scroll & drag
-      const rail = document.querySelector('.dizisol-season-tabs-rail') || tabsContainer;
-      if (rail && !rail._hasWheel) {
-        rail._hasWheel = true;
-        rail.addEventListener('wheel', (e) => {
-          if (e.deltaY !== 0 && rail.scrollWidth > rail.clientWidth) {
+    const tabsEl = document.getElementById('yt-season-tabs');
+    const seasons = Array.isArray(currentSeasonsList) ? currentSeasonsList.filter(s => s.season_number > 0) : [];
+    if (tabsEl) {
+      if (seasons.length > 1) {
+        tabsEl.style.display = 'flex';
+        tabsEl.innerHTML = seasons.map(s => `
+          <button type="button" role="tab" aria-selected="${s.season_number === drawerSeason}" class="yt-season-tab ${s.season_number === drawerSeason ? 'active' : ''}" data-season="${s.season_number}">
+            <span>S${s.season_number}</span>
+          </button>`).join('');
+        tabsEl.querySelectorAll('.yt-season-tab').forEach(btn => {
+          btn.onclick = (e) => {
             e.preventDefault();
-            rail.scrollLeft += e.deltaY;
-          }
-        }, { passive: false });
-
-        let isDown = false;
-        let startX = 0;
-        let scrollLeftPos = 0;
-        let hasDragged = false;
-
-        rail.addEventListener('mousedown', (e) => {
-          if (e.button !== 0) return;
-          isDown = true;
-          hasDragged = false;
-          startX = e.pageX - rail.offsetLeft;
-          scrollLeftPos = rail.scrollLeft;
+            drawerSeason = Number(btn.getAttribute('data-season')) || currentSeason;
+            renderDrawerContent();
+          };
         });
-
-        modalScope.on(window, 'mousemove', (e) => {
-          if (!isDown) return;
-          const x = e.pageX - rail.offsetLeft;
-          const walk = (x - startX) * 1.5;
-          if (Math.abs(walk) > 4) hasDragged = true;
-          rail.scrollLeft = scrollLeftPos - walk;
-        });
-
-        modalScope.on(window, 'mouseup', () => {
-          if (!isDown) return;
-          isDown = false;
-          setTimeout(() => { hasDragged = false; }, 50);
-        });
-
-        rail.addEventListener('click', (e) => {
-          if (hasDragged) {
-            e.preventDefault();
-            e.stopPropagation();
-          }
-        }, true);
+      } else {
+        tabsEl.style.display = 'none';
+        tabsEl.innerHTML = '';
       }
     }
-
-    const loadingHTML = `
-      <div class="drawer-loading" style="display:flex;align-items:center;gap:0.75rem;padding:1.5rem;color:#94a3b8;">
-        <div class="drawer-spinner" style="width:20px;height:20px;border:2px solid rgba(255,255,255,0.2);border-top-color:#e50914;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-        <p style="margin:0;font-size:0.85rem;">Bölümler yükleniyor...</p>
-      </div>
-    `;
-
-    if (carouselContainer) carouselContainer.innerHTML = loadingHTML;
-
-    const requestedSeason = drawerSeason;
-    const episodes = await fetchSeasonEpisodes(requestedSeason);
-    if (closed || requestedSeason !== drawerSeason) return;
-    const count = (episodes && episodes.length > 0) ? episodes.length : (getSeasonEpisodeCount(drawerSeason) || 12);
-    if (totalCountEl) totalCountEl.textContent = `${count} Bölüm`;
-
-    let carouselCardsHTML = '';
-
-    if (!episodes || episodes.length === 0) {
-      const arr = Array.from({ length: count }, (_, i) => i + 1);
-      carouselCardsHTML = arr.map(epNum => {
-        const isCurrent = drawerSeason === currentSeason && epNum === currentEpisode;
-        const epWatched = isMediaWatched(tmdbId, drawerSeason, epNum);
-        return `
-          <div class="dizisol-ep-card ${isCurrent ? 'playing' : ''} ${epWatched ? 'is-watched-card' : ''}" data-season="${drawerSeason}" data-episode="${epNum}">
-            <div class="dizisol-ep-thumb-box">
-              <div class="ep-thumb-fallback" style="display:flex;align-items:center;justify-content:center;height:100%;color:#475569;"><i data-lucide="film" style="width:24px;height:24px"></i></div>
-              <div class="dizisol-ep-thumb-scrim"></div>
-              <span class="dizisol-ep-badge-num ${isCurrent ? 'active' : ''}">${epNum}. Bölüm</span>
-              <button class="dizisol-ep-watch-toggle ${epWatched ? 'is-watched' : ''}" data-season="${drawerSeason}" data-episode="${epNum}" title="${epWatched ? 'İzlendi (Kaldırmak için tıkla)' : 'İzlendi Olarak İşaretle'}">
-                <i data-lucide="${epWatched ? 'check-circle-2' : 'eye'}" style="width: 13px; height: 13px;"></i>
-                <span class="ep-watch-text">${epWatched ? 'İzlendi' : 'İşaretle'}</span>
-              </button>
-              ${isNativeAndroidApp() ? `<button class="dizisol-ep-download-btn" data-season="${drawerSeason}" data-episode="${epNum}" title="Bu bölümü indir" type="button">
-                <i data-lucide="download" style="width:12px;height:12px"></i>
-              </button>` : ''}
-              ${isCurrent ? `
-                <div class="dizisol-ep-play-circle">
-                  <i data-lucide="play" style="width:16px;height:16px;fill:#0b0f19;color:#0b0f19;margin-left:2px;"></i>
-                </div>
-              ` : `
-                <div class="dizisol-ep-play-overlay">
-                  <i data-lucide="play" style="width:28px;height:28px;"></i>
-                </div>
-              `}
-            </div>
-            <div class="dizisol-ep-info">
-              <h5 class="dizisol-ep-title" data-base-title="${epNum}. Bölüm" title="${epNum}. Bölüm">${epNum}. Bölüm ${epWatched ? '✓' : ''}</h5>
-            </div>
-          </div>
-        `;
-      }).join('');
-    } else {
-      carouselCardsHTML = episodes.map(ep => {
-        const epNum = ep.episode_number;
-        const isCurrent = drawerSeason === currentSeason && epNum === currentEpisode;
-        const epWatched = isMediaWatched(tmdbId, drawerSeason, epNum);
-        const stillUrl = ep.still_path ? `https://image.tmdb.org/t/p/w400${ep.still_path}` : '';
-        const durationText = ep.runtime ? `${ep.runtime} dk` : '';
-        const airDateText = ep.air_date ? ep.air_date.substring(0, 7) : '';
-
-        return `
-          <div class="dizisol-ep-card ${isCurrent ? 'playing' : ''} ${epWatched ? 'is-watched-card' : ''}" data-season="${drawerSeason}" data-episode="${epNum}">
-            <div class="dizisol-ep-thumb-box">
-              ${stillUrl ? `<img src="${stillUrl}" alt="B${epNum}" loading="lazy" />` : `<div class="ep-thumb-fallback" style="display:flex;align-items:center;justify-content:center;height:100%;color:#475569;"><i data-lucide="film" style="width:24px;height:24px"></i></div>`}
-              <div class="dizisol-ep-thumb-scrim"></div>
-              <span class="dizisol-ep-badge-num ${isCurrent ? 'active' : ''}">${epNum}. Bölüm</span>
-              <button class="dizisol-ep-watch-toggle ${epWatched ? 'is-watched' : ''}" data-season="${drawerSeason}" data-episode="${epNum}" title="${epWatched ? 'İzlendi (Kaldırmak için tıkla)' : 'İzlendi Olarak İşaretle'}">
-                <i data-lucide="${epWatched ? 'check-circle-2' : 'eye'}" style="width: 13px; height: 13px;"></i>
-                <span class="ep-watch-text">${epWatched ? 'İzlendi' : 'İşaretle'}</span>
-              </button>
-              ${isNativeAndroidApp() ? `<button class="dizisol-ep-download-btn" data-season="${drawerSeason}" data-episode="${epNum}" title="Bu bölümü indir" type="button">
-                <i data-lucide="download" style="width:12px;height:12px"></i>
-              </button>` : ''}
-              ${durationText ? `<span class="dizisol-ep-duration">${durationText}</span>` : ''}
-              ${isCurrent ? `
-                <div class="dizisol-ep-play-circle">
-                  <i data-lucide="play" style="width:16px;height:16px;fill:#0b0f19;color:#0b0f19;margin-left:2px;"></i>
-                </div>
-              ` : `
-                <div class="dizisol-ep-play-overlay">
-                  <i data-lucide="play" style="width:28px;height:28px;"></i>
-                </div>
-              `}
-            </div>
-            <div class="dizisol-ep-info">
-              <h5 class="dizisol-ep-title" data-base-title="${ep.name || `${epNum}. Bölüm`}" title="${ep.name || `${epNum}. Bölüm`}">${ep.name || `${epNum}. Bölüm`}${epWatched ? ' ✓' : ''}</h5>
-              ${airDateText ? `<span class="dizisol-ep-date">${airDateText}</span>` : ''}
-            </div>
-          </div>
-        `;
-      }).join('');
+    if (isSeries && tmdbId && !isOfflinePlayback) {
+      await fetchSeasonEpisodes(drawerSeason);
+      if (closed) return;
     }
-
-    if (carouselContainer) {
-      carouselContainer.innerHTML = carouselCardsHTML;
-
-      // Attach Watch Toggle Event Listeners to each Episode Card
-      carouselContainer.querySelectorAll('.dizisol-ep-watch-toggle').forEach(watchBtn => {
-        watchBtn.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          ev.preventDefault();
-          const s = parseInt(watchBtn.getAttribute('data-season'), 10);
-          const e = parseInt(watchBtn.getAttribute('data-episode'), 10);
-          const res = toggleEpisodeWatched(tmdbId, s, e, {
-            title: cleanSeriesName,
-            posterPath,
-            backdropPath,
-            type: effectiveIsAnime ? 'anime' : 'tv',
-            isAnime: effectiveIsAnime,
-            isSeries: true
-          });
-          const nowWatched = res.completed;
-          watchBtn.classList.toggle('is-watched', nowWatched);
-          watchBtn.setAttribute('title', nowWatched ? 'İzlendi (Kaldırmak için tıkla)' : 'İzlendi Olarak İşaretle');
-          watchBtn.innerHTML = `
-            <i data-lucide="${nowWatched ? 'check-circle-2' : 'eye'}" style="width: 13px; height: 13px;"></i>
-            <span class="ep-watch-text">${nowWatched ? 'İzlendi' : 'İşaretle'}</span>
-          `;
-          renderPlayerIcons(watchBtn);
-
-          const card = watchBtn.closest('.dizisol-ep-card');
-          if (card) {
-            card.classList.toggle('is-watched-card', nowWatched);
-            const titleEl = card.querySelector('.dizisol-ep-title');
-            if (titleEl) {
-              const baseTitle = titleEl.getAttribute('data-base-title') || titleEl.textContent.replace(/\s*✓.*$/, '');
-              titleEl.textContent = `${baseTitle}${nowWatched ? ' ✓' : ''}`;
-            }
-          }
-
-          if (s === currentSeason && e === currentEpisode) {
-            isWatched = nowWatched;
-            updateWatchedUI(nowWatched);
-          }
-
-          showToast(nowWatched ? `✓ S${s} B${e} izlendi olarak işaretlendi.` : `S${s} B${e} izlendi işareti kaldırıldı.`, 'info');
-        });
-      });
-
-      carouselContainer.querySelectorAll('.dizisol-ep-download-btn').forEach(dlBtn => {
-        dlBtn.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          ev.preventDefault();
-          const s = parseInt(dlBtn.getAttribute('data-season'), 10);
-          const e = parseInt(dlBtn.getAttribute('data-episode'), 10);
-          openDownloadModal(s, e);
-        });
-      });
-
-      carouselContainer.querySelectorAll('.dizisol-ep-card').forEach(card => {
-        card.addEventListener('click', (ev) => {
-          if (ev.target.closest('.dizisol-ep-watch-toggle')) return;
-          if (ev.target.closest('.dizisol-ep-download-btn')) return;
-          const s = parseInt(card.getAttribute('data-season'), 10);
-          const e = parseInt(card.getAttribute('data-episode'), 10);
-          if (s === currentSeason && e === currentEpisode) return;
-          switchEpisodeInPlayer(s, e);
-        });
-      });
-
-      // Smoothly center the active episode card
-      const playingCard = carouselContainer.querySelector('.dizisol-ep-card.playing');
-      if (playingCard) {
-        setTimeout(() => {
-          playingCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        }, 150);
-      }
-
-      // Scrollbar Thumb Movement Sync
-      const updateScrollThumb = () => {
-        const maxScroll = carouselContainer.scrollWidth - carouselContainer.clientWidth;
-        const thumb = document.getElementById('dizisol-carousel-scroll-thumb');
-        if (thumb && maxScroll > 0) {
-          const ratio = carouselContainer.scrollLeft / maxScroll;
-          thumb.style.transform = `translateX(${ratio * 150}%)`;
-        }
-      };
-      carouselContainer.removeEventListener('scroll', updateScrollThumb);
-      carouselContainer.onscroll = updateScrollThumb;
-    }
-
-    // Attach Carousel Left & Right Arrows
-    const btnLeft = document.getElementById('btn-carousel-left');
-    const btnRight = document.getElementById('btn-carousel-right');
-    if (btnLeft && carouselContainer) {
-      btnLeft.onclick = () => carouselContainer.scrollBy({ left: -360, behavior: 'smooth' });
-    }
-    if (btnRight && carouselContainer) {
-      btnRight.onclick = () => carouselContainer.scrollBy({ left: 360, behavior: 'smooth' });
-    }
-
-    renderPlayerIcons(modalContainer);
+    renderYtSidebar();
     refreshOfflineDownloadButton();
   }
 
@@ -4330,6 +4110,9 @@ export async function openPlayerModal({
         }
 
         currentServerIndex = idx;
+        failoverCountInSession = 0;
+        // Tek sistem: chips + akilli bar ayni anda senkron olur.
+        renderSmartSourcesBar();
         toolbar.querySelectorAll('.server-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
@@ -4337,6 +4120,7 @@ export async function openPlayerModal({
         btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 
         updatePlayerContainer();
+        showToast(`⚡ ${getSourceLabel(activeServers[idx], idx)} yayınına geçildi.`, 'info');
       });
     });
   }
@@ -4453,7 +4237,7 @@ export async function openPlayerModal({
     const ambientBox = wrapper.querySelector('#player-ambient-glow');
     const ambientCanvas = wrapper.querySelector('#player-ambient-canvas');
     if (ambientCanvas) ambientCanvas.style.display = 'none';
-    if (ambientBox) ambientBox.style.background = 'radial-gradient(circle at center, rgba(245, 158, 11, 0.16) 0%, rgba(20, 184, 166, 0.08) 50%, transparent 75%)';
+    if (ambientBox) ambientBox.style.background = 'radial-gradient(circle at center, rgba(223, 255, 118, 0.16) 0%, rgba(20, 184, 166, 0.08) 50%, transparent 75%)';
 
     // Screen Lock State
     let isScreenLocked = false;
@@ -5348,7 +5132,7 @@ export async function openPlayerModal({
           const isAct = activeHlsInstance.audioTrack === idx;
           let label = t.name || t.lang || `Kanal ${idx + 1}`;
           if (/tr|turk/i.test(label) || /tr|turk/i.test(t.lang || '')) {
-            label = '🇹🇷 Türkçe Dublaj';
+            label = '🎙️ Türkçe Dublaj';
           } else if (/en|eng|orig/i.test(label) || /en|eng/i.test(t.lang || '')) {
             label = '🇬🇧 Orijinal (İngilizce)';
           }
@@ -5365,7 +5149,7 @@ export async function openPlayerModal({
         html += `<p style="color:#94a3b8;font-size:10.5px;font-weight:700;text-transform:uppercase;margin:2px 0 6px 6px;">VİDEO SES KANALLARI</p>`;
         html += `
           <div class="custom-menu-opt-row ${cur === 'dubbed' ? 'active' : ''}" data-dual-track="dubbed">
-            <span>🇹🇷 Türkçe Dublaj</span>
+            <span>🎙️ Türkçe Dublaj</span>
             ${cur === 'dubbed' ? '<i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>' : ''}
           </div>
           <div class="custom-menu-opt-row ${cur === 'original' ? 'active' : ''}" data-dual-track="original">
@@ -5378,7 +5162,7 @@ export async function openPlayerModal({
         html += `<p style="color:#94a3b8;font-size:10.5px;font-weight:700;text-transform:uppercase;margin:2px 0 6px 6px;">VİDEO SES KANALLARI</p>`;
         html += `
           <div class="custom-menu-opt-row active" style="cursor:default;">
-            <span>${currentCategory === 'dubbed' ? '🇹🇷 Türkçe Dublaj (Tek Kanal)' : '🇬🇧 Orijinal Ses (Tek Kanal)'}</span>
+            <span>${currentCategory === 'dubbed' ? '🎙️ Türkçe Dublaj (Tek Kanal)' : '🇬🇧 Orijinal Ses (Tek Kanal)'}</span>
             <i data-lucide="check" style="width:14px;height:14px;color:#10b981;"></i>
           </div>
           <p style="color:#64748b;font-size:11px;margin:6px 6px 4px;line-height:1.4;">
@@ -5391,9 +5175,9 @@ export async function openPlayerModal({
       const otherCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
       const otherCount = categorizedServers?.[otherCat]?.length || 0;
       html += `
-        <div class="custom-menu-opt-row" id="quick-audio-switch-cat-btn" style="border: 1px solid rgba(245,158,11,0.35); background: rgba(245,158,11,0.1); margin-top: 10px; border-radius: 8px;">
-          <span>${otherCat === 'dubbed' ? '🇹🇷 Dublaj Yayınlara Geç' : '💬 Altyazılı Yayınlara Geç'} ${otherCount > 0 ? `(${otherCount})` : ''}</span>
-          <i data-lucide="arrow-right-left" style="width:14px;height:14px;color:#f59e0b;"></i>
+        <div class="custom-menu-opt-row" id="quick-audio-switch-cat-btn" style="border: 1px solid rgba(223, 255, 118,0.35); background: rgba(223, 255, 118,0.1); margin-top: 10px; border-radius: 8px;">
+          <span>${otherCat === 'dubbed' ? 'Dublaj Yayınlara Geç' : 'Altyazılı Yayınlara Geç'} ${otherCount > 0 ? `(${otherCount})` : ''}</span>
+          <i data-lucide="arrow-right-left" style="width:14px;height:14px;color:#dfff76;"></i>
         </div>
       `;
 
@@ -5444,7 +5228,7 @@ export async function openPlayerModal({
             updateActiveSourceLabel();
             renderSourcesPopoverList();
             updatePlayerContainer();
-            showToast(targetCat === 'dubbed' ? '🇹🇷 Türkçe Dublaj yayınlara geçildi.' : '💬 Türkçe Altyazılı yayınlara geçildi.', 'info');
+            showToast(targetCat === 'dubbed' ? '🎙️ Türkçe Dublaj yayınlara geçildi.' : '💬 Türkçe Altyazılı yayınlara geçildi.', 'info');
           };
         }
       }
@@ -5524,9 +5308,8 @@ export async function openPlayerModal({
           openSubSourcesBtn.onclick = (ev) => {
             ev.stopPropagation();
             menu.classList.add('hidden');
-            toggleSourcesPopover(true);
-            const tabSub = document.getElementById('sources-tab-subtitled');
-            if (tabSub) tabSub.click();
+            switchSourceCategory('subtitled');
+            openSmartSourcesDropdown();
           };
         }
       }
@@ -5537,7 +5320,7 @@ export async function openPlayerModal({
     // =========================================================================
     const DEFAULT_SUB_STYLE = {
       fontSize: 'medium', // small | medium | large | xlarge
-      color: '#ffffff',   // #ffffff | #facc15 | #4ade80 | #38bdf8
+      color: '#ffffff',   // #ffffff | #dfff76 | #4ade80 | #38bdf8
       fontFamily: 'sans', // sans | serif | mono
       bg: 'semi',         // trans | semi | solid
       position: 'bottom', // bottom | middle | top
@@ -5695,8 +5478,8 @@ export async function openPlayerModal({
               <button class="sub-style-btn ${currentSubStyle.color === '#ffffff' ? 'active' : ''}" data-sub-key="color" data-sub-val="#ffffff">
                 <span style="display:inline-block;width:9px;height:9px;background:#ffffff;border-radius:50%;"></span> Beyaz
               </button>
-              <button class="sub-style-btn ${currentSubStyle.color === '#facc15' ? 'active' : ''}" data-sub-key="color" data-sub-val="#facc15">
-                <span style="display:inline-block;width:9px;height:9px;background:#facc15;border-radius:50%;"></span> Sarı
+              <button class="sub-style-btn ${currentSubStyle.color === '#dfff76' ? 'active' : ''}" data-sub-key="color" data-sub-val="#dfff76">
+                <span style="display:inline-block;width:9px;height:9px;background:#dfff76;border-radius:50%;"></span> Sarı
               </button>
               <button class="sub-style-btn ${currentSubStyle.color === '#4ade80' ? 'active' : ''}" data-sub-key="color" data-sub-val="#4ade80">
                 <span style="display:inline-block;width:9px;height:9px;background:#4ade80;border-radius:50%;"></span> Yeşil
@@ -6255,10 +6038,48 @@ export async function openPlayerModal({
     // her yeni alana tekrar takılmalı.
     renderRoomReactionDock();
     refreshOfflineDownloadButton();
+    updateServerPillsEvents();
+    updateActiveSourceLabel();
 
-    const popoutBtn = document.getElementById('player-popout-btn');
-    if (popoutBtn) {
-      popoutBtn.href = getStreamSafeUrl(srv) || '#';
+    if (srv?.requiresVerification && window.CinePulseDesktop?.openVerificationPlayer) {
+      const bridge = window.CinePulseDesktop;
+      const requestId = `luna-${Date.now()}-${playbackRun}`;
+      let disposed = false;
+      const bounds = () => {
+        const rect = wrapper.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      };
+      const position = () => {
+        if (!disposed) bridge.positionVerificationPlayer({ requestId, bounds: bounds() }).catch(() => {});
+      };
+      const observer = new ResizeObserver(position);
+      observer.observe(wrapper);
+      playbackScope.on(window, 'resize', position);
+      playbackScope.on(window, 'scroll', position, true);
+      playbackScope.add(() => {
+        disposed = true;
+        observer.disconnect();
+        bridge.closeVerificationPlayer(requestId).catch(() => {});
+      });
+      const unsubscribe = bridge.onVerificationPlayerResolved(({ requestId: resolvedId, url }) => {
+        if (disposed || closed || resolvedId !== requestId || playbackRun !== playbackGeneration) return;
+        srv.url = srv.streamUrl = url;
+        srv.getUrl = () => url;
+        srv.requiresVerification = false;
+        srv.isIframe = true;
+        srv.type = 'embed';
+        updateActiveSourceLabel();
+        updatePlayerContainer();
+      });
+      playbackScope.add(unsubscribe);
+      try {
+        await bridge.openVerificationPlayer({ requestId, url: srv.url || srv.streamUrl, bounds: bounds() });
+        if (disposed) bridge.closeVerificationPlayer(requestId).catch(() => {});
+      } catch (error) {
+        if (!disposed) wrapper.innerHTML = '<div role="alert" style="padding:2rem">Doğrulama alanı açılamadı. Başka bir kaynak seçip yeniden deneyebilirsin.</div>';
+        console.warn('[Luna] Verification view:', error);
+      }
+      return;
     }
 
     const switchVipDirectBtn = document.getElementById('btn-switch-vip-direct');
@@ -6622,7 +6443,7 @@ export async function openPlayerModal({
                 videoEl.muted = false;
                 if (!silent) {
                   broadcastRoomSource();
-                  showToast('🇹🇷 Türkçe Dublaj sesi aktif.', 'success');
+                  showToast('🎙️ Türkçe Dublaj sesi aktif.', 'success');
                 }
                 return;
               }
@@ -6641,7 +6462,7 @@ export async function openPlayerModal({
               }
               if (!silent) {
                 broadcastRoomSource();
-                showToast('🇹🇷 Türkçe Dublaj sesi aktif edildi.', 'success');
+                showToast('🎙️ Türkçe Dublaj sesi aktif edildi.', 'success');
               }
             } else {
               if (btnOriginal) btnOriginal.classList.add('active');
@@ -6772,8 +6593,8 @@ export async function openPlayerModal({
     banner.className = 'dubbed-found-banner';
     banner.innerHTML = `
       <div class="dubbed-found-text">
-        <i data-lucide="sparkles" style="width: 15px; height: 15px; color: #f59e0b;"></i>
-        <span>🇹🇷 Türkçe Dublaj Yayını Bulundu! (${stream.displayName || '1080p'})</span>
+        <i data-lucide="sparkles" style="width: 15px; height: 15px; color: #dfff76;"></i>
+        <span>🎙️ Türkçe Dublaj Yayını Bulundu! (${getSourceLabel(stream)})</span>
       </div>
       <button class="dubbed-found-btn" id="btn-switch-to-new-dubbed">
         <span>Dublaja Geç</span>
@@ -6845,7 +6666,7 @@ export async function openPlayerModal({
       originalTitle,
       season: currentSeason,
       episode: currentEpisode,
-      onUpdate: ({ dubbed = [], subtitled = [], isComplete = false, newStream = null, isDubbedStream = false }) => {
+      onUpdate: ({ dubbed = [], subtitled = [], isComplete = false, newStream = null, isDubbedStream = false, fromCache = false, cachedAt = 0 }) => {
         if (closed || generation !== discoveryGeneration) return;
         categorizedServers = {
           dubbed: rankSourcesForDevice(dubbed, { contentKey: getSourceContentKey(), category: 'dubbed' }),
@@ -6854,6 +6675,18 @@ export async function openPlayerModal({
         updateCategoryCounts();
         isDiscoveryActive = !isComplete;
         refreshOfflineDownloadButton();
+
+        // Bayat onbellek (5dk+): listeyi goster ama oynatmayi baslatma.
+        // Sureli HLS baglantilari son kullanmali olur; eski URL ile
+        // baslamak "bir hata veriyor bir vermiyor" davranisi yapar.
+        // Taze tarama sonucu gelince normal akis otomatik baslatir.
+        const staleCache = fromCache && cachedAt && (Date.now() - cachedAt > 5 * 60 * 1000);
+        if (staleCache && !hasPlayerStartedPlaying) {
+          updateServerPillsEvents();
+          updateActiveSourceLabel();
+          renderSourcesPopoverList();
+          return;
+        }
 
         // Katılımcı, moderatörün hattı kendi taramasında görünene kadar
         // yerel öncelik sırasından başka bir sunucuyu başlatmaz. Eşleşen
@@ -7003,6 +6836,7 @@ export async function openPlayerModal({
       disposePlayback();
       currentSeason = newSeason;
       currentEpisode = newEpisode;
+      drawerSeason = newSeason;
       renderRoomPlayerHud();
       if (roomSync?.roomCode) {
         window.dispatchEvent(new CustomEvent('cinepulse:player-sync', {
@@ -7061,6 +6895,7 @@ export async function openPlayerModal({
         renderDrawerContent();
         updateEpisodeOverview(newSeason, newEpisode);
         renderQuickEpisodesRail();
+        renderYtSidebar();
       }
 
       startWatchProgressLoop();
@@ -7096,7 +6931,7 @@ export async function openPlayerModal({
       updateActiveSourceLabel();
       renderSourcesPopoverList();
       updatePlayerContainer();
-      showToast('🇹🇷 Türkçe Dublaj sunucularına geçildi.', 'info');
+      showToast('🎙️ Türkçe Dublaj sunucularına geçildi.', 'info');
     });
   }
 
@@ -7123,31 +6958,7 @@ export async function openPlayerModal({
     });
   }
 
-  // Dizisol Cinema Action Buttons Event Listeners
-  const btnOpenSources = document.getElementById('btn-open-sources-drawer');
-  const btnCloseSources = document.getElementById('btn-close-sources-popover');
-  const backdropSources = document.getElementById('sources-popover-backdrop');
-  if (btnOpenSources) {
-    btnOpenSources.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleSourcesPopover();
-    });
-  }
-  if (btnCloseSources) {
-    btnCloseSources.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleSourcesPopover(false);
-    });
-  }
-  if (backdropSources) {
-    backdropSources.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleSourcesPopover(false);
-    });
-  }
+  // Dizisol Cinema Action Buttons Event Listeners (tek kaynak sistemi: popover yok)
 
   // Player Download Button Listener (Open Download Hub)
   const btnPlayerDownload = modalContainer.querySelector('#btn-player-download');
@@ -7209,7 +7020,7 @@ export async function openPlayerModal({
       btnRecoToggle.classList.toggle('is-open', isOpen);
       const spanEl = btnRecoToggle.querySelector('span');
       if (isSeries) {
-        if (spanEl) spanEl.textContent = isOpen ? 'Benzer Yapımlar & Öneriler (Kapat)' : 'Benzer Yapımlar & Öneriler';
+        if (spanEl) spanEl.textContent = isOpen ? 'Dizi Detayları & Öneriler (Kapat)' : 'Dizi Detayları & Öneriler';
       } else {
         if (spanEl) spanEl.textContent = isOpen ? 'Film Detayları & Öneriler (Kapat)' : 'Film Detayları & Öneriler';
       }

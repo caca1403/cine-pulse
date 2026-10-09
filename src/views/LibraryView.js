@@ -83,12 +83,13 @@ export function renderLibraryView() {
       <div class="container">
         
         <!-- Header & Action Group -->
-        <div class="library-header-row">
+        <header class="library-header-row cp-view-header">
           <div>
+            <span class="cp-eyebrow">SENİN SİNEMA GÜNLÜĞÜN.</span>
             <h1 class="library-header-title">
-              <i data-lucide="bookmark" style="color: var(--primary)"></i> Kitaplığım & İstatistikler
+              <i data-lucide="bookmark" style="color: var(--primary)"></i> Kitaplığım
             </h1>
-            <p class="library-header-sub">İzleme geçmişiniz, bitirdikleriniz ve tercihleriniz yerel tarayıcı hafızanızda güvendedir.</p>
+            <p class="library-header-sub">Kaldığın yer, favorilerin ve izleme geçmişin. Hepsi burada.</p>
           </div>
 
           <div class="library-action-group">
@@ -98,17 +99,17 @@ export function renderLibraryView() {
             </button>
             <input type="file" id="lib-file-input" accept=".json,application/json,text/plain" style="display: none;" />
           </div>
-        </div>
+        </header>
 
         <!-- User Watch Analytics Stats Row -->
         <div class="stats-grid">
           
-          <div class="stat-card" style="border-color: rgba(245, 158, 11, 0.25);">
-            <div class="stat-card-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">
+          <div class="stat-card" style="border-color: rgba(223, 255, 118, 0.25);">
+            <div class="stat-card-icon" style="background: rgba(223, 255, 118, 0.15); color: #dfff76;">
               <i data-lucide="clock"></i>
             </div>
             <div>
-              <div class="stat-card-label" style="color: #fbbf24;">Toplam İzleme</div>
+              <div class="stat-card-label" style="color: #dfff76;">Toplam İzleme</div>
               <div id="stat-total-watch" class="stat-card-val">${stats.formattedTotal || stats.formattedTotalTime || '0 dk'}</div>
             </div>
           </div>
@@ -184,19 +185,19 @@ export function renderLibraryView() {
           <!-- Search Pill -->
           <div class="library-search-wrapper">
             <i data-lucide="search" class="library-search-icon"></i>
-            <input type="text" id="lib-search-input" class="library-search-input" placeholder="Kitaplıkta ara..." autocomplete="off" />
+            <input type="text" id="lib-search-input" class="library-search-input" placeholder="Kitaplıkta ara…" aria-label="Kitaplıkta ara" autocomplete="off" />
             <i data-lucide="x" id="lib-search-clear" class="library-search-clear" title="Temizle"></i>
           </div>
 
           <!-- Horizontal Smooth Scrollable Filter Segment (Never Wraps!) -->
           <div class="library-filter-segment-track" id="lib-type-filters">
             <button class="lib-segment-btn active" data-filter="all">Tümü</button>
-            <button class="lib-segment-btn" data-filter="movie">🎬 Filmler</button>
-            <button class="lib-segment-btn" data-filter="tv">📺 Diziler</button>
-            <button class="lib-segment-btn" data-filter="anime">🎌 Animeler</button>
+            <button class="lib-segment-btn" data-filter="movie">Filmler</button>
+            <button class="lib-segment-btn" data-filter="tv">Diziler</button>
+            <button class="lib-segment-btn" data-filter="anime">Animeler</button>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <div class="cp-library-sort-actions">
             <!-- Sort Select Pill -->
             <div class="library-sort-pill-wrap">
               <i data-lucide="arrow-down-up" class="library-sort-icon"></i>
@@ -296,7 +297,7 @@ export function renderLibraryView() {
         if (tab === 'downloads') {
           return `
             <div class="library-empty-state">
-              <div class="empty-state-icon-wrap" style="background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3); color: #f59e0b;">
+              <div class="empty-state-icon-wrap" style="background: rgba(223, 255, 118, 0.12); border-color: rgba(223, 255, 118, 0.3); color: #dfff76;">
                 <i data-lucide="download" style="width: 32px; height: 32px;"></i>
               </div>
               <h3 class="empty-state-title">Henüz indirilmiş içerik yok</h3>
