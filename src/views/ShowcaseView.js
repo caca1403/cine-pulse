@@ -1,138 +1,100 @@
-/* ==========================================================================
-   CinePulse Studio - Tanitim (Showcase) View
-   Ilk acilista uygulamanin tanitimi: adimlar, korumalar, indirme.
-   ========================================================================== */
-
 import { renderIcons } from '../services/icons.js';
+import { renderSiteLogo } from '../components/BrandLogo.js';
+import pkg from '../../package.json';
+import '../styles/showcase.css';
 
-const SEEN_KEY = 'cp_showcase_seen_v1';
+const RELEASES = 'https://github.com/caca1403/cine-pulse/releases';
+const base = import.meta.env.BASE_URL;
+const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
+const enter = (label = 'Siteye Gir', extra = '') => `<a class="cp-landing-button cp-landing-primary ${extra}" href="#home">${label}${icon('arrow-up-right')}</a>`;
 
-export function hasSeenShowcase() {
-  try {
-    return localStorage.getItem(SEEN_KEY) === '1';
-  } catch (_) {
-    return true;
-  }
-}
-
-export function markShowcaseSeen() {
-  try {
-    localStorage.setItem(SEEN_KEY, '1');
-  } catch (_) {}
-}
-
-const card = 'background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:1.25rem;';
-const h2 = 'color:#fff;font-size:1.25rem;font-weight:800;margin:0 0 .35rem;';
-const sub = 'color:#94a3b8;font-size:.88rem;margin:0;';
-const badge = 'display:inline-flex;align-items:center;gap:.35rem;padding:.32rem .75rem;border-radius:999px;font-size:.75rem;font-weight:700;';
+const benefits = [
+  ['compass', 'İzleyecek bir şey bul.', 'Film, dizi, anime ve farklı kategoriler. Arama, yapım detayları ve önerilerle bir sonraki hikâyene karar ver.'],
+  ['bookmark', 'Kendi arşivini oluştur.', 'Favorilerini ve izleme listeni tek yerde tut. Bitirdiğin yapımları, sıradaki bölümleri ve yarım kalanları takip et.'],
+  ['history', 'Yarım kalan yerden devam et.', 'İzleme ilerlemen bu cihazda saklanır. Geri geldiğinde hangi bölümde veya dakikada kaldığını yeniden arama.'],
+  ['sliders-horizontal', 'Deneyimini kendin seç.', 'Dublaj ve altyazılı seçenekleri ayrı gör. Mevcut alternatifler arasında geçiş yap; destekleyen yayınlarda ses, hız ve altyazıyı ayarla.']
+];
+const comparison = [
+  ['Keşif, arama ve yapım detayları', 'Var', 'Var', 'Var'],
+  ['Listeler ve izleme ilerlemesi', 'Var', 'Var', 'Var'],
+  ['Film / dizi oynatma', 'Kaynağa bağlı', 'Daha geniş uyumluluk', 'Kaynağa bağlı'],
+  ['Canlı TV ve yayın akışı', 'Yok', 'Var', 'Var'],
+  ['İndirme ve çevrimdışı kütüphane', 'Yok', 'Yok', 'Desteklenen içeriklerde'],
+  ['Uygulama içi gerçek tarayıcıyla doğrulama', 'Yok', 'Destekli yayınlarda', 'Kaynağa bağlı'],
+  ['JSON yedekleme ve aktarım', 'Var', 'Var', 'Var']
+];
+const faqs = [
+  ['Siteye girmek için uygulama indirmem gerekiyor mu?', 'Hayır. “Siteye Gir” ile normal CinePulse ekranına geçebilirsin. Keşif, arama, içerik detayları ve listeler tarayıcıda kullanılabilir. Uygulama, ek platform özellikleri isteyenler için bir seçenek.'],
+  ['Web sürümünde tam olarak ne eksik?', 'Canlı TV, Android’in indirme / çevrimdışı kütüphanesi ve masaüstündeki gerçek dahili tarayıcıyla doğrulama webde bulunmuyor. Bazı yayınlar da tarayıcının bağlantı ve yerleştirme kuralları nedeniyle açılamayabilir. Webde oynatma seçilen kaynağa bağlıdır.'],
+  ['Uygulamada bütün yayınlar kesin çalışıyor mu?', 'Hayır. Masaüstünün yerel medya desteği ve doğrulama alanı daha fazla bağlantıyla uyumluluk sağlar; yine de yayın kaldırılmış, erişime kapalı veya geçici olarak bozuk olabilir. Böyle bir durumda başka bir alternatifi dene.'],
+  ['Hesap açmam veya giriş yapmam şart mı?', 'Temel kullanıma hesap açmadan başlayabilirsin. Kişisel profil bu cihazdaki deneyimini düzenler. Trakt bağlantısı ise izleme geçmişi ve listelerini senkronize etmek istediğinde kullanabileceğin isteğe bağlı bir özellik.'],
+  ['Listelerim başka cihazda da görünür mü?', 'Yerel listelerin ve ilerlemen kullandığın tarayıcı / cihazda saklanır; kendiliğinden bütün cihazlara taşınmaz. Profildeki JSON yedekleme ve içe aktarma seçeneklerini kullanabilirsin. Trakt bağlantısı desteklediği veriler için ayrı bir senkronizasyon seçeneğidir.'],
+  ['Android, EXE, DEB ve AppImage arasından hangisini seçmeliyim?', 'Android telefon veya tablet için APK; Windows için EXE; Debian / Ubuntu tabanlı Linux için DEB; diğer uygun Linux sistemleri için AppImage seç. Mac için bu sürümde bir masaüstü kurulum paketi sunulmuyor; web sürümünü kullanabilirsin.'],
+  ['Yeni sürümü nasıl alırım?', 'Tüm kurulum dosyaları resmî GitHub Releases sayfasında yayımlanır. Masaüstündeki güncelleme simgesi bu sayfayı açar; daha yeni sürüm kodu yayımlandığında otomatik denetim de devreye girer. Android APK aynı kalıcı anahtarla imzalanır. Aynı sürüm numarasıyla yenilenen dosyayı yeniden indirip kurman gerekir.'],
+  ['Bir yayın açılmadığında ne yapmalıyım?', 'Önce aynı dildeki başka bir yayın seçeneğini dene ve internet bağlantını kontrol et. Webde takılıyorsa platformuna uygun uygulamayı deneyebilirsin. Doğrulama isteyen destekli masaüstü yayınlarında onayı kendin tamamla; bozuk veya kaldırılmış yayınlar için diğer alternatiflere geç.']
+];
 
 export function renderShowcaseView() {
-  const steps = [
-    { icon: 'search', color: '#38bdf8', title: '1. Bul', text: 'Film, dizi, anime veya canlı TV — arat, listelerden seç.' },
-    { icon: 'layers', color: '#a855f7', title: '2. Kaynağı seç', text: 'Birden fazla hat listelenir; tutmayan olursa sıradakine geçilir.' },
-    { icon: 'play', color: '#10b981', title: '3. Kaldığın yerden izle', text: 'Pozisyonun saklanır; dublaj, altyazı ve hız senin kontrolünde.' }
+  const release = `${RELEASES}/download/v${pkg.version}`;
+  const packages = [
+    ['monitor', 'Windows', 'EXE kurulum sihirbazı', `${release}/CinePulse-Setup-${pkg.version}.exe`, 'EXE İndir'],
+    ['smartphone', 'Android', 'Telefon ve tablet için APK', `${RELEASES}/latest/download/cinepulse.apk`, 'APK İndir'],
+    ['package', 'Linux · DEB', 'Debian / Ubuntu tabanlı sistemler', `${release}/CinePulse-${pkg.version}.deb`, 'DEB İndir'],
+    ['terminal', 'Linux · AppImage', 'Çalıştırma izni ver, uygulamayı aç', `${release}/CinePulse-${pkg.version}.AppImage`, 'AppImage İndir']
   ];
-
-  const protections = [
-    { icon: 'shield-check', color: '#10b981', title: 'Reklamsız iç oynatıcı', text: 'Yayınlar uygulamanın kendi oynatıcısında açılır; dış siteye savrulmazsın.' },
-    { icon: 'captions', color: '#38bdf8', title: 'Türkçe dublaj + altyazı', text: 'Hatlar dublaj ve altyazılı ayrılır; altyazı otomatik eşlenir.' },
-    { icon: 'history', color: '#dfff76', title: 'Kaldığın yerden devam', text: 'Filmde saniyesi saniyesine, dizide bölüm bölüm takip.' },
-    { icon: 'baby', color: '#ec4899', title: 'Çocuk profili', text: 'Çocuklar için ayrı güvenli alan; yetişkin içerik görünmez.' },
-    { icon: 'satellite-dish', color: '#ef4444', title: 'Canlı TV + yayın akışı', text: 'Ulusal, haber, spor ve daha fazlası; o anki program bilgisiyle.' },
-    { icon: 'users', color: '#a855f7', title: 'Birlikte izleme', text: 'Aynı odayla senkron izle, sohbet et.' }
-  ];
-
-  const html = `
-    <div class="showcase-view" style="max-width:1060px;margin:0 auto;padding:3rem 1rem 4rem;width:100%;box-sizing:border-box;">
-      <!-- HERO -->
-      <section style="text-align:center;padding:3rem 1rem 2.5rem;">
-        <div style="display:inline-flex;align-items:center;justify-content:center;width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,#dfff76,#ef4444);margin-bottom:1.1rem;">
-          <i data-lucide="clapperboard" style="width:32px;height:32px;color:#fff;"></i>
-        </div>
-        <h1 style="color:#fff;font-size:2.1rem;font-weight:900;margin:0 0 .5rem;">Cine<span style="color:#dfff76;">Pulse</span></h1>
-        <p style="color:#cbd5e1;font-size:1.02rem;max-width:560px;margin:0 auto 1.4rem;">
-          Film, dizi, anime ve canlı TV tek çatıda. Ara, kaynağını seç, kaldığın yerden izle.
-        </p>
-        <div style="display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.4rem;">
-          <a href="#home" id="showcase-start-btn" style="display:inline-flex;align-items:center;gap:.5rem;background:#dfff76;color:#000;font-weight:800;padding:.8rem 1.6rem;border-radius:12px;text-decoration:none;font-size:.95rem;">
-            <i data-lucide="play" style="width:17px;height:17px;"></i> Hemen Başla
-          </a>
-          <a href="/api/download_apk" style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.07);color:#fff;font-weight:700;padding:.8rem 1.6rem;border-radius:12px;text-decoration:none;border:1px solid rgba(255,255,255,.14);font-size:.95rem;">
-            <i data-lucide="smartphone" style="width:17px;height:17px;"></i> Android APK İndir
-          </a>
-          <a href="https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse-setup.exe" style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.07);color:#fff;font-weight:700;padding:.8rem 1.6rem;border-radius:12px;text-decoration:none;border:1px solid rgba(255,255,255,.14);font-size:.95rem;">
-            <i data-lucide="monitor" style="width:17px;height:17px;"></i> PC EXE İndir
-          </a>
-        </div>
-        <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;">
-          <span style="${badge}background:rgba(16,185,129,.14);color:#10b981;">Reklamsız oynatıcı</span>
-          <span style="${badge}background:rgba(56,189,248,.14);color:#38bdf8;">TR Dublaj + Altyazı</span>
-          <span style="${badge}background:rgba(239,68,68,.14);color:#ef4444;">150+ Canlı Kanal</span>
-        </div>
-      </section>
-
-      <!-- STEPS -->
-      <section style="margin-bottom:2rem;">
-        <h2 style="${h2}text-align:center;">3 adımda izle</h2>
-        <p style="${sub}text-align:center;margin-bottom:1.2rem;">Kayıt yok, kurulum yok.</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;">
-          ${steps.map((s) => `
-            <div style="${card}text-align:center;">
-              <div style="display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:14px;background:${s.color}22;color:${s.color};margin-bottom:.7rem;">
-                <i data-lucide="${s.icon}" style="width:22px;height:22px;"></i>
-              </div>
-              <div style="color:#fff;font-weight:800;margin-bottom:.3rem;">${s.title}</div>
-              <div style="color:#94a3b8;font-size:.85rem;">${s.text}</div>
-            </div>`).join('')}
-        </div>
-      </section>
-
-      <!-- PROTECTIONS -->
-      <section style="margin-bottom:2rem;">
-        <h2 style="${h2}text-align:center;">Korumaların</h2>
-        <p style="${sub}text-align:center;margin-bottom:1.2rem;">Seni yarı yolda bırakmayacak düzen.</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;">
-          ${protections.map((p) => `
-            <div style="${card}display:flex;gap:.8rem;align-items:flex-start;">
-              <div style="flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:${p.color}22;color:${p.color};">
-                <i data-lucide="${p.icon}" style="width:20px;height:20px;"></i>
-              </div>
-              <div>
-                <div style="color:#fff;font-weight:700;font-size:.92rem;margin-bottom:.2rem;">${p.title}</div>
-                <div style="color:#94a3b8;font-size:.82rem;">${p.text}</div>
-              </div>
-            </div>`).join('')}
-        </div>
-      </section>
-
-      <!-- CTA -->
-      <section style="text-align:center;${card}">
-        <h2 style="${h2}">Hazırsan başlayalım</h2>
-        <p style="${sub}margin-bottom:1.1rem;">Pozisyonun bu cihazda saklanır; istediğin zaman devam edersin.</p>
-        <a href="#home" id="showcase-start-btn-2" style="display:inline-flex;align-items:center;gap:.5rem;background:#dfff76;color:#000;font-weight:800;padding:.8rem 2rem;border-radius:12px;text-decoration:none;">
-          <i data-lucide="arrow-right" style="width:17px;height:17px;"></i> İçeriklere Git
-        </a>
-      </section>
-    </div>
-  `;
-
   return {
-    html,
-    init: (container) => {
-      const mark = () => markShowcaseSeen();
-      container.querySelector('#showcase-start-btn')?.addEventListener('click', mark);
-      container.querySelector('#showcase-start-btn-2')?.addEventListener('click', mark);
-      // Web'den canli TV'ye tiklanip buraya dusulduyse bilgi goster
+    html: `<div class="cp-landing">
+      <header class="cp-landing-nav">
+        <a class="cp-landing-brand" href="#showcase" aria-label="CinePulse tanıtım">${renderSiteLogo('cp-landing-logo')}<span>Cine<span>Pulse</span></span></a>
+        <nav aria-label="Tanıtım bölümleri"><button data-landing-section="landing-features">Özellikler</button><button data-landing-section="landing-compare">Web mi, uygulama mı?</button><button data-landing-section="landing-faq">Sık Sorulanlar</button></nav>
+        ${enter('Siteye Gir', 'cp-landing-nav-enter')}
+      </header>
+      <main>
+        <section class="cp-landing-hero cp-landing-shell" aria-labelledby="landing-title">
+          <div class="cp-landing-hero-copy">
+            <a class="cp-landing-version" href="${RELEASES}" target="_blank" rel="noopener noreferrer"><span></span>CINEPULSE STUDIO <b>v${pkg.version}</b>${icon('arrow-up-right')}</a>
+            <h1 id="landing-title">Bir sonraki<br>hikâyen.<br><em>Senin ekranın.</em></h1>
+            <p class="cp-landing-lead">Film, dizi ve anime keşfinden kişisel kütüphanene.<br class="cp-landing-desktop-break"> Ne izleyeceğini bul, deneyimini kendin seç.</p>
+            <div class="cp-landing-actions">${enter()}<button class="cp-landing-button cp-landing-secondary" data-landing-section="landing-downloads">${icon('download')}Uygulamayı İndir</button></div>
+            <div class="cp-landing-hero-note">${icon('globe')}Tarayıcıda hemen başla. Uygulama indirmek zorunda değilsin.</div>
+          </div>
+          <div class="cp-landing-preview" aria-label="CinePulse keşif ve oynatıcı arayüzünü temsil eden tanıtım görseli">
+            <div class="cp-landing-preview-top"><span class="cp-landing-window-dots"><i></i><i></i><i></i></span><span>CINEPULSE / KEŞİF</span>${icon('maximize-2')}</div>
+            <div class="cp-landing-preview-scene"><img src="${base}images/discovery/movies.webp" alt="Sinema keşfi" fetchpriority="high"><span class="cp-landing-preview-tag">Sıradaki hikâyen</span><span class="cp-landing-preview-play">${icon('play')}</span><div class="cp-landing-preview-caption"><small>KEŞFET · SEÇ · DEVAM ET</small><strong>İzlemenin kendi ritmi var.</strong></div></div>
+            <div class="cp-landing-preview-library"><span>Kaldığın yerden</span><span>Kütüphanem ${icon('arrow-right')}</span></div>
+            <div class="cp-landing-preview-cards">${[['series','Diziler'],['anime','Anime'],['documentary','Belgeseller']].map(([file,label],i)=>`<div><img src="${base}images/discovery/${file}.webp" alt="" loading="lazy"><span>${label}</span><i style="--progress:${[67,35,82][i]}%"></i></div>`).join('')}</div>
+            <div class="cp-landing-source-chip">${icon('layers')}Birden fazla seçenek.<strong>Tek oynatıcı.</strong></div>
+          </div>
+        </section>
+        <div class="cp-landing-platforms cp-landing-shell"><span>NEREDEN İSTERSEN</span><p>${icon('globe')}Web</p><p>${icon('monitor')}Windows</p><p>${icon('terminal')}Linux</p><p>${icon('smartphone')}Android</p></div>
+        <section id="landing-features" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-features-title">
+          <div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">DENEYİMİN SONUCU</span><h2 id="landing-features-title">Daha az arayış.<br><span>Daha çok kendi listen.</span></h2><p>Sadece bir oynatıcı değil. Ne keşfettiğini, ne izlediğini ve sırada ne olduğunu bir arada tutan bir alan.</p></div>
+          <div class="cp-landing-benefits">${benefits.map(([symbol,title,text],i)=>`<article class="cp-landing-benefit"><div>${icon(symbol)}<span>0${i+1}</span></div><h3>${title}</h3><p>${text}</p></article>`).join('')}</div>
+        </section>
+        <section id="landing-compare" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-compare-title">
+          <div class="cp-landing-compare-intro"><div><span class="cp-landing-eyebrow">AYNI CINEPULSE, FARKLI İMKÂNLAR</span><h2 id="landing-compare-title">Webde ne var?<br><span>Uygulamada ne açılıyor?</span></h2></div><p>Tarayıcı hızlı bir başlangıç sunar. Canlı TV, çevrimdışı izleme veya ek oynatma uyumluluğu istiyorsan ihtiyacına uygun uygulamayı seç.</p></div>
+          <div class="cp-landing-table-wrap" tabindex="0" role="region" aria-label="Web ve uygulama özellik karşılaştırması"><table class="cp-landing-compare-table"><caption class="cp-landing-sr-only">CinePulse platform özellikleri</caption><thead><tr><th scope="col">Özellik</th><th scope="col">Web<span>Kurulumsuz</span></th><th scope="col">Masaüstü<span>Windows / Linux</span></th><th scope="col">Android<span>Telefon / Tablet</span></th></tr></thead><tbody>${comparison.map(([feature,...values])=>`<tr><th scope="row">${feature}</th>${values.map(value=>`<td><span class="cp-landing-status ${value==='Var'?'is-available':value==='Yok'?'is-unavailable':'is-conditional'}">${icon(value==='Var'?'check':value==='Yok'?'minus':'circle-dot')}${value}</span></td>`).join('')}</tr>`).join('')}</tbody></table></div>
+          <div class="cp-landing-web-note">${icon('info')}<p><strong>Webde oynatma neden farklı?</strong> Bazı yayınlar tarayıcının bağlantı veya yerleştirme kurallarına takılabilir. Uygulama daha fazla imkân sunar; her bağlantının çalışacağını garanti etmez. Kullanılabilen yayınlar ve kontroller seçilen kaynağa göre değişir.</p></div>
+        </section>
+        <section class="cp-landing-start cp-landing-shell" aria-labelledby="landing-start-title"><div><span class="cp-landing-eyebrow">ÜÇ ADIM, KENDİ AKIŞIN</span><h2 id="landing-start-title">Hazırlık yok.<br><span>Keşifle başla.</span></h2>${enter('İçeriklere Git')}</div><ol><li><span>01</span><div><h3>İlgini çekeni bul.</h3><p>Ana sayfadan, aramadan veya kategorilerden ilerle. Diziyse sezon ve bölümünü seç.</p></div></li><li><span>02</span><div><h3>Dilini ve yayınını seç.</h3><p>Dublaj / altyazılı seçenekleri gör. Açılmayan bir bağlantıda diğer alternatife geç.</p></div></li><li><span>03</span><div><h3>Listene ekle, geri dön.</h3><p>Beğendiklerini sakla. Ara verdiğinde kütüphanenden kaldığın yere dön.</p></div></li></ol></section>
+        <section class="cp-landing-release cp-landing-shell" aria-labelledby="landing-release-title"><div><span class="cp-landing-eyebrow">v${pkg.version} · BU SÜRÜMÜN ODAĞI</span><h2 id="landing-release-title">Ayrıntılar düzeldi.<br><span>Akış sadeleşti.</span></h2><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notlarını gör ${icon('arrow-up-right')}</a></div><ul><li>${icon('timer')}<div><strong>Daha kontrollü bekleme</strong><p>Kaynak isteklerinde süre sınırları, başarısız yüklemelerde yeniden deneme ve daha açıklayıcı hata dönüşleri.</p></div></li><li>${icon('panel-right')}<div><strong>Daha sade yayın menüsü</strong><p>Tekrarlanan dil ve kalite etiketleri kaldırıldı. Masaüstü yan panelindeki kesilen kaynak listesi düzeltildi.</p></div></li><li>${icon('download')}<div><strong>Güncellemeler tek yerde</strong><p>Windows, Linux ve Android paketleri doğrudan Releases'te. Android sürümleri aynı kalıcı anahtarla imzalanıyor.</p></div></li></ul></section>
+        <section id="landing-downloads" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-downloads-title"><div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">DAHA FAZLASINI İSTEYENLERE</span><h2 id="landing-downloads-title">CinePulse'u<br><span>ekranına taşı.</span></h2><p>İşletim sistemine uygun dosyayı seç. Kurulum paketleri resmî GitHub Releases üzerinden doğrudan indirilir; ZIP açman gerekmez.</p></div><div class="cp-landing-downloads">${packages.map(([symbol,title,detail,url,label])=>`<article>${icon(symbol)}<h3>${title}</h3><p>${detail}</p><a class="cp-landing-button cp-landing-secondary" href="${url}" target="_blank" rel="noopener noreferrer">${label}${icon('arrow-down-to-line')}</a></article>`).join('')}</div><div class="cp-landing-download-footer"><span>Güncel sürüm: <strong>v${pkg.version}</strong> · Android için kalıcı release imzası</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-up-right')}</a></div></section>
+        <section id="landing-faq" class="cp-landing-section cp-landing-shell cp-landing-faq" aria-labelledby="landing-faq-title"><div><span class="cp-landing-eyebrow">AKLINDA KALMASIN</span><h2 id="landing-faq-title">Sık sorulan<br><span>sorular.</span></h2><p>Başlamadan önce neyin nerede çalıştığını bil.</p></div><div class="cp-landing-questions">${faqs.map(([question,answer])=>`<details><summary>${question}${icon('plus')}</summary><p>${answer}</p></details>`).join('')}</div></section>
+        <section class="cp-landing-final cp-landing-shell"><span class="cp-landing-eyebrow">ŞİMDİ SIRA SENDE</span><h2>Bu akşamın hikâyesini<br><span>birlikte bulalım.</span></h2><p>Tanıtımı geç, normal CinePulse ekranında keşfe başla.</p>${enter('Siteye Gir ve Keşfet')}<a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Önce uygulamaları görmek istiyorum ${icon('arrow-right')}</a></section>
+      </main>
+      <footer class="cp-landing-footer cp-landing-shell"><a class="cp-landing-brand" href="#showcase">${renderSiteLogo('cp-landing-logo')}<span>Cine<span>Pulse</span></span></a><span>Senin ekranın. Senin akışın.</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">GitHub Releases ${icon('arrow-up-right')}</a></footer>
+    </div>`,
+    init(container) {
+      container.querySelectorAll('[data-landing-section]').forEach(button => {
+        button.addEventListener('click', () => container.querySelector(`#${button.dataset.landingSection}`)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }));
+      });
       try {
         if (sessionStorage.getItem('cp_livetv_web_block') === '1') {
           sessionStorage.removeItem('cp_livetv_web_block');
-          const hero = container.querySelector('.showcase-view section');
-          if (hero) {
-            const note = document.createElement('div');
-            note.style.cssText = 'max-width:560px;margin:0 auto 1.2rem;padding:.8rem 1rem;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);color:#fca5a5;font-size:.85rem;text-align:center;';
-            note.textContent = 'Canlı TV web sürümünde kapalıdır — kesintisiz yayın için Android APK veya PC EXE kullanın.';
-            hero.prepend(note);
-          }
+          const note = document.createElement('p');
+          note.className = 'cp-landing-live-notice';
+          note.textContent = 'Canlı TV, masaüstü ve Android uygulamasında kullanılabilir. Aşağıdan platformunu seçebilirsin.';
+          container.querySelector('.cp-landing-hero-copy').append(note);
         }
       } catch (_) {}
       renderIcons(container);

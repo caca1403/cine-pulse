@@ -1,4 +1,5 @@
 import { renderSiteLogo } from './components/BrandLogo.js';
+import { resolveEntryHash } from './services/entryRoute.js';
 import { applyPerfMode } from './services/performanceMode.js';
 // Ilk boyamadan once agir efektleri kis (yazilimsal cizimde kasmayi onler).
 applyPerfMode();
@@ -59,7 +60,10 @@ async function renderRoute() {
   const generation = ++routeGeneration;
   cleanupHomeView();
   flushScrollState();
-  const hash = window.location.hash || '#home';
+  const hash = resolveEntryHash(window.location.hash, isAppPlatform(), new URLSearchParams(window.location.search).has('oda'));
+  const isLanding = hash === '#showcase';
+  document.body.classList.toggle('cp-landing-active', isLanding);
+  document.title = isLanding ? 'CinePulse — Keşfet, Seç, Devam Et' : 'CinePulse - Modern Sinema & Dizi Platformu';
   let viewName = 'home';
   let params = {};
 
@@ -181,6 +185,12 @@ async function renderRoute() {
   }
 
   if (generation !== routeGeneration) return;
+  if (isLanding) {
+    app.innerHTML = viewResult.html;
+    viewResult.init?.(app);
+    window.scrollTo(0, 0);
+    return;
+  }
   app.innerHTML = `
     ${navbarHTML}
     ${cardLayoutSwitcherHTML}
@@ -217,6 +227,7 @@ async function renderRoute() {
 
   // Restore horizontal and vertical scroll positions
   restoreAllScrollState(hash);
+  scheduleProductGuides();
 }
 
 // Router Event Listeners
@@ -253,22 +264,26 @@ setTimeout(async () => {
   } catch (_) {}
 }, 700);
 
-// Check if first-time visitor needs to create their personal profile
-setTimeout(async () => {
-  try {
-    const { checkAndShowProfileOnboarding } = await import('./components/ProfileOnboardingModal.js');
-    checkAndShowProfileOnboarding();
-  } catch (_) {}
-}, 400);
-
-// Profile setup is completed before this guide; it then explains the core
-// parts of the product once and stores completion locally.
-setTimeout(async () => {
-  try {
-    const { checkAndShowProductTour } = await import('./components/ProductTour.js');
-    checkAndShowProductTour();
-  } catch (_) {}
-}, 1200);
+// Defer profile setup and the product guide until the visitor enters the app.
+let productGuidesScheduled = false;
+function scheduleProductGuides() {
+  if (productGuidesScheduled) return;
+  productGuidesScheduled = true;
+  setTimeout(async () => {
+    if (document.body.classList.contains('cp-landing-active')) { productGuidesScheduled = false; return; }
+    try {
+      const { checkAndShowProfileOnboarding } = await import('./components/ProfileOnboardingModal.js');
+      if (!document.body.classList.contains('cp-landing-active')) checkAndShowProfileOnboarding();
+    } catch (_) {}
+  }, 400);
+  setTimeout(async () => {
+    if (document.body.classList.contains('cp-landing-active')) return;
+    try {
+      const { checkAndShowProductTour } = await import('./components/ProductTour.js');
+      if (!document.body.classList.contains('cp-landing-active')) checkAndShowProductTour();
+    } catch (_) {}
+  }, 1200);
+}
 
 // Keep Trakt synced on launch, after connecting, and when returning to the app.
 const traktStorageMethods = { getWatchHistory, saveWatchProgress, saveBatchWatchProgress };
