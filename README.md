@@ -18,7 +18,7 @@ Film, dizi ve anime keşfi; kişisel listeler, kaldığın yerden devam etme ve 
 **Web · Windows · Linux · Android**  
 Güncel sürüm: **[v1.1.51](https://github.com/caca1403/cine-pulse/releases/tag/v1.1.51)**
 
-[Özellikler](#cinepulse-ile-neler-yapabilirsin) · [Platformunu seç](#platformunu-seç) · [İlk kullanım](#ilk-kullanım) · [Sürüm yenilikleri](#v1151-ile-gelenler)
+[Özellikler](#cinepulse-ile-neler-yapabilirsin) · [Platformunu seç](#platformunu-seç) · [İlk kullanım](#i̇lk-kullanım) · [Sürüm yenilikleri](#v1151-ile-gelenler)
 
 </div>
 
