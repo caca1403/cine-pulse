@@ -1,0 +1,38 @@
+name: Sign current CinePulse APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'build-tools;36.0.0'
+      - name: Retrieve encrypted build and sign with existing release key
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CP_PAYLOAD_PASSWORD: ${{ secrets.CP_SIGNING_PAYLOAD_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          gh release download v1.1.51 --repo caca1403/cine-pulse --pattern cinepulse-signing-payload.enc
+          openssl enc -d -aes-256-cbc -pbkdf2 -in cinepulse-signing-payload.enc -out input.apk -pass env:CP_PAYLOAD_PASSWORD
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/cinepulse.keystore"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks "$RUNNER_TEMP/cinepulse.keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD --out cinepulse.apk input.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs cinepulse.apk > certificate.txt
+          grep -q '429f07887bd3ff17992faa552ff32f4f6eaea5a1dc7cfe27978578905e15e3d5' certificate.txt
+          rm -f input.apk cinepulse-signing-payload.enc "$RUNNER_TEMP/cinepulse.keystore"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cinepulse-apk-existing-key
+          path: cinepulse.apk
+          retention-days: 1
