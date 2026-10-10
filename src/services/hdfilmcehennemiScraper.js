@@ -7,7 +7,9 @@
 import { apiUrl } from './apiOrigin.js';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
-const HDFC_BASES = ['https://hdfilmcehennemi.mobi', 'https://www.hdfilmcehennemi.nl'];
+const HDFC_BASES = ['https://www.hdfilmcehennemi.nl', 'https://hdfilmcehennemi.mobi'];
+const HDFC_DOMAINS_URL = 'https://raw.githubusercontent.com/manitux-app/cs-plugins/main/domains.json';
+const HDFC_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 function hdfcSlug(value) {
   return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
@@ -18,20 +20,23 @@ function responseText(response) {
   return typeof response?.data === 'string' ? response.data : '';
 }
 
-async function getOnDevice(url, referer, origin, httpClient = CapacitorHttp) {
+async function getOnDevice(url, referer, origin, httpClient = CapacitorHttp, timeoutMs = 8000) {
   try {
     const response = await httpClient.get({
       url,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+        // Match the same browser identity and AJAX headers used by the working
+        // desktop resolver. HDFC rejects otherwise-valid device requests.
+        'User-Agent': HDFC_UA,
         'Referer': referer || `${origin}/`,
         'Origin': origin,
         'Accept': 'text/html,application/json,application/xhtml+xml,*/*;q=0.8',
+        'Content-Type': 'application/json',
         'X-Requested-With': 'fetch'
       },
       responseType: 'text',
-      connectTimeout: 5000,
-      readTimeout: 8000
+      connectTimeout: Math.min(5000, timeoutMs),
+      readTimeout: timeoutMs
     });
     return response?.status >= 200 && response.status < 400 ? responseText(response) : '';
   } catch (_) {
@@ -41,11 +46,11 @@ async function getOnDevice(url, referer, origin, httpClient = CapacitorHttp) {
 
 function pageAlternatives(html) {
   const out = [];
-  const buttons = /<button\b[^>]*class=["'][^"']*alternative-link[^"']*["'][^>]*>[\s\S]*?<\/button>/gi;
+  const buttons = /<(?:button|a|div)\b(?=[^>]*\bdata-video=["']?(\d+))(?=[^>]*\bclass=["'][^"']*alternative-link[^"']*["'])[^>]*>([\s\S]*?)<\/(?:button|a|div)>/gi;
   for (const match of html.matchAll(buttons)) {
-    const id = match[0].match(/data-video=["']?(\d+)/i)?.[1];
+    const id = match[1];
     if (!id || out.some(item => item.id === id)) continue;
-    const label = match[0].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const label = match[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     out.push({ id, label });
   }
   return out;
@@ -61,8 +66,8 @@ function videoEmbedUrl(payload) {
 
 // Vercel's datacenter egress can be blocked by HDFC. On Android, resolve the
 // episode page from the device network and give the player the provider iframe.
-export async function resolveHdfcEmbedsOnDevice({ title, originalTitle, season, episode, type, httpClient = CapacitorHttp }) {
-  if (Capacitor.getPlatform() !== 'android') return [];
+export async function resolveHdfcEmbedsOnDevice({ title, originalTitle, season, episode, type, httpClient = CapacitorHttp, platform = Capacitor.getPlatform() }) {
+  if (platform !== 'android' && httpClient === CapacitorHttp) return [];
   const slug = hdfcSlug(title || originalTitle);
   if (!slug) return [];
   const s = Number.parseInt(season, 10) || 1;
@@ -71,7 +76,16 @@ export async function resolveHdfcEmbedsOnDevice({ title, originalTitle, season, 
   const paths = isMovie
     ? [`/${slug}/`, `/hd-${slug}-izle/`, `/${slug}-izle/`]
     : [`/dizi/${slug}-izle-3/sezon-${s}/bolum-${e}/`, `/dizi/${slug}-izle/sezon-${s}/bolum-${e}/`];
-  const requests = HDFC_BASES.flatMap(base => paths.map(path => ({ base, url: `${base}${path}` })));
+  let bases = [...HDFC_BASES];
+  try {
+    const domainsText = await getOnDevice(HDFC_DOMAINS_URL, HDFC_DOMAINS_URL, 'https://raw.githubusercontent.com', httpClient, 1200);
+    const dynamicDomain = JSON.parse(domainsText || '{}')?.hdfilmcehennemi;
+    if (typeof dynamicDomain === 'string' && /^https:\/\//i.test(dynamicDomain)) {
+      const normalized = dynamicDomain.replace(/\/$/, '');
+      bases = [normalized, ...bases.filter(base => base !== normalized)];
+    }
+  } catch (_) {}
+  const requests = bases.flatMap(base => paths.map(path => ({ base, url: `${base}${path}` })));
   let page = null;
   const pages = await Promise.all(requests.map(async candidate => ({
     ...candidate,

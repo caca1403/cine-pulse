@@ -12106,16 +12106,29 @@ video::cue {
 
   /* In-Player Bottom Controls on Mobile */
   .tv-screen-controls {
-    padding: 0.35rem 0.55rem !important;
-    gap: 0.3rem !important;
-    background: linear-gradient(0deg, rgba(0, 0, 0, 0.9) 0%, transparent 100%) !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "left volume" "right right";
+    align-items: center;
+    padding: 0.45rem 0.55rem max(0.45rem, env(safe-area-inset-bottom)) !important;
+    gap: 0.35rem 0.45rem !important;
+    background: linear-gradient(0deg, rgba(0, 0, 0, 0.98) 0%, rgba(0, 0, 0, 0.86) 72%, transparent 100%) !important;
   }
   .tv-ctrl-group {
     gap: 0.3rem !important;
   }
+  .tv-ctrl-left { grid-area: left; min-width: 0; }
+  .tv-volume-group { grid-area: volume; }
+  .tv-ctrl-right {
+    grid-area: right;
+    width: 100%;
+    min-width: 0;
+    justify-content: space-between;
+    gap: 0.25rem !important;
+  }
   .tv-ctrl-action-btn {
-    width: 32px !important;
-    height: 32px !important;
+    width: 34px !important;
+    height: 34px !important;
   }
   .tv-ctrl-action-btn.tv-play-btn {
     width: 36px !important;
@@ -12128,6 +12141,9 @@ video::cue {
   .tv-volume-slider-box {
     display: none !important;
   }
+  .tv-quality-wrapper { flex: 0 0 auto; }
+  .tv-quality-btn { min-width: 34px !important; }
+  .tv-quality-badge-text { font-size: 0.58rem !important; }
   .tv-zap-btn {
     display: none !important;
   }
@@ -12271,6 +12287,25 @@ video::cue {
     height: 46px !important;
     font-size: 1.15rem !important;
   }
+}
+
+@media (max-width: 420px) {
+  .tv-screen-controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-left: 0.4rem !important;
+    padding-right: 0.4rem !important;
+  }
+  .tv-ctrl-left { gap: 0.22rem !important; }
+  .tv-ctrl-right { gap: 0.15rem !important; }
+  .tv-ctrl-action-btn { width: 30px !important; height: 30px !important; }
+  .tv-ctrl-action-btn.tv-play-btn { width: 34px !important; height: 34px !important; }
+  .tv-live-sync-indicator { gap: 0.2rem !important; padding: 0.12rem 0.35rem !important; }
+  .tv-quality-btn { padding: 0 0.3rem !important; min-width: 30px !important; }
+  .tv-quality-badge-text { font-size: 0.52rem !important; letter-spacing: 0 !important; }
+  .tv-osd-topbar { padding: 0.35rem 0.45rem !important; }
+  .tv-top-epg-line { gap: 0.25rem; font-size: 0.66rem; min-width: 0; }
+  .tv-top-epg-title { max-width: min(46vw, 180px); }
+  .tv-top-epg-prog { font-size: 0.62rem; }
 }
 
 
