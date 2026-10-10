@@ -3,7 +3,7 @@
   "versionCode": 163,
   "releaseDate": "2026-10-10",
   "title": "CinePulse v1.1.53",
-  "releaseNotes": "Orion (HDFilmCehennemi) kaynağının Android API çözümlemesi düzeltildi. SezonlukDizi doğrulama akışı iyileştirildi.",
+  "releaseNotes": "Orion (HDFilmCehennemi) Android'de sunucu erişimi engellendiğinde cihazın kendi ağından da çözülür. SezonlukDizi doğrulama akışı iyileştirildi.",
   "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.53/cinepulse.apk",
   "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.53/cinepulse.apk",
   "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-Setup-1.1.52.exe",

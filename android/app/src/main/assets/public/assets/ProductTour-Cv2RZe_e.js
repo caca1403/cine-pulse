@@ -1,0 +1,19 @@
+import{ad as s,af as d,r as c,ag as u}from"./index-i_P3nXLk.js";import"./vendor-capacitor-C2SXqsTi.js";const i=[{icon:"sparkles",eyebrow:"CinePulse rehberi",title:"İzlemeye hazır bir ana ekran",text:"Ana sayfadaki satırları yatay kaydırarak yapımları gez. Arama simgesinden dizi veya film adını yazdığında sonuçlar anında görünür.",hint:"Filmler, Diziler ve Keşfet üst menüde; Birlikte ve Listem logo yanındaki simgelerde."},{icon:"clapperboard",eyebrow:"Fragman önizleme",title:"Karttan fragmana bak",text:"Telefonda bir içerik kartına kısa süre basılı tut; fragman ekranın alt kısmında açılır. Bilgisayarda kartın üzerine gelmen yeterli.",hint:"Önizlemeyi sağ üstteki çarpıdan kapatabilir, ses simgesinden sesi açabilirsin."},{icon:"list-plus",eyebrow:"Kişisel liste",title:"Listem senin kontrolünde",text:"İçerik detayındaki artı düğmesiyle yapımları Listem’e ekle. Listem sayfasından kaydettiğin yapımları açabilir veya kaldırabilirsin.",hint:"İzleme ilerlemen de aynı tarayıcıda otomatik hatırlanır."},{icon:"shield-check",eyebrow:"Spoilersız keşif",title:"Diziyi güvenle incele",text:"Dizi detayında “Spoilersız keşfet” seçeneğini açarsan, izleme ilerlemenin sonrasındaki bölüm başlıkları, görselleri ve özetleri gizlenir.",hint:"İzlediğin bölüme ve sıradaki bölüme kadar detay görürsün; ilerledikçe yeni bölümler açılır."},{icon:"users-round",eyebrow:"Birlikte Seç",title:"Arkadaşınla aynı odada izle",text:"Üstteki Birlikte Seç düğmesinden oda oluştur veya altı haneli kodla bir odaya katıl. Moderatör içerik ve kaynak seçer; odada emoji ve sohbet de kullanabilirsin.",hint:"Oynatıcıdaki “Odaya dön” düğmesindeki rozet yeni sohbet mesajlarını gösterir."},{icon:"monitor-play",eyebrow:"Oynatıcı",title:"Kontroller elinin altında",text:"İçeriği açınca ekrana bir kez dokunarak kontrolleri göster. Zaman çubuğundan sarabilir, kaynakları değiştirebilir, altyazı ve ses seçebilirsin.",hint:"Tam ekran, ses ve parlaklık ayarları her cihazda sana ait kalır."}];function p(){if(!s()||d()||document.getElementById("cinepulse-product-tour"))return;let a=0;const l=document.body.style.overflow,e=document.createElement("section");e.id="cinepulse-product-tour",e.className="product-tour-overlay",e.setAttribute("role","dialog"),e.setAttribute("aria-modal","true"),e.setAttribute("aria-label","CinePulse kullanım rehberi");const n=()=>{u(),document.body.style.overflow=l,e.classList.add("is-leaving"),window.setTimeout(()=>e.remove(),180)},r=()=>{const t=i[a];e.innerHTML=`
+      <div class="product-tour-card">
+        <button class="product-tour-skip" type="button" aria-label="Rehberi kapat">Geç <i data-lucide="x"></i></button>
+        <div class="product-tour-icon"><i data-lucide="${t.icon}"></i></div>
+        <p class="product-tour-eyebrow">${t.eyebrow}</p>
+        <h2>${t.title}</h2>
+        <p class="product-tour-text">${t.text}</p>
+        <div class="product-tour-hint"><i data-lucide="lightbulb"></i><span>${t.hint}</span></div>
+        <div class="product-tour-footer">
+          <div class="product-tour-progress" aria-label="Adım ${a+1} / ${i.length}">
+            ${i.map((k,o)=>`<span class="${o===a?"is-active":""}"></span>`).join("")}
+          </div>
+          <div class="product-tour-actions">
+            ${a>0?'<button class="product-tour-back" type="button">Geri</button>':""}
+            <button class="product-tour-next" type="button">${a===i.length-1?"Hazırım":"Devam"} <i data-lucide="arrow-right"></i></button>
+          </div>
+        </div>
+      </div>
+    `,c(e),e.querySelector(".product-tour-skip")?.addEventListener("click",n),e.querySelector(".product-tour-back")?.addEventListener("click",()=>{a=Math.max(0,a-1),r()}),e.querySelector(".product-tour-next")?.addEventListener("click",()=>{a>=i.length-1?n():(a+=1,r())})};document.body.appendChild(e),document.body.style.overflow="hidden",r()}export{p as checkAndShowProductTour};

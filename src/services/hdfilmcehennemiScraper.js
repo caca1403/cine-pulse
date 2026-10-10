@@ -5,6 +5,112 @@
    ========================================================================== */
 
 import { apiUrl } from './apiOrigin.js';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
+
+const HDFC_BASES = ['https://hdfilmcehennemi.mobi', 'https://www.hdfilmcehennemi.nl'];
+
+function hdfcSlug(value) {
+  return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function responseText(response) {
+  return typeof response?.data === 'string' ? response.data : '';
+}
+
+async function getOnDevice(url, referer, origin, httpClient = CapacitorHttp) {
+  try {
+    const response = await httpClient.get({
+      url,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+        'Referer': referer || `${origin}/`,
+        'Origin': origin,
+        'Accept': 'text/html,application/json,application/xhtml+xml,*/*;q=0.8',
+        'X-Requested-With': 'fetch'
+      },
+      responseType: 'text',
+      connectTimeout: 5000,
+      readTimeout: 8000
+    });
+    return response?.status >= 200 && response.status < 400 ? responseText(response) : '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function pageAlternatives(html) {
+  const out = [];
+  const buttons = /<button\b[^>]*class=["'][^"']*alternative-link[^"']*["'][^>]*>[\s\S]*?<\/button>/gi;
+  for (const match of html.matchAll(buttons)) {
+    const id = match[0].match(/data-video=["']?(\d+)/i)?.[1];
+    if (!id || out.some(item => item.id === id)) continue;
+    const label = match[0].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    out.push({ id, label });
+  }
+  return out;
+}
+
+function videoEmbedUrl(payload) {
+  let html = '';
+  try { html = JSON.parse(payload)?.data?.html || ''; } catch (_) {}
+  const match = html.match(/<iframe\b[^>]*(?:data-src|src)=["']([^"']+)["'][^>]*>/i);
+  if (!match) return '';
+  return match[1].startsWith('//') ? `https:${match[1]}` : match[1];
+}
+
+// Vercel's datacenter egress can be blocked by HDFC. On Android, resolve the
+// episode page from the device network and give the player the provider iframe.
+export async function resolveHdfcEmbedsOnDevice({ title, originalTitle, season, episode, type, httpClient = CapacitorHttp }) {
+  if (Capacitor.getPlatform() !== 'android') return [];
+  const slug = hdfcSlug(title || originalTitle);
+  if (!slug) return [];
+  const s = Number.parseInt(season, 10) || 1;
+  const e = Number.parseInt(episode, 10) || 1;
+  const isMovie = type === 'movie';
+  const paths = isMovie
+    ? [`/${slug}/`, `/hd-${slug}-izle/`, `/${slug}-izle/`]
+    : [`/dizi/${slug}-izle-3/sezon-${s}/bolum-${e}/`, `/dizi/${slug}-izle/sezon-${s}/bolum-${e}/`];
+  const requests = HDFC_BASES.flatMap(base => paths.map(path => ({ base, url: `${base}${path}` })));
+  let page = null;
+  const pages = await Promise.all(requests.map(async candidate => ({
+    ...candidate,
+    html: await getOnDevice(candidate.url, `${candidate.base}/`, candidate.base, httpClient)
+  })));
+  page = pages.find(candidate => pageAlternatives(candidate.html).length > 0);
+  if (!page) return [];
+
+  const alternatives = pageAlternatives(page.html).slice(0, 5);
+  const resolved = await Promise.all(alternatives.map(async alternative => {
+    const payload = await getOnDevice(`${page.base}/video/${alternative.id}/`, page.url, page.base, httpClient);
+    const embedUrl = videoEmbedUrl(payload);
+    if (!embedUrl || /pixel|filemoon|vidmoly/i.test(`${alternative.label} ${embedUrl}`)) return null;
+    const provider = /rapid|rplayer/i.test(`${alternative.label} ${embedUrl}`) ? 'Rapidrame' : 'CloseLoad';
+    return { provider, embedUrl, id: alternative.id };
+  }));
+
+  const sources = [];
+  for (const item of resolved.filter(Boolean)) {
+    const key = item.provider === 'Rapidrame' ? 'rapid' : 'close';
+    for (const category of ['dubbed', 'subtitled']) {
+      sources.push({
+        id: `hdfc_${key}_device_${item.id}_${isMovie ? 'movie' : `s${s}e${e}`}_${category}`,
+        name: `HDFC ${item.provider}`,
+        displayName: `HDFC ${item.provider}`,
+        source: item.provider,
+        url: item.embedUrl,
+        streamUrl: item.embedUrl,
+        movieUrl: page.url,
+        category,
+        type: 'embed',
+        isIframe: true,
+        isDirectVideo: false,
+        getUrl: () => item.embedUrl
+      });
+    }
+  }
+  return sources;
+}
 
 export async function fetchHdfilmcehennemiSources({
   type = 'movie',
@@ -35,10 +141,14 @@ export async function fetchHdfilmcehennemiSources({
       signal: AbortSignal.timeout(11000)
     }).catch(() => null);
 
-    if (!res || !res.ok) return [];
+    if (!res || !res.ok) {
+      return await resolveHdfcEmbedsOnDevice({ title: searchTitle, originalTitle: searchOriginal, season: sNum, episode: epNum, type });
+    }
 
     const data = await res.json().catch(() => null);
-    if (!data || !data.success || (!data.streamUrl && !Array.isArray(data.streams))) return [];
+    if (!data || !data.success || (!data.streamUrl && !Array.isArray(data.streams))) {
+      return await resolveHdfcEmbedsOnDevice({ title: searchTitle, originalTitle: searchOriginal, season: sNum, episode: epNum, type });
+    }
 
     const sources = [];
     const backendStreams = Array.isArray(data.streams) && data.streams.length > 0
