@@ -98,3 +98,4 @@ jobs:
           prerelease: false
           generate_release_notes: false
           body_path: docs/release-notes.md
+          overwrite_files: true
