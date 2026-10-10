@@ -21,7 +21,6 @@ const PLUGIN_CSS = `
 .plugin-row.is-off{opacity:.62;}
 .plugin-row-id{min-width:96px;display:flex;flex-direction:column;}
 .plugin-alias{font-weight:800;font-size:.95rem;color:#dfff76;}
-.plugin-provider{font-size:.72rem;color:#94a3b8;}
 .plugin-row-info{flex:1;min-width:0;}
 .plugin-kinds{display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.2rem;}
 .plugin-kinds span{font-size:.68rem;font-weight:700;padding:.1rem .5rem;border-radius:9999px;background:rgba(223,255,118,.12);color:#dfff76;border:1px solid rgba(223,255,118,.25);}
@@ -64,7 +63,7 @@ export function openPluginsModal() {
     const q = filter.trim().toLocaleLowerCase('tr-TR');
     const shown = plugins.filter((p) => !q
       || (p.alias || '').toLocaleLowerCase('tr-TR').includes(q)
-      || (p.provider || '').toLocaleLowerCase('tr-TR').includes(q));
+      || (p.id || '').toLocaleLowerCase('tr-TR').includes(q));
     const onCount = plugins.filter((p) => p.enabled).length;
     root.innerHTML = `
       <div class="modal-card plugins-modal-card" role="document">
@@ -86,15 +85,14 @@ export function openPluginsModal() {
           ${shown.map((p) => `
             <div class="plugin-row ${p.enabled ? 'is-on' : 'is-off'}" data-plugin="${escapeText(p.id)}">
               <div class="plugin-row-id">
-                <span class="plugin-alias">${escapeText(p.alias || p.provider)}</span>
-                <span class="plugin-provider">${escapeText(p.alias ? p.provider : p.id)}</span>
+                <span class="plugin-alias">${escapeText(p.alias || p.id)}</span>
               </div>
               <div class="plugin-row-info">
                 <div class="plugin-kinds">${(p.kinds || []).map((k) => `<span>${escapeText(k)}</span>`).join('')}</div>
                 <p>${escapeText(p.desc || '')}</p>
                 ${p.warn ? `<p class="plugin-warn"><i data-lucide="triangle-alert" style="width:12px;height:12px;"></i><span>${escapeText(p.warn)}</span></p>` : ''}
               </div>
-              <button type="button" class="plugin-toggle" role="switch" aria-checked="${p.enabled}" aria-label="${escapeText(p.provider)} ${p.enabled ? 'kapat' : 'aç'}" data-toggle="${escapeText(p.id)}">
+              <button type="button" class="plugin-toggle" role="switch" aria-checked="${p.enabled}" aria-label="${escapeText(p.alias || p.id)} ${p.enabled ? 'kapat' : 'aç'}" data-toggle="${escapeText(p.id)}">
                 <span class="plugin-toggle-knob"></span>
               </button>
             </div>

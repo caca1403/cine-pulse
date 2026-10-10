@@ -11,10 +11,20 @@ test('bolum yolu taninir', () => {
 
 test('enjeksiyon base + css + secici ekler, icerigi korur', () => {
   const out = injectSzdPlayerFrame(page, { alternativeId: '608292' });
-  assert.match(out, /<base href="https:\/\/sezonlukdizi\.cc\/">/);
+  // Site-relative adresler yan sunucuya baglanir: AJAX'lar ayni-kaynak olur.
+  assert.match(out, /<base href="\/api\/szd\/">/);
   assert.match(out, /data-cinepulse-frame/);
+  assert.match(out, /data-cinepulse-isolate/);
   assert.match(out, /608292/);
   assert.match(out, /<div id="embed">/);
+  assert.doesNotMatch(out, /<base href="https:\/\/sezonlukdizi\.cc\/">/);
+});
+
+test('var olan base etiketi de yan sunucuya yonlendirilir', () => {
+  const withBase = page.replace('<head>', '<head><base href="https://sezonlukdizi.cc/">');
+  const out = injectSzdPlayerFrame(withBase, { alternativeId: '' });
+  assert.match(out, /<base href="\/api\/szd\/">/);
+  assert.equal(out.match(/<base /g).length, 1);
 });
 
 test('kisa/bos html oldugu gibi doner', () => {

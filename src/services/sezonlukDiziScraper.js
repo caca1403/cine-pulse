@@ -1,5 +1,83 @@
 import { extractPageMediaTitle, isStrictMediaTitleMatch } from './mediaMatcher.js';
 import { apiUrl } from './apiOrigin.js';
+import { isDesktopApp, isNativeAndroidApp } from './platformBridge.js';
+
+/* --- Android cihaz cozumleyicisi ------------------------------------- */
+let lunaDevice = null;
+
+async function loadLunaDevice() {
+  if (!lunaDevice) {
+    try { lunaDevice = await import('./lunaDeviceResolver.js'); } catch (_) { lunaDevice = false; }
+  }
+  return lunaDevice || null;
+}
+
+/** Dogrulama sonrasi oynatici acilir: kaynak yerinde guncellenir. */
+async function watchForVerification(source, item) {
+  const mod = await loadLunaDevice();
+  if (!mod?.resolveLunaEmbedAfterVerify) return;
+  for (let i = 0; i < 40; i++) {
+    await new Promise((r) => setTimeout(r, 2500));
+    const embed = await mod.resolveLunaEmbedAfterVerify(item);
+    if (!embed) continue;
+    source.srcdoc = mod.buildPlayerSrcdoc(embed, { title: source.displayName });
+    source.url = embed;
+    source.streamUrl = embed;
+    source.requiresVerification = false;
+    source.verified = true;
+    try {
+      window.dispatchEvent(new CustomEvent('cinepulse_source_refresh', { detail: { id: source.id } }));
+    } catch (_) {}
+    return;
+  }
+}
+
+async function fetchLunaDeviceSources({ titles = [], seriesTitle = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
+  const mod = await loadLunaDevice();
+  if (!mod?.resolveLunaOnDevice) return [];
+  const queryTitle = seriesTitle || (Array.isArray(titles) ? titles[0] : '') || '';
+  let items = [];
+  try {
+    items = await mod.resolveLunaOnDevice({
+      title: queryTitle, originalTitle, season, episode, isDub
+    });
+  } catch (_) {
+    items = [];
+  }
+  if (!items.length) {
+    // Turkce slug tutmadiysa diger aday basliklari dene.
+    for (const alt of (Array.isArray(titles) ? titles : []).slice(1, 3)) {
+      if (!alt) continue;
+      try {
+        items = await mod.resolveLunaOnDevice({ title: alt, originalTitle: '', season, episode, isDub });
+      } catch (_) { items = []; }
+      if (items.length) break;
+    }
+  }
+  return items.map((item, index) => {
+    const source = {
+      id: `szd_dev_${item.alternativeId}_s${season}e${episode}`,
+      name: `Luna S${season}B${episode}`,
+      displayName: `Luna S${season}B${episode}`,
+      category: isDub ? 'dubbed' : 'subtitled',
+      url: item.recaptcha ? '' : item.embedUrl,
+      streamUrl: item.recaptcha ? '' : item.embedUrl,
+      srcdoc: mod.buildPlayerSrcdoc(item.embedUrl, { recaptcha: item.recaptcha, title: `Luna S${season}B${episode}` }),
+      isSrcdoc: true,
+      isIframe: true,
+      isPageEmbed: false,
+      requiresVerification: Boolean(item.recaptcha),
+      verified: !item.recaptcha,
+      isDirectVideo: false,
+      type: 'embed',
+      source: 'Luna',
+      order: index,
+      getUrl: () => source.url || source.srcdoc
+    };
+    if (item.recaptcha) watchForVerification(source, item);
+    return source;
+  });
+}
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
@@ -34,6 +112,10 @@ function toTurkishSlug(title) {
 
 function buildVerificationSources(pageUrl, sources, season, episode, isDub) {
   if (!/^https:\/\/sezonlukdizi\.cc\//i.test(pageUrl || '') || !Array.isArray(sources)) return [];
+  // Sayfa-embed kaynaklari yalnizca masaustunde guvenli: yan sunucu oynatici
+  // alanini gomup sunar. Web/APK'da capraz-origin oldugu icin sayfa bututuyle
+  // gelir; dort yanlilik yerine kaynak hiç listelenmez.
+  if (!isDesktopApp()) return [];
   return sources
     .filter(item => item?.id && !/pixel|filemoon/i.test(item.provider || ''))
     .map(item => {
@@ -120,6 +202,13 @@ async function fetchWithWorkerFallback(targetUrl, options = {}) {
 }
 
 export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle = '', originalTitle = '', season = 1, episode = 1, isDub = true }) {
+  // Android: cihazin kendi agindan cozumle, oynaticiyi kendi HTML'imiz olarak
+  // kur (site sayfasi hic cerceveye girmez). Dogrulama gerekiyorsa oynatici
+  // yerine dogrulama cercevesi gosterilir, onaydan sonra oynatici acilir.
+  if (isNativeAndroidApp()) {
+    const deviceSources = await fetchLunaDeviceSources({ titles, seriesTitle, originalTitle, season, episode, isDub });
+    if (deviceSources.length > 0) return deviceSources;
+  }
   // Ozel backend resolver (birincil); basarisizsa klasik akisa dus.
   try {
     const host = typeof window !== 'undefined' ? (window.location?.hostname || '') : '';

@@ -1,13 +1,13 @@
 {
-  "version": "1.1.57",
-  "versionCode": 167,
+  "version": "1.1.58",
+  "versionCode": 168,
   "releaseDate": "2026-10-10",
-  "title": "CinePulse v1.1.57",
+  "title": "CinePulse v1.1.58",
   "releaseNotes": "Tum platformlar tek surumde toplandi. Yerel medya servisi port cakismasinda otomatik kurtarir. Masaustu guncelleme bildirimi kendi dosyasini okur.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.57/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.57/cinepulse.apk",
-  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.57/CinePulse-Setup-1.1.57.exe",
-  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.57/CinePulse-1.1.57.AppImage",
-  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.57/CinePulse-1.1.57.deb",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/CinePulse-Setup-1.1.58.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/CinePulse-1.1.58.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/CinePulse-1.1.58.deb",
   "mandatory": false
 }

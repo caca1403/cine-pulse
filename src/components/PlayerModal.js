@@ -3182,7 +3182,32 @@ export async function openPlayerModal({
     if (srv.requiresVerification && window.CinePulseDesktop?.openVerificationPlayer) {
       return '<div class="native-verification-placeholder" role="status" style="display:grid;place-items:center;height:100%;color:var(--text-muted)">Doğrulama alanı açılıyor…</div>';
     }
+    // Sayfa-embed yalnizca masaustunde izole edilebiliyor (yan sunucu oynatici
+    // alanini gomup sunar). Web/APK'da ayni-origin olmadigi icin cerceve
+    // butun sayfayi gosterirdi; bu kaynaklar o platformlarda uretilmez,
+    // yine de birakilirsa oynatici yerine bilgi gosterilir.
+    try {
+      if (isPageEmbed(srv) && !isDesktopApp()) {
+        return '<div class="native-verification-placeholder" role="status" style="display:grid;place-items:center;height:100%;color:var(--text-muted);text-align:center;padding:1.5rem">Bu kaynak masaüstü uygulamasında çalışır.</div>';
+      }
+    } catch (_) {}
     let finalIframeUrl = frameUrlFor(getStreamSafeUrl(srv) || srv);
+    // Android Luna: oynatici kendi HTML'imiz olarak kurulur (srcdoc). Site
+    // sayfasi hic yuklenmez; dogrulama sonrasi kaynak yerinde guncellenir.
+    if (srv?.isSrcdoc && srv.srcdoc) {
+      return `
+      <iframe
+        id="video-iframe"
+        name="player_luna"
+        srcdoc="${String(srv.srcdoc).replace(/"/g, '&quot;')}"
+        allowfullscreen="true"
+        webkitallowfullscreen="true"
+        mozallowfullscreen="true"
+        loading="eager"
+        allow="autoplay *; encrypted-media *; fullscreen *; picture-in-picture *"
+        style="width:100%;height:100%;border:none;display:block;background:#000;"
+      ></iframe>`;
+    }
     // Masaustu: sayfa-embed yan sunucudan oynatici-alan gomulu gelir.
     try {
       if (isDesktopApp() && isPageEmbed(srv)) finalIframeUrl = desktopFrameUrl(srv);
@@ -6014,8 +6039,36 @@ export async function openPlayerModal({
     renderPlayerIcons(wrapper);
   }
 
+  // Dogrulama sonrasi cihaz cozumleyicisi oynaticiyi getirdiğinde oynatici
+  // alanini yerinde yenile (kaynak degismis sayilmaz, ilerleme korunur).
+  function handleSourceRefresh(event) {
+    if (closed) return;
+    const id = event?.detail?.id;
+    const current = activeServers[currentServerIndex];
+    if (!id || !current || current.id !== id) return;
+    if (!current.verified) return;
+    try { updatePlayerContainer(); } catch (_) {}
+  }
+  window.addEventListener('cinepulse_source_refresh', handleSourceRefresh);
+
   async function updatePlayerContainer() {
     if (closed) return;
+    const wrapper0 = document.getElementById('player-iframe-wrapper');
+    // Dogrulama sonrasi cihaz cozumleyicisi oynaticiyi getirdi: cerceveyi
+    // yalnizca yerinde yenile (diger her sey ayni kalsin).
+    try {
+      const current = activeServers[currentServerIndex];
+      if (current?.isSrcdoc && current?.verified && wrapper0) {
+        const frame = wrapper0.querySelector('#video-iframe');
+        const have = frame?.getAttribute('srcdoc') || '';
+        if (have !== current.srcdoc) {
+          wrapper0.innerHTML = renderPlayerContent();
+          renderPlayerIcons(wrapper0);
+          updateActiveSourceLabel();
+          return;
+        }
+      }
+    } catch (_) {}
     disposePlayback();
     const playbackRun = playbackGeneration;
     const wrapper = document.getElementById('player-iframe-wrapper');
@@ -7112,6 +7165,7 @@ export async function openPlayerModal({
 
     window.removeEventListener('pagehide', handleGlobalPageUnload);
     window.removeEventListener('beforeunload', handleGlobalPageUnload);
+    window.removeEventListener('cinepulse_source_refresh', handleSourceRefresh);
     if (activeHlsInstance) {
       try { activeHlsInstance.destroy(); } catch (_) {}
       activeHlsInstance = null;
