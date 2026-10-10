@@ -26,6 +26,8 @@ const PLUGIN_CSS = `
 .plugin-kinds{display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.2rem;}
 .plugin-kinds span{font-size:.68rem;font-weight:700;padding:.1rem .5rem;border-radius:9999px;background:rgba(223,255,118,.12);color:#dfff76;border:1px solid rgba(223,255,118,.25);}
 .plugin-row-info p{margin:0;font-size:.78rem;color:#b6c2d8;}
+.plugin-warn{display:flex;gap:.35rem;align-items:flex-start;margin-top:.3rem !important;font-size:.72rem !important;color:#fbbf24 !important;}
+.plugin-warn svg{flex:none;margin-top:1px;}
 .plugin-toggle{position:relative;width:46px;height:26px;flex:none;border-radius:9999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.1);cursor:pointer;transition:background .18s;}
 .plugin-toggle-knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#94a3b8;transition:left .18s,background .18s;}
 .plugin-toggle[aria-checked="true"]{background:rgba(223,255,118,.35);border-color:rgba(223,255,118,.6);}
@@ -90,6 +92,7 @@ export function openPluginsModal() {
               <div class="plugin-row-info">
                 <div class="plugin-kinds">${(p.kinds || []).map((k) => `<span>${escapeText(k)}</span>`).join('')}</div>
                 <p>${escapeText(p.desc || '')}</p>
+                ${p.warn ? `<p class="plugin-warn"><i data-lucide="triangle-alert" style="width:12px;height:12px;"></i><span>${escapeText(p.warn)}</span></p>` : ''}
               </div>
               <button type="button" class="plugin-toggle" role="switch" aria-checked="${p.enabled}" aria-label="${escapeText(p.provider)} ${p.enabled ? 'kapat' : 'aç'}" data-toggle="${escapeText(p.id)}">
                 <span class="plugin-toggle-knob"></span>

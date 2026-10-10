@@ -13,20 +13,20 @@ const PLUGINS_KEY = 'cinepulse_plugins_v1';
 // id: toplayici anahtari. registry: providerRegistry'deki karsiligi (varsa).
 // kinds: movie+tv / tv / movie / live disinda kisa etiketler.
 export const PLUGIN_DEFS = [
-  { id: 'hdfc', registry: 'hdfc', kinds: ['film', 'dizi'], desc: 'CloseLoad + Rapidrame 1080p, dublaj ve altyazı.' },
+  { id: 'hdfc', registry: 'hdfc', kinds: ['film', 'dizi'], desc: 'CloseLoad + Rapidrame 1080p, dublaj ve altyazı.', warn: 'Sunucu IP engelli; masaüstü uygulaması ya da cihazın kendi ağı gerekir. Sitede görünmeyebilir.' },
   { id: 'setf', registry: 'setf', kinds: ['film', 'dizi'], desc: 'SetPlay + FastPlay özel oynatıcılar.' },
-  { id: 'slc', registry: 'slc', kinds: ['film', 'dizi'], desc: 'Pichive 1080p HLS, film + dizi.' },
-  { id: 'dzl', registry: 'dzl', kinds: ['dizi'], desc: 'Pichive 1080p, dizi odaklı.' },
-  { id: 'fhdf', registry: 'fhdf', kinds: ['film'], desc: 'RapidVid HLS, film odaklı.' },
-  { id: 'wtz', registry: 'wtz', kinds: ['film'], desc: 'VidMoly/Filemoon/Pixel, film odaklı.' },
-  { id: 'fxs', registry: 'fxs', kinds: ['film', 'dizi'], desc: 'VidMoly + Eksenload, film + dizi.' },
+  { id: 'slc', registry: 'slc', kinds: ['film', 'dizi'], desc: 'Pichive 1080p HLS, film + dizi.', warn: 'Pichive duvarlıdır; gömülü oynatılır, bazı ağlarda takılabilir.' },
+  { id: 'dzl', registry: 'dzl', kinds: ['dizi'], desc: 'Pichive 1080p, dizi odaklı.', warn: 'Pichive duvarlıdır; gömülü oynatılır, bazı ağlarda takılabilir.' },
+  { id: 'fhdf', registry: 'fhdf', kinds: ['film'], desc: 'RapidVid HLS, film odaklı.', warn: 'Erişimi engelli ağlarda açılmaz; alternatif dene.' },
+  { id: 'wtz', registry: 'wtz', kinds: ['film'], desc: 'VidMoly/Filemoon/Pixel, film odaklı.', warn: 'Bozuk hatlar (Filemoon/Pixel) otomatik elenir.' },
+  { id: 'fxs', registry: 'fxs', kinds: ['film', 'dizi'], desc: 'VidMoly + Eksenload, film + dizi.', warn: 'İmza süresi dolarsa hat yenilenir; listeyi tazele.' },
   { id: 'dzs', kinds: ['film', 'dizi'], desc: 'Çift sesli HLS, hızlı ana yayın.' },
-  { id: 'snx', kinds: ['film', 'dizi'], desc: 'Doğrudan 1080p MKV/MP4 akışı.' },
-  { id: 'szd', kinds: ['dizi'], desc: 'VidMoly/Sibnet, dizi odaklı.' },
+  { id: 'snx', kinds: ['film', 'dizi'], desc: 'Doğrudan 1080p MKV/MP4 akışı.', warn: 'MKV hatlar dönüştürülerek oynatılır, başlaması sürebilir.' },
+  { id: 'szd', kinds: ['dizi'], desc: 'VidMoly/Sibnet, dizi odaklı.', warn: 'Doğrulama isteyebilir; sayfa gömülü açılır, oynatıcıya kaydırılır.' },
   { id: 'dyu', kinds: ['dizi'], desc: 'FastCDN 1080p HLS.' },
   { id: 'dzy', kinds: ['film', 'dizi'], desc: 'Doğrudan 1080p HLS.' },
   { id: 'dzb', kinds: ['film', 'dizi'], desc: 'Orijinal oynatıcılı 1080p hat.' },
-  { id: 'tvr', kinds: ['film', 'dizi'], desc: 'RecTV VIP 1080p HLS.' },
+  { id: 'tvr', kinds: ['film', 'dizi'], desc: 'RecTV VIP 1080p HLS.', warn: 'İmza 2 dakikada bir tazelenir; takılırsa kanalı değiştir.' },
   { id: 'jet', kinds: ['film', 'dizi'], desc: 'FilmEkseni/JetFilm oynatıcıları.' },
   { id: 'hdfb', kinds: ['film'], desc: 'HDFilmizle 1080p HLS.' },
   { id: 'lookmovie', kinds: ['film', 'dizi'], desc: 'Global temiz oynatıcı.' },
@@ -38,7 +38,7 @@ export const PLUGIN_DEFS = [
   { id: 'kidsvip', kinds: ['cocuk'], desc: 'Çizgi film doğrudan akış.' },
   { id: 'dramalar', kinds: ['kisa-dizi'], desc: 'Kısa drama doğrudan CDN.' },
   { id: 'dramadizilerim', kinds: ['kisa-dizi'], desc: 'NetShort/FlexTV/DramaBox.' },
-  { id: 'torrent', kinds: ['film', 'dizi'], desc: 'P2P eşler arası akış.' },
+  { id: 'torrent', kinds: ['film', 'dizi'], desc: 'P2P eşler arası akış.', warn: 'Başlaması eş sayısına bağlıdır; bulamazsa bekler.' },
 ];
 
 function aliasOf(def) {
