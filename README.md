@@ -16,9 +16,9 @@ Film, dizi ve anime keşfi; kişisel listeler, kaldığın yerden devam etme ve 
 <a href="https://cine-pulse-drab.vercel.app/#showcase"><img src="docs/assets/view-tour.svg" alt="Sitedeki açılış tanıtımını gör" height="48" /></a>
 
 **Web · Windows · Linux · Android**  
-Güncel sürüm: **[v1.1.52](https://github.com/caca1403/cine-pulse/releases/tag/v1.1.52)**
+Güncel sürüm: **[v1.1.57](https://github.com/caca1403/cine-pulse/releases/tag/v1.1.57)**
 
-[Özellikler](#cinepulse-ile-neler-yapabilirsin) · [Platformunu seç](#platformunu-seç) · [İlk kullanım](#i̇lk-kullanım) · [Sürüm yenilikleri](#v1151-ile-gelenler)
+[Özellikler](#cinepulse-ile-neler-yapabilirsin) · [Platformunu seç](#platformunu-seç) · [İlk kullanım](#i̇lk-kullanım) · [Sürüm yenilikleri](#v1157-ile-gelenler)
 
 </div>
 
@@ -56,10 +56,10 @@ Kurulum yapmadan bakmak istersen **[siteyi aç](https://cine-pulse-drab.vercel.a
 | Platform | Nasıl başlarsın? | İndirme / açılış |
 | :--- | :--- | :--- |
 | **Web** | Tarayıcıda aç; keşif, arama, listeler ve içerik detaylarından başla. | **[Siteyi aç](https://cine-pulse-drab.vercel.app/)** |
-| **Windows** | EXE kurulum sihirbazını çalıştır; uygulamayı masaüstü veya Başlat menüsünden aç. | [v1.1.56 EXE](https://github.com/caca1403/cine-pulse/releases/download/v1.1.56/CinePulse-Setup-1.1.55.exe) |
-| **Linux / DEB** | Debian / Ubuntu tabanlı sistemlerde DEB paketini paket yöneticinle kur. | [v1.1.56 DEB](https://github.com/caca1403/cine-pulse/releases/download/v1.1.56/CinePulse-1.1.55.deb) |
-| **Linux / AppImage** | Dosyaya çalıştırma izni ver ve aç; sistemine göre AppImage desteği gerekebilir. | [v1.1.56 AppImage](https://github.com/caca1403/cine-pulse/releases/download/v1.1.56/CinePulse-1.1.55.AppImage) |
-| **Android** | `cinepulse.apk` dosyasını indir, Android'in uygulama kurulum adımlarını tamamla. | [v1.1.56 APK](https://github.com/caca1403/cine-pulse/releases/download/v1.1.56/cinepulse.apk) |
+| **Windows** | EXE kurulum sihirbazını çalıştır; uygulamayı masaüstü veya Başlat menüsünden aç. | [v1.1.57 EXE](https://github.com/caca1403/cine-pulse/releases/download/v1.1.57/CinePulse-Setup-1.1.57.exe) |
+| **Linux / DEB** | Debian / Ubuntu tabanlı sistemlerde DEB paketini paket yöneticinle kur. | [v1.1.57 DEB](https://github.com/caca1403/cine-pulse/releases/download/v1.1.57/CinePulse-1.1.57.deb) |
+| **Linux / AppImage** | Dosyaya çalıştırma izni ver ve aç; sistemine göre AppImage desteği gerekebilir. | [v1.1.57 AppImage](https://github.com/caca1403/cine-pulse/releases/download/v1.1.57/CinePulse-1.1.57.AppImage) |
+| **Android** | `cinepulse.apk` dosyasını indir, Android'in uygulama kurulum adımlarını tamamla. | [v1.1.57 APK](https://github.com/caca1403/cine-pulse/releases/download/v1.1.57/cinepulse.apk) |
 
 **Dosyalar doğrudan indirilir; ZIP açman gerekmez.** EXE, DEB, AppImage ve APK sürüm sayfasında bulunur; bu depodaki ana dal uygulamanın kaynak kodunu içerir.
 
@@ -76,16 +76,16 @@ Windows'ta yeni EXE kurucusu mevcut kurulumun üzerine kurulur; Linux'ta kendi p
 3. **Dilini ve yayınını seç.** Dublaj / altyazılı listesinde mevcut seçenekleri gör. Gerektiğinde başka bir alternatife geç.
 4. **Kütüphaneni oluştur.** İlgini çekenleri listene ekle; izlemeye ara verdiğinde devam bölümünden geri dön.
 
-## v1.1.52 ile gelenler
+## v1.1.57 ile gelenler
 
-- **Web için yeni açılış:** Platform karşılaştırması, sık sorulanlar ve doğrudan indirme seçenekleri; uygulamalar içerik ekranıyla açılır.
-- **Kesintisiz doğrulama oturumu:** Masaüstünde doğrulamadan sonra aynı dahili tarayıcı devam eder; üstteki dil ve alternatif çubuğu korunur.
-- **Daha kararlı alternatifler:** Çalışmayan seçenekler listeden ve dahili oynatıcı menüsünden kaldırıldı.
-- **Bölümü tamamla:** Oynatıcıdaki görünür “İzlendi olarak işaretle” düğmesi bölüm listesini günceller; mobilde de yazısı görünür.
-- **Gerektiğinde kurulum:** Web ve Android'de yerel kurulum sihirbazı gösterilmez. Masaüstünde yalnızca doğrulanmış eksik gereksinimlerde açılır.
-- **Tüm platformlar:** EXE, DEB, AppImage ve önceki Android sürümleriyle aynı kalıcı anahtarı kullanan APK.
+- **Eklenti yönetimi:** Ana menüden ve profil penceresinden açılan "Eklentiler" ekranı; 26 kaynağı arayabilir, açıp kapatabilirsin. Kapatılan kaynak hiç taranmaz, listede de görünmez.
+- **Durum uyarıları:** Her eklenti satırında o kaynağın durumunu anlatan kısa bir not yer alır.
+- **Yeni kaynak Vela:** FilmEkseni üzerinden film ve dizi araması; VidMoly ve Eksenload hatlarıyla 1080p yayın.
+- **DiziBal yenilendi:** Yeni oynatıcı akışıyla baştan yazıldı; doğrudan m3u8 çözümleme ve Türkçe / İngilizce altyazı desteği.
+- **Açılış düzeltmesi:** GPU sürücüsü çöken bilgisayarlarda uygulama kendiliğinden yazılım modunda yeniden başlar.
+- **Tüm platformlar:** APK, DEB, EXE ve AppImage 1.1.57 sürümüyle, önceki sürümlerle aynı imza anahtarıyla yayımlandı.
 
-**[Sürüm notlarını ve tüm dosyaları görüntüle →](https://github.com/caca1403/cine-pulse/releases/tag/v1.1.52)**
+**[Sürüm notlarını ve tüm dosyaları görüntüle →](https://github.com/caca1403/cine-pulse/releases/tag/v1.1.57)**
 
 <details>
 <summary><strong>Geliştirici olarak çalıştırmak istiyorum</strong></summary>

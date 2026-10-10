@@ -1,9 +1,16 @@
-CinePulse v1.1.56 — Acilis duzeltmesi
-- GPU dongude coken sistemlerde uygulama hic acilmiyordu; artik 3. cokus
-  sonrasi otomatik yazilim-render ile yeniden basliyor (kullanici mudahalesiz).
-- Masaustu sayfa-embed cerceveler oynatici-alan gomulu yukleniyor.
-- Orion cihaz-fallback'u yanlis bazdaki (.mobi oynatici hostu) denemeyi birakti.
-- APK + DEB + EXE + AppImage hepsi 1.1.56, ayni imza anahtari.
+CinePulse v1.1.57 — Eklenti yönetimi ve yeni kaynak
+- Tüm sayfalarda "Eklentiler" yönetimi: 26 kaynağı gör, ara, aç/kapat; her
+  satırda durum uyarısı. Kapalı eklenti taranmaz.
+- Yeni kaynak Vela / FilmEkseni (duvarsız API, VidMoly + Eksenload, film ve dizi).
+- DiziBal, yeni Pilavyer akışıyla baştan yazıldı (doğrudan m3u8 + altyazı).
+- APK + DEB + EXE + AppImage hepsi 1.1.57, aynı imza anahtarı.
+
+CinePulse v1.1.56 — Açılış düzeltmesi
+- GPU döngüde çöken sistemlerde uygulama hiç açılmıyordu; artık 3. çöküş
+  sonrası otomatik yazılım-render ile yeniden başlıyor, kullanıcı müdahalesi gerekmiyor.
+- Masaüstünde sayfa-embed çerçeveler oynatıcı alanı gömülü yükleniyor.
+- Orion cihaz-fallback'ı yanlış bazdaki (.mobi oynatıcı hostu) denemeyi bıraktı.
+- APK + DEB + EXE + AppImage hepsi 1.1.56, aynı imza anahtarı.
 
 CinePulse v1.1.55 — Tum platformlar tek surum
 - APK + DEB + EXE + AppImage hepsi 1.1.55 olarak derlendi, ayni imza anahtari.
