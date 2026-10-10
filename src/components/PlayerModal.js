@@ -3195,6 +3195,7 @@ export async function openPlayerModal({
         name="player_${iframeName}"
         src="${finalIframeUrl}" 
         sandbox="${frameSandbox}"
+        onload="this.dataset.loaded='1'"
         allowfullscreen="true"
         webkitallowfullscreen="true"
         mozallowfullscreen="true"
@@ -6026,6 +6027,22 @@ export async function openPlayerModal({
     }
 
     let srv = activeServers[currentServerIndex];
+    // Döngü koruması 2: aynı iframe kaynağı tekrar basılmaz. Cozulmus
+    // challenge/video bastan baslardi ("onaylandi -> basa sar" dongusu).
+    // Kaynak degisimi (farkli URL) veya dogrudan video her zaman calisir.
+    try {
+      const existingFrame = wrapper.querySelector('#video-iframe');
+      if (existingFrame && existingFrame.dataset.loaded === '1' && srv && !srv.isDirectVideo && !srv.isHls) {
+        const wantRaw = getStreamSafeUrl(srv) || '';
+        let want = '';
+        try { want = frameUrlFor(wantRaw || srv); } catch (_) { want = wantRaw; }
+        try {
+          if (isDesktopApp() && isPageEmbed(srv)) want = desktopFrameUrl(srv);
+        } catch (_) {}
+        const have = existingFrame.getAttribute('src') || '';
+        if (want && have && (have === want || have.split('#')[0] === String(want).split('#')[0])) return;
+      }
+    } catch (_) {}
     // Note: DiziBal streams are now resolved server-side in dizibalScraper.js
     // No client-side resolveDirectStream needed here
 
@@ -6779,8 +6796,25 @@ export async function openPlayerModal({
         }
 
         // If error view or loader is visible and non-failed streams are now available:
+        // IFRAME ISTISNASI: cozumu oturum tasiyan sayfa-embed oynatilirken
+        // otomatik kaynak degisimi YOK ("onaylandi -> basa sar" dongusu).
+        // Iframe ancak basarisiz isaretlendiyse veya kullanici degistirirse yenilenir.
         const isErrorOrWaiting = Boolean(document.querySelector('.player-error-view') || document.querySelector('.player-loading-overlay'));
         if (isErrorOrWaiting && activeServers.length > 0) {
+          const currentIsEmbed = Boolean(currentPlayingSrv && (currentPlayingSrv.isIframe || currentPlayingSrv.isPageEmbed || (!currentPlayingSrv.isDirectVideo && !currentPlayingSrv.isHls)));
+          const currentFailed = Boolean(activeServers[currentServerIndex]?.failed);
+          if (currentIsEmbed && !currentFailed) {
+            if (!sourceRefreshFrame) {
+              sourceRefreshFrame = requestAnimationFrame(() => {
+                sourceRefreshFrame = 0;
+                if (closed || generation !== discoveryGeneration) return;
+                updateActiveSourceLabel();
+                renderSourcesPopoverList();
+                syncSubtitlesToActivePlayer();
+              });
+            }
+            return;
+          }
           const freshIdx = activeServers.findIndex(s => !s.failed);
           if (freshIdx !== -1 && (freshIdx !== currentServerIndex || activeServers[currentServerIndex]?.failed)) {
             console.log('[PlayerModal] Resuming playback from newly arrived server:', activeServers[freshIdx].name);
