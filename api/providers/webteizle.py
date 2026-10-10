@@ -15,6 +15,28 @@ from providers.base import FULL_UA, clean_title, finalize_streams  # noqa: E402
 BASE = 'https://webteizle.info'
 REF = BASE + '/'
 
+# Vercel IP'si engellenirse son basamak: CF Worker gecidi (base.py ile ayni).
+CF_WORKER_GATEWAY = 'https://wild-credit-e1ae.cagatayca07.workers.dev'
+
+
+def _worker_fetch(url, referer, form=None, timeout=8):
+    try:
+        gateway = CF_WORKER_GATEWAY + '?url=' + urllib.parse.quote(url, safe='')
+        headers = {'User-Agent': FULL_UA, 'Accept': '*/*', 'Referer': referer or (BASE + '/')}
+        body = None
+        if form is not None:
+            body = urllib.parse.urlencode(form).encode('utf-8')
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
+            headers['X-Requested-With'] = 'XMLHttpRequest'
+        req = urllib.request.Request(gateway, data=body, headers=headers,
+                                     method='POST' if body is not None else 'GET')
+        with urllib.request.urlopen(req, timeout=max(4, min(int(timeout or 8), 15))) as r:
+            if r.status != 200:
+                return ''
+            return r.read().decode('utf-8', errors='ignore')
+    except Exception:
+        return ''
+
 
 def _slug(t):
     t = (t or '').lower().strip()
@@ -75,7 +97,7 @@ def _opener():
 
 
 def _get(op, url, referer, timeout=8):
-    # curl birincil (hizli), urllib (cookie jar) yedek
+    # curl birincil (hizli), urllib (cookie jar) yedek, worker son basamak
     curled = _curl_fallback(url, referer, timeout=timeout)
     if curled and len(curled) > 200:
         return curled
@@ -83,14 +105,19 @@ def _get(op, url, referer, timeout=8):
         req = urllib.request.Request(url, headers={'User-Agent': FULL_UA, 'Referer': referer,
                                                    'Accept': 'text/html,application/xhtml+xml'})
         with op.open(req, timeout=timeout) as r:
-            return r.read().decode('utf-8', errors='ignore')
+            direct = r.read().decode('utf-8', errors='ignore')
+            if direct:
+                return direct
     except Exception:
         pass
-    return curled if curled else ''
+    if curled:
+        return curled
+    proxied = _worker_fetch(url, referer, timeout=timeout)
+    return proxied if proxied else ''
 
 
 def _post(op, url, referer, form, timeout=8):
-    # curl birincil, urllib yedek
+    # curl birincil, urllib yedek, worker son basamak
     curled = _curl_fallback(url, referer, form=form, timeout=timeout)
     if curled:
         return curled
@@ -104,7 +131,7 @@ def _post(op, url, referer, form, timeout=8):
             return r.read().decode('utf-8', errors='ignore')
     except Exception:
         pass
-    return ''
+    return _worker_fetch(url, referer, form=form, timeout=timeout)
 
 
 def _player_url(embed_html):

@@ -58,7 +58,7 @@ import {
 import { getChannelEpg, initEpgService, stopEpgService } from '../services/epgService.js';
 import { showToast } from '../components/Toast.js';
 import { isKidProfileActive } from '../services/storage.js';
-import { apiUrl } from '../services/apiOrigin.js';
+import { apiUrl, isNativeCapacitor } from '../services/apiOrigin.js';
 import { getAltSources, getPreferredSourceKey, setPreferredSourceKey, getRelayOrigin, setRelayOrigin, getTsBases, getTsBaseIdx, setTsBaseIdx } from '../services/xtreamAltSources.js';
 
 const FAVS_STORAGE_KEY = 'cinepulse_live_favs';
@@ -86,7 +86,11 @@ export function renderLiveTvView() {
     .replace(/[^A-ZÇĞİÖŞÜ0-9]/g, '');
   function toProxiedLiveUrl(url) {
     if (!url) return '';
-    if (url.startsWith('/api/') || url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) return url;
+    if (url.startsWith('/api/') || url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
+      // APK WebView'de relative /api calismaz (https://localhost). Mutlak Vercel URL gerekir.
+      // hls.js XHR kullanir, androidPlatform'daki fetch patch'i islemez.
+      return isNativeCapacitor() ? apiUrl(url) : url;
+    }
     let ref = '';
     try {
       if (url.includes('trt')) ref = 'https://www.trt1.com.tr/';
@@ -102,7 +106,9 @@ export function renderLiveTvView() {
     } catch (_) {
       ref = '';
     }
-    return `/api/hls_proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(ref)}&live=1`;
+    const proxied = `/api/hls_proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(ref)}&live=1`;
+    // APK'da relative birakma: hls.js XHR ile https://localhost'a gider ve 404 olur.
+    return isNativeCapacitor() ? apiUrl(proxied) : proxied;
   }
 
   // Omurga: LIVE_TV_CHANNELS (dogrudan CDN / resmi akislar) + iptv-org (tamamlayici)
@@ -589,8 +595,10 @@ export function renderLiveTvView() {
 
       // Localhost'ta goreli path'ler vite proxy ile :4000'e gider; apiUrl()
       // localhost'u bile production'a goturur, o yuzden localde relative kal.
+      // APK'da hostname localhost olsa bile native'tir -> mutlak URL sart.
       function locApi(path) {
         if (!path || /^https?:\/\//i.test(path)) return path;
+        if (isNativeCapacitor()) return apiUrl(path);
         if (typeof window !== 'undefined') {
           const host = window.location?.hostname || '';
           if (host === 'localhost' || host === '127.0.0.1') return path;
@@ -1262,8 +1270,9 @@ export function renderLiveTvView() {
           // apiUrl() localhost'u bile production proxy'ye yönlendirir ve panel
           // Cloudflare'ı Vercel IP'lerini engeller. Üretimde göreli URL yine
           // aynı origin'e gider ve zarifçe sonraki kaynağa geçilir.
+          // APK native'tir (hostname localhost olsa bile) -> mutlak URL sart.
           const host = (typeof window !== 'undefined' && window.location?.hostname) || '';
-          const isLocalDev = host === 'localhost' || host === '127.0.0.1';
+          const isLocalDev = (host === 'localhost' || host === '127.0.0.1') && !isNativeCapacitor();
           url = isLocalDev ? url : apiUrl(url);
           loadMpegtsLib().then((mpegts) => {
             if (channelPlaybackToken !== myToken) return;
@@ -1299,23 +1308,30 @@ export function renderLiveTvView() {
           embeddedPlayback = false;
           stopCurrentMedia();
           if (Hls.isSupported()) {
+            const isNative = isNativeCapacitor();
             const hls = new Hls({
               enableWorker: true,
               lowLatencyMode: true,
               startLevel: 0,
               capLevelToPlayerSize: true,
-              backBufferLength: 10,
-              maxBufferLength: 20,
-              maxMaxBufferLength: 40,
+              // Mobil/APK'da Vercel proxy + dalgali 4G/5G icin tamponu buyut:
+              // kucuk tampon (20sn) her jitter'da donuyordu.
+              backBufferLength: isNative ? 20 : 10,
+              maxBufferLength: isNative ? 45 : 20,
+              maxMaxBufferLength: isNative ? 120 : 40,
+              maxBufferSize: isNative ? 120 * 1024 * 1024 : 60 * 1024 * 1024,
               liveSyncDurationCount: 3,
-              liveMaxLatencyDurationCount: 5,
-              manifestLoadingTimeOut: 12000,
-              manifestLoadingMaxRetry: 3,
-              manifestLoadingRetryDelay: 1000,
-              levelLoadingTimeOut: 12000,
-              levelLoadingMaxRetry: 3,
-              fragLoadingTimeOut: 10000,
-              fragLoadingMaxRetry: 3
+              liveMaxLatencyDurationCount: isNative ? 10 : 5,
+              manifestLoadingTimeOut: 20000,
+              manifestLoadingMaxRetry: isNative ? 5 : 3,
+              manifestLoadingRetryDelay: 1500,
+              levelLoadingTimeOut: 20000,
+              levelLoadingMaxRetry: isNative ? 5 : 3,
+              fragLoadingTimeOut: 15000,
+              fragLoadingMaxRetry: isNative ? 5 : 3,
+              xhrSetup: (xhr) => {
+                try { xhr.withCredentials = false; } catch (_) {}
+              }
             });
             activeHls = hls;
 

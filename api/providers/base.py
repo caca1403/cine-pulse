@@ -21,6 +21,45 @@ import subprocess as _subprocess
 
 _HAS_CURL = bool(_shutil.which('curl'))
 
+# Cloudflare Worker gecidi: Vercel datacenter IP'si CF korumali sitelerce
+# engellenir (HDFC 403, SZD/WTZ bos doner). Worker egress farkli oldugu icin
+# engellenMEYEN sitelerde (sezonlukdizi.cc, webteizle.info dogrulandi) son
+# basamak olarak kullanilir. HDFC worker'dan da 403 yer, ona bulasilmaz.
+CF_WORKER_GATEWAY = 'https://wild-credit-e1ae.cagatayca07.workers.dev'
+
+_CF_CHALLENGE_MARKERS = ('just a moment', 'challenge-platform', 'cf-chl', '__cf_bm')
+
+
+def _looks_like_cf_challenge(html):
+    try:
+        low = (html or '').lower()
+        return any(m in low for m in _CF_CHALLENGE_MARKERS)
+    except Exception:
+        return False
+
+
+def _worker_fetch(url, referer='', timeout=10, post_data=None):
+    """Worker uzerinden GET (post_data yoksa) veya form POST yapar.
+    Vercel'den dogrudan erisilemeyen ama worker'dan acilan siteler icin."""
+    try:
+        gateway = CF_WORKER_GATEWAY + '?url=' + urllib.parse.quote(url, safe='')
+        headers = {'User-Agent': FULL_UA, 'Accept': '*/*'}
+        if referer:
+            headers['Referer'] = referer
+        body = None
+        if post_data is not None:
+            body = post_data.encode('utf-8') if isinstance(post_data, str) else post_data
+            headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
+            headers['X-Requested-With'] = 'XMLHttpRequest'
+        req = urllib.request.Request(gateway, data=body, headers=headers,
+                                     method='POST' if body is not None else 'GET')
+        with urllib.request.urlopen(req, timeout=max(4, min(int(timeout or 10), 15))) as resp:
+            if resp.status != 200:
+                return ''
+            return resp.read().decode('utf-8', errors='ignore')
+    except Exception:
+        return ''
+
 
 def _curl_fetch(url, referer='', timeout=8, post_data=None, extra_headers=None):
     if not _HAS_CURL:
@@ -73,11 +112,11 @@ def clean_title(raw):
     return out
 
 
-def fetch_html(url, referer='', timeout=7, extra_headers=None, attempts=2):
+def fetch_html(url, referer='', timeout=7, extra_headers=None, attempts=2, worker_fallback=True):
     # curl birincil: urllib'in TLS parmak izi CF/WAF'larca yavaslatiliyor
     # (timeout'a kadar bekletip sonra kesiyor), curl 1-3sn'de doner.
     curled = _curl_fetch(url, referer, timeout, extra_headers=extra_headers)
-    if curled and len(curled) > 200:
+    if curled and len(curled) > 200 and not _looks_like_cf_challenge(curled):
         return curled
     for i in range(max(1, attempts)):
         try:
@@ -88,7 +127,10 @@ def fetch_html(url, referer='', timeout=7, extra_headers=None, attempts=2):
                 headers.update(extra_headers)
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return resp.read().decode('utf-8', errors='ignore')
+                direct = resp.read().decode('utf-8', errors='ignore')
+                if direct and not _looks_like_cf_challenge(direct):
+                    return direct
+                break
         except Exception:
             if i < attempts - 1:
                 try:
@@ -96,7 +138,14 @@ def fetch_html(url, referer='', timeout=7, extra_headers=None, attempts=2):
                     _t.sleep(0.3 + 0.3 * i)
                 except Exception:
                     pass
-    return curled if curled else ''
+    if curled and not _looks_like_cf_challenge(curled):
+        return curled
+    # Son basamak: CF Worker gecidi (Vercel IP'si engelliyse, ornegin SZD/WTZ).
+    if worker_fallback:
+        proxied = _worker_fetch(url, referer, timeout)
+        if proxied and len(proxied) > 200 and not _looks_like_cf_challenge(proxied):
+            return proxied
+    return ''
 
 
 def fetch_json(url, referer='', timeout=7, extra_headers=None, method='GET', data=None, attempts=2):
@@ -123,7 +172,7 @@ def fetch_json(url, referer='', timeout=7, extra_headers=None, method='GET', dat
     return None
 
 
-def post_form(url, referer='', form=None, timeout=7, extra_headers=None, session_cookie=None, attempts=2):
+def post_form(url, referer='', form=None, timeout=7, extra_headers=None, session_cookie=None, attempts=2, worker_fallback=True):
     headers = {
         'User-Agent': FULL_UA,
         'Referer': referer,
@@ -160,6 +209,12 @@ def post_form(url, referer='', form=None, timeout=7, extra_headers=None, session
                     _t.sleep(0.3 + 0.3 * i)
                 except Exception:
                     pass
+    # Son basamak: CF Worker gecidi (ajax POST'lar worker'dan da gecer, dogrulandi).
+    if worker_fallback:
+        proxied = _worker_fetch(url, referer, timeout,
+                                post_data=urllib.parse.urlencode(form or {}))
+        if proxied:
+            return proxied
     return ''
 
 

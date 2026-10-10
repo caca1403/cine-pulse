@@ -104,8 +104,52 @@ function logSidecar(msg) {
   } catch (_) {}
 }
 
-function startSidecar() {
-  const entry = path.join(appRoot(), 'server', 'mediaServer.js');
+const { execFile: execFileCb } = require('child_process');
+const { promisify } = require('util');
+
+// Kullanici portla ugrasmasin: 4000 dolu ama /health cevap vermiyorsa,
+// eski CinePulse sidecar zombie'sidir. Sadece kendi mediaServer sureclerimizi
+// oldurup tek seferlik otomatik retry dener. Baska uygulamalarin
+// portlarina dokunulmaz.
+async function tryFreeStalePort() {
+  try {
+    if (await sidecarAlive()) return true; // saglikli ornek var, dokunma
+    const entry = path.join(appRoot(), 'server', 'mediaServer.js');
+    const run = promisify(execFileCb);
+    let pids = [];
+    try {
+      const { stdout } = await run('pgrep', ['-f', entry]);
+      pids = String(stdout || '').split(/\s+/).map(s => s.trim()).filter(Boolean);
+    } catch (_) { pids = []; }
+    // pgrep yoksa (Windows) ya da eslesme yoksa: portu sorgula, CinePulse degilse birak
+    if (pids.length === 0) {
+      try {
+        if (process.platform === 'win32') {
+          const { stdout } = await run('netstat', ['-ano']);
+          logSidecar(`port-probe netstat: ${(stdout || '').split('\n').filter(l => l.includes(':4000')).join(' | ').slice(0, 300)}`);
+        } else {
+          const { stdout } = await run('sh', ['-c', '(ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null) | grep 4000 || true']);
+          logSidecar(`port-probe: ${(stdout || '').trim().slice(0, 300)}`);
+        }
+      } catch (_) {}
+      return false;
+    }
+    const selfPid = String(process.pid);
+    for (const pid of pids.filter(p => p && p !== selfPid)) {
+      try {
+        process.kill(Number(pid), 'SIGTERM');
+        logSidecar(`stale sidecar SIGTERM pid=${pid}`);
+      } catch (_) {}
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+    return await sidecarAlive();
+  } catch (err) {
+    logSidecar(`tryFreeStalePort: ${(err && err.message) || err}`);
+    return false;
+  }
+}
+
+function startSidecar() {  const entry = path.join(appRoot(), 'server', 'mediaServer.js');
   logSidecar(`starting: ${entry}`);
   try {
     const dir = path.dirname(sidecarLogPath());
@@ -749,8 +793,8 @@ ipcMain.handle('cinepulse:get-system-info', async () => {
   };
 });
 
-/* ---- Masaüstü otomatik güncelleme (APK akışıyla aynı version.json) ---- */
-const DESKTOP_UPDATE_URL = 'https://github.com/caca1403/cine-pulse/releases/latest/download/version.json';
+/* ---- Masaüstü otomatik güncelleme (kendi manifestini okur, APK'nınkiyle ezilmez) ---- */
+const DESKTOP_UPDATE_URL = 'https://github.com/caca1403/cine-pulse/releases/latest/download/desktop-version.json';
 let desktopUpdateBusy = false;
 
 function localVersionCode() {
@@ -1015,7 +1059,17 @@ app.whenReady().then(async () => {
     }
   } catch (_) {}
   if (!(await sidecarAlive())) startSidecar();
-  const up = await waitForSidecar();
+  let up = await waitForSidecar();
+  if (!up) {
+    // Otomatik onarim: zombie temizle + bir kez daha dene, kullaniciya sorma.
+    logSidecar('sidecar ilk denemede ayaga kalkmadi, otomatik temizlik deneniyor');
+    try { await tryFreeStalePort(); } catch (_) {}
+    if (!(await sidecarAlive())) {
+      try { if (sidecarProc) { sidecarProc.kill(); sidecarProc = null; } } catch (_) {}
+      startSidecar();
+    }
+    up = await waitForSidecar(20);
+  }
   if (!up) {
     try {
       if (splashWin && !splashWin.isDestroyed()) splashWin.close();
@@ -1023,7 +1077,7 @@ app.whenReady().then(async () => {
     splashWin = null;
     dialog.showErrorBox(
       'CinePulse Servis Baslatilamadi',
-      'Yerel medya servisi (127.0.0.1:4000) acilamadi. Baska bir CinePulse ornegi portu tutuyor olabilir.'
+      `Yerel medya servisi (127.0.0.1:4000) acilamadi. Otomatik onarim denendi ama port hala kapali.\n\nCozum: uygulamayi kapatip tek kopya acin. Detay: ${sidecarLogPath()}`
     );
   }
   createMainWindow();

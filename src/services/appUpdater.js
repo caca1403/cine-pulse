@@ -293,11 +293,13 @@ async function performUpdateCheck({ manual }) {
     if (!data?.version) throw new Error('Sürüm bilgisi eksik');
     lastSuccessfulUpdateCheck = Date.now();
 
-    // Check both version string AND version code - only show update if BOTH are newer
+    // Check both version string AND version code - show update if EITHER is newer.
+    // AND sarti kismi bump'larda bildirimi susturuyordu ( orn. sadece
+    // versionCode artarsa modal cikmiyordu).
     const versionNewer = isNewerVersion(data.version, CURRENT_APP_VERSION);
     const versionCodeNewer = isNewerVersionCode(data.versionCode, CURRENT_VERSION_CODE);
     
-    if (data && versionNewer && versionCodeNewer) {
+    if (data && (versionNewer || versionCodeNewer)) {
       showUpdateModal(data);
       return data;
     } else if (manual) {

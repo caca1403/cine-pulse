@@ -118,6 +118,26 @@ def _api_post_qs(endpoint_qs):
                 return data
     except Exception:
         pass
+    # Son basamak: CF Worker gecidi (Vercel IP'si engelliyse; POST destekli).
+    try:
+        import urllib.request as _urlreq
+        import urllib.parse as _urlparse
+        gateway = ('https://wild-credit-e1ae.cagatayca07.workers.dev?url='
+                   + _urlparse.quote(url, safe=''))
+        wreq = _urlreq.Request(
+            gateway, data=b'',
+            headers={'User-Agent': headers['User-Agent'],
+                     'X-Requested-With': 'XMLHttpRequest',
+                     'Accept': 'application/json'},
+            method='POST')
+        with _urlreq.urlopen(wreq, timeout=12) as wresp:
+            if wresp.status == 200:
+                data = json.loads(wresp.read().decode('utf-8', errors='ignore'))
+                if isinstance(data, dict) and data.get('response'):
+                    return _decrypt(data['response'])
+                return data
+    except Exception:
+        pass
     return None
 
 
@@ -354,10 +374,24 @@ def resolve_episode(title='', original_title='', titles=None, season=1, episode=
                     # HLS her zaman iframe yedegini dover.
                     best[label] = cand
                     continue
-                # Cozum uretilemedi: duvarli host iframe'i gomulemez
+                # Cozum uretilemedi: duvarli host iframe'i sunucudan gomulemez
                 # (X-Frame-Options: SAMEORIGIN -> "baglanmayi reddetti").
-                # Cloudstream de cozemedigi linki yayinlamaz; atliyoruz.
+                # ANCAK oynatma sunucuda degil kullanicinin tarayicisinda olur:
+                # ev/mobil IP + gercek tarayici challenge'i cogu zaman gecer.
+                # Hic kaynak listelememek yerine iframe yedegi birakilir;
+                # HLS varsa o kazanir (asagida best[label] ezmesi korunur).
                 if _is_walled_iframe(iframe):
+                    if label not in best:
+                        best[label] = {
+                            'provider': 'Dizilla',
+                            'streamUrl': iframe,
+                            'rawStreamUrl': iframe,
+                            'embedUrl': f"{BASE}/{slug}" if slug else f"{BASE}/",
+                            'isIframe': True,
+                            'subtitles': [],
+                            'language': label,
+                            'quality': src.get('quality_name') or '1080P',
+                        }
                     continue
                 # Duvari olculmemis host (hotlinger/playru gibi): dilde
                 # henuz HLS yoksa iframe yedegi dilin temsilcisi olur.

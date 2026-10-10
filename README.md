@@ -56,10 +56,10 @@ Kurulum yapmadan bakmak istersen **[siteyi aç](https://cine-pulse-drab.vercel.a
 | Platform | Nasıl başlarsın? | İndirme / açılış |
 | :--- | :--- | :--- |
 | **Web** | Tarayıcıda aç; keşif, arama, listeler ve içerik detaylarından başla. | **[Siteyi aç](https://cine-pulse-drab.vercel.app/)** |
-| **Windows** | EXE kurulum sihirbazını çalıştır; uygulamayı masaüstü veya Başlat menüsünden aç. | [v1.1.52 EXE](https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-Setup-1.1.52.exe) |
-| **Linux / DEB** | Debian / Ubuntu tabanlı sistemlerde DEB paketini paket yöneticinle kur. | [v1.1.52 DEB](https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-1.1.52.deb) |
-| **Linux / AppImage** | Dosyaya çalıştırma izni ver ve aç; sistemine göre AppImage desteği gerekebilir. | [v1.1.52 AppImage](https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-1.1.52.AppImage) |
-| **Android** | `cinepulse.apk` dosyasını indir, Android'in uygulama kurulum adımlarını tamamla. | [v1.1.52 APK](https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/cinepulse.apk) |
+| **Windows** | EXE kurulum sihirbazını çalıştır; uygulamayı masaüstü veya Başlat menüsünden aç. | [v1.1.55 EXE](https://github.com/caca1403/cine-pulse/releases/download/v1.1.55/CinePulse-Setup-1.1.55.exe) |
+| **Linux / DEB** | Debian / Ubuntu tabanlı sistemlerde DEB paketini paket yöneticinle kur. | [v1.1.55 DEB](https://github.com/caca1403/cine-pulse/releases/download/v1.1.55/CinePulse-1.1.55.deb) |
+| **Linux / AppImage** | Dosyaya çalıştırma izni ver ve aç; sistemine göre AppImage desteği gerekebilir. | [v1.1.55 AppImage](https://github.com/caca1403/cine-pulse/releases/download/v1.1.55/CinePulse-1.1.55.AppImage) |
+| **Android** | `cinepulse.apk` dosyasını indir, Android'in uygulama kurulum adımlarını tamamla. | [v1.1.55 APK](https://github.com/caca1403/cine-pulse/releases/download/v1.1.55/cinepulse.apk) |
 
 **Dosyalar doğrudan indirilir; ZIP açman gerekmez.** EXE, DEB, AppImage ve APK sürüm sayfasında bulunur; bu depodaki ana dal uygulamanın kaynak kodunu içerir.
 

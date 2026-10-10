@@ -127,7 +127,7 @@ export async function checkForAppUpdates(options = { manual: false }) {
         return res;
       }
     } catch (_) {}
-    showToast('CinePulse Desktop (v1.1.51) güncel.', 'info');
+    showToast('CinePulse Desktop güncel.', 'info');
   } else {
     showToast('CinePulse Web sürümü her zaman günceldir!', 'info');
   }

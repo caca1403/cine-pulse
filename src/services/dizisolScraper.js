@@ -165,6 +165,7 @@ function getDizisolStreamPriority(url, provider = '') {
 
 function isLocalHost() {
   if (typeof window === 'undefined') return false;
+  try { if (window.Capacitor?.isNativePlatform?.() || window.location?.protocol === 'capacitor:') return false; } catch (_) {}
   const host = window.location?.hostname || '';
   return host === 'localhost' || host === '127.0.0.1';
 }
@@ -173,7 +174,7 @@ function locStreamUrl(p) {
   if (!p || /^https?:\/\//i.test(p)) return p;
   if (typeof window !== 'undefined') {
     const host = window.location?.hostname || '';
-    if (host === 'localhost' || host === '127.0.0.1') return p;
+    if ((host === 'localhost' || host === '127.0.0.1') && !Boolean(window.Capacitor?.isNativePlatform?.()) && window.location?.protocol !== 'capacitor:') return p;
   }
   return apiUrl(p);
 }

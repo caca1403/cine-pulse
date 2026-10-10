@@ -1,5 +1,6 @@
 import { renderIcons } from '../services/icons.js';
 import { renderSiteLogo } from '../components/BrandLogo.js';
+import { getReleaseInfo } from '../services/releaseManifests.js';
 import pkg from '../../package.json';
 import '../styles/showcase.css';
 
@@ -35,12 +36,15 @@ const faqs = [
 ];
 
 export function renderShowcaseView() {
+  // Derleme-anlik yedek: canli manifest gelene kadar gosterilir.
+  // init() calisinca her kart kendi platform manifestinden dogru surume
+  // gecer; tek bump butun kartlari ayni surume tasimaz.
   const release = `${RELEASES}/download/v${pkg.version}`;
   const packages = [
-    ['monitor', 'Windows', 'EXE kurulum sihirbazı', `${release}/CinePulse-Setup-${pkg.version}.exe`, 'EXE İndir'],
-    ['smartphone', 'Android', 'Telefon ve tablet için APK', `${RELEASES}/latest/download/cinepulse.apk`, 'APK İndir'],
-    ['package', 'Linux · DEB', 'Debian / Ubuntu tabanlı sistemler', `${release}/CinePulse-${pkg.version}.deb`, 'DEB İndir'],
-    ['terminal', 'Linux · AppImage', 'Çalıştırma izni ver, uygulamayı aç', `${release}/CinePulse-${pkg.version}.AppImage`, 'AppImage İndir']
+    ['monitor', 'Windows', 'EXE kurulum sihirbazı', `${release}/CinePulse-Setup-${pkg.version}.exe`, 'EXE İndir', 'windows'],
+    ['smartphone', 'Android', 'Telefon ve tablet için APK', `${RELEASES}/latest/download/cinepulse.apk`, 'APK İndir', 'android'],
+    ['package', 'Linux · DEB', 'Debian / Ubuntu tabanlı sistemler', `${release}/CinePulse-${pkg.version}.deb`, 'DEB İndir', 'deb'],
+    ['terminal', 'Linux · AppImage', 'Çalıştırma izni ver, uygulamayı aç', `${release}/CinePulse-${pkg.version}.AppImage`, 'AppImage İndir', 'appimage']
   ];
   return {
     html: `<div class="cp-landing">
@@ -78,7 +82,7 @@ export function renderShowcaseView() {
         </section>
         <section class="cp-landing-start cp-landing-shell" aria-labelledby="landing-start-title"><div><span class="cp-landing-eyebrow">ÜÇ ADIM, KENDİ AKIŞIN</span><h2 id="landing-start-title">Hazırlık yok.<br><span>Keşifle başla.</span></h2>${enter('İçeriklere Git')}</div><ol><li><span>01</span><div><h3>İlgini çekeni bul.</h3><p>Ana sayfadan, aramadan veya kategorilerden ilerle. Diziyse sezon ve bölümünü seç.</p></div></li><li><span>02</span><div><h3>Dilini ve yayınını seç.</h3><p>Dublaj / altyazılı seçenekleri gör. Açılmayan bir bağlantıda diğer alternatife geç.</p></div></li><li><span>03</span><div><h3>Listene ekle, geri dön.</h3><p>Beğendiklerini sakla. Ara verdiğinde kütüphanenden kaldığın yere dön.</p></div></li></ol></section>
         <section class="cp-landing-release cp-landing-shell" aria-labelledby="landing-release-title"><div><span class="cp-landing-eyebrow">v${pkg.version} · BU SÜRÜMÜN ODAĞI</span><h2 id="landing-release-title">Ayrıntılar düzeldi.<br><span>Akış sadeleşti.</span></h2><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notlarını gör ${icon('arrow-up-right')}</a></div><ul><li>${icon('timer')}<div><strong>Daha kontrollü bekleme</strong><p>Kaynak isteklerinde süre sınırları, başarısız yüklemelerde yeniden deneme ve daha açıklayıcı hata dönüşleri.</p></div></li><li>${icon('panel-right')}<div><strong>Daha sade yayın menüsü</strong><p>Tekrarlanan dil ve kalite etiketleri kaldırıldı. Masaüstü yan panelindeki kesilen kaynak listesi düzeltildi.</p></div></li><li>${icon('download')}<div><strong>Güncellemeler tek yerde</strong><p>Windows, Linux ve Android paketleri doğrudan Releases'te. Android sürümleri aynı kalıcı anahtarla imzalanıyor.</p></div></li></ul></section>
-        <section id="landing-downloads" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-downloads-title"><div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">DAHA FAZLASINI İSTEYENLERE</span><h2 id="landing-downloads-title">CinePulse'u<br><span>ekranına taşı.</span></h2><p>İşletim sistemine uygun dosyayı seç. Kurulum paketleri resmî GitHub Releases üzerinden doğrudan indirilir; ZIP açman gerekmez.</p></div><div class="cp-landing-downloads">${packages.map(([symbol,title,detail,url,label])=>`<article>${icon(symbol)}<h3>${title}</h3><p>${detail}</p><a class="cp-landing-button cp-landing-secondary" href="${url}" target="_blank" rel="noopener noreferrer">${label}${icon('arrow-down-to-line')}</a></article>`).join('')}</div><div class="cp-landing-download-footer"><span>Güncel sürüm: <strong>v${pkg.version}</strong> · Android için kalıcı release imzası</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-up-right')}</a></div></section>
+        <section id="landing-downloads" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-downloads-title"><div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">DAHA FAZLASINI İSTEYENLERE</span><h2 id="landing-downloads-title">CinePulse'u<br><span>ekranına taşı.</span></h2><p>İşletim sistemine uygun dosyayı seç. Kurulum paketleri resmî GitHub Releases üzerinden doğrudan indirilir; ZIP açman gerekmez.</p></div><div class="cp-landing-downloads">${packages.map(([symbol,title,detail,url,label,platform])=>`<article data-platform-download="${platform}">${icon(symbol)}<h3>${title} <small class="cp-landing-pkgver" data-pkgver></small></h3><p>${detail}</p><a class="cp-landing-button cp-landing-secondary" href="${url}" target="_blank" rel="noopener noreferrer" data-pkgurl>${label}${icon('arrow-down-to-line')}</a></article>`).join('')}</div><div class="cp-landing-download-footer"><span>Platform sürümleri yukarıdaki kartlarda · Android için kalıcı release imzası</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-up-right')}</a></div></section>
         <section id="landing-faq" class="cp-landing-section cp-landing-shell cp-landing-faq" aria-labelledby="landing-faq-title"><div><span class="cp-landing-eyebrow">AKLINDA KALMASIN</span><h2 id="landing-faq-title">Sık sorulan<br><span>sorular.</span></h2><p>Başlamadan önce neyin nerede çalıştığını bil.</p></div><div class="cp-landing-questions">${faqs.map(([question,answer])=>`<details><summary>${question}${icon('plus')}</summary><p>${answer}</p></details>`).join('')}</div></section>
         <section class="cp-landing-final cp-landing-shell"><span class="cp-landing-eyebrow">ŞİMDİ SIRA SENDE</span><h2>Bu akşamın hikâyesini<br><span>birlikte bulalım.</span></h2><p>Tanıtımı geç, normal CinePulse ekranında keşfe başla.</p>${enter('Siteye Gir ve Keşfet')}<a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Önce uygulamaları görmek istiyorum ${icon('arrow-right')}</a></section>
       </main>
@@ -88,6 +92,28 @@ export function renderShowcaseView() {
       container.querySelectorAll('[data-landing-section]').forEach(button => {
         button.addEventListener('click', () => container.querySelector(`#${button.dataset.landingSection}`)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }));
       });
+      // Canli surumler: her platform kendi manifestinden (APK yukselince
+      // masaustu kartlari etkilenmez).
+      getReleaseInfo({
+        version: pkg.version, versionCode: pkg.versionCode,
+        apkUrl: `${RELEASES}/latest/download/cinepulse.apk`,
+        desktopVersion: pkg.version, desktopVersionCode: pkg.versionCode,
+        windowsUrl: '', debUrl: '', appImageUrl: ''
+      }).then((info) => {
+        if (!container.isConnected) return;
+        const set = (platform, url, ver) => {
+          const card = container.querySelector(`[data-platform-download="${platform}"]`);
+          if (!card) return;
+          const link = card.querySelector('[data-pkgurl]');
+          const tag = card.querySelector('[data-pkgver]');
+          if (link && url) link.href = url;
+          if (tag && ver) tag.textContent = `v${ver}`;
+        };
+        set('android', info.apk.url, info.apk.version);
+        set('windows', info.desktop.windows, info.desktop.version);
+        set('deb', info.desktop.deb, info.desktop.version);
+        set('appimage', info.desktop.appImage, info.desktop.version);
+      }).catch(() => {});
       try {
         if (sessionStorage.getItem('cp_livetv_web_block') === '1') {
           sessionStorage.removeItem('cp_livetv_web_block');

@@ -114,7 +114,7 @@ export async function fetchDiziyouSources({
   // Ozel backend resolver (birincil); basarisizsa klasik akisa dus.
   try {
     const host = typeof window !== 'undefined' ? (window.location?.hostname || '') : '';
-    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    const isLocal = ((host === 'localhost' || host === '127.0.0.1') && !Boolean(window.Capacitor?.isNativePlatform?.()) && window.location?.protocol !== 'capacitor:');
     const qs = new URLSearchParams({
       provider: 'dyu', type: 'tv', title: seriesTitle || title || (titles || [])[0] || '',
       originalTitle: originalTitle || '', season: String(sNum), episode: String(epNum)

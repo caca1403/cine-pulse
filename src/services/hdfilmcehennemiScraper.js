@@ -4,10 +4,10 @@
    Bypasses Cloudflare & SAMEORIGIN without 403 Forbidden errors
    ========================================================================== */
 
-import { apiUrl } from './apiOrigin.js';
+import { apiUrl, isNativeCapacitor } from './apiOrigin.js';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
-const HDFC_BASES = ['https://www.hdfilmcehennemi.nl', 'https://hdfilmcehennemi.mobi'];
+const HDFC_BASES = ['https://www.hdfilmcehennemi.nl', 'https://hdfilmcehennemi.mobi', 'https://www.hdfilmcehennemi.now'];
 const HDFC_DOMAINS_URL = 'https://raw.githubusercontent.com/manitux-app/cs-plugins/main/domains.json';
 const HDFC_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
@@ -21,19 +21,34 @@ function responseText(response) {
 }
 
 async function getOnDevice(url, referer, origin, httpClient = CapacitorHttp, timeoutMs = 8000) {
+  // Native'de WebView UA sart: cf_clearance IP+UA'ya baglidir, masaustu
+  // Chrome UA ile cihazin meydan okuma cozumu gecersiz sayilir.
+  let ua = HDFC_UA;
+  let extraCookie = '';
   try {
+    if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
+      try { ua = navigator.userAgent || HDFC_UA; } catch (_) {}
+      try {
+        const { ensureChallengeCookies } = await import('./platform/androidChallengeSolver.js');
+        extraCookie = await ensureChallengeCookies(origin, { timeoutMs: 20000 });
+      } catch (_) {}
+    }
+  } catch (_) {}
+  try {
+    const headers = {
+      // Match the same browser identity and AJAX headers used by the working
+      // desktop resolver. HDFC rejects otherwise-valid device requests.
+      'User-Agent': ua,
+      'Referer': referer || `${origin}/`,
+      'Origin': origin,
+      'Accept': 'text/html,application/json,application/xhtml+xml,*/*;q=0.8',
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'fetch'
+    };
+    if (extraCookie) headers.Cookie = extraCookie;
     const response = await httpClient.get({
       url,
-      headers: {
-        // Match the same browser identity and AJAX headers used by the working
-        // desktop resolver. HDFC rejects otherwise-valid device requests.
-        'User-Agent': HDFC_UA,
-        'Referer': referer || `${origin}/`,
-        'Origin': origin,
-        'Accept': 'text/html,application/json,application/xhtml+xml,*/*;q=0.8',
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'fetch'
-      },
+      headers,
       responseType: 'text',
       connectTimeout: Math.min(5000, timeoutMs),
       readTimeout: timeoutMs
@@ -145,9 +160,10 @@ export async function fetchHdfilmcehennemiSources({
   try {
     const searchTitle = cleanTitle(query);
     const searchOriginal = cleanTitle(originalTitle);
-    // Localhost'ta vite proxy -> :4000 (guncel backend); canlıda Vercel API.
+    // Localhost'ta vite proxy -> :4000 (guncel backend); canlıda + APK'da Vercel API.
+    // APK'da hostname localhost olsa bile native'tir, relative birakilmaz.
     const host = typeof window !== 'undefined' ? (window.location?.hostname || '') : '';
-    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    const isLocal = (host === 'localhost' || host === '127.0.0.1') && !isNativeCapacitor();
     const loc = (p) => (isLocal ? p : apiUrl(p));
     const endpoint = loc(`/api/hdfc_stream?query=${encodeURIComponent(searchTitle)}&originalTitle=${encodeURIComponent(searchOriginal)}&tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&season=${sNum}&episode=${epNum}&type=${type || (isMovie ? 'movie' : 'tv')}`);
     

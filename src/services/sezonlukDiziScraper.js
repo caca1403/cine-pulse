@@ -3,6 +3,19 @@ import { apiUrl } from './apiOrigin.js';
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
+/** Sayfa-embed URL'leri oynaticiya capali acilir (#embed): capraz-origin
+ * CSS enjekte edilemedigi icin cerceve oyuncu bolumune kaydirilmis baslar.
+ * Cloudstream de korumali ogete dogrudan erisemez; fark oc kernelde degil sunumdadir. */
+export function withEmbedAnchor(pageUrl) {
+  try {
+    if (!pageUrl || typeof pageUrl !== 'string') return pageUrl;
+    if (/#.+/.test(pageUrl)) return pageUrl;
+    return `${pageUrl}#embed`;
+  } catch (_) {
+    return pageUrl;
+  }
+}
+
 function toTurkishSlug(title) {
   if (!title) return '';
   return title
@@ -30,7 +43,7 @@ function buildVerificationSources(pageUrl, sources, season, episode, isDub) {
       }
       page.searchParams.set('cpAlternative', item.id);
       page.searchParams.set('cpLanguage', item.language ?? (isDub ? '0' : '1'));
-      const url = page.href;
+      const url = withEmbedAnchor(page.href);
       const provider = item.provider || 'Player';
       return {
         id: `szd_${item.id}_s${season}e${episode}`,
@@ -40,6 +53,7 @@ function buildVerificationSources(pageUrl, sources, season, episode, isDub) {
         url,
         streamUrl: url,
         isIframe: true,
+        isPageEmbed: true,
         type: 'embed',
         requiresVerification: true,
         isDirectVideo: false,
@@ -56,7 +70,7 @@ async function fetchWithWorkerFallback(targetUrl, options = {}) {
   if (isBrowser) {
     try {
       const host = window.location?.hostname || '';
-      const isLocal = host === 'localhost' || host === '127.0.0.1';
+      const isLocal = ((host === 'localhost' || host === '127.0.0.1') && !Boolean(window.Capacitor?.isNativePlatform?.()) && window.location?.protocol !== 'capacitor:');
       const u = new URL(targetUrl);
       const szdUrl = isLocal ? `/api/szd${u.pathname}${u.search}` : apiUrl(`/api/szd${u.pathname}${u.search}`);
       const res = await fetch(szdUrl, {
@@ -109,7 +123,7 @@ export async function fetchSezonlukDiziEpisodeSources({ titles = [], seriesTitle
   // Ozel backend resolver (birincil); basarisizsa klasik akisa dus.
   try {
     const host = typeof window !== 'undefined' ? (window.location?.hostname || '') : '';
-    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    const isLocal = ((host === 'localhost' || host === '127.0.0.1') && !Boolean(window.Capacitor?.isNativePlatform?.()) && window.location?.protocol !== 'capacitor:');
     const qs = new URLSearchParams({
       provider: 'szd', type: 'tv', title: seriesTitle || (titles || [])[0] || '',
       originalTitle: originalTitle || '', season: String(season || 1), episode: String(episode || 1),

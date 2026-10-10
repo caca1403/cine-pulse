@@ -1898,6 +1898,37 @@ const server = http.createServer(async (req, res) => {
   }));
 });
 
+server.on('error', (err) => {
+  // Kullanici portla ugrasmasin: EADDRINUSE ozel ele alinir.
+  // Saglikli baska ornek varsa sessizce ona birak (main reuse eder);
+  // degilse anlasilir logla cik, main otomatik temizleyip retry eder.
+  if (err && err.code === 'EADDRINUSE') {
+    console.error(`[MediaServer] ❌ Port ${PORT} dolu. /health yoklaniyor...`);
+    const probe = http.get(`http://127.0.0.1:${PORT}/health`, { timeout: 2000 }, (res) => {
+      res.resume();
+      if (res.statusCode === 200) {
+        console.error('[MediaServer] Saglikli baska ornek var, bu kopya kapaniyor (reuse).');
+        process.exit(0);
+      } else {
+        console.error(`[MediaServer] Port dolu ama sagliksiz (HTTP ${res.statusCode}). Zombie olabilir.`);
+        process.exit(3);
+      }
+    });
+    probe.on('error', () => {
+      console.error('[MediaServer] Port dolu ve /health cevap vermiyor (zombie/oldurulmemis surec). Exit 3.');
+      process.exit(3);
+    });
+    probe.on('timeout', () => {
+      try { probe.destroy(); } catch (_) {}
+      console.error('[MediaServer] Port dolu ve /health zaman asimi. Exit 3.');
+      process.exit(3);
+    });
+    return;
+  }
+  console.error('[MediaServer] fatal server error:', err);
+  process.exit(1);
+});
+
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`[MediaServer] ✅ Active on http://127.0.0.1:${PORT}`);
   console.log(`[MediaServer] 🎬 Torrent streaming: http://localhost:${PORT}/torrent/<infoHash>`);

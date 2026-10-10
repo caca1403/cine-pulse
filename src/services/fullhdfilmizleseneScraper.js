@@ -18,7 +18,7 @@ function loc(path) {
   if (!path || /^https?:\/\//i.test(path)) return path;
   if (typeof window !== 'undefined') {
     const host = window.location?.hostname || '';
-    if (host === 'localhost' || host === '127.0.0.1') return path;
+    if ((host === 'localhost' || host === '127.0.0.1') && !Boolean(window.Capacitor?.isNativePlatform?.()) && window.location?.protocol !== 'capacitor:') return path;
   }
   return apiUrl(path);
 }
