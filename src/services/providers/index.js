@@ -6,3 +6,4 @@ import './selcukflix.js';
 import './dizilla.js';
 import './fullhdfilmizlesene.js';
 import './webteizle.js';
+import './filmekseni.js';

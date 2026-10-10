@@ -3,6 +3,7 @@ export const SOURCE_FAMILIES = [
   { alias: 'Atlas', provider: 'Dizisol', prefixes: ['dzs_'], sources: ['DS', 'Dizisol'] },
   { alias: 'Orion', provider: 'HDFilmCehennemi', prefixes: ['hdfc_'], sources: ['CloseLoad', 'Rapidrame', 'HDFilmCehennemi'] },
   { alias: 'Vega', provider: 'SetFilm', prefixes: ['setf_'], sources: ['SetFilm'] },
+  { alias: 'Vela', provider: 'FilmEkseni', prefixes: ['fxs_'], sources: ['FilmEkseni'] },
   { alias: 'Luna', provider: 'SezonlukDizi', prefixes: ['szd_'], sources: ['SZ'] },
   { alias: 'Mira', provider: 'Webteizle', prefixes: ['wtz_', 'webteizle_'], sources: ['WTZ', 'Webteizle'] },
   { alias: 'Nova', provider: 'Sinewix', prefixes: ['snx', 'swx_'], sources: ['SWX', 'Sinewix'] },

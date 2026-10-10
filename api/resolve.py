@@ -9,7 +9,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from providers import dizisol, sinewix, sezonlukdizi, diziyou, canlitv, setfilm, webteizle, selcukflix, fullhdfilmizlesene, dizilla  # noqa: E402
+from providers import dizisol, sinewix, sezonlukdizi, diziyou, canlitv, setfilm, webteizle, selcukflix, fullhdfilmizlesene, dizilla, filmekseni  # noqa: E402
 import hdfc_stream as _hdfc  # noqa: E402
 
 
@@ -77,6 +77,10 @@ def dispatch(provider, args):
         if rtype == 'movie':
             return {'success': False, 'error': 'Dizilla is series-only'}
         return dizilla.resolve_episode(title, original, titles, season, episode)
+    if provider in ('fxs', 'filmekseni', 'film ekseni'):
+        if rtype == 'movie':
+            return filmekseni.resolve_movie(title, original, titles, year=args.get('year'))
+        return filmekseni.resolve_episode(title, original, titles, season, episode, year=args.get('year'))
     return {'success': False, 'error': f'Unknown provider: {provider}'}
 
 

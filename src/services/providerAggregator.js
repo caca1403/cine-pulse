@@ -398,6 +398,7 @@ function getStreamPriorityScore(s) {
 
   // 7. İkincil Yerli Sağlayıcılar (Webteizle, Diziyo, Diziyou, SezonlukDizi, HDF)
   if (id.startsWith('wtz_') || id.startsWith('webteizle_') || raw.includes('webteizle')) return 6;
+  if (id.startsWith('fxs_') || raw.includes('filmekseni') || raw.includes('eksenload')) return 6;
   if (id.startsWith('dzy_') || raw.includes('diziyo')) return 7;
   if (id.startsWith('dyu_') || raw.includes('diziyou')) return 8;
   if (id.startsWith('szd_') || raw.includes('sezonluk')) return 8;
