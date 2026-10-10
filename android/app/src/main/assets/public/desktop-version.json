@@ -1,0 +1,13 @@
+{
+  "version": "1.1.52",
+  "versionCode": 162,
+  "releaseDate": "2026-10-10",
+  "title": "CinePulse v1.1.52",
+  "releaseNotes": "Web tanıtım sayfası eklendi. Masaüstü doğrulama oturumu ve dil çubuğu korunuyor. Kararsız alternatifler gizlendi. Bölümlere izlendi düğmesi eklendi; kurulum yalnızca gerekli masaüstü durumlarında açılıyor.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-Setup-1.1.52.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-1.1.52.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-1.1.52.deb",
+  "mandatory": false
+}

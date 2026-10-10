@@ -922,7 +922,8 @@ export default async function handler(req, res) {
       }
     }
     if (ref) customHeaders['Referer'] = decodeURIComponent(ref);
-    if (targetOrigin) customHeaders['Origin'] = new URL(targetUrl).origin;
+    // Keep the upstream request browser-like. Several media hosts (including
+    // FastPlay) reject an injected Origin header with 403; Referer is enough.
 
     customHeaders['User-Agent'] = req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
     if (req.headers['x-hdf-nonce']) customHeaders['X-HDF-Nonce'] = req.headers['x-hdf-nonce'];

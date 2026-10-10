@@ -75,6 +75,9 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk cinepulse.apk
           ls -la cinepulse.apk
 
+      - name: Preserve desktop update manifest
+        run: cp public/desktop-version.json version.json
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -90,8 +93,8 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: |
             cinepulse.apk
-            public/version.json
-          draft: true
+            version.json
+          draft: false
           prerelease: false
           generate_release_notes: false
           body_path: docs/release-notes.md

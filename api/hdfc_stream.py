@@ -81,13 +81,15 @@ def _mark_working(base):
         pass
 
 
-def _curl_fetch(url, referer, timeout=7):
+def _curl_fetch(url, referer, timeout=7, extra_headers=None):
     if not _HAS_CURL:
         return ''
     try:
         cmd = ['curl', '-4', '-sL', '--compressed',
                '--connect-timeout', '2', '--max-time', str(max(0.1, min(float(timeout or 2), _remaining(), 2))),
                '-A', FULL_UA, '-e', referer or (BASE_URL + '/'), url]
+        for name, value in (extra_headers or {}).items():
+            cmd[-1:-1] = ['-H', f'{name}: {value}']
         out = _subprocess.run(cmd, capture_output=True, timeout=max(0.1, min(float(timeout or 2), _remaining(), 2)) + 0.2)
         if out.returncode != 0:
             return ''
@@ -409,7 +411,10 @@ def fetch_html(url, referer, timeout=7, extra_headers=None, attempts=2):
         return ''
     timeout = max(0.1, min(float(timeout), _remaining(), 2))
     # curl birincil
-    curled = _curl_fetch(url, referer, timeout)
+    request_headers = {'Origin': urllib.parse.urlparse(url).scheme + '://' + urllib.parse.urlparse(url).netloc}
+    if extra_headers:
+        request_headers.update(extra_headers)
+    curled = _curl_fetch(url, referer, timeout, request_headers)
     if curled and len(curled) > 200 and not _is_cf(curled):
         return curled
     for i in range(1):
@@ -417,9 +422,7 @@ def fetch_html(url, referer, timeout=7, extra_headers=None, attempts=2):
             break
         timeout = max(0.1, min(timeout, _remaining()))
         try:
-            headers = {'User-Agent': FULL_UA, 'Referer': referer}
-            if extra_headers:
-                headers.update(extra_headers)
+            headers = {'User-Agent': FULL_UA, 'Referer': referer, **request_headers}
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 data = resp.read().decode('utf-8', errors='ignore')
