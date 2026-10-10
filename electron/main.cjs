@@ -38,6 +38,31 @@ const REAL_UA =
 // Nuvio "native player daha akici" ilkesi: Chromium'un kendi GPU secimini
 // kullan. Agresif flag'ler (ignore-gpu-blocklist vb.) GPU'suz sistemlerde
 // bos gri pencereye yol actigindan bilerek EKLENMEDI.
+// ANCAK GPU dongude cokerse (error 1002) pencere hic acilmaz ("acilmiyor").
+// Asagidaki bekci 3. cokuste otomatik yazilim-render ile yeniden baslar;
+// kullanici bayrakla ugrasmaz.
+const SOFTWARE_GL_FLAG = (() => {
+  try { return process.argv.includes('--cinepulse-software-gl'); } catch (_) { return false; }
+})();
+if (SOFTWARE_GL_FLAG) {
+  try { app.disableHardwareAcceleration(); } catch (_) {}
+}
+let gpuCrashCount = 0;
+try {
+  app.on('child-process-gone', (_e, details) => {
+    try {
+      if (!details || details.type !== 'GPU' || SOFTWARE_GL_FLAG || isQuitting) return;
+      gpuCrashCount += 1;
+      logSidecar(`gpu crash #${gpuCrashCount} reason=${details.reason || 'unknown'}`);
+      if (gpuCrashCount >= 3) {
+        logSidecar('gpu dongusu: yazilim-render ile otomatik yeniden baslatiliyor');
+        isQuitting = true;
+        app.relaunch({ args: process.argv.slice(1).concat(['--cinepulse-software-gl']) });
+        app.quit();
+      }
+    } catch (_) {}
+  });
+} catch (_) {}
 
 // Tek ornek: ikinci tiklamada mevcut pencere one gelir (native davranis).
 const gotLock = app.requestSingleInstanceLock();

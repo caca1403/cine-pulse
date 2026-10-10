@@ -7,7 +7,9 @@
 import { apiUrl, isNativeCapacitor } from './apiOrigin.js';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
-const HDFC_BASES = ['https://www.hdfilmcehennemi.nl', 'https://hdfilmcehennemi.mobi', 'https://www.hdfilmcehennemi.now'];
+const HDFC_BASES = ['https://www.hdfilmcehennemi.nl', 'https://www.hdfilmcehennemi.now'];
+// NOT: hdfilmcehennemi.mobi oynatici hostudur (CloseLoad), bolum sayfasi
+// barindirmaz. Cihaz-fallback sadece dizi sayfasi olan bazlari dener.
 const HDFC_DOMAINS_URL = 'https://raw.githubusercontent.com/manitux-app/cs-plugins/main/domains.json';
 const HDFC_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
