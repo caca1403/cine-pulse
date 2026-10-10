@@ -1,280 +1,258 @@
 /* ==========================================================================
-   CinePulse Studio - DiziBal Scraper (Movies & TV Series Engine)
-   Resolves DiziBal's own AlphaStream player through its public REST API.
+   CinePulse Studio - DiziBal Scraper (PilavyerFlow)
+   Yeni akis (eski /apiolu): /ara/oneri aramasi -> dizi/film sayfasi ->
+   data-pv -> pilavyerplay s.php (Referer kilitli) -> stream.php master.m3u8.
+   Dogrudan CDN yerine cozumlu m3u8 dondurulur; bolum suresi gecerli
+   imzali oynatma baglantisidir.
    ========================================================================== */
 
 import { isStrictMediaTitleMatch } from './mediaMatcher.js';
 import { apiUrl } from './apiOrigin.js';
 
-// Use DiziBal's own player URL. Direct CDN links are short lived and reject
-// requests when the browser/CDN session no longer matches (the production 403).
-async function resolveDizibalPlayer(srcCode) {
+const DZB_BASE = 'https://dizibal.org';
+const PV_BASE = 'https://pilavyerplay.top';
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+function isNative() {
   try {
-    const res = await fetch(`https://dizibal.org/api/stream/embed?code=${encodeURIComponent(srcCode)}&autoplay=1`, {
-      signal: AbortSignal.timeout(6000)
-    });
-    if (!res.ok) return null;
-    const json = await res.json().catch(() => null);
-    if (json?.success && json.embedUrl) return json.embedUrl;
-    return null;
+    return Boolean(window.Capacitor?.isNativePlatform?.());
   } catch (_) {
-    return null;
+    return false;
   }
 }
 
-const DIZIBAL_API_BASE = 'https://dizibal.org/api';
+function isLocalDev() {
+  try {
+    if (typeof window === 'undefined' || isNative()) return false;
+    const host = window.location?.hostname || '';
+    return host === 'localhost' || host === '127.0.0.1';
+  } catch (_) {
+    return false;
+  }
+}
 
-async function fetchDizibal(endpointOrUrl, options = {}) {
-  const isBrowser = typeof window !== 'undefined';
-  const cleanPath = endpointOrUrl.startsWith('/') ? endpointOrUrl : `/${endpointOrUrl}`;
-  const fullUrl = endpointOrUrl.startsWith('http') ? endpointOrUrl : `${DIZIBAL_API_BASE}${cleanPath}`;
-  const timeoutMs = options.timeout || 3500;
-
-  const fetchDirect = async () => {
-    const res = await fetch(fullUrl, {
-      ...options,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-        ...(options.headers || {})
-      },
-      signal: AbortSignal.timeout(timeoutMs)
-    });
-    if (res && res.ok) return res;
-    throw new Error('Direct fetch failed');
-  };
-
-  const fetchProxy = async () => {
-    if (!isBrowser || endpointOrUrl.startsWith('http')) throw new Error('No proxy needed');
-    const proxyUrl = apiUrl(`/api/dzb${cleanPath}`);
-    const res = await fetch(proxyUrl, {
-      ...options,
-      signal: AbortSignal.timeout(timeoutMs)
-    });
-    if (res && res.ok) return res;
-    throw new Error('Proxy fetch failed');
-  };
-
-  if (isBrowser && !endpointOrUrl.startsWith('http')) {
-    try {
-      return await Promise.any([fetchProxy(), fetchDirect()]);
-    } catch (_) {
-      return null;
+/** Dogrudan dene, olmazsa genel proxy (/api/proxy) uzerinden (ref korunur). */
+async function dzbFetchText(url, { referer = '', timeout = 7000 } = {}) {
+  const headers = { 'User-Agent': BROWSER_UA, Accept: 'text/html,application/json,*/*;q=0.8' };
+  if (referer) headers.Referer = referer;
+  try {
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(timeout) });
+    if (res && res.ok) {
+      const text = await res.text().catch(() => '');
+      if (text && text.length > 200) return text;
     }
-  }
-
-  try {
-    return await fetchDirect();
+    throw new Error('direct failed');
   } catch (_) {
-    return null;
-  }
-}
-
-function normalizeTitle(str) {
-  if (!str) return '';
-  return str
-    .toLowerCase()
-    .trim()
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ı/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c')
-    .replace(/[^a-z0-9]/g, '');
-}
-
-function toSlug(str) {
-  if (!str) return '';
-  return str
-    .toLowerCase()
-    .trim()
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ı/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-/**
- * Searches DiziBal series
- */
-export async function searchDizibalSeries(query) {
-  if (!query || typeof query !== 'string' || query.trim().length < 2) return [];
-  try {
-    const res = await fetchDizibal(`/series?search=${encodeURIComponent(query.trim())}`, { timeout: 6500 });
-    if (!res) return [];
-    const data = await res.json().catch(() => null);
-    return data && Array.isArray(data.data) ? data.data : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-/**
- * Searches DiziBal movies
- */
-export async function searchDizibalMovies(query) {
-  if (!query || typeof query !== 'string' || query.trim().length < 2) return [];
-  try {
-    const res = await fetchDizibal(`/movies?search=${encodeURIComponent(query.trim())}`, { timeout: 3500 });
-    if (!res) return [];
-    const data = await res.json().catch(() => null);
-    return data && Array.isArray(data.data) ? data.data : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-/**
- * Fetches Episode sources from DiziBal
- */
-export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, originalTitle, season, episode, isDub = false }) {
-  const sources = [];
-  const sNum = parseInt(season, 10) || 1;
-  const epNum = parseInt(episode, 10) || 1;
-
-  const candidateQueries = new Set();
-  if (Array.isArray(titles)) titles.forEach(t => t && candidateQueries.add(t));
-  if (seriesTitle) candidateQueries.add(seriesTitle);
-  if (originalTitle) candidateQueries.add(originalTitle);
-
-  let matchedSeries = null;
-
-  // Try direct slug check first (e.g. /api/series/stranger-things)
-  for (const q of candidateQueries) {
-    const slug = toSlug(q);
-    if (!slug) continue;
+    if (typeof window === 'undefined') return '';
     try {
-      const res = await fetchDizibal(`/series/${slug}`, { timeout: 5500 });
-      if (res) {
-        const json = await res.json().catch(() => null);
-        const resolvedTitle = json?.data?.title || json?.data?.name || json?.data?.name_tr || json?.data?.name_en || json?.data?.slug || '';
-        if (json && json.success && json.data && json.data._id && isStrictMediaTitleMatch(resolvedTitle, [...candidateQueries])) {
-          matchedSeries = json.data;
-          break;
-        }
+      const proxyUrl = apiUrl(`/api/proxy?url=${encodeURIComponent(url)}${referer ? `&ref=${encodeURIComponent(referer)}` : ''}`);
+      const res = await fetch(isLocalDev() ? `/api/proxy?url=${encodeURIComponent(url)}${referer ? `&ref=${encodeURIComponent(referer)}` : ''}` : proxyUrl, {
+        headers: { Accept: 'text/html,application/json,*/*;q=0.8' },
+        signal: AbortSignal.timeout(timeout)
+      }).catch(() => null);
+      if (res && res.ok) {
+        const text = await res.text().catch(() => '');
+        if (text && text.length > 200) return text;
       }
     } catch (_) {}
+    return '';
   }
+}
 
-  // Fallback: search API
-  if (!matchedSeries) {
-    for (const q of candidateQueries) {
-      const results = await searchDizibalSeries(q);
-      if (results.length > 0) {
-        matchedSeries = results.find(item => {
-          const candidateTitle = item.title || item.name || item.name_tr || item.name_en || item.slug || '';
-          return isStrictMediaTitleMatch(candidateTitle, [...candidateQueries]);
-        });
-        if (matchedSeries) break;
-      }
-    }
-  }
+function cleanQuery(q) {
+  return String(q || '').replace(/\s*\(\d{4}\).*/, '').trim();
+}
 
-  if (!matchedSeries || !matchedSeries._id) return [];
-
-  // Fetch season episodes
+export async function searchDizibal(query, kind = '') {
+  const q = cleanQuery(query);
+  if (q.length < 2) return [];
+  const text = await dzbFetchText(`${DZB_BASE}/ara/oneri?q=${encodeURIComponent(q)}`, {
+    referer: `${DZB_BASE}/`, timeout: 6500
+  });
+  if (!text) return [];
   try {
-    const seasonRes = await fetchDizibal(`/series/${matchedSeries._id}/seasons/${sNum}`, { timeout: 6500 });
-    if (!seasonRes) return [];
-    const seasonJson = await seasonRes.json().catch(() => null);
-    if (!seasonJson || !seasonJson.success || !seasonJson.data || !Array.isArray(seasonJson.data.episodes)) {
-      return [];
-    }
+    const data = JSON.parse(text);
+    const pool = [...(data.movies || []), ...(data.series || [])];
+    return pool
+      .filter((it) => it && it.title && it.url)
+      .filter((it) => !kind || (kind === 'series' ? it.type === 'series' : it.type === 'movie'))
+      .map((it) => ({ title: it.title, url: it.url.startsWith('http') ? it.url : `${DZB_BASE}${it.url}`, type: it.type || kind || '' }));
+  } catch (_) {
+    return [];
+  }
+}
 
-    const ep = seasonJson.data.episodes.find(e => parseInt(e.episode_number, 10) === epNum);
-    if (!ep || !ep.src) return [];
+export async function searchDizibalSeries(query) {
+  return searchDizibal(query, 'series');
+}
 
-    const srcCode = ep.src;
+export async function searchDizibalMovies(query) {
+  return searchDizibal(query, 'movie');
+}
 
-    const playerUrl = await resolveDizibalPlayer(srcCode)
-      || `https://x.ag2m4.cfd/embed-${srcCode}.html?autoplay=1`;
-    if (playerUrl) {
-      sources.push({
-        id: `dzb_player_s${sNum}e${epNum}`,
-        name: isDub ? 'DP DiziBal Player (TR Dublaj)' : 'DP DiziBal Player (TR Altyazı)',
-        displayName: 'DP DiziBal Player',
-        streamUrl: playerUrl,
-        url: playerUrl,
-        subtitles: [],
-        isHls: false,
-        isDirectVideo: false,
-        source: 'DP',
-        badge: '🌐 DiziBal Orijinal Player'
-      });
+function findEpisodeLink(seriesHtml, slugPart, season, episode) {
+  try {
+    const re = new RegExp(`/series/${slugPart}/season/${season}/episode/${episode}(?=["'\\s])`, 'i');
+    const m = seriesHtml.match(re);
+    if (m) return `${DZB_BASE}${m[0]}`;
+    // gevsek: ayni sezon/bolum numarasi tasiyan ilk baglanti
+    const all = [...seriesHtml.matchAll(/\/series\/[a-z0-9-]+\/season\/(\d+)\/episode\/(\d+)/gi)];
+    const hit = all.find((x) => Number(x[1]) === Number(season) && Number(x[2]) === Number(episode));
+    if (hit) return `${DZB_BASE}${hit[0]}`;
+  } catch (_) {}
+  return '';
+}
+
+function findPvSlug(pageHtml) {
+  try {
+    const m = pageHtml.match(/data-pv="([^"]+)"/i);
+    return m ? m[1] : '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function parsePlayerPage(playerHtml) {
+  const out = { streamUrl: '', subtitles: [] };
+  try {
+    const m = playerHtml.match(/["']stream["']\s*:\s*["']([^"']+)["']/i);
+    if (m) out.streamUrl = m[1].replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+    const subRe = /\{[^{}]*"src"\s*:\s*"(https?:[^"]+)"[^{}]*\}/gi;
+    let sm;
+    while ((sm = subRe.exec(playerHtml))) {
+      const chunk = sm[0];
+      if (!/sub\.php/i.test(chunk)) continue;
+      const lang = (/["']lang["']\s*:\s*["']([^"']+)["']/i.exec(chunk) || [])[1] || '';
+      const label = (/["']label["']\s*:\s*["']([^"']+)["']/i.exec(chunk) || [])[1] || lang || 'Altyazı';
+      const src = (/["']src["']\s*:\s*["']([^"']+)["']/i.exec(chunk) || [])[1] || '';
+      if (src && !out.subtitles.some((s) => s.src === src)) {
+        out.subtitles.push({ label, lang, src: src.replace(/\\u0026/g, '&').replace(/\\\//g, '/') });
+      }
     }
   } catch (_) {}
-
-  return sources;
+  return out;
 }
 
-/**
- * Fetches Movie sources from DiziBal
- */
-export async function fetchDizibalMovieSources({ titles = [], title, originalTitle, isDub = false }) {
-  const sources = [];
-  const candidateQueries = new Set();
-  if (Array.isArray(titles)) titles.forEach(t => t && candidateQueries.add(t));
-  if (title) candidateQueries.add(title);
-  if (originalTitle) candidateQueries.add(originalTitle);
+function findPvHost(pageHtml) {
+  try {
+    const m = pageHtml.match(/https:\/\/[a-z0-9.-]*pilavyerplay\.top/i);
+    if (m) return m[0].replace(/\/$/, '');
+  } catch (_) {}
+  return PV_BASE;
+}
 
-  let matchedMovie = null;
+async function resolvePvStream(pvSlug, referer, pageHtml = '') {
+  if (!pvSlug) return { streamUrl: '', subtitles: [] };
+  const host = findPvHost(pageHtml);
+  const playerUrl = `${host}/assets/js/s.php?s=${encodeURIComponent(pvSlug)}`;
+  const playerHtml = await dzbFetchText(playerUrl, { referer: referer || `${DZB_BASE}/`, timeout: 8000 });
+  if (!playerHtml) return { streamUrl: '', subtitles: [], embedUrl: playerUrl };
+  const parsed = parsePlayerPage(playerHtml);
+  return { ...parsed, embedUrl: playerUrl };
+}
 
-  // Direct slug search
-  for (const q of candidateQueries) {
-    const slug = toSlug(q);
-    if (!slug) continue;
+function toProxiedHls(rawStreamUrl) {
+  if (!rawStreamUrl) return '';
+  if (typeof window !== 'undefined' && !isNative()) {
+    const host = window.location?.hostname || '';
+    if (host !== 'localhost' && host !== '127.0.0.1') return apiUrl(`/api/hls_proxy?url=${encodeURIComponent(rawStreamUrl)}&ref=${encodeURIComponent(`${PV_BASE}/`)}`);
+  }
+  if (typeof window === 'undefined' || isLocalDev() || isNative()) {
+    if (isNative()) return apiUrl(`/api/hls_proxy?url=${encodeURIComponent(rawStreamUrl)}&ref=${encodeURIComponent(`${PV_BASE}/`)}`);
+    return `/api/hls_proxy?url=${encodeURIComponent(rawStreamUrl)}&ref=${encodeURIComponent(`${PV_BASE}/`)}`;
+  }
+  return rawStreamUrl;
+}
+
+function matchTitle(itemTitle, candidates) {
+  try {
+    return isStrictMediaTitleMatch(itemTitle || '', candidates);
+  } catch (_) {
+    return false;
+  }
+}
+
+export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, originalTitle, season, episode, isDub = false }) {
+  const sNum = parseInt(season, 10) || 1;
+  const epNum = parseInt(episode, 10) || 1;
+  const queries = [...new Set([...(titles || []), seriesTitle, originalTitle].filter((t) => t && String(t).trim().length > 1))];
+  if (queries.length === 0) return [];
+
+  for (const q of queries.slice(0, 3)) {
+    const results = await searchDizibalSeries(q);
+    const hit = results.find((r) => matchTitle(r.title, queries));
+    if (!hit) continue;
     try {
-      const res = await fetchDizibal(`/movies/${slug}`, { timeout: 3000 });
-      if (res) {
-        const json = await res.json().catch(() => null);
-        const resolvedTitle = json?.data?.title || json?.data?.title_tr || json?.data?.title_en || json?.data?.slug || '';
-        if (json && json.success && json.data && json.data.src && isStrictMediaTitleMatch(resolvedTitle, [...candidateQueries])) {
-          matchedMovie = json.data;
-          break;
-        }
-      }
+      const seriesHtml = await dzbFetchText(`${hit.url}?sezon=${sNum}`, { referer: `${DZB_BASE}/`, timeout: 7000 });
+      if (!seriesHtml) continue;
+      const slugPart = hit.url.split('/series/')[1]?.split('?')[0] || '';
+      const epUrl = findEpisodeLink(seriesHtml, slugPart.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), sNum, epNum);
+      if (!epUrl) continue;
+      const epHtml = await dzbFetchText(epUrl, { referer: hit.url, timeout: 7000 });
+      if (!epHtml) continue;
+      const pv = findPvSlug(epHtml);
+      if (!pv) continue;
+      const { streamUrl, subtitles, embedUrl } = await resolvePvStream(pv, epUrl, epHtml);
+      if (!streamUrl && !embedUrl) continue;
+      const proxied = streamUrl && /\.m3u8/i.test(streamUrl) ? toProxiedHls(streamUrl) : '';
+      const finalUrl = proxied || streamUrl || embedUrl;
+      const isHls = /\.m3u8/i.test(finalUrl);
+      return [{
+        id: `dzb_tv_s${sNum}e${epNum}_${pv.slice(0, 8)}`,
+        name: isDub ? `DP S${sNum}B${epNum} (TR Dublaj)` : `DP S${sNum}B${epNum} (TR Altyazı)`,
+        displayName: `DP S${sNum}B${epNum}`,
+        source: 'Dizibal',
+        url: finalUrl,
+        streamUrl: finalUrl,
+        originalEmbedUrl: embedUrl,
+        quality: '1080p',
+        isHls,
+        isDirectVideo: isHls,
+        isIframe: !isHls,
+        type: isHls ? 'hls' : 'embed',
+        subtitles,
+        getUrl: () => finalUrl
+      }];
     } catch (_) {}
   }
+  return [];
+}
 
-  // Fallback: movies search
-  if (!matchedMovie) {
-    for (const q of candidateQueries) {
-      const results = await searchDizibalMovies(q);
-      if (results.length > 0) {
-        matchedMovie = results.find(item => {
-          const candidateTitle = item.title || item.title_tr || item.title_en || item.slug || '';
-          return isStrictMediaTitleMatch(candidateTitle, [...candidateQueries]);
-        });
-        if (matchedMovie) break;
-      }
-    }
+export async function fetchDizibalMovieSources({ titles = [], title, originalTitle, isDub = false }) {
+  const queries = [...new Set([...(titles || []), title, originalTitle].filter((t) => t && String(t).trim().length > 1))];
+  if (queries.length === 0) return [];
+
+  for (const q of queries.slice(0, 3)) {
+    const results = await searchDizibalMovies(q);
+    const hit = results.find((r) => matchTitle(r.title, queries));
+    if (!hit) continue;
+    try {
+      const pageHtml = await dzbFetchText(hit.url, { referer: `${DZB_BASE}/`, timeout: 7000 });
+      if (!pageHtml) continue;
+      const pv = findPvSlug(pageHtml);
+      if (!pv) continue;
+      const { streamUrl, subtitles, embedUrl } = await resolvePvStream(pv, hit.url, pageHtml);
+      if (!streamUrl && !embedUrl) continue;
+      const proxied = streamUrl && /\.m3u8/i.test(streamUrl) ? toProxiedHls(streamUrl) : '';
+      const finalUrl = proxied || streamUrl || embedUrl;
+      const isHls = /\.m3u8/i.test(finalUrl);
+      return [{
+        id: `dzb_mov_${pv.slice(0, 8)}`,
+        name: isDub ? 'DP Film (TR Dublaj)' : 'DP Film (TR Altyazı)',
+        displayName: 'DP Film',
+        source: 'Dizibal',
+        url: finalUrl,
+        streamUrl: finalUrl,
+        originalEmbedUrl: embedUrl,
+        quality: '1080p',
+        isHls,
+        isDirectVideo: isHls,
+        isIframe: !isHls,
+        type: isHls ? 'hls' : 'embed',
+        subtitles,
+        getUrl: () => finalUrl
+      }];
+    } catch (_) {}
   }
-
-  if (!matchedMovie || !matchedMovie.src) return [];
-
-  const srcCode = matchedMovie.src;
-
-  const playerUrl = await resolveDizibalPlayer(srcCode)
-    || `https://x.ag2m4.cfd/embed-${srcCode}.html?autoplay=1`;
-  if (playerUrl) {
-    sources.push({
-      id: 'dzb_player_movie',
-      name: isDub ? 'DP DiziBal Player (TR Dublaj)' : 'DP DiziBal Player (TR Altyazı)',
-      displayName: 'DP DiziBal Player',
-      streamUrl: playerUrl,
-      url: playerUrl,
-      subtitles: [],
-      isHls: false,
-      isDirectVideo: false,
-      source: 'DP',
-      badge: '🌐 DiziBal Orijinal Player'
-    });
-  }
-
-  return sources;
+  return [];
 }

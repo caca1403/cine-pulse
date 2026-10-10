@@ -116,6 +116,10 @@ export function openProfileModal() {
               <i data-lucide="tv" style="width: 14px; height: 14px; color: #ed1c24;"></i>
               <span>Trakt.tv</span>
             </button>
+            <button class="btn-manage-profiles" id="btn-modal-open-plugins" title="Kaynak Eklentileri">
+              <i data-lucide="puzzle" style="width: 14px; height: 14px; color: #dfff76;"></i>
+              <span>Eklentiler</span>
+            </button>
             <button class="btn-manage-profiles" id="btn-modal-open-backup" title="Yedekleme & Veri Yönetimi">
               <i data-lucide="hard-drive-download" style="width: 14px; height: 14px; color: #38bdf8;"></i>
               <span>Veri & Yedek</span>
@@ -229,6 +233,15 @@ export function openProfileModal() {
       traktBtn.onclick = () => {
         closeProfileModal();
         openTraktModal();
+      };
+    }
+
+    const pluginsBtn = modalContainer.querySelector('#btn-modal-open-plugins');
+    if (pluginsBtn) {
+      pluginsBtn.onclick = async () => {
+        closeProfileModal();
+        const { openPluginsModal } = await import('./PluginsModal.js');
+        openPluginsModal();
       };
     }
 

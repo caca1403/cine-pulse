@@ -78,6 +78,7 @@ export function renderNavbar(currentView = 'home') {
               ${actionTile('sparkles', 'SÉRA', 'Sana özel öneriler', 'href="https://caca1403.github.io/dizionerisistemi/" target="_blank" rel="noopener noreferrer"', '', 'a')}
             </div>
             ${actionTile('bar-chart-3', 'Trakt.tv', 'İzleme geçmişini eşitle', 'id="btn-hub-trakt"', 'cp-trakt')}
+            ${actionTile('puzzle', 'Eklentiler', 'Kaynakları gör ve yönet', 'id="btn-hub-plugins"')}
             ${app ? actionTile('radio', 'Canlı TV', 'Canlı yayınları keşfet', 'href="#livetv"', '', 'a') : ''}
             ${offline ? actionTile('download', 'İndirilenler', 'Çevrimdışı izlemeye devam et', 'href="#downloads"', '', 'a') : ''}
           </div>
@@ -159,6 +160,7 @@ export function attachNavbarEvents() {
   panel?.querySelectorAll('a').forEach(link => link.addEventListener('click', () => setOpen(false), { signal }));
   document.getElementById('btn-hub-random-spin')?.addEventListener('click', () => { setOpen(false); openRandomPickerModal(); }, { signal });
   document.getElementById('btn-hub-trakt')?.addEventListener('click', () => { setOpen(false); openTraktModal(); }, { signal });
+  document.getElementById('btn-hub-plugins')?.addEventListener('click', async () => { setOpen(false); const { openPluginsModal } = await import('./PluginsModal.js'); openPluginsModal(); }, { signal });
   document.querySelectorAll('[data-open-decision-room]').forEach(button => button.addEventListener('click', () => { setOpen(false); openDecisionRoomModal(); }, { signal }));
   document.getElementById('btn-nav-notifications')?.addEventListener('click', openNotificationCenterModal, { signal });
   document.getElementById('btn-nav-profile')?.addEventListener('click', openProfileModal, { signal });

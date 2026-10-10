@@ -38,6 +38,7 @@ import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
 import { fetchDramalarEpisodeSources } from './dramalarScraper.js';
 import './providers/index.js';
 import { getProviders } from './providers/providerRegistry.js';
+import { isPluginEnabled } from './pluginCatalog.js';
 
 // Cache version
 const CACHE_VERSION = 'v43';
@@ -438,6 +439,8 @@ export async function getStreamingServersProgressive({
   const isMovie = (type === 'movie');
   const targetTitle = cleanTitle(seriesTitle || title);
   const cacheKey = `${type}_${tmdbId || targetTitle}_s${season}_e${episode}`;
+  // Eklenti anahtari: kapali eklenti aga hic vurmaz (trafik + sure kazanir).
+  const off = (id) => !isPluginEnabled(id);
 
   const hydrateServers = (list) => {
     if (!Array.isArray(list)) return [];
@@ -571,15 +574,15 @@ export async function getStreamingServersProgressive({
 
     const dramaTasks = [
       // 1. Dramalar.com VIP (Doğrudan kesintisiz CDN 1080p HLS)
-      fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
+      off('dramalar') ? [] : fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
         .then(res => addStreams(res, 'dubbed')).catch(() => []),
-      fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
+      off('dramalar') ? [] : fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
         .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
       // 2. DramaDizilerim VIP (NetShort, FlexTV, DramaBox HLS / Direct Video)
-      fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
+      off('dramadizilerim') ? [] : fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
         .then(res => addStreams(res, 'dubbed')).catch(() => []),
-      fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
+      off('dramadizilerim') ? [] : fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
         .then(res => addStreams(res, 'subtitled')).catch(() => [])
     ];
 
@@ -604,7 +607,7 @@ export async function getStreamingServersProgressive({
     // 0. Registry provider'ları (setf/wtz dahil — asagidaki ayri 8c/8d
     // bloklari kaldirildi, cift cagri yavaslatiyordu)
     ...getProviders()
-      .filter((p) => p.id !== 'hdfc') // hdfc aşağıda özel kategorili ekleniyor
+      .filter((p) => p.id !== 'hdfc' && isPluginEnabled(p.id)) // hdfc aşağıda özel kategorili ekleniyor
       .map((p) => (async () => {
         try {
           const res = await p.fetchSources({ type, tmdbId, imdbId, title: targetTitle, originalTitle, seriesTitle: targetTitle, season, episode });
@@ -615,7 +618,7 @@ export async function getStreamingServersProgressive({
         } catch (_) {}
       })()),
     // 1. RecTV VIP (1080p VIP direct streams)
-    fetchRecTvSources({ type, title: targetTitle, originalTitle, season, episode, year: targetYear })
+    off('tvr') ? [] : fetchRecTvSources({ type, title: targetTitle, originalTitle, season, episode, year: targetYear })
       .then(res => {
         if (!Array.isArray(res) || res.length === 0) return [];
         const dubs = res.filter(s => {
@@ -634,7 +637,7 @@ export async function getStreamingServersProgressive({
       }).catch(() => []),
 
     // 2. Sinewix VIP: one API search/detail request, then split its results.
-    fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, imdbId, isDub: null })
+    off('snx') ? [] : fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, imdbId, isDub: null })
       .then(res => {
         if (!Array.isArray(res) || res.length === 0) return;
         const subs = res.filter(s => s.category === 'subtitled' || (s.badge || '').includes('Altyazı'));
@@ -645,8 +648,8 @@ export async function getStreamingServersProgressive({
 
     // 3. DiziBal's own AlphaStream player (avoids expiring direct-CDN URLs)
     (isMovie
-      ? fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle })
-      : fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode })
+      ? off('dzb') ? [] : fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle })
+      : off('dzb') ? [] : fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode })
     ).then(res => {
       if (!Array.isArray(res) || res.length === 0) return;
       for (const s of res) {
@@ -673,8 +676,8 @@ export async function getStreamingServersProgressive({
 
     // 4. Dizisol (DS 1080p HLS - Instant Dual TR Dub & Sub)
     (isMovie
-      ? fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear })
-      : fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode })
+      ? off('dzs') ? [] : fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear })
+      : off('dzs') ? [] : fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode })
     ).then(res => {
       if (!Array.isArray(res) || res.length === 0) return;
       for (const s of res) {
@@ -700,20 +703,20 @@ export async function getStreamingServersProgressive({
 
     // 5. Diziyo (Direct 1080p HLS)
     isMovie
-      ? fetchDiziyoMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
+      ? off('dzy') ? [] : fetchDiziyoMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : fetchDiziyoEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
+      : off('dzy') ? [] : fetchDiziyoEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
     isMovie
-      ? fetchDiziyoMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
+      ? off('dzy') ? [] : fetchDiziyoMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : fetchDiziyoEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
+      : off('dzy') ? [] : fetchDiziyoEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 6. Diziyou exposes one episode player. Keep it reachable from both tabs;
     // the player itself owns the available audio/subtitle tracks.
-    fetchDiziyouSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+    off('dyu') ? [] : fetchDiziyouSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => {
             if (Array.isArray(res) && res.length > 0) {
               addStreams(res, 'subtitled');
@@ -728,34 +731,34 @@ export async function getStreamingServersProgressive({
       ,
 
     // 7. SezonlukDizi (1080p VIP)
-    fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+    off('szd') ? [] : fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
-    fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+    off('szd') ? [] : fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 8. HDFilmizle Best (Movies)
     isMovie
-      ? fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
+      ? off('hdfb') ? [] : fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : Promise.resolve([]),
 
     isMovie
-      ? fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
+      ? off('hdfb') ? [] : fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
 
     // 8b. FilmEkseni/JetFilm player (movie and series fallback)
     isMovie
-      ? fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })
+      ? off('jet') ? [] : fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
+      : off('jet') ? [] : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
     isMovie
-      ? fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })
+      ? off('jet') ? [] : fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
+      : off('jet') ? [] : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 8c/8d kaldirildi: setf+wtz registry (task 0) uzerinden tek sefer
@@ -764,50 +767,50 @@ export async function getStreamingServersProgressive({
 
     // 9. Kids VIP (Cartoons & Animations - Direct High-Speed)
     !isMovie
-      ? fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+      ? off('kidsvip') ? [] : fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
+      : off('kidsvip') ? [] : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
     !isMovie
-      ? fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+      ? off('kidsvip') ? [] : fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
+      : off('kidsvip') ? [] : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 10. Clean Global VIP Embed: SmashyStream (Filmler ve diziler için, kısa diziler hariç)
-    Promise.resolve(fetchSmashyStreamSources({ type, tmdbId, season, episode }))
+    Promise.resolve(off('smashy') ? [] : fetchSmashyStreamSources({ type, tmdbId, season, episode }))
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 10b. Official LookMovie2.la VIP Player
-    fetchOfficialLookMovieSources({ type, title: targetTitle, originalTitle, season, episode })
+    off('lookmovie') ? [] : fetchOfficialLookMovieSources({ type, title: targetTitle, originalTitle, season, episode })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 11. Anime catalogues
     isAnime
-      ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+      ? off('animecix') ? [] : fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : Promise.resolve([]),
 
     isAnime
-      ? fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+      ? off('animecix') ? [] : fetchAnimecixSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
 
     isAnime
-      ? fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+      ? off('animetr') ? [] : fetchAnimeTrSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : Promise.resolve([]),
 
     // Anizium 4K / 1080p dedicated anime streams
-    fetchAniziumSources({ type, titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
+    off('anizium') ? [] : fetchAniziumSources({ type, titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
       .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
-    fetchAniziumSources({ type, titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
+    off('anizium') ? [] : fetchAniziumSources({ type, titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 12. VIP P2P Streams
-    fetchTorrentStreamSources({ type, tmdbId, season, episode })
+    off('torrent') ? [] : fetchTorrentStreamSources({ type, tmdbId, season, episode })
       .then(res => {
         if (Array.isArray(res) && res.length > 0) {
           addStreams(res, 'subtitled');
@@ -815,7 +818,7 @@ export async function getStreamingServersProgressive({
       }).catch(() => []),
 
     // 13. HDF players — CloseLoad & Rapidrame ayri kaynak (kosullu: basaran player listelenir)
-    fetchHdfilmcehennemiSources({ type, tmdbId, imdbId, title: targetTitle, originalTitle, season, episode })
+    off('hdfc') ? [] : fetchHdfilmcehennemiSources({ type, tmdbId, imdbId, title: targetTitle, originalTitle, season, episode })
       .then(res => {
         if (!Array.isArray(res) || res.length === 0) return [];
         addStreams(res.filter(s => s.category === 'dubbed'), 'dubbed');
@@ -827,22 +830,22 @@ export async function getStreamingServersProgressive({
 
     // 14. DramaDizilerim & Dramalar (Fallback to short drama sources if requested as standard series)
     !isMovie
-      ? fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
+      ? off('dramalar') ? [] : fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : Promise.resolve([]),
 
     !isMovie
-      ? fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
+      ? off('dramalar') ? [] : fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([]),
 
     !isMovie
-      ? fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
+      ? off('dramadizilerim') ? [] : fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : Promise.resolve([]),
 
     !isMovie
-      ? fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
+      ? off('dramadizilerim') ? [] : fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : Promise.resolve([])
   ];
@@ -857,13 +860,13 @@ export async function getStreamingServersProgressive({
 
     const aliasSearches = [
       isMovie
-        ? fetchDizibalMovieSources({ titles: extraTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled'))
-        : fetchDizibalEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')),
+        ? off('dzb') ? [] : fetchDizibalMovieSources({ titles: extraTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled'))
+        : off('dzb') ? [] : fetchDizibalEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')),
       !isMovie
-        ? fetchSezonlukDiziEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).then(res => addStreams(res, 'dubbed'))
+        ? off('szd') ? [] : fetchSezonlukDiziEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).then(res => addStreams(res, 'dubbed'))
         : Promise.resolve([]),
       !isMovie
-        ? fetchSezonlukDiziEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled'))
+        ? off('szd') ? [] : fetchSezonlukDiziEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled'))
         : Promise.resolve([])
     ];
     return Promise.allSettled(aliasSearches);
@@ -874,19 +877,19 @@ export async function getStreamingServersProgressive({
   // player, so probe the opposite endpoint as a fallback too. Empty results
   // are ignored by each scraper and do not delay the rest of the list.
   const crossTypeTasks = isMovie ? [
-    fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => [])
+    off('dzb') ? [] : fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
+    off('dzb') ? [] : fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    off('dzs') ? [] : fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    off('kidsvip') ? [] : fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    off('jet') ? [] : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => [])
   ] : [
-    fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
-    fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => [])
+    off('dzb') ? [] : fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
+    off('dzb') ? [] : fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    off('dzs') ? [] : fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    off('kidsvip') ? [] : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
+    off('kidsvip') ? [] : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    off('hdfb') ? [] : fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    off('jet') ? [] : fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => [])
   ];
 
   await Promise.allSettled([...tasks, ...crossTypeTasks, aliasTask]);
