@@ -6,6 +6,7 @@
 
 import { apiUrl, isNativeCapacitor } from './apiOrigin.js';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { isNativeAndroidApp } from './platformBridge.js';
 
 const HDFC_BASES = ['https://www.hdfilmcehennemi.nl', 'https://www.hdfilmcehennemi.now'];
 // NOT: hdfilmcehennemi.mobi oynatici hostudur (CloseLoad), bolum sayfasi
@@ -23,6 +24,22 @@ function responseText(response) {
 }
 
 async function getOnDevice(url, referer, origin, httpClient = CapacitorHttp, timeoutMs = 8000) {
+  // 1) Yerel WebView cozumleyicisi (Cloudstream WebViewResolver esdegeri):
+  //    CF challenge'i gercek tarayici cozer, HTML + cerez doner. En guclu yol.
+  try {
+    const wv = await import('./platform/androidWebViewResolver.js');
+    if (wv.hasNativeWebViewResolver()) {
+      const hit = await wv.resolvePageInNativeWebView(url, { timeoutMs: Math.max(12000, timeoutMs + 6000) });
+      if (hit && !wv.looksBlocked(hit)) {
+        // JSON yanitlar WebView'de metin olarak durur; ham govdeyi tercih et.
+        const rawText = String(hit.text || '').trim();
+        if (rawText.startsWith('{') || rawText.startsWith('[')) return rawText;
+        return hit.html || rawText || '';
+      }
+    }
+  } catch (_) {}
+
+  // 2) Cerezli CapacitorHttp (challenge gerekmiyorsa veya WebView yoksa).
   // Native'de WebView UA sart: cf_clearance IP+UA'ya baglidir, masaustu
   // Chrome UA ile cihazin meydan okuma cozumu gecersiz sayilir.
   let ua = HDFC_UA;
@@ -162,7 +179,15 @@ export async function fetchHdfilmcehennemiSources({
   try {
     const searchTitle = cleanTitle(query);
     const searchOriginal = cleanTitle(originalTitle);
-    // Localhost'ta vite proxy -> :4000 (guncel backend); canlıda + APK'da Vercel API.
+
+    // Android: cihaz yolu once denenir. Sunucu IP'si engellendigi icin
+    // API cagrisi 11 saniye bosuna gider; WebView cozumleyici dogrudan calisir.
+    if (isNativeAndroidApp()) {
+      const deviceSources = await resolveHdfcEmbedsOnDevice({ title: searchTitle, originalTitle: searchOriginal, season: sNum, episode: epNum, type });
+      if (deviceSources.length > 0) return deviceSources;
+    }
+
+    // Localhost'ta vite proxy -> :4000 (guncel backend); canlıda Vercel API.
     // APK'da hostname localhost olsa bile native'tir, relative birakilmaz.
     const host = typeof window !== 'undefined' ? (window.location?.hostname || '') : '';
     const isLocal = (host === 'localhost' || host === '127.0.0.1') && !isNativeCapacitor();

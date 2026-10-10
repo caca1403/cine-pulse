@@ -20,16 +20,25 @@ import android.webkit.URLUtil;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import org.json.JSONObject;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     private static final int NOTIFICATION_PERMISSION_REQUEST = 4402;
+    private NativePageResolver pageResolver;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         try {
+            pageResolver = new NativePageResolver(this);
+        } catch (Exception ignored) {}
+        try {
             if (this.bridge != null && this.bridge.getWebView() != null) {
                 this.bridge.getWebView().addJavascriptInterface(new DeviceStorageBridge(), "CinePulseNative");
+                // Gizli WebView cozumleyicisi cevabi dogrudan uygulama icine
+                // geri verir: window.__cinepulseWebViewResolve(id, json).
+                this.bridge.getWebView().addJavascriptInterface(new WebViewResolverBridge(), "CinePulseWebView");
                 this.bridge.getWebView().setDownloadListener(new DownloadListener() {
                     @Override
                     public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
@@ -40,6 +49,38 @@ public class MainActivity extends BridgeActivity {
                 });
             }
         } catch (Exception ignored) {}
+    }
+
+    /** Cloudflare'i gercek tarayici ile gecip sayfa HTML'ini dondurur. */
+    public final class WebViewResolverBridge {
+        @JavascriptInterface
+        public boolean isAvailable() {
+            return pageResolver != null;
+        }
+
+        @JavascriptInterface
+        public void resolvePage(String url, int timeoutMs) {
+            final NativePageResolver resolver = pageResolver;
+            if (resolver == null || url == null || url.trim().isEmpty()) return;
+            final String id = resolver.nextId();
+            resolver.resolve(id, url.trim(), timeoutMs, new NativePageResolver.Callback() {
+                @Override
+                public void onResult(final String requestId, final String json) {
+                    try {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (bridge == null || bridge.getWebView() == null) return;
+                                String literal = JSONObject.quote(json == null ? "" : json);
+                                bridge.getWebView().evaluateJavascript(
+                                    "window.__cinepulseWebViewResolve && window.__cinepulseWebViewResolve("
+                                        + JSONObject.quote(requestId) + "," + literal + ");", null);
+                            }
+                        });
+                    } catch (Exception ignored) {}
+                }
+            });
+        }
     }
 
     public final class DeviceStorageBridge {

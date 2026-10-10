@@ -25,7 +25,7 @@ const ALIASES = {
 // id: toplayici anahtari. registry: providerRegistry'deki karsiligi (varsa).
 // kinds: movie+tv / tv / movie / live disinda kisa etiketler.
 export const PLUGIN_DEFS = [
-  { id: 'hdfc', registry: 'hdfc', kinds: ['film', 'dizi'], desc: '1080p, dublaj ve altyazı hatları.', warn: 'Sunucu IP engelli; masaüstü uygulaması ya da cihazın kendi ağı gerekir. Sitede görünmeyebilir.' },
+  { id: 'hdfc', registry: 'hdfc', kinds: ['film', 'dizi'], desc: '1080p, dublaj ve altyazı hatları.', warn: 'Cihazın kendi ağıyla çözülür (gizli tarayıcı penceresi); bulunamazsa bu kaynak listede görünmez.' },
   { id: 'setf', registry: 'setf', kinds: ['film', 'dizi'], desc: 'Özel oynatıcılar, 1080p.' },
   { id: 'slc', registry: 'slc', kinds: ['film', 'dizi'], desc: '1080p HLS, film ve dizi.', warn: 'Duvar arkası hat; gömülü oynatılır, bazı ağlarda takılabilir.' },
   { id: 'dzl', registry: 'dzl', kinds: ['dizi'], desc: '1080p HLS, dizi odaklı.', warn: 'Duvar arkası hat; gömülü oynatılır, bazı ağlarda takılabilir.' },

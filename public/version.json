@@ -1,20 +1,20 @@
 {
-  "version": "1.1.58",
-  "versionCode": 168,
+  "version": "1.1.59",
+  "versionCode": 169,
   "releaseDate": "2026-10-10",
-  "title": "CinePulse v1.1.58",
+  "title": "CinePulse v1.1.59",
   "releaseNotes": "Tum platformlar tek surumde toplandi. Luna/Mira Vercel gecidiyle sitede de listeleniyor. Oynatici cerceveleri sandbox ile kilitlendi. Masaustu yan surum dosyasi ayristi.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/cinepulse.apk",
-  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/CinePulse-Setup-1.1.58.exe",
-  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/CinePulse-1.1.58.AppImage",
-  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/CinePulse-1.1.58.deb",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.59/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.59/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.59/CinePulse-Setup-1.1.59.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.59/CinePulse-1.1.59.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.59/CinePulse-1.1.59.deb",
   "desktop": {
-    "version": "1.1.58",
-    "versionCode": 168,
-    "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/CinePulse-Setup-1.1.58.exe",
-    "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/CinePulse-1.1.58.AppImage",
-    "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.58/CinePulse-1.1.58.deb"
+    "version": "1.1.59",
+    "versionCode": 169,
+    "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.59/CinePulse-Setup-1.1.59.exe",
+    "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.59/CinePulse-1.1.59.AppImage",
+    "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.59/CinePulse-1.1.59.deb"
   },
   "mandatory": false
 }
