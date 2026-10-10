@@ -23,3 +23,10 @@ test('sandbox kacislari kapatir, oynaticicya izin verir', () => {
   assert.doesNotMatch(sb, /allow-top-navigation/);
   assert.doesNotMatch(sb, /allow-downloads/);
 });
+
+test('masaustu sayfa-embed yan sunucu cercevesine doner', async () => {
+  const { desktopFrameUrl } = await import('../src/services/playerFrame.js');
+  const u = desktopFrameUrl('https://sezonlukdizi.cc/breaking-bad/1-sezon-1-bolum.html?cpAlternative=1');
+  assert.equal(u, 'http://127.0.0.1:4000/api/szd/breaking-bad/1-sezon-1-bolum.html?cpAlternative=1&frame=1');
+  assert.equal(desktopFrameUrl('https://four.pichive.online/iframe.php?v=x'), 'https://four.pichive.online/iframe.php?v=x');
+});

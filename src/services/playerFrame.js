@@ -91,3 +91,27 @@ export function isPageEmbed(source) {
     return false;
   }
 }
+
+/**
+ * Masaustu oynatici cerceve URL'i: sayfa yan sunucu uzerinden frame=1 ile
+ * yuklenir (oynatici-alan HTML gomulu, bizim kaynak). Masaustu disi
+ * platformda ham URL doner (capraz-origin enjeksiyon mumkun degil).
+ */
+export function desktopFrameUrl(source, sidecarBase = 'http://127.0.0.1:4000') {
+  try {
+    const raw = (typeof source === 'string' ? source : (source?.streamUrl || source?.url || '')) || '';
+    if (!raw) return raw;
+    let path = '';
+    try {
+      const u = new URL(raw);
+      if (!/sezonlukdizi\.cc$/i.test(u.hostname)) return raw;
+      path = `${u.pathname}${u.search}`;
+    } catch (_) {
+      return raw;
+    }
+    const sep = path.includes('?') ? '&' : '?';
+    return `${sidecarBase}/api/szd${path}${sep}frame=1`;
+  } catch (_) {
+    return typeof source === 'string' ? source : (source?.streamUrl || '');
+  }
+}

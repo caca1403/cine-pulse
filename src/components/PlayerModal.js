@@ -47,8 +47,8 @@ import {
 } from '../services/offlineManager.js';
 import { fetchDizisolEpisodeSources } from '../services/dizisolScraper.js';
 import { apiUrl } from '../services/apiOrigin.js';
-import { frameUrlFor, sandboxFor } from '../services/playerFrame.js';
-import { isNativeAndroidApp, isAppPlatform } from '../services/platformBridge.js';
+import { frameUrlFor, sandboxFor, isPageEmbed, desktopFrameUrl } from '../services/playerFrame.js';
+import { isNativeAndroidApp, isAppPlatform, isDesktopApp } from '../services/platformBridge.js';
 import { appPromoHtml, attachAppPromoEvents } from './AppPromo.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -3182,7 +3182,11 @@ export async function openPlayerModal({
     if (srv.requiresVerification && window.CinePulseDesktop?.openVerificationPlayer) {
       return '<div class="native-verification-placeholder" role="status" style="display:grid;place-items:center;height:100%;color:var(--text-muted)">Doğrulama alanı açılıyor…</div>';
     }
-    const finalIframeUrl = frameUrlFor(getStreamSafeUrl(srv) || srv);
+    let finalIframeUrl = frameUrlFor(getStreamSafeUrl(srv) || srv);
+    // Masaustu: sayfa-embed yan sunucudan oynatici-alan gomulu gelir.
+    try {
+      if (isDesktopApp() && isPageEmbed(srv)) finalIframeUrl = desktopFrameUrl(srv);
+    } catch (_) {}
     const frameSandbox = sandboxFor(finalIframeUrl);
     const iframeName = (srv.displayName || srv.name || 'Kaynak').replace(/[^a-z0-9]/gi, '_');
     return `

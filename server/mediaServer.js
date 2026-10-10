@@ -24,6 +24,7 @@ import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
 import { createRequire } from 'module';
 import { resolveWebteizleStreams } from './webteizleExtractor.js';
+import { isSzdEpisodePath, injectSzdPlayerFrame } from './playerFrameInject.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -942,7 +943,19 @@ const server = http.createServer(async (req, res) => {
         'Access-Control-Allow-Origin': '*'
       };
       if (setCookie) outHeaders['Set-Cookie'] = setCookie;
-      const data = await upstreamRes.text();
+      let data = await upstreamRes.text();
+      // Masaustu oynatici cercevesi: bolum sayfasi frame=1 ile istenirse
+      // oynatici-alan HTML gomulur (bizim kaynak -> tam izolasyon).
+      try {
+        const ct = String(upstreamRes.headers.get('content-type') || '');
+        if (req.method === 'GET' && ct.includes('text/html') && isSzdEpisodePath(subPath)
+            && reqUrl.searchParams.get('frame') === '1' && data && data.length > 500) {
+          data = injectSzdPlayerFrame(data, {
+            alternativeId: reqUrl.searchParams.get('cpAlternative') || '',
+            language: reqUrl.searchParams.get('cpLanguage') || ''
+          });
+        }
+      } catch (_) {}
       res.writeHead(upstreamRes.status, outHeaders);
       res.end(data);
       return;
