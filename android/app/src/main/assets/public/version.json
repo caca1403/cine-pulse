@@ -1,20 +1,20 @@
 {
-  "version": "1.1.60",
-  "versionCode": 170,
+  "version": "1.1.61",
+  "versionCode": 171,
   "releaseDate": "2026-10-11",
-  "title": "CinePulse v1.1.60",
-  "releaseNotes": "DEB/Linux yerel medya servisi kalici duzeltildi (sidecar artik /opt'a yazmiyor). Linux guncellemesi terminal uzerinden kendini tamamliyor, guncelleme bildirimi artik kesmiyor. Canli TV 1600+ kanala cikti: Kral M3U ve Turhan TV eklendi, olu iptv-org ve TVR kaldirildi. MPEG-TS kanallari dogru oynaticiya yonlendiriliyor, olu yayinlar otomatik eleniyor, yedek yayin adresleri deniyor. Kanal adlarindaki HTML kaciriliyor.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/cinepulse.apk",
-  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-Setup-1.1.60.exe",
-  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-1.1.60.AppImage",
-  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-1.1.60.deb",
+  "title": "CinePulse v1.1.61",
+  "releaseNotes": "Yeni film ve dizi kaynaklari eklendi. dizi77: bolum bazli dizi katalogu, gomulu oynatici; Cloudflare engelinde cihazin kendi WebView'i ile cozulur. sinemacc: film katalogu, BASE64 kodlu oynatici adresi cozulup player.filmizle.in acilir. Film M3U kataloglari (Jet Film 3383 film, Film Modu): binlerce dogrudan film dosyasi; #EXTVLCOPT referer ve kullanici-ajani degerleri korunup proxy'ye devredilir, aksi halde cogu baglanti 403 donuyor. Bu M3U dosyalari Canli TV listesine KARIŞTIRILMAZ, film katalogu olarak kullanilir. Tum yeni kaynaklar tests/newSources.test.mjs ile 17 dogrulamadan gecti.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-Setup-1.1.61.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-1.1.61.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-1.1.61.deb",
   "desktop": {
-    "version": "1.1.59",
-    "versionCode": 169,
-    "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-Setup-1.1.60.exe",
-    "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-1.1.60.AppImage",
-    "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-1.1.60.deb"
+    "version": "1.1.61",
+    "versionCode": 171,
+    "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-Setup-1.1.61.exe",
+    "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-1.1.61.AppImage",
+    "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-1.1.61.deb"
   },
   "mandatory": false
 }

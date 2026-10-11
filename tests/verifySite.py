@@ -105,8 +105,9 @@ for name, url in [
             if b[:7] == b"#EXTM3U":
                 return "✓", f"M3U · {b.count(b'#EXTINF')} kanal", ms
             low = b[:6000].lower()
-            if b"just a moment" in low:
-                return "·", "Cloudflare engeli (WebView gerekir)", ms
+            if (b"just a moment" in low or b"attention required" in low
+                    or c == "403" and b"cloudflare" in low):
+                return "·", "Cloudflare engelli → cihaz WebView'i çözer", ms
             return "✓", f"{len(b)} bayt", ms
         return f
     add(name, mk())
