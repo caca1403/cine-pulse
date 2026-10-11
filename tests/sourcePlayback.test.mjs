@@ -62,8 +62,15 @@ ok(vod.length > 0, `"Barbie" için ${vod.length} yayın`);
 ok(vod.length > 0 && oynatilabilir(vod[0]), 'yayın oynatılabilir bir streamUrl taşıyor');
 if (vod[0]) {
   ok(vod[0].streamUrl.includes('/api/hls_proxy'), 'oynatma proxy üzerinden geçiyor');
-  const menzile = await fetch(SIDECAR + vod[0].streamUrl, { redirect: 'manual' }).catch(() => null);
-  ok(!!menzile && menzile.status < 400, `proxy yayını sunuyor (HTTP ${menzile ? menzile.status : 'yok'})`);
+  // Katalog disaridan geliyor ve baglantilarin bir kismi silinmis; bu yuzden
+  // TEK bir dosyaya degil, listeden EN AZ BIRinin sunulmasina bakiliyor.
+  let servis = 0, denenen = 0;
+  for (const s of vod.slice(0, 6)) {
+    denenen++;
+    const r = await fetch(SIDECAR + s.streamUrl, { redirect: 'manual' }).catch(() => null);
+    if (r && r.status < 400) servis++;
+  }
+  ok(servis > 0, `proxy yayını sunuyor (${servis}/${denenen} dosya canlı — katalogda ölü bağlantılar var)`);
 }
 
 console.log('\n═══ Boş/çöp girdi güvenliği ═══');

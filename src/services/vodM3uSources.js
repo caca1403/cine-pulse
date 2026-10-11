@@ -167,28 +167,76 @@ function norm(s) {
     .replace(/[^a-z0-9]+/g, '');
 }
 
-/** Film arar; kaynakta doğrudan yayın adresi döner. */
-export async function searchVodMovie(query) {
+// Başlıktaki yılı ayır: katalogda yıl varsa eşleşmeyi güçlendirir
+// ("Barbie (2023)" ile "Barbie ve Stacie" birbirine karışmasın).
+function yilOf(title) {
+  return (String(title || '').match(/(19|20)\d{2}/) || [null])[0];
+}
+
+/**
+ * Film arar.
+ *
+ * Önceden sadece `includes` bakılıyordu; bu yüzden "Barbie" aramasında
+ * "Barbie: Fındıkkıran Balesinde" ve "Barbie and Stacie to the Rescue"
+ * gibi TAMAMEN FARKLI filmler dönüyordu. Şimdi:
+ *   - birebir aynı ad        → en yüksek puan
+ *   - yıl da tutuyorsa       → güçlü eşleşme
+ *   - sadece kelime içerirse  → düşük puan ve sona atılır
+ */
+export async function searchVodMovie(query, year = null) {
   const q = norm(query);
   if (!q) return [];
   const all = getAllCachedVodItems();
   const pool = all.length ? all : (await Promise.all(VOD_M3U_SOURCES.map((s) => loadVodSource(s.id)))).flat();
-  const hit = pool.filter((it) => norm(it.title).includes(q));
-  return hit.slice(0, 60).map((it) => ({
+
+  const istenenYil = year || yilOf(query);
+  const skorlu = [];
+  for (const it of pool) {
+    const n = norm(it.title);
+    if (!n || !n.includes(q)) continue;
+
+    // Uzun başlıklar genelde BAŞKA filmlerdir: "Barbie" aramasında
+    // "Barbie: Fındıkkıran Balesinde", "Barbie and Stacie to the Rescue"
+    // gibi tamamen alakasız kayıtlar geliyordu. Sorgu adı kadar uzun
+    // olmayan başlıkları eliyoruz.
+    const tolerans = q.length * 1.8 + 10;
+    if (n !== q && n.length > tolerans) continue;
+
+    let puan;
+    if (n === q) puan = 100;
+    else if (n.startsWith(q)) puan = 70;
+    else puan = 40;
+    // Aranan yıl belliyse yalnızca o yılı kabul et; değilse yılı olan
+    // kayıtları öne al (yılsız katalog girdileri geride kalsın).
+    if (istenenYil) {
+      const y = yilOf(it.title);
+      if (y === istenenYil) puan += 60;
+      else if (y) continue;
+      else puan -= 15;
+    } else if (yilOf(it.title)) {
+      puan += 10;
+    }
+    skorlu.push({ it, puan });
+  }
+
+  skorlu.sort((a, b) => b.puan - a.puan);
+  return skorlu.slice(0, 30).map(({ it }) => ({
     id: it.title,
     title: it.title,
     poster: it.logo,
     type: 'movie',
-    year: (it.title.match(/(19|20)\d{2}/) || [null])[0],
+    year: yilOf(it.title),
     _vod: it
   }));
 }
 
 /** Bulunan filmi oynatılabilir yayına çevirir. */
-export async function fetchVodSources({ title = '', titles = [] } = {}) {
+export async function fetchVodSources({ title = '', titles = [], year = null } = {}) {
   const cands = [...new Set([...titles, title].filter(Boolean))];
   for (const c of cands) {
-    const found = await searchVodMovie(c);
+    // Yıl birlikte veriliyorsa aynı yılın kaydı tercih edilir; katalogdaki
+    // benzer adlı farklı filmler elenir.
+    const found = await searchVodMovie(c, year);
     if (found.length) {
       return found.slice(0, 8).map((it, i) => {
         const v = it._vod;

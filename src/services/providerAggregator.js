@@ -767,6 +767,22 @@ export async function getStreamingServersProgressive({
       : off('jet') ? [] : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
+    // 8e. sinemacc (film odakli katalog). Oynatici iframe'i referer sart
+    // oldugu icin calismaz; FirePlayer API'sinden DOGRUDAN HLS alinir.
+    isMovie
+      ? off('sinemacc') ? [] : fetchSinemaccSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : [],
+
+    // 8f. Toplu film M3U kataloglari (Jet Film / Film Modu). Dogrudan dosya
+    // adresleri; #EXTVLCOPT UA/referer degerleri proxy'ye devredilir, yoksa
+    // cogu baglanti 403 donuyor. Yalnizca film.
+    isMovie
+      ? off('vodm3u') ? [] : Promise.all(VOD_M3U_IDS.map((sid) => loadVodSource(sid)))
+          .then(() => fetchVodSources({ titles: candidateTitles, title: targetTitle, year: targetYear }))
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : [],
+
     // 8e. dizi77 (dizi odakli katalog). Yalnizca dizi; film tarafi yok.
     isMovie
       ? []
@@ -902,16 +918,6 @@ export async function getStreamingServersProgressive({
     off('kidsvip') ? [] : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
     off('hdfb') ? [] : fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
     off('jet') ? [] : fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    // sinemacc: film katalogu, BASE64 kodlu gomulu oynatici cozulur.
-    isMovie
-      ? off('sinemacc') ? [] : fetchSinemaccSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : [],
-    // Toplu film M3U kataloglari (Jet Film / Film Modu). Dogrudan dosya
-    // adresleri; #EXTVLCOPT UA/referer degerleri proxy'ye devredilir.
-    off('vodm3u') ? [] : Promise.all(VOD_M3U_IDS.map((sid) => loadVodSource(sid)))
-      .then(() => fetchVodSources({ titles: candidateTitles, title: targetTitle }))
-      .then(res => addStreams(res, 'dubbed')).catch(() => [])
   ];
 
   await Promise.allSettled([...tasks, ...crossTypeTasks, aliasTask]);

@@ -54,7 +54,7 @@ export const PLUGIN_DEFS = [
   { id: 'torrent', kinds: ['film', 'dizi'], desc: 'P2P eşler arası akış.', warn: 'Başlaması eş sayısına bağlıdır; bulamazsa bekler.' },
   { id: 'dizi77', kinds: ['dizi'], desc: 'Bölüm bazlı dizi kataloğu, gömülü oynatıcı.' },
   { id: 'sinemacc', kinds: ['film'], desc: 'Film kataloğu, gömülü oynatıcı.' },
-  { id: 'vodm3u', kinds: ['film'], desc: 'Binlerce film dosyası, doğrudan akış.', warn: 'Dosya bağlantılarıdır; başlarken kısa süre bekleyebilir.' },
+  { id: 'vodm3u', kinds: ['film'], desc: 'Toplu film kataloğu (Jet Film / Film Modu), doğrudan dosya.', warn: 'Bağımlı olduğu dış liste kataloglarında bağlantıların bir kısmı silinmiş; hat açmazsa sıradakine geçilir. Çocuk ağırlıklı bir katalogdur, her film için sonuç vermez.' },
 ];
 
 function aliasOf(def) {
