@@ -418,8 +418,11 @@ const server = http.createServer(async (req, res) => {
   const requestOrigin = req.headers.origin || '*';
   res.setHeader('Access-Control-Allow-Origin', requestOrigin === 'null' ? '*' : requestOrigin);
   res.setHeader('Vary', 'Origin');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, PATCH, OPTIONS');
+  // X-Requested-With: XMLHttpRequest, sinemacc/FirePlayer gibi AJAX uçlarının
+  // JSON döndürmesi için şart; ön kontrolde izin verilmezse tarayıcı isteği
+  // hiç göndermeden engelliyor.
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Authorization, X-Requested-With, X-Proxy-Referer');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
@@ -529,10 +532,30 @@ const server = http.createServer(async (req, res) => {
       if (req.headers['x-hdf-nonce']) customHeaders['X-HDF-Nonce'] = req.headers['x-hdf-nonce'];
       if (req.headers['x-requested-with']) customHeaders['X-Requested-With'] = req.headers['x-requested-with'];
 
+      // POST gövdesi iletilmeli. Bazı kaynakların AJAX uçları (orn. sinemacc
+      // / FirePlayer getVideo) yalnızca POST ile JSON döner; gövde düşerse
+      // HTML sayfası gelir ve çözümleme sessizce boş döner.
+      let body;
+      if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+        body = await new Promise((resolve) => {
+          const chunks = [];
+          req.on('data', (c) => chunks.push(c));
+          req.on('end', () => resolve(Buffer.concat(chunks)));
+          req.on('error', () => resolve(null));
+        });
+        const ct = req.headers['content-type'];
+        if (ct) customHeaders['Content-Type'] = ct;
+        if (!customHeaders['Content-Length']) {
+          customHeaders['Content-Length'] = String(body ? body.length : 0);
+        }
+      }
+
       const upstreamRes = await fetch(decodedTarget, {
-        headers: customHeaders
+        method: req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH' ? req.method : 'GET',
+        headers: customHeaders,
+        body: body && body.length ? body : undefined
       });
-      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, PATCH, OPTIONS');
       const arrayBuf = await upstreamRes.arrayBuffer();
       if (!res.headersSent) {
         res.writeHead(upstreamRes.status, {

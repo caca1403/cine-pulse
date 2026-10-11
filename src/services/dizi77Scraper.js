@@ -202,3 +202,27 @@ export async function fetchDizi77EpisodeSources(seriesUrl, season = 1, episode =
   }
   return [];
 }
+/**
+ * Aggregator giris noktasi: baslik(lar)dan dizi URL'sini bulur, sonra
+ * istenen bolumun oynaticisini getirir. ProviderAggregator bu tek fonksiyonu
+ * cagirir; iki adimi birbirinden bagimsiz tutmak yerine burada birlestirdik
+ * ki cagri noktasi yanlis parametre suresi yuzunden sessizce bos kalmasin.
+ */
+export async function fetchDizi77Sources({ titles = [], title = '', season = 1, episode = 1 } = {}) {
+  const cands = [...new Set([...titles, title].filter((t) => t && String(t).trim().length > 1))];
+  if (!cands.length) return [];
+
+  let match = null;
+  for (const c of cands) {
+    const res = await searchDizi77(c);
+    if (!res.length) continue;
+    const nc = normalize(c);
+    match = res.find((r) => normalize(r.title) === nc)
+      || res.find((r) => normalize(r.title).includes(nc) || nc.includes(normalize(r.title)))
+      || res[0];
+    if (match) break;
+  }
+  if (!match) return [];
+
+  return fetchDizi77EpisodeSources(match.url, season, episode);
+}

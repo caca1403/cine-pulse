@@ -34,6 +34,8 @@ import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
 import { fetchVodSources, loadVodSource } from './vodM3uSources.js';
+import { fetchDizi77Sources } from './dizi77Scraper.js';
+import { fetchSinemaccSources } from './sinemaccScraper.js';
 
 // Film M3U kataloglarının kaynak kimlikleri (tek tek yüklenir, boş olanlar atlanır).
 const VOD_M3U_IDS = ['jetfilm', 'filmmodu', 'filmmakinesi', 'fhdfi'];
@@ -765,6 +767,12 @@ export async function getStreamingServersProgressive({
       : off('jet') ? [] : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
+    // 8e. dizi77 (dizi odakli katalog). Yalnizca dizi; film tarafi yok.
+    isMovie
+      ? []
+      : off('dizi77') ? [] : fetchDizi77Sources({ titles: candidateTitles, title: targetTitle, season, episode })
+          .then(res => addStreams(res, 'dubbed')).catch(() => []),
+
     // 8c/8d kaldirildi: setf+wtz registry (task 0) uzerinden tek sefer
     // cagriliyor; ayri direct cagrilar ayni backend'e 2. kez vurup
     // listeyi yavaslatiyordu (FastPlay/SetPlay/CloseLoad cift yuk).
@@ -894,6 +902,11 @@ export async function getStreamingServersProgressive({
     off('kidsvip') ? [] : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
     off('hdfb') ? [] : fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
     off('jet') ? [] : fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    // sinemacc: film katalogu, BASE64 kodlu gomulu oynatici cozulur.
+    isMovie
+      ? off('sinemacc') ? [] : fetchSinemaccSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : [],
     // Toplu film M3U kataloglari (Jet Film / Film Modu). Dogrudan dosya
     // adresleri; #EXTVLCOPT UA/referer degerleri proxy'ye devredilir.
     off('vodm3u') ? [] : Promise.all(VOD_M3U_IDS.map((sid) => loadVodSource(sid)))

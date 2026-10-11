@@ -47,7 +47,10 @@ if (listS[0]) console.log(`    → "${listS[0].title}" (${listS[0].url})`);
 const srcS = await smc.fetchSinemaccSources({ title: listS[0]?.title || '', titles: [] });
 ok(srcS.length > 0, `oynatıcı çözüldü: ${srcS.length} kaynak`);
 if (srcS[0]) {
-  ok(/^https?:\/\/player\./.test(srcS[0].streamUrl), `base64 çözüldü: ${srcS[0].streamUrl.slice(0, 62)}`);
+  // Oynatici iframe'i calismaz (player.filmizle.in referer sart); FirePlayer
+  // API'sinden dogrudan HLS adresi alinir.
+  ok(srcS[0].isHls === true && srcS[0].streamUrl.includes('/api/hls_proxy'),
+     `dogrudan HLS cozuldu: ${String(srcS[0].rawStreamUrl || '').slice(0, 62)}`);
 }
 
 // ------------------------------------------------- jetfilm / filmmodu M3U
