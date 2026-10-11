@@ -1,6 +1,8 @@
 {
   "version": 2,
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -146,14 +148,6 @@
     {
       "source": "/api/dzs/(.*)",
       "destination": "/api/dzs?path=$1"
-    },
-    {
-      "source": "/api/dzb",
-      "destination": "/api/dzb"
-    },
-    {
-      "source": "/api/dzb/(.*)",
-      "destination": "/api/dzb?path=$1"
     },
     {
       "source": "/api/kvip",
