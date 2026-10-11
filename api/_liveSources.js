@@ -142,7 +142,12 @@ export function isSafeStreamUrl(raw) {
   }
 }
 
-async function fetchText(url, { timeout = 20000, userAgent = BROWSER_UA, extraHeaders = null } = {}) {
+// CF Worker gateway. Vercel'in (AWS) IP'si bazı M3U sağlayıcılarına engelli:
+// izlego.eu Vercel'e 429 döner, aynı liste ev IP'sinden 200 gelir. Worker
+// Cloudflare kenarından çıktığı için engellenmez.
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+
+async function fetchTextOnce(url, { timeout, userAgent, extraHeaders }) {
   const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), timeout) : null;
   try {
@@ -155,6 +160,24 @@ async function fetchText(url, { timeout = 20000, userAgent = BROWSER_UA, extraHe
     return await res.text();
   } finally {
     if (timer) clearTimeout(timer);
+  }
+}
+
+async function fetchText(url, opts = {}) {
+  const o = { timeout: 20000, userAgent: BROWSER_UA, extraHeaders: null, ...opts };
+  try {
+    return await fetchTextOnce(url, o);
+  } catch (hata) {
+    // Doğrudan istek başarısız (429/403/zaman aşımı) → CF Worker ile dene.
+    try {
+      const yedek = await fetchTextOnce(
+        `${CF_WORKER_PROXY}?url=${encodeURIComponent(url)}`,
+        { ...o, userAgent: BROWSER_UA, extraHeaders: null }
+      );
+      if (yedek && yedek.includes('#EXT')) return yedek;
+      if (yedek) return yedek;
+    } catch (_) {}
+    throw hata;
   }
 }
 
