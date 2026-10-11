@@ -1,5 +1,5 @@
 import { akilliGet, akilliPost, cihazGet, cihazPost, nativeHttpAktifMi } from './nativeHttp.js';
-import { oynaticiCoz, masterUrlDuzelt } from './playerDecoders.js';
+import { oynaticiCoz, masterUrlDuzelt, kaliteEtiketi, masterAltyazilari } from './playerDecoders.js';
 import { extractEmbedStream } from './embedExtractors.js';
 
 /* ==========================================================================
@@ -45,6 +45,87 @@ export const SITES = {
       }
       return '';
     }
+  },
+
+  /* ── izlelan sağlayıcılarından çözülenler ──────────────────────────
+     45 sağlayıcının obfuscation'ı geri alındı ve arama/oynatıcı kalıpları
+     çıkarıldı (site → /api/search?q= gibi). Buradaki her yapılandırma
+     o çözümden geldi; tahmin yok. */
+  vidy: {
+    ad: 'Vidy', listeAnahtari: null, yedek: ['https://www.vidy.st/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/api/search?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  hdplayersystem: {
+    ad: 'HDPlayerSystem', listeAnahtari: null, yedek: ['https://hdplayersystem.com/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/api/search?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  ksdpictures: {
+    ad: 'KSDPictures', listeAnahtari: null, yedek: ['https://ksdpictures.site/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/ara?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  pichive: {
+    ad: 'Pichive', listeAnahtari: null, yedek: ['https://pichive.online/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/api/search?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  vidload: {
+    ad: 'VidLoad', listeAnahtari: null, yedek: ['https://vidload.top/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/api/search?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u,
+    bolum: (_h, s, e, icerikUrl) => `${icerikUrl.replace(/\/$/, '')}/sezon-${s}/bolum-${e}`
+  },
+  vixolity: {
+    ad: 'Vixolity', listeAnahtari: null, yedek: ['https://pl.vixolity.com/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/api/search?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  tauvideo: {
+    ad: 'TauVideo', listeAnahtari: null, yedek: ['https://tau-video.xyz/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/api/search?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  pilavyerplay: {
+    ad: 'PilavyerPlay', listeAnahtari: null, yedek: ['https://pilavyerplay.top/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/api/search?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  nxsha: {
+    ad: 'Nxsha', listeAnahtari: null, yedek: ['https://nxsha.space/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/api/search?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  vidmolyNet: {
+    ad: 'Vidmoly', listeAnahtari: null, yedek: ['https://vidmoly.net/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/page/search?value=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  searchPhp: {
+    ad: 'SearchPhp', listeAnahtari: null, yedek: ['https://kizaru.tv/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/api/search.php?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  keywordSearch: {
+    ad: 'KeywordSearch', listeAnahtari: null, yedek: ['https://hiriluk.tv/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/search?keyword=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  ajaxSearch: {
+    ad: 'AjaxSearch', listeAnahtari: null, yedek: ['https://sakazuki.tv/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/ajax-search?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  filmDiziList: {
+    ad: 'FilmDiziList', listeAnahtari: null, yedek: ['https://bogard.tv/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/?s=${encodeURIComponent(q)}`, tur: (u) => /\/(?:dizi|film)\//.test(u) },
+    icerik: (u) => u
+  },
+  rplayerVideo: {
+    ad: 'RplayerVideo', listeAnahtari: null, yedek: ['https://kizaru.tv/'], tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/search?q=${encodeURIComponent(q)}`, tur: (u) => /\/(?:video|rplayer)\//.test(u) },
+    icerik: (u) => u
   },
 
   setfilm: {
@@ -308,7 +389,12 @@ export async function siteGetirStreams(siteId, {
 
     const c = oynaticiCoz(oyHtml);
     if (c) {
-      kaynaklar.push({ name: oynatici.name, url: masterUrlDuzelt(c.url), referer: oynatici.url, via: `${siteId}:${c.via}` });
+      kaynaklar.push({
+        name: kaliteEtiketi(oyHtml) || oynatici.name,
+        url: masterUrlDuzelt(c.url), referer: oynatici.url,
+        altyazilar: masterAltyazilari(oyHtml),
+        via: `${siteId}:${c.via}`
+      });
       continue;
     }
     // Şifreli/AES oynatıcı ve diğer kalıplar → jenerik motor

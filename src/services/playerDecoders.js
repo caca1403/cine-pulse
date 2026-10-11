@@ -284,3 +284,38 @@ export function masterAltyazilari(m3u8Metni) {
   }
   return cikti;
 }
+/**
+ * Yayının kalite etiketini çıkarır: 4K / 2160p / 1080p / 720p / HD / SD
+ *
+ * Üç yerden okur:
+ *   • master.m3u8 içindeki RESOLUTION=1920x1080 ve NAME="1080p"
+ *   • oynatıcı sayfasındaki `class="dl-btn-label"` etiketleri
+ *   • başlıktaki (1080) / [720p] gibi parantez içi notlar
+ *
+ * @returns {string} '4K' | '2K' | '1080p' | '720p' | '480p' | '' (bilinmiyor)
+ */
+export function kaliteEtiketi(html, m3u8Metni = '') {
+  const metin = `${m3u8Metni || ''}\n${html || ''}`;
+  let enIyi = 0;
+  const notEt = (p) => { enIyi = Math.max(enIyi, p); };
+
+  // "1920x1080" / "3840x2160" boyutları
+  for (const m of metin.matchAll(/RESOLUTION=(\d+)x(\d+)/gi)) {
+    notEt(Math.max(+m[1], +m[2]));
+  }
+  for (const m of metin.matchAll(/NAME=["']?(\d{3,4})p/gi)) notEt(+m[1]);
+  for (const m of metin.matchAll(/class=["']dl-btn-label["'][^>]*>\s*(\d{3,4})p/gi)) notEt(+m[1]);
+  // Başlıktaki (1080) / [720p] / 4K notları
+  for (const m of metin.matchAll(/[\(\[]\s*(4K|2160|1440|1080|720|480)\s*[\)\]]/gi)) {
+    notEt(m[1].toUpperCase() === '4K' ? 2160 : +m[1]);
+  }
+  if (/\b(4K|2160p|UHD)\b/i.test(metin)) notEt(2160);
+
+  if (enIyi >= 2000) return '4K';
+  if (enIyi >= 1400) return '2K';
+  if (enIyi >= 1000) return '1080p';
+  if (enIyi >= 700) return '720p';
+  if (enIyi >= 450) return '480p';
+  if (enIyi > 0) return `${enIyi}p`;
+  return '';
+}

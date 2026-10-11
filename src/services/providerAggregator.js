@@ -37,6 +37,35 @@ import { fetchVodSources, loadVodSource } from './vodM3uSources.js';
 import { fetchDizi77Sources } from './dizi77Scraper.js';
 import { fetchDiziBoxSources } from './diziboxScraper.js';
 import { fetchSinemaccSources } from './sinemaccScraper.js';
+import { fetchFilmMakinesiSources } from './filmmakinesiScraper.js';
+import { siteListesi } from './siteProviders.js';
+
+// Coklu site surucusu: her site kendi PLUGIN_DEFS anahtariyla acilip kapaliyor.
+// Arama ucu siteye gore degisiyor (GET/POST/JSON) ama cerceve ayni.
+const SITE_SURUCULERI = [
+  { anahtar: 'hdfc', site: 'hdfilmcehennemi' },
+  { anahtar: 'slc', site: 'selcukflix' },
+  { anahtar: 'setf', site: 'setfilm' },
+  { anahtar: 'fxs', site: 'filmekseni' },
+  // Çözülmüş sağlayıcılardan çıkan aile sunucuları (hepsi aynı API
+  // kalıbını kullanıyor: /api/search?q=). Alan adları değişince
+  // siteProviders.js içindeki yedek adres güncellenir.
+  { anahtar: 'hdfc', site: 'vidy' },
+  { anahtar: 'hdfc', site: 'hdplayersystem' },
+  { anahtar: 'hdfc', site: 'ksdpictures' },
+  { anahtar: 'hdfc', site: 'pichive' },
+  { anahtar: 'hdfc', site: 'vidload' },
+  { anahtar: 'hdfc', site: 'vixolity' },
+  { anahtar: 'hdfc', site: 'tauvideo' },
+  { anahtar: 'hdfc', site: 'pilavyerplay' },
+  { anahtar: 'hdfc', site: 'nxsha' },
+  { anahtar: 'hdfc', site: 'vidmolyNet' },
+  { anahtar: 'hdfc', site: 'searchPhp' },
+  { anahtar: 'hdfc', site: 'keywordSearch' },
+  { anahtar: 'hdfc', site: 'ajaxSearch' },
+  { anahtar: 'hdfc', site: 'filmDiziList' },
+  { anahtar: 'hdfc', site: 'rplayerVideo' }
+];
 
 // Film M3U kataloglarının kaynak kimlikleri (tek tek yüklenir, boş olanlar atlanır).
 const VOD_M3U_IDS = ['jetfilm', 'filmmodu', 'filmmakinesi', 'fhdfi'];
@@ -790,6 +819,25 @@ export async function getStreamingServersProgressive({
           .then(() => fetchVodSources({ titles: candidateTitles, title: targetTitle, year: targetYear }))
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : [],
+
+    // 8g. Film Makinesi (film + dizi). siteurl.txt'ten guncel alan adi,
+    // IMDb ID ile arama; oynatici sifreli olabilir, genel cozucu devreye girer.
+    off('fm') ? []
+      : fetchFilmMakinesiSources({
+          titles: candidateTitles, title: targetTitle,
+          tmdbId: String(tmdbId || '').replace(/^[a-z]{2,4}_/, ''), imdbId,
+          mediaType: isMovie ? 'movie' : 'tv', season, episode
+        }).then(res => addStreams(res, isMovie ? 'dubbed' : 'dubbed')).catch(() => []),
+
+    // 8h. Coklu site surucusu (HDFilmCehennemi / SelcukFlix / SetFilm /
+    // FilmEkseni). Her biri kendi eklenti anahtariyla kontrol edilir.
+    Promise.all(SITE_SURUCULERI.map(({ anahtar, site }) => (
+      off(anahtar) ? [] : siteListesi(site, {
+        title: targetTitle, imdbId,
+        tmdbId: String(tmdbId || '').replace(/^[a-z]{2,4}_/, ''),
+        mediaType: isMovie ? 'movie' : 'tv', season, episode
+      })
+    ))).then(heps => heps.flat().reduce((t, x) => t.concat(addStreams(x, isMovie ? 'dubbed' : 'dubbed')), [])).catch(() => []),
 
     // 8e. dizi77 (dizi odakli katalog). Yalnizca dizi; film tarafi yok.
     isMovie

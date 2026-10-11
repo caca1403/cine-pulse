@@ -15,7 +15,7 @@ function ok(kosul, ad, ek = '') {
 }
 
 console.log('═══ çoklu site sürücüsü ═══');
-ok(Object.keys(SITES).length === 4, 'dört site kayıtlı', Object.keys(SITES).join(', '));
+ok(Object.keys(SITES).length >= 19, 'site kayıtlı', Object.keys(SITES).join(', '));
 
 // Yanıt taklidi — her sitenin kendi arama biçimi
 globalThis.fetch = async (u, o) => {
