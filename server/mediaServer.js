@@ -1989,20 +1989,35 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Fallback
-  res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({
-    status: 'ok',
-    name: 'CinePulse Autonomous Media Server',
-    webtorrent: !!wtClient,
-    endpoints: {
-      '/torrent/:infoHash': 'Stream torrent as HTTP video',
-      '/torrent-check/:infoHash': 'Check torrent status',
-      '/health': 'Health check',
-      '/api/list': 'List local videos',
-      '/stream/:filename': 'Stream local files'
-    }
-  }));
+  // ============ Servis Dizini (yalnızca kök yollar) ============
+  // Bilinmeyen her yola 200 + sahte "ok" gövdesi dönmek hatayı gizliyordu:
+  // epgService /api/epg isteyince 200 alıyor, "data.channels" olmadığı için
+  // sessizce boş kalıyor ve /epg-data.json yedeğine DÜŞMÜYORDU (yedek yalnızca
+  // !res.ok'da tetikleniyor). fanartService de boşuna istek atıyordu.
+  // Doğru davranış: bilinmeyen yol -> 404.
+  if (reqUrl.pathname === '/' || reqUrl.pathname === '/api' || reqUrl.pathname === '/api/') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'ok',
+      name: 'CinePulse Autonomous Media Server',
+      webtorrent: !!wtClient,
+      endpoints: {
+        '/torrent/:infoHash': 'Stream torrent as HTTP video',
+        '/torrent-check/:infoHash': 'Check torrent download status',
+        '/health': 'Health check',
+        '/api/list': 'List local videos',
+        '/stream/:filename': 'Stream local files',
+        '/api/hls_proxy': 'HLS/MPEG-TS proxy (?url=&ref=&ua=&live=1)',
+        '/api/live_sources': 'Canli TV kaynak listesi (?src=kral|turhan|all)',
+        '/api/proxy': 'Genel amacli upstream proxy'
+      }
+    }));
+    return;
+  }
+
+  // Bilinmeyen yol -> 404 (istemcinin yedek zincirini çalıştırması için şart)
+  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'Not found', path: reqUrl.pathname }));
 });
 
 server.on('error', (err) => {

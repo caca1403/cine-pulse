@@ -4,6 +4,7 @@ Local:   python3 api/resolve.py <provider> <title> <originalTitle> <season> <epi
 """
 import json
 import os
+import signal
 import sys
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
@@ -84,6 +85,49 @@ def dispatch(provider, args):
     return {'success': False, 'error': f'Unknown provider: {provider}'}
 
 
+class ResolveTimeout(BaseException):
+    # BILINCLI OLARAK BaseException: saglayicilarda onlarca "except Exception"
+    # bloğu var (base.py'de 17 tane). Exception'dan türetilirse zaman aşımı
+    # o bloklarda yutulur ve çözümleme 25-50 saniye daha çalışmaya devam eder.
+    # BaseException türevleri except Exception tarafından yakalanmaz.
+    pass
+
+
+# Sistemik süre bütçesi: saglayicilar kendi iclerinde birden fazla SIRALI
+# istek atiyor (orn. diziyou 12 aday yol, her biri fetch_html ile ~14sn).
+# Upstream yavasladiginda/aralandiginda tek bir cozumleme 25-96 saniyeye
+# cikabiliyor ve arayuz kilitleniyordu. SIGALRM ile butun dispatch'e
+# tavan koyuyoruz: asilirsa saglayiciya "zaman asimi" doner, ana akis devam eder.
+RESOLVE_BUDGET_SEC = float(os.environ.get('CINEPULSE_RESOLVE_BUDGET', '22'))
+
+
+def _budget_alarm(signum, frame):
+    raise ResolveTimeout()
+
+
+def dispatch_with_budget(provider, args, budget=RESOLVE_BUDGET_SEC):
+    if not hasattr(signal, 'SIGALRM'):          # Windows: signals yok
+        return dispatch(provider, args)
+    prev = None
+    try:
+        prev = signal.signal(signal.SIGALRM, _budget_alarm)
+        signal.alarm(max(1, int(budget)))
+    except (ValueError, OSError):
+        # Ana thread disinda (orn. Vercel worker) alarm kurulamaz -> normal yol
+        return dispatch(provider, args)
+    try:
+        return dispatch(provider, args)
+    except ResolveTimeout:
+        return {'success': False, 'error': 'timeout', 'budget': budget}
+    finally:
+        try:
+            signal.alarm(0)
+            if prev is not None:
+                signal.signal(signal.SIGALRM, prev)
+        except (ValueError, OSError):
+            pass
+
+
 class handler(BaseHTTPRequestHandler):
     def _send(self, payload):
         ok = bool(payload.get('success'))
@@ -116,7 +160,7 @@ class handler(BaseHTTPRequestHandler):
             'year': g('year') or None,
         }
         try:
-            self._send(dispatch(g('provider'), args))
+            self._send(dispatch_with_budget(g('provider'), args))
         except Exception as e:
             self._send({'success': False, 'error': str(e)[:200]})
 
@@ -150,7 +194,9 @@ def main():
         'titles': env_titles if isinstance(env_titles, list) else [],
     }
     try:
-        print(json.dumps(dispatch(sys.argv[1], args)))
+        # NOT: Bütçe sarmalayıcısı şart — CLI yolu masaüstü sidecar'ın kullandığı
+        # yol; doğrudan dispatch() çağırmak 25+ saniyelik kilitlenmeye yol açıyordu.
+        print(json.dumps(dispatch_with_budget(sys.argv[1], args)))
     except Exception as e:
         print(json.dumps({'success': False, 'error': str(e)[:200]}))
 

@@ -150,27 +150,43 @@ export async function fetchLiveEpg(force = false) {
   isFetching = true;
   try {
     // 1. Try Vercel Serverless / Local Dev API: /api/epg
-    let res = null;
+    // Not: Yedek zinciri yalnızca !res.ok'a bakmamalı. Bazı uçlar 200 döner
+    // ama beklenen şekli taşımaz (ör. yanlış origin'in catch-all gövdesi);
+    // o durumda "channels" yoksa sessizce boş EPG kalmak yerine statik
+    // tohum dosyasına düşülmeli.
+    let liveSchedulesFromApi = null;
     try {
-      res = await fetch('/api/epg');
+      const res = await fetch('/api/epg');
+      if (res && res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data && data.channels && Object.keys(data.channels).length > 0) {
+          liveSchedulesFromApi = data.channels;
+        }
+      }
     } catch (netErr) {
       console.warn('[EPG] /api/epg fetch failed, falling back to static seed:', netErr);
     }
 
     // 2. Fallback to /epg-data.json
-    if (!res || !res.ok) {
-      res = await fetch('/epg-data.json');
+    let channels = liveSchedulesFromApi;
+    if (!channels) {
+      try {
+        const res = await fetch('/epg-data.json');
+        if (res && res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && data.channels && Object.keys(data.channels).length > 0) {
+            channels = data.channels;
+          }
+        }
+      } catch (_) {}
     }
 
-    if (res && res.ok) {
-      const data = await res.json();
-      if (data && data.channels && Object.keys(data.channels).length > 0) {
-        liveSchedules = data.channels;
-        lastFetchTime = now;
-        saveLocalCache(data.channels);
-        window.dispatchEvent(new CustomEvent('epg-updated', { detail: { count: Object.keys(data.channels).length } }));
-        console.log(`[EPG] Live TV schedules loaded successfully for ${Object.keys(data.channels).length} channels.`);
-      }
+    if (channels && Object.keys(channels).length > 0) {
+      liveSchedules = channels;
+      lastFetchTime = now;
+      saveLocalCache(channels);
+      window.dispatchEvent(new CustomEvent('epg-updated', { detail: { count: Object.keys(channels).length } }));
+      console.log(`[EPG] Live TV schedules loaded successfully for ${Object.keys(channels).length} channels.`);
     }
   } catch (err) {
     console.error('[EPG] Error fetching live schedule:', err);

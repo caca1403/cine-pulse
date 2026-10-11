@@ -30,7 +30,14 @@ export default async function handler(req, res) {
   if (!type || !/^\d+$/.test(id)) return res.status(400).json({ error: 'Invalid media' });
 
   const apiKey = process.env.FANART_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: 'Fanart API key is not configured' });
+  if (!apiKey) {
+    // FANART_API_KEY tanımlı değil. 503 dönmek çağıran tarafta "hata" gibi
+    // görünüyor ve yedek zincirini bozuyor; oysa fanart.tv görseli opsiyonel
+    // bir zenginlik — fanartService önce TMDB CDN'ini deniyor, bu uç sadece
+    // son çare. Anahtar yoksa sessizce "görsel yok" de.
+    res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=86400');
+    return res.status(200).json({ image: null, logo: null, configured: false });
+  }
 
   try {
     let fanartId = id;
