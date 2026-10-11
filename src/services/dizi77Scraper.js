@@ -13,6 +13,11 @@
 
 const BASE = 'https://dizi77.life';
 
+// Jetfilm kaynaginda kullanilan CF Worker gateway. Datacenter IP'lerinden
+// cikan istekleri atlayarak sitenin CF engelini gecir (canli dogrulandi:
+// dizi77 /diziler uzerinden 85677 bayt, 21 dizi linki, engel imzasi yok).
+const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+
 function proxyUrl(url, ref) {
   try {
     const r = `${new URL(url).origin}/`;
@@ -22,12 +27,18 @@ function proxyUrl(url, ref) {
   }
 }
 
+// Engel sayfasi mi, yoksa gercek icerik mi? Yanit 200 olsa bile CF
+// "Attention Required" HTML'i donebiliyor; boyle bir govde kabul edilmez.
+function isBlockedBody(body) {
+  if (!body || body.length < 2000) return true;
+  const low = body.slice(0, 4000).toLowerCase();
+  return low.includes('attention required') || low.includes('just a moment')
+      || low.includes('cf-browser-verification') || low.includes('enable javascript and cookies');
+}
+
 async function getHtml(url, timeout = 12000, referer = '') {
-  // ── Cloudflare-first çözümleme ────────────────────────────────────────
-  // dizi77.life, Vercel/datacenter IP'lerine "Attention Required" (403)
-  // döndürüyor; ev/cihaz IP'sine 200. Bu yüzden önce CIHAZIN KENDİ
-  // WebView'i denenir (cf_clearance cihazın ağından alınır) — Orion/hdfc
-  // deseni. WebView yoksa ya da engel görünürse normal proxy'ye düşülür.
+  // ── 1) CIHAZIN KENDI WebView'i (cf_clearance cihazin agindan alinir) ──
+  // Orion/hdfc deseni. Android ve masaustunde en guclu yol.
   try {
     const wv = await import('./platform/androidWebViewResolver.js');
     if (wv.hasNativeWebViewResolver()) {
@@ -37,11 +48,25 @@ async function getHtml(url, timeout = 12000, referer = '') {
       if (hit && !wv.looksBlocked(hit)) {
         const raw = String(hit.text || '').trim();
         const body = (raw.startsWith('{') || raw.startsWith('[')) ? raw : (hit.html || raw);
-        if (body && body.length > 2000) return body;
+        if (body && !isBlockedBody(body)) return body;
       }
     }
   } catch (_) {}
 
+  // ── 2) CF Worker gateway ──────────────────────────────────────────────
+  // Web sürümünde çalışır: istek Cloudflare ağı üzerinden gittiği için
+  // datacenter IP engeli devreye girmiyor.
+  try {
+    const res = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(url)}`, {
+      signal: AbortSignal.timeout(Math.max(9000, timeout))
+    }).catch(() => null);
+    if (res && res.ok) {
+      const body = await res.text();
+      if (!isBlockedBody(body)) return body;
+    }
+  } catch (_) {}
+
+  // ── 3) Uygulama proxy'si (Vercel / yerel sidecar) ──────────────────────
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeout);
   try {
@@ -51,12 +76,7 @@ async function getHtml(url, timeout = 12000, referer = '') {
     });
     if (!res.ok) return '';
     const body = await res.text();
-    // Engel sayfası HTML'i dönebilir; kullanıcı sayfası olamayacak kadar kısa
-    // ya da CF imzası taşıyorsa reddet.
-    if (body.length < 2000) return '';
-    const low = body.slice(0, 4000).toLowerCase();
-    if (low.includes('attention required') || low.includes('just a moment')) return '';
-    return body;
+    return isBlockedBody(body) ? '' : body;
   } catch (_) {
     return '';
   } finally {
