@@ -810,7 +810,10 @@ export default async function handler(req, res) {
     const pathParam = urlObj.searchParams.get('path');
     const subPath = pathParam ? (pathParam.startsWith('/') ? pathParam : '/' + pathParam) : pathname.replace(/^\/api\/dzb/, '');
     const cleanSearch = search ? search.replace(/[?&]path=[^&]*/g, '').replace(/^&/, '?') : '';
-    targetUrl = `https://dizibal.org/api${subPath}${cleanSearch}`;
+    // DIZIBAL: buraya '/api' oneki EKLENMEZ. Gercek uclar kok altindadir
+    // (/ara/oneri?q=... -> 200 JSON). '/api/ara/oneri' 404 doner ve bu hatta
+    // route'u tamamen ise yaramaz hale getiriyordu.
+    targetUrl = `https://dizibal.org${subPath}${cleanSearch}`;
     customHeaders['Referer'] = 'https://dizibal.org/';
     customHeaders['Origin'] = 'https://dizibal.org';
   } else if (pathname.startsWith('/api/dzyo')) {
