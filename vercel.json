@@ -150,6 +150,10 @@
       "destination": "/api/dzs?path=$1"
     },
     {
+      "source": "/api/dzb/(.*)",
+      "destination": "/api/dzb?path=$1"
+    },
+    {
       "source": "/api/kvip",
       "destination": "/api/kvip"
     },
