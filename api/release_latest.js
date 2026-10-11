@@ -67,6 +67,15 @@ export default async function handler(req, res) {
     const deb = bul(/\.deb$/i) || `${taban}/CinePulse-${surum}.deb`;
     const appImage = bul(/\.AppImage$/i) || `${taban}/CinePulse-${surum}.AppImage`;
 
+    // SÜRÜM KODU BURADA UYDURULMAZ.
+    // APK'nin gerçek versionCode'u (build.gradle) ile surum dizesinden
+    // hesaplanan deger ayni sey degil: 1.1.64 -> 1064000, gercek kod 174.
+    // Uydurulmus kod her zaman daha buyuk cikiyor ve uygulama kurulu
+    // surumu guncellemis olsa bile "1.1.64'e guncelle" bildirimi atmaya
+    // devam ediyordu. Bu yuzden yalnizca depodaki dosyadan okunur.
+    const statik = await yerelSurumler();
+    const versionCode = Number(statik?.versionCode) || 0;
+
     // Sürüm düşüşü (rollback) olmasın: depodaki dosya daha yeniyse onu koru.
     const yerel = await yerelSurumler();
     if (yerel?.version && surumKarsilastir(yerel.version, surum) > 0) {
@@ -78,7 +87,7 @@ export default async function handler(req, res) {
     const veri = {
       version: surum,
       tag: etiket,
-      versionCode: surumSayilari(surum).reduce((a, b) => a * 1000 + b, 0),
+      versionCode,
       title: rel.name || `CinePulse v${surum}`,
       releaseDate: rel.published_at ? String(rel.published_at).slice(0, 10) : '',
       releaseNotes: rel.body || '',
@@ -90,7 +99,7 @@ export default async function handler(req, res) {
       linuxAppImageUrl: appImage,
       desktop: {
         version: surum,
-        versionCode: surumSayilari(surum).reduce((a, b) => a * 1000 + b, 0),
+        versionCode,
         windowsSetupUrl: exe,
         linuxDebUrl: deb,
         linuxAppImageUrl: appImage
