@@ -1,0 +1,7 @@
+{
+  "source": "izlego.eu",
+  "url": "https://izlego.eu/m3u_app/get.php?username=grup&password=bizimtv&type=m3u_plus&output=m3u8",
+  "channels": 231,
+  "refreshedAt": "2026-10-11T19:57:37.962292Z",
+  "note": "izlego.eu Vercel/datacenter IP'lerine 429 donuyor. Bu dosya ev IP'sinden cekilip repoya konulur; API once bu dosyayi, sonra canli URL'yi dener."
+}

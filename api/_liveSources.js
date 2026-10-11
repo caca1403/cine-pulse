@@ -361,8 +361,24 @@ export function parseIzlegoChannels(text) {
   return channels;
 }
 
+// izlego.eu, Vercel/datacenter IP'lerine 429 döner (aynı liste ev IP'sinden
+// 200 ile gelir). Bu yüzden iki yol deniyoruz:
+//   1) Repodaki anlık görüntü (api/data/izlego.m3u) — ev IP'sinden çekildi
+//   2) Canlı URL + CF Worker
+// Anlık görüntü tazelendiğinde ilk yol kendiliğinden güncellenir.
+const IZLOGO_SNAPSHOT =
+  'https://raw.githubusercontent.com/caca1403/cine-pulse/main/api/data/izlego.m3u';
+
 export async function fetchIzlegoChannels() {
-  const text = await fetchText(IZLOGO_M3U_URL, { userAgent: BROWSER_UA, timeout: 25000 });
+  let text = '';
+  try {
+    text = await fetchText(IZLOGO_SNAPSHOT, { userAgent: BROWSER_UA, timeout: 15000 });
+    if (!text || !text.includes('#EXTINF')) text = '';
+  } catch (_) {}
+  if (!text) {
+    text = await fetchText(IZLOGO_M3U_URL, { userAgent: BROWSER_UA, timeout: 20000 });
+  }
+  if (!text || !text.includes('#EXTINF')) return [];
   return parseIzlegoChannels(text);
 }
 
