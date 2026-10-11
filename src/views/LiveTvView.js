@@ -535,6 +535,9 @@ export function renderLiveTvView() {
       let srcList = [];
       let srcIdx = 0;
 
+      // Kanal on-kontrol onbellegi (10 dk). Anahtar: tam yayin adresi.
+      const onKontrolCache = new Map();
+
       function buildSrcList(channel) {
         const alts = getAltSources(channel);
         // Varsayilan giris de isTip tasiyabilmeli: playSrc() yalnizca
@@ -1117,9 +1120,11 @@ export function renderLiveTvView() {
         videoEl.addEventListener('loadeddata', onVideoReady, { once: true });
         setTimeout(() => {
           videoEl.removeEventListener('loadeddata', onVideoReady);
-          // 20sn'de görüntü yoksa hata ekranı yerine denenmemiş kaynağa geç
+          // Ön kontrol (onKontrol) kaynağın gerçekten akıtıp akıtmadığını önceden
+          // soruyor; bu yüzden burada beklenecek süre uzun olmak zorunda değil.
+          // 20sn yerine 11sn: kullanıcı sıradaki kanala çok daha çabuk geçer.
           if (channelPlaybackToken === myToken && videoEl.readyState < 2 && !embeddedPlayback) advanceOrError();
-        }, 20000);
+        }, 11000);
 
         let freshStreamAttempted = false;
         let officialRefreshAttempts = 0;
@@ -1265,6 +1270,53 @@ export function renderLiveTvView() {
           return window.__mpegtsPromise;
         }
 
+        // Oynatmadan ONCE hizli on kontrol.
+        // Sorun: video elemanina src verildiginde bir kanalla 20 saniye
+        // beklenip ancak sonra "olmedi" denip sirdaki kanala gecilirdi.
+        // 2099 kanallik listede ilk deneme cok gunluk oluyordu.
+        // Cozum: ayni proxy uzerinden tek bir Range istegi atip cevabi
+        // ONCEDEN gor. Olmusse dogrudan oynat, olmussa beklemeden ilerle.
+        // (isStreamPlayable 10 dakika onbellekli ve kilitli; ayni kanal
+        //  ikinci kez secildiginde aninda doner.)
+        async function onKontrol(url) {
+          const denenen = new Map();
+          const kayit = onKontrolCache.get(url);
+          if (kayit && Date.now() - kayit.at < 10 * 60 * 1000) return kayit.sonuc;
+          try {
+            const res = await fetch(url, {
+              method: 'GET',
+              headers: { Range: 'bytes=0-2047' },
+              cache: 'no-store'
+            });
+            let sonuc;
+            if (res.ok && res.body) {
+              const reader = res.body.getReader();
+              try {
+                const { value } = await reader.read();
+                const bas = value ? (value[0] === 0x47
+                  ? '#TS'
+                  : new TextDecoder().decode(value.subarray(0, 7))) : '';
+                sonuc = !!bas && (bas === '#TS' || bas === '#EXTM3U');
+              } finally {
+                try { await reader.cancel(); } catch (_) {}
+              }
+            } else {
+              sonuc = false;
+              try { if (res.body) await res.body.cancel(); } catch (_) {}
+            }
+            denenen.set(url, sonuc);
+            onKontrolCache.set(url, { at: Date.now(), sonuc });
+            if (onKontrolCache.size > 400) {
+              const eski = [...onKontrolCache.entries()].sort((a, b) => a[1].at - b[1].at).slice(0, 120);
+              for (const [k] of eski) onKontrolCache.delete(k);
+            }
+            return sonuc;
+          } catch (_) {
+            // Ag hatasi: reddetme, gercek oynatmayi denemeye izin ver.
+            return true;
+          }
+        }
+
         function playSrc(i) {
           resolutionGeneration++;
           const s = srcList[i];
@@ -1273,8 +1325,18 @@ export function renderLiveTvView() {
             return;
           }
           triedSrc.add(i);
-          if (s.isTs) startTs(s.url);
-          else startHls(s.url);
+
+          const hedef = s.isTs ? startTs : startHls;
+          const token = myToken;
+          if (s.url && /^https?:|^\/\//i.test(s.url)) {
+            onKontrol(s.url).then((ok) => {
+              if (channelPlaybackToken !== token) return;
+              if (ok) hedef(s.url);
+              else advanceOrError();
+            }).catch(() => { if (channelPlaybackToken === token) hedef(s.url); });
+            return;
+          }
+          hedef(s.url);
         }
 
         function startTs(url) {

@@ -25,7 +25,8 @@ const ok = (c, m) => { c ? (pass++, console.log(`  ✓ ${m}`)) : (fail++, consol
 const KAYNAK_IMZALARI = [
   { id: 'dizi77',   dosya: 'dizi77Scraper.js',   cagri: 'fetchDizi77Sources',   imza: 'https://dizi77.life' },
   { id: 'sinemacc', dosya: 'sinemaccScraper.js', cagri: 'fetchSinemaccSources', imza: 'https://sinemacc.com' },
-  { id: 'vodm3u',   dosya: 'vodM3uSources.js',   cagri: 'fetchVodSources',      imza: 'patr0nq/flmS' }
+  { id: 'vodm3u',   dosya: 'vodM3uSources.js',   cagri: 'fetchVodSources',      imza: 'patr0nq/flmS' },
+  { id: 'dizibox',  dosya: 'diziboxScraper.js',  cagri: 'fetchDiziBoxSources',  imza: 'diziboxizle.com' }
 ];
 
 console.log('\n═══ 1) Kaynak kazıyıcısı → aggregator bağlantısı ═══');

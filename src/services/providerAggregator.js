@@ -35,6 +35,7 @@ import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
 import { fetchVodSources, loadVodSource } from './vodM3uSources.js';
 import { fetchDizi77Sources } from './dizi77Scraper.js';
+import { fetchDiziBoxSources } from './diziboxScraper.js';
 import { fetchSinemaccSources } from './sinemaccScraper.js';
 
 // Film M3U kataloglarının kaynak kimlikleri (tek tek yüklenir, boş olanlar atlanır).
@@ -766,6 +767,13 @@ export async function getStreamingServersProgressive({
           .then(res => addStreams(res, 'subtitled')).catch(() => [])
       : off('jet') ? [] : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
           .then(res => addStreams(res, 'subtitled')).catch(() => []),
+
+    // 8e. DiziBox (dizi odakli katalog). Bolum sayfalari ok.ru gomulu
+    // oynatici dondurur; dizibox.live CF'li, diziboxizle.com aynasidir.
+    !isMovie
+      ? off('dizibox') ? [] : fetchDiziBoxSources({ titles: candidateTitles, title: targetTitle, season, episode })
+          .then(res => addStreams(res, 'dubbed')).catch(() => [])
+      : [],
 
     // 8e. sinemacc (film odakli katalog). Oynatici iframe'i referer sart
     // oldugu icin calismaz; FirePlayer API'sinden DOGRUDAN HLS alinir.

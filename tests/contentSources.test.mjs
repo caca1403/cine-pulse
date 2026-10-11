@@ -70,10 +70,11 @@ ok([...film.keys()].some((k) => k.startsWith('smc_')), 'sinemacc (Halcyon) film 
 ok([...film.keys()].some((k) => k.startsWith('vod_')), 'film M3U (Pulsar) film listesinde');
 ok(![...film.keys()].some((k) => k.startsWith('d77_')), 'dizi77 (Corvus) filmde çıkmıyor — doğru');
 
-console.log('\n═══ DİZİ — "The Walking Dead" 1.S1.B1 ═══');
-const dizi = await ac({ type: 'tv', title: 'The Walking Dead', seriesTitle: 'The Walking Dead', season: 1, episode: 1 });
+console.log('\n═══ DİZİ — "56 Days" 1.S1.B1 ═══');
+const dizi = await ac({ type: 'tv', title: '56 Days', seriesTitle: '56 Days', season: 1, episode: 1 });
 console.log(`    toplam ${dizi.size} kaynak geldi`);
 ok([...dizi.keys()].some((k) => k.startsWith('d77_')), 'dizi77 (Corvus) dizi listesinde');
+ok([...dizi.keys()].some((k) => k.startsWith('dzbx_')), 'DiziBox (Cygnus) dizi listesinde');
 ok(![...dizi.keys()].some((k) => k.startsWith('smc_')), 'sinemacc film kaynağı dizide çıkmıyor — doğru');
 
 console.log(`\n${fail === 0 ? 'TAMAM' : 'BAŞARISIZ'} — geçen: ${pass}, kalan: ${fail}`);

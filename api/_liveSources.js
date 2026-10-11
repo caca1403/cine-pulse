@@ -14,7 +14,7 @@ const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const KRAL_UA = 'Dalvik/2.1.0 (Linux; U; Android 13)';
 
-export const LIVE_SOURCE_IDS = ['kral', 'turhan'];
+export const LIVE_SOURCE_IDS = ['kral', 'turhan', 'izlego'];
 
 const KRAL_M3U_URL =
   'https://raw.githubusercontent.com/Kral-Turk/Kral-Turk-TV/refs/heads/main/TURK_TV.m3u_plus';
@@ -29,6 +29,91 @@ const TURHAN_DOMAIN_URL = 'https://data-reality.com/domain.php';
 export const KRAL_M3U_ENDPOINT = KRAL_M3U_URL;
 
 // ---------------------------------------------------------------- yardimci
+
+// ══════════════════════════════ BÖLGE TESPİTİ ══════════════════════════════
+// Kral listesinin neredeyse yarısı Alman kanalları (DE | DEUTSCHLAND,
+// BOUQUET GERMANY, DAZN EVENT, RTL+ …). Kullanıcı Türkçe kanallara odaklanmak
+// istiyor; bu yüzden her kanal TR / ULUSLARARASI olarak işaretlenir ve
+// arayüzde uluslararasılar varsayılan olarak gizlenir.
+//
+// Sıralama önceliği (güçlüden zayıfa):
+//   1) Grup kodu   : "TR | …", "DE | …"  → en güvenilir
+//   2) Türkçe kanal adları (TRT, ATV, SHOW TV, Kanal D …)
+//   3) Türkçe grup sözcükleri (ULUSAL, HABER, SPOR, SINEMA, DİZİ)
+//   4) Türkçe harfler (ı, ğ, ş, ç, ö, ü) → yalnızca zayıf sinyal, tek başına
+//      yeterli sayılmaz (Almanca adlarda da ş/ç/ö geçebiliyor).
+const GRUP_KODU_RE = /^\s*([A-Z]{2,3})\s*\|\s*(.+)$/;
+const GRUP_KODU_ULUS = new Set([
+  'TR', 'DE', 'UK', 'US', 'FR', 'IT', 'ES', 'NL', 'RU', 'AR', 'BR', 'PT', 'PL',
+  'GR', 'CA', 'AU', 'IN', 'PK', 'BD', 'AF', 'IR', 'SA', 'AE', 'QA', 'EG', 'MA',
+  'DZ', 'TN', 'LY', 'IQ', 'JO', 'LB', 'SY', 'YE', 'OM', 'KW', 'QA', 'AZ', 'GE',
+  'AM', 'UA', 'RO', 'HU', 'CZ', 'SK', 'BG', 'HR', 'RS', 'SI', 'BA', 'MK', 'AL',
+  'ME', 'XK', 'CY', 'MT', 'LU', 'EE', 'LV', 'LT', 'IS', 'IE', 'CH', 'AT', 'DK',
+  'SE', 'NO', 'FI', 'BE', 'IL', 'SG', 'MY', 'TH', 'PH', 'ID', 'VN', 'CN', 'JP',
+  'KR', 'TW', 'HK', 'NZ', 'MX', 'AR', 'CO', 'PE', 'CL', 'ZA', 'NG', 'KE', 'ET'
+]);
+const TR_KANAL_ADLARI = [
+  'trt', 'atv', 'kanal d', 'show tv', 'showmax', 'star tv', 'flash tv', 'now tv',
+  'krt tv', 'ntv', 'fox', 'tay', 'tv8', 'trt1', 'trt2', 'trt3', 'trt4', 'trt5',
+  'trt 1', 'trt 2', 'trt 3', 'trt 4', 'trt 5', 'trt çocuk', 'trt spor', 'trt haber',
+  'trt müzik', 'trt belgesel', 'trt avrasya', 'trt 2', 'a2', 'vav tv', 'ülke tv',
+  'beyaz tv', 'akşam haber', 'haber tur', 'halk tv', 'aspor', 'spor', 'tvemasyon',
+  'dizi kanalı', 'sinema kanalı', 'turk tv', 'iletisim', 'demirören', 'mc', 'startv',
+  'beyinci', 'dmax', 'natgeo', 'discovery', 'national', 'cnbc', 'nrt', 'tvem',
+  'pusula', 'bereket', 'aydinlik', 'uydurma', 'Tv8', 'TRT', 'Kral', 'iyi tv'
+];
+const TR_GRUP_SOZCUK = [
+  'ulusal', 'haber', 'spor', 'sinema', 'dizi', 'çocuk', 'cocuk', 'belgesel',
+  'müzik', 'muzik', 'yaşam', 'yasam', 'kültür', 'kultur', 'yerel', 'eğitim',
+  'egitim', 'vip', 'genel'
+];
+
+export function bolgeTespitEt(name, group) {
+  const g = String(group || '').trim();
+  const n = String(name || '').toLocaleLowerCase('tr-TR');
+
+  // 0) Bozuk adlar: M3U'da "|---- |DE| DE Sports |DE| ----|" gibi bozuk
+  //    kayıtlar var; gerçek kanal adı üretilemez, uluslararası sayılır.
+  if (/\|{2,}|-{4,}/.test(String(name || ''))) return 'INT';
+
+  // 1) Grup kodu: "TR | GENEL VIP" / "DE | DEUTSCHLAND"
+  const kod = g.match(GRUP_KODU_RE);
+  if (kod) {
+    const ulke = kod[1].toUpperCase();
+    return ulke === 'TR' ? 'TR' : 'INT';
+  }
+  // 1b) Bazı listeler ülke önekini KANAL ADININ içinde yazıyor:
+  //     "|DE| EUROSPORT 2 XTRA HD", "|DE| FOX HD". Grup temiz olduğu için
+  //     yukarıdaki kontrol bunları kaçırıyor.
+  const adKodu = String(name || '').trim().match(/^\|?([A-Z]{2,3})\|\s*(.+)$/);
+  if (adKodu && GRUP_KODU_ULUS.has(adKodu[1].toUpperCase())) {
+    return adKodu[1].toUpperCase() === 'TR' ? 'TR' : 'INT';
+  }
+  // 2) "DEUTSCHLAND" gibi düz ülke adıyla başlayan gruplar
+  if (/^(DEUTSCHLAND|GERMANY|ALMANYA|UK|USA|FRANCE|ITALIA|SPAIN|RUSLAND|TURKEY|TURKIYE)/i.test(g)) {
+    return 'TR';   // TÜRKİYE/TURKEY içerenler TR'dir
+  }
+  if (/^(DE|EN|FR|IT|ES|RU|AR|PT|NL|PL|AL|BU|UK|US|INT)([\s|-]|$)/i.test(g) && !/^TR/i.test(g)) {
+    return 'INT';
+  }
+  // 3) Türkçe kanal adı (TRT, SHOW TV, Kanal D …)
+  if (TR_KANAL_ADLARI.some((k) => n.includes(k))) return 'TR';
+
+  // 4) Türkçe grup sözcüğü.
+  //    Alman kanalları 1. kuralda "DE | ..." önekiyle zaten eleniyor
+  //    (DE | SPORTTOTAL.TV, DE | MIX SPORT …); buraya sadece ulaşan gruplar
+  //    Türkçe kategori adlarıdır (SPOR KANALI, HABER, SINEMA, ULUSAL …).
+  //    Bu gruplardaki kanal adları Türkçe alfabeli olmak zorunda değil
+  //    ("BEIN MAX 1", "24 TR", "TRT Spor") — bu yüzden karar kesindir.
+  if (TR_GRUP_SOZCUK.some((k) => g.toLocaleLowerCase('tr-TR').includes(k))) return 'TR';
+
+  // 5) Türkçe karakter ağırlığı (zayıf sinyal, tek başına yeterli değil)
+  const trChar = (String(name || '') + g).match(/[ıİşŞğĞçÇöÖüÜ]/g);
+  if (trChar && trChar.length >= 3) return 'TR';
+
+  return 'INT';
+}
+
 export function normalizeCanliName(name) {
   return String(name || '')
     .toLocaleUpperCase('tr-TR')
@@ -95,7 +180,20 @@ export function parseM3uPlus(text) {
       let m;
       while ((m = attrRe.exec(line))) attrs[m[1].toLowerCase()] = m[2];
       const dequoted = line.replace(/"[^"]*"/g, '""');
-      const name = (dequoted.split(',').slice(1).join(',') || '').trim();
+
+      // Bozuk satirlar: bazi M3U'lar oznitelikleri addan SONRA yaziyor:
+      //   #EXTINF:-1, BEIN MAX 1 HD tvg-logo="..." group-title="SPOR KANALI",BEIN MAX 1 UHD
+      // Ilk virgulden sonrasi isim sanilirsa, kanal adi tum ozniteliklerle
+      // icice gosteriliyordu ("BEIN MAX 1 HD tvg-logo=... group-title=...,BEIN ...").
+      // Cozum: virgullerden bolup OZNITELIK icermeyen son parcayi gercek ad al.
+      let name = (dequoted.split(',').slice(1).join(',') || '').trim();
+      if (/\b(tvg-[\w-]+\s*=|group-title\s*=|url-tvg\s*=|http-)/i.test(name)) {
+        const parcalar = dequoted.split(',').map((x) => x.trim());
+        const temiz = parcalar.filter((x) => x && !/\b(tvg-[\w-]+\s*=|group-title\s*=|url-tvg\s*=)/i.test(x));
+        name = (temiz[temiz.length - 1] || '').trim();
+      }
+      // Artik oznitelik gibi duran kalan parcalari da at.
+      name = name.replace(/\s*\b(tvg-[\w-]+\s*=\s*"[^"]*"|group-title\s*=\s*"[^"]*"|url-tvg\s*=\s*"[^"]*")\s*/gi, ' ').trim();
       pending = {
         name: name || 'Kanal',
         logo: attrs['tvg-logo'] || '',
@@ -193,6 +291,7 @@ export function parseKralChannels(text) {
       category: mapGroupToCategory(entry.group),
       quality: qualityOf(entry.name, entry.url),
       isTs: !/\.m3u8(\?|$)/i.test(entry.url),
+      region: bolgeTespitEt(entry.name, entry.group),
       headers: { ua: entry.ua, ref: entry.ref, origin: entry.origin }
     });
   }
@@ -202,6 +301,46 @@ export function parseKralChannels(text) {
 export async function fetchKralChannels() {
   const text = await fetchText(KRAL_M3U_URL, { userAgent: BROWSER_UA, timeout: 25000 });
   return parseKralChannels(text);
+}
+
+// -------------------------------------------------- izlego.eu kaynagi
+// Kimlik bilgili m3u_plus ucu (231 kanal: Ulusal/Sinema/Haber/Belgesel/
+// Cocuk/Spor...). Olcum (2026-10-11): 10 rastgele kanalin 10'u HTTP 200/206
+// ile canli donuyor — Kral ve turhan kadar guvenilir.
+// Kullanici tarafindan paylasilan hesap; URL degisse kaynak duser, bu
+// yuzden FETCHERS kaydinda hata sinyali yakalanip listeden dusulur.
+const IZLOGO_M3U_URL =
+  'http://izlego.eu/m3u_app/get.php?username=grup&password=bizimtv&type=m3u_plus&output=m3u8';
+
+export function parseIzlegoChannels(text) {
+  const parsed = parseM3uPlus(text);
+  const channels = [];
+  const seenUrls = new Set();
+  for (const entry of parsed) {
+    if (!isSafeStreamUrl(entry.url)) continue;
+    if (seenUrls.has(entry.url)) continue;
+    const name = cleanName(entry.name);
+    if (!name) continue;
+    seenUrls.add(entry.url);
+    channels.push({
+      name,
+      streamUrl: entry.url,
+      logo: entry.logo || '',
+      tvgId: entry.tvgId || '',
+      group: entry.group,
+      category: mapGroupToCategory(entry.group),
+      quality: qualityOf(entry.name, entry.url),
+      isTs: !/\.m3u8(\?|$)/i.test(entry.url),
+      region: bolgeTespitEt(entry.name, entry.group),
+      headers: { ua: entry.ua, ref: entry.ref, origin: entry.origin }
+    });
+  }
+  return channels;
+}
+
+export async function fetchIzlegoChannels() {
+  const text = await fetchText(IZLOGO_M3U_URL, { userAgent: BROWSER_UA, timeout: 25000 });
+  return parseIzlegoChannels(text);
 }
 
 // ------------------------------------------------ Turhan / Fixbet kaynagi
@@ -285,6 +424,9 @@ export async function fetchTurhanChannels() {
       tvgId: e.id,
       group: e.tag || '',
       category: 'national',
+      // Fixbet TV ve İnat TV Türkçe yerli kanallardır; grup adı ("Fixbet TV")
+      // TR_GRUP_SOZCUK ile eşleşmediği için elle işaretlenir.
+      region: 'TR',
       quality: 'HD',
       isTs: false,
       site: e.site,
@@ -297,7 +439,8 @@ export async function fetchTurhanChannels() {
 // ------------------------------------------------------------- genel API
 const FETCHERS = {
   kral: { label: 'Kral TV (M3U Plus)', fn: fetchKralChannels },
-  turhan: { label: 'Turhan TV (Fixbet)', fn: fetchTurhanChannels }
+  turhan: { label: 'Turhan TV (Fixbet)', fn: fetchTurhanChannels },
+  izlego: { label: 'İzleGo (Ulusal + Yabancı)', fn: fetchIzlegoChannels }
 };
 
 export function isLiveSourceId(id) {

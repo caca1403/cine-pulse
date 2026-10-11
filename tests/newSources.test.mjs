@@ -78,7 +78,12 @@ if (fsrc[0]) {
 // Canlı TV'ye karışmıyor mu (dizi77/sinemacc sadece kendi modülünde)
 console.log('\n═══ Canlı TV izolasyonu ═══');
 const live = await import('../src/services/turkishLiveSources.js');
-ok(live.LIVE_SOURCES.length === 2, `Canlı TV kaynak sayısı hâlâ ${live.LIVE_SOURCES.length} (kral, turhan)`);
+// Canlı TV kaynakları film/dizi listelerine KARIŞMAMALI. izlego M3U eklendi,
+// bu yüzden sayı 2 değil 3; asıl kontrol film/dizi kaynaklarının burada
+// görünmemesi.
+const canliIds = live.LIVE_SOURCES.map((s) => s.id);
+ok(!canliIds.includes('dizi77') && !canliIds.includes('sinemacc') && !canliIds.includes('vodm3u'),
+   `Canlı TV'de film/dizi kaynağı yok (kaynaklar: ${canliIds.join(', ')})`);
 
 console.log(`\n${fail === 0 ? 'TAMAM' : 'BAŞARISIZ'} — geçen: ${pass}, kalan: ${fail}`);
 process.exit(fail === 0 ? 0 : 1);

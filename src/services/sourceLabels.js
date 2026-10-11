@@ -14,6 +14,7 @@ export const SOURCE_FAMILIES = [
   { alias: 'Sol', provider: 'Diziyou', prefixes: ['dyu_'], sources: ['Diziyou'] },
   { alias: 'Nero', provider: 'Dizibal / Dizipal', prefixes: ['dzb_', 'dzp_'], sources: ['Dizibal', 'Dizipal'] },
   { alias: 'Corvus', provider: 'dizi77', prefixes: ['d77_'], sources: ['dizi77'] },
+  { alias: 'Cygnus', provider: 'DiziBox', prefixes: ['dzbx_'], sources: ['dizibox'] },
   { alias: 'Halcyon', provider: 'sinemacc', prefixes: ['smc_'], sources: ['sinemacc'] },
   { alias: 'Pulsar', provider: 'Film M3U', prefixes: ['vod_'], sources: ['vod-m3u'] },
   { alias: 'Echo', provider: 'Diziyo', prefixes: ['dzy_'], sources: ['Diziyo'] },

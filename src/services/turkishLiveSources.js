@@ -24,6 +24,7 @@ const STALE_TTL_MS = 48 * 60 * 60 * 1000;  // ag hatasi payi: 48 saat
 
 export const LIVE_SOURCES = [
   { id: 'kral', label: 'Kral TV', icon: 'tv' },
+  { id: 'izlego', label: 'İzleGo', icon: 'globe' },
   { id: 'turhan', label: 'Turhan TV', icon: 'radio-tower' }
 ];
 
@@ -255,12 +256,22 @@ export async function probeLiveSources() {
  * 1800+ kanalda her biri icin uzaktan logo istemek pahali oldugu icin logo
  * yalnizca yerel eslesme (/tv-logos) varsa kullanilir, yoksa SVG rozet.
  */
-export function buildChannels(sources, { resolveLogo, maxAlt = 6 } = {}) {
+/**
+ * Kanal listesini duzenler.
+ *  - Turkce kanallar one
+ *  - ayni adi tasiyan kanallar tekillestirilir (en cok yedekli kaynak secilir)
+ *  - uluslararasi kanallar listenin sonuna atilir; arayuzde varsayilan olarak
+ *    gizlidir (showInternational=false)
+ */
+export function buildChannels(sources, { resolveLogo, maxAlt = 6, maxTurkish = 500, showInternational = false } = {}) {
   const out = [];
   const byName = new Map();
   for (const src of sources || []) {
     for (const ch of src.channels || []) {
       if (!ch || !ch.name || !ch.streamUrl) continue;
+      // Teknik yedek yayınlar aynı kanalın farklı akışları; kullanıcıya
+      // gereksiz gürültü olarak görünüyor ("BeIN Sports FEED1").
+      if (/\bFEED\s*\d*\b|\bBACKUP\b|\bYEDEK\s*\d*\b|\bTEST\b|\bDEMO\b/i.test(ch.name)) continue;
       const key = normalizeName(ch.name);
       if (!key) continue;
       const existing = byName.get(key);
@@ -275,6 +286,7 @@ export function buildChannels(sources, { resolveLogo, maxAlt = 6 } = {}) {
           quality: ch.quality || 'HD',
           tvgId: ch.tvgId || '',
           group: ch.group || '',
+          region: ch.region === 'INT' ? 'INT' : 'TR',
           streamUrl: ch.streamUrl,
           isTs: ch.isTs === true,
           headers: ch.headers || null,
@@ -294,7 +306,27 @@ export function buildChannels(sources, { resolveLogo, maxAlt = 6 } = {}) {
       });
     }
   }
-  return out;
+  // ── Liste düzeni ────────────────────────────────────────────────
+  // 1) Türkçe kanallar önce, uluslararasılar sona
+  // 2) Türkçe olan maxTurkish kadar kesilir (varsayılan 500). 1834 kanallık
+  //    Kral listesinin yarısı Alman kanalıydı; kullanıcı bunları görmek
+  //    istemiyor ve liste gereksiz uzun yükleniyordu.
+  // 3) Uluslararası kanallar YALNIZCA showInternational istenirse döner.
+  const trList = out.filter((c) => c.region !== 'INT');
+  const intList = out.filter((c) => c.region === 'INT');
+  // Sıralama: kullanıcı "Türkçe kanallara odaklan" dediğinde en çok
+  // izlenenler önce gelsin. Ulusal → haber → sinema/çocuk → spor.
+  const KATEGORI_ONCELIK = { national: 0, news: 1, movie: 2, series: 2, kids: 3, sports: 4, music: 5, doc: 6, other: 7 };
+  trList.sort((a, b) => {
+    const pa = KATEGORI_ONCELIK[a.category] ?? 7;
+    const pb = KATEGORI_ONCELIK[b.category] ?? 7;
+    if (pa !== pb) return pa - pb;
+    return String(a.name).localeCompare(String(b.name), 'tr');
+  });
+
+  const kesilmis = trList.length > maxTurkish ? trList.slice(0, maxTurkish) : trList;
+  // showInternational yalnızca ayrıca istendiğinde uluslararasılar eklenir.
+  return showInternational ? kesilmis.concat(intList) : kesilmis;
 }
 
 function normalizeName(name) {

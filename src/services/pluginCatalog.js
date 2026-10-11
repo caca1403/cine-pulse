@@ -20,7 +20,7 @@ const ALIASES = {
   hdfb: 'Elara', lookmovie: 'Halo', smashy: 'Cosmo', twoembed: 'Zenit',
   anizium: 'Aria', animecix: 'Tera', animetr: 'Kitsu', kidsvip: 'Pico',
   dramalar: 'Dora', dramadizilerim: 'Rhea', torrent: 'Hydra',
-  dizi77: 'Corvus', sinemacc: 'Halcyon', vodm3u: 'Pulsar'
+  dizi77: 'Corvus', sinemacc: 'Halcyon', vodm3u: 'Pulsar', dizibox: 'Cygnus'
 };
 
 // id: toplayici anahtari. registry: providerRegistry'deki karsiligi (varsa).
@@ -52,6 +52,7 @@ export const PLUGIN_DEFS = [
   { id: 'dramalar', kinds: ['kisa-dizi'], desc: 'Kısa drama doğrudan CDN.' },
   { id: 'dramadizilerim', kinds: ['kisa-dizi'], desc: 'Kısa dizi başlıkları, dört ayrı hat.' },
   { id: 'torrent', kinds: ['film', 'dizi'], desc: 'P2P eşler arası akış.', warn: 'Başlaması eş sayısına bağlıdır; bulamazsa bekler.' },
+  { id: 'dizibox', kinds: ['dizi'], desc: 'Yabancı dizi arşivi, bölüm bazlı gömülü oynatıcı.', warn: 'Bölümler ok.ru üzerinden oynatılır.' },
   { id: 'dizi77', kinds: ['dizi'], desc: 'Bölüm bazlı dizi kataloğu, gömülü oynatıcı.' },
   { id: 'sinemacc', kinds: ['film'], desc: 'Film kataloğu, gömülü oynatıcı.' },
   { id: 'vodm3u', kinds: ['film'], desc: 'Toplu film kataloğu (Jet Film / Film Modu), doğrudan dosya.', warn: 'Bağımlı olduğu dış liste kataloglarında bağlantıların bir kısmı silinmiş; hat açmazsa sıradakine geçilir. Çocuk ağırlıklı bir katalogdur, her film için sonuç vermez.' },

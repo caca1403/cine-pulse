@@ -4,6 +4,8 @@
    Bypasses all gambling ads, preroll video ads (kralbet/marsbet), popups, and VAST ads.
    ========================================================================== */
 
+import { extractEmbedStream, isDirectStream } from './embedExtractors.js';
+
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 
 async function fetchWithProxy(targetUrl, options = {}) {
@@ -246,11 +248,45 @@ export async function extractEksenloadStream(playerUrl) {
 }
 
 /**
- * Universal resolver: checks if a URL is AlphaStream and extracts direct stream.
+ * Universal resolver.
+ *
+ * Once bilinen ozel kaliplar (AlphaStream), sonra genel katman:
+ * JENERIK cozumleyici. Gomulu oynatici adresi (fireplayer, setplay,
+ * hdplayersystem, lidertfilm, packed JS…) sinemacc ya da liderfilm'e ozel
+ * kod yazmadan cozulur; kaliplar embedExtractors.js icinde.
  */
 export async function resolveDirectStream(streamObj) {
   if (!streamObj) return null;
   const url = (streamObj.url || streamObj.streamUrl || (typeof streamObj.getUrl === 'function' ? streamObj.getUrl() : '') || '').toLowerCase();
+
+  // Zaten dogrudan medya adresi ise dokunma.
+  const hamUrl = streamObj.url || streamObj.streamUrl || (typeof streamObj.getUrl === 'function' ? streamObj.getUrl() : '');
+  if (isDirectStream(hamUrl)) return streamObj;
+
+  // Jenerik katman: gomulu oynaticiyi cozmeyi dene.
+  if (/^https?:\/\//i.test(hamUrl) && !/^https?:\/\/(?:www\.)?(youtube\.com|youtu\.be)/i.test(hamUrl)) {
+    try {
+      const cozum = await extractEmbedStream(hamUrl, streamObj.referer || '');
+      if (cozum && isDirectStream(cozum.url)) {
+        const finalUrl = cozum.url.startsWith('http') && !cozum.url.includes('/api/hls_proxy')
+          ? `/api/hls_proxy?url=${encodeURIComponent(cozum.url)}&ref=${encodeURIComponent(cozum.referer || '')}`
+          : cozum.url;
+        return {
+          ...streamObj,
+          isHls: /\.m3u8/i.test(cozum.url),
+          isDirectVideo: true,
+          originalEmbedUrl: hamUrl,
+          streamUrl: finalUrl,
+          url: finalUrl,
+          resolvedVia: cozum.via,
+          subtitles: cozum.subtitles?.length ? cozum.subtitles : streamObj.subtitles,
+          getUrl: () => finalUrl
+        };
+      }
+    } catch (_) {
+      // Cozumlenemezse asagidaki ozel kaliplara dusulur.
+    }
+  }
 
   // Alpha Stream (ag2m4 / agcdn / liderfilm)
   if (url.includes('ag2m4') || url.includes('agcdn') || url.includes('liderfilm') || (streamObj.id && streamObj.id.startsWith('dbl'))) {
