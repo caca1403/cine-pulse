@@ -34,8 +34,17 @@ async function fetchJson(url) {
   }
 }
 
-/** Canli manifestler + derleme-anlik yedek. Web disinda cagrilmaz. */
+/** Canli manifestler + derleme-anlik yedek. Web disinda cagrilmaz.
+ *
+ *  Sıra: önce /api/release (GitHub Releases'ten OTOMATİK çeker), sonra
+ *  depodaki statik dosyalar. Statik dosyalar elle güncellenmeye bağlı
+ *  olduğu için unutulunca site eski sürümü gösteriyordu.
+ */
 export async function getReleaseInfo(local) {
+  const canli = await fetchJson('/api/release');
+  if (canli && canli.version) {
+    return mergeManifests(local, canli, { ...canli, ...(canli.desktop || {}) });
+  }
   const [apk, desktop] = await Promise.all([
     fetchJson('/version.json'),
     fetchJson('/desktop-version.json'),

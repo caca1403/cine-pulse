@@ -1,20 +1,20 @@
 {
-  "version": "1.1.61",
-  "versionCode": 171,
-  "releaseDate": "2026-10-11",
-  "title": "CinePulse v1.1.61",
-  "releaseNotes": "Yeni film ve dizi kaynaklari eklendi. dizi77: bolum bazli dizi katalogu, gomulu oynatici; Cloudflare engelinde cihazin kendi WebView'i ile cozulur. sinemacc: film katalogu, BASE64 kodlu oynatici adresi cozulup player.filmizle.in acilir. Film M3U kataloglari (Jet Film 3383 film, Film Modu): binlerce dogrudan film dosyasi; #EXTVLCOPT referer ve kullanici-ajani degerleri korunup proxy'ye devredilir, aksi halde cogu baglanti 403 donuyor. Bu M3U dosyalari Canli TV listesine KARIŞTIRILMAZ, film katalogu olarak kullanilir. Tum yeni kaynaklar tests/newSources.test.mjs ile 17 dogrulamadan gecti.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/cinepulse.apk",
-  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-Setup-1.1.61.exe",
-  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-1.1.61.AppImage",
-  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-1.1.61.deb",
+  "version": "1.1.64",
+  "versionCode": 174,
+  "releaseDate": "2026-10-12",
+  "title": "CinePulse v1.1.64",
+  "releaseNotes": "Masaustunde artik gizli tarayici penceresi calisiyor. Bazi kaynaklar kendini bir guvenlik kontroluyle koruyor; bu kontrolu yalnizca gercek bir tarayici motoru calistirabilir. Daha once yalnizca Android'de vardi, masaustunde hic devreye girmiyordu; simdi hem APK'da hem EXE/DEB'de calisiyor ve kendi aginizi kullanir (sunucu uzerinden degil). 21 yeni kaynak eklendi; alan adlari otomatik takip ediliyor, site adresini degistirdiginde uygulama kendiliginden yenisine geciyor. Aramalar IMDb numarasiyla yapiliyor, boylece Ingilizce basliklar da dogru icerige denk geliyor. Olu site adresleri artik sessizce bos liste dondurmuyor: her acilista adres denetleniyor, erisilemeyen adres atlanip nedeni kaydediliyor. Cozumleme yontemleri genisletildi: sikistirilmis oynatici kodu, sifreli sayfa icerigi, FirePlayer/openPlayer/videoPlayerData gomulu verileri, Turkce ses ve altyazi hatlari, kalite etiketi (4K/2K/1080p/720p/480p). Duzeltmeler: sayfadaki dogrudan medya taramasi bir yazim hatasi yuzunden hic calismiyordu; sikistirilmis kodu acma islemi ilk kelimeyi yanlis cozuyordu; site aramasi yapan kaynaklar masaustu surumde hic sorgu gondermiyordu; bir yayin adresi bicimi yanlis dosya adiyla araniyordu.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/CinePulse-Setup-1.1.64.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/CinePulse-1.1.64.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/CinePulse-1.1.64.deb",
   "desktop": {
-    "version": "1.1.61",
-    "versionCode": 171,
-    "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-Setup-1.1.61.exe",
-    "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-1.1.61.AppImage",
-    "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.61/CinePulse-1.1.61.deb"
+    "version": "1.1.64",
+    "versionCode": 174,
+    "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/CinePulse-Setup-1.1.64.exe",
+    "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/CinePulse-1.1.64.AppImage",
+    "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/CinePulse-1.1.64.deb"
   },
   "mandatory": false
 }
