@@ -74,7 +74,7 @@ export default async function handler(req, res) {
     // surumu guncellemis olsa bile "1.1.64'e guncelle" bildirimi atmaya
     // devam ediyordu. Bu yuzden yalnizca depodaki dosyadan okunur.
     const statik = await yerelSurumler();
-    const versionCode = Number(statik?.versionCode) || 0;
+    const versionCode = await versionCodeOku(statik);
 
     // Sürüm düşüşü (rollback) olmasın: depodaki dosya daha yeniyse onu koru.
     const yerel = await yerelSurumler();
@@ -139,4 +139,46 @@ async function yerelSurumler() {
   if (!apk && !desk) return null;
   _yerel = { ...(desk || {}), ...(apk || {}) };
   return _yerel;
+}
+
+/**
+ * APK'nin gerçek sürüm kodunu public/version.json dosyasından okur.
+ *
+ * Sunucu (Vercel) kendi kendine HTTP isteği yapamıyor — bu yüzden önce
+ * HTTP denemesi, sonra dosyadan okuma yapılır. build.gradle'daki
+ * versionCode ile dosyadaki değer her zaman aynıdır (sürüm atlanırsa
+ * buradaki değer eski kalır, o zaman HTTP sürümü de aynı eski olur).
+ */
+async function versionCodeOku(yedek) {
+  try {
+    const base = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
+    if (base) {
+      const r = await fetch(`${base}/version.json?_=${Date.now()}`, {
+        headers: { 'User-Agent': 'CinePulse-VersionProbe' },
+        signal: AbortSignal.timeout(4000)
+      });
+      if (r.ok) {
+        const j = await r.json();
+        if (Number(j.versionCode)) return Number(j.versionCode);
+      }
+    }
+  } catch (_) { /* dosyaya düş */ }
+
+  try {
+    const fs = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    // DİKKAT: URL.pathname kullanma — depo yolunda Türkçe karakterler var
+    // ("İndirilenler") ve pathname onları %C4%B0 gibi kodlar; dosya açılamıyor.
+    const yollar = [
+      fileURLToPath(new URL('../public/version.json', import.meta.url)),
+      process.cwd() + '/public/version.json',
+      process.cwd() + '/../public/version.json'
+    ];
+    for (const y of yollar) {
+      const j = JSON.parse(fs.readFileSync(y, 'utf8'));
+      if (Number(j.versionCode)) return Number(j.versionCode);
+    }
+  } catch (_) { /* dosya yok */ }
+
+  return Number(yedek?.versionCode) || 0;
 }
