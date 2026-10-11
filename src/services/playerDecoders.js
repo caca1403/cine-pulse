@@ -223,6 +223,13 @@ export function oynaticiCoz(html) {
   const dogrudan = metin.match(/https?:\/\/[^\s"'<>\u0080-\uFFFF]+\.(?:m3u8|mp4|m4s|webm)[^\s"'<>\u0080-\uFFFF]*/i);
   if (dogrudan) return { url: masterUrlDuzelt(dogrudan[0]), via: 'dogrudan-adres' };
 
+  // 1b) Oynatıcı çerçeve adresleri — çözülmüş sağlayıcılarda görülen
+  //     gerçek kalıplar (bunlar m3u8 değil, oynatıcı sayfasıdır).
+  const cerceve = metin.match(
+    /https?:\/\/[a-z0-9.-]+\.[a-z]{2,6}\/(?:dz)?embed\.php\?[^\s"'<>]+/i
+  ) || metin.match(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,6}\/iframe\.php\?[^\s"'<>]+/i);
+  if (cerceve) return { url: cerceve[0], via: 'oynatici-cerceve', cerceve: true };
+
   // 2) Açık oynatıcı çağrıları (selcukflix benzeri)
   for (const re of [
     /openPlayer\s*\(\s*['"]([^'"]+)['"]/i,
@@ -252,6 +259,13 @@ export function oynaticiCoz(html) {
 
   const cc = charCodeCoz(metin);
   if (cc) return { url: masterUrlDuzelt(cc), via: 'charcode' };
+
+  // 4b) "/master." öneki — çözülmüş sağlayıcılarda çok yaygın
+  //     (/hls/ + /master. + m3u8 parçaları birleşiyor)
+  const masterOn = metin.match(/https?:\/\/[^\s"'<>\u0000-\u001F]+\/master\.[^\s"'<>\u0000-\u001F]*/i);
+  // masterUrlDuzelt şart: bu adım master.txt'i de yakalayabiliyor ve
+  // dönüşüm yapılmazsa yayın 404 verir.
+  if (masterOn) return { url: masterUrlDuzelt(masterOn[0]), via: 'master-onek' };
 
   // 5) master deseni (m3u8 ya da txt/master.txt)
   const master = metin.match(/https?:\/\/[^\s"'<>]+\/master\.(?:m3u8|txt)[^\s"'<>]*/i);

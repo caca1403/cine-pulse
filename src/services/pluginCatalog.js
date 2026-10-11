@@ -22,7 +22,7 @@ const ALIASES = {
   dramalar: 'Dora', dramadizilerim: 'Rhea', torrent: 'Hydra',
   dizi77: 'Corvus', sinemacc: 'Halcyon', vodm3u: 'Pulsar', dizibox: 'Cygnus',
   // Yeni siteler — anonim kod adlariyla (site adlari arayuzde gorunmez)
-  fm: 'Thales', k666: 'Deneb', dizify: 'Mimosa', vidy: 'Altair',
+  fm: 'Arcturus', k666: 'Aldebaran', dzyf: 'Regulus', vidy: 'Altair',
   hdps: 'Rigel', ksd: 'Sadr', pichive: 'Antares', vidload: 'Spica',
   vixolity: 'Almach', tauvideo: 'Nunki', pilavyer: 'Menkar',
   nxsha: 'Adhara', vidmoly: 'Zubenelgenubi', sphp: 'Alphecca',
@@ -50,7 +50,6 @@ export const PLUGIN_DEFS = [
   { id: 'hdfb', kinds: ['film'], desc: '1080p HLS, film odaklı.' },
   { id: 'lookmovie', kinds: ['film', 'dizi'], desc: 'Global temiz oynatıcı.' },
   { id: 'smashy', kinds: ['film', 'dizi'], desc: 'Global gömülü oynatıcı.' },
-  { id: 'twoembed', kinds: ['film', 'dizi'], desc: 'Global gömülü oynatıcı.' },
   { id: 'anizium', kinds: ['anime'], desc: '4K/1080p anime akışları.' },
   { id: 'animecix', kinds: ['anime'], desc: 'Anime ve çizgi dizi kataloğu.' },
   { id: 'animetr', kinds: ['anime'], desc: 'Anime alternatif katalog.' },
@@ -62,6 +61,18 @@ export const PLUGIN_DEFS = [
   { id: 'dizi77', kinds: ['dizi'], desc: 'Bölüm bazlı dizi kataloğu, gömülü oynatıcı.' },
   { id: 'sinemacc', kinds: ['film'], desc: 'Film kataloğu, gömülü oynatıcı.' },
   { id: 'vodm3u', kinds: ['film'], desc: 'Toplu film kataloğu (Jet Film / Film Modu), doğrudan dosya.', warn: 'Bağımlı olduğu dış liste kataloglarında bağlantıların bir kısmı silinmiş; hat açmazsa sıradakine geçilir. Çocuk ağırlıklı bir katalogdur, her film için sonuç vermez.' },
+  // Coklu site surucusunden gelen kaynaklar. Her biri menuden acilip
+  // kapatilabilir; kapaliyken aggregator hic sorgulamaz.
+  { id: 'fm', registry: 'fm', kinds: ['film', 'dizi'], desc: 'Alan adini izler; IMDb ile arar.' },
+  { id: 'k666', registry: 'k666', kinds: ['film', 'dizi'], desc: 'Film katalogu; oynatici gomulu cozulur.' },
+  { id: 'dzyf', registry: 'dzyf', kinds: ['film', 'dizi'], desc: 'Dizi ve film; JSON arama ucu.' },
+  { id: 'hdfd', registry: 'hdfd', kinds: ['film', 'dizi'], desc: 'HLS hatlari; bazi hatlar engelli aglarda acilmaz.' },
+  { id: 'd4kh', registry: 'd4kh', kinds: ['film', 'dizi'], desc: 'Yuksek cozunurluk odakli katalog.' },
+  // Arama gerektirmeyen kaynaklar (adres TMDB kimliginden uretilir)
+  { id: 'twoembed', registry: 'twoembed', kinds: ['film', 'dizi'], desc: 'Gomulu adres dogrudan uretilir; site adresi degisirse otomatik.' },
+  { id: 'vidlk', registry: 'vidlk', kinds: ['film', 'dizi'], desc: 'Sifreli kimlikle yayin ucu; iki adimli istek.' },
+  { id: 'dzp', registry: 'dzp', kinds: ['film', 'dizi'], desc: 'Ajax arama ucu; bolum sayfalari cozulur.' },
+  { id: 'asy', registry: 'asy', kinds: ['anime'], desc: 'Anime katalogu; sezon/bolum sayfalari cozulur.' }
 ];
 
 function aliasOf(def) {

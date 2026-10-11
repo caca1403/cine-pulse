@@ -239,6 +239,13 @@ function epgDevPlugin() {
 }
 
 export default defineConfig({
+  // crypto-js CommonJS olarak geliyor; Vite'in onu ESM'e cevirmesi şart.
+  // Bu olmadan geliştirme sürümünde şu hata oluyor ve şifreli oynatıcı
+  // hiç çözülemiyor:
+  //   SyntaxError: ... does not provide an export named 'default'
+  // crypto-js CommonJS olarak geliyor; Vite'in onu ESM'e cevirmesi sart,
+  // yoksa gelistirme surumunde 'does not provide an export named default'
+  // hatasi olur ve sifreli oynatici hic cozulemez.
   plugins: [epgDevPlugin()],
   // bittorrent-tracker'ın tarayıcı istemcisi, Node ortamını ayırt etmek için
   // global nesneleri kullanır. Vite 5 bunları otomatik eklemez.
@@ -437,6 +444,10 @@ export default defineConfig({
   build: {
     target: 'esnext',
     outDir: 'dist',
+    // crypto-js CJS -> ESM cevirisi. Ayri bir build blogu acmadan
+    // buraya ekleniyor; onceki denemede ikinci build blogu birincisini
+    // ezdi ve bu ayar kayboldu.
+    commonjsOptions: { include: [/crypto-js/, /node_modules/] },
     sourcemap: false,
     minify: 'esbuild',
     cssMinify: true,

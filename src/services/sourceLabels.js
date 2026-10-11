@@ -27,9 +27,9 @@ export const SOURCE_FAMILIES = [
   { alias: 'Rhea', provider: 'DramaDizilerim', prefixes: ['ddz_'], sources: ['DramaDizilerim'] },
   { alias: 'Elara', provider: 'HDFilmizle', prefixes: ['hdfb_'], sources: ['HDFilmizle'] },
   // Yeni siteler — ekran adlari da anonim kod adlaridir
-  { alias: 'Thales', provider: 'filmmakinesi', prefixes: ['fm_'], sources: ['fm'] },
-  { alias: 'Deneb', provider: 'k666', prefixes: ['k666_'], sources: ['k666'] },
-  { alias: 'Mimosa', provider: 'dizify', prefixes: ['dzyf_'], sources: ['dizify'] },
+  { alias: 'Arcturus', provider: 'filmmakinesi', prefixes: ['fm_'], sources: ['fm'] },
+  { alias: 'Aldebaran', provider: 'k666', prefixes: ['k666_'], sources: ['k666'] },
+  { alias: 'Regulus', provider: 'dizify', prefixes: ['dzyf_'], sources: ['dizify'] },
   { alias: 'Altair', provider: 'vidy', prefixes: ['vdy_'], sources: ['vidy'] },
   { alias: 'Rigel', provider: 'hdplayersystem', prefixes: ['hdps_'], sources: ['hdps'] },
   { alias: 'Sadr', provider: 'ksdpictures', prefixes: ['ksd_'], sources: ['ksd'] },
@@ -45,7 +45,12 @@ export const SOURCE_FAMILIES = [
   { alias: 'Saiph', provider: 'ajaxSearch', prefixes: ['ajx_'], sources: ['ajax'] },
   { alias: 'Capella', provider: 'filmDiziList', prefixes: ['fdl_'], sources: ['filmdizi'] },
   { alias: 'Denebola', provider: 'rplayerVideo', prefixes: ['rpl_'], sources: ['rplayer'] },
-  { alias: 'Nexus', provider: 'Diğer / tanımlanmayan kaynak', prefixes: [], sources: [] }
+  // Yeni iki kaynak burada olmadığı için ekranda "Nexus" (tanımsız) görünüyordu
+  { alias: 'Bellatrix', provider: 'hdfd', prefixes: ['hdfd_'], sources: ['hdfd'] },
+  { alias: 'Betelgeuse', provider: 'd4kh', prefixes: ['d4kh_'], sources: ['d4kh'] },
+  { alias: 'Toliman', provider: 'vidlk', prefixes: ['vdlk_'], sources: ['vidlk'] },
+  { alias: 'Muhlif', provider: 'dzp', prefixes: ['dzp_'], sources: ['dzp'] },
+  { alias: 'Saiph', provider: 'asy', prefixes: ['asy_'], sources: ['asy'] },
 ];
 
 export function getSourceFamily(source) {

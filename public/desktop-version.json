@@ -1,13 +1,13 @@
 {
-  "version": "1.1.64",
-  "versionCode": 174,
+  "version": "1.1.65",
+  "versionCode": 175,
   "releaseDate": "2026-10-12",
-  "title": "CinePulse v1.1.64",
+  "title": "CinePulse v1.1.65",
   "releaseNotes": "DEB/Linux yerel medya servisi kalici duzeltildi (sidecar artik /opt'a yazmiyor). Linux guncellemesi terminal uzerinden kendini tamamliyor, guncelleme bildirimi artik kesmiyor. Canli TV 1600+ kanala cikti: Kral M3U ve Turhan TV eklendi, olu iptv-org ve TVR kaldirildi. MPEG-TS kanallari dogru oynaticiya yonlendiriliyor, olu yayinlar otomatik eleniyor, yedek yayin adresleri deniyor. Kanal adlarindaki HTML kaciriliyor.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/cinepulse.apk",
-  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/CinePulse-Setup-1.1.64.exe",
-  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/CinePulse-1.1.64.AppImage",
-  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.64/CinePulse-1.1.64.deb",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/CinePulse-Setup-1.1.65.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/CinePulse-1.1.65.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/CinePulse-1.1.65.deb",
   "mandatory": false
 }

@@ -64,7 +64,19 @@ const SITE_SURUCULERI = [
   { anahtar: 'hdfc', site: 'keywordSearch' },
   { anahtar: 'hdfc', site: 'ajaxSearch' },
   { anahtar: 'hdfc', site: 'filmDiziList' },
-  { anahtar: 'hdfc', site: 'rplayerVideo' }
+  { anahtar: 'hdfc', site: 'rplayerVideo' },
+  // Patron eklentilerinden kalan ikisi — daha once yapilandirmasi vardi
+  // ama TARAMAYA BAGLI DEGILDI (yani hic sorgulanmiyordu).
+  { anahtar: 'k666', site: 'film666' },
+  { anahtar: 'dzyf', site: 'dizify' },
+  // HDFilmDelisi ve 4KHD — Nuvio'da aktif, bizde kayitli degildi
+  { anahtar: 'hdfd', site: 'hdfilmdelisi' },
+  { anahtar: 'd4kh', site: 'dortkhd' },
+  // Kalan Patron eklentileri — daha once hic bagli degildi
+  { anahtar: 'twoembed', site: 'zenit' },
+  { anahtar: 'dzp', site: 'dizipal' },
+  { anahtar: 'asy', site: 'asyaanimeleri' },
+  { anahtar: 'vidlk', site: 'vidlink' }
 ];
 
 // Film M3U kataloglarının kaynak kimlikleri (tek tek yüklenir, boş olanlar atlanır).
@@ -833,7 +845,7 @@ export async function getStreamingServersProgressive({
     // FilmEkseni). Her biri kendi eklenti anahtariyla kontrol edilir.
     Promise.all(SITE_SURUCULERI.map(({ anahtar, site }) => (
       off(anahtar) ? [] : siteListesi(site, {
-        title: targetTitle, imdbId,
+        title: targetTitle, originalTitle, titles: candidateTitles, imdbId,
         tmdbId: String(tmdbId || '').replace(/^[a-z]{2,4}_/, ''),
         mediaType: isMovie ? 'movie' : 'tv', season, episode
       })
@@ -894,7 +906,7 @@ export async function getStreamingServersProgressive({
       .then(res => addStreams(res, 'subtitled')).catch(() => []),
 
     // 12. VIP P2P Streams
-    off('torrent') ? [] : fetchTorrentStreamSources({ type, tmdbId, season, episode })
+    off('torrent') ? [] : fetchTorrentStreamSources({ type, tmdbId, title: targetTitle, season, episode })
       .then(res => {
         if (Array.isArray(res) && res.length > 0) {
           addStreams(res, 'subtitled');

@@ -24,7 +24,8 @@
    (MD5 tabanlı, tuzlu) elle yazılınca sessizce yanlış sonuç veriyor.
    ========================================================================== */
 
-import CryptoJS from '../vendor/crypto-js.min.cjs';
+// Use the same vendored algorithms through an ESM entry in Node and Vite.
+import CryptoJS from '../vendor/crypto-js.js';
 
 /**
  * Ters çevrilmiş base64 → bayt dizisi (sayfadaki b64rev ile aynı).
@@ -42,18 +43,6 @@ function tersCoz(metin) {
   }
 }
 
-/** Tamamen onaltılık karakterlerden oluşan çıktıyı metne çevir. */
-function onaltilikCoz(metin) {
-  if (metin.length < 32 || metin.length % 2 !== 0) return '';
-  if (!/^[0-9a-f]+$/i.test(metin)) return '';
-  try {
-    // DİKKAT: crypto-js 4.x'te WordArray.toString() varsayılan olarak HEX
-    // döner, Utf8 değil. Açıkça belirtmezsen çeviri hiç işlemez.
-    return CryptoJS.enc.Hex.parse(metin).toString(CryptoJS.enc.Utf8);
-  } catch (_) {
-    return '';
-  }
-}
 
 /**
  * Sayfadaki şifreli oynatıcı HTML'ini çözer.
@@ -91,12 +80,13 @@ export function sifreliOynaticiCoz(html) {
     }
     if (!duz) {
       // Parola da şifreliyse: sıradaki adayı parola olarak dene.
-      veri.duz = CryptoJS.AES.decrypt(veri.duz, parola).toString() || veri.duz;
+      veri.duz = duz || veri.duz;
       continue;
     }
 
     // Çoğu yerde çıktı bir hex katmanı daha sarar.
-    const duzHex = onaltilikCoz(duz);
+    // crypto-js 4.x'te varsayılan toString() HEX döner; açıkça UTF-8 istenir.
+    const duzHex = CryptoJS.enc.Hex.parse(duz).toString(CryptoJS.enc.Utf8);
     if (duzHex && /<[a-z!]/i.test(duzHex)) duz = duzHex;
 
     if (!/<[a-z!]/i.test(duz)) continue;

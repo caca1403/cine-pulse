@@ -10,6 +10,9 @@
 export async function fetchTorrentStreamSources({
   type = 'movie',
   tmdbId = null,
+  // title altyazi adresinde kullaniliyordu ama parametre olarak hic alinmamisti;
+  // "title is not defined" ile tum kaynak uretimi cokuyordu.
+  title = '',
   season = 1,
   episode = 1
 } = {}) {

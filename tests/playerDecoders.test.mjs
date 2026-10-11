@@ -64,6 +64,16 @@ ok(oynaticiCoz(gomulu)?.url === 'https://cdn.t/hls/g', 'videoPlayerData(JSON.par
 const fire = `<script>FirePlayer("abc", { file: "https://cdn.sf.tv/hls/f.m3u8", title: "x" }, true);</script>`;
 ok(oynaticiCoz(fire)?.url === 'https://cdn.sf.tv/hls/f.m3u8', 'FirePlayer({file}) çözüldü', oynaticiCoz(fire)?.url || 'yok');
 
+// 8d) Oynatıcı çerçevesi (dzembed.php / iframe.php) — çözülmüş sağlayıcılarda
+const cerceve = `<script>var p="https://cdn.tv/dzembed.php?id=abc123&t=";</script>`;
+ok(oynaticiCoz(cerceve)?.cerceve === true, 'dzembed.php çerçevesi tanındı', oynaticiCoz(cerceve)?.url?.slice(0,44) || 'yok');
+
+// 8e) master.m3u8 zaten doğrudan adres olarak ilk adımda yakalanmalı
+//     (daha pahalı adımlara düşmemeli)
+const masterOnek = '<script>var u="https://cdn.tv/hls/x/master.m3u8";</script>';
+ok(oynaticiCoz(masterOnek)?.url === 'https://cdn.tv/hls/x/master.m3u8',
+   'master.m3u8 doğrudan yakalandı', oynaticiCoz(masterOnek)?.via);
+
 // 9) Kod çalıştırılmadığının kanıtı: process/require çağrısı yok
 const kotu = `<script>process.exit(1); require('fs').readFileSync('/etc/passwd'); while(1){}</script>`;
 ok(oynaticiCoz(kotu) === null, 'tehlikeli kod çalıştırılmıyor (ağ/erişim yok)');

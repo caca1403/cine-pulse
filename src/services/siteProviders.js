@@ -1,3 +1,4 @@
+import { isStrictMediaTitleMatch } from './mediaMatcher.js';
 import { akilliGet, akilliPost, cihazGet, cihazPost, nativeHttpAktifMi } from './nativeHttp.js';
 import { oynaticiCoz, masterUrlDuzelt, kaliteEtiketi, masterAltyazilari } from './playerDecoders.js';
 import { extractEmbedStream } from './embedExtractors.js';
@@ -47,6 +48,77 @@ export const SITES = {
     }
   },
 
+  /* ── Kalan Patron eklentileri ─────────────────────────────────────── */
+  // PatronMulti: vidlink.pro şifreli TMDB kimliği kullanıyor.
+  //   1) enc-dec.app/api/enc-vidlink?text=<tmdbId>  → şifreli kimlik
+  //   2) vidlink.pro/api/b/movie/<id>  ya da  /api/b/tv/<id>/<s>/<e>
+  vidlink: {
+    ad: 'VidLink', listeAnahtari: null,
+    yedek: ['https://vidlink.pro/'],
+    tur: ['film', 'dizi'],
+    // İki adımlı: önce şifreleme ucu, sonra yayın ucu
+    sifreliKimlik: async (tmdbId) => {
+      const y = await akilliGet(`https://enc-dec.app/api/enc-vidlink?text=${encodeURIComponent(tmdbId)}`, { timeout: 8000 });
+      return String(y || '').trim().replace(/^["']|["']$/g, '');
+    },
+    ara: { yontem: 'DOGRUDAN', yol: () => '', tur: () => true },
+    icerik: (u) => u
+  },
+
+  // Kalıplar Patron dosyalarından birebir alındı.
+  zenit: {
+    // 2embed arama YAPMAZ; TMDB kimliğinden doğrudan gömülü adresi verir.
+    // Önceki hâlde `tur: () => false` her sonucu reddediyordu ve akış
+    // hiç kaynak üretemiyordu.
+    // Not: ölçüldü — 2embed.to şu an bağlantı vermiyor (HTTP 000).
+    // Alan adı geri gelince otomatik çalışır.
+    ad: 'Zenit', listeAnahtari: null,
+    yedek: ['https://2embed.to/'],
+    tur: ['film', 'dizi'],
+    dogrudanUrl: (base, o) => (o.mediaType === 'movie'
+      ? `${base}embed/movie?tmdb=${o.tmdbId}`
+      : `${base}embed/tv?tmdb=${o.tmdbId}&season=${o.season}&episode=${o.episode}`),
+    ara: { yontem: 'DOGRUDAN', yol: () => '', tur: () => true },
+    icerik: (u) => u
+  },
+  dizipal: {
+    ad: 'Dizipal', listeAnahtari: 'dizipal',
+    yedek: ['https://dizipal2138.com/', 'https://dizipal1587.com/'],
+    tur: ['dizi', 'film'],
+    // Patron: `${baseUrl}/ajax-search?q=`
+    ara: { yontem: 'GET', yol: (q) => `/ajax-search?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u,
+    bolum: (_h, s, e, icerikUrl) => `${icerikUrl.replace(/\/$/, '')}/sezon-${s}/bolum-${e}`
+  },
+  asyaanimeleri: {
+    ad: 'Asya Animeleri', listeAnahtari: null,
+    yedek: ['https://asyaanimeleri.top/'],
+    tur: ['anime'],
+    // Patron: `${MAIN_URL}/?s=${query}`
+    ara: { yontem: 'GET', yol: (q) => `/?s=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u,
+    bolum: (_h, s, e, icerikUrl) => `${icerikUrl.replace(/\/$/, '')}/${s}-sezon-${e}-bolum`
+  },
+
+  /* ── Patron'da aktif, bizde kayıtlı olmayan iki kaynak ──────────────
+     Nuvio eklentilerinde etkin, bizde hiç yoktu. Alan adı ve arama
+     yolu Patron dosyalarından birebir alındı. */
+  hdfilmdelisi: {
+    ad: 'HDFilm Delisi', listeAnahtari: null,
+    yedek: ['https://hdfilmdelisi.one/'],
+    tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/arama?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+  dortkhd: {
+    ad: '4KHD', listeAnahtari: null,
+    yedek: ['https://4khdhub.one/'],
+    tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `?s=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u,
+    bolum: (_h, s, e, icerikUrl) => `${icerikUrl.replace(/\/$/, '')}/${s}-sezon-${e}-bolum`
+  },
+
   /* ── Patron eklentilerinden kalan iki kaynak ──────────────────────────
      17 patron eklentisinin 15'i zaten bizdeydi; bu ikisi eksikti. */
   film666: {
@@ -75,7 +147,8 @@ export const SITES = {
   },
   hdplayersystem: {
     ad: 'HDPlayerSystem', listeAnahtari: null, yedek: ['https://hdplayersystem.com/'], tur: ['film', 'dizi'],
-    ara: { yontem: 'GET', yol: (q) => `/api/search?q=${encodeURIComponent(q)}`, tur: () => true },
+    // Çözülmüş koddan: arama /?s= , dizi listesi /diziler/
+    ara: { yontem: 'GET', yol: (q) => `/?s=${encodeURIComponent(q)}`, tur: () => true },
     icerik: (u) => u
   },
   ksdpictures: {
@@ -131,7 +204,8 @@ export const SITES = {
   },
   ajaxSearch: {
     ad: 'AjaxSearch', listeAnahtari: null, yedek: ['https://sakazuki.tv/'], tur: ['film', 'dizi'],
-    ara: { yontem: 'GET', yol: (q) => `/ajax-search?q=${encodeURIComponent(q)}`, tur: () => true },
+    // Çözülmüş koddan: /ajax (ajax-token ile birlikte)
+    ara: { yontem: 'GET', yol: (q) => `/ajax?search=${encodeURIComponent(q)}`, tur: () => true },
     icerik: (u) => u
   },
   filmDiziList: {
@@ -342,7 +416,7 @@ async function siteAra(siteId, terim) {
     const u = mutlak(yol, base);
     if (!u || bulunanlar.some((x) => x.url === u)) return;
     if (!ayar.ara.tur(u)) return;
-    bulunanlar.push({ title: baslik || terim, url: u });
+    bulunanlar.push({ title: baslik || '', url: u });
   };
 
   // JSON API (SelçukFlix, Film Ekseni)
@@ -353,19 +427,17 @@ async function siteAra(siteId, terim) {
       for (const it of Array.isArray(liste) ? liste : []) {
         if (!it) continue;
         const yol = it.slug || it.url || it.link || it.href;
-        if (yol) ekle(it.title || it.name, yol.startsWith('/') ? `${base.replace(/\/$/, '')}${yol}` : yol);
+        if (yol) ekle(it.title || it.name, yol);
       }
     } catch (_) { /* JSON değilse HTML akışına düş */ }
     if (bulunanlar.length) return bulunanlar;
   }
 
-  // HTML
-  for (const m of ham.matchAll(/href=["']((?:https?:\/\/[^"']*)?\/[^"'#?]+)["']/gi)) {
-    const adres = mutlak(m[1], base);
-    if (!adres || !ayar.ara.tur(adres)) continue;
-    const baslik = (ham.slice(Math.max(0, m.index - 240), m.index).match(/>([^<>]{3,90})</g) || [])
-      .pop()?.replace(/[<>]/g, '').trim();
-    ekle(baslik, adres);
+  // Read the label from the link itself, rather than neighbouring navigation.
+  for (const m of ham.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const baslik = m[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const img = m[2].match(/(?:alt|title)=["']([^"']+)["']/i);
+    ekle(baslik || img?.[1] || '', m[1]);
   }
   return bulunanlar;
 }
@@ -398,7 +470,7 @@ function oynaticilariCikar(html, taban) {
  * @param {object} secenekler { tmdbId, mediaType, season, episode, imdbId, title }
  */
 export async function siteGetirStreams(siteId, {
-  tmdbId = '', imdbId = '', title = '', mediaType = 'movie', season = 1, episode = 1
+  tmdbId = '', imdbId = '', title = '', originalTitle = '', titles = [], mediaType = 'movie', season = 1, episode = 1
 } = {}) {
   const ayar = SITES[siteId];
   if (!ayar) return [];
@@ -408,11 +480,44 @@ export async function siteGetirStreams(siteId, {
   let imdb = String(imdbId || '').trim();
   if (!imdb && tmdbId) imdb = await imdbIdBul(tmdbId, mediaType);
 
-  const terimler = [...new Set([imdb, imdb.replace(/^tt/, ''), title].filter(Boolean))];
+  // DOGRUDAN KİPİ: bazı siteler arama yapmaz; TMDB kimliğinden adresi
+  // doğrudan üretirler (2embed gibi). Önce bu yol denenir.
+  if (ayar.dogrudanUrl) {
+    const ad = await siteBaseUrl(siteId);
+    if (!ad) return [];
+    try {
+      const dogrudan = ayar.dogrudanUrl(ad, { tmdbId, imdbId, mediaType, season, episode });
+      const sayfa = await istek(dogrudan, { referer: ad, timeout: 10000 });
+      if (sayfa && !engelMi(sayfa)) {
+        return dogrudanKaynaklari(siteId, dogrudan, sayfa, ad);
+      }
+    } catch (_) {}
+  }
+
+  // Şifreli kimlik gerektiren kaynak (vidlink)
+  if (ayar.sifreliKimlik) {
+    const ad = await siteBaseUrl(siteId);
+    if (!ad) return [];
+    try {
+      const kimlik = await ayar.sifreliKimlik(tmdbId);
+      if (kimlik) {
+        const yol = mediaType === 'movie'
+          ? `/api/b/movie/${kimlik}`
+          : `/api/b/tv/${kimlik}/${parseInt(season, 10) || 1}/${parseInt(episode, 10) || 1}`;
+        const dogrudan = `${ad.replace(/\/$/, '')}${yol}`;
+        const sayfa = await akilliGet(dogrudan, { ref: ad, timeout: 10000, headers: { Accept: 'application/json', Origin: ad.replace(/\/$/, '') } });
+        return vidlinkKaynaklari(sayfa, ad);
+      }
+    } catch (_) {}
+  }
+
+  const hedefler = [...new Set([title, originalTitle, ...titles].filter(Boolean))];
+  const terimler = [...new Set([imdb, imdb.replace(/^tt/, ''), ...hedefler].filter(Boolean))];
   let icerikUrl = '';
   for (const t of terimler) {
     const sonuc = await siteAra(siteId, t);
-    const uygun = sonuc[0];
+    const uygun = sonuc.find(x => isStrictMediaTitleMatch(x.title, hedefler))
+      || sonuc.find(x => imdb && (x.url.includes(imdb) || x.title === imdb));
     if (uygun) { icerikUrl = uygun.url; break; }
   }
   if (!icerikUrl) return [];
@@ -481,4 +586,49 @@ export async function siteGetirStreams(siteId, {
 /** Siteye göre kaynak listesi. */
 export async function siteListesi(siteId, secenekler = {}) {
   try { return await siteGetirStreams(siteId, secenekler); } catch (_) { return []; }
+}
+
+/**
+ * Aramaya gerek olmayan kaynaklar için: adres zaten biliniyor, sadece
+ * sayfadaki yayını çözmek gerekiyor.
+ */
+function dogrudanKaynaklari(siteId, adres, sayfa, referer) {
+  const c = oynaticiCoz(sayfa);
+  if (c) {
+    return [{
+      name: kaliteEtiketi(sayfa) || SITES[siteId].ad,
+      url: masterUrlDuzelt(c.url),
+      referer,
+      altyazilar: masterAltyazilari(sayfa),
+      via: `${siteId}:${c.via}`
+    }];
+  }
+  // Çözülemediyse gömülü sayfayı oynat (tarayıcı motoru açar)
+  return [{
+    name: SITES[siteId].ad,
+    url: adres,
+    referer,
+    isIframe: true,
+    via: `${siteId}:gomulu`
+  }];
+}
+
+/** VidLink returns JSON, never a playable iframe URL. */
+export function vidlinkKaynaklari(body, referer = 'https://vidlink.pro/') {
+  let data;
+  try { data = JSON.parse(body); } catch (_) { return []; }
+  const stream = data?.stream;
+  if (!stream) return [];
+  const result = [];
+  const add = (url, quality) => {
+    if (typeof url !== 'string' || !/^https?:\/\//i.test(url) || result.some(s => s.url === url)) return;
+    result.push({ name: quality ? `VidLink ${quality}` : 'VidLink', url, referer,
+      isHls: true, isDirectVideo: true, quality: quality || 'Auto',
+      altyazilar: (Array.isArray(data.subtitles) ? data.subtitles : []).map(s => ({
+        label: s.label || s.language || 'Altyazı', src: s.file || s.url
+      })).filter(s => s.src), via: 'vidlink:json' });
+  };
+  for (const [quality, item] of Object.entries(stream.qualities || {})) add(item?.url, quality);
+  add(stream.playlist);
+  return result;
 }

@@ -104,11 +104,11 @@ export async function cihazPost(url, body, { ref = '', headers = {}, timeout = 1
  */
 const UA_MOBIL = 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
 
-async function duzGet(url, { ref, timeout }) {
+async function duzGet(url, { ref, timeout, headers = {} }) {
   try {
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), timeout);
-    const r = await fetch(url, { signal: ac.signal, headers: { 'User-Agent': UA_MOBIL, Accept: '*/*', ...(ref ? { Referer: ref } : {}) } });
+    const r = await fetch(url, { signal: ac.signal, headers: { 'User-Agent': UA_MOBIL, Accept: '*/*', ...headers, ...(ref ? { Referer: ref } : {}) } });
     clearTimeout(t);
     if (!r.ok) return '';
     return await r.text();
@@ -146,15 +146,15 @@ async function gizliWebViewDeneme(url, timeout) {
   return '';
 }
 
-export async function akilliGet(url, { ref = '', timeout = 15000, yedekCek = null } = {}) {
+export async function akilliGet(url, { ref = '', timeout = 15000, yedekCek = null, headers = {} } = {}) {
   // 1) Android: cihazın kendi IP'sinden (CapacitorHttp)
   if (nativeAndroidMi()) {
-    const r = await cihazGet(url, { ref, timeout });
+    const r = await cihazGet(url, { ref, timeout, headers });
     if (r.ok && r.text) return r.text;
   }
 
   // 2) Doğrudan istek (masaüstü/web: kullanıcının kendi IP'si)
-  const dogrudan = await duzGet(url, { ref, timeout });
+  const dogrudan = await duzGet(url, { ref, timeout, headers });
   if (dogrudan) return dogrudan;
 
   // 3) GİZLİ WEBVIEW — Cloudflare JS challenge için gerçek tarayıcı motoru.
