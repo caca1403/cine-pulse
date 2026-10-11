@@ -20,7 +20,13 @@ const ALIASES = {
   hdfb: 'Elara', lookmovie: 'Halo', smashy: 'Cosmo', twoembed: 'Zenit',
   anizium: 'Aria', animecix: 'Tera', animetr: 'Kitsu', kidsvip: 'Pico',
   dramalar: 'Dora', dramadizilerim: 'Rhea', torrent: 'Hydra',
-  dizi77: 'Corvus', sinemacc: 'Halcyon', vodm3u: 'Pulsar', dizibox: 'Cygnus'
+  dizi77: 'Corvus', sinemacc: 'Halcyon', vodm3u: 'Pulsar', dizibox: 'Cygnus',
+  // Yeni siteler — anonim kod adlariyla (site adlari arayuzde gorunmez)
+  fm: 'Thales', k666: 'Deneb', dizify: 'Mimosa', vidy: 'Altair',
+  hdps: 'Rigel', ksd: 'Sadr', pichive: 'Antares', vidload: 'Spica',
+  vixolity: 'Almach', tauvideo: 'Nunki', pilavyer: 'Menkar',
+  nxsha: 'Adhara', vidmoly: 'Zubenelgenubi', sphp: 'Alphecca',
+  kwsearch: 'Mizar', ajax: 'Saiph', filmdizi: 'Capella', rplayer: 'Denebola'
 };
 
 // id: toplayici anahtari. registry: providerRegistry'deki karsiligi (varsa).

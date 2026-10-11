@@ -26,6 +26,25 @@ export const SOURCE_FAMILIES = [
   { alias: 'Dora', provider: 'Dramalar', prefixes: ['dml_'], sources: ['Dramalar'] },
   { alias: 'Rhea', provider: 'DramaDizilerim', prefixes: ['ddz_'], sources: ['DramaDizilerim'] },
   { alias: 'Elara', provider: 'HDFilmizle', prefixes: ['hdfb_'], sources: ['HDFilmizle'] },
+  // Yeni siteler — ekran adlari da anonim kod adlaridir
+  { alias: 'Thales', provider: 'filmmakinesi', prefixes: ['fm_'], sources: ['fm'] },
+  { alias: 'Deneb', provider: 'k666', prefixes: ['k666_'], sources: ['k666'] },
+  { alias: 'Mimosa', provider: 'dizify', prefixes: ['dzyf_'], sources: ['dizify'] },
+  { alias: 'Altair', provider: 'vidy', prefixes: ['vdy_'], sources: ['vidy'] },
+  { alias: 'Rigel', provider: 'hdplayersystem', prefixes: ['hdps_'], sources: ['hdps'] },
+  { alias: 'Sadr', provider: 'ksdpictures', prefixes: ['ksd_'], sources: ['ksd'] },
+  { alias: 'Antares', provider: 'pichive', prefixes: ['pch_'], sources: ['pichive'] },
+  { alias: 'Spica', provider: 'vidload', prefixes: ['vld_'], sources: ['vidload'] },
+  { alias: 'Almach', provider: 'vixolity', prefixes: ['vxl_'], sources: ['vixolity'] },
+  { alias: 'Nunki', provider: 'tauvideo', prefixes: ['tau_'], sources: ['tauvideo'] },
+  { alias: 'Menkar', provider: 'pilavyerplay', prefixes: ['plv_'], sources: ['pilavyer'] },
+  { alias: 'Adhara', provider: 'nxsha', prefixes: ['nx_'], sources: ['nxsha'] },
+  { alias: 'Zubenelgenubi', provider: 'vidmolyNet', prefixes: ['vmy_'], sources: ['vidmoly'] },
+  { alias: 'Alphecca', provider: 'searchPhp', prefixes: ['sphp_'], sources: ['sphp'] },
+  { alias: 'Mizar', provider: 'keywordSearch', prefixes: ['kws_'], sources: ['kwsearch'] },
+  { alias: 'Saiph', provider: 'ajaxSearch', prefixes: ['ajx_'], sources: ['ajax'] },
+  { alias: 'Capella', provider: 'filmDiziList', prefixes: ['fdl_'], sources: ['filmdizi'] },
+  { alias: 'Denebola', provider: 'rplayerVideo', prefixes: ['rpl_'], sources: ['rplayer'] },
   { alias: 'Nexus', provider: 'Diğer / tanımlanmayan kaynak', prefixes: [], sources: [] }
 ];
 

@@ -47,6 +47,23 @@ export const SITES = {
     }
   },
 
+  /* ── Patron eklentilerinden kalan iki kaynak ──────────────────────────
+     17 patron eklentisinin 15'i zaten bizdeydi; bu ikisi eksikti. */
+  film666: {
+    ad: '666 Film', listeAnahtari: null,
+    yedek: ['https://666filmizle.site/'],
+    tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/?s=${encodeURIComponent(q)}`, tur: (u) => /\/(?:film|dizi)\//.test(u) },
+    icerik: (u) => u
+  },
+  dizify: {
+    ad: 'Dizify', listeAnahtari: null,
+    yedek: ['https://dizify.org/'],
+    tur: ['film', 'dizi'],
+    ara: { yontem: 'GET', yol: (q) => `/search?q=${encodeURIComponent(q)}`, tur: () => true },
+    icerik: (u) => u
+  },
+
   /* ── izlelan sağlayıcılarından çözülenler ──────────────────────────
      45 sağlayıcının obfuscation'ı geri alındı ve arama/oynatıcı kalıpları
      çıkarıldı (site → /api/search?q= gibi). Buradaki her yapılandırma
@@ -131,7 +148,15 @@ export const SITES = {
   setfilm: {
     ad: 'SetFilm',
     listeAnahtari: null,
-    yedek: ['https://www.setfilmizle.uk/'],
+    // Ana adres su an BAGLANMIYOR (olculdu: HTTP 000). Patron'in paylastigi
+    // oynatici adresleri yedek olarak tutulur; hangisinin yasadigi
+    // adresAcikMi() ile her acilista denetlenir.
+    yedek: [
+      'https://www.setfilmizle.uk/',
+      'https://www.setfilmizle.com/',
+      'https://fastplay.mom/',
+      'https://setplay.shop/'
+    ],
     tur: ['film', 'dizi'],
     // WordPress araması: /?s=…
     ara: { yontem: 'GET', yol: (q) => `?s=${encodeURIComponent(q)}`, tur: (u) => /setfilmizle\.uk/.test(u) && u !== 'https://www.setfilmizle.uk/' },
@@ -190,15 +215,42 @@ export const SITES = {
 
 const _base = new Map();
 const _sonDeneme = new Map();
+const _olu = new Set();
+
+/**
+ * Alan adı gerçekten açılıyor mu?
+ * Sessiz ölümleri yakalar: kaynak site adresi değiştirdiğinde ya da
+ * kapandığında uygulama boş liste döndürüp nedenini söylemiyordu.
+ * (Ölçüldü: SetFilm'in adresi bağlantı vermiyordu — 0 bayt, 663 ms.)
+ */
+async function adresAcikMi(adres) {
+  try {
+    const r = await fetch(adres, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: { 'User-Agent': UA, Accept: 'text/html,*/*' },
+      signal: AbortSignal.timeout(7000)
+    });
+    // Bağlantı kuruldu. 4xx/5xx bile "adres var" demektir (site kapalı olabilir).
+    return r.status > 0;
+  } catch (_) {
+    return false;
+  }
+}
 
 export async function siteBaseUrl(siteId) {
   if (_base.has(siteId)) return _base.get(siteId);
   const ayar = SITES[siteId];
+  if (!ayar) return '';
+
+  // Adres daha önce ölü çıktıysa tekrar denemeyelim (her açılışta 7 sn beklemesin).
+  if (_olu.has(siteId)) return '';
+
   const son = _sonDeneme.get(siteId) || 0;
-  // CF her istekte 403 verdiği için listeyi saniyede bir kez sormak yeterli.
   if (Date.now() - son < 10 * 60 * 1000) return _base.get(siteId) || ayar.yedek[0];
   _sonDeneme.set(siteId, Date.now());
 
+  const adaylar = [];
   if (ayar.listeAnahtari) {
     try {
       const liste = await akilliGet(SITEURL_LISTESI, { timeout: 6000 });
@@ -208,14 +260,22 @@ export async function siteBaseUrl(siteId) {
         if (i < 0) continue;
         if (satir.slice(0, i).trim() === ayar.listeAnahtari) {
           const u = satir.slice(i + 1).trim();
-          _base.set(siteId, u.endsWith('/') ? u : `${u}/`);
-          return _base.get(siteId);
+          adaylar.push(u.endsWith('/') ? u : `${u}/`);
         }
       }
     } catch (_) { /* listeye ulaşılamadı, aşağıdaki sabitlere düş */ }
   }
-  _base.set(siteId, ayar.yedek[0]);
-  return _base.get(siteId);
+  adaylar.push(...ayar.yedek);
+
+  for (const aday of [...new Set(adaylar)]) {
+    if (await adresAcikMi(aday)) {
+      _base.set(siteId, aday);
+      return aday;
+    }
+    console.warn(`[siteProviders] ${siteId}: adres açılmıyor, atlanıyor → ${aday}`);
+  }
+  _olu.add(siteId);
+  return '';
 }
 
 /* ── HTTP ────────────────────────────────────────────────────────────── */

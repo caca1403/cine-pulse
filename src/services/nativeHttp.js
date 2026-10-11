@@ -128,38 +128,49 @@ async function duzGet(url, { ref, timeout }) {
  * WebView yoksa (masaüstü tarayıcı, test) null döner; çağıran zincir devam eder.
  */
 async function gizliWebViewDeneme(url, timeout) {
-  try {
-    const wv = await import('./platform/androidWebViewResolver.js');
-    if (!wv.hasNativeWebViewResolver?.()) return '';
-    const hit = await wv.resolvePageInNativeWebView(url, { timeoutMs: Math.max(20000, timeout + 8000) });
-    if (!hit || wv.looksBlocked?.(hit)) return '';
-    const raw = String(hit.text || '').trim();
-    const body = (raw.startsWith('{') || raw.startsWith('[')) ? raw : (hit.html || raw);
-    return body && body.length > 1500 ? body : '';
-  } catch (_) {
-    return '';
+  const zaman = Math.max(20000, timeout + 8000);
+  // Önce Android'in gizli WebView'i, olmazsa Electron'ın gizli BrowserWindow'ı.
+  // İkisi de gerçek tarayıcı motoruyla CF challenge'ını çözer; masaüstünde
+  // gizli WebView olmadan bu siteler hiç açılmıyordu.
+  for (const yol of ['./platform/androidWebViewResolver.js', './platform/desktopWebViewResolver.js']) {
+    try {
+      const wv = await import(/* @vite-ignore */ yol);
+      if (!wv.hasNativeWebViewResolver?.()) continue;
+      const hit = await wv.resolvePageInNativeWebView(url, { timeoutMs: zaman });
+      if (!hit || wv.looksBlocked?.(hit)) continue;
+      const raw = String(hit.text || '').trim();
+      const body = (raw.startsWith('{') || raw.startsWith('[')) ? raw : (hit.html || raw);
+      if (body && body.length > 1500) return body;
+    } catch (_) { /* sonraki çözümleyiciye düş */ }
   }
+  return '';
 }
 
 export async function akilliGet(url, { ref = '', timeout = 15000, yedekCek = null } = {}) {
+  // 1) Android: cihazın kendi IP'sinden (CapacitorHttp)
   if (nativeAndroidMi()) {
     const r = await cihazGet(url, { ref, timeout });
     if (r.ok && r.text) return r.text;
-    // Cihaz erişemezse (çok eski Capacitor, ağ kısıtı) geri düş.
   }
+
+  // 2) Doğrudan istek (masaüstü/web: kullanıcının kendi IP'si)
+  const dogrudan = await duzGet(url, { ref, timeout });
+  if (dogrudan) return dogrudan;
+
+  // 3) GİZLİ WEBVIEW — Cloudflare JS challenge için gerçek tarayıcı motoru.
+  //    Önceden sadece `yedekCek` verildiğinde deniyordu; çağıranların
+  //    çoğu vermediği için masaüstünde hiç devreye girmiyordu.
+  const wv = await gizliWebViewDeneme(url, timeout);
+  if (wv) return wv;
+
+  // 4) Çağıranın kendi yedeği (proxy/worker zinciri)
   if (typeof yedekCek === 'function') {
     try {
       const t = await yedekCek(url, { ref, timeout });
       if (t) return t;
     } catch (_) {}
-    // Cihazda hâlâ çözemedik: gizli WebView (Cloudflare challenge).
-    const wv = await gizliWebViewDeneme(url, timeout);
-    if (wv) return wv;
-    return '';
   }
-  // Tarayıcı/Node: doğrudan istek. (Sayfa engelliyse çağıran katmanın
-  // proxy/worker zinciri devreye girer.)
-  return duzGet(url, { ref, timeout });
+  return '';
 }
 
 /**

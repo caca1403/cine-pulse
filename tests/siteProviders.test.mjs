@@ -21,6 +21,9 @@ ok(Object.keys(SITES).length >= 19, 'site kayıtlı', Object.keys(SITES).join(',
 globalThis.fetch = async (u, o) => {
   const s = String(u);
   const metin = (t) => ({ ok: true, status: 200, text: async () => t });
+  if (s === 'https://www.hdfilmcehennemi.nl/' || s === 'https://selcukflix.app/' || s === 'https://filmekseni.top/') {
+    return { ok: true, status: 200, text: async () => 'ok' };
+  }
   if (s.includes('siteurl.txt')) {
     return metin('hdfilmcehennemi:https://www.hdfilmcehennemi.nl\nselcukflix:https://selcukflix.app/\n');
   }
