@@ -19,7 +19,8 @@ const ALIASES = {
   dyu: 'Sol', dzy: 'Echo', dzb: 'Nero', tvr: 'Polaris', jet: 'Nimbus',
   hdfb: 'Elara', lookmovie: 'Halo', smashy: 'Cosmo', twoembed: 'Zenit',
   anizium: 'Aria', animecix: 'Tera', animetr: 'Kitsu', kidsvip: 'Pico',
-  dramalar: 'Dora', dramadizilerim: 'Rhea', torrent: 'Hydra'
+  dramalar: 'Dora', dramadizilerim: 'Rhea', torrent: 'Hydra',
+  dizi77: 'Corvus', sinemacc: 'Halcyon', vodm3u: 'Pulsar'
 };
 
 // id: toplayici anahtari. registry: providerRegistry'deki karsiligi (varsa).
@@ -51,6 +52,9 @@ export const PLUGIN_DEFS = [
   { id: 'dramalar', kinds: ['kisa-dizi'], desc: 'Kısa drama doğrudan CDN.' },
   { id: 'dramadizilerim', kinds: ['kisa-dizi'], desc: 'Kısa dizi başlıkları, dört ayrı hat.' },
   { id: 'torrent', kinds: ['film', 'dizi'], desc: 'P2P eşler arası akış.', warn: 'Başlaması eş sayısına bağlıdır; bulamazsa bekler.' },
+  { id: 'dizi77', kinds: ['dizi'], desc: 'Bölüm bazlı dizi kataloğu, gömülü oynatıcı.' },
+  { id: 'sinemacc', kinds: ['film'], desc: 'Film kataloğu, gömülü oynatıcı.' },
+  { id: 'vodm3u', kinds: ['film'], desc: 'Binlerce film dosyası, doğrudan akış.', warn: 'Dosya bağlantılarıdır; başlarken kısa süre bekleyebilir.' },
 ];
 
 function aliasOf(def) {

@@ -33,6 +33,10 @@ import { fetchTorrentStreamSources } from './torrentStreamService.js';
 import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
 import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
 import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
+import { fetchVodSources, loadVodSource } from './vodM3uSources.js';
+
+// Film M3U kataloglarının kaynak kimlikleri (tek tek yüklenir, boş olanlar atlanır).
+const VOD_M3U_IDS = ['jetfilm', 'filmmodu', 'filmmakinesi', 'fhdfi'];
 import { fetchAniziumSources } from './aniziumScraper.js';
 import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
 import { fetchDramalarEpisodeSources } from './dramalarScraper.js';
@@ -889,7 +893,12 @@ export async function getStreamingServersProgressive({
     off('kidsvip') ? [] : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
     off('kidsvip') ? [] : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
     off('hdfb') ? [] : fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    off('jet') ? [] : fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => [])
+    off('jet') ? [] : fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
+    // Toplu film M3U kataloglari (Jet Film / Film Modu). Dogrudan dosya
+    // adresleri; #EXTVLCOPT UA/referer degerleri proxy'ye devredilir.
+    off('vodm3u') ? [] : Promise.all(VOD_M3U_IDS.map((sid) => loadVodSource(sid)))
+      .then(() => fetchVodSources({ titles: candidateTitles, title: targetTitle }))
+      .then(res => addStreams(res, 'dubbed')).catch(() => [])
   ];
 
   await Promise.allSettled([...tasks, ...crossTypeTasks, aliasTask]);
