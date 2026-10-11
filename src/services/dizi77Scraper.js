@@ -1,3 +1,5 @@
+import { akilliGet, cihazGet, nativeHttpAktifMi } from './nativeHttp.js';
+
 /* ==========================================================================
    CinePulse — dizi77.life kaziyicisi (dizi odakli)
 
@@ -37,6 +39,15 @@ function isBlockedBody(body) {
 }
 
 async function getHtml(url, timeout = 12000, referer = '') {
+  // ── 0) Cihazin kendi IP'sinden dogrudan istek (CapacitorHttp) ──────────
+  // En hizli ve en ucuz yol: WebView yok, proxy yok, sunucu yok. Isteği
+  // telefonun ag yiginindan atar (kullanici ev IP'si) ve Referer serbestce
+  // yazilabilir. Vercel'e hic ugramaz.
+  if (nativeHttpAktifMi()) {
+    const r = await cihazGet(url, { ref: referer || undefined, timeout: Math.min(timeout, 10000) });
+    if (r.ok && r.text && !isBlockedBody(r.text)) return r.text;
+  }
+
   // ── 1) CIHAZIN KENDI WebView'i (cf_clearance cihazin agindan alinir) ──
   // Orion/hdfc deseni. Android ve masaustunde en guclu yol.
   try {

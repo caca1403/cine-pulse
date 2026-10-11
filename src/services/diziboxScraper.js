@@ -1,3 +1,5 @@
+import { akilliGet } from './nativeHttp.js';
+
 /* ==========================================================================
    CinePulse — DiziBox kaziyicisi (dizi odakli)
 
@@ -16,9 +18,15 @@
    olarak isaretlenir; uygulama mevcut oynatici cercevesinde acar.
    ========================================================================== */
 
+// dizibox.live ASIL site; Cloudflare JS challenge kullaniyor, yalnizca cihazdaki
+// gizli WebView ile cozulur. diziboxizle.com ayni sitenin CF'siz aynasi ve
+// sunucudan da acilir. Sirayla deniyoruz: once canli site, olmazsa ayna.
+//
+// NOT: Bu siralama sunucudan dogrudan denenemez — canli siteden her zaman
+// 403 doner. Test/olcumde diziboxizle.com kullanilir.
 const HOSTS = [
-  { base: 'https://diziboxizle.com', label: 'DiziBox' },
-  { base: 'https://dizibox.live', label: 'DiziBox (live)' }
+  { base: 'https://dizibox.live', label: 'DiziBox', cfGerekir: true },
+  { base: 'https://diziboxizle.com', label: 'DiziBox (ayna)' }
 ];
 
 function proxyUrl(url, ref) {
@@ -64,10 +72,8 @@ async function getHtml(url, timeout = 14000) {
 
   // 3) Uygulama proxy'si
   try {
-    const res = await fetch(proxyUrl(url), { signal: AbortSignal.timeout(timeout) });
-    if (!res.ok) return '';
-    const body = await res.text();
-    return isBlockedPage(body) ? '' : body;
+    const metin = await akilliGet(url, { timeout });
+    return isBlockedPage(metin) ? '' : metin;
   } catch (_) {
     return '';
   }

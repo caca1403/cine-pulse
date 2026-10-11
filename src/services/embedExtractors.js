@@ -21,6 +21,8 @@
 
 /* ══════════════════════════ 1. ÇEKİRDEK ══════════════════════════ */
 
+import { akilliGet, akilliPost, nativeHttpAktifMi } from './nativeHttp.js';
+
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
@@ -160,8 +162,16 @@ async function proxyGet(url, ref, timeout) {
 }
 
 async function getHtml(url, { ref = '', timeout = 16000 } = {}) {
+  // ── Cihaz (Android): kullanıcının KENDİ IP'sinden ────────────────
+  // Bu yol olmasa bütün istekler Vercel'e gider ve Vercel datacenter
+  // olduğu için Türkçe kaynaklar 403/429/520 döner. CloudStream, Nuvio ve
+  // KekikStream da tam olarak bu yöntemle çalışıyor.
+  if (nativeHttpAktifMi()) {
+    const dogrudan = await akilliGet(url, { ref, timeout });
+    if (dogrudan) return dogrudan;
+  }
+  // ── Web / masaüstü: mevcut üç katmanlı zincir ─────────────────────
   for (const [ad, fabrika] of katmanSirasi()) {
-    // proxy katmanı ref'e ihtiyaç duyar
     const sonuc = ad === 'proxy' ? await proxyGet(url, ref, timeout)
                : ad === 'worker' ? await workerGet(url, timeout)
                : await directGet(url, ref, timeout);
@@ -172,6 +182,11 @@ async function getHtml(url, { ref = '', timeout = 16000 } = {}) {
 }
 
 async function postApi(url, body, ref, timeout = 16000) {
+  // Cihazda: doğrudan cihaz IP'sinden, Referer serbestçe yazılabiliyor.
+  if (nativeHttpAktifMi()) {
+    const d = await akilliPost(url, body, { ref, timeout });
+    if (d) return d;
+  }
   try {
     const r = await fetch(proxyUrl(url, ref), {
       method: 'POST',
@@ -249,7 +264,7 @@ async function kalipSecuredLink(url, ref) {
 
 /** 4b. videoUrl + videoServer — SetPlay / ExPlay / FastPlay ailesi */
 async function kalipVideoPlayer(url, ref) {
-  const html = await getHtml(url, { ref });
+  const html = await getHtml(url, { ref, timeout: 16000 });
   if (!html) return null;
   const srvHam = (html.match(/videoServer["']?\s*[:=]\s*["']([^"']+)["']/i) || [])[1];
   const yolHam = (html.match(/videoUrl["']?\s*[:=]\s*["']([^"']+)["']/i) || [])[1];
@@ -311,7 +326,7 @@ async function kalipDlApi(url, html) {
 /** 4d. PackedJS — eval(function(p,a,c,k,e,d)) paketli oynatıcı.
  *  Tarayıcıda olduğumuz için paketi elle açmıyoruz: kodu çalıştırıp
  *  oynatıcı global'larına yapılan çağrıları yakalıyoruz. */
-function kalipPackedJs(html, baseUrl, ref) {
+async function kalipPackedJs(html, baseUrl, ref) {
   const paketRe = /eval\s*\(\s*function\s*\(p,a,c,k,e,d\)[\s\S]{200,}?\.split\(['"]\\?\|['"]\)/;
   const m = html.match(paketRe);
   let bulunan = '';
@@ -355,7 +370,7 @@ function kalipPackedJs(html, baseUrl, ref) {
 
 /** 4e. bePlayer — AES şifreli yapılandırma */
 async function kalipBePlayer(url, ref) {
-  const html = await getHtml(url, { ref });
+  const html = await getHtml(url, { ref, timeout: 16000 });
   if (!html) return null;
   const m = html.match(/bePlayer\(\s*['"]([^'"]+)['"]\s*,\s*['"](\{[\s\S]{0,4000}?\})['"]\s*\)/);
   if (!m) return null;
@@ -397,7 +412,7 @@ function nonceBul(html) {
 }
 
 async function kalipNonce(url, ref) {
-  const html = await getHtml(url, { ref });
+  const html = await getHtml(url, { ref, timeout: 16000 });
   if (!html) return null;
   const nonce = nonceBul(html);
   if (!nonce) return null;
@@ -417,7 +432,7 @@ async function kalipNonce(url, ref) {
 
 /** 4g. Playlist API — file → playlist (.txt içinde HLS) */
 async function kalipPlaylist(url, ref) {
-  const html = await getHtml(url, { ref });
+  const html = await getHtml(url, { ref, timeout: 16000 });
   if (!html) return null;
   const yol = (html.match(/["']?file["']?\s*:\s*["']([^"']+)["']/i) || [])[1];
   if (!yol) return null;
@@ -485,8 +500,18 @@ function base64Coz(b64) {
     if (!MEDIA_EXT.test(metin) && /^[A-Za-z0-9+/=\s]+$/.test(metin) && metin.length > 40) {
       try { const ik = atob(metin.trim()); if (/m3u8|mp4|iframe|source/i.test(ik)) metin = ik; } catch (_) {}
     }
-    const m = metin.match(/https?:\\?\/\\?\/[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+\.m3u8[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]*/i);
+    // 1) Doğrudan m3u8 / mp4
+    const m = metin.match(/https?:\\?\/\\?\/[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+\.(?:m3u8|mp4|mkv)[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]*/i);
     if (m) return temizle(m[0]);
+    // 2) Çıplak bir oynatıcı adresi olabilir
+    //    (<iframe src="aHR0cHM6Ly9wbGF5ZXIu…"> — sinemacc, liderfilm).
+    //    Önceki sürüm yalnızca JSON alanlarını ve m3u8'i arıyordu, bu yüzden
+    //    çözülen adres atılıyordu.
+    const cift = metin.match(/https?:\\?\/\\?\/[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]{8,200}/i);
+    if (cift) {
+      const dogrudan = temizle(cift[0]);
+      if (/^https?:\/\//i.test(dogrudan) && !REKLAM_RE.test(dogrudan)) return dogrudan;
+    }
     for (const alan of ['url', 'file', 'src', 'videoSource', 'securedLink', 'link']) {
       const f = metin.match(new RegExp(`["']?${alan}["']?\\s*[:=]\\s*["']([^"']+)["']`, 'i'));
       if (f && MEDIA_EXT.test(f[1])) return temizle(f[1]);
@@ -519,9 +544,12 @@ function lazyCoz(html, base) {
  * @param {string} referer      sitenin adresi (gerekli: birçok oynatıcı bunu doğrular)
  * @param {Set}    gordum       daha önce denenen adresler (döngü koruması)
  */
-export async function extractEmbedStream(url, referer = '', gordum = new Set()) {
+export async function extractEmbedStream(url, referer = '', gordum = new Set(), bitis = 0) {
   if (!url || !/^https?:\/\//i.test(url)) return null;
   if (gordum.has(url) || gordum.size > 8) return null;
+  // Sert süre sınırı: çağıran (otonom çözümleyici / oynatıcı) bekletilmez.
+  const kalan = bitis ? Math.max(0, bitis - Date.now()) : 0;
+  if (bitis && kalan < 900) return null;
   gordum.add(url);
 
   if (isDirectStream(url)) {
@@ -538,13 +566,41 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set()) 
   }
 
   // ── Ucuz ve kesin olanlar önce
-  const html = await getHtml(url, { ref });
+  const html = await getHtml(url, { ref, timeout: 16000 });
   if (!html) return null;
 
   // /dl API: sayfadaki reklam adresleri "file:" olarak da geçtiği için
   // önce bu denenmeli, yoksa erken dönüş yanlış yayını yakalar.
   const dl = await kalipDlApi(url, html);
   if (dl) return { ...dl, via: 'dl-api' };
+
+  // BASE64 KODLU iframe src. Türkçe oynatıcıların çok yaygın biçimi:
+  //   <iframe src="aHR0cHM6Ly9wbGF5ZXIuZmlsbXpsZS5pbi92aWRlby9…">
+  // Ham src bir adres değil; çözülmeden kullanılırsa çöp adres üretilir ve
+  // çözümleme sessizce başarısız olur. (sinemacc, liderfilm, window._vs)
+  for (const m of html.matchAll(/<iframe[^>]*\ssrc=["']([A-Za-z0-9+/]{40,}={0,2})["']/gi)) {
+    const coz = base64Coz(m[1]);
+    const abs = coz ? mutlak(url, coz) : '';
+    if (abs && !REKLAM_RE.test(abs)) {
+      // İçerik çözücüye geri dön (base64 içinde de oynatıcı adresi olabilir).
+      const ic = await extractEmbedStream(abs, url, gordum, bitis);
+      if (ic && MEDIA_EXT.test(ic.url)) return { ...ic, via: `${ic.via}+base64` };
+      return { url: abs, referer: ref, via: 'base64-iframe', subtitles: altyazilariCikar(html, url) };
+    }
+  }
+
+  // BASE64 KODLU iframe src — Türkçe oynatıcıların çok yaygın biçimi:
+  //   <iframe src="aHR0cHM6Ly9wbGF5ZXIuZmlsbXpsZS5pbi92aWRlby9…">
+  // Ham src bir adres DEĞİLDİR; çözülmeden kullanılırsa çöp adres üretilir
+  // ve çözümleme sessizce başarısız olur. (sinemacc, liderfilm, window._vs)
+  for (const m of html.matchAll(/<iframe[^>]*\ssrc=["']([A-Za-z0-9+/]{40,}={0,2})["']/gi)) {
+    const coz = base64Coz(m[1]);
+    const abs = coz ? mutlak(url, coz) : '';
+    if (!abs || REKLAM_RE.test(abs)) continue;
+    const ic = await extractEmbedStream(abs, url, gordum, bitis);
+    if (ic && MEDIA_EXT.test(ic.url)) return { ...ic, via: `${ic.via}+base64` };
+    return { url: abs, referer: ref, via: 'base64-iframe', subtitles: altyazilariCikar(html, url) };
+  }
 
   // Sayfada doğrudan medya
   const dogrudan = tara(html, RE.sources, RE.m3u8, RE.videoTag);
@@ -556,10 +612,12 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set()) 
   }
 
   // ── Bilinen gömülü kalıpları
+  if (bitis && Date.now() > bitis) return null;
   const sl = await kalipSecuredLink(url, ref);
   if (sl) return { ...sl, via: 'securedlink' };
 
-  const vp = await kalipVideoPlayer(url, ref);
+  if (bitis && Date.now() > bitis) return null;
+  const vp = await kalipVideoPlayer(url, ref, html);
   if (vp) return { ...vp, via: 'videoPlayer' };
 
   // ── Sayfa içi tarama
@@ -569,7 +627,7 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set()) 
     if (ic) return { ...ic, via: `${ic.via}+jsonld` };
   }
 
-  const pj = kalipPackedJs(html, url, ref);
+  const pj = await kalipPackedJs(html, url, ref);
   if (pj) return { ...pj, via: 'packedjs', subtitles: altyazilariCikar(html, url) };
 
   const b64 = base64GizliCoz(html);
@@ -581,13 +639,16 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set()) 
   const lz = lazyCoz(html, url);
   if (lz) return { url: lz, referer: ref, via: 'lazy-src', subtitles: altyazilariCikar(html, url) };
 
-  const bp = await kalipBePlayer(url, ref);
+  if (bitis && Date.now() > bitis) return null;
+  const bp = await kalipBePlayer(url, ref, html);
   if (bp) return { ...bp, via: 'bePlayer' };
 
-  const nd = await kalipNonce(url, ref);
+  if (bitis && Date.now() > bitis) return null;
+  const nd = await kalipNonce(url, ref, html);
   if (nd) return { ...nd, via: 'nonce' };
 
-  const pl = await kalipPlaylist(url, ref);
+  if (bitis && Date.now() > bitis) return null;
+  const pl = await kalipPlaylist(url, ref, html);
   if (pl) return { ...pl, via: 'playlist-api' };
 
   // ── Son çare: sayfadaki TÜM iframe adresleri
@@ -596,9 +657,27 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set()) 
     const abs = mutlak(url, temizle(m[1]));
     if (abs && !iframeler.includes(abs)) iframeler.push(abs);
   }
-  for (const src of iframeler.slice(0, 4)) {
-    const ic = await extractEmbedStream(src, url, gordum);
-    if (ic) return { ...ic, via: `${ic.via}+iframe` };
+  for (const src of iframeler.slice(0, 2)) {
+    if (bitis && Date.now() > bitis) break;
+    const ic = await extractEmbedStream(src, url, gordum, bitis);
+    if (ic && MEDIA_EXT.test(ic.url)) return { ...ic, via: `${ic.via}+iframe` };
+  }
+
+  // ── SON ÇARE: gömülüyü olduğu gibi oynat ──────────────────────────
+  // Doğrudan m3u8 çözülemedi (ok.ru, vidmoly, CF arkası oynatıcılar gibi).
+  // Burada siteyi ÇÖZMEYE GEREK YOK: gömülü adresi iframe'de açılır ve
+  // tarayıcı oynatıcıyı kendi motoruyla çalıştırır.
+  //
+  // "Her türden siteye erişim"in son adımı budur: çözülebilen çözülür,
+  // çözülemeyen gömülü olarak oynatılır — hiçbir site tamamen erişilemez kalmaz.
+  if (iframeler.length) {
+    return {
+      url: iframeler[0],
+      referer: ref,
+      via: 'iframe-oynat',
+      isIframe: true,
+      subtitles: altyazilariCikar(html, url)
+    };
   }
 
   return null;

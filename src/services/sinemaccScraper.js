@@ -1,3 +1,5 @@
+import { akilliGet, cihazGet, cihazPost, nativeHttpAktifMi } from './nativeHttp.js';
+
 /* ==========================================================================
    CinePulse — sinemacc.com kaziyicisi (film odakli)
 
@@ -41,6 +43,13 @@ function isBlockedBody(body) {
 }
 
 async function getHtml(url, timeout = 13000) {
+  // 0) Cihazin kendi IP'sinden dogrudan istek (CapacitorHttp).
+  // En hizli yol: WebView/proxy yok, sunucu yok, Referer serbest.
+  if (nativeHttpAktifMi()) {
+    const r = await cihazGet(url, { timeout: Math.min(timeout, 10000) });
+    if (r.ok && r.text && !isBlockedBody(r.text)) return r.text;
+  }
+
   // 1) Cihaz WebView'i (CF engelinde, Orion deseni)
   try {
     const wv = await import('./platform/androidWebViewResolver.js');
@@ -141,7 +150,13 @@ async function resolveDirectHls(playerUrl) {
   const api = `${PLAYER}/player/index.php?data=${encodeURIComponent(id)}&do=getVideo`;
   const body = `hash=${encodeURIComponent(id)}&r=${encodeURIComponent(`${BASE}/`)}`;
 
-  // Önce uygulama proxy'si (Referer'ı sunucu tarafında basar). Web'de
+  // Önce cihazin kendi IP'sinden (Referer serbest yazılabilir, Vercel'e çıkmaz).
+  if (nativeHttpAktifMi()) {
+    const r = await cihazPost(api, body, { ref: `${BASE}/`, timeout: 12000 });
+    if (r.ok && r.text && r.text.trim().startsWith('{')) return r.text;
+  }
+
+  // Sonra uygulama proxy'si (Referer'ı sunucu tarafında basar). Web'de
   // tarayıcı bu POST'u dogrudan yapamaz — referer'i kendi adresi olurdu.
   let text = '';
   try {
