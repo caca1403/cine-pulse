@@ -162,7 +162,37 @@ export async function akilliGet(url, { ref = '', timeout = 15000, yedekCek = nul
   return duzGet(url, { ref, timeout });
 }
 
-/** Akıllı POST — cihazda cihazın IP'sinden. */
+/**
+ * Web/Node için düz POST. `akilliPost` yalnızca Android'de çalışıyordu;
+ * tarayıcıda ve testte her POST boş dönüyordu (ölçüldü: FilmEkseni araması
+ * hiç sonuç vermiyordu).
+ */
+async function duzPost(url, body, { ref, timeout }) {
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), timeout);
+    const r = await fetch(url, {
+      method: 'POST',
+      signal: ac.signal,
+      headers: {
+        'User-Agent': UA_MOBIL,
+        Accept: '*/*',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        // Bu başlık olmadan çoğu AJAX ucu JSON yerine HTML döner.
+        'X-Requested-With': 'XMLHttpRequest',
+        ...(ref ? { Referer: ref } : {})
+      },
+      body
+    });
+    clearTimeout(t);
+    if (!r.ok) return '';
+    return await r.text();
+  } catch (_) {
+    return '';
+  }
+}
+
+/** Akıllı POST — cihazda cihazın IP'sinden, yoksa doğrudan istek. */
 export async function akilliPost(url, body, { ref = '', timeout = 15000, yedekCek = null } = {}) {
   if (nativeAndroidMi()) {
     const r = await cihazPost(url, body, { ref, timeout });
@@ -174,5 +204,5 @@ export async function akilliPost(url, body, { ref = '', timeout = 15000, yedekCe
       if (t) return t;
     } catch (_) {}
   }
-  return '';
+  return duzPost(url, body, { ref, timeout });
 }

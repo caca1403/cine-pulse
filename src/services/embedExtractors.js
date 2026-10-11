@@ -22,6 +22,7 @@
 /* ══════════════════════════ 1. ÇEKİRDEK ══════════════════════════ */
 
 import { akilliGet, akilliPost, nativeHttpAktifMi } from './nativeHttp.js';
+import { sifreliOynaticiCoz } from './encryptedPlayer.js';
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
@@ -224,7 +225,11 @@ const RE = {
 function tara(html, ...desenler) {
   const adaylar = [];
   for (const d of desenler) {
-    const re = d.flags ? new RegExp(d.re, d.flags) : d.re;
+    // RegExp nesnesinde desenin metni `.re` DEĞİL `.source`'dır. `.re`
+    // diye okumak undefined verir ve `new RegExp(undefined, …)` boş kaynaklı
+    // /(?:)/ üretir — yani bu tarama HİÇ ÇALIŞMIYORDU ve sayfadaki doğrudan
+    // medya sessizce kaçıyordu (ölçüldü: kaynak boş dize dönüyordu).
+    const re = d instanceof RegExp ? d : new RegExp(d.source ?? d.re ?? String(d), d.flags || '');
     const m = html.match(re);
     if (m && m[1] && m[1].length > 8) adaylar.push(temizle(m[1]));
   }
@@ -566,28 +571,24 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set(), 
   }
 
   // ── Ucuz ve kesin olanlar önce
-  const html = await getHtml(url, { ref, timeout: 16000 });
-  if (!html) return null;
+  const hamHtml = await getHtml(url, { ref, timeout: 16000 });
+  if (!hamHtml) return null;
+
+  // ŞİFRELİ OYNATICI: Gerçek oynatıcı HTML'i sayfada düz metin olarak
+  // bulunmaz — AES şifreli bir yük olarak gömülüdür ve sayfa kendisi
+  // document.write ile açar. Bu yüzden sayfada m3u8/iframe/video aramak
+  // boşuna. Önce şifreyi çözüp GERÇEK içerikle devam et.
+  let html = hamHtml;
+  if (/document\s*\.\s*write/.test(hamHtml)) {
+    const cozulmus = sifreliOynaticiCoz(hamHtml);
+    if (cozulmus && /<[a-z!]/i.test(cozulmus)) html = cozulmus;
+  }
 
   // /dl API: sayfadaki reklam adresleri "file:" olarak da geçtiği için
   // önce bu denenmeli, yoksa erken dönüş yanlış yayını yakalar.
   const dl = await kalipDlApi(url, html);
   if (dl) return { ...dl, via: 'dl-api' };
 
-  // BASE64 KODLU iframe src. Türkçe oynatıcıların çok yaygın biçimi:
-  //   <iframe src="aHR0cHM6Ly9wbGF5ZXIuZmlsbXpsZS5pbi92aWRlby9…">
-  // Ham src bir adres değil; çözülmeden kullanılırsa çöp adres üretilir ve
-  // çözümleme sessizce başarısız olur. (sinemacc, liderfilm, window._vs)
-  for (const m of html.matchAll(/<iframe[^>]*\ssrc=["']([A-Za-z0-9+/]{40,}={0,2})["']/gi)) {
-    const coz = base64Coz(m[1]);
-    const abs = coz ? mutlak(url, coz) : '';
-    if (abs && !REKLAM_RE.test(abs)) {
-      // İçerik çözücüye geri dön (base64 içinde de oynatıcı adresi olabilir).
-      const ic = await extractEmbedStream(abs, url, gordum, bitis);
-      if (ic && MEDIA_EXT.test(ic.url)) return { ...ic, via: `${ic.via}+base64` };
-      return { url: abs, referer: ref, via: 'base64-iframe', subtitles: altyazilariCikar(html, url) };
-    }
-  }
 
   // BASE64 KODLU iframe src — Türkçe oynatıcıların çok yaygın biçimi:
   //   <iframe src="aHR0cHM6Ly9wbGF5ZXIuZmlsbXpsZS5pbi92aWRlby9…">
