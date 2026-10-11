@@ -9,50 +9,11 @@ import { createPlayerScope } from '../components/playerLifecycle.js';
    ========================================================================== */
 
 import { LIVE_TV_CATEGORIES, LIVE_TV_CHANNELS, getChannelBadgeSvg } from '../services/liveTvChannels.js';
+import { normalizeCanliName } from '../services/canliTvChannels.js';
 import {
-  getCachedCanliChannels, refreshCanliChannels, toLiveChannels as toCanliLiveChannels,
-  normalizeCanliName
-} from '../services/canliTvChannels.js';
-import { fetchRecTvLiveChannels, getRecTvChannelStreamUrl } from '../services/rectvService.js';
-
-const TVR_LIVE_CACHE_KEY = 'cp_tvr_live_v1';
-const TVR_LIVE_TTL_MS = 12 * 60 * 60 * 1000;
-
-function readTvrLiveCache() {
-  try {
-    const raw = localStorage.getItem(TVR_LIVE_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || !Array.isArray(parsed.channels)) return null;
-    if (Date.now() - (parsed.savedAt || 0) > TVR_LIVE_TTL_MS) return null;
-    return parsed.channels;
-  } catch (_) {
-    return null;
-  }
-}
-
-function toTvrLiveChannels(list) {
-  const out = [];
-  for (const ch of list || []) {
-    if (!ch || (!ch.tvrId && !ch.id)) continue;
-    const tvrId = String(ch.tvrId || ch.id || '').replace(/^tvr_ch_/, '');
-    if (!tvrId || !ch.name) continue;
-    out.push({
-      id: `tvr_live_${tvrId}`,
-      name: ch.name,
-      logo: ch.logo || '',
-      category: ch.category || 'national',
-      tvrId,
-      isTvr: true,
-      officialLiveId: `tvr:${tvrId}`,
-      streamUrl: ch.streamUrl || '',
-      quality: ch.quality || '1080p TVR'
-    });
-  }
-  return out;
-}
+  getAllCachedSources, probeLiveSources, buildChannels, probeChannels
+} from '../services/turkishLiveSources.js';
 import {
-  getCachedIptvChannels, refreshIptvChannels, toLiveChannels as toIptvLiveChannels,
   sortByPopularity, resolveLocalLogo
 } from '../services/iptvOrgChannels.js';
 import { getChannelEpg, initEpgService, stopEpgService } from '../services/epgService.js';
@@ -78,40 +39,84 @@ function saveFavoriteIds(ids) {
   } catch (_) {}
 }
 
+// Kanal adı artık UZAK M3U listesinden geliyor (tvg-id, logo, "FHD" vb.
+// serbest metin) ve HTML şablonlarına gömülüyor. Kaçırılmazsa
+// "<img src=x onerror=...>" gibi bir kanal adi listede script calistirir.
+// Icerik yalnizca gorunen metindir; hicbir HTML etiketi kabul edilmez.
+function escHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function renderLiveTvView() {
   const isKid = isKidProfileActive();
   const normalizeChannelName = name => String(name || '')
     .toLocaleUpperCase('tr-TR')
     .replace(/\b(?:HD|FHD|4K|KANALI)\b/g, '')
     .replace(/[^A-ZÇĞİÖŞÜ0-9]/g, '');
-  function toProxiedLiveUrl(url) {
+  // playSrc() yalnizca srcList girisindeki isTs bayragina bakar. M3U
+  // adresleri zaten /api/hls_proxy ile sarilmis oldugu icin once asil hedef
+  // URL cozuluyor; uzantisi yoksa (orn. http://host:8080/.../10033) MPEG-TS
+  // kabul edilir — IPTV listelerinin buyuk bolumu boyledir.
+  function isRawMediaUrl(streamUrl) {
+    let url = String(streamUrl || '');
+    const m = /[?&]url=([^&]+)/.exec(url);
+    if (m) {
+      try { url = decodeURIComponent(m[1]); } catch (_) {}
+    }
+    if (/\.m3u8(\?|$)/i.test(url)) return false;
+    if (/\.(ts|mp4|m4v|mov|flv)(\?|$)/i.test(url)) return true;
+    return !/\.[a-z0-9]{2,4}(\?|$)/i.test(url);
+  }
+
+  // M3U listesindeki #EXTVLCOPT:http-referrer degeri varsa o kesin dogru
+  // cevaptir; yoksa eski ana tabloya dusulur.
+  function pickLiveRef(url, headers) {
+    const fromList = headers && headers.ref ? String(headers.ref) : '';
+    if (/^https?:\/\//i.test(fromList)) return fromList;
+    try {
+      if (url.includes('trt')) return 'https://www.trt1.com.tr/';
+      if (url.includes('atv')) return 'https://www.atv.com.tr/';
+      if (url.includes('showtv')) return 'https://www.showtv.com.tr/';
+      if (url.includes('kanald') || url.includes('teve2') || url.includes('dreamturk')) return 'https://www.kanald.com.tr/';
+      if (url.includes('startv') || url.includes('ntv') || url.includes('kralpop')) return 'https://www.startv.com.tr/';
+      if (url.includes('nowtv')) return 'https://www.nowtv.com.tr/';
+      if (url.includes('tv8')) return 'https://www.tv8.com.tr/';
+      if (url.includes('dmax')) return 'https://www.dmax.com.tr/';
+      if (url.includes('tlc')) return 'https://www.tlctv.com.tr/';
+      return `${new URL(url).origin}/`;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function toProxiedLiveUrl(url, headers) {
     if (!url) return '';
     if (url.startsWith('/api/') || url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
       // APK WebView'de relative /api calismaz (https://localhost). Mutlak Vercel URL gerekir.
       // hls.js XHR kullanir, androidPlatform'daki fetch patch'i islemez.
       return isNativeCapacitor() ? apiUrl(url) : url;
     }
-    let ref = '';
-    try {
-      if (url.includes('trt')) ref = 'https://www.trt1.com.tr/';
-      else if (url.includes('atv')) ref = 'https://www.atv.com.tr/';
-      else if (url.includes('showtv')) ref = 'https://www.showtv.com.tr/';
-      else if (url.includes('kanald') || url.includes('teve2') || url.includes('dreamturk')) ref = 'https://www.kanald.com.tr/';
-      else if (url.includes('startv') || url.includes('ntv') || url.includes('kralpop')) ref = 'https://www.startv.com.tr/';
-      else if (url.includes('nowtv')) ref = 'https://www.nowtv.com.tr/';
-      else if (url.includes('tv8')) ref = 'https://www.tv8.com.tr/';
-      else if (url.includes('dmax')) ref = 'https://www.dmax.com.tr/';
-      else if (url.includes('tlc')) ref = 'https://www.tlctv.com.tr/';
-      else ref = `${new URL(url).origin}/`;
-    } catch (_) {
-      ref = '';
-    }
-    const proxied = `/api/hls_proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(ref)}&live=1`;
+    const ref = pickLiveRef(url, headers);
+    // #EXTVLCOPT:http-user-agent / http-origin degerleri tarayicida gonderilemez
+    // (forbidden header) → proxy'ye parametre olarak devredilir.
+    const extra = [];
+    const ua = headers && headers.ua ? String(headers.ua) : '';
+    const origin = headers && headers.origin ? String(headers.origin) : '';
+    if (ua) extra.push(`&ua=${encodeURIComponent(ua)}`);
+    if (origin) extra.push(`&origin=${encodeURIComponent(origin)}`);
+    const proxied = `/api/hls_proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(ref)}&live=1${extra.join('')}`;
     // APK'da relative birakma: hls.js XHR ile https://localhost'a gider ve 404 olur.
     return isNativeCapacitor() ? apiUrl(proxied) : proxied;
   }
 
-  // Omurga: LIVE_TV_CHANNELS (dogrudan CDN / resmi akislar) + iptv-org (tamamlayici)
+  // Omurga: LIVE_TV_CHANNELS (resmi dogrudan CDN akislari) + M3U kaynaklari.
+  // Onceki "uzak canli" kaynaklari (iptv-org, TVR/ReçTV) kaldirildi: coprek
+  // ve cogu zaman oluyordu. Yerine Turkcan TV M3U listeleri geliyor.
   const curatedBase = (LIVE_TV_CHANNELS || []).map(c => ({
     ...c,
     streamUrl: toProxiedLiveUrl(c.streamUrl),
@@ -119,21 +124,36 @@ export function renderLiveTvView() {
   }));
   const curatedNames = new Set(curatedBase.map((c) => normalizeCanliName(c.name)));
 
-  const iptvInitial = toIptvLiveChannels(getCachedIptvChannels())
+  // M3U kanallari: acilis aninda onbellekten basilir (medya yuklenmeden),
+  // arka planda probeLiveSources() ile tazelenir.
+  const toLiveChannels = (sources) => buildChannels(sources, { resolveLogo: resolveLocalLogo })
     .filter(c => !curatedNames.has(normalizeCanliName(c.name)))
-    .map(c => ({ ...c, streamUrl: toProxiedLiveUrl(c.streamUrl) }));
-  const iptvNames = new Set([
-    ...curatedNames,
-    ...iptvInitial.map((c) => normalizeCanliName(c.name))
-  ]);
+    .map(c => ({
+      ...c,
+      logo: c.logo || getChannelBadgeSvg(c.name, c.category),
+      streamUrl: toProxiedLiveUrl(c.streamUrl, c.headers)
+    }));
+
+  const m3uInitial = toLiveChannels(getAllCachedSources());
   const kidOk = (c) => !isKid || c.category === 'kids';
-  const tvrInitial = isKid ? [] : toTvrLiveChannels(readTvrLiveCache());
-  const tvrFresh = tvrInitial.filter((c) => !iptvNames.has(normalizeCanliName(c.name)));
   const allChannels = [
     ...curatedBase.filter(kidOk),
-    ...iptvInitial.filter(kidOk),
-    ...tvrFresh.filter(kidOk)
+    ...m3uInitial.filter(kidOk)
   ];
+
+  // ─── Kanal sağlık durumu ──────────────────────────────────────────────
+  // M3U listeleri kirpiktir (ölü kanallar çok). Liste ekrana çıktıktan SONRA
+  // sınırlı sayıda kanal, oynatılacak AYNI proxy üzerinden denenir; çalışanlar
+  // öne taşınır. Kullanıcı beklemez, liste anında görünür. Sonuç 6 saat
+  // saklanır → ölü kanallar her TTL sonunda yeniden ölçülür, liste zamanla
+  // kendini iyileştirir. (Denetim istemciden yapılır: oynatma da o ağdan
+  // geçtiği için sunucudan ölçmek yanlış sonuç verirdi.)
+  const HEALTH_KEY = 'cp_live_health_v1';
+  const HEALTH_TTL_MS = 6 * 60 * 60 * 1000;
+  const HEALTH_PROBE_LIMIT = 36;
+  const deadUrls = new Set();
+  let healthProbeRunning = false;
+  const healthRank = (c) => (c && deadUrls.has(c.streamUrl) ? 1 : 0);
   const EMPTY_CH = { id: 'ctv_loading', name: 'Kanallar yükleniyor...', logo: '', category: 'canlitv', streamUrl: '', quality: 'HD' };
   const visibleCategories = [
     ...LIVE_TV_CATEGORIES,
@@ -182,7 +202,11 @@ export function renderLiveTvView() {
       return matchCat && matchSearch;
     });
     // "Tumu"nde Turkiye populerligine gore sirala
-    return activeCategory === 'all' ? sortByPopularity(list) : list;
+    const ranked = activeCategory === 'all' ? sortByPopularity(list) : list;
+    // Saglik sirasi ONCELIKLIDIR: kanitlanmis olu kanallar en sona. Array.sort
+    // kararli oldugu icin ayni saglik grubu icinde populerlik sirasi korunur.
+    if (!deadUrls.size) return ranked;
+    return ranked.slice().sort((a, b) => healthRank(a) - healthRank(b));
   }
 
   function getChannelIndex(ch) {
@@ -205,9 +229,9 @@ export function renderLiveTvView() {
           <!-- Floating Mini-Player (PiP) Top Bar -->
           <div class="tv-pip-header" id="tv-pip-header">
             <div class="tv-pip-meta">
-              <img class="tv-pip-logo" id="tv-pip-logo" src="${activeChannel.logo}" alt="" onerror="this.onerror=null; this.src='${getChannelBadgeSvg(activeChannel.name, activeChannel.category)}';" />
+              <img class="tv-pip-logo" id="tv-pip-logo" src="${escHtml(activeChannel.logo)}" alt="" onerror="this.onerror=null; this.src='${getChannelBadgeSvg(activeChannel.name, activeChannel.category)}';" />
               <div class="tv-pip-info">
-                <span class="tv-pip-name" id="tv-pip-name">${activeChannel.name}</span>
+                <span class="tv-pip-name" id="tv-pip-name">${escHtml(activeChannel.name)}</span>
                 <span class="tv-pip-epg" id="tv-pip-epg">CANLI YAYIN</span>
               </div>
             </div>
@@ -228,11 +252,11 @@ export function renderLiveTvView() {
           <div class="tv-osd-topbar" id="tv-osd-topbar">
             <div class="tv-osd-channel-meta">
               <div class="tv-osd-logo-box">
-                <img id="tv-top-logo" class="tv-top-logo" src="${activeChannel.logo}" alt="" onerror="this.onerror=null; this.src='${getChannelBadgeSvg(activeChannel.name, activeChannel.category)}';" />
+                <img id="tv-top-logo" class="tv-top-logo" src="${escHtml(activeChannel.logo)}" alt="" onerror="this.onerror=null; this.src='${getChannelBadgeSvg(activeChannel.name, activeChannel.category)}';" />
               </div>
               <div class="tv-osd-text">
                 <div class="tv-osd-ch-title">
-                  <span id="tv-top-name">${activeChannel.name}</span>
+                  <span id="tv-top-name">${escHtml(activeChannel.name)}</span>
                   <span class="tv-osd-num-tag" id="tv-top-num">CH 01</span>
                 </div>
                 <div class="tv-top-epg-line" id="tv-top-epg-line">
@@ -513,7 +537,28 @@ export function renderLiveTvView() {
 
       function buildSrcList(channel) {
         const alts = getAltSources(channel);
-        srcList = [{ key: 'default', label: `Varsayılan Yayın (${channel.quality || 'HD'})`, url: channel.streamUrl, isDefault: true }, ...alts];
+        // Varsayilan giris de isTip tasiyabilmeli: playSrc() yalnizca
+        // s.isTs bilgisine bakar. M3U listelerinin cogu duz MPEG-TS verir
+        // (uzantısız http://.../10033 gibi); hls.js bunu oynatamaz, mpegts.js
+        // oynatabilir. Bu bayrak olmadan o kanallar sessizce basarisiz olurdu.
+        const primaryIsTs = channel.isTs === true || isRawMediaUrl(channel.streamUrl);
+        // Ayni kanal M3U listesinde birden fazla adresle geciyor (bazen HLS,
+        // bazen TS, cogu zaman biri olu). Bunlar mevcut kaynak degistirme
+        // zincirine eklenir: playSrc -> advanceOrError sirayla dener, boylece
+        // tek olu adres yuzunden kanal kaybolmaz.
+        const extraSrcs = (channel.altStreams || []).map((a, i) => ({
+          key: `alt_${i}`,
+          label: `Yedek Yayın ${i + 1}`,
+          url: toProxiedLiveUrl(a.url, a.headers),
+          isTs: a.isTs === true || isRawMediaUrl(a.url)
+        }));
+        srcList = [{
+          key: 'default',
+          label: `Varsayılan Yayın (${channel.quality || 'HD'})`,
+          url: channel.streamUrl,
+          isTs: primaryIsTs,
+          isDefault: true
+        }, ...alts, ...extraSrcs];
         const pref = getPreferredSourceKey(channel.id);
         const pi = pref ? srcList.findIndex(s => s.key === pref) : -1;
         const hasAlts = alts.length > 0;
@@ -528,7 +573,7 @@ export function renderLiveTvView() {
         srcOptions.innerHTML = srcList.map((s, i) => `
           <button class="tv-quality-opt ${i === srcIdx ? 'active' : ''}" data-src="${i}">
             ${i === srcIdx ? '<i data-lucide="check" style="width:12px;height:12px;"></i>' : '<span style="width:13px;display:inline-block;"></span>'}
-            <span>${s.label}</span>
+            <span>${escHtml(s.label)}</span>
           </button>
         `).join('') + `
           <button class="tv-quality-opt" data-relay="1" title="Panel kaynakları için ev relay adresi">
@@ -828,7 +873,7 @@ export function renderLiveTvView() {
           qualityOptions.innerHTML = `
             <button class="tv-quality-opt active" data-level="-1">
               <i data-lucide="check" style="width:13px;height:13px;color:#dfff76;"></i>
-              <span>Kaynak Kalite (${activeChannel.quality || '1080p'})</span>
+              <span>Kaynak Kalite (${escHtml(activeChannel.quality || '1080p')})</span>
             </button>
           `;
           renderIcons();
@@ -1048,25 +1093,6 @@ export function renderLiveTvView() {
         for (const control of [playPauseBtn, muteBtn, container.querySelector('#tv-btn-quality')]) { if (control) control.style.display = ''; }
 
         // Alternatif kaynak listesini kur (tercih + varsayılan)
-        // TVR: akis URL'sini oynatmadan hemen once coz (tarayici WebCrypto,
-        // 2 dk cache; imza taze kalir). Basarisizsa hata goster, listede kalir.
-        if (channel.isTvr && !channel.streamUrl) {
-          try {
-            if (loadingEl) loadingEl.classList.remove('hidden');
-            if (errorEl) errorEl.classList.add('hidden');
-          } catch (_) {}
-          const fresh = await getRecTvChannelStreamUrl(channel.tvrId, { forceRefresh: true }).catch(() => null);
-          if (channelPlaybackToken !== myToken) return;
-          if (fresh) {
-            channel.streamUrl = fresh;
-          } else {
-            try {
-              if (loadingEl) loadingEl.classList.add('hidden');
-              if (errorEl) errorEl.classList.remove('hidden');
-            } catch (_) {}
-            return;
-          }
-        }
         buildSrcList(channel);
         if (forceSrcIdx >= 0 && forceSrcIdx < srcList.length) srcIdx = forceSrcIdx;
         const useAlt = srcIdx > 0;
@@ -1106,19 +1132,6 @@ export function renderLiveTvView() {
         triedBases.add(getTsBaseIdx());
         async function tryFreshOfficialStream(failedUrl, forceRefresh = true) {
           if (!channel.officialLiveId) return false;
-          // TVR: WebCrypto ile taze cozum (proxy'li m3u8 doner)
-          if (String(channel.officialLiveId).startsWith('tvr:')) {
-            try {
-              const tvrId = String(channel.officialLiveId).slice(4);
-              const fresh = await getRecTvChannelStreamUrl(tvrId, { forceRefresh }).catch(() => null);
-              if (fresh && fresh !== failedUrl) {
-                channel.streamUrl = fresh;
-                startHls(fresh);
-                return true;
-              }
-            } catch (_) {}
-            return false;
-          }
           if (forceRefresh && officialRefreshAttempts >= 2) return false;
           if (forceRefresh) officialRefreshAttempts += 1;
           const resolutionRun = ++resolutionGeneration;
@@ -1471,54 +1484,46 @@ export function renderLiveTvView() {
       });
 
       // ─── Main Bottom Channel Grid with Live EPG Bar ───
-      function renderBottomChannelGrid() {
-        const filtered = getFilteredChannels();
-        if (countLabel) countLabel.textContent = `${filtered.length} KANAL`;
+      // Kral M3U listesi ~1800 kanal getiriyor. Hepsini tek seferde
+      // innerHTML ile basmak (her kart EPG blogu + ikon SVG'si tasiyor)
+      // Android WebView'da saniyelerce bloklanip OOM'e yol aciyordu.
+      // Bu yuzden sayfa sayfa basilir: PAGE_SIZE kadar kart + "Daha fazla".
+      const GRID_PAGE_SIZE = 120;
+      let gridLimit = GRID_PAGE_SIZE;
+      let gridSig = '';
 
-        if (filtered.length === 0) {
-          channelGrid.innerHTML = `
-            <div class="tv-catalog-empty-state">
-              <i data-lucide="radio" style="width:40px;height:40px;color:var(--text-muted);"></i>
-              <span class="tv-empty-title">Kanal Bulunamadı</span>
-              <p class="tv-empty-sub">Arama teriminizi veya kategori filtrenizi değiştirin.</p>
-            </div>
-          `;
-          renderIcons();
-          return;
-        }
+      function gridCardHtml(ch) {
+        const isActive = ch.id === activeChannel.id;
+        const isFavorited = isFav(ch.id);
+        const globalIdx = getChannelIndex(ch) + 1;
+        const fallbackBadge = getChannelBadgeSvg(ch.name, ch.category);
+        const epg = getChannelEpg(ch);
 
-        channelGrid.innerHTML = filtered.map(ch => {
-          const isActive = ch.id === activeChannel.id;
-          const isFavorited = isFav(ch.id);
-          const globalIdx = getChannelIndex(ch) + 1;
-          const fallbackBadge = getChannelBadgeSvg(ch.name, ch.category);
-          const epg = getChannelEpg(ch);
-
-          return `
-            <div class="tv-grid-card ${isActive ? 'active' : ''}" data-id="${ch.id}">
+        return `
+            <div class="tv-grid-card ${isActive ? 'active' : ''}" data-id="${escHtml(ch.id)}">
               <div class="tv-grid-card-top">
                 <span class="tv-grid-num">${String(globalIdx).padStart(2, '0')}</span>
-                <button class="tv-grid-fav-btn ${isFavorited ? 'is-fav' : ''}" data-favid="${ch.id}" title="${isFavorited ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}">
+                <button class="tv-grid-fav-btn ${isFavorited ? 'is-fav' : ''}" data-favid="${escHtml(ch.id)}" title="${isFavorited ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}">
                   <i data-lucide="star" style="width:15px;height:15px;${isFavorited ? 'fill:#dfff76;color:#dfff76;' : ''}"></i>
                 </button>
               </div>
 
               <div class="tv-grid-logo-box">
-                <img class="tv-grid-logo" src="${ch.logo}" alt="${ch.name}" onerror="this.onerror=null; this.src='${fallbackBadge}';" loading="lazy" />
+                <img class="tv-grid-logo" src="${escHtml(ch.logo)}" alt="${escHtml(ch.name)}" onerror="this.onerror=null; this.src='${fallbackBadge}';" loading="lazy" />
               </div>
 
               <div class="tv-grid-info">
-                <span class="tv-grid-name" title="${ch.name}">${ch.name}</span>
+                <span class="tv-grid-name" title="${escHtml(ch.name)}">${escHtml(ch.name)}</span>
                 <div class="tv-grid-meta">
-                  <span class="tv-grid-quality">${ch.quality}</span>
+                  <span class="tv-grid-quality">${escHtml(ch.quality)}</span>
                 </div>
               </div>
 
               <!-- Real-Time EPG Schedule Progress -->
               <div class="tv-grid-epg">
                 <div class="tv-epg-header">
-                  <span class="tv-epg-title" title="${epg.title}">${epg.title}</span>
-                  <span class="tv-epg-time">${epg.timeRange}</span>
+                  <span class="tv-epg-title" title="${escHtml(epg.title)}">${escHtml(epg.title)}</span>
+                  <span class="tv-epg-time">${escHtml(epg.timeRange)}</span>
                 </div>
                 <div class="tv-epg-bar">
                   <div class="tv-epg-fill" style="width: ${epg.progress}%"></div>
@@ -1532,8 +1537,9 @@ export function renderLiveTvView() {
               ${isActive ? '<div class="tv-grid-live-indicator"><span class="tv-live-dot"></span> <span>ŞU AN İZLENİYOR</span></div>' : ''}
             </div>
           `;
-        }).join('');
+      }
 
+      function bindGridCards() {
         channelGrid.querySelectorAll('.tv-grid-card').forEach(item => {
           item.addEventListener('click', (e) => {
             if (e.target.closest('.tv-grid-fav-btn')) return;
@@ -1552,6 +1558,48 @@ export function renderLiveTvView() {
           });
         });
 
+        const moreBtn = channelGrid.querySelector('#tv-grid-more');
+        if (moreBtn) {
+          moreBtn.addEventListener('click', () => {
+            gridLimit += GRID_PAGE_SIZE;
+            renderBottomChannelGrid();
+          });
+        }
+      }
+
+      function renderBottomChannelGrid() {
+        const filtered = getFilteredChannels();
+        if (countLabel) countLabel.textContent = `${filtered.length} KANAL`;
+        // Kategori/arama degistiginde sayfa bastan baslanir (kullanici
+        // filtreyi degistirdi, 300. kartta kalmak istemez). Aktif kanal
+        // degisimi SAYFAYI sifirlamaz — yoksa "daha fazla" ilerlemesi
+        // kanal secildiginde geriye sarardi.
+        const sig = `${activeCategory}|${searchQuery}`;
+        if (gridSig !== sig) {
+          gridSig = sig;
+          gridLimit = GRID_PAGE_SIZE;
+        }
+
+        if (filtered.length === 0) {
+          channelGrid.innerHTML = `
+            <div class="tv-catalog-empty-state">
+              <i data-lucide="radio" style="width:40px;height:40px;color:var(--text-muted);"></i>
+              <span class="tv-empty-title">Kanal Bulunamadı</span>
+              <p class="tv-empty-sub">Arama teriminizi veya kategori filtrenizi değiştirin.</p>
+            </div>
+          `;
+          renderIcons();
+          return;
+        }
+
+        const visible = filtered.slice(0, gridLimit);
+        const remaining = filtered.length - visible.length;
+        channelGrid.innerHTML = visible.map(gridCardHtml).join('')
+          + (remaining > 0
+            ? `<button id="tv-grid-more" class="tv-grid-more">${remaining} kanal daha göster <i data-lucide="chevron-down" style="width:16px;height:16px;"></i></button>`
+            : '');
+
+        bindGridCards();
         renderIcons();
       }
 
@@ -1578,46 +1626,93 @@ export function renderLiveTvView() {
         renderIcons();
       };
 
-      // Omurga + yedek listeleri arka planda tazele (gunluk cache); degisirse izgara guncellenir
+      // ─── Kanal sağlık denetimi (yardımcılar) ─────────────────────────
+      function readHealth() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(HEALTH_KEY) || '{}');
+          if (!parsed || !parsed.at || Date.now() - parsed.at > HEALTH_TTL_MS) return { dead: [], at: 0 };
+          return { dead: Array.isArray(parsed.dead) ? parsed.dead : [], at: parsed.at };
+        } catch (_) {
+          return { dead: [], at: 0 };
+        }
+      }
+      function writeHealth(deadList) {
+        try {
+          localStorage.setItem(HEALTH_KEY, JSON.stringify({ at: Date.now(), dead: deadList.slice(0, 1200) }));
+        } catch (_) {}
+      }
+
+      function applyHealth(deadList) {
+        if (!deadList.length) return;
+        for (const u of deadList) deadUrls.add(u);
+        // allChannels siralamasini da tutarli tut (getFilteredChannels zaten
+        // saglik rank'ini uyguluyor; burada havuz sirasi guncelleniyor).
+        const sorted = allChannels
+          .map((c, i) => ({ c, i }))
+          .sort((a, b) => (healthRank(a.c) - healthRank(b.c)) || (a.i - b.i))
+          .map(x => x.c);
+        allChannels.length = 0;
+        allChannels.push(...sorted);
+        try {
+          if (isKid && channelsPool !== allChannels) {
+            channelsPool.length = 0;
+            channelsPool.push(...allChannels.filter((c) => c.category === 'kids'));
+          }
+        } catch (_) {}
+        try { renderAllViews(); } catch (_) {}
+      }
+
+      function runHealthProbe() {
+        // Görünüm kapanmışsa (bekleyen denetim scope.dispose ile iptal edilmezse
+        // ya da dispose sonrası bir .then çalışırsa) hiçbir ag isteği atma.
+        if (healthProbeRunning) return;
+        if (!document.contains(container)) return;
+        const cached = readHealth();
+        if (cached.at) applyHealth(cached.dead);
+        // Denetimi zaten olu bilinenlere tekrar yapma; TTL dolunca hepsi yeniden
+        // ölçülür → liste kendini iyileştirir.
+        const candidates = allChannels.filter(c => !deadUrls.has(c.streamUrl)).slice(0, HEALTH_PROBE_LIMIT);
+        if (!candidates.length) return;
+        healthProbeRunning = true;
+        probeChannels(candidates, (c) => toProxiedLiveUrl(c.streamUrl, c.headers), {
+          limit: HEALTH_PROBE_LIMIT,
+          concurrency: 4,
+          timeout: 6000
+        }).then((result) => {
+          if (!document.contains(container)) return;
+          const deadList = [...result.dead];
+          writeHealth(deadList);
+          applyHealth(deadList);
+          if (result.tested) {
+            showToast(`${result.tested} kanal denetlendi · ${result.alive.size} çalışıyor`, 'info');
+          }
+        }).catch(() => {}).finally(() => {
+          healthProbeRunning = false;
+        });
+      }
+
+      // M3U kaynaklarini arka planda tazele. probeLiveSources() kaynaklari
+      // sirayla dener; "calisan ilk" varsayilan olur ve secim saklanir.
       {
         const refreshAll = async () => {
           if (!document.contains(container)) return;
-          const [iptvFresh, tvrFreshRaw] = await Promise.all([
-            refreshIptvChannels().catch(() => null),
-            (!isKid ? fetchRecTvLiveChannels().catch(() => null) : Promise.resolve(null))
-          ]);
-          if (!document.contains(container)) return;
-          let changed = false;
-          if (iptvFresh && iptvFresh.length > 0) {
-            const mapped = toIptvLiveChannels(iptvFresh)
-              .filter(kidOk)
-              .filter(c => !curatedNames.has(normalizeCanliName(c.name)))
-              .map(c => ({ ...c, streamUrl: toProxiedLiveUrl(c.streamUrl) }));
-            const before = allChannels.filter((c) => c.iptvOrg).map((c) => c.id).join(',');
-            if (before !== mapped.map((c) => c.id).join(',')) {
-              for (let i = allChannels.length - 1; i >= 0; i--) {
-                if (allChannels[i].iptvOrg) allChannels.splice(i, 1);
-              }
-              const insertIdx = allChannels.filter(c => !c.iptvOrg && !c.isTvr).length;
-              allChannels.splice(insertIdx, 0, ...mapped);
-              changed = true;
+          const probe = await probeLiveSources().catch(() => null);
+          if (!probe || !document.contains(container)) return;
+          const mapped = toLiveChannels(probe.sources).filter(kidOk);
+          const before = allChannels.filter((c) => c.srcKey).map((c) => c.id).join(',');
+          if (before !== mapped.map((c) => c.id).join(',')) {
+            for (let i = allChannels.length - 1; i >= 0; i--) {
+              if (allChannels[i].srcKey) allChannels.splice(i, 1);
             }
-          }
-          // CanliTV kapali (dengesiz) — blogu pasif birakildi.
-          if (tvrFreshRaw && tvrFreshRaw.length > 0) {
+            const insertIdx = allChannels.filter(c => !c.srcKey).length;
+            allChannels.splice(insertIdx, 0, ...mapped);
+            // Cocuk modu havuzu ayri referansta tutuldugu icin esitle.
             try {
-              localStorage.setItem(TVR_LIVE_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), channels: tvrFreshRaw }));
-            } catch (_) {}
-            const known = new Set(allChannels.filter((c) => !c.isTvr).map((c) => normalizeCanliName(c.name)));
-            const mapped = toTvrLiveChannels(tvrFreshRaw).filter((c) => kidOk(c) && !known.has(normalizeCanliName(c.name)));
-            const before = allChannels.filter((c) => c.isTvr).map((c) => c.id).join(',');
-            if (before !== mapped.map((c) => c.id).join(',')) {
-              for (let i = allChannels.length - 1; i >= 0; i--) {
-                if (allChannels[i].isTvr) allChannels.splice(i, 1);
+              if (isKid && channelsPool !== allChannels) {
+                channelsPool.length = 0;
+                channelsPool.push(...allChannels.filter((c) => c.category === 'kids'));
               }
-              allChannels.push(...mapped);
-              changed = true;
-            }
+            } catch (_) {}
           }
           const updatedActive = allChannels.find((c) => c.id === activeChannel.id);
           if (updatedActive) activeChannel = { ...activeChannel, logo: updatedActive.logo };
@@ -1629,21 +1724,20 @@ export function renderLiveTvView() {
             loadChannel(activeChannel);
             return;
           }
-          if (changed) {
-            // Cocuk modu havuzu ayri referansta tutuldugu icin esitle
-            // (yetiskin modda channelsPool === allChannels, dokunma).
-            try {
-              if (isKid && channelsPool !== allChannels) {
-                channelsPool.length = 0;
-                channelsPool.push(...allChannels.filter((c) => c.category === 'kids'));
-              }
-            } catch (_) {}
-            try {
-              renderAllViews();
-            } catch (_) {}
-          }
+          try {
+            renderAllViews();
+          } catch (_) {}
+          // Liste degistikce saglik denetimini tazele.
+          runHealthProbe();
         };
         refreshAll().catch(() => {});
+      }
+
+      // Onbellekten boyanan ilk acilista da denetim yap (medya yuklenmeden).
+      // scope.setTimeout kullan: kullanici 2.5 sn icinde cikip giderse
+      // zamanlayici iptal edilir, yoksa 36 ag baglantisi bosuna acilir.
+      if (m3uInitial.length) {
+        scope.setTimeout(() => runHealthProbe(), 2500);
       }
 
       // ─── Search Handlers ───

@@ -1,13 +1,14 @@
 {
   "name": "cinepulse-studio",
   "private": true,
-  "version": "1.1.59",
+  "version": "1.1.60",
   "description": "CinePulse Studio - yerli ve global kaynakli hibrit medya merkezi",
   "author": {
     "name": "CinePulse Studio",
     "email": "destek@cinepulse.studio"
   },
   "type": "module",
+  "license": "proprietary",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -70,6 +71,8 @@
       ],
       "icon": "public/icon-512.png",
       "category": "AudioVideo",
+      "packageCategory": "video",
+      "maintainer": "CinePulse Studio <destek@cinepulse.studio>",
       "artifactName": "CinePulse-${version}.${ext}",
       "synopsis": "CinePulse Studio - Media Center",
       "description": "CinePulse Studio - yerli ve global kaynakli hibrit medya merkezi"
@@ -100,5 +103,5 @@
       "runAfterFinish": true
     }
   },
-  "versionCode": 169
+  "versionCode": 170
 }

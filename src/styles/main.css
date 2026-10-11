@@ -21169,3 +21169,26 @@ html.lowfx .onboarding-modal-card { backdrop-filter: none; }
 .player-utility-action.player-watched-action { width:auto; padding:.45rem .65rem; border:1px solid rgba(223,255,118,.25); border-radius:10px; }
 .player-utility-action.player-watched-action span { display:inline; }
 .player-watched-action.watched-active { color:#dfff76; background:rgba(223,255,118,.1); }
+
+/* ── Canlı TV: M3U listesi ~1800 kanal getiriyor; ızgara sayfa sayfa basılır.
+      "Daha fazla" düğmesi (LiveTvView.js GRID_PAGE_SIZE). ───────────────── */
+.tv-grid-more {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  width: 100%;
+  min-height: 46px;
+  margin: .4rem 0 1rem;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px;
+  background: #11151b;
+  color: #cbd3de;
+  font-size: .84rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.tv-grid-more:hover { border-color: rgba(223,255,118,.45); color: #dfff76; background: #151b13; }
+.tv-grid-more:focus-visible { outline: 2px solid #dfff76; outline-offset: 2px; }

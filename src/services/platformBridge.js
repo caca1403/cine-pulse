@@ -120,14 +120,20 @@ export async function checkForAppUpdates(options = { manual: false }) {
     try {
       const bridge = typeof window !== 'undefined' ? window.CinePulseDesktop : null;
       if (bridge && typeof bridge.checkDesktopUpdate === 'function') {
-        const res = await bridge.checkDesktopUpdate(options.manual !== false);
-        if (res && res.state === 'up-to-date' && options.manual) {
+        const manual = options.manual === true;
+        const res = await bridge.checkDesktopUpdate(manual);
+        if (res && res.state === 'up-to-date' && manual) {
           showToast('CinePulse Desktop güncel.', 'info');
+        }
+        // Arka planki kontrol yeni sürümü buldu: kullanıcıyı kesmeden bildir.
+        // (Eski davranış her açılışta modal pencere açıyordu.)
+        if (res && res.state === 'available') {
+          showToast(`CinePulse ${res.version} yayında — güncellemek için menüden "Güncelleme kontrol et".`, 'info');
         }
         return res;
       }
     } catch (_) {}
-    showToast('CinePulse Desktop güncel.', 'info');
+    if (options.manual === true) showToast('CinePulse Desktop güncel.', 'info');
   } else {
     showToast('CinePulse Web sürümü her zaman günceldir!', 'info');
   }

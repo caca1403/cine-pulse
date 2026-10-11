@@ -174,6 +174,46 @@ async function tryFreeStalePort() {
   }
 }
 
+function mediaDirPath() {
+  // DEB (/opt/CinePulse) root'a ait, AppImage squashfs'e RO bagliyor:
+  // sidecar'in yanina medya yazmak EACCES veriyordu. Her zaman kullanici
+  // yazilabilir dizini ver (userData). Eski kurulumlarda yanındaki klasör
+  // kullanılıyordu; eski içerik kaybolmasin diye veri taşıyoruz.
+  let target = null;
+  try {
+    target = path.join(app.getPath('userData'), 'media_storage');
+  } catch (_) {}
+  if (!target) {
+    const base = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
+    target = path.join(base, 'CinePulse', 'media_storage');
+  }
+  try {
+    fs.mkdirSync(target, { recursive: true });
+  } catch (_) {}
+  return target;
+}
+
+// Eski sürümlerden kalan içerik varsa tek seferlik taşı (dosya taşınmaz, işaret
+// dosyası bırakılır: kullanıcının güncelleme öncesi listesi kaybolmasın).
+function migrateLegacyMedia(target) {
+  const legacy = path.join(appRoot(), 'media_storage');
+  if (legacy === target) return;
+  try {
+    if (!fs.existsSync(legacy)) return;
+    const names = fs.readdirSync(legacy);
+    if (!names.length) return;
+    for (const name of names) {
+      const from = path.join(legacy, name);
+      const to = path.join(target, name);
+      try {
+        if (fs.existsSync(to)) continue;
+        fs.cpSync(from, to, { recursive: true, force: false });
+      } catch (_) {}
+    }
+    logSidecar(`legacy media migrated -> ${target}`);
+  } catch (_) {}
+}
+
 function startSidecar() {  const entry = path.join(appRoot(), 'server', 'mediaServer.js');
   logSidecar(`starting: ${entry}`);
   try {
@@ -186,13 +226,16 @@ function startSidecar() {  const entry = path.join(appRoot(), 'server', 'mediaSe
   } catch (_) {
     sidecarLogFd = null;
   }
+  const mediaDir = mediaDirPath();
+  migrateLegacyMedia(mediaDir);
   // Electron binary'sini duz Node gibi calistir (ayri node kurulumu gerekmez).
   sidecarProc = spawn(process.execPath, [entry], {
     cwd: appRoot(),
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
-      PYTHON_BIN: resolvePythonBin()
+      PYTHON_BIN: resolvePythonBin(),
+      CINEPULSE_MEDIA_DIR: mediaDir
     },
     stdio: ['ignore', 'ignore', sidecarLogFd || 'ignore'],
     windowsHide: true
@@ -837,6 +880,135 @@ function fetchRemoteManifest() {
   return fetchUpdateManifest(`${DESKTOP_UPDATE_URL}?_t=${Date.now()}`);
 }
 
+// ---- DEB kurulum yardımcıları (polkit'e bağımlı olmayan akış) ----------
+const TERMINAL_CANDIDATES = [
+  { bin: 'gnome-terminal', args: (cmd) => ['--', 'bash', '-lc', cmd] },
+  { bin: 'konsole', args: (cmd) => ['-e', 'bash', '-lc', cmd] },
+  { bin: 'xfce4-terminal', args: (cmd) => ['--command', `bash -lc ${JSON.stringify(cmd)}`] },
+  { bin: 'mate-terminal', args: (cmd) => ['--execute', 'bash', '-lc', cmd] },
+  { bin: 'lxterminal', args: (cmd) => ['-e', `bash -lc ${JSON.stringify(cmd)}`] },
+  { bin: 'x-terminal-emulator', args: (cmd) => ['-e', 'bash', '-lc', cmd] },
+  { bin: 'xterm', args: (cmd) => ['-e', 'bash', '-lc', cmd] }
+];
+
+// Gerçek bir terminal aç ve komutu onun içinde çalıştır. sudo burada kendi
+// TTY'sinde sorar → polkit/pkexec'in masaüstünden açılan diyaloğuna takılmaz.
+async function openTerminalWithCommand(cmd) {
+  for (const t of TERMINAL_CANDIDATES) {
+    const found = await runBin('which', [t.bin], { timeout: 3000 });
+    if (!found.ok) continue;
+    try {
+      const child = spawn(t.bin, t.args(cmd), { detached: true, stdio: 'ignore' });
+      child.on('error', () => {});
+      child.unref();
+      return true;
+    } catch (_) {}
+  }
+  return false;
+}
+
+function debInstallCommand(dest) {
+  return `sudo dpkg -i ${JSON.stringify(dest)} || sudo apt-get install -f -y`;
+}
+
+// Çalışan uygulama kendi paketinin dosyalarının üstünde olduğu için dpkg
+// "text file busy" verebilir. Kurulumu uygulama kapandıktan sonraya planla.
+function scheduleDebInstallAfterQuit(dest) {
+  const sh = `sleep 3; ${debInstallCommand(dest)}; read -n1 -s -r -p $'\\nKurulum bitti. Enter... '`;
+  const spawned = spawn('sh', ['-c', sh], { detached: true, stdio: 'ignore' });
+  spawned.on('error', () => {});
+  spawned.unref();
+}
+
+async function installDebPackage(dest, installedVersion = '') {
+  // app.getVersion() CALISAN surumu verir; kullaniciya gosterilecek olan
+  // KURULAN yeni surumdur (aksi halde "1.1.59 kuruldu" yazardi).
+  const newVersionLabel = installedVersion ? `v${installedVersion}` : '';
+  const fail = async (state, extra) => {
+    if (mainWin && !mainWin.isDestroyed()) {
+      await dialog.showMessageBox(mainWin, {
+        type: 'info',
+        title: 'Güncelleme kurulmadı',
+        message: `CinePulse v${app.getVersion()} paketi indirildi:\n${dest}`,
+        detail: extra || `Elle kurulum:\n  ${debInstallCommand(dest)}`,
+        buttons: ['Uçbirimde Kur', 'Kapat']
+      }).then(async (r) => {
+        if (r && r.response === 0 && await openTerminalWithCommand(debInstallCommand(dest))) {
+          isQuitting = true;
+          try { if (sidecarProc) sidecarProc.kill(); } catch (_) {}
+          app.quit();
+        }
+      });
+    }
+    return { ok: false, state };
+  };
+
+  // 1) pkexec + polkit (klasik yol). -f ile bağımlılık hatalarını da geç.
+  if (await pkexecAvailable()) {
+    const r = await runBin('pkexec', ['dpkg', '-i', '-f', dest], { timeout: 600000 });
+    if (r.ok) {
+      // Kurulum bitti ama calisan surecler ESKI kod. Kullaniciya tek tikla
+      // yeniden baslatma sunuyoruz (eski surumde sadece "yeniden baslatin"
+      // yaziyordu, kullanici ne yapacagini bilmiyordu).
+      let restartNow = false;
+      if (mainWin && !mainWin.isDestroyed()) {
+        const res = await dialog.showMessageBox(mainWin, {
+          type: 'info',
+          title: 'Kuruldu',
+          message: newVersionLabel ? `CinePulse ${newVersionLabel} kuruldu.` : `CinePulse ${ver} kuruldu.`,
+          detail: 'Yeni sürümün tamamı için uygulama yeniden başlatılmalı.',
+          buttons: ['Şimdi Yeniden Başlat', 'Sonra'],
+          defaultId: 0,
+          cancelId: 1
+        });
+        restartNow = !!(res && res.response === 0);
+      }
+      if (restartNow) {
+        isQuitting = true;
+        try { if (sidecarProc) sidecarProc.kill(); } catch (_) {}
+        app.relaunch();
+        app.quit();
+      }
+      return { ok: true, state: 'installed' };
+    }
+    logSidecar(`pkexec dpkg failed: ${(r.err || '').slice(0, 300)}`);
+  }
+
+  // 2) Polkit çalışmıyorsa doğrudan sudo (kullanıcı zaten sudo isteyebiliyorsa).
+  const sudoable = await runBin('sudo', ['-n', 'true'], { timeout: 5000 });
+  if (sudoable.ok) {
+    scheduleDebInstallAfterQuit(dest);
+    if (mainWin && !mainWin.isDestroyed()) {
+      await dialog.showMessageBox(mainWin, {
+        type: 'info',
+        title: 'Kuruluyor',
+        message: 'CinePulse güncelleniyor…',
+        detail: 'Uygulama kapanıp yeni sürüm kurulacak. Açılınca yeniden aç.'
+      });
+    }
+    isQuitting = true;
+    try { if (sidecarProc) sidecarProc.kill(); } catch (_) {}
+    app.quit();
+    return { ok: true, state: 'installing' };
+  }
+
+  // 3) Terminal aç, kullanıcı orada şifrelesin (her zaman çalışır).
+  const opened = await openTerminalWithCommand(debInstallCommand(dest));
+  if (opened) {
+    if (mainWin && !mainWin.isDestroyed()) {
+      await dialog.showMessageBox(mainWin, {
+        type: 'info',
+        title: 'Kuruluyor',
+        message: 'Terminal açıldı.',
+        detail: 'Yeni sürümü kurmak için terminaldeki komutu onayla, sonra uygulamayı yeniden başlat.'
+      });
+    }
+    return { ok: true, state: 'installing' };
+  }
+
+  return fail('downloaded');
+}
+
 async function checkDesktopUpdate({ manual = false } = {}) {
   if (desktopUpdateBusy) return { ok: false, state: 'busy' };
   desktopUpdateBusy = true;
@@ -867,8 +1039,14 @@ async function checkDesktopUpdate({ manual = false } = {}) {
       }
       return { ok: false, state: 'no-asset' };
     }
+    // Otomatik kontroller (acilis + 20sn sonra) MODAL SORMAZ. Kullanici
+    // uygulamayi ilk kez aciyor, kurulum sihirbazinda ya da izlemedeyken
+    // karsisina "Yeni Surum Mevcut" penceresi hic cikmamali (onceki surumde
+    // oldugu gibi sihirbazin uzerine biniyordu). Otomatik kontrolde yalnizca
+    // bilgi birakilir; kullanici menu uzerinden "Guncelleme kontrol et" ile
+    // sorar, o zaman sorulur.
     let choice = 0;
-    if (mainWin && !mainWin.isDestroyed()) {
+    if (manual && mainWin && !mainWin.isDestroyed()) {
       const r = await dialog.showMessageBox(mainWin, {
         type: 'question',
         title: 'Yeni Sürüm Mevcut',
@@ -879,6 +1057,10 @@ async function checkDesktopUpdate({ manual = false } = {}) {
         cancelId: 1
       });
       choice = r.response;
+    }
+    if (!manual) {
+      logSidecar(`update available v${ver} (auto-check, no prompt)`);
+      return { ok: false, state: 'available', version: ver, releaseNotes: notes };
     }
     if (choice !== 0) return { ok: true, state: 'postponed' };
     const fname = platformUrl.split('/').pop().split('?')[0] || (process.platform === 'win32' ? 'CinePulse-Setup.exe' : 'CinePulse-update.bin');
@@ -910,23 +1092,16 @@ async function checkDesktopUpdate({ manual = false } = {}) {
       try { if (process.platform === 'linux') spawn('xdg-open', [path.dirname(dest)], { detached: true, stdio: 'ignore' }).unref(); } catch (_) {}
       return { ok: true, state: 'downloaded' };
     }
-    // DEB kurulumu: pkexec ile sistem paketine kur.
-    const pk = await pkexecAvailable();
-    if (!pk) {
-      if (mainWin && !mainWin.isDestroyed()) {
-        dialog.showMessageBox(mainWin, { type: 'info', title: 'İndirildi', message: `Paket indirildi:\n${dest}\n\nUçbirimde kur: sudo dpkg -i "${dest}"` });
-      }
-      return { ok: true, state: 'downloaded' };
-    }
-    const inst = await runBin('pkexec', ['dpkg', '-i', dest], { timeout: 600000 });
-    if (mainWin && !mainWin.isDestroyed()) {
-      dialog.showMessageBox(mainWin, {
-        type: inst.ok ? 'info' : 'error',
-        title: inst.ok ? 'Kuruldu' : 'Kurulum Başarısız',
-        message: inst.ok ? 'Yeni sürüm kuruldu. Değişiklikler için uygulamayı yeniden başlat.' : `DEB kurulamadı (${(inst.err || '').slice(0, 200)}).`
-      });
-    }
-    return { ok: inst.ok, state: inst.ok ? 'installed' : 'install-failed' };
+    // DEB kurulumu.
+    // Sorun: pkexec polkit diyalogunu masaüstünden açınca GNOME/masaüstü
+    // ortamında "Request dismissed" ile düşüyor (parola kutusu hiç açılmıyor
+    // ya da kullanıcı kapatıyor) ve kullanıcı ham hata mesajını görüyordu.
+    // Kalıcı çözüm: 3 kademeli akış — dpkg'yi -f (force) ile dene, olmazsa
+    // gerçek bir terminal aç (sudo kendi TTY'sinde çalışır, polkit'e takılmaz),
+    // o da yoksa kullanıcıya tek satır komut ver. Hepsi başarısızsa hata
+    // değil bilgilendirme gösterilir.
+    const inst = await installDebPackage(dest, ver);
+    return inst;
   } finally {
     desktopUpdateBusy = false;
   }

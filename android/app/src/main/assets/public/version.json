@@ -1,13 +1,20 @@
 {
-  "version": "1.1.53",
-  "versionCode": 163,
-  "releaseDate": "2026-10-10",
-  "title": "CinePulse v1.1.53",
-  "releaseNotes": "Orion (HDFilmCehennemi) kaynağının Android API çözümlemesi düzeltildi. SezonlukDizi doğrulama akışı iyileştirildi.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.53/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.53/cinepulse.apk",
-  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-Setup-1.1.52.exe",
-  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-1.1.52.AppImage",
-  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.52/CinePulse-1.1.52.deb",
+  "version": "1.1.60",
+  "versionCode": 170,
+  "releaseDate": "2026-10-11",
+  "title": "CinePulse v1.1.60",
+  "releaseNotes": "DEB/Linux yerel medya servisi kalici duzeltildi (sidecar artik /opt'a yazmiyor). Linux guncellemesi terminal uzerinden kendini tamamliyor, guncelleme bildirimi artik kesmiyor. Canli TV 1600+ kanala cikti: Kral M3U ve Turhan TV eklendi, olu iptv-org ve TVR kaldirildi. MPEG-TS kanallari dogru oynaticiya yonlendiriliyor, olu yayinlar otomatik eleniyor, yedek yayin adresleri deniyor. Kanal adlarindaki HTML kaciriliyor.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-Setup-1.1.60.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-1.1.60.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-1.1.60.deb",
+  "desktop": {
+    "version": "1.1.59",
+    "versionCode": 169,
+    "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-Setup-1.1.60.exe",
+    "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-1.1.60.AppImage",
+    "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.60/CinePulse-1.1.60.deb"
+  },
   "mandatory": false
 }

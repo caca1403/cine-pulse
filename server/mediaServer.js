@@ -16,6 +16,7 @@ import { resolveCanliChannel } from '../api/_canlitv.js';
 
 import http from 'http';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import zlib from 'zlib';
 import { Readable, PassThrough } from 'stream';
@@ -25,6 +26,7 @@ import { promisify } from 'util';
 import { createRequire } from 'module';
 import { resolveWebteizleStreams } from './webteizleExtractor.js';
 import { isSzdEpisodePath, injectSzdPlayerFrame } from './playerFrameInject.js';
+import { fetchLiveSourceChannels, fetchAllLiveSources, listLiveSources, isLiveSourceId } from '../api/_liveSources.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -50,15 +52,26 @@ async function fetchTextSafe(url, headers = {}) {
   }
 }
 
-// Resolve @ffmpeg-installer/ffmpeg path (CommonJS package)
+// ffmpeg yolu: önce paketlenmiş ikili, yoksa sistem ffmpeg'i.
+// NOT: @ffmpeg-installer/ffmpeg package.json dependencies arasında DEĞİL
+// (66 MB'lik bir paket; DEB zaten 128 MB). Bu yüzden paketlenmiş sürümde
+// ilk blok her zaman başarısız olur ve sisteme düşeriz — kurulum sihirbazı
+// ffmpeg'i paket yöneticisiyle kuruyor. /api/mkv_stream ffmpeg yoksa 503
+// döner, diğer uç noktalar etkilenmez.
 let _ffmpegBin = null;
 try {
   const require = createRequire(import.meta.url);
   _ffmpegBin = require('@ffmpeg-installer/ffmpeg').path;
 } catch (_) {}
-// Fallback to system ffmpeg
 if (!_ffmpegBin) {
-  try { const { execFileSync } = await import('child_process'); _ffmpegBin = execFileSync('which', ['ffmpeg']).toString().trim(); } catch (_) {}
+  try {
+    const { execFileSync } = await import('child_process');
+    const found = execFileSync('which', ['ffmpeg'], { timeout: 4000 }).toString().trim();
+    // which bulunamadıysa '' döner; boş yol _ffmpegBin'i "bulundu" saymasın.
+    _ffmpegBin = found || null;
+  } catch (_) {
+    _ffmpegBin = null;
+  }
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -66,7 +79,40 @@ const __dirname = path.dirname(__filename);
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const PORT = 4000;
-const MEDIA_DIR = path.join(__dirname, '..', 'media_storage');
+
+// ---- Yazılabilir medya dizini (DEB kalıcı düzeltme) --------------------
+// Paketlenmiş sürümde yanındaki media_storage/ düz `path.join(__dirname,..)`
+// ile çözülüyordu. DEB kurulumu /opt/CinePulse altına root'a ait gelir ve
+// AppImage de squashfs'e RO bağlanır → normal kullanıcı mkdir ile EACCES
+// alıyor, sidecar ölüyor, uygulama "CinePulse Servis Başlatılamadı" diye
+// kalıcı uyarı veriyordu. Electron main artık CINEPULSE_MEDIA_DIR ile
+// kullanıcı yazılabilir dizini (userData) gönderiyor; sırayla:
+//   1) env (Electron) → 2) bundle yanı (geliştirme/taşınabilir) →
+//   3) XDG_DATA_HOME → 4) geçici dizin.
+// HİBİR ADIM CRASH ETMEMELİ: sidecar ölürse uygulamanın tamamı düşüyor.
+function resolveMediaDir() {
+  const candidates = [];
+  const fromEnv = String(process.env.CINEPULSE_MEDIA_DIR || '').trim();
+  if (fromEnv) candidates.push(fromEnv);
+  candidates.push(path.join(__dirname, '..', 'media_storage'));
+  try {
+    const base = process.env.XDG_DATA_HOME || path.join(os.homedir() || '.', '.local', 'share');
+    candidates.push(path.join(base, 'CinePulse', 'media_storage'));
+  } catch (_) {}
+  try {
+    candidates.push(path.join(os.tmpdir(), 'cinepulse-media'));
+  } catch (_) {}
+  for (const dir of candidates) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.accessSync(dir, fs.constants.W_OK);
+      return dir;
+    } catch (_) {}
+  }
+  return os.tmpdir();
+}
+
+const MEDIA_DIR = resolveMediaDir();
 const requestBuckets = new Map();
 
 function isSafePublicUrl(rawUrl) {
@@ -104,9 +150,8 @@ function exceedsRateLimit(req, limit = 1200) {
   return current.count > limit;
 }
 
-if (!fs.existsSync(MEDIA_DIR)) {
-  fs.mkdirSync(MEDIA_DIR, { recursive: true });
-}
+// MEDIA_DIR resolveMediaDir() icinde zaten olusturulup yazilabilirligi
+// dogrulandi; buradaki mkdir patlarsa servis cokmus olurdu.
 
 const MIME_TYPES = {
   '.mp4': 'video/mp4',
@@ -392,6 +437,44 @@ const server = http.createServer(async (req, res) => {
   }
 
   const reqUrl = new URL(req.url, `http://localhost:${PORT}`);
+
+  // ============ Canli TV kaynaklari (Kral M3U / Turhan TV) ==============
+  // Vercel'deki /api/live_sources'in aynisi. Masaustunde cozumleme kullanici-
+  // nin kendi IP'siyle yapildigi icin Turk yayinlarindaki bolge kilidi ve
+  // Cloudflare engeli (datacenter IP'lerine acik) tasmaz — bu yuzden yayin
+  // adresleri de buradan cikarilip /api/hls_proxy uzerinden oynatilir.
+  if (reqUrl.pathname === '/api/live_sources') {
+    const src = String(reqUrl.searchParams.get('src') || 'all').toLowerCase();
+    const wantAll = !src || src === 'all';
+    if (!wantAll && !isLiveSourceId(src)) {
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'Bilinmeyen kaynak', sources: listLiveSources() }));
+      return;
+    }
+    try {
+      const results = wantAll ? await fetchAllLiveSources() : [await fetchLiveSourceChannels(src)];
+      const payload = {
+        savedAt: Date.now(),
+        sources: (results || []).map((r) => ({
+          id: r.id,
+          label: r.label,
+          ok: r.ok !== false,
+          count: r.count || (r.channels || []).length,
+          error: r.error || '',
+          channels: r.channels || []
+        }))
+      };
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'public, max-age=900, s-maxage=1800, stale-while-revalidate=86400'
+      });
+      res.end(JSON.stringify(payload));
+    } catch (error) {
+      res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: String((error && error.message) || error), sources: [] }));
+    }
+    return;
+  }
 
   // ============ Health Check ============
   if (reqUrl.pathname === '/health') {
@@ -1395,11 +1478,22 @@ const server = http.createServer(async (req, res) => {
                       decodedTarget.includes('mariuannastluisborg') || 
                       decodedTarget.includes('moveonjoy') || 
                       (ref && ref.includes('prectv'));
-      const ua = isRecTv ? 'okhttp/4.12.0' : (req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+      // M3U listelerindeki #EXTVLCOPT:http-user-agent degerleri kanalla gelir
+      // (?ua=). Tarayici hls.js/mpegts.js User-Agent i degistiremez (forbidden
+      // header) -> proxy tarafinda uygulanmasi gerekir. Liste gercekten Origin
+      // istiyorsa (http-origin) o da gonderilir; normalde Origin BILEREK atilir
+      // (fastplay/pich gibi CDN ler Origin gorunce 403 doner).
+      const forcedUa = String(reqUrl.searchParams.get('ua') || '').slice(0, 400);
+      const forcedOrigin = String(reqUrl.searchParams.get('origin') || '').slice(0, 400);
+
+      const ua = forcedUa
+        || (isRecTv ? 'okhttp/4.12.0' : (req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'));
 
       const upstreamHeaders = {
         'User-Agent': ua
       };
+      if (forcedOrigin) upstreamHeaders['Origin'] = forcedOrigin;
+
 
       if (rawXSp) {
         upstreamHeaders['X-Sp'] = rawXSp;

@@ -294,6 +294,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/live_tv_stream/, '/live_tv_stream')
       },
+      // Canli TV kaynaklari (Kral M3U / Turhan TV) — sidecar'da ayni yol var.
+      '/api/live_sources': {
+        target: 'http://127.0.0.1:4000',
+        changeOrigin: true,
+        secure: false
+      },
       '/api/hdfc_stream': {
         target: 'http://127.0.0.1:4000',
         changeOrigin: true,

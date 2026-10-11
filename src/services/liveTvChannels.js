@@ -8,9 +8,21 @@
  * Generate a clean, crisp, corporate-styled SVG Monogram badge
  * Guaranteed to NEVER fail, zero CORS, zero network latency, 100% vector clarity.
  */
+function escapeXmlText(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 export function getChannelBadgeSvg(name, category) {
   const cleanName = (name || '').replace(/ (HD|4K|TV|Kanalı)/gi, '').trim();
-  const initials = cleanName.slice(0, 5).toUpperCase();
+  // Kanal adı uzak M3U listesinden geldiği için buraya girmeden önce
+  // kaçırılmalı: 5 karakterlik kesme "<svg " gibi bir etiket başlangıcı
+  // üretirse <text> içine gömülü bir öğe olarak ayrıştırılır (XSS).
+  const initials = escapeXmlText(cleanName.slice(0, 5).toUpperCase());
 
   // Curated branding color schemes
   const brandThemes = {
@@ -69,7 +81,7 @@ export function getChannelBadgeSvg(name, category) {
     <rect width="120" height="120" rx="26" fill="url(#bgGrad)" stroke="rgba(255,255,255,0.18)" stroke-width="2" />
     <text x="50%" y="46%" dominant-baseline="central" text-anchor="middle" fill="${matched.text}" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="26" letter-spacing="1">${initials}</text>
     <rect x="20" y="78" width="80" height="22" rx="11" fill="rgba(0,0,0,0.4)" />
-    <text x="50%" y="89" dominant-baseline="central" text-anchor="middle" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="9" letter-spacing="1.2">${matched.tag}</text>
+    <text x="50%" y="89" dominant-baseline="central" text-anchor="middle" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="9" letter-spacing="1.2">${escapeXmlText(matched.tag)}</text>
   </svg>`;
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;

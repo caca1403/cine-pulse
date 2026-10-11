@@ -1,5 +1,6 @@
 import { resolveCanliChannel } from './_canlitv.js';
 import { guardNodeRequest, isSafePublicUrl } from './_security.js';
+import { fetchLiveSourceChannels, fetchAllLiveSources, listLiveSources, isLiveSourceId } from './_liveSources.js';
 import { Readable } from 'stream';
 import webteizleHandler from './webteizle_stream.js';
 
@@ -63,6 +64,36 @@ export default async function handler(req, res) {
   let customHeaders = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
   };
+
+  // ---- Canli TV kaynaklari (Kral M3U / Turhan TV) ---------------------
+  // CORS kapali listeler (Dropbox) ve Cloudflare korumali yayinlar sadece
+  // sunucudan cozulebiliyor; APK da Vercel'i gectigi icin burasi ortak nokta.
+  if (pathname.startsWith('/api/live_sources')) {
+    const src = String(urlObj.searchParams.get('src') || 'all').toLowerCase();
+    const wantAll = !src || src === 'all';
+    if (!wantAll && !isLiveSourceId(src)) {
+      return res.status(400).json({ error: 'Bilinmeyen kaynak', sources: listLiveSources() });
+    }
+    try {
+      const results = wantAll ? await fetchAllLiveSources() : [await fetchLiveSourceChannels(src)];
+      const payload = {
+        savedAt: Date.now(),
+        sources: (results || []).map((r) => ({
+          id: r.id,
+          label: r.label,
+          ok: r.ok !== false,
+          count: r.count || (r.channels || []).length,
+          error: r.error || '',
+          channels: r.channels || []
+        }))
+      };
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=1800, stale-while-revalidate=86400');
+      return res.status(200).send(JSON.stringify(payload));
+    } catch (error) {
+      return res.status(502).json({ error: String(error?.message || error), sources: [] });
+    }
+  }
 
   if (pathname.startsWith('/api/img_proxy')) {
     const rawTarget = urlObj.searchParams.get('url') || '';
@@ -361,7 +392,12 @@ export default async function handler(req, res) {
                       decodedTarget.includes('mariuannastluisborg') || 
                       decodedTarget.includes('moveonjoy') || 
                       (ref && ref.includes('prectv'));
-      const ua = isRecTv ? 'okhttp/4.12.0' : (req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+      // M3U listelerindeki #EXTVLCOPT:http-user-agent degerleri kanalla
+      // gelir (?ua=). Tarayici hls.js/mpegts.js'in User-Agent'ini degistire-
+      // medigi icin (forbidden header) proxy tarafinda uygulanmasi gerekir.
+      const forcedUa = String(urlObj.searchParams.get('ua') || '').slice(0, 400);
+      const ua = forcedUa
+        || (isRecTv ? 'okhttp/4.12.0' : (req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'));
 
       const upstreamHeaders = {
         'User-Agent': ua
@@ -376,6 +412,8 @@ export default async function handler(req, res) {
         upstreamHeaders['Referer'] = ref;
         // Media CDNs reject Origin; Referer is sufficient.
       }
+      const forcedOrigin = String(urlObj.searchParams.get('origin') || '').slice(0, 400);
+      if (forcedOrigin) upstreamHeaders['Origin'] = forcedOrigin;
 
       const upstreamRes = await fetch(decodedTarget, {
         headers: upstreamHeaders
