@@ -519,7 +519,13 @@ export async function fetchLiveSourceChannels(id) {
   const task = entry.fn()
     .then((channels) => {
       const data = { id: key, label: entry.label, channels, count: channels.length };
-      sourceCache.set(key, { at: Date.now(), data });
+      // BOŞ SONUÇ ÖNBELLEĞE YAZILMAZ. izlego Vercel'e 429 verdiğinde liste
+      // boş dönüyordu ve bu boş sonuç 30 dakika boyunca önbellekte kalıp
+      // kaynağı ölü gösteriyordu; yani tek bir geçici hata kalıcı arızaya
+      // dönüşüyordu. Boş liste kısa süre sonra yeniden denenir.
+      if (channels.length > 0) {
+        sourceCache.set(key, { at: Date.now(), data });
+      }
       if (sourceCache.size > 20) {
         // Bellek sinirini koru: en eski kayitlari dusur.
         const oldest = [...sourceCache.entries()].sort((a, b) => a[1].at - b[1].at);
