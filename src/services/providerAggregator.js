@@ -413,26 +413,33 @@ function isValidStream(s) {
 
 function getStreamPriorityScore(s) {
   const url = (s.url || s.streamUrl || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
+  // DOĞRUDAN YAYIN HER ZAMAN GÖMÜLÜDEN ÖNCE GELİR.
+  // Sağlayıcı ne olursa olsun: bizim oynatıcıyla açılan doğrudan yayın
+  // (m3u8/mp4), gömülü oynatıcıdan (iframe) önce seçilir. Gömülü yalnızca
+  // hiçbir yolla çözülemeyen adresler için en sonda durur.
+  const dogrudan = Boolean(s.isDirectVideo || s.isHls || /\.(m3u8|mp4|mkv|webm|m4s)(\?|#|$)/i.test(url));
+  const gomulu = Boolean((s.isIframe || s.type === 'embed' || s.isSayfa) && !dogrudan);
+  const ceza = gomulu ? 50 : 0;
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
 
   // 1. HDFilmCehennemi (CloseLoad & Rapidrame - En yüksek stabilite)
-  if (id.startsWith('hdfc_') || raw.includes('closeload') || raw.includes('rapidrame') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) return 0;
+  if (id.startsWith('hdfc_') || raw.includes('closeload') || raw.includes('rapidrame') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) return 0 + ceza;
 
   // 1b. SetFilmizle (SetPlay & FastPlay - Özel 1080p Türk Oynatıcıları)
-  if (id.startsWith('setf_') || raw.includes('setplay') || raw.includes('fastplay') || raw.includes('setfilm')) return 1;
+  if (id.startsWith('setf_') || raw.includes('setplay') || raw.includes('fastplay') || raw.includes('setfilm')) return 1 + ceza;
 
   // 1c. SelcukFlix (Pichive 1080p HLS - cift tip: film+dizi, Cloudstream ile birebir)
-  if (id.startsWith('slc_') || raw.includes('selcukflix') || raw.includes('selcuk')) return 1;
+  if (id.startsWith('slc_') || raw.includes('selcukflix') || raw.includes('selcuk')) return 1 + ceza;
 
   // 1d. Dizilla (Pichive 1080p - dizi-only, Cloudstream TvSeries ile birebir)
-  if (id.startsWith('dzl_') || raw.includes('dizilla')) return 2;
+  if (id.startsWith('dzl_') || raw.includes('dizilla')) return 2 + ceza;
 
   // 2. DP (DiziBal AlphaStream HLS - Doğrudan 1080p)
-  if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dp 1080p') || raw.includes('dp ') || raw.includes('dizibal')) return 2;
+  if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dp 1080p') || raw.includes('dp ') || raw.includes('dizibal')) return 2 + ceza;
 
   // 3. DS (Dizisol HLS - Doğrudan 1080p Dual Ses)
-  if (id.startsWith('dzs_') || raw.includes('dizisol') || raw.includes('ds 1080p') || raw.includes('ds ')) return 2;
+  if (id.startsWith('dzs_') || raw.includes('dizisol') || raw.includes('ds 1080p') || raw.includes('ds ')) return 2 + ceza;
 
   // 4. SWX (Sinewix Direct - HLS/MP4 priority 3, MKV fallback priority 9)
   if (id.startsWith('snx') || raw.includes('sinewix') || raw.includes('swx')) {
@@ -440,37 +447,37 @@ function getStreamPriorityScore(s) {
   }
 
   // 5. TVR VIP (RecTV 1080p HLS)
-  if (id.startsWith('tvr_') || raw.includes('tvr') || raw.includes('rectv')) return 4;
+  if (id.startsWith('tvr_') || raw.includes('tvr') || raw.includes('rectv')) return 4 + ceza;
 
   // 5b. Short Dramas (Dramalar VIP & DramaDizilerim - Direct 1080p HLS)
-  if (id.startsWith('dml_') || raw.includes('dramalar')) return 2;
-  if (id.startsWith('ddz_') || raw.includes('dramadizilerim') || raw.includes('ddz vip')) return 3;
+  if (id.startsWith('dml_') || raw.includes('dramalar')) return 2 + ceza;
+  if (id.startsWith('ddz_') || raw.includes('dramadizilerim') || raw.includes('ddz vip')) return 3 + ceza;
 
   // 6. LookMovie VIP (1080p HLS)
-  if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) return 5;
+  if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) return 5 + ceza;
 
   // 7. İkincil Yerli Sağlayıcılar (Webteizle, Diziyo, Diziyou, SezonlukDizi, HDF)
-  if (id.startsWith('wtz_') || id.startsWith('webteizle_') || raw.includes('webteizle')) return 6;
-  if (id.startsWith('fxs_') || raw.includes('filmekseni') || raw.includes('eksenload')) return 6;
-  if (id.startsWith('dzy_') || raw.includes('diziyo')) return 7;
-  if (id.startsWith('dyu_') || raw.includes('diziyou')) return 8;
-  if (id.startsWith('szd_') || raw.includes('sezonluk')) return 8;
-  if (id.startsWith('hdfb_') || id.startsWith('fhdf_') || raw.includes('fullhd') || raw.includes('hdfilmizle') || raw.includes('hdf ')) return 9;
+  if (id.startsWith('wtz_') || id.startsWith('webteizle_') || raw.includes('webteizle')) return 6 + ceza;
+  if (id.startsWith('fxs_') || raw.includes('filmekseni') || raw.includes('eksenload')) return 6 + ceza;
+  if (id.startsWith('dzy_') || raw.includes('diziyo')) return 7 + ceza;
+  if (id.startsWith('dyu_') || raw.includes('diziyou')) return 8 + ceza;
+  if (id.startsWith('szd_') || raw.includes('sezonluk')) return 8 + ceza;
+  if (id.startsWith('hdfb_') || id.startsWith('fhdf_') || raw.includes('fullhd') || raw.includes('hdfilmizle') || raw.includes('hdf ')) return 9 + ceza;
 
   // 8. VIP P2P Torrent Akışları
-  if (id.startsWith('torrent_p2p_')) return 10;
+  if (id.startsWith('torrent_p2p_')) return 10 + ceza;
 
   // 9. Embed Oynatıcılar (2Embed, SmashyStream)
-  if (id.startsWith('twoembed_') || raw.includes('2embed')) return 12;
-  if (id.startsWith('smashystream_') || raw.includes('smashy')) return 13;
+  if (id.startsWith('twoembed_') || raw.includes('2embed')) return 12 + ceza;
+  if (id.startsWith('smashystream_') || raw.includes('smashy')) return 13 + ceza;
 
   // 10. Anime & Çocuk
-  if (id.startsWith('az_') || id.startsWith('anizium_') || raw.includes('anizium') || raw.includes('az ')) return 2;
-  if (id.startsWith('kvip_') || raw.includes('kids vip')) return 14;
-  if (id.startsWith('acx_') || raw.includes('animecix')) return 15;
-  if (id.startsWith('atr_') || raw.includes('animetr')) return 17;
+  if (id.startsWith('az_') || id.startsWith('anizium_') || raw.includes('anizium') || raw.includes('az ')) return 2 + ceza;
+  if (id.startsWith('kvip_') || raw.includes('kids vip')) return 14 + ceza;
+  if (id.startsWith('acx_') || raw.includes('animecix')) return 15 + ceza;
+  if (id.startsWith('atr_') || raw.includes('animetr')) return 17 + ceza;
 
-  return 20;
+  return 20 + ceza;
 }
 
 /**

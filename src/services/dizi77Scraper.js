@@ -1,4 +1,5 @@
 import { akilliGet, cihazGet, nativeHttpAktifMi } from './nativeHttp.js';
+import { extractEmbedStream, isDirectStream } from './embedExtractors.js';
 
 /* ==========================================================================
    CinePulse — dizi77.life kaziyicisi (dizi odakli)
@@ -149,6 +150,55 @@ async function listSeasons(seriesUrl) {
  * once dogrudan URL dener, bulamazsa mevcut sezonlarda en yakin bolumu arar
  * (sitelerde bazen sezon/epizot numaralandirmasi kayar).
  */
+
+/**
+ * Oynatıcı adresini önce doğrudan yayına çevirmeye çalışır.
+ * Çözülebilirse iframe ASLA dönülmez; çözülemezse ham adres
+ * gömülü olarak döner (o zaman gizli WebView açılır).
+ */
+async function cozVeyaGomulu(oynaticiUrl, sayfaUrl, kimlik, etiket) {
+  try {
+    const c = await extractEmbedStream(oynaticiUrl, sayfaUrl, new Set(), Date.now() + 15000).catch(() => null);
+    if (c && c.url && isDirectStream(c.url)) {
+      return [{
+        id: kimlik,
+        title: `${etiket} • doğrudan`,
+        displayName: etiket,
+        badge: '⚡ doğrudan yayın',
+        source: 'dizi77',
+        type: 'direct',
+        isIframe: false,
+        isDirectVideo: true,
+        isHls: /\.m3u8/i.test(c.url),
+        category: 'dubbed',
+        url: c.url,
+        streamUrl: c.url,
+        referer: c.referer || sayfaUrl,
+        subtitles: c.subtitles || [],
+        resolvedVia: c.via,
+        quality: '1080p',
+        pageUrl: sayfaUrl
+      }];
+    }
+  } catch (_) {}
+  return [{
+    id: kimlik,
+    title: `${etiket} • gömülü`,
+    displayName: etiket,
+    badge: '🎬 1080p gömülü',
+    source: 'dizi77',
+    type: 'embed',
+    isIframe: true,
+    category: 'dubbed',
+    url: oynaticiUrl,
+    streamUrl: oynaticiUrl,
+    embedUrl: oynaticiUrl,
+    rawStreamUrl: oynaticiUrl,
+    quality: '1080p',
+    pageUrl: sayfaUrl
+  }];
+}
+
 export async function fetchDizi77EpisodeSources(seriesUrl, season = 1, episode = 1) {
   if (!seriesUrl) return [];
   const wanted = [];
@@ -164,22 +214,7 @@ export async function fetchDizi77EpisodeSources(seriesUrl, season = 1, episode =
       if (!html) continue;
       const m = html.match(/<iframe[^>]*src="(https?:\/\/[^"]+)"/i);
       if (m && m[1].length > 12) {
-        return [{
-          id: `d77_s${s}e${ep}`,
-          title: `dizi77 • S{s}E{ep}`,
-          displayName: `dizi77 S${s}B${ep}`,
-          badge: `🎬 1080p gömülü`,
-          source: 'dizi77',
-          type: 'embed',
-          isIframe: true,
-          category: 'dubbed',
-          url: m[1],
-          streamUrl: m[1],
-          embedUrl: m[1],
-          rawStreamUrl: m[1],
-          quality: '1080p',
-          pageUrl: url
-        }];
+        return await cozVeyaGomulu(m[1], url, `d77_s${s}e${ep}`, `dizi77 S${s}B${ep}`);
       }
     }
   }
@@ -193,22 +228,7 @@ export async function fetchDizi77EpisodeSources(seriesUrl, season = 1, episode =
     const epHtml = await getHtml(`${seriesUrl}/sezon/${s}/bolum/${ep[1]}`, 12000, seriesUrl);
     const m = epHtml && epHtml.match(/<iframe[^>]*src="(https?:\/\/[^"]+)"/i);
     if (m) {
-      return [{
-        id: `d77_s${s}e${ep[1]}`,
-        title: `dizi77 • S${s}B${ep[1]}`,
-        displayName: `dizi77 S${s}B${ep[1]}`,
-        badge: '🎬 1080p gömülü',
-        source: 'dizi77',
-        type: 'embed',
-        isIframe: true,
-        category: 'dubbed',
-        url: m[1],
-        streamUrl: m[1],
-        embedUrl: m[1],
-        rawStreamUrl: m[1],
-        quality: '1080p',
-        pageUrl: `${seriesUrl}/sezon/${s}/bolum/${ep[1]}`
-      }];
+      return await cozVeyaGomulu(m[1], `${seriesUrl}/sezon/${s}/bolum/${ep[1]}`, `d77_s${s}e${ep[1]}`, `dizi77 S${s}B${ep[1]}`);
     }
   }
   return [];

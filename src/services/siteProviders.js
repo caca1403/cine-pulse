@@ -494,7 +494,7 @@ export async function siteGetirStreams(siteId, {
       const dogrudan = ayar.dogrudanUrl(ad, { tmdbId, imdbId, mediaType, season, episode });
       const sayfa = await istek(dogrudan, { referer: ad, timeout: 10000 });
       if (sayfa && !engelMi(sayfa)) {
-        return dogrudanKaynaklari(siteId, dogrudan, sayfa, ad);
+        return await dogrudanKaynaklari(siteId, dogrudan, sayfa, ad);
       }
     } catch (_) {}
   }
@@ -601,7 +601,7 @@ export async function siteListesi(siteId, secenekler = {}) {
  * Aramaya gerek olmayan kaynaklar için: adres zaten biliniyor, sadece
  * sayfadaki yayını çözmek gerekiyor.
  */
-function dogrudanKaynaklari(siteId, adres, sayfa, referer) {
+async function dogrudanKaynaklari(siteId, adres, sayfa, referer) {
   const c = oynaticiCoz(sayfa);
   if (c) {
     return [{
@@ -612,7 +612,30 @@ function dogrudanKaynaklari(siteId, adres, sayfa, referer) {
       via: `${siteId}:${c.via}`
     }];
   }
-  // Çözülemediyse gömülü sayfayı oynat (tarayıcı motoru açar)
+  // Çözülemediyse jenerik motoru dene (7 kalıp + şifreli oynatıcı +
+  // base64 iframe + nonce + playlist). Doğrudan yayın bulunursa iframe
+  // ASLA dönülmez — iframe yalnızca hiçbir yolla çözülemeyen adresler
+  // içindir (o zaman da gizli WebView açılır).
+  try {
+    const g = await extractEmbedStream(adres, referer, new Set(), Date.now() + 15000, sayfa).catch(() => null);
+    if (g && g.url && !g.isIframe) {
+      return [{
+        name: kaliteEtiketi(sayfa) || SITES[siteId].ad,
+        url: masterUrlDuzelt(g.url),
+        referer: g.referer || referer,
+        altyazilar: masterAltyazilari(sayfa),
+        via: `${siteId}:${g.via}`
+      }];
+    }
+    // Jenerik motor iframe döndüyse bile doğrudan denemeyi bırakma:
+    // sayfa gömülüsü son çaredir.
+    if (g && g.url && g.isIframe) {
+      return [{
+        name: SITES[siteId].ad, url: g.url, referer: g.referer || referer,
+        isIframe: true, via: `${siteId}:${g.via}`
+      }];
+    }
+  } catch (_) {}
   return [{
     name: SITES[siteId].ad,
     url: adres,
