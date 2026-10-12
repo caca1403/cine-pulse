@@ -71,7 +71,7 @@ async function fetchDizisolJson(endpoint, options = {}) {
 
   const p = (async () => {
     const res = await fetchDizisolApi(cleanEndpoint, options);
-    if (!res) return null;
+    if (!res) { dizisolCache.delete(cleanEndpoint); return null; }
     const data = await res.json().catch(() => null);
     if (!data) dizisolCache.delete(cleanEndpoint);
     if (data) {
@@ -351,7 +351,7 @@ export async function fetchDizisolEpisodeSources({
     // Ozel backend resolver (birincil); basarisizsa klasik akisa dus.
     try {
       const params = {
-        type: 'tv', title: seriesTitle || title || '', originalTitle: originalTitle || '',
+        type: 'tv', title: seriesTitle || titles[0] || '', originalTitle: originalTitle || '',
         season: String(season || 1), episode: String(episode || 1),
         ...(tmdbId ? { tmdbId: String(tmdbId) } : {})
       };

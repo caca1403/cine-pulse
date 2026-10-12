@@ -85,3 +85,16 @@ test('bePlayer salted CryptoJS JSON is decoded, including relative subtitles', a
   assert.equal(source?.url, 'https://cdn.test/movie.m3u8');
   assert.equal(source.subtitles[0].src, 'https://dosyaload.test/sub/tr.vtt');
 });
+
+test('native fallback keeps a matching verification source visible for user selection', async () => {
+  const { prepareAndroidSources } = await import('../src/services/providerRuntime/playback.js');
+  const source = { id: 'szd_exact_s1e3', url: 'https://sezonlukdizi.cc/ajax/reCAPTCHADATA.asp',
+    isSrcdoc: true, requiresVerification: true, srcdoc: '<iframe title="Dogrulama"></iframe>' };
+  const visible = [];
+  const results = await prepareAndroidSources([source], { fallbackOnFailure: true, onReady: item => visible.push(item) });
+  assert.equal(results.length, 1);
+  assert.equal(visible.length, 1);
+  assert.equal(results[0].id, source.id);
+  assert.equal(results[0].verification.state, 'verification-required');
+  assert.equal(results[0].autoPlayable, false);
+});

@@ -314,3 +314,9 @@ window.addEventListener('storage', (event) => {
   clearHomeCache();
   route();
 });
+
+/* Cihaz ölçüm kancası — yalnızca VITE_DEVICE_SWEEP=1 ile derlenirse pakete girer.
+   Üretim derlemesinde bayrak '1' olmadığı için bu blok tamamen elenir. */
+if (import.meta.env.VITE_DEVICE_SWEEP === '1') {
+  import('./devtools/deviceSweep.js').then((m) => m.kurSweep()).catch(() => {});
+}

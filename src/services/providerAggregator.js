@@ -92,7 +92,7 @@ import { prepareAndroidSources } from './providerRuntime/playback.js';
 import { recordProviderEvent } from './providerRuntime/diagnostics.js';
 
 // Cache version
-const CACHE_VERSION = 'v44';
+const CACHE_VERSION = 'v46';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -565,7 +565,7 @@ export async function getStreamingServersProgressive({
   const sourceJobs = [];
   const addStreams = (rawList, category) => {
     if (!isNativeCapacitor()) return publishStreams(rawList, category);
-    const job = prepareAndroidSources(rawList, { diagnose: recordProviderEvent })
+    const job = prepareAndroidSources(rawList, { fallbackOnFailure: true, diagnose: recordProviderEvent })
       .then(sources => publishStreams(sources, category));
     sourceJobs.push(job);
     return job;
@@ -676,25 +676,25 @@ export async function getStreamingServersProgressive({
     const [{ listProviderDefinitions }, { runProviderBatch }] = await Promise.all([
       import('./providerRuntime/inventory.js'), import('./providerRuntime/batch.js')
     ]);
-    const enriched = await enrichmentTask;
+    const enriched = await Promise.race([enrichmentTask, new Promise(resolve => setTimeout(() => resolve(null), 1200))]);
     if (enriched?.candidateTitles?.length) candidateTitles = enriched.candidateTitles;
     targetYear = targetYear || enriched?.detectedYear;
     const mediaType = isMovie ? 'movie' : 'tv';
     const anime = type === 'anime' || enriched?.isAnimation;
     const registryState = new Map(getProviders().map(provider => [provider.id, true]));
-    const priority = { dzs: 0, dyu: 1, dizi77: 2, lookmovie: 3, snx: 4, tvr: 5 };
+    const priority = { dyu: 0, lookmovie: 0, dzs: 1, dizi77: 1, dzb: 2, hdfc: 3, snx: 3, tvr: 4 };
     const definitions = listProviderDefinitions().filter(provider =>
       !provider.experimental && !off(provider.id) &&
-      (provider.mediaTypes.includes(mediaType) || anime && provider.mediaTypes.includes('anime')) &&
-      (!PLUGIN_DEFS.find(plugin => plugin.id === provider.id)?.registry || registryState.has(provider.id))
+      (provider.mediaTypes.includes(mediaType) || anime && provider.mediaTypes.includes('anime'))
     ).sort((a, b) => (priority[a.id] ?? 10) - (priority[b.id] ?? 10));
     await runProviderBatch(definitions, {
       type: mediaType, title: targetTitle, originalTitle, titles: candidateTitles, year: targetYear,
       tmdbId, imdbId, season, episode,
     }, {
-      concurrency: 4, diagnose: recordProviderEvent,
+      concurrency: 4, timeoutMs: 90000, diagnose: recordProviderEvent,
       onResult: async ({ sources }) => {
-        const prepared = await prepareAndroidSources(sources, { diagnose: recordProviderEvent });
+        const prepared = await prepareAndroidSources(sources, { fallbackOnFailure: true, diagnose: recordProviderEvent,
+          onReady: source => publishStreams([source], source.category === 'dubbed' ? 'dubbed' : 'subtitled') });
         publishStreams(prepared.filter(source => source.category === 'dubbed'), 'dubbed');
         publishStreams(prepared.filter(source => source.category !== 'dubbed'), 'subtitled');
       }

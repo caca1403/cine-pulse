@@ -71,8 +71,9 @@ def resolve_episode(title='', original_title='', titles=None, season=1, episode=
     pages = []
     for p in seen_paths[:12]:
         html = _fetch_page(p)
-        if html:
+        if html and _title_match(_page_title(html), cands):
             pages.append((BASE + p, html))
+            break
     if not pages:
         for q in cands[:2]:
             import urllib.parse

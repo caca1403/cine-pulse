@@ -50,10 +50,9 @@ final class NativePageResolver {
 
     private final ArrayDeque<Runnable> jobs = new ArrayDeque<>();
     private boolean busy = false;
-    private WebView webView;
+    private volatile WebView webView;
     private ViewGroup holder;
     private Runnable pollTask;
-    private final List<JSONObject> mediaRequests = Collections.synchronizedList(new ArrayList<JSONObject>());
 
     NativePageResolver(MainActivity activity) {
         this.activity = activity;
@@ -61,13 +60,16 @@ final class NativePageResolver {
 
     void resolve(final String id, final String url, final int timeoutMs, final boolean media,
                  final String userAgent, final Callback callback) {
+        final long queuedDeadline = System.currentTimeMillis() + (timeoutMs <= 0 ? 20000 : timeoutMs);
         main.post(() -> {
             jobs.add(() -> {
                 Callback done = (requestId, json) -> {
                     callback.onResult(requestId, json);
                     main.post(() -> { finish(); busy = false; drain(); });
                 };
-                try { start(id, url, timeoutMs <= 0 ? 20000 : timeoutMs, media, userAgent, done); }
+                final long remaining = queuedDeadline - System.currentTimeMillis();
+                if (remaining < 1000) { done.onResult(id, errorJson(new IllegalStateException("resolver-queue-timeout"))); return; }
+                try { start(id, url, (int) remaining, media, userAgent, done); }
                 catch (Throwable error) { done.onResult(id, errorJson(error)); }
             });
             drain();
@@ -81,7 +83,7 @@ final class NativePageResolver {
 
     private void start(final String id, final String url, final int timeoutMs, final boolean media, final String userAgent, final Callback callback) {
         finish();
-        mediaRequests.clear();
+        final List<JSONObject> mediaRequests = Collections.synchronizedList(new ArrayList<JSONObject>());
 
         WebView view = new WebView(activity);
         view.setTag(id);
@@ -118,6 +120,7 @@ final class NativePageResolver {
         view.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest request) {
+                if (webView != v) return null;
                 String candidate = request.getUrl().toString();
                 if (candidate.matches("(?i).*\\.(m3u8|mp4|mpd|mkv|webm)([?#].*)?$")
                     && !candidate.matches("(?i).*(/ads?/|preroll|vast|doubleclick).*")) {
@@ -146,9 +149,10 @@ final class NativePageResolver {
                 readSnapshot(view, new SnapshotListener() {
                     @Override
                     public void onSnapshot(String href, String html, String text) {
+                        if (webView != view) return;
                         boolean ready = html != null && html.length() > 1500 && !isChallenge(html);
                         if ((ready && (!media || !mediaRequests.isEmpty())) || System.currentTimeMillis() >= deadline) {
-                            deliver(id, url, href, html, text, !ready, callback);
+                            deliver(id, url, href, html, text, !ready, mediaRequests, callback);
                             return;
                         }
                         main.postDelayed(pollTask, 700);
@@ -162,7 +166,7 @@ final class NativePageResolver {
         try {
             view.loadUrl(url, headers);
         } catch (Throwable error) {
-            deliver(id, url, "", "", "", true, callback);
+            deliver(id, url, "", "", "", true, mediaRequests, callback);
             return;
         }
         main.postDelayed(pollTask, 1500);
@@ -204,7 +208,7 @@ final class NativePageResolver {
     }
 
     private void deliver(final String id, final String url, final String href, final String html,
-                         final String text, boolean challenge, final Callback callback) {
+                         final String text, boolean challenge, final List<JSONObject> mediaRequests, final Callback callback) {
         String cookieHeader = "";
         try {
             cookieHeader = CookieManager.getInstance().getCookie(url);

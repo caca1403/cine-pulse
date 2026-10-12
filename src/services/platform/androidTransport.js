@@ -50,7 +50,20 @@ export function installAndroidTransport() {
       const query = new URLSearchParams({ url, headers: JSON.stringify(headers), ref: headers.Referer || headers.referer || '' });
       target = `${localOrigin}/api/proxy?${query}`;
     }
-    const response = await browserFetch(target, { ...init, method, headers: init.headers || request.headers,
+    // Provider authorization/signature headers belong to the native upstream,
+    // not the browser-to-loopback request (which otherwise fails CORS preflight).
+    if (target.startsWith(`${localOrigin}/api/`) && Object.keys(headers).length) {
+      const gatewayUrl = new URL(target);
+      let supplied = {};
+      try { supplied = JSON.parse(gatewayUrl.searchParams.get('headers') || '{}'); } catch (_) {}
+      gatewayUrl.searchParams.set('headers', JSON.stringify({ ...supplied, ...headers }));
+      target = gatewayUrl.href;
+    }
+    const browserHeaders = {};
+    for (const [name, value] of Object.entries(headers)) {
+      if (['content-type', 'range', 'accept'].includes(name.toLowerCase())) browserHeaders[name] = value;
+    }
+    const response = await browserFetch(target, { ...init, method, headers: browserHeaders,
       body, signal, credentials: 'omit' });
     const upstream = response.headers.get('X-Upstream-URL');
     if (upstream) Object.defineProperty(response, 'url', { value: upstream });

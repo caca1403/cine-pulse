@@ -44,6 +44,17 @@ def _sync_domain():
     except Exception:
         pass
 
+    # Canlı adres: Patron siteurl.txt öncelikli (manitux ölü .com verebiliyor).
+    try:
+        from .base import resolve_domain
+        _canli = resolve_domain('setfilm', BASE, _DOMAINS_URL)
+        if _canli and _canli.startswith('http') and _canli.rstrip('/') != BASE:
+            BASE = _canli.rstrip('/')
+            REF = BASE + '/'
+            AJAX = BASE + '/wp-admin/admin-ajax.php'
+    except Exception:
+        pass
+
 
 PLAYER_LABELS = {
     'setplay': 'SetPlay',
@@ -239,49 +250,39 @@ def _page_info(page_url):
 
 
 def _extract_episodes(series_html):
-    """Cloudstream SetFilm load() mantigi: dizi sayfasindaki
-    .season-panel a.fep[href] bolum linklerini S/E ile eslestir.
-    Donus: [(season, episode, url)] listesi."""
+    """Dizi sayfasindaki /bolum/ linklerini S/E ile eslestirir.
+    Not: onceki surum sezon panelini `.*?</div></div>` ile ayiriyordu; bu
+    desen ILK bolum linkinden sonra kesiliyor ve her sezondan yalnizca
+    1 bolum bulunuyordu (S1B3 hic bulunamiyordu). Artik tum /bolum/
+    baglantilari URL deseninden taraniyor."""
     out = []
     if not series_html:
         return out
-    # Sezon panellerini ayri ayri tara (data-season attribute'u en guvenilir)
-    panel_re = re.compile(
-        r'<div[^>]*class="[^"]*season-panel[^"]*"[^>]*data-season="(\d+)"[^>]*>(.*?)</div>\s*</div>',
-        re.S | re.I)
-    panels = panel_re.findall(series_html)
-    if not panels:
-        # Fallback: tum fep linklerini URL'deki X-sezon-Y-bolum deseninden coz
-        for m in re.finditer(r'href="(https://www\.setfilmizle\.[a-z]+/bolum/[^"]+)"', series_html):
-            u = m.group(1)
-            sm = re.search(r'-(\d+)-sezon-(\d+)-bolum', u)
-            if sm:
-                out.append((int(sm.group(1)), int(sm.group(2)), u))
-        return out
-    for season_str, body in panels:
-        try:
-            s_num = int(season_str)
-        except Exception:
-            s_num = 1
-        for m in re.finditer(r'href="(https://www\.setfilmizle\.[a-z]+/bolum/[^"]+)"', body):
-            u = m.group(1)
-            em = re.search(r'-(\d+)-sezon-(\d+)-bolum', u)
-            if em:
-                try:
-                    out.append((int(em.group(1)), int(em.group(2)), u))
-                except Exception:
-                    pass
-            else:
-                # Desen yoksa panel sezon + sira no ile tahmin et
-                out.append((s_num, len([x for x in out if x[0] == s_num]) + 1, u))
-    # Duplikasyonlari kaldir (URL bazli)
-    seen = set()
-    uniq = []
-    for s, e, u in out:
-        if u not in seen:
-            seen.add(u)
-            uniq.append((s, e, u))
-    return uniq
+    desen = re.compile(r'href="(https?://[^"]*/bolum/[^"]+)"', re.I)
+    for m in desen.finditer(series_html):
+        u = m.group(1)
+        sm = re.search(r'-(\d+)-sezon-(\d+)-bolum', u)
+        if sm:
+            out.append((int(sm.group(1)), int(sm.group(2)), u))
+    if out:
+        seen = set()
+        uniq = []
+        for s, e, u in out:
+            if u not in seen:
+                seen.add(u)
+                uniq.append((s, e, u))
+        return uniq
+    # URL deseni yoksa: sezon panellerinden panel sezonu + sira ile tahmin
+    for pm in re.finditer(r'season-panel[^>]*data-season="(\d+)"', series_html, re.I):
+        s_num = int(pm.group(1))
+        kalan = series_html[pm.end():]
+        sonraki = re.search(r'season-panel[^>]*data-season="(\d+)"', kalan, re.I)
+        govde = kalan[:sonraki.start()] if sonraki else kalan
+        sira = 0
+        for m in re.finditer(r'href="(https?://[^"]*/bolum/[^"]+)"', govde, re.I):
+            sira += 1
+            out.append((s_num, sira, m.group(1)))
+    return out
 
 
 def _pick_episode(series_html, season, episode):
@@ -299,11 +300,7 @@ def _pick_episode(series_html, season, episode):
     for s, e, u in eps:
         if s == s_num and e == e_num:
             return u
-    # Ayni sezonun ilk bolumu yedegi (Cloudstream davranisi: en yakin bolum)
-    same_season = [u for s, e, u in eps if s == s_num]
-    if same_season:
-        return same_season[0]
-    return eps[0][2]
+    return None
 
 
 def _ajax_video(ajax_url, page_url, post_id, nonce, name, part):

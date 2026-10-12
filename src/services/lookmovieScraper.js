@@ -1,3 +1,4 @@
+import { isStrictMediaTitleMatch } from './mediaMatcher.js';
 /* ==========================================================================
    CinePulse Studio - LookMovie2.la Official Direct Video Extractor
    Extracts direct HLS (.m3u8) video streams and subtitles:
@@ -47,7 +48,7 @@ async function searchLookMovie(type, query) {
     const data = await res.json().catch(() => null);
     if (!data || !Array.isArray(data.result) || data.result.length === 0) return null;
 
-    return data.result[0];
+    return data.result.find(item => isStrictMediaTitleMatch(item.title || item.name, query)) || null;
   } catch (_) {
     return null;
   }

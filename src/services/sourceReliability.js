@@ -75,7 +75,7 @@ export function rankSourcesForDevice(sources, { contentKey = '', category = '' }
     const success = Math.min(12, Number(record.successes) || 0) * 3;
     const failure = Math.min(12, Number(record.failures) || 0) * 7;
     const stalePenalty = record.lastFailureAt && Date.now() - record.lastFailureAt < 1000 * 60 * 60 * 6 ? 20 : 0;
-    return { source, index, score: lastBonus + success - failure - stalePenalty };
+    return { source, index, score: (source.verification?.state === 'transport-verified' ? 100000 : source.autoPlayable === false ? -100000 : 0) + lastBonus + success - failure - stalePenalty };
   }).sort((a, b) => b.score - a.score || a.index - b.index).map(item => item.source);
 }
 

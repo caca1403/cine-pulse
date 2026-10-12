@@ -76,7 +76,7 @@ final class NativeMediaGateway extends NanoHTTPD {
                     headers.put(key, e.getValue());
             }
             if (ref.isEmpty()) ref = session.getHeaders().getOrDefault("referer", "");
-            boolean playlistProxy = route.equals("hls_proxy");
+            boolean playlistProxy = route.equals("hls_proxy") || route.equals("mkv_stream");
             if (route.equals("proxy") || playlistProxy || route.equals("stream_proxy")) {
                 target = params.get("url");
             } else if (routes.has(route)) {

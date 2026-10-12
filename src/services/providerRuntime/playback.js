@@ -3,14 +3,16 @@ import { normalizeStream, unwrapStreamUrl, directMediaUrl, deviceMediaUrl } from
 
 const inflight = new Map();
 const verified = new Map();
-let active = 0;
-const waiters = [];
-async function slot(fn) {
-  if (active >= 4) await new Promise(resolve => waiters.push(resolve));
-  else active++;
+const pools = new Map();
+const verificationInflight = new Map();
+async function slot(fn, group = 'extract') {
+  if (!pools.has(group)) pools.set(group, { active: 0, waiters: [] });
+  const pool = pools.get(group);
+  if (pool.active >= 2) await new Promise(resolve => pool.waiters.push(resolve));
+  else pool.active++;
   try { return await fn(); } finally {
-    const next = waiters.shift();
-    if (next) next(); else active--;
+    const next = pool.waiters.shift();
+    if (next) next(); else pool.active--;
   }
 }
 
@@ -69,25 +71,45 @@ export async function resolveDirectPlayback(raw, { extract, webView, diagnose = 
   };
 }
 
-export async function prepareAndroidSources(sources, { verify = true, ...options } = {}) {
+export async function prepareAndroidSources(sources, { verify = true, fallbackOnFailure = false, onReady = () => {}, ...options } = {}) {
   const [{ extractEmbedStream }, { resolvePageInNativeWebView }] = await Promise.all([
     import('../embedExtractors.js'), import('../platform/androidWebViewResolver.js')
   ]);
-  const prepared = await Promise.all((sources || []).map(source => resolveDirectPlayback(source, {
-    extract: extractEmbedStream, webView: resolvePageInNativeWebView, ...options
-  })));
-  if (!verify) return prepared.filter(Boolean);
-  const checked = await Promise.all(prepared.filter(Boolean).map(source => slot(async () => {
-    const key = `${source.rawStreamUrl}:${JSON.stringify(source.headers)}`;
-    const cached = verified.get(key);
-    let result = cached && Date.now() - cached.at < 45000 ? cached.result : null;
-    if (!result) {
-      result = await probeStream(source, { timeoutMs: 8000 });
-      if (result.state === 'transport-verified') verified.set(key, { at: Date.now(), result });
-      if (verified.size > 200) verified.delete(verified.keys().next().value);
+  const fallback = (source, result) => {
+    if (!fallbackOnFailure || !source) return null;
+    const kept = { ...source, autoPlayable: false, verification: result };
+    onReady(kept);
+    return kept;
+  };
+  const checked = await Promise.all((sources || []).map(async raw => {
+    if (raw.isSrcdoc || raw.requiresVerification || raw.isTorrent) {
+      return fallback(raw, { state: raw.requiresVerification ? 'verification-required' : 'unverified' });
     }
-    options.diagnose?.({ provider: source.provider || source.source, stage: 'transport', ...result });
-    return result.state === 'transport-verified' ? { ...source, verification: result } : null;
-  })));
+    const source = await resolveDirectPlayback(raw, {
+      extract: extractEmbedStream, webView: resolvePageInNativeWebView, ...options
+    });
+    if (!source) return fallback(raw, { state: 'unverified', reason: 'direct-media-not-found' });
+    if (!verify) { onReady(source); return source; }
+    return slot(async () => {
+      const key = `${source.rawStreamUrl}:${JSON.stringify(source.headers)}`;
+      const cached = verified.get(key);
+      let result = cached && Date.now() - cached.at < 45000 ? cached.result : null;
+      if (!result) {
+        if (!verificationInflight.has(key)) {
+          const probe = probeStream(source, { timeoutMs: 8000 });
+          verificationInflight.set(key, probe);
+          probe.finally(() => verificationInflight.delete(key)).catch(() => {});
+        }
+        result = await verificationInflight.get(key);
+        if (result.state === 'transport-verified') verified.set(key, { at: Date.now(), result });
+        if (verified.size > 200) verified.delete(verified.keys().next().value);
+      }
+      options.diagnose?.({ provider: source.provider || source.source, stage: 'transport', ...result });
+      if (result.state !== 'transport-verified') return fallback(source, result);
+      const ready = { ...source, autoPlayable: true, verification: result };
+      onReady(ready);
+      return ready;
+    }, source.category === 'dubbed' ? 'verify-dubbed' : 'verify-subtitled');
+  }));
   return checked.filter(Boolean);
 }

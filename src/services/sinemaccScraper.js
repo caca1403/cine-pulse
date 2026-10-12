@@ -208,7 +208,8 @@ export async function fetchSinemaccSources({ title = '', titles = [] } = {}) {
   const nq = normalize(cands[0]);
   const match = results.find((r) => normalize(r.title) === nq)
     || results.find((r) => normalize(r.title).includes(nq) || nq.includes(normalize(r.title)))
-    || results[0];
+;
+  if (!match) return [];
 
   const html = await getHtml(match.url);
   if (!html) return [];

@@ -23,6 +23,7 @@
    ========================================================================== */
 
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { cihazCerezHeaderi } from './platform/deviceCookies.js';
 
 function nativeAndroidMi() {
   try {
@@ -59,6 +60,12 @@ export async function cihazGet(url, { ref = '', headers = {}, timeout = 15000 } 
     ...headers
   };
   if (ref) h.Referer = ref;
+  // Gizli WebView'in çözdüğü Cloudflare çerezini taşı: challenge bir kez
+  // çözülür, sonraki istekler engellenmez (zaman aşımının kökü buydu).
+  if (!h.Cookie && !h.cookie) {
+    const c = cihazCerezHeaderi(url);
+    if (c) h.Cookie = c;
+  }
 
   try {
     const r = await CapacitorHttp.get({
@@ -84,6 +91,10 @@ export async function cihazPost(url, body, { ref = '', headers = {}, timeout = 1
     ...headers
   };
   if (ref) h.Referer = ref;
+  if (!h.Cookie && !h.cookie) {
+    const c = cihazCerezHeaderi(url);
+    if (c) h.Cookie = c;
+  }
 
   try {
     const r = await CapacitorHttp.post({
@@ -129,7 +140,10 @@ async function duzGet(url, { ref, timeout, headers = {} }) {
  * WebView yoksa (masaüstü tarayıcı, test) null döner; çağıran zincir devam eder.
  */
 async function gizliWebViewDeneme(url, timeout) {
-  const zaman = Math.max(20000, timeout + 8000);
+  // Challenge genelde ilk birkaç saniyede çözülür. Süreyi 20+ saniyeye
+  // çıkarmak sağlayıcı bütçesini yiyordu; üst sınırla kısıtlıyoruz.
+  // Çerez paylaşımı sayesinde aynı site için bu yol genelde BİR kez çalışır.
+  const zaman = Math.min(Math.max(14000, timeout + 6000), 24000);
   // Önce Android'in gizli WebView'i, olmazsa Electron'ın gizli BrowserWindow'ı.
   // İkisi de gerçek tarayıcı motoruyla CF challenge'ını çözer; masaüstünde
   // gizli WebView olmadan bu siteler hiç açılmıyordu.

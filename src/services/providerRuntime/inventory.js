@@ -1,3 +1,4 @@
+import { resolveLanguageLanes } from './languages.js';
 import { SITES, siteListesi } from '../siteProviders.js';
 import { PLUGIN_DEFS } from '../pluginCatalog.js';
 import { normalizeStream } from './contract.js';
@@ -65,15 +66,17 @@ for (const plugin of plugins) {
         const fnName = args.type === 'movie' ? tuple[1] : tuple[2] || tuple[1];
         if (fnName && typeof module[fnName] !== 'function') throw new Error(`Invalid adapter export: ${plugin.id}/${fnName}`);
         if (fnName) {
-          const splitLanguage = ['szd', 'dzy', 'dzb', 'jet', 'anizium', 'animecix', 'animetr', 'kidsvip', 'dramalar', 'dramadizilerim'].includes(plugin.id);
-          const batches = splitLanguage
-            ? await Promise.all([true, false].map(isDub => module[fnName]({ ...options, isDub }).then(sources =>
-                (sources || []).map(source => ({ ...source, category: source.category || (isDub ? 'dubbed' : 'subtitled') })))))
-            : [await module[fnName](options) || []];
-          output.push(...batches.flat());
+          const splitLanguage = ['szd', 'dzy', 'dzb', 'jet', 'snx', 'anizium', 'animecix', 'animetr', 'kidsvip', 'dramalar', 'dramadizilerim'].includes(plugin.id);
+          output.push(...await resolveLanguageLanes(module[fnName], options, {
+            provider: plugin.id, split: splitLanguage, onSources: args.onSources
+          }));
         }
       }
-      if (!output.length) for (const site of sites) output.push(...await siteListesi(site, options));
+      if (!output.length) for (const site of sites) {
+        const found = (await siteListesi(site, options)).map((raw, index) => normalizeStream(raw, { provider: plugin.id, index })).filter(Boolean);
+        output.push(...found);
+        if (found.length) args.onSources?.(found);
+      }
       return output.map((raw, index) => normalizeStream(raw, { provider: plugin.id, index })).filter(Boolean);
     }
   });

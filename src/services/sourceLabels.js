@@ -50,7 +50,7 @@ export const SOURCE_FAMILIES = [
   { alias: 'Betelgeuse', provider: 'd4kh', prefixes: ['d4kh_'], sources: ['d4kh'] },
   { alias: 'Toliman', provider: 'vidlk', prefixes: ['vdlk_'], sources: ['vidlk'] },
   { alias: 'Muhlif', provider: 'dzp', prefixes: ['dzp_'], sources: ['dzp'] },
-  { alias: 'Saiph', provider: 'asy', prefixes: ['asy_'], sources: ['asy'] },
+  { alias: 'Aquila', provider: 'asy', prefixes: ['asy_'], sources: ['asy'] },
 ];
 
 export function getSourceFamily(source) {
@@ -74,5 +74,9 @@ export function getAnonymousSourceLabel(source, siblings = []) {
     .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
   const index = peers.findIndex(s => s === source || (s.id && s.id === source?.id));
   const label = peers.length > 1 && index >= 0 ? `${family.alias} ${letter(index)}` : family.alias;
-  return source?.requiresVerification && !source?.verificationCompleted ? `${label} · Doğrulama gerekli` : label;
+  if (source?.requiresVerification && !source?.verificationCompleted) return `${label} · Doğrulama gerekli`;
+  // NOT: 'Elle dene' etiketi kaldırıldı. Artık doğrulanamayan kaynaklar da
+  // bizim kendi oynatıcımızdaki korumalı çerçevede açılıyor; kullanıcıya
+  // yapacak bir şey bırakmıyoruz, sadece yanıltıcı bir uyarı gösteriyordu.
+  return label;
 }

@@ -77,7 +77,12 @@ function dispatchPage(url, { timeoutMs = 22000, media = false } = {}) {
 export function resolvePageInNativeWebView(url, options = {}) {
   const key = `${Boolean(options.media)}:${url}`;
   if (inflight.has(key)) return inflight.get(key);
-  const task = queue.then(() => dispatchPage(url, options));
+  const deadline = Date.now() + (options.timeoutMs || 22000);
+  const task = queue.then(() => {
+    const remaining = deadline - Date.now();
+    if (remaining < 1000) return null;
+    return dispatchPage(url, { ...options, timeoutMs: remaining });
+  });
   queue = task.catch(() => null);
   const result = task.finally(() => inflight.delete(key));
   inflight.set(key, result);

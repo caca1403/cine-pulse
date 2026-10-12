@@ -31,6 +31,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 && getPackageName().endsWith(".devtest")) {
+            android.webkit.WebView.setWebContentsDebuggingEnabled(true);
+        }
         try {
             pageResolver = new NativePageResolver(this);
             mediaGateway = new NativeMediaGateway(this);
@@ -162,9 +165,33 @@ public class MainActivity extends BridgeActivity {
             });
         }
 
+        /**
+         * Gizli WebView'in çerez kavanozunu JS'e açar. Cloudflare `cf_clearance`
+         * çerezi bu sayede HTTP katmanına taşınır; aksi halde her istek
+         * challenge'ı baştan çözmeye çalışıp zaman aşımına düşüyor.
+         */
         @JavascriptInterface
-        public String getDeviceStorageInfo() {
+        public String getCookies(String url) {
             try {
+                String c = CookieManager.getInstance().getCookie(url);
+                return c == null ? "" : c;
+            } catch (Exception e) { return ""; }
+        }
+
+        @JavascriptInterface
+        public void setCookies(String url, String cookie) {
+            try {
+                if (url == null || cookie == null || cookie.isEmpty()) return;
+                for (String part : cookie.split(";")) {
+                    String p = part.trim();
+                    if (!p.isEmpty()) CookieManager.getInstance().setCookie(url, p);
+                }
+                CookieManager.getInstance().flush();
+            } catch (Exception ignored) {}
+        }
+
+        @JavascriptInterface
+        public String getDeviceStorageInfo() {            try {
                 StatFs stats = new StatFs(Environment.getDataDirectory().getAbsolutePath());
                 long total = stats.getTotalBytes();
                 long free = stats.getAvailableBytes();

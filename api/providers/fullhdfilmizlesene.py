@@ -36,6 +36,16 @@ def _sync_domain():
     except Exception:
         pass
 
+    # Canlı adres: Patron siteurl.txt öncelikli (manitux ölü .com verebiliyor).
+    try:
+        from .base import resolve_domain
+        _canli = resolve_domain('fullhdfilmizlesene', BASE, _DOMAINS_URL)
+        if _canli and _canli.startswith('http') and _canli.rstrip('/') != BASE:
+            BASE = _canli.rstrip('/')
+            REF = BASE + '/'
+    except Exception:
+        pass
+
 
 def scx_decode(t_str, order):
     """ScxDecoder mantigi: Caesar rotasyon (order mod 26) + Base64 cozumu."""

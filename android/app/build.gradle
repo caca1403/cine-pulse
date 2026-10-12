@@ -36,6 +36,9 @@ android {
         }
     }
     buildTypes {
+        debug {
+            if (project.hasProperty("cinepulseDeviceTest")) applicationIdSuffix ".devtest"
+        }
         release {
             if (signingStorePath && signingStorePassword && signingKeyAlias && signingKeyPassword) {
                 signingConfig signingConfigs.release

@@ -128,7 +128,7 @@ export async function searchDizi77(query) {
   const q = normalize(query);
   if (!q) return out.slice(0, 60);
   const hit = out.filter(r => normalize(r.title).includes(q) || normalize(r.id).includes(q));
-  return (hit.length ? hit : out).slice(0, 60);
+  return hit.slice(0, 60);
 }
 
 /** Sezon listesi: /dizi/<slug> icindeki "sezon/N" baglantilari. */
@@ -201,36 +201,13 @@ async function cozVeyaGomulu(oynaticiUrl, sayfaUrl, kimlik, etiket) {
 
 export async function fetchDizi77EpisodeSources(seriesUrl, season = 1, episode = 1) {
   if (!seriesUrl) return [];
-  const wanted = [];
-  for (const s of [Number(season), Number(season) + 1, Number(season) - 1]) {
-    if (s >= 1) wanted.push(s);
-  }
+  const s = Number(season), ep = Number(episode);
+  if (!Number.isInteger(s) || !Number.isInteger(ep) || s < 1 || ep < 1) return [];
+  const url = `${seriesUrl}/sezon/${s}/bolum/${ep}`;
+  const html = await getHtml(url, 14000, seriesUrl);
+  const iframe = html && html.match(/<iframe[^>]*src="(https?:\/\/[^"]+)"/i);
+  if (iframe) return cozVeyaGomulu(iframe[1], url, `d77_s${s}e${ep}`, `dizi77 S${s}B${ep}`);
 
-  for (const s of wanted) {
-    for (const ep of (s === Number(season) ? [Number(episode), Number(episode) + 1] : [Number(episode)])) {
-      if (ep < 1) continue;
-      const url = `${seriesUrl}/sezon/${s}/bolum/${ep}`;
-      const html = await getHtml(url, 14000, seriesUrl);
-      if (!html) continue;
-      const m = html.match(/<iframe[^>]*src="(https?:\/\/[^"]+)"/i);
-      if (m && m[1].length > 12) {
-        return await cozVeyaGomulu(m[1], url, `d77_s${s}e${ep}`, `dizi77 S${s}B${ep}`);
-      }
-    }
-  }
-
-  // Bölüm linki bulunamadıysa sezon sayfasından ilk uygun bolumu dene.
-  const seasons = await listSeasons(seriesUrl);
-  for (const s of seasons.slice(0, 4)) {
-    const html = await getHtml(`${seriesUrl}/sezon/${s}`, 12000, seriesUrl);
-    const ep = html && html.match(new RegExp(`/dizi/[a-z0-9-]+/sezon/${s}/bolum/(\\d+)`, 'i'));
-    if (!ep) continue;
-    const epHtml = await getHtml(`${seriesUrl}/sezon/${s}/bolum/${ep[1]}`, 12000, seriesUrl);
-    const m = epHtml && epHtml.match(/<iframe[^>]*src="(https?:\/\/[^"]+)"/i);
-    if (m) {
-      return await cozVeyaGomulu(m[1], `${seriesUrl}/sezon/${s}/bolum/${ep[1]}`, `d77_s${s}e${ep[1]}`, `dizi77 S${s}B${ep[1]}`);
-    }
-  }
   return [];
 }
 /**
@@ -243,14 +220,30 @@ export async function fetchDizi77Sources({ titles = [], title = '', season = 1, 
   const cands = [...new Set([...titles, title].filter((t) => t && String(t).trim().length > 1))];
   if (!cands.length) return [];
 
+  // The catalogue is paginated. Try the exact title slug, but validate its
+  // title before accepting it; an unrelated first search result is never valid.
+  for (const candidate of cands) {
+    const slug = String(candidate).toLocaleLowerCase('tr-TR')
+      .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+      .replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const seriesUrl = `${BASE}/dizi/${slug}`;
+    const url = `${seriesUrl}/sezon/${Number(season)}/bolum/${Number(episode)}`;
+    const html = await getHtml(url, 12000, seriesUrl);
+    const pageTitle = html && html.match(/<title>([^<]+)<\/title>/i)?.[1];
+    const wantedTitle = `${candidate} - ${Number(season)}. Sezon ${Number(episode)}. Bölüm İzle`;
+    const iframe = html && html.match(/<iframe[^>]*src="(https?:\/\/[^"]+)"/i);
+    if (iframe && normalize(pageTitle) === normalize(wantedTitle)) {
+      return cozVeyaGomulu(iframe[1], url, `d77_s${season}e${episode}`, `dizi77 S${season}B${episode}`);
+    }
+  }
   let match = null;
   for (const c of cands) {
     const res = await searchDizi77(c);
     if (!res.length) continue;
     const nc = normalize(c);
     match = res.find((r) => normalize(r.title) === nc)
-      || res.find((r) => normalize(r.title).includes(nc) || nc.includes(normalize(r.title)))
-      || res[0];
+;
     if (match) break;
   }
   if (!match) return [];

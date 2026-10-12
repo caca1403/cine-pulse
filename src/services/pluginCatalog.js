@@ -26,7 +26,12 @@ const ALIASES = {
   hdps: 'Rigel', ksd: 'Sadr', pichive: 'Antares', vidload: 'Spica',
   vixolity: 'Almach', tauvideo: 'Nunki', pilavyer: 'Menkar',
   nxsha: 'Adhara', vidmoly: 'Zubenelgenubi', sphp: 'Alphecca',
-  kwsearch: 'Mizar', ajax: 'Saiph', filmdizi: 'Capella', rplayer: 'Denebola'
+  kwsearch: 'Mizar', filmdizi: 'Capella', rplayer: 'Denebola',
+  // Not: 'ajax' anahtarı öksüzdü (öyle bir eklenti yok; ajaxSearch sitesi
+  // hdfc eklentisi altında çalışır) ve 'Saiph' adını iki kez kullanıyordu.
+  // Kaldırıldı; asy eklentisi 'Aquila' adını aldı.
+  hdfd: 'Bellatrix', d4kh: 'Betelgeuse', vidlk: 'Toliman',
+  dzp: 'Muhlif', asy: 'Aquila'
 };
 
 // id: toplayici anahtari. registry: providerRegistry'deki karsiligi (varsa).

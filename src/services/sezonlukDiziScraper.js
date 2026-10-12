@@ -20,11 +20,22 @@ async function watchForVerification(source, item) {
     await new Promise((r) => setTimeout(r, 2500));
     const embed = await mod.resolveLunaEmbedAfterVerify(item);
     if (!embed) continue;
-    source.srcdoc = mod.buildPlayerSrcdoc(embed, { title: source.displayName });
+    const yeniSrcdoc = mod.buildPlayerSrcdoc(embed, { title: source.displayName });
+    source.srcdoc = yeniSrcdoc;
     source.url = embed;
     source.streamUrl = embed;
     source.requiresVerification = false;
     source.verified = true;
+    source.verificationCompleted = true;
+    // Dogrulama ONAYLANDI ama video acilmiyordu: cerceveyi DOGRUDAN yerinde
+    // yenile. Yalnizca olay yayip beklemek yanlislikla etkin kaynagi degistirir.
+    try {
+      const cerceve = document.querySelector('#video-iframe');
+      if (cerceve && cerceve.getAttribute('srcdoc') !== null) {
+        cerceve.setAttribute('srcdoc', yeniSrcdoc);
+        cerceve.removeAttribute('data-loaded');
+      }
+    } catch (_) {}
     try {
       window.dispatchEvent(new CustomEvent('cinepulse_source_refresh', { detail: { id: source.id } }));
     } catch (_) {}
@@ -112,10 +123,11 @@ function toTurkishSlug(title) {
 
 function buildVerificationSources(pageUrl, sources, season, episode, isDub) {
   if (!/^https:\/\/sezonlukdizi\.cc\//i.test(pageUrl || '') || !Array.isArray(sources)) return [];
-  // Sayfa-embed kaynaklari yalnizca masaustunde guvenli: yan sunucu oynatici
-  // alanini gomup sunar. Web/APK'da capraz-origin oldugu icin sayfa bututuyle
-  // gelir; dort yanlilik yerine kaynak hiç listelenmez.
-  if (!isDesktopApp()) return [];
+  // Sayfa-embed kaynakları artık her platformda KENDİ korumalı
+  // çerçevemizde açılır (sandbox + #embed çapası). Önceden masaüstü
+  // dışında kaynak hiç listelenmiyordu; bu yüzden Android'de Luna
+  // kanalları eksikti. Kullanıcı doğrulama isterse görünür alanda tamamlar.
+  void isDesktopApp;
   return sources
     .filter(item => item?.id && !/pixel|filemoon/i.test(item.provider || ''))
     .map(item => {

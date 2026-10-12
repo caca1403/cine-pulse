@@ -539,7 +539,8 @@ export async function siteGetirStreams(siteId, {
       ? ayar.bolum(diziHtml, s, e, icerikUrl)
       : '';
     const bolumUrl = bolumYolu ? mutlak(bolumYolu, base) : '';
-    icerikUrl = bolumUrl || icerikUrl;
+    if (!bolumUrl) return [];
+    icerikUrl = bolumUrl;
   }
 
   const sayfa = await istek(icerikUrl, { referer: base, timeout: 10000 });

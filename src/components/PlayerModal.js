@@ -1083,7 +1083,7 @@ export async function openPlayerModal({
 
   function getRoomPreferredServerIndex(servers) {
     if (!Array.isArray(servers) || servers.length === 0) return 0;
-    if (!roomSync) return 0;
+    if (!roomSync) { const verified = servers.findIndex(s => s.autoPlayable !== false); return verified >= 0 ? verified : 0; }
     const directIndex = servers.findIndex(isRoomControllableServer);
     return directIndex >= 0 ? directIndex : 0;
   }
@@ -3182,15 +3182,12 @@ export async function openPlayerModal({
     if (srv.requiresVerification && window.CinePulseDesktop?.openVerificationPlayer) {
       return '<div class="native-verification-placeholder" role="status" style="display:grid;place-items:center;height:100%;color:var(--text-muted)">Doğrulama alanı açılıyor…</div>';
     }
-    // Sayfa-embed yalnizca masaustunde izole edilebiliyor (yan sunucu oynatici
-    // alanini gomup sunar). Web/APK'da ayni-origin olmadigi icin cerceve
-    // butun sayfayi gosterirdi; bu kaynaklar o platformlarda uretilmez,
-    // yine de birakilirsa oynatici yerine bilgi gosterilir.
-    try {
-      if (isPageEmbed(srv) && !isDesktopApp()) {
-        return '<div class="native-verification-placeholder" role="status" style="display:grid;place-items:center;height:100%;color:var(--text-muted);text-align:center;padding:1.5rem">Bu kaynak masaüstü uygulamasında çalışır.</div>';
-      }
-    } catch (_) {}
+    // Sayfa-embed artik HER platformda bizim penceremizde acilir.
+    // Android/Web'de capraz-origin oldugu icin yan sunucu enjeksiyonu yok,
+    // ama cerceve yine de KENDI korumali oynaticimizin icinde calisir:
+    // sandbox (popup/top-navigation kapali) + player capasi (#embed).
+    // Kullanici dogrulama (captcha/CF) isterse bu gorunur alanda tamamlar;
+    // "yalnizca masaustunde calisir" bilgi ekrani kaldirildi.
     let finalIframeUrl = frameUrlFor(getStreamSafeUrl(srv) || srv);
     // Android Luna: oynatici kendi HTML'imiz olarak kurulur (srcdoc). Site
     // sayfasi hic yuklenmez; dogrulama sonrasi kaynak yerinde guncellenir.
@@ -6711,7 +6708,7 @@ export async function openPlayerModal({
     const fastPlaybackTimer = setTimeout(() => {
       if (closed || generation !== discoveryGeneration || hasPlayerStartedPlaying) return;
       const fallbackCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
-      if ((categorizedServers[currentCategory] || []).length === 0 && (categorizedServers[fallbackCat] || []).length > 0) {
+      if ((categorizedServers[currentCategory] || []).length === 0 && (categorizedServers[fallbackCat] || []).some(s => s.autoPlayable !== false)) {
         currentCategory = fallbackCat;
         document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
         document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
@@ -6781,7 +6778,7 @@ export async function openPlayerModal({
 
         // Play the first available source in the user's SELECTED category immediately.
         if (!hasPlayerStartedPlaying) {
-          if (categorizedServers[currentCategory]?.length > 0) {
+          if (categorizedServers[currentCategory]?.some(s => s.autoPlayable !== false)) {
             clearTimeout(fastPlaybackTimer);
             hasPlayerStartedPlaying = true;
             isSearching = false;
@@ -6799,7 +6796,7 @@ export async function openPlayerModal({
           const fallbackCategory = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
           const fallbackStreams = categorizedServers[fallbackCategory] || [];
 
-          if ((isComplete || timeSinceStart >= 1800) && fallbackStreams.length > 0) {
+          if ((isComplete || timeSinceStart >= 1800) && fallbackStreams.some(s => s.autoPlayable !== false)) {
             clearTimeout(fastPlaybackTimer);
             currentCategory = fallbackCategory;
             document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
@@ -6837,7 +6834,7 @@ export async function openPlayerModal({
         }
 
         // If player was waiting on an empty category and streams just arrived:
-        if (!hasPlayerStartedPlaying && activeServers.length > 0) {
+        if (!hasPlayerStartedPlaying && activeServers.some(s => s.autoPlayable !== false)) {
           hasPlayerStartedPlaying = true;
           isSearching = false;
           currentServerIndex = getRoomPreferredServerIndex(activeServers);

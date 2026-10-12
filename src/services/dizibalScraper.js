@@ -194,14 +194,16 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
       if (!pv) continue;
       const { streamUrl, subtitles, embedUrl } = await resolvePvStream(pv, epUrl, epHtml);
       if (!streamUrl && !embedUrl) continue;
-      const proxied = streamUrl && /\.m3u8/i.test(streamUrl) ? toProxiedHls(streamUrl) : '';
+      const proxied = streamUrl ? toProxiedHls(streamUrl) : '';
       const finalUrl = proxied || streamUrl || embedUrl;
-      const isHls = /\.m3u8/i.test(finalUrl);
+      const isHls = Boolean(streamUrl);
       return [{
         id: `dzb_tv_s${sNum}e${epNum}_${pv.slice(0, 8)}`,
         name: isDub ? `DP S${sNum}B${epNum} (TR Dublaj)` : `DP S${sNum}B${epNum} (TR Altyazı)`,
         displayName: `DP S${sNum}B${epNum}`,
         source: 'Dizibal',
+        rawStreamUrl: streamUrl || embedUrl,
+        referer: `${findPvHost(epHtml)}/`,
         url: finalUrl,
         streamUrl: finalUrl,
         originalEmbedUrl: embedUrl,
@@ -233,14 +235,16 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
       if (!pv) continue;
       const { streamUrl, subtitles, embedUrl } = await resolvePvStream(pv, hit.url, pageHtml);
       if (!streamUrl && !embedUrl) continue;
-      const proxied = streamUrl && /\.m3u8/i.test(streamUrl) ? toProxiedHls(streamUrl) : '';
+      const proxied = streamUrl ? toProxiedHls(streamUrl) : '';
       const finalUrl = proxied || streamUrl || embedUrl;
-      const isHls = /\.m3u8/i.test(finalUrl);
+      const isHls = Boolean(streamUrl);
       return [{
         id: `dzb_mov_${pv.slice(0, 8)}`,
         name: isDub ? 'DP Film (TR Dublaj)' : 'DP Film (TR Altyazı)',
         displayName: 'DP Film',
         source: 'Dizibal',
+        rawStreamUrl: streamUrl || embedUrl,
+        referer: `${findPvHost(pageHtml)}/`,
         url: finalUrl,
         streamUrl: finalUrl,
         originalEmbedUrl: embedUrl,

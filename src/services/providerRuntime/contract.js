@@ -1,8 +1,24 @@
 /** CinePulse Provider API v1. Every runtime emits this direct-media contract. */
+import { apiUrl } from '../apiOrigin.js';
+
 export const PROVIDER_API_VERSION = 1;
 const MEDIA = /\.(m3u8|mp4|mkv|mpd|webm|m4v|mov)(?:[?#]|$)/i;
 const AD = /(?:doubleclick|googlesyndication|\/ads?\/|preroll|vast\.xml)/i;
 
+/**
+ * Göreli API yolunu mutlak adrese çevirir.
+ * KRİTİK: `/api/hls_proxy?...` gibi göreli adresler Android'de sayfanın
+ * kendi köküne (https://localhost/) düşüyordu; oynatıcı ve doğrulama bunları
+ * açamıyordu. Artık yerel medya geçidine bağlanıyor (DEB/EXE/APK'da aynı).
+ */
+export function mutlakApiAdresi(url) {
+  const s = String(url || '');
+  if (!s || /^https?:\/\//i.test(s) || s.startsWith('//') || s.startsWith('blob:')) return s;
+  if (s.startsWith('/')) {
+    try { return apiUrl(s); } catch (_) { return s; }
+  }
+  return s;
+}
 export function unwrapStreamUrl(value) {
   let url = String(value || '');
   const seen = new Set();
@@ -10,10 +26,10 @@ export function unwrapStreamUrl(value) {
     seen.add(url);
     let parsed;
     try { parsed = new URL(url, 'https://localhost'); } catch (_) { return ''; }
-    if (!/\/api\/(?:hls_proxy|proxy|stream_proxy)$/.test(parsed.pathname) || !parsed.searchParams.get('url')) break;
+    if (!/\/api\/(?:hls_proxy|proxy|stream_proxy|mkv_stream)$/.test(parsed.pathname) || !parsed.searchParams.get('url')) break;
     url = parsed.searchParams.get('url');
   }
-  return url;
+  return mutlakApiAdresi(url);
 }
 
 export function directMediaUrl(url) {
@@ -30,7 +46,7 @@ export function validateProvider(definition) {
 }
 
 export function normalizeStream(raw, { provider = '', index = 0 } = {}) {
-  const url = raw?.streamUrl || raw?.url || (typeof raw?.getUrl === 'function' ? raw.getUrl() : '');
+  const url = mutlakApiAdresi(raw?.streamUrl || raw?.url || (typeof raw?.getUrl === 'function' ? raw.getUrl() : ''));
   if (!url || typeof url !== 'string') return null;
   return {
     ...raw,
@@ -39,14 +55,18 @@ export function normalizeStream(raw, { provider = '', index = 0 } = {}) {
     name: raw.name || raw.displayName || provider,
     url, streamUrl: url,
     headers: { ...(raw.headers || {}), ...(raw.referer ? { Referer: raw.referer } : {}) },
-    subtitles: raw.subtitles || raw.altyazilar || [],
+    subtitles: (raw.subtitles || raw.altyazilar || []).map(sub => {
+      const yeni = mutlakApiAdresi(sub?.src || sub?.url || '');
+      return yeni ? { ...sub, src: yeni, url: yeni } : sub;
+    }),
     category: raw.category || (raw.isDub === true ? 'dubbed' : 'subtitled'),
     getUrl: () => url,
   };
 }
 
 export function deviceMediaUrl(url, headers = {}) {
-  const query = new URLSearchParams({ url, ref: headers.Referer || headers.referer || '' });
+  const hedef = String(url || '');
+  const query = new URLSearchParams({ url: hedef, ref: headers.Referer || headers.referer || '' });
   if (Object.keys(headers).length) query.set('headers', JSON.stringify(headers));
-  return `/api/hls_proxy?${query}`;
+  return mutlakApiAdresi(`/api/hls_proxy?${query}`);
 }

@@ -51,51 +51,91 @@ def _sync_domain():
     except Exception:
         pass
 
+    # Canlı adres: Patron siteurl.txt öncelikli (manitux ölü .com verebiliyor).
+    try:
+        from .base import resolve_domain
+        _canli = resolve_domain('selcukflix', BASE, _DOMAINS_URL)
+        if _canli and _canli.startswith('http') and _canli.rstrip('/') != BASE:
+            BASE = _canli.rstrip('/')
+            REF = BASE + '/'
+    except Exception:
+        pass
+
+
+_SLC_KEY = b'9bYMCNQiWsXIYFWYAu7EkdsSbmGBTyUI'
+_SLC_IV = b'\x00' * 16
+
 
 def _decrypt(b64_ciphertext):
-    """AES-256-CBC desifreleme: SHA-256('!!22xx!!90!!') -> Base64 -> 32 char key, 16 char IV"""
+    """AES-256-CBC desifreleme. Anahtar: '9bYMCNQiWsXIYFWYAu7EkdsSbmGBTyUI',
+    IV: 16 sifir bayti (Patron saglayicisiyla birebir). Onceki SHA-256
+    turetmeli anahtar YANLISTI; API yaniti hic cozulemiyordu."""
     if not HAS_CRYPTO or not b64_ciphertext:
         return None
+    import re as _re
     try:
-        raw_hash = hashlib.sha256(b'!!22xx!!90!!').digest()
-        b64_hash = base64.b64encode(raw_hash).decode('utf-8')
-        key = b64_hash[:32].encode('utf-8')
-        iv = key[:16]
-
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+        temiz = _re.sub(r'[^A-Za-z0-9+/=]', '', str(b64_ciphertext))
+        veri = base64.b64decode(temiz)
+        cipher = Cipher(algorithms.AES(_SLC_KEY), modes.CBC(_SLC_IV))
         decryptor = cipher.decryptor()
-        raw = decryptor.update(base64.b64decode(b64_ciphertext)) + decryptor.finalize()
-
-        unpadder = crypto_padding.PKCS7(128).unpadder()
-        decrypted = unpadder.update(raw) + unpadder.finalize()
-        return json.loads(decrypted.decode('utf-8'))
+        raw = decryptor.update(veri) + decryptor.finalize()
+        try:
+            unpadder = crypto_padding.PKCS7(128).unpadder()
+            raw = unpadder.update(raw) + unpadder.finalize()
+        except Exception:
+            raw = raw.rstrip(b'\x00')
+        for kodlama in ('utf-8', 'latin-1'):
+            try:
+                metin = raw.decode(kodlama).strip()
+                if metin:
+                    try:
+                        return json.loads(metin)
+                    except Exception:
+                        continue
+            except Exception:
+                continue
     except Exception:
         return None
+    return None
 
 
 def _api_get(endpoint, params=None):
-    """SelcukFlix API cagrisi ve sifreli veri acma."""
+    """SelcukFlix API cagrisi ve sifreli veri acma.
+    NOT: Uç nokta GET'i 405 ile reddediyor ('izinsiz erisim...'). Calisan
+    yontem POST + okhttp User-Agent + Origin/Referer + application/json.
+    (Patron saglayicisi da ayni sekilde cagiriyor.)"""
     _sync_domain()
     query_str = urllib.parse.urlencode(params or {})
     url = f"{BASE}/api/bg/{endpoint}" + (f"?{query_str}" if query_str else "")
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'User-Agent': 'okhttp/4.9.2',
         'Referer': REF,
+        'Origin': BASE,
+        'Content-Type': 'application/json',
         'Accept': 'application/json, text/plain, */*'
     }
     try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=8, context=_SSL_CTX) as resp:
+        req = urllib.request.Request(url, data=b'', headers=headers, method='POST')
+        with urllib.request.urlopen(req, timeout=10, context=_SSL_CTX) as resp:
             raw_text = resp.read().decode('utf-8')
-            # Yanit erisime engellenmis sayfasi mi?
-            if 'erisime_engellenmis' in raw_text or '<html' in raw_text:
+            if 'erisime_engellenmis' in raw_text or raw_text.lstrip().startswith('<'):
                 return None
             data = json.loads(raw_text)
             if isinstance(data, dict) and data.get('response'):
                 return _decrypt(data['response'])
             return data
     except Exception:
-        return None
+        # POST basarisiz olursa GET'i dene (bazi yansimalar POST'u engeller).
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=8, context=_SSL_CTX) as resp:
+                raw_text = resp.read().decode('utf-8')
+                data = json.loads(raw_text)
+                if isinstance(data, dict) and data.get('response'):
+                    return _decrypt(data['response'])
+                return data
+        except Exception:
+            return None
 
 
 def _pichive_master(url):

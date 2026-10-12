@@ -178,7 +178,7 @@ export async function fetchJetFilmSources({
       const match = movies.find(m => {
         const normM = normalizeStr(m.title);
         return normM === normT || normM.includes(normT) || normT.includes(normM);
-      }) || movies[0];
+      });
 
       if (match) {
         matchedMovieUrl = match.url;
@@ -317,8 +317,8 @@ export async function fetchJetFilmEpisodeSources({
         const normT = normalizeStr(t);
         const match = dizis.find(d => {
           const normD = normalizeStr(d.title);
-          return normD === normT || normD.includes(normT) || normD.includes(normD);
-        }) || dizis[0];
+          return normD === normT || normD.includes(normT) || normT.includes(normD);
+        });
 
         if (match) {
           matchedDiziUrl = match.url;

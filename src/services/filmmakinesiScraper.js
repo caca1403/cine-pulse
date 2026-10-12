@@ -1,3 +1,4 @@
+import { isStrictMediaTitleMatch } from './mediaMatcher.js';
 import { akilliGet, cihazGet, nativeHttpAktifMi } from './nativeHttp.js';
 import { extractEmbedStream } from './embedExtractors.js';
 import { oynaticiCoz, masterUrlDuzelt } from './playerDecoders.js';
@@ -174,7 +175,8 @@ export async function fetchFilmMakinesiSources({
   let arananTerim = '';
   for (const terim of [...new Set(adaylar)]) {
     const bulunan = await searchFilmMakinesi(terim, dizi);
-    const uygun = bulunan.find((x) => (dizi ? x.isSeries : !x.isSeries)) || bulunan[0];
+    const uygun = bulunan.find(x => (dizi ? x.isSeries : !x.isSeries) &&
+      (isStrictMediaTitleMatch(x.title, [title, ...titles]) || imdb && x.url.includes(imdb)));
     if (uygun) { icerikUrl = uygun.url; arananTerim = terim; break; }
   }
   if (!icerikUrl) return [];

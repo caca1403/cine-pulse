@@ -1,0 +1,614 @@
+{
+  "started": 1791823759036,
+  "results": [
+    {
+      "provider": "setf",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 6747,
+      "state": "unresolved",
+      "candidates": 2,
+      "checks": [
+        {
+          "state": "media-failed",
+          "reason": "HTTP 404"
+        },
+        {
+          "state": "media-failed",
+          "reason": "HTTP 404"
+        }
+      ]
+    },
+    {
+      "provider": "dzl",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 15005,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "hdfc",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 30001,
+      "state": "timeout"
+    },
+    {
+      "provider": "hdfc",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 30001,
+      "state": "timeout"
+    },
+    {
+      "provider": "setf",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 30000,
+      "state": "timeout"
+    },
+    {
+      "provider": "slc",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 30002,
+      "state": "timeout"
+    },
+    {
+      "provider": "slc",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 30002,
+      "state": "timeout"
+    },
+    {
+      "provider": "fhdf",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 15001,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "wtz",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 7302,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "dzs",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 7390,
+      "state": "transport-verified",
+      "candidates": 9,
+      "checks": [
+        {
+          "state": "transport-verified",
+          "host": "s27.imgscdn2677.shop"
+        },
+        {
+          "state": "media-failed",
+          "reason": "HTTP 502"
+        }
+      ]
+    },
+    {
+      "provider": "dzs",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 7753,
+      "state": "transport-verified",
+      "candidates": 7,
+      "checks": [
+        {
+          "state": "transport-verified",
+          "host": "s1.dizisol.com"
+        },
+        {
+          "state": "media-failed",
+          "reason": "TypeError"
+        }
+      ]
+    },
+    {
+      "provider": "fxs",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 9028,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "snx",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 2331,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "dzy",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 5411,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "dzy",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 6145,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "dzb",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 2673,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "snx",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 10818,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "tvr",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 2863,
+      "state": "unresolved",
+      "candidates": 2,
+      "checks": [
+        {
+          "state": "media-failed",
+          "reason": "HTTP 403"
+        },
+        {
+          "state": "media-failed",
+          "reason": "HTTP 403"
+        }
+      ]
+    },
+    {
+      "provider": "tvr",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 4552,
+      "state": "unresolved",
+      "candidates": 2,
+      "checks": [
+        {
+          "state": "media-failed",
+          "reason": "HTTP 403"
+        },
+        {
+          "state": "media-failed",
+          "reason": "HTTP 403"
+        }
+      ]
+    },
+    {
+      "provider": "jet",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 2893,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "dzb",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 12958,
+      "state": "transport-verified",
+      "candidates": 2,
+      "checks": [
+        {
+          "state": "transport-verified",
+          "host": "pilavyer1.top"
+        },
+        {
+          "state": "transport-verified",
+          "host": "pilavyer1.top"
+        }
+      ]
+    },
+    {
+      "provider": "jet",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 6763,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "fxs",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 30001,
+      "state": "timeout"
+    },
+    {
+      "provider": "hdfb",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 9142,
+      "state": "transport-verified",
+      "candidates": 1,
+      "checks": [
+        {
+          "state": "transport-verified",
+          "host": "srv.bahcelievler.cfd"
+        }
+      ]
+    },
+    {
+      "provider": "dyu",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 24733,
+      "state": "unresolved",
+      "candidates": 2,
+      "checks": [
+        {
+          "state": "media-failed",
+          "reason": "TypeError"
+        },
+        {
+          "state": "media-failed",
+          "reason": "non-media response"
+        }
+      ]
+    },
+    {
+      "provider": "smashy",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 3136,
+      "state": "unresolved",
+      "candidates": 1,
+      "checks": [
+        {
+          "state": "extract-failed"
+        }
+      ]
+    },
+    {
+      "provider": "szd",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 25841,
+      "state": "unresolved",
+      "candidates": 4,
+      "checks": [
+        {
+          "state": "extract-failed"
+        },
+        {
+          "state": "extract-failed"
+        }
+      ]
+    },
+    {
+      "provider": "animecix",
+      "type": "anime",
+      "title": "Naruto",
+      "ms": 1495,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "anizium",
+      "type": "anime",
+      "title": "Naruto",
+      "ms": 2496,
+      "state": "transport-verified",
+      "candidates": 4,
+      "checks": [
+        {
+          "state": "transport-verified",
+          "host": "r.aniziumserver.site"
+        },
+        {
+          "state": "transport-verified",
+          "host": "r.aniziumserver.site"
+        }
+      ]
+    },
+    {
+      "provider": "lookmovie",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 5901,
+      "state": "transport-verified",
+      "candidates": 1,
+      "checks": [
+        {
+          "state": "transport-verified",
+          "host": "srv317.pathroyerk.cyou"
+        }
+      ]
+    },
+    {
+      "provider": "lookmovie",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 7205,
+      "state": "transport-verified",
+      "candidates": 1,
+      "checks": [
+        {
+          "state": "transport-verified",
+          "host": "srv317.pathroyerk.cyou"
+        }
+      ]
+    },
+    {
+      "provider": "smashy",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 3622,
+      "state": "unresolved",
+      "candidates": 1,
+      "checks": [
+        {
+          "state": "extract-failed"
+        }
+      ]
+    },
+    {
+      "provider": "dramalar",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 656,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "animetr",
+      "type": "anime",
+      "title": "Naruto",
+      "ms": 2790,
+      "state": "unresolved",
+      "candidates": 12,
+      "checks": [
+        {
+          "state": "media-failed",
+          "reason": "non-media response"
+        },
+        {
+          "state": "media-failed",
+          "reason": "HTTP 403"
+        }
+      ]
+    },
+    {
+      "provider": "dramadizilerim",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 1157,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "torrent",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 1119,
+      "state": "unresolved",
+      "candidates": 1,
+      "checks": [
+        {
+          "state": "extract-failed"
+        }
+      ]
+    },
+    {
+      "provider": "kidsvip",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 2256,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "vodm3u",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 96,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "torrent",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 1193,
+      "state": "unresolved",
+      "candidates": 1,
+      "checks": [
+        {
+          "state": "extract-failed"
+        }
+      ]
+    },
+    {
+      "provider": "sinemacc",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 456,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "k666",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 571,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "kidsvip",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 3083,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "k666",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 360,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "dizi77",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 2088,
+      "state": "transport-verified",
+      "candidates": 1,
+      "checks": [
+        {
+          "state": "transport-verified",
+          "host": "epsilon.7c0ae83c031aba.click"
+        }
+      ]
+    },
+    {
+      "provider": "dzyf",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 597,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "dzyf",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 5277,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "d4kh",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 1224,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "d4kh",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 765,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "dizibox",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 30000,
+      "state": "timeout"
+    },
+    {
+      "provider": "twoembed",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 1,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "vidlk",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 374,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "vidlk",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 362,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "fm",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 30001,
+      "state": "timeout"
+    },
+    {
+      "provider": "fm",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 30001,
+      "state": "timeout"
+    },
+    {
+      "provider": "hdfd",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 30001,
+      "state": "timeout"
+    },
+    {
+      "provider": "hdfd",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 30000,
+      "state": "timeout"
+    },
+    {
+      "provider": "asy",
+      "type": "anime",
+      "title": "Naruto",
+      "ms": 2869,
+      "state": "no-match-or-media",
+      "candidates": 0
+    },
+    {
+      "provider": "twoembed",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 30000,
+      "state": "timeout"
+    },
+    {
+      "provider": "dzp",
+      "type": "movie",
+      "title": "Interstellar",
+      "ms": 30001,
+      "state": "timeout"
+    },
+    {
+      "provider": "dzp",
+      "type": "tv",
+      "title": "Stranger Things",
+      "ms": 30000,
+      "state": "timeout"
+    }
+  ],
+  "done": true
+}

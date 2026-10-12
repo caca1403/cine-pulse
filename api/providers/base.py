@@ -6,6 +6,7 @@ import base64
 import json
 import re
 import string as _string
+import time as _time
 import urllib.parse
 import urllib.request
 
@@ -428,3 +429,59 @@ def finalize_streams(streams, page_url):
         'embedUrl': first.get('embedUrl', ''),
         'subtitles': first.get('subtitles', []),
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Canlı alan adı çözücü
+# manitux `domains.json` bazı siteler için ÖLÜ adres veriyor (ör. selcukflix.com;
+# canlısı selcukflix.app). Patron'un `siteurl.txt` dosyası canlı adresleri tutar
+# ve sağlayıcılarımız onunla birebir aynı olmalı. Sıra:
+#   1) siteurl.txt (canlı, yazarın kendi kaynağı)
+#   2) manitux domains.json
+#   3) koda gömülü varsayılan
+_SITEURL_URL = 'https://raw.githubusercontent.com/patr0nq/veriler/refs/heads/main/siteurl.txt'
+_SITEURL_CACHE = {'at': 0.0, 'map': {}}
+
+
+def siteurl_haritasi(timeout=5):
+    now = _time.time()
+    if now - _SITEURL_CACHE['at'] < 1800 and _SITEURL_CACHE['map']:
+        return _SITEURL_CACHE['map']
+    out = {}
+    try:
+        req = urllib.request.Request(_SITEURL_URL, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            for satir in resp.read().decode('utf-8', 'replace').splitlines():
+                if ':' not in satir:
+                    continue
+                k, _, v = satir.partition(':')
+                k, v = k.strip().lower(), v.strip().rstrip('/')
+                if k and v.startswith('http'):
+                    out[k] = v
+    except Exception:
+        pass
+    if out:
+        _SITEURL_CACHE.update({'at': now, 'map': out})
+    return out
+
+
+def resolve_domain(key, varsayilan, domains_url=None, aliases=()):
+    """Canlı alan adını döndürür. `key` siteurl.txt anahtarıdır."""
+    harita = siteurl_haritasi()
+    for ad in (key,) + tuple(aliases):
+        d = harita.get(ad.lower())
+        if d:
+            return d
+    if domains_url:
+        try:
+            req = urllib.request.Request(domains_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+            for ad in (key,) + tuple(aliases):
+                for olasi in (ad, ad.capitalize(), ad.title()):
+                    d = data.get(olasi)
+                    if isinstance(d, str) and d.startswith('http'):
+                        return d.rstrip('/')
+        except Exception:
+            pass
+    return varsayilan

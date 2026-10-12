@@ -60,6 +60,16 @@ def _sync_domain():
     except Exception:
         pass
 
+    # Canlı adres: Patron siteurl.txt öncelikli (manitux ölü .com verebiliyor).
+    try:
+        from .base import resolve_domain
+        _canli = resolve_domain('dizilla', BASE, _DOMAINS_URL)
+        if _canli and _canli.startswith('http') and _canli.rstrip('/') != BASE:
+            BASE = _canli.rstrip('/')
+            REF = BASE + '/'
+    except Exception:
+        pass
+
 
 def _decrypt(b64_ciphertext):
     if not HAS_CRYPTO or not b64_ciphertext:

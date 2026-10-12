@@ -215,7 +215,7 @@ export async function fetchDiziBoxSources({ titles = [], title = '', season = 1,
     const nc = normalize(c);
     match = res.find((r) => normalize(r.title) === nc)
       || res.find((r) => normalize(r.title).includes(nc) || nc.includes(normalize(r.title)))
-      || res[0];
+;
     if (match) break;
   }
   if (!match) return [];
@@ -227,10 +227,6 @@ export async function fetchDiziBoxSources({ titles = [], title = '', season = 1,
 
   // İstenen bölümü bul; yoksa aynı sezondaki en yakın bölümü dene.
   let secili = bolumler.find((b) => b.season === Number(season) && b.episode === Number(episode));
-  if (!secili) {
-    const ayniSezon = bolumler.filter((b) => b.season === Number(season));
-    secili = ayniSezon.find((b) => b.episode >= Number(episode)) || ayniSezon[ayniSezon.length - 1] || bolumler[0];
-  }
   if (!secili) return [];
 
   const bolumUrl = `${match.base}/${secili.path}/`;

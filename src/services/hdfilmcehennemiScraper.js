@@ -7,6 +7,8 @@
 import { apiUrl, isNativeCapacitor } from './apiOrigin.js';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { isNativeAndroidApp } from './platformBridge.js';
+import { akilliGet } from './nativeHttp.js';
+import { be, altyazilariAl, HDFC_UA_PLAYER } from './hdfcDecoders.js';
 
 const HDFC_BASES = ['https://www.hdfilmcehennemi.nl', 'https://www.hdfilmcehennemi.now'];
 // NOT: hdfilmcehennemi.mobi oynatici hostudur (CloseLoad), bolum sayfasi
@@ -24,6 +26,18 @@ function responseText(response) {
 }
 
 async function getOnDevice(url, referer, origin, httpClient = CapacitorHttp, timeoutMs = 8000) {
+  // Plain HTTP first: JSON/domain discovery and unprotected pages must not
+  // wait behind every queued WebView challenge.
+  try {
+    const response = await httpClient.get({ url, headers: {
+      'User-Agent': typeof navigator !== 'undefined' ? navigator.userAgent : HDFC_UA,
+      Referer: referer || `${origin}/`, Accept: '*/*'
+    }, connectTimeout: Math.min(timeoutMs, 4000), readTimeout: Math.min(timeoutMs, 6000) });
+    if ([404, 410].includes(response.status)) return '';
+    const text = typeof response?.data === 'object' ? JSON.stringify(response.data) : responseText(response);
+    if (response.status >= 200 && response.status < 300 && text &&
+      !/just a moment|challenge-platform|cf-chl|attention required/i.test(text.slice(0, 8000))) return text;
+  } catch (_) {}
   // 1) Yerel WebView cozumleyicisi (Cloudstream WebViewResolver esdegeri):
   //    CF challenge'i gercek tarayici cozer, HTML + cerez doner. En guclu yol.
   try {
@@ -100,16 +114,14 @@ function videoEmbedUrl(payload) {
 
 // Vercel's datacenter egress can be blocked by HDFC. On Android, resolve the
 // episode page from the device network and give the player the provider iframe.
-export async function resolveHdfcEmbedsOnDevice({ title, originalTitle, season, episode, type, httpClient = CapacitorHttp, platform = Capacitor.getPlatform() }) {
+export async function resolveHdfcEmbedsOnDevice({ title, originalTitle, season, episode, type, imdbId = null, tmdbId = null, httpClient = CapacitorHttp, platform = Capacitor.getPlatform() }) {
   if (platform !== 'android' && httpClient === CapacitorHttp) return [];
   const slug = hdfcSlug(title || originalTitle);
-  if (!slug) return [];
+  if (!slug && !imdbId) return [];
   const s = Number.parseInt(season, 10) || 1;
   const e = Number.parseInt(episode, 10) || 1;
   const isMovie = type === 'movie';
-  const paths = isMovie
-    ? [`/${slug}/`, `/hd-${slug}-izle/`, `/${slug}-izle/`]
-    : [`/dizi/${slug}-izle-3/sezon-${s}/bolum-${e}/`, `/dizi/${slug}-izle/sezon-${s}/bolum-${e}/`];
+
   let bases = [...HDFC_BASES];
   try {
     const domainsText = await getOnDevice(HDFC_DOMAINS_URL, HDFC_DOMAINS_URL, 'https://raw.githubusercontent.com', httpClient, 1200);
@@ -119,45 +131,195 @@ export async function resolveHdfcEmbedsOnDevice({ title, originalTitle, season, 
       bases = [normalized, ...bases.filter(base => base !== normalized)];
     }
   } catch (_) {}
-  const requests = bases.flatMap(base => paths.map(path => ({ base, url: `${base}${path}` })));
-  let page = null;
-  const pages = await Promise.all(requests.map(async candidate => ({
-    ...candidate,
-    html: await getOnDevice(candidate.url, `${candidate.base}/`, candidate.base, httpClient)
-  })));
-  page = pages.find(candidate => pageAlternatives(candidate.html).length > 0);
-  if (!page) return [];
+  // Patron'un kendi adres kaynağı (siteurl.txt) önce denenir.
+  try {
+    const siteUrl = await getOnDevice('https://raw.githubusercontent.com/patr0nq/veriler/refs/heads/main/siteurl.txt',
+      'https://raw.githubusercontent.com/', 'https://raw.githubusercontent.com', httpClient, 1200);
+    const satir = String(siteUrl || '').split('\n').find(l => l.trim().startsWith('hdfilmcehennemi:'));
+    if (satir) {
+      const u = satir.slice('hdfilmcehennemi:'.length).trim().replace(/\/$/, '');
+      if (/^https:\/\//i.test(u)) bases = [u, ...bases.filter(b => b !== u)];
+    }
+  } catch (_) {}
 
-  const alternatives = pageAlternatives(page.html).slice(0, 5);
-  const resolved = await Promise.all(alternatives.map(async alternative => {
-    const payload = await getOnDevice(`${page.base}/video/${alternative.id}/`, page.url, page.base, httpClient);
-    const embedUrl = videoEmbedUrl(payload);
-    if (!embedUrl || /pixel|filemoon|vidmoly/i.test(`${alternative.label} ${embedUrl}`)) return null;
-    const provider = /rapid|rplayer/i.test(`${alternative.label} ${embedUrl}`) ? 'Rapidrame' : 'CloseLoad';
-    return { provider, embedUrl, id: alternative.id };
-  }));
+  const base = bases[0];
+  let contentUrl = '';
 
-  const sources = [];
-  for (const item of resolved.filter(Boolean)) {
-    const key = item.provider === 'Rapidrame' ? 'rapid' : 'close';
-    for (const category of ['dubbed', 'subtitled']) {
-      sources.push({
-        id: `hdfc_${key}_device_${item.id}_${isMovie ? 'movie' : `s${s}e${e}`}_${category}`,
-        name: `HDFC ${item.provider}`,
-        displayName: `HDFC ${item.provider}`,
-        source: item.provider,
-        url: item.embedUrl,
-        streamUrl: item.embedUrl,
-        movieUrl: page.url,
-        category,
-        type: 'embed',
-        isIframe: true,
-        isDirectVideo: false,
-        getUrl: () => item.embedUrl
-      });
+  // 1) Patron yolu: IMDB ile JSON arama (X-Requested-With: fetch şart).
+  for (const q of [imdbId, imdbId ? String(imdbId).replace(/^tt/, '') : ''].filter(Boolean)) {
+    const ham = await akilliGet(`${base}/search?q=${encodeURIComponent(q)}`, {
+      ref: `${base}/`, timeout: 9000,
+      headers: { 'User-Agent': HDFC_UA, 'X-Requested-With': 'fetch', Accept: 'application/json, text/plain, */*' }
+    });
+    const sonuc = jsonSonuclari(ham);
+    if (sonuc.length) { contentUrl = secIcerik(sonuc, isMovie); if (contentUrl) break; }
+  }
+  // 2) Başlık araması (JSON) — IMDB sonuçsuzsa.
+  if (!contentUrl && slug) {
+    const ham = await akilliGet(`${base}/search?q=${encodeURIComponent(title || originalTitle)}`, {
+      ref: `${base}/`, timeout: 9000,
+      headers: { 'User-Agent': HDFC_UA, 'X-Requested-With': 'fetch', Accept: 'application/json, text/plain, */*' }
+    });
+    const sonuc = jsonSonuclari(ham);
+    if (sonuc.length) contentUrl = secIcerik(sonuc, isMovie);
+  }
+  // 3) Doğrudan slug yolları (arama engelliyse).
+  if (!contentUrl) {
+    const paths = isMovie
+      ? [`/${slug}/`, `/hd-${slug}-izle/`, `/${slug}-izle/`]
+      : [`/dizi/${slug}-izle-3/sezon-${s}/bolum-${e}/`, `/dizi/${slug}-izle/sezon-${s}/bolum-${e}/`];
+    for (const aday of bases.flatMap(b => paths.map(p => ({ base: b, url: `${b}${p}` })))) {
+      const html = await akilliGet(aday.url, { ref: `${aday.base}/`, timeout: 9000, headers: { 'User-Agent': HDFC_UA } });
+      if (html && pageAlternatives(html).length > 0) { contentUrl = aday.url; break; }
     }
   }
-  return sources;
+  if (!contentUrl) return [];
+  if (!/^https?:/i.test(contentUrl)) contentUrl = `${base}${contentUrl.startsWith('/') ? '' : '/'}${contentUrl}`;
+  const pageBase = originOf(contentUrl, base);
+
+  // Dizi ise bölüm bağlantısını bul.
+  if (!isMovie) {
+    const showHtml = await akilliGet(contentUrl, { ref: `${pageBase}/`, timeout: 9000, headers: { 'User-Agent': HDFC_UA } });
+    const bm = bolumBaglantisi(showHtml, s, e);
+    if (bm) contentUrl = mutlakYap(bm, pageBase);
+  }
+
+  const playerHtml = await akilliGet(contentUrl, { ref: `${pageBase}/`, timeout: 12000, headers: { 'User-Agent': HDFC_UA } });
+  if (!playerHtml) return [];
+
+  // iframe ya da alternative-link → /video/{id}/ akışı
+  let iframeUrl = '';
+  const ifr = playerHtml.match(/<iframe\b[^>]*?(?:data-src|src)=["']([^"']+)["']/i);
+  if (ifr) iframeUrl = mutlakYap(ifr[1], pageBase);
+  if (!/embed|player|rplayer|rapidrame|closeload/i.test(iframeUrl)) {
+    const alternatifler = pageAlternatives(playerHtml).slice(0, 5);
+    let secili = alternatifler[0];
+    if (alternatifler.some(a => /rapid/i.test(a.label))) secili = alternatifler.find(a => /rapid/i.test(a.label));
+    if (secili) {
+      const payload = await akilliGet(`${pageBase}/video/${secili.id}/`, {
+        ref: contentUrl, timeout: 9000,
+        headers: { 'User-Agent': HDFC_UA, 'X-Requested-With': 'fetch', Accept: 'application/json, text/plain, */*' }
+      });
+      const ic = videoEmbedUrl(payload);
+      if (ic) iframeUrl = mutlakYap(ic, pageBase);
+    }
+  }
+  if (!iframeUrl) return [];
+  const iframeOrigin = originOf(iframeUrl, pageBase);
+
+  // iframe HTML → şifre çözümü (Patron şemaları)
+  let iframeHtml = await akilliGet(iframeUrl, { ref: contentUrl, timeout: 12000, headers: { 'User-Agent': HDFC_UA } });
+  let m3u8 = be(iframeHtml || '');
+  let finalHtml = iframeHtml || '';
+  const rapidId = iframeUrl.match(/rapidrame_id=([a-zA-Z0-9]+)/) || iframeUrl.match(/\/rplayer\/([a-zA-Z0-9]+)/);
+  if (rapidId && (!m3u8 || !finalHtml.includes('tracks:'))) {
+    const rp = await akilliGet(`${pageBase}/rplayer/${rapidId[1]}/`, { ref: `${pageBase}/`, timeout: 12000, headers: { 'User-Agent': HDFC_UA } });
+    if (rp) { finalHtml = rp; if (!m3u8) m3u8 = be(rp); }
+  }
+
+  const altyazilar = altyazilariAl(finalHtml, pageBase);
+  const kaynaklar = [];
+
+  if (m3u8) {
+    // DOĞRUDAN YAYIN — iframe'e hiç düşmeden bizim oynatıcıyla açılır.
+    const dublaj = /dual|trdual|trdub|dublaj/i.test(m3u8);
+    for (const kategori of ['dubbed', 'subtitled']) {
+      kaynaklar.push({
+        id: `hdfc_direct_${tmdbId || slug}_${isMovie ? 'movie' : `s${s}e${e}`}_${kategori}`,
+        name: `HDFC ${kategori === 'dubbed' ? 'Dublaj' : 'Altyazı'} 1080p`,
+        displayName: `HDFC ${kategori === 'dubbed' ? 'Dublaj' : 'Altyazı'} (1080p)`,
+        source: 'HDFC',
+        url: m3u8,
+        streamUrl: m3u8,
+        rawStreamUrl: m3u8,
+        // KRİTİK: Referer = OYNATICI origin'i, sitenin kök adresi DEĞİL.
+        headers: { Referer: `${iframeOrigin}/`, 'User-Agent': HDFC_UA_PLAYER, Accept: '*/*' },
+        quality: '1080p',
+        isHls: /\.m3u8/i.test(m3u8),
+        isDirectVideo: true,
+        category: kategori,
+        type: 'direct',
+        subtitles: altyazilar,
+        getUrl: () => m3u8
+      });
+    }
+    void dublaj;
+    return kaynaklar;
+  }
+
+  // Çözülemediyse gömülü oynatıcı (gizli WebView açar) — SON ÇARE.
+  const provider = /rapid|rplayer/i.test(iframeUrl) ? 'Rapidrame' : 'CloseLoad';
+  for (const category of ['dubbed', 'subtitled']) {
+    kaynaklar.push({
+      id: `hdfc_${provider === 'Rapidrame' ? 'rapid' : 'close'}_device_${tmdbId || slug}_${isMovie ? 'movie' : `s${s}e${e}`}_${category}`,
+      name: `HDFC ${provider}`,
+      displayName: `HDFC ${provider}`,
+      source: provider,
+      url: iframeUrl,
+      streamUrl: iframeUrl,
+      movieUrl: contentUrl,
+      category,
+      type: 'embed',
+      isIframe: true,
+      isDirectVideo: false,
+      getUrl: () => iframeUrl
+    });
+  }
+  return kaynaklar;
+}
+
+function originOf(url, varsayilan) {
+  try { return new URL(url).origin; } catch (_) { return varsayilan; }
+}
+
+function mutlakYap(link, base) {
+  if (!link) return '';
+  const s = String(link).trim();
+  if (s.startsWith('//')) return `https:${s}`;
+  if (/^https?:\/\//i.test(s)) return s;
+  try { return new URL(s, base).href; } catch (_) { return s; }
+}
+
+/** `/search` JSON yanıtından sonuç HTML parçalarını çıkarır. */
+function jsonSonuclari(ham) {
+  const t = String(ham || '').trim();
+  if (!t) return [];
+  try {
+    const d = JSON.parse(t);
+    if (Array.isArray(d?.results)) return d.results;
+    if (Array.isArray(d)) return d;
+  } catch (_) {}
+  // JSON gelmediyse düz HTML araması (href listesi)
+  const out = [];
+  for (const m of t.matchAll(/href="([^"]+)"/g)) out.push(`<a href="${m[1]}"></a>`);
+  return out;
+}
+
+function secIcerik(sonuclar, isMovie) {
+  let yedek = '';
+  for (const html of sonuclar) {
+    const m = String(html).match(/href="([^"]+)"/);
+    if (!m) continue;
+    const url = m[1];
+    if (!yedek) yedek = url;
+    const dizi = url.includes('/dizi/');
+    if (isMovie && !dizi) return url;
+    if (!isMovie && dizi) return url;
+  }
+  return yedek;
+}
+
+function bolumBaglantisi(html, sezon, bolum) {
+  for (const m of String(html || '').matchAll(/<a\s+[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)) {
+    const href = m[1];
+    const metin = m[2].replace(/<[^>]+>/g, '').toLowerCase().trim();
+    const dm = href.match(/sezon-(\d+)\/bolum-(\d+)/i);
+    if (dm && parseInt(dm[1], 10) === sezon && parseInt(dm[2], 10) === bolum) return href;
+    const sm = metin.match(/(\d+)\.\s*sezon/);
+    const em = metin.match(/(\d+)\.\s*bölüm/);
+    if (sm && em && parseInt(sm[1], 10) === sezon && parseInt(em[1], 10) === bolum) return href;
+  }
+  return '';
 }
 
 export async function fetchHdfilmcehennemiSources({
@@ -183,7 +345,7 @@ export async function fetchHdfilmcehennemiSources({
     // Android: cihaz yolu once denenir. Sunucu IP'si engellendigi icin
     // API cagrisi 11 saniye bosuna gider; WebView cozumleyici dogrudan calisir.
     if (isNativeAndroidApp()) {
-      const deviceSources = await resolveHdfcEmbedsOnDevice({ title: searchTitle, originalTitle: searchOriginal, season: sNum, episode: epNum, type });
+      const deviceSources = await resolveHdfcEmbedsOnDevice({ title: searchTitle, originalTitle: searchOriginal, season: sNum, episode: epNum, type, imdbId, tmdbId });
       if (deviceSources.length > 0) return deviceSources;
     }
 
@@ -192,19 +354,19 @@ export async function fetchHdfilmcehennemiSources({
     const host = typeof window !== 'undefined' ? (window.location?.hostname || '') : '';
     const isLocal = (host === 'localhost' || host === '127.0.0.1') && !isNativeCapacitor();
     const loc = (p) => (isLocal ? p : apiUrl(p));
-    const endpoint = loc(`/api/hdfc_stream?query=${encodeURIComponent(searchTitle)}&originalTitle=${encodeURIComponent(searchOriginal)}&tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&season=${sNum}&episode=${epNum}&type=${type || (isMovie ? 'movie' : 'tv')}`);
+    const endpoint = loc(`${isNativeCapacitor() ? '/api/resolve?provider=hdfc&title=' : '/api/hdfc_stream?query='}${encodeURIComponent(searchTitle)}&originalTitle=${encodeURIComponent(searchOriginal)}&tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&season=${sNum}&episode=${epNum}&type=${type || (isMovie ? 'movie' : 'tv')}`);
     
     const res = await fetch(endpoint, {
       signal: AbortSignal.timeout(11000)
     }).catch(() => null);
 
     if (!res || !res.ok) {
-      return await resolveHdfcEmbedsOnDevice({ title: searchTitle, originalTitle: searchOriginal, season: sNum, episode: epNum, type });
+      return await resolveHdfcEmbedsOnDevice({ title: searchTitle, originalTitle: searchOriginal, season: sNum, episode: epNum, type, imdbId, tmdbId });
     }
 
     const data = await res.json().catch(() => null);
     if (!data || !data.success || (!data.streamUrl && !Array.isArray(data.streams))) {
-      return await resolveHdfcEmbedsOnDevice({ title: searchTitle, originalTitle: searchOriginal, season: sNum, episode: epNum, type });
+      return await resolveHdfcEmbedsOnDevice({ title: searchTitle, originalTitle: searchOriginal, season: sNum, episode: epNum, type, imdbId, tmdbId });
     }
 
     const sources = [];

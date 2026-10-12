@@ -8,8 +8,40 @@
    ========================================================================== */
 
 import { isStrictMediaTitleMatch } from './mediaMatcher.js';
+import { akilliGet } from './nativeHttp.js';
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+
+/**
+ * AnimeciX isteği: ÖNCE cihazın kendi IP'si (CapacitorHttp) → gizli WebView
+ * (CF challenge / API JSON) → en son uzak worker yedeği. Önceden TÜM trafik
+ * worker'dan geçiyordu; worker yanıt vermeyince kaynak listesi boşalıyordu.
+ */
+async function axGet(url, timeout = 9000) {
+  const yedek = async (u) => {
+    try {
+      const r = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(u)}`, { signal: AbortSignal.timeout(timeout) });
+      return r.ok ? await r.text() : '';
+    } catch (_) { return ''; }
+  };
+  const ham = await akilliGet(url, {
+    ref: 'https://animecix.net/',
+    timeout,
+    headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36', Accept: 'application/json, text/plain, */*' },
+    yedekCek: yedek
+  });
+  return ham || '';
+}
+
+function jsonCoz(ham) {
+  const t = String(ham || '').trim();
+  if (!t) return null;
+  try { return JSON.parse(t); } catch (_) {}
+  // WebView bazen JSON'u HTML içine sarar; ilk { ... } bloğunu çıkar.
+  const m = t.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch (_) {} }
+  return null;
+}
 
 function normalizeTitle(t) {
   if (!t) return '';
@@ -54,13 +86,8 @@ export async function fetchAnimecixSources({
       if (!cleanQ || cleanQ.length < 2) continue;
 
       const searchUrl = `https://animecix.net/secure/search/${encodeURIComponent(cleanQ)}`;
-      const res = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(searchUrl)}`, {
-        signal: AbortSignal.timeout(3500)
-      });
-      if (!res.ok) continue;
-
-      const data = await res.json();
-      if (!data.results || !Array.isArray(data.results)) continue;
+      const data = jsonCoz(await axGet(searchUrl, 9000));
+      if (!data || !data.results || !Array.isArray(data.results)) continue;
 
       for (const item of data.results) {
         if (item && item.id && !seenAnimeIds.has(item.id)) {
@@ -87,12 +114,7 @@ export async function fetchAnimecixSources({
   for (const anime of foundAnimeMatches.slice(0, 4)) {
     try {
       const epUrl = `https://animecix.net/secure/episode-videos?titleId=${anime.id}&season=${season}&episode=${episode}`;
-      const epRes = await fetch(`${CF_WORKER_PROXY}?url=${encodeURIComponent(epUrl)}`, {
-        signal: AbortSignal.timeout(4000)
-      });
-      if (!epRes.ok) continue;
-
-      const videos = await epRes.json();
+      const videos = jsonCoz(await axGet(epUrl, 10000));
       if (!Array.isArray(videos) || videos.length === 0) continue;
 
       const matchedList = [];
