@@ -29,6 +29,11 @@ jobs:
         with:
           packages: 'platforms;android-36 build-tools;36.0.0'
 
+      - name: Setup Python provider runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:

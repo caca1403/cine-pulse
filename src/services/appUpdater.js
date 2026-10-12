@@ -8,6 +8,7 @@ import { showToast } from '../components/Toast.js';
 import { renderIcons } from './icons.js';
 import { App } from '@capacitor/app';
 import pkg from '../../package.json';
+import { shouldOfferUpdate } from './updatePolicy.js';
 
 // Tek doğruluk kaynağı package.json — release'te bump otomatik yansır,
 // çakılı sabit unutulup "güncelle" döngüsüne girilmez.
@@ -16,7 +17,7 @@ export const CURRENT_VERSION_CODE = pkg.versionCode;
 
 // The deployed manifest has explicit CORS headers. GitHub's release URL redirects
 // through several hosts and can fail WebView fetches before the app can notify.
-const REMOTE_VERSION_URL = 'https://cine-pulse-drab.vercel.app/version.json';
+const REMOTE_VERSION_URL = 'https://github.com/caca1403/cine-pulse/releases/latest/download/version.json';
 let updateCheckPromise = null;
 let lastSuccessfulUpdateCheck = 0;
 let automaticChecksInitialized = false;
@@ -25,26 +26,19 @@ const UPDATE_CHECK_COOLDOWN_MS = 60_000;
 import { isNativeAndroidApp } from './platformBridge.js';
 export { isNativeAndroidApp };
 
-/**
- * Semver compare: returns true if remote > current
- */
-function isNewerVersion(remote, current) {
-  if (!remote || !current) return false;
-  const parse = (v) => String(v).replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
-  const [rMaj, rMin, rPat] = parse(remote);
-  const [cMaj, cMin, cPat] = parse(current);
-  if (rMaj > cMaj) return true;
-  if (rMaj === cMaj && rMin > cMin) return true;
-  if (rMaj === cMaj && rMin === cMin && rPat > cPat) return true;
-  return false;
-}
-
-/**
- * Version code compare: returns true if remote version code > current version code
- */
-function isNewerVersionCode(remoteCode, currentCode) {
-  if (!remoteCode || !currentCode) return false;
-  return Number(remoteCode) > Number(currentCode);
+export async function installedAppVersion() {
+  try {
+    const value = window.CinePulseNative?.getInstalledVersion?.();
+    if (value) {
+      const parsed = JSON.parse(value);
+      if (Number(parsed.versionCode) > 0) return parsed;
+    }
+    if (isNativeAndroidApp()) {
+      const info = await App.getInfo();
+      return { version: info.version, versionCode: Number(info.build) };
+    }
+  } catch (_) {}
+  return { version: CURRENT_APP_VERSION, versionCode: CURRENT_VERSION_CODE };
 }
 
 /**
@@ -54,7 +48,7 @@ export function showUpdateModal(updateInfo) {
   // Prevent duplicate modals
   if (document.getElementById('cinepulse-update-modal')) return;
 
-  const directUrl = updateInfo.downloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk';
+  const directUrl = updateInfo.githubDownloadUrl || updateInfo.downloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk';
   const githubUrl = updateInfo.githubDownloadUrl || 'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk';
 
   const modal = document.createElement('div');
@@ -142,7 +136,7 @@ export function showUpdateModal(updateInfo) {
 
       <!-- Action Buttons -->
       <div style="display: flex; flex-direction: column; gap: 0.65rem;">
-        <a id="btn-update-download" href="${directUrl}" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" style="
+        <a id="btn-update-download" href="${escapeText(directUrl)}" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" style="
           display: flex;
           align-items: center;
           justify-content: center;
@@ -161,7 +155,7 @@ export function showUpdateModal(updateInfo) {
           <span>Hemen İndir (Güncel APK)</span>
         </a>
 
-        <a id="btn-update-github" href="${githubUrl}" target="_blank" rel="noopener noreferrer" style="
+        <a id="btn-update-github" href="${escapeText(githubUrl)}" target="_blank" rel="noopener noreferrer" style="
           display: flex;
           align-items: center;
           justify-content: center;
@@ -293,17 +287,12 @@ async function performUpdateCheck({ manual }) {
     if (!data?.version) throw new Error('Sürüm bilgisi eksik');
     lastSuccessfulUpdateCheck = Date.now();
 
-    // Check both version string AND version code - show update if EITHER is newer.
-    // AND sarti kismi bump'larda bildirimi susturuyordu ( orn. sadece
-    // versionCode artarsa modal cikmiyordu).
-    const versionNewer = isNewerVersion(data.version, CURRENT_APP_VERSION);
-    const versionCodeNewer = isNewerVersionCode(data.versionCode, CURRENT_VERSION_CODE);
-    
-    if (data && (versionNewer || versionCodeNewer)) {
+    const installed = await installedAppVersion();
+    if (shouldOfferUpdate(data, installed)) {
       showUpdateModal(data);
       return data;
     } else if (manual) {
-      showToast(`✓ CinePulse güncel (v${CURRENT_APP_VERSION})`, 'success');
+      showToast(`✓ CinePulse güncel (v${installed.version})`, 'success');
       return null;
     }
   } catch (err) {

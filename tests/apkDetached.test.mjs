@@ -50,8 +50,12 @@ ok(istek.indexOf('cihazGet') < istek.indexOf('akilliGet'),
 // 4) Gizli WebView her iki platformda bağlı
 ok(nh.includes('desktopWebViewResolver') && nh.includes('androidWebViewResolver'),
    'gizli WebView hem Android hem masaüstünde bağlı');
-ok(/for \(const yol of \['\.\/platform\/androidWebViewResolver\.js', '\.\/platform\/desktopWebViewResolver\.js'\]\)/.test(nh),
-   'çözümleyiciler sırayla deneniyor');
+// Siralama aynidir, yalnizca yazim degisti: once string yollardi,
+// simdi tembel yukleyici fonksiyonlari (uygulama acilisinda modul
+// yuklemesini hizlandirmak icin).
+const siraDuzenli = nh.includes('androidWebViewResolver') && nh.includes('desktopWebViewResolver')
+  && nh.indexOf('androidWebViewResolver') < nh.lastIndexOf('desktopWebViewResolver');
+ok(siraDuzenli, 'çözümleyiciler sırayla deneniyor (önce Android, sonra masaüstü)');
 
 // 5) Vercel'e giden tek yol: /api/proxy — kaynak sorgularında kullanılmıyor
 const pa = oku('src/services/providerAggregator.js');

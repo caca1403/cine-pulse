@@ -8,16 +8,11 @@
 const pending = new Map();
 let seq = 0;
 let handlerInstalled = false;
-let nativeBridge = null;
+let queue = Promise.resolve();
+const inflight = new Map();
 
 function bridge() {
-  if (nativeBridge) return nativeBridge;
-  try {
-    nativeBridge = window.CinePulseWebView || null;
-  } catch (_) {
-    nativeBridge = null;
-  }
-  return nativeBridge;
+  try { return window.CinePulseWebView || null; } catch (_) { return null; }
 }
 
 function isNative() {
@@ -58,7 +53,7 @@ function installHandler() {
  * Sayfayi coz ve { ok, html, text, cookies, challenge, finalUrl } dondur.
  * Cozumleyici yoksa veya basarisizsa null.
  */
-export function resolvePageInNativeWebView(url, { timeoutMs = 22000 } = {}) {
+function dispatchPage(url, { timeoutMs = 22000, media = false } = {}) {
   return new Promise((resolve) => {
     const b = bridge();
     if (!b || typeof b.resolvePage !== 'function') { resolve(null); return; }
@@ -69,13 +64,24 @@ export function resolvePageInNativeWebView(url, { timeoutMs = 22000 } = {}) {
     }, Math.max(6000, timeoutMs + 6000));
     pending.set(id, { resolve, timer });
     try {
-      b.resolvePage(String(url || ''), Math.max(6000, Math.min(45000, timeoutMs | 0)));
+      b.resolvePage(id, String(url || ''), Math.max(6000, Math.min(45000, timeoutMs | 0)), media);
     } catch (_) {
       clearTimeout(timer);
       pending.delete(id);
       resolve(null);
     }
   });
+}
+
+/** The native resolver owns one WebView; serialize jobs and coalesce duplicates. */
+export function resolvePageInNativeWebView(url, options = {}) {
+  const key = `${Boolean(options.media)}:${url}`;
+  if (inflight.has(key)) return inflight.get(key);
+  const task = queue.then(() => dispatchPage(url, options));
+  queue = task.catch(() => null);
+  const result = task.finally(() => inflight.delete(key));
+  inflight.set(key, result);
+  return result;
 }
 
 /** Challenge sayfasi mi? */

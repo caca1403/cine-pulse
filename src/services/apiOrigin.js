@@ -13,6 +13,11 @@ export function apiUrl(path = '') {
       return `${DESKTOP_SIDECAR}${path}`;
     }
   } catch (_) {}
+  if (isNativeCapacitor()) {
+    const origin = window.CinePulseNative?.getApiOrigin?.();
+    if (!origin) throw new Error('Android yerel API başlatılamadı');
+    return `${origin}${path}`;
+  }
   const host = window.location?.hostname || '';
   const isCapacitorOrStatic = Boolean(
     window.Capacitor?.isNativePlatform?.() ||
@@ -25,6 +30,7 @@ export function apiUrl(path = '') {
 }
 
 export function mkvRelayUrl(path = '') {
+  if (isNativeCapacitor()) return apiUrl(path);
   return MKV_RELAY_ORIGIN ? `${MKV_RELAY_ORIGIN}${path}` : apiUrl(path);
 }
 

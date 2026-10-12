@@ -26,12 +26,15 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     private static final int NOTIFICATION_PERMISSION_REQUEST = 4402;
     private NativePageResolver pageResolver;
+    private NativeMediaGateway mediaGateway;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         try {
             pageResolver = new NativePageResolver(this);
+            mediaGateway = new NativeMediaGateway(this);
+            mediaGateway.start();
         } catch (Exception ignored) {}
         try {
             if (this.bridge != null && this.bridge.getWebView() != null) {
@@ -51,6 +54,11 @@ public class MainActivity extends BridgeActivity {
         } catch (Exception ignored) {}
     }
 
+    void resolveNativePage(String url, String userAgent, NativePageResolver.Callback callback) {
+        if (pageResolver == null || url == null) { callback.onResult("", "{}"); return; }
+        pageResolver.resolve("py-" + java.util.UUID.randomUUID(), url, 35000, false, userAgent, callback);
+    }
+
     /** Cloudflare'i gercek tarayici ile gecip sayfa HTML'ini dondurur. */
     public final class WebViewResolverBridge {
         @JavascriptInterface
@@ -59,11 +67,11 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
-        public void resolvePage(String url, int timeoutMs) {
+        public void resolvePage(String requestId, String url, int timeoutMs, boolean media) {
             final NativePageResolver resolver = pageResolver;
             if (resolver == null || url == null || url.trim().isEmpty()) return;
-            final String id = resolver.nextId();
-            resolver.resolve(id, url.trim(), timeoutMs, new NativePageResolver.Callback() {
+            final String id = requestId;
+            resolver.resolve(id, url.trim(), timeoutMs, media, "", new NativePageResolver.Callback() {
                 @Override
                 public void onResult(final String requestId, final String json) {
                     try {
@@ -83,7 +91,28 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    @Override
+    public void onDestroy() {
+        if (mediaGateway != null) mediaGateway.stop();
+        if (pageResolver != null) pageResolver.close();
+        super.onDestroy();
+    }
+
     public final class DeviceStorageBridge {
+        @JavascriptInterface
+        public String getApiOrigin() {
+            return mediaGateway == null ? "" : mediaGateway.origin();
+        }
+
+        @JavascriptInterface
+        public String getInstalledVersion() {
+            try {
+                android.content.pm.PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+                long code = Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode;
+                return new JSONObject().put("version", info.versionName).put("versionCode", code).toString();
+            } catch (Exception e) { return "{}"; }
+        }
+
         @JavascriptInterface
         public void startDownloadNotification(String title) {
             runOnUiThread(() -> {

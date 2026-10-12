@@ -22,6 +22,7 @@
 /* ══════════════════════════ 1. ÇEKİRDEK ══════════════════════════ */
 
 import { akilliGet, akilliPost, nativeHttpAktifMi } from './nativeHttp.js';
+import CryptoJS from '../vendor/crypto-js.js';
 import { sifreliOynaticiCoz } from './encryptedPlayer.js';
 
 const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
@@ -68,6 +69,14 @@ function temizle(link) {
   // Kaçışlı eğik çizgiler (\/) yayın adreslerinde sık
   v = v.replace(/\\\//g, '/');
   if (v.startsWith('//')) v = 'https:' + v;
+  // Sorgu dizesindeki [] ve {} kodlanmalı; yoksa libcurl/istemci
+  // adresi bozuk gönderir ve sunucu 400 döner.
+  const qi = v.indexOf('?');
+  if (qi > -1) {
+    v = v.slice(0, qi + 1) + v.slice(qi + 1)
+      .replace(/\[/g, '%5B').replace(/\]/g, '%5D')
+      .replace(/\{/g, '%7B').replace(/\}/g, '%7D');
+  }
   return v;
 }
 
@@ -130,10 +139,10 @@ async function directGet(url, ref, timeout) {
       signal: AbortSignal.timeout(timeout),
       headers: { 'User-Agent': UA, 'Accept-Language': 'tr-TR,tr;q=0.9', ...(ref ? { Referer: ref } : {}) }
     });
-    if (!r.ok) return '';
+    if (!r.ok) return { metin: '', durum: r.status };
     const t = await r.text();
-    return isBlockedPage(t) ? '' : t;
-  } catch (_) { return ''; }
+    return isBlockedPage(t) ? { metin: '', durum: r.status } : { metin: t, durum: r.status };
+  } catch (_) { return { metin: '', durum: 0 }; }
 }
 
 /** CF Worker: datacenter IP engelini aşar. */
@@ -144,21 +153,23 @@ async function workerGet(url, timeout) {
     }).catch(() => null);
     if (r && r.ok) {
       const t = await r.text();
-      if (!isBlockedPage(t)) return t;
+      if (!isBlockedPage(t)) return { metin: t, durum: r.status };
+      return { metin: '', durum: r.status };
     }
+    if (r) return { metin: '', durum: r.status };
   } catch (_) {}
-  return '';
+  return { metin: '', durum: 0 };
 }
 
 /** Uygulama proxy'si: Referer sunucu tarafında basılır. */
 async function proxyGet(url, ref, timeout) {
   try {
     const r = await fetch(proxyUrl(url, ref), { signal: AbortSignal.timeout(timeout) });
-    if (!r.ok) return '';
+    if (!r.ok) return { metin: '', durum: r.status };
     const t = await r.text();
-    return isBlockedPage(t) ? '' : t;
+    return isBlockedPage(t) ? { metin: '', durum: r.status } : { metin: t, durum: r.status };
   } catch (_) {
-    return '';
+    return { metin: '', durum: 0 };
   }
 }
 
@@ -169,15 +180,30 @@ async function getHtml(url, { ref = '', timeout = 16000 } = {}) {
   // KekikStream da tam olarak bu yöntemle çalışıyor.
   if (nativeHttpAktifMi()) {
     const dogrudan = await akilliGet(url, { ref, timeout });
-    if (dogrudan) return dogrudan;
+    return dogrudan;
   }
   // ── Web / masaüstü: mevcut üç katmanlı zincir ─────────────────────
+  // Yeniden deneme kuralı: 403/429 (anti-bot işareti), 5xx ve ağ hatası
+  // SONRAKİ katmana geçilir. Diğer 4xx (400/401/404/410) kesin istemci
+  // hatasıdır — boşuna istek atılmaması için yalnızca proxy bir kez
+  // denenir (Referer düzeltmesi kurtarabilir), sonra durulur.
+  let proxyDenendi = false;
   for (const [ad, fabrika] of katmanSirasi()) {
     const sonuc = ad === 'proxy' ? await proxyGet(url, ref, timeout)
                : ad === 'worker' ? await workerGet(url, timeout)
                : await directGet(url, ref, timeout);
-    katmanNoterEt(ad, Boolean(sonuc));
-    if (sonuc) return sonuc;
+    if (ad === 'proxy') proxyDenendi = true;
+    katmanNoterEt(ad, Boolean(sonuc.metin));
+    if (sonuc.metin) return sonuc.metin;
+    const d = sonuc.durum;
+    const surdurulebilir = d === 0 || d === 403 || d === 429 || (d >= 500 && d < 600);
+    if (!surdurulebilir && ad !== 'proxy' && !proxyDenendi) {
+      const p = await proxyGet(url, ref, timeout);
+      katmanNoterEt('proxy', Boolean(p.metin));
+      if (p.metin) return p.metin;
+      return '';
+    }
+    if (!surdurulebilir) return '';
   }
   return '';
 }
@@ -186,7 +212,7 @@ async function postApi(url, body, ref, timeout = 16000) {
   // Cihazda: doğrudan cihaz IP'sinden, Referer serbestçe yazılabiliyor.
   if (nativeHttpAktifMi()) {
     const d = await akilliPost(url, body, { ref, timeout });
-    if (d) return d;
+    return d;
   }
   try {
     const r = await fetch(proxyUrl(url, ref), {
@@ -264,7 +290,17 @@ async function kalipSecuredLink(url, ref) {
       /["']?securedLink["']\s*:\s*["']([^"']+)["']/i,
       /["']?videoSource["']\s*:\s*["']([^"']+)["']/i);
   }
-  return link && MEDIA_EXT.test(link) ? { url: temizle(link), referer } : null;
+  if (!link) return null;
+  link = temizle(link);
+  if (MEDIA_EXT.test(link)) return { url: link, referer };
+  // Bazi hostlar POST yanitinda dogrudan yayin degil, ikinci bir oynatici
+  // adresi dondurur (/player/, /video/, /embed/). O katman da cozulur.
+  if (/\/(?:player|video|embed)\//i.test(link) && link !== url) {
+    const ic = await extractEmbedStream(link, referer, new Set(), 0).catch(() => null);
+    if (ic && MEDIA_EXT.test(ic.url)) return { ...ic, via: `${ic.via}+secured` };
+    return { url: link, referer, isIframe: true };
+  }
+  return null;
 }
 
 /** 4b. videoUrl + videoServer — SetPlay / ExPlay / FastPlay ailesi */
@@ -374,16 +410,26 @@ async function kalipPackedJs(html, baseUrl, ref) {
 }
 
 /** 4e. bePlayer — AES şifreli yapılandırma */
-async function kalipBePlayer(url, ref) {
-  const html = await getHtml(url, { ref, timeout: 16000 });
+async function kalipBePlayer(url, ref, providedHtml = '') {
+  const html = providedHtml || await getHtml(url, { ref, timeout: 16000 });
   if (!html) return null;
-  const m = html.match(/bePlayer\(\s*['"]([^'"]+)['"]\s*,\s*['"](\{[\s\S]{0,4000}?\})['"]\s*\)/);
+  const m = html.match(/bePlayer\(\s*['"]([^'"]+)['"]\s*,\s*['"](\{[\s\S]{0,4000}?\})['"]\s*(?:,|\))/);
   if (!m) return null;
 
   let cozuk = '';
   try {
     const ham = JSON.parse(m[2].replace(/\\\//g, '/'));
-    const k = ham.k || ham.key, iv = ham.iv, veri = ham.cipher || ham.data || ham.s;
+    if (ham.ct && ham.s) {
+      const formatter = {
+        parse: () => CryptoJS.lib.CipherParams.create({
+          ciphertext: CryptoJS.enc.Base64.parse(ham.ct),
+          salt: CryptoJS.enc.Hex.parse(ham.s),
+          ...(ham.iv ? { iv: CryptoJS.enc.Hex.parse(ham.iv) } : {}),
+        })
+      };
+      cozuk = CryptoJS.AES.decrypt(m[2], m[1], { format: formatter }).toString(CryptoJS.enc.Utf8);
+    }
+    const k = ham.k || ham.key, iv = ham.iv, veri = ham.cipher || ham.data;
     if (k && iv && veri) {
       const anahtar = await crypto.subtle.importKey(
         'raw', Uint8Array.from(atob(k), (c) => c.charCodeAt(0)), { name: 'AES-CBC' }, false, ['decrypt']);
@@ -397,9 +443,27 @@ async function kalipBePlayer(url, ref) {
   const hamUrl = cozuk
     ? (cozuk.match(/"video_location"\s*:\s*"([^"]+)"/i) || cozuk.match(/"file"\s*:\s*"([^"]+)"/i) || [])[1]
     : (html.match(/"video_location"\s*:\s*"([^"]+)"/i) || [])[1];
-  if (!hamUrl) return null;
-  const abs = mutlak(url, temizle(hamUrl));
-  return MEDIA_EXT.test(abs) ? { url: abs, referer: ref || url, subtitles: altyazilariCikar(html, url) } : null;
+  // MixPlayHD kalıbı: video_location schedule.client içinde gömülü.
+  // NOT: burada değişken adı hamUrl'dir; önceki sürümde tanımsız bir
+  // 'bulunan' adı kullanılıyordu ve ReferenceError ile tüm kalıp çöküyordu.
+  let icUrl = hamUrl;
+  if (!icUrl && cozuk) {
+    const ic = cozuk.match(/"schedule"\s*:\s*\{[\s\S]{0,2000}?"client"\s*:\s*"((?:[^"\\]|\\.)*)"/i);
+    if (ic) {
+      const temiz = ic[1].replace(/\\\//g, '/').replace(/\\"/g, '"');
+      icUrl = (temiz.match(/"video_location"\s*:\s*"([^"]+)"/i) || [])[1] || '';
+    }
+  }
+  if (!icUrl) return null;
+  const abs = mutlak(url, temizle(icUrl));
+  let subtitles = altyazilariCikar(html, url);
+  try {
+    const config = JSON.parse(cozuk);
+    if (Array.isArray(config.strSubtitles)) subtitles = config.strSubtitles.filter(track => track.file).map(track => ({
+      label: track.label || track.language || 'Altyazı', src: mutlak(url, track.file)
+    }));
+  } catch (_) {}
+  return MEDIA_EXT.test(abs) ? { url: abs, referer: ref || url, subtitles } : null;
 }
 
 /** 4f. Nonce + şifreli kaynak — MegaCloud / Videostr ailesi */
@@ -413,7 +477,13 @@ function nonceBul(html) {
     html.match(/_lk_db\s*=\s*\{\s*x:\s*["']([A-Za-z0-9]{16})["']\s*,\s*y:\s*["']([A-Za-z0-9]{16})["']\s*,\s*z:\s*["']([A-Za-z0-9]{16})["']/);
   if (Array.isArray(dogrudan)) return dogrudan[1] + dogrudan[2] + dogrudan[3];
   if (dogrudan) return dogrudan;
-  return html.match(/\b[a-zA-Z0-9]{48}\b/)?.[0] || '';
+  const kirkyedi = html.match(/\b[a-zA-Z0-9]{48}\b/)?.[0];
+  if (kirkyedi) return kirkyedi;
+  // 5. analyitik/reklam tokenları öne gelir; gerçek nonce parçaları sondadır.
+  //    O yüzden 16'lık parçalardan SON 3'ü alınır.
+  const parcalar = html.match(/\b([A-Za-z0-9]{16})\b/g) || [];
+  if (parcalar.length >= 3) return parcalar[parcalar.length - 3] + parcalar[parcalar.length - 2] + parcalar[parcalar.length - 1];
+  return '';
 }
 
 async function kalipNonce(url, ref) {
@@ -464,6 +534,20 @@ function altyazilariCikar(html, base) {
   // JSON track dizisi
   for (const m of html.matchAll(/"kind"\s*:\s*"(?:captions|subtitles)"[\s\S]{0,140}?"file"\s*:\s*"([^"]+)"[\s\S]{0,140}?"label"\s*:\s*"([^"]*)"/gi)) ekle(m[2] || 'Altyazı', m[1]);
   for (const m of html.matchAll(/"label"\s*:\s*"([^"]+)"[\s\S]{0,90}?"file"\s*:\s*"([^"]+\.vtt[^"]*)"/gi)) ekle(m[1], m[2]);
+  // Dil yedeği: tüm etiketler aynıysa ya da "Unknown"/boşsa (API hatası),
+  // dosya adından dil kodu çıkar (ör. 'tur-29.vtt' → Türkçe).
+  const DIL = { tur: 'Türkçe', tr: 'Türkçe', eng: 'English', en: 'English', ara: 'Arabic', rus: 'Russian', ger: 'German', fre: 'French', spa: 'Spanish', ita: 'Italian', por: 'Portuguese', chi: 'Chinese', jpn: 'Japanese', kor: 'Korean', hin: 'Hindi', per: 'Persian', dut: 'Dutch', pol: 'Polish', ukr: 'Ukrainian', swe: 'Swedish', nor: 'Norwegian', dan: 'Danish', fin: 'Finnish', gre: 'Greek', heb: 'Hebrew', tha: 'Thai', vie: 'Vietnamese', ind: 'Indonesian', mal: 'Malay', ces: 'Czech', hrv: 'Croatian', srp: 'Serbian', slv: 'Slovenian', ron: 'Romanian', hun: 'Hungarian', bul: 'Bulgarian' };
+  if (cikan.length > 1) {
+    const etiketler = new Set(cikan.map((c) => (c.label || '').toLowerCase()));
+    const hepsiAyni = etiketler.size <= 1;
+    const hepsiBozuk = [...etiketler].every((e) => !e || e === 'unknown' || e === 'altyazı');
+    if (hepsiAyni || hepsiBozuk) {
+      for (const c of cikan) {
+        const m = String(c.src).match(/\/([a-z]{2,3})-\d+\.vtt/i);
+        if (m && DIL[m[1].toLowerCase()]) c.label = DIL[m[1].toLowerCase()];
+      }
+    }
+  }
   return cikan;
 }
 
@@ -549,7 +633,7 @@ function lazyCoz(html, base) {
  * @param {string} referer      sitenin adresi (gerekli: birçok oynatıcı bunu doğrular)
  * @param {Set}    gordum       daha önce denenen adresler (döngü koruması)
  */
-export async function extractEmbedStream(url, referer = '', gordum = new Set(), bitis = 0) {
+export async function extractEmbedStream(url, referer = '', gordum = new Set(), bitis = 0, providedHtml = '') {
   if (!url || !/^https?:\/\//i.test(url)) return null;
   if (gordum.has(url) || gordum.size > 8) return null;
   // Sert süre sınırı: çağıran (otonom çözümleyici / oynatıcı) bekletilmez.
@@ -571,7 +655,7 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set(), 
   }
 
   // ── Ucuz ve kesin olanlar önce
-  const hamHtml = await getHtml(url, { ref, timeout: 16000 });
+  const hamHtml = providedHtml || await getHtml(url, { ref, timeout: 16000 });
   if (!hamHtml) return null;
 
   // ŞİFRELİ OYNATICI: Gerçek oynatıcı HTML'i sayfada düz metin olarak

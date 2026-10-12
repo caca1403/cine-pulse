@@ -53,31 +53,10 @@ function hasClearance(cookieHeader) {
   return /(?:^|;\s*)(cf_clearance|__cf_bm)=/.test(cookieHeader || '');
 }
 
-function solveInIframe(url, timeoutMs = 25000) {
-  // Cross-origin oldugu icin icerik OKUNAMAZ; amac challenge JS'inin
-  // WebView'de kosup cookie birakmasidir. Cozum cookie ile olculur.
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      try { frame.remove(); } catch (_) {}
-      resolve();
-    };
-    const frame = document.createElement('iframe');
-    frame.setAttribute('aria-hidden', 'true');
-    frame.style.cssText = 'position:fixed;width:2px;height:2px;left:-9999px;top:-9999px;visibility:hidden;';
-    const timer = setTimeout(finish, timeoutMs);
-    frame.onload = () => setTimeout(() => { clearTimeout(timer); finish(); }, 6000);
-    frame.onerror = () => { clearTimeout(timer); finish(); };
-    try {
-      document.documentElement.appendChild(frame);
-      frame.src = url;
-    } catch (_) {
-      clearTimeout(timer);
-      finish();
-    }
-  });
+async function solveInWebView(url, timeoutMs = 25000) {
+  const { resolvePageInNativeWebView, looksBlocked } = await import('./androidWebViewResolver.js');
+  const result = await resolvePageInNativeWebView(url, { timeoutMs });
+  return result && !looksBlocked(result) ? result : null;
 }
 
 /**
@@ -105,7 +84,7 @@ export async function ensureChallengeCookies(origin, { timeoutMs = 25000 } = {})
     try {
       let cookies = await readCookies(key + '/');
       if (!hasClearance(cookies)) {
-        await solveInIframe(key + '/', timeoutMs);
+        await solveInWebView(key + '/', timeoutMs);
         // Challenge cozumu + cookie yazimi icin kisa ek bekleme.
         for (let i = 0; i < 6; i++) {
           await new Promise((r) => setTimeout(r, 1000));

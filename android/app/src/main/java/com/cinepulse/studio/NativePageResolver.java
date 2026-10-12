@@ -5,6 +5,12 @@ import android.os.Looper;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import org.json.JSONArray;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ArrayDeque;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -42,39 +48,46 @@ final class NativePageResolver {
     private final MainActivity activity;
     private final Handler main = new Handler(Looper.getMainLooper());
 
+    private final ArrayDeque<Runnable> jobs = new ArrayDeque<>();
+    private boolean busy = false;
     private WebView webView;
     private ViewGroup holder;
     private Runnable pollTask;
-    private int seq = 0;
+    private final List<JSONObject> mediaRequests = Collections.synchronizedList(new ArrayList<JSONObject>());
 
     NativePageResolver(MainActivity activity) {
         this.activity = activity;
     }
 
-    String nextId() {
-        return "cp" + (++seq);
-    }
-
-    void resolve(final String id, final String url, final int timeoutMs, final Callback callback) {
-        main.post(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    start(id, url, timeoutMs <= 0 ? 20000 : timeoutMs, callback);
-                } catch (Throwable error) {
-                    finish();
-                    callback.onResult(id, errorJson(error));
-                }
-            }
+    void resolve(final String id, final String url, final int timeoutMs, final boolean media,
+                 final String userAgent, final Callback callback) {
+        main.post(() -> {
+            jobs.add(() -> {
+                Callback done = (requestId, json) -> {
+                    callback.onResult(requestId, json);
+                    main.post(() -> { finish(); busy = false; drain(); });
+                };
+                try { start(id, url, timeoutMs <= 0 ? 20000 : timeoutMs, media, userAgent, done); }
+                catch (Throwable error) { done.onResult(id, errorJson(error)); }
+            });
+            drain();
         });
     }
 
-    private void start(final String id, final String url, final int timeoutMs, final Callback callback) {
+    private void drain() {
+        if (busy || jobs.isEmpty()) return;
+        busy = true; jobs.remove().run();
+    }
+
+    private void start(final String id, final String url, final int timeoutMs, final boolean media, final String userAgent, final Callback callback) {
         finish();
+        mediaRequests.clear();
 
         WebView view = new WebView(activity);
+        view.setTag(id);
         WebSettings settings = view.getSettings();
         settings.setJavaScriptEnabled(true);
+        if (userAgent != null && !userAgent.isEmpty()) settings.setUserAgentString(userAgent);
         settings.setDomStorageEnabled(true);
         settings.setLoadWithOverviewMode(false);
         settings.setUseWideViewPort(false);
@@ -104,6 +117,22 @@ final class NativePageResolver {
 
         view.setWebViewClient(new WebViewClient() {
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest request) {
+                String candidate = request.getUrl().toString();
+                if (candidate.matches("(?i).*\\.(m3u8|mp4|mpd|mkv|webm)([?#].*)?$")
+                    && !candidate.matches("(?i).*(/ads?/|preroll|vast|doubleclick).*")) {
+                    try {
+                        JSONObject item = new JSONObject(); item.put("url", candidate);
+                        item.put("headers", new JSONObject(request.getRequestHeaders()));
+                        synchronized (mediaRequests) {
+                            if (mediaRequests.size() < 32) mediaRequests.add(item);
+                        }
+                    } catch (Exception ignored) {}
+                }
+                return super.shouldInterceptRequest(v, request);
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
                 return false;
             }
@@ -118,7 +147,7 @@ final class NativePageResolver {
                     @Override
                     public void onSnapshot(String href, String html, String text) {
                         boolean ready = html != null && html.length() > 1500 && !isChallenge(html);
-                        if (ready || System.currentTimeMillis() >= deadline) {
+                        if ((ready && (!media || !mediaRequests.isEmpty())) || System.currentTimeMillis() >= deadline) {
                             deliver(id, url, href, html, text, !ready, callback);
                             return;
                         }
@@ -191,16 +220,10 @@ final class NativePageResolver {
             result.put("text", text == null ? "" : text);
             result.put("cookies", cookieHeader == null ? "" : cookieHeader);
             result.put("challenge", challenge);
+            synchronized (mediaRequests) { result.put("streams", new JSONArray(mediaRequests)); }
             payload = result.toString();
         } catch (Throwable ignored) {}
 
-        // WebView kendi geri cagirmasi icinde yok edilmez; bir sonraki donguye birak.
-        main.post(new Runnable() {
-            @Override
-            public void run() {
-                finish();
-            }
-        });
         callback.onResult(id, payload);
     }
 
@@ -218,6 +241,8 @@ final class NativePageResolver {
             return "{\"ok\":false,\"challenge\":true,\"html\":\"\",\"text\":\"\",\"cookies\":\"\"}";
         }
     }
+
+    void close() { main.post(() -> { jobs.clear(); finish(); }); }
 
     private void finish() {
         try {

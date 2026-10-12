@@ -50,21 +50,21 @@ const SITE_SURUCULERI = [
   // Çözülmüş sağlayıcılardan çıkan aile sunucuları (hepsi aynı API
   // kalıbını kullanıyor: /api/search?q=). Alan adları değişince
   // siteProviders.js içindeki yedek adres güncellenir.
-  { anahtar: 'hdfc', site: 'vidy' },
-  { anahtar: 'hdfc', site: 'hdplayersystem' },
-  { anahtar: 'hdfc', site: 'ksdpictures' },
-  { anahtar: 'hdfc', site: 'pichive' },
-  { anahtar: 'hdfc', site: 'vidload' },
-  { anahtar: 'hdfc', site: 'vixolity' },
-  { anahtar: 'hdfc', site: 'tauvideo' },
-  { anahtar: 'hdfc', site: 'pilavyerplay' },
-  { anahtar: 'hdfc', site: 'nxsha' },
-  { anahtar: 'hdfc', site: 'vidmolyNet' },
-  { anahtar: 'hdfc', site: 'searchPhp' },
-  { anahtar: 'hdfc', site: 'keywordSearch' },
-  { anahtar: 'hdfc', site: 'ajaxSearch' },
-  { anahtar: 'hdfc', site: 'filmDiziList' },
-  { anahtar: 'hdfc', site: 'rplayerVideo' },
+  { anahtar: 'vidy', site: 'vidy' },
+  { anahtar: 'hdps', site: 'hdplayersystem' },
+  { anahtar: 'ksd', site: 'ksdpictures' },
+  { anahtar: 'pichive', site: 'pichive' },
+  { anahtar: 'vidload', site: 'vidload' },
+  { anahtar: 'vixolity', site: 'vixolity' },
+  { anahtar: 'tauvideo', site: 'tauvideo' },
+  { anahtar: 'pilavyer', site: 'pilavyerplay' },
+  { anahtar: 'nxsha', site: 'nxsha' },
+  { anahtar: 'vidmoly', site: 'vidmolyNet' },
+  { anahtar: 'sphp', site: 'searchPhp' },
+  { anahtar: 'kwsearch', site: 'keywordSearch' },
+  { anahtar: 'ajax', site: 'ajaxSearch' },
+  { anahtar: 'filmdizi', site: 'filmDiziList' },
+  { anahtar: 'rplayer', site: 'rplayerVideo' },
   // Patron eklentilerinden kalan ikisi — daha once yapilandirmasi vardi
   // ama TARAMAYA BAGLI DEGILDI (yani hic sorgulanmiyordu).
   { anahtar: 'k666', site: 'film666' },
@@ -86,10 +86,13 @@ import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
 import { fetchDramalarEpisodeSources } from './dramalarScraper.js';
 import './providers/index.js';
 import { getProviders } from './providers/providerRegistry.js';
-import { isPluginEnabled } from './pluginCatalog.js';
+import { isPluginEnabled, PLUGIN_DEFS } from './pluginCatalog.js';
+import { isNativeCapacitor } from './apiOrigin.js';
+import { prepareAndroidSources } from './providerRuntime/playback.js';
+import { recordProviderEvent } from './providerRuntime/diagnostics.js';
 
 // Cache version
-const CACHE_VERSION = 'v43';
+const CACHE_VERSION = 'v44';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -357,6 +360,7 @@ function formatStreamItem(s, category, fallbackName) {
 }
 
 function isValidStream(s) {
+  if (isNativeCapacitor()) return Boolean(s?.streamUrl || s?.url);
   const urlStr = (s.url || s.streamUrl || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
   if (!urlStr || urlStr.length < 8) return false;
 
@@ -551,7 +555,16 @@ export async function getStreamingServersProgressive({
   const seenDubUrls = new Set();
   const seenSubUrls = new Set();
 
+  const sourceJobs = [];
   const addStreams = (rawList, category) => {
+    if (!isNativeCapacitor()) return publishStreams(rawList, category);
+    const job = prepareAndroidSources(rawList, { diagnose: recordProviderEvent })
+      .then(sources => publishStreams(sources, category));
+    sourceJobs.push(job);
+    return job;
+  };
+
+  const publishStreams = (rawList, category) => {
     if (!Array.isArray(rawList) || rawList.length === 0) return [];
     const valid = rawList.filter(isValidStream);
     const added = [];
@@ -585,10 +598,10 @@ export async function getStreamingServersProgressive({
       .find(s => Array.isArray(s.subtitles) && s.subtitles.length > 0)?.subtitles;
 
     if (discoveredSubs && discoveredSubs.length > 0) {
-      for (const s of currentSubtitled) {
+      for (const s of isNativeCapacitor() ? [] : currentSubtitled) {
         if (!Array.isArray(s.subtitles) || s.subtitles.length === 0) s.subtitles = discoveredSubs;
       }
-      for (const s of currentDubbed) {
+      for (const s of isNativeCapacitor() ? [] : currentDubbed) {
         if (!Array.isArray(s.subtitles) || s.subtitles.length === 0) s.subtitles = discoveredSubs;
       }
     }
@@ -635,6 +648,7 @@ export async function getStreamingServersProgressive({
     ];
 
     await Promise.allSettled(dramaTasks);
+    await Promise.allSettled(sourceJobs);
 
     const finalDubbed = currentDubbed.sort((a, b) => getStreamPriorityScore(a) - getStreamPriorityScore(b));
     const finalSubtitled = currentSubtitled.sort((a, b) => getStreamPriorityScore(a) - getStreamPriorityScore(b));
@@ -648,6 +662,46 @@ export async function getStreamingServersProgressive({
 
     onUpdate(payload);
     streamServersCache.set(cacheKey, payload);
+    return payload;
+  }
+
+  if (isNativeCapacitor()) {
+    const [{ listProviderDefinitions }, { runProviderBatch }] = await Promise.all([
+      import('./providerRuntime/inventory.js'), import('./providerRuntime/batch.js')
+    ]);
+    const enriched = await enrichmentTask;
+    if (enriched?.candidateTitles?.length) candidateTitles = enriched.candidateTitles;
+    targetYear = targetYear || enriched?.detectedYear;
+    const mediaType = isMovie ? 'movie' : 'tv';
+    const anime = type === 'anime' || enriched?.isAnimation;
+    const registryState = new Map(getProviders().map(provider => [provider.id, true]));
+    const priority = { dzs: 0, dyu: 1, dizi77: 2, lookmovie: 3, snx: 4, tvr: 5 };
+    const definitions = listProviderDefinitions().filter(provider =>
+      !provider.experimental && !off(provider.id) &&
+      (provider.mediaTypes.includes(mediaType) || anime && provider.mediaTypes.includes('anime')) &&
+      (!PLUGIN_DEFS.find(plugin => plugin.id === provider.id)?.registry || registryState.has(provider.id))
+    ).sort((a, b) => (priority[a.id] ?? 10) - (priority[b.id] ?? 10));
+    await runProviderBatch(definitions, {
+      type: mediaType, title: targetTitle, originalTitle, titles: candidateTitles, year: targetYear,
+      tmdbId, imdbId, season, episode,
+    }, {
+      concurrency: 4, diagnose: recordProviderEvent,
+      onResult: async ({ sources }) => {
+        const prepared = await prepareAndroidSources(sources, { diagnose: recordProviderEvent });
+        publishStreams(prepared.filter(source => source.category === 'dubbed'), 'dubbed');
+        publishStreams(prepared.filter(source => source.category !== 'dubbed'), 'subtitled');
+      }
+    });
+    const payload = {
+      dubbed: [...currentDubbed], subtitled: [...currentSubtitled],
+      totalServers: currentDubbed.length + currentSubtitled.length,
+      isComplete: true, cachedAt: Date.now(), transport: 'android-device',
+    };
+    if (payload.totalServers) {
+      streamServersCache.set(cacheKey, payload);
+      try { sessionStorage.setItem(`cp_streams_${CACHE_VERSION}_${cacheKey}`, JSON.stringify(payload)); } catch (_) {}
+    }
+    onUpdate(payload);
     return payload;
   }
 
@@ -849,7 +903,7 @@ export async function getStreamingServersProgressive({
         tmdbId: String(tmdbId || '').replace(/^[a-z]{2,4}_/, ''),
         mediaType: isMovie ? 'movie' : 'tv', season, episode
       })
-    ))).then(heps => heps.flat().reduce((t, x) => t.concat(addStreams(x, isMovie ? 'dubbed' : 'dubbed')), [])).catch(() => []),
+    ))).then(heps => addStreams(heps.flat().map((source, index) => ({ ...source, id: source.id || `site_${index}`, streamUrl: source.url })), 'dubbed')).catch(() => []),
 
     // 8e. dizi77 (dizi odakli katalog). Yalnizca dizi; film tarafi yok.
     isMovie
@@ -968,27 +1022,11 @@ export async function getStreamingServersProgressive({
     return Promise.allSettled(aliasSearches);
   });
 
-  // Providers are independent of the catalog type. Some upstreams expose a
-  // movie endpoint while others expose the same title through an episode
-  // player, so probe the opposite endpoint as a fallback too. Empty results
-  // are ignored by each scraper and do not delay the rest of the list.
-  const crossTypeTasks = isMovie ? [
-    off('dzb') ? [] : fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
-    off('dzb') ? [] : fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    off('dzs') ? [] : fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    off('kidsvip') ? [] : fetchKidsVipSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    off('jet') ? [] : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => [])
-  ] : [
-    off('dzb') ? [] : fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
-    off('dzb') ? [] : fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    off('dzs') ? [] : fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    off('kidsvip') ? [] : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true }).then(res => addStreams(res, 'dubbed')).catch(() => []),
-    off('kidsvip') ? [] : fetchKidsVipMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    off('hdfb') ? [] : fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-    off('jet') ? [] : fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false }).then(res => addStreams(res, 'subtitled')).catch(() => []),
-  ];
+  // Keep media type and episode identity exact; never return episode 1 for a movie.
+  const crossTypeTasks = [];
 
   await Promise.allSettled([...tasks, ...crossTypeTasks, aliasTask]);
+  await Promise.allSettled(sourceJobs);
 
   // Ensure ALL dubbed and subtitled streams have OpenSubtitles fallback support
   const cleanMediaTitle = targetTitle || originalTitle || '';
@@ -996,7 +1034,7 @@ export async function getStreamingServersProgressive({
     ? `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&title=${encodeURIComponent(cleanMediaTitle)}&type=movie`
     : `/api/subtitles?tmdbId=${tmdbId || ''}&imdbId=${imdbId || ''}&title=${encodeURIComponent(cleanMediaTitle)}&season=${season}&episode=${episode}&type=tv`;
 
-  for (const s of currentDubbed) {
+  for (const s of isNativeCapacitor() ? [] : currentDubbed) {
     if (!Array.isArray(s.subtitles) || s.subtitles.length === 0) {
       s.subtitles = [{ label: 'OpenSubtitles (Türkçe)', src: defaultSubUrl }];
     } else if (!s.subtitles.some(x => (x.label || '').includes('Türkçe') || x.src?.includes('/api/subtitles'))) {
@@ -1004,7 +1042,7 @@ export async function getStreamingServersProgressive({
     }
   }
 
-  for (const s of currentSubtitled) {
+  for (const s of isNativeCapacitor() ? [] : currentSubtitled) {
     if (!Array.isArray(s.subtitles) || s.subtitles.length === 0) {
       s.subtitles = [{ label: 'OpenSubtitles (Türkçe)', src: defaultSubUrl }];
     }

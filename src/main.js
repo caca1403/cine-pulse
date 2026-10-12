@@ -34,7 +34,7 @@ import { initPlatformBridge, isNativeAndroidApp, isNativeAndroid, isAppPlatform,
 
 // Platform Köprüsünü Çalıştır:
 // Ortam tespitine göre Web, Android veya Desktop modüllerini dinamik yükler.
-initPlatformBridge();
+const platformReady = initPlatformBridge();
 
 // Disable browser default scroll jump on SPA hash changes
 if ('scrollRestoration' in history) {
@@ -232,6 +232,7 @@ async function renderRoute() {
 
 // Router Event Listeners
 async function route() {
+  await platformReady;
   const generation = routeGeneration + 1;
   try {
     await renderRoute();

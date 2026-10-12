@@ -255,13 +255,6 @@ def _episode_id_for(series_id, season, episode):
                 continue
             if en_no == e_num and ep.get('id'):
                 return ep['id']
-    # Yedek: ayni sezonun ilk bolumu
-    for sn in _seasons(series_id):
-        try:
-            if int(sn.get('season_no') or 0) == s_num and (sn.get('episodes') or []):
-                return (sn['episodes'][0] or {}).get('id')
-        except Exception:
-            pass
     return None
 
 

@@ -132,7 +132,7 @@ export const SITES = {
     ad: 'Dizify', listeAnahtari: null,
     yedek: ['https://dizify.org/'],
     tur: ['film', 'dizi'],
-    ara: { yontem: 'GET', yol: (q) => `/search?q=${encodeURIComponent(q)}`, tur: () => true },
+    ara: { yontem: 'GET', yol: (q) => `/api/v1/search?q=${encodeURIComponent(q)}`, tur: () => true },
     icerik: (u) => u
   },
 
@@ -318,7 +318,8 @@ export async function siteBaseUrl(siteId) {
   if (!ayar) return '';
 
   // Adres daha önce ölü çıktıysa tekrar denemeyelim (her açılışta 7 sn beklemesin).
-  if (_olu.has(siteId)) return '';
+  if (_olu.has(siteId) && Date.now() - (_sonDeneme.get(siteId) || 0) < 60000) return '';
+  _olu.delete(siteId);
 
   const son = _sonDeneme.get(siteId) || 0;
   if (Date.now() - son < 10 * 60 * 1000) return _base.get(siteId) || ayar.yedek[0];
@@ -474,6 +475,10 @@ export async function siteGetirStreams(siteId, {
 } = {}) {
   const ayar = SITES[siteId];
   if (!ayar) return [];
+  if (siteId === 'dizify') {
+    const { fetchDizifySources } = await import('./dizifyScraper.js');
+    return fetchDizifySources({ title, originalTitle, titles, mediaType, tmdbId, season, episode });
+  }
   const base = await siteBaseUrl(siteId);
   const dizi = mediaType === 'tv' || mediaType === 'series';
 
@@ -538,9 +543,13 @@ export async function siteGetirStreams(siteId, {
   if (!sayfa || engelMi(sayfa)) return [];
 
   const oynaticilar = oynaticilariCikar(sayfa, base);
-  if (!oynaticilar.length) return [];
-
   const kaynaklar = [];
+  const pageMedia = oynaticiCoz(sayfa);
+  if (pageMedia) kaynaklar.push({ name: ayar.ad, url: masterUrlDuzelt(pageMedia.url), referer: icerikUrl, via: `${siteId}:${pageMedia.via}` });
+  if (!oynaticilar.length && !pageMedia) {
+    const extracted = await extractEmbedStream(icerikUrl, base, new Set(), Date.now() + 16000, sayfa).catch(() => null);
+    if (extracted?.url && !extracted.isIframe) kaynaklar.push({ ...extracted, name: ayar.ad });
+  }
   for (const oynatici of oynaticilar) {
     // a) Sayfada gömülü oynatıcı çıktısı (openPlayer, file:av, master.txt…)
     const dogrudan = oynaticiCoz(sayfa);

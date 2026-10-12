@@ -1,19 +1,23 @@
 apply plugin: 'com.android.application'
+apply plugin: 'com.chaquo.python'
 
 def signingStorePath = System.getenv('ANDROID_KEYSTORE_PATH')
 def signingStorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
 def signingKeyAlias = System.getenv('ANDROID_KEY_ALIAS')
 def signingKeyPassword = System.getenv('ANDROID_KEY_PASSWORD')
 
+def releasePackage = new groovy.json.JsonSlurper().parse(file('../../package.json'))
+
 android {
     namespace = "com.cinepulse.studio"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.cinepulse.studio"
+        ndk { abiFilters "arm64-v8a", "armeabi-v7a", "x86_64" }
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 175
-        versionName "1.1.65"
+        versionCode releasePackage.versionCode as int
+        versionName releasePackage.version
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -49,6 +53,7 @@ repositories {
 }
 
 dependencies {
+    implementation 'org.nanohttpd:nanohttpd:2.3.1'
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
@@ -69,4 +74,16 @@ try {
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+// The existing Python providers run inside the APK; no server is required.
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+        if (System.getenv("CINEPULSE_BUILD_PYTHON")) buildPython System.getenv("CINEPULSE_BUILD_PYTHON")
+        pip { install "cryptography==42.0.8" }
+    }
+    sourceSets {
+        getByName("main") { srcDir "../../api" }
+    }
 }

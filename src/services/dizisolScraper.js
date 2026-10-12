@@ -73,6 +73,7 @@ async function fetchDizisolJson(endpoint, options = {}) {
     const res = await fetchDizisolApi(cleanEndpoint, options);
     if (!res) return null;
     const data = await res.json().catch(() => null);
+    if (!data) dizisolCache.delete(cleanEndpoint);
     if (data) {
       dizisolCache.set(cleanEndpoint, { data, timestamp: Date.now() });
     }

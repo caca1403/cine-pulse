@@ -55,7 +55,8 @@ export async function cihazGet(url, { ref = '', headers = {}, timeout = 15000 } 
     'User-Agent': headers['User-Agent'] || headers['user-agent']
       || 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
     Accept: headers.Accept || headers.accept || '*/*',
-    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8'
+    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8',
+    ...headers
   };
   if (ref) h.Referer = ref;
 
@@ -132,15 +133,15 @@ async function gizliWebViewDeneme(url, timeout) {
   // Önce Android'in gizli WebView'i, olmazsa Electron'ın gizli BrowserWindow'ı.
   // İkisi de gerçek tarayıcı motoruyla CF challenge'ını çözer; masaüstünde
   // gizli WebView olmadan bu siteler hiç açılmıyordu.
-  for (const yol of ['./platform/androidWebViewResolver.js', './platform/desktopWebViewResolver.js']) {
+  for (const loader of [() => import('./platform/androidWebViewResolver.js'), () => import('./platform/desktopWebViewResolver.js')]) {
     try {
-      const wv = await import(/* @vite-ignore */ yol);
+      const wv = await loader();
       if (!wv.hasNativeWebViewResolver?.()) continue;
       const hit = await wv.resolvePageInNativeWebView(url, { timeoutMs: zaman });
       if (!hit || wv.looksBlocked?.(hit)) continue;
       const raw = String(hit.text || '').trim();
       const body = (raw.startsWith('{') || raw.startsWith('[')) ? raw : (hit.html || raw);
-      if (body && body.length > 1500) return body;
+      if (body) return body;
     } catch (_) { /* sonraki çözümleyiciye düş */ }
   }
   return '';

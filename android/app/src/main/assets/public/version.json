@@ -1,20 +1,20 @@
 {
-  "version": "1.1.65",
-  "versionCode": 175,
+  "version": "1.1.66",
+  "versionCode": 176,
   "releaseDate": "2026-10-12",
-  "title": "CinePulse v1.1.65",
+  "title": "CinePulse v1.1.66",
   "releaseNotes": "Masaustunde artik gizli tarayici penceresi calisiyor. Bazi kaynaklar kendini bir guvenlik kontroluyle koruyor; bu kontrolu yalnizca gercek bir tarayici motoru calistirabilir. Daha once yalnizca Android'de vardi, masaustunde hic devreye girmiyordu; simdi hem APK'da hem EXE/DEB'de calisiyor ve kendi aginizi kullanir (sunucu uzerinden degil). 21 yeni kaynak eklendi; alan adlari otomatik takip ediliyor, site adresini degistirdiginde uygulama kendiliginden yenisine geciyor. Aramalar IMDb numarasiyla yapiliyor, boylece Ingilizce basliklar da dogru icerige denk geliyor. Olu site adresleri artik sessizce bos liste dondurmuyor: her acilista adres denetleniyor, erisilemeyen adres atlanip nedeni kaydediliyor. Cozumleme yontemleri genisletildi: sikistirilmis oynatici kodu, sifreli sayfa icerigi, FirePlayer/openPlayer/videoPlayerData gomulu verileri, Turkce ses ve altyazi hatlari, kalite etiketi (4K/2K/1080p/720p/480p). Duzeltmeler: sayfadaki dogrudan medya taramasi bir yazim hatasi yuzunden hic calismiyordu; sikistirilmis kodu acma islemi ilk kelimeyi yanlis cozuyordu; site aramasi yapan kaynaklar masaustu surumde hic sorgu gondermiyordu; bir yayin adresi bicimi yanlis dosya adiyla araniyordu.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/cinepulse.apk",
-  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/CinePulse-Setup-1.1.65.exe",
-  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/CinePulse-1.1.65.AppImage",
-  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/CinePulse-1.1.65.deb",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.66/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.66/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.66/CinePulse-Setup-1.1.66.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.66/CinePulse-1.1.66.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.66/CinePulse-1.1.66.deb",
   "desktop": {
-    "version": "1.1.65",
-    "versionCode": 175,
-    "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/CinePulse-Setup-1.1.65.exe",
-    "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/CinePulse-1.1.65.AppImage",
-    "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.65/CinePulse-1.1.65.deb"
+    "version": "1.1.66",
+    "versionCode": 176,
+    "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.66/CinePulse-Setup-1.1.66.exe",
+    "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.66/CinePulse-1.1.66.AppImage",
+    "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.66/CinePulse-1.1.66.deb"
   },
   "mandatory": false
 }

@@ -79,9 +79,11 @@ function aliasOf(def) {
   if (ALIASES[def.id]) return ALIASES[def.id];
   try {
     const fam = SOURCE_FAMILIES.find((f) => f.prefixes.some((p) => p.startsWith(`${def.id}_`) || def.id.startsWith(p.replace(/_$/, ''))));
-    if (fam && fam.alias !== 'Nexus') return fam.alias;
+    // 'Nexus' yedek etiketi kaldırıldı: bilinmeyen kaynaklar artık
+    // sağlayıcı adıyla (yoksa eklenti kimliğiyle) görünüyor.
+    if (fam && fam.alias) return fam.alias;
   } catch (_) {}
-  return 'Nexus';
+  return registryProviderName(def) || def.id;
 }
 
 function registryProviderName(def) {

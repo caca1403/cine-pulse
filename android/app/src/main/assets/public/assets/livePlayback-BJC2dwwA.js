@@ -1,0 +1,1 @@
+function d({video:o,hls:e,mpegts:t,frames:a=[]}){for(const c of[()=>e?.stopLoad(),()=>e?.detachMedia(),()=>e?.destroy(),()=>t?.destroy(),()=>o?.pause(),()=>o?.removeAttribute("src"),()=>o?.load(),...Array.from(a,r=>()=>{r.remove()})])try{c()}catch{}}export{d as disposeLiveMedia};

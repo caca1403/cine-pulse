@@ -8,24 +8,22 @@ import { initAppUpdater } from '../appUpdater.js';
 export async function initAndroidPlatform() {
   console.log('[Platform] Native Android (Capacitor) ortamı etkinleştirildi.');
 
-  // 1. Native API Fetch Origin Yönlendirmesi
-  // APK ortamında Capacitor WebView https://localhost çalıştığından
-  // göreceli /api isteklerinin Vercel sunucusuna yönlendirilmesi gerekir.
-  const nativeFetch = window.fetch.bind(window);
-  const apiOrigin = 'https://cine-pulse-drab.vercel.app';
-  window.fetch = (input, init) => {
-    if (typeof input === 'string' && input.startsWith('/api/')) {
-      input = `${apiOrigin}${input}`;
-    } else if (input instanceof URL && input.origin === window.location.origin && input.pathname.startsWith('/api/')) {
-      input = `${apiOrigin}${input.pathname}${input.search}${input.hash}`;
-    } else if (typeof Request !== 'undefined' && input instanceof Request) {
-      const url = new URL(input.url);
-      if (url.origin === window.location.origin && url.pathname.startsWith('/api/')) {
-        input = new Request(`${apiOrigin}${url.pathname}${url.search}${url.hash}`, input);
-      }
+  // API ve medya istekleri cihazdaki gateway'e gider.
+  // Geçit henüz hazır değilse 10 sn boyunca tekrar dene; asla
+  // transportsuz devam etme (o zaman Vercel'e düşme riski var).
+  const { installAndroidTransport } = await import('./androidTransport.js');
+  let sonHata = null;
+  for (let i = 0; i < 20; i++) {
+    try {
+      installAndroidTransport();
+      sonHata = null;
+      break;
+    } catch (e) {
+      sonHata = e;
+      await new Promise((r) => setTimeout(r, 500));
     }
-    return nativeFetch(input, init);
-  };
+  }
+  if (sonHata) throw sonHata;
 
   // 2. Android Donanım Geri Tuşu (Hardware Back-Button) Desteği
   try {

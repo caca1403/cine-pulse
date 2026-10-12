@@ -135,6 +135,8 @@ async function getApiUrl() {
 // HTML siteler için: önce direkt, olmazsa /api/proxy üzerinden çek.
 // Cloudflare'lı siteler backend'siz çalışmaz — bu beklenen davranış.
 export async function fetchHtml(url, referer = '') {
+  const { nativeHttpAktifMi, akilliGet } = await import('../nativeHttp.js');
+  if (nativeHttpAktifMi()) return akilliGet(url, { ref: referer });
   try {
     const direct = await fetch(url, {
       headers: {
