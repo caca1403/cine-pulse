@@ -1,4 +1,4 @@
-## CinePulse v1.1.67
+## CinePulse v1.1.68
 
 - **Güncelleme uyarısı düzeltildi.** Aynı sürüm kuruluysa artık uyarı gelmiyor. Daha önce sürüm kodu yanlış hesaplandığı için güncel uygulamada bile sürekli "güncelle" bildirimi çıkıyordu.
 - **Yeni kaynaklar taramaya bağlandı.** Yapılandırması olup hiç sorgulanmayan kaynaklar artık gerçekten çalışıyor; menüden açılıp kapatılabiliyorlar.
@@ -10,4 +10,4 @@
 
 Yayınların erişilebilirliği kaynağa ve platforma bağlıdır. Bazı kaynaklar yalnızca Android'de açılır: bunlar tarayıcı motoru gerektiren bir güvenlik kontrolü kullanır.
 
-- **Doğrudan yayın her zaman önce.** Sağlayıcı ne olursa olsun bizim oynatıcıyla açılan yayın, gömülü oynatıcıdan önce seçilir. Çözülebilen adres artık afişte takılıp kalmıyor.
+- **Engel sayfası artık zinciri kırmıyor.** Korumalı sitelerde güvenlik sayfası gelse bile uygulama onu içerik sanıp boş liste döndürmüyor; gizli tarayıcı penceresi devreye girip sayfayı gerçekten açıyor. Bu yüzden daha fazla kaynak listede görünüyor.

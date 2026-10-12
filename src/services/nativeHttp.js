@@ -147,16 +147,37 @@ async function gizliWebViewDeneme(url, timeout) {
   return '';
 }
 
+/**
+ * Yanıt Cloudflare engel sayfası mı?
+ * ÖNEMLİ: JSON API yanıtları (vidlink, TMDB) HTML değildir — onlara
+ * dokunulmaz. Yalnızca HTML görünümlü kısa engel sayfaları elenir.
+ */
+export function engelSayfaMi(metin) {
+  const t = String(metin || '');
+  if (!t) return true;
+  const bas = t.slice(0, 300).trimStart().toLowerCase();
+  // JSON / m3u8 / düz metin API yanıtı — engel değildir
+  if (bas.startsWith('{') || bas.startsWith('[') || bas.startsWith('#extm3u')) return false;
+  if (t.length > 60000 && !/just a moment|attention required|cf-browser-verification|checking your browser/i.test(t.slice(0, 8000))) return false;
+  const ilk = t.slice(0, 8000).toLowerCase();
+  return ilk.includes('just a moment') || ilk.includes('attention required')
+      || ilk.includes('cf-browser-verification') || ilk.includes('checking your browser')
+      || ilk.includes('enable javascript and cookies');
+}
+
 export async function akilliGet(url, { ref = '', timeout = 15000, yedekCek = null, headers = {} } = {}) {
   // 1) Android: cihazın kendi IP'sinden (CapacitorHttp)
   if (nativeAndroidMi()) {
     const r = await cihazGet(url, { ref, timeout, headers });
-    if (r.ok && r.text) return r.text;
+    // Engel sayfası gelse bile BAŞARILI sayılmaz: zincir devam eder ve
+    // gizli WebView challenge'ı çözer. Önceden challenge HTML'i geçerli
+    // içerik gibi dönülüyor, arayan katman boş sonuç üretiyordu.
+    if (r.ok && r.text && !engelSayfaMi(r.text)) return r.text;
   }
 
   // 2) Doğrudan istek (masaüstü/web: kullanıcının kendi IP'si)
   const dogrudan = await duzGet(url, { ref, timeout, headers });
-  if (dogrudan) return dogrudan;
+  if (dogrudan && !engelSayfaMi(dogrudan)) return dogrudan;
 
   // 3) GİZLİ WEBVIEW — Cloudflare JS challenge için gerçek tarayıcı motoru.
   //    Önceden sadece `yedekCek` verildiğinde deniyordu; çağıranların
@@ -208,7 +229,7 @@ async function duzPost(url, body, { ref, timeout }) {
 export async function akilliPost(url, body, { ref = '', timeout = 15000, yedekCek = null } = {}) {
   if (nativeAndroidMi()) {
     const r = await cihazPost(url, body, { ref, timeout });
-    if (r.ok && r.text) return r.text;
+    if (r.ok && r.text && !engelSayfaMi(r.text)) return r.text;
   }
   if (typeof yedekCek === 'function') {
     try {

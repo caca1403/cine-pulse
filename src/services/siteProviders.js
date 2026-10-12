@@ -411,6 +411,9 @@ async function siteAra(siteId, terim) {
     timeout: 9000
   });
   if (!ham) return [];
+  // Engel sayfası gelirse bağlantı çıkarmaya çalışma (challenge HTML'inde
+  // sahte href'ler olur, yanlış içerik bulunur).
+  if (/just a moment|attention required|cf-browser-verification|checking your browser/i.test(String(ham).slice(0, 8000))) return [];
 
   const bulunanlar = [];
   const ekle = (baslik, yol) => {

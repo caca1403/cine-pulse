@@ -1,4 +1,4 @@
-import{r as E,s as x}from"./index-wG0yqnC1.js";import{l as k,s as L}from"./pluginCatalog-Chc0S2YH.js";import"./vendor-capacitor-DGWR5Llo.js";let s=null,d=null;const l=i=>String(i??"").replace(/[&<>"']/g,a=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[a]),C=`
+import{r as E,s as x}from"./index-Cm_GEomR.js";import{l as k,s as L}from"./pluginCatalog-DEhbPolT.js";import"./vendor-capacitor-DGWR5Llo.js";let s=null,d=null;const l=i=>String(i??"").replace(/[&<>"']/g,a=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[a]),C=`
 .plugins-modal-overlay{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;background:rgba(2,6,16,.72);backdrop-filter:blur(10px);padding:1rem;}
 .plugins-modal-card{width:min(640px,100%);max-height:min(82vh,760px);display:flex;flex-direction:column;overflow:hidden;border-radius:20px;background:linear-gradient(160deg,#141a2b,#0b0f1c);border:1px solid rgba(255,255,255,.1);color:#eef2ff;}
 .plugins-modal-head{display:flex;justify-content:space-between;gap:1rem;padding:1.2rem 1.3rem .8rem;}
