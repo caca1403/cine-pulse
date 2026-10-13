@@ -595,6 +595,18 @@ export async function getStreamingServersProgressive({
         return medya;
       });
       if (!rawIncoming.length) return [];
+      // Betelgeuse sources are verified upstream but their media hosts reject
+      // browser playback (the HTML video request cannot carry the provider's
+      // Referer/User-Agent). Keep discovery in the browser, route only its
+      // direct media through our same-origin Range-capable proxy.
+      rawIncoming = rawIncoming.map(raw => {
+        if (!String(raw.id || '').startsWith('d4kh_')) return raw;
+        const target = String(raw.streamUrl || raw.url || '');
+        if (!/^https?:\/\//i.test(target) || /\/api\/proxy(?:\?|$)/i.test(target)) return raw;
+        const ref = raw.headers?.Referer || raw.headers?.referer || '';
+        const proxy = `/api/proxy?url=${encodeURIComponent(target)}&ref=${encodeURIComponent(ref)}`;
+        return { ...raw, streamUrl: proxy, url: proxy, isDirectVideo: true };
+      });
     }
     const valid = rawIncoming.filter(isValidStream);
     const added = [];
