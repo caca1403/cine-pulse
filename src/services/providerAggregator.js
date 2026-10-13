@@ -574,6 +574,9 @@ export async function getStreamingServersProgressive({
    *  yayın yok"). Doğrudan medya adresli (m3u8/mp4) "embed" tipi korunur. */
   const webTarayici = !isNativeCapacitor() && typeof window !== 'undefined' &&
     !(window.CinePulseDesktop?.isDesktop === true || (navigator.userAgent || '').includes('CinePulseDesktop'));
+  /** Gömülü oynatıcı sitelerinin adresleri web'de oynatılamaz (tarayıcı
+   *  iframe'i bizde yasak) — sağlayıcı bayraklamasa da listeye girmesin. */
+  const GOMULU_OYNATICI = /^(?:(?:www\.)?vidmoly\.(?:biz|to|net)|ok\.ru|drive\.google\.com|(?:www\.)?vidthehd\.club|vidsrc(?:xyz)?\.|2embed\.|mixdrop\.|dood\.(?:to|la|ws|sh)|streamtape\.|upstream\.to|filemoon\.|vidshare\.|vidup\.|vkmcd\.|vidhide\.(?:pro|to|biz))(?::\d+)?\//i;
 
   /** Bir yayını iki dil listesine de yazar: çift dilli (dual) yayınlar hem
    *  dublaj hem altyazı sekmesinde görünür — tek dilde kaybolmaz. */
@@ -583,9 +586,13 @@ export async function getStreamingServersProgressive({
     if (webTarayici) {
       rawIncoming = rawList.filter(raw => {
         if (!raw) return false;
-        if (!(raw.isIframe || raw.type === 'embed')) return true;
         const u = String(raw.streamUrl || raw.url || (typeof raw.getUrl === 'function' ? raw.getUrl() : '') || '');
-        return /\.(m3u8|mp4|mkv|webm|m4s|mpd)(\?|#|$)/i.test(u) || /\/api\/(?:hls_proxy|mkv_stream|stream_proxy)[?#]/i.test(u);
+        const medya = /\.(m3u8|mp4|mkv|webm|m4s|mpd)(\?|#|$)/i.test(u) || /\/api\/(?:hls_proxy|mkv_stream|stream_proxy)[?#]/i.test(u);
+        let host = '';
+        try { host = new URL(u, 'https://x.invalid').hostname; } catch (_) {}
+        if (!medya && host && GOMULU_OYNATICI.test(host + '/')) return false;
+        if (!(raw.isIframe || raw.type === 'embed')) return true;
+        return medya;
       });
       if (!rawIncoming.length) return [];
     }
@@ -815,8 +822,12 @@ export async function getStreamingServersProgressive({
 
     // 8h. Coklu site surucusu (HDFilmCehennemi / SelcukFlix / SetFilm /
     // FilmEkseni). Her biri kendi eklenti anahtariyla kontrol edilir.
+    // TEMIZ_IDLER korumasi: temiz saglayicisi olan yildizlar (Orion, Lyra,
+    // Vela, Sirius, Betelgeuse, Muhlif, Aquila) KAYIT'tan tek sefer sorgulanir;
+    // surucu ayni siteye ikinci kez vururdu (Vercel + site limiti israfi —
+    // inventory.js "tek kayit defteri" kuralinin web karsiligi).
     Promise.all(SITE_SURUCULERI.map(({ anahtar, site }) => (
-      off(anahtar) ? [] : siteListesi(site, {
+      off(anahtar) || TEMIZ_IDLER.has(anahtar) ? [] : siteListesi(site, {
         title: targetTitle, originalTitle, titles: candidateTitles, imdbId,
         tmdbId: String(tmdbId || '').replace(/^[a-z]{2,4}_/, ''),
         mediaType: isMovie ? 'movie' : 'tv', season, episode
