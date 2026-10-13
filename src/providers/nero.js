@@ -153,7 +153,11 @@ async function pvCoz(host, slug, ref, { trace, t0, signal } = {}) {
   let kalite = '';
   if (Date.now() - t0 < HEDEF) {
     // master içeriği hem canlılık kanıtı hem kalite kaynağı (ucuz tek GET)
+    // Yoklama YAPILDIysa kanıt şart: boş dönen (zaman aşımı/engel/hata) ya da
+    // oynatma listesi olmayan yanıt = ölü yayın → kaynak listelenmez.
+    // (Bütçe yetmediği için yoklama ATLANIRSA davranış aynen korunur.)
     const master = await istek(url, { ref: `${host}/`, headers, timeout: 6000, trace, webView: false, signal });
+    if (!master || !/#EXTM3U/i.test(master)) return null;
     kalite = kaliteBul(master);
   }
   return { slug, url, host, headers, altyazilar, kalite };

@@ -6,17 +6,39 @@
    ========================================================================== */
 import { listProviderDefinitions } from '../services/providerRuntime/inventory.js';
 import { runProviderBatch } from '../services/providerRuntime/batch.js';
-import { isPluginEnabled } from '../services/pluginCatalog.js';
+import { isPluginEnabled, getPluginDisplay } from '../services/pluginCatalog.js';
+import { probeStream } from '../services/providerRuntime/probe.js';
 
 const KAYITLAR = [];
 
 export function kurSweep() {
   window.__cpSweepKayitlar = () => KAYITLAR;
+  window.__cpProviders = () => listProviderDefinitions().map(p => ({ id: p.id, name: getPluginDisplay(p).alias, mediaTypes: p.mediaTypes, enabled: isPluginEnabled(p.id), experimental: Boolean(p.experimental) }));
 
   /** TEK sağlayıcıyı iz (trace) ile çöz. Kaynak: tek kayıt defteri KAYIT
    *  (id ile `hdfc`/`slc`… ya da kod adıyla `orion`/`lyra`…). Burada elle
    *  tutulan ikinci liste, dosya silinince build'i kırmıştı. */
   window.__cpSag = async (id, args = {}) => {
+    // Ölçüm kancası: yeni çağrı öncekini İPTAL eder (yarım kalan işler kuyruğu
+    // işgal edip sonraki sağlayıcıları blokuyordu) ve akış boyunca CANLI durum
+    // tutar — zaman aşımında bile o ana kadar gelen kaynaklar görülür.
+    if (window.__cpSagCtl) { try { window.__cpSagCtl.abort(); } catch (_) {} }
+    const ctl = new AbortController();
+    window.__cpSagCtl = ctl;
+    const iptal = AbortSignal && AbortSignal.any
+      ? AbortSignal.any([ctl.signal, args.signal].filter(Boolean))
+      : (args.signal || ctl.signal);
+    window.__cpSagCanli = { id, n: 0, t: Date.now() };
+    let canliToplam = 0;
+    const canliSar = (def) => ({ ...def, async resolve(input) {
+      const ust = input.onSources;
+      return def.resolve({ ...input, onSources: (liste) => {
+        canliToplam += (liste || []).length;
+        window.__cpSagCanli = { id, n: canliToplam, t: Date.now(),
+          ornek: (liste || []).slice(0, 2).map((s) => ({ ad: s.displayName || s.name, u: String(s.streamUrl || s.url || '').slice(0, 90) })) };
+        ust?.(liste);
+      } });
+    } });
     const { KAYIT } = await import('../providers/index.js');
     let yukle = KAYIT[id];
     if (!yukle) {
@@ -25,15 +47,39 @@ export function kurSweep() {
         if (mod && String(mod.default?.name || '').toLowerCase() === String(id).toLowerCase()) { yukle = fn; break; }
       }
     }
-    if (!yukle) return { hata: `bilinmeyen saglayici: ${id}`, kayitli: Object.keys(KAYIT) };
+    const adapter = listProviderDefinitions().find(p => p.id === id || getPluginDisplay(p).alias.toLowerCase() === String(id).toLowerCase());
+    if (!yukle && !adapter) return { hata: `bilinmeyen saglayici: ${id}`, kayitli: listProviderDefinitions().map(p => p.id) };
     const t0 = Date.now();
     try {
-      const m = await yukle();
-      if (typeof m.coz !== 'function') return { hata: 'coz yok' };
-      const r = await m.coz(args);
-      return { id, ms: Date.now() - t0, n: (r.sources || []).length,
-        kaynaklar: (r.sources || []).map((s) => ({ ad: s.displayName, url: String(s.streamUrl || '').slice(0, 130), kat: s.category, hls: !!s.isHls, iframe: !!s.isIframe, altyazi: (s.subtitles || []).length })),
-        iz: r.trace || [], iframe: r.iframe || '' };
+      let trace = [];
+      const module = yukle ? await yukle() : null;
+      const definition = module && typeof module.coz === 'function' ? {
+        id,
+        async resolve(input) {
+          const r = await module.coz(input);
+          trace = r.trace || [];
+          return r.sources || [];
+        },
+      } : adapter;
+      if (!definition) return { hata: 'coz yok' };
+      const events = [];
+      const [result] = await runProviderBatch([canliSar(definition)], args, {
+        timeoutMs: Math.min(30000, Math.max(1000, Number(args.timeoutMs) || 30000)),
+        signal: iptal,
+        diagnose: e => events.push(e),
+      });
+      const sources = result?.sources || [];
+      const probes = [];
+      if (args.probe) {
+        for (const source of sources.slice(0, 2)) {
+          probes.push({ id: source.id, ...await probeStream(source, { timeoutMs: 6000 }) });
+        }
+      }
+      let diagnostics = null;
+      if ((adapter?.id || id) === 'tvr') diagnostics = { ...(await import('../services/rectvService.js')).rectvTani };
+      return { id, ms: Date.now() - t0, n: sources.length, hata: result?.error || null, iptal: iptal.aborted,
+        kaynaklar: sources.map((s) => ({ ad: s.displayName, url: String(s.streamUrl || '').slice(0, 130), kat: s.category, hls: !!s.isHls, iframe: !!s.isIframe, altyazi: (s.subtitles || []).length })),
+        iz: trace, olaylar: events, probes, diagnostics };
     } catch (e) {
       return { id, ms: Date.now() - t0, hata: String(e && e.stack || e).slice(0, 300) };
     }

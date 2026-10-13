@@ -169,7 +169,9 @@ function sunucular(ham) {
       || (typeof s.streamUrl === 'string' && medyaMi(s.streamUrl))
       || (typeof s.src === 'string' && medyaMi(s.src));
     if (!canli || s.notice) continue; // notice:'copyright' → ölü hane
-    const anahtar = String(s.embedId || s.resolveUrl || s.src || s.streamUrl || '');
+    // metaUrl DA anahtardır: hdfc ailesi yalnız {type, metaUrl} taşır; anahtarda
+    // olmayınca boş dizeye düşüp (canli olduğu halde) eleniyordu.
+    const anahtar = String(s.embedId || s.resolveUrl || s.metaUrl || s.src || s.streamUrl || '');
     if (!anahtar || gorulen.has(anahtar)) continue;
     gorulen.add(anahtar);
     const d = String(s.lang || s.dil || '').toLowerCase();

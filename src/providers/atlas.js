@@ -43,7 +43,8 @@ function cevir(ham, gorulen) {
 export async function coz({ type = 'movie', title = '', originalTitle = '', titles = [], season = 1, episode = 1, tmdbId = null, imdbId = null, signal = null } = {}) {
   const trace = izleyici();
   const s = +season || 1, e = +episode || 1;
-  const ortak = { title: title || originalTitle, originalTitle, titles, tmdbId, imdbId, season: s, episode: e };
+  // İptal sinyali kabul ediyorsak ALT kazıyıcıya da geçir (iptal yayılımı).
+  const ortak = { title: title || originalTitle, originalTitle, titles, tmdbId, imdbId, season: s, episode: e, signal };
   let ham = [];
   try {
     ham = type === 'movie'

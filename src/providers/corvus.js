@@ -17,7 +17,7 @@ export async function coz({ type = 'tv', title = '', originalTitle = '', titles 
   const adaylar = [...new Set([title, originalTitle, ...titles].filter(Boolean))];
   let ham = [];
   try {
-    ham = await fetchDizi77Sources({ titles: adaylar, title: adaylar[0] || '', season: s, episode: e });
+    ham = await fetchDizi77Sources({ titles: adaylar, title: adaylar[0] || '', season: s, episode: e, signal });
   } catch (err) {
     trace.koy('hata', { mesaj: String(err).slice(0, 120) });
   }

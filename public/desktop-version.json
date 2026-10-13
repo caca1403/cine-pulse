@@ -1,13 +1,13 @@
 {
-  "version": "1.1.71",
-  "versionCode": 181,
+  "version": "1.1.72",
+  "versionCode": 182,
   "releaseDate": "2026-10-13",
-  "title": "CinePulse v1.1.71",
+  "title": "CinePulse v1.1.72",
   "releaseNotes": "Oynatici: kaynak degisiminde/durdurmada eski yayinin sesi bir kac saniye surukleniyordu — eski akis artik aninda serakiliyor. Web: Betelgeuse yildizinin yayinlari ayni-kok, aralik destekli vekilden geciyor; listede gorunup 0:00da takilma sinifi hatasi giderildi. Kaynak adlandirmasi ve gizlilik ayni: yalniz kod adi.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.71/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.71/cinepulse.apk",
-  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.71/CinePulse-Setup-1.1.71.exe",
-  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.71/CinePulse-1.1.71.AppImage",
-  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.71/CinePulse-1.1.71.deb",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.72/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.72/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.72/CinePulse-Setup-1.1.72.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.72/CinePulse-1.1.72.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.72/CinePulse-1.1.72.deb",
   "mandatory": false
 }

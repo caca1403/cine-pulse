@@ -9,6 +9,9 @@
         güncel derleme numarasına eşit olmasını ister (aksi halde
         invalid_version / invalid_signature).
    Bu sürücü ikisini de kendisi çözer; ad önbelleğe alınır (10 dk).
+    Dönen alan adı kapandığında (TLS el sıkışmasında ECONNRESET) apiIstek()
+    AYNI imza ve AYNI yolla, ADRES_YEDEK üzerinden tek bir yeniden deneme yapar;
+    önbelleğe kalıcı olarak yazmaz.
 
    Politika: YALNIZ doğrudan oynatılabilir yayın (m3u8/mp4/mkv) döner.
    Gömülü (iframe) adres, web view ve site adı içeren etiket YOKTUR;
@@ -77,10 +80,14 @@ function geciciAdres(normalizeEdilecek) {
   }
 }
 
-function derlemeAyikla(girdiler) {
+export function derlemeAyikla(girdiler) {
   const adaylar = [girdiler.updated_app_url, girdiler.updated_app_link, girdiler.app_build, girdiler.build_number];
   for (const a of adaylar) {
-    const m = String(a || '').match(/(?:-(\d{2,4})[a-z]*\.apk|[_/]?build[=:]?(\d{2,4})|v=(\d{2,4}))/i);
+    const ham = String(a || '').trim();
+    if (!ham) continue;
+    // RC bazen URL yerine salt derleme numarası gönderir ("160").
+    if (/^\d{1,6}$/.test(ham)) return ham;
+    const m = ham.match(/(?:-(\d{2,4})[a-z]*\.apk|[_/]?build[=:]?(\d{2,4})|v=(\d{2,4}))/i);
     const sayi = m && (m[1] || m[2] || m[3]);
     if (sayi) return String(sayi);
   }
@@ -258,11 +265,15 @@ export async function getValidRecTvJwt() {
  * 5) API istek katmanı — butça uyumlu, tek nokta                     *
  * --------------------------------------------------------------- */
 
-function hedef(yol) {
+function hedefUret(taban, yol) {
   // Tarayıcıda CORS başlığı olmadığı için aynı istek kenar vekili üzerinden gider
   // (api/rtv.js x-rtv-path başlığını okur). Node/Electron tarafında doğrudan çözülen
   // taban adrese gidilir.
-  return isNodeEnv ? `${adresOnbellek.taban || geciciAdres(ADRES_YEDEK)}/api${yol}` : `/api/rtv${yol}`;
+  return isNodeEnv ? `${taban || geciciAdres(ADRES_YEDEK)}/api${yol}` : `/api/rtv${yol}`;
+}
+
+function hedef(yol) {
+  return hedefUret(adresOnbellek.taban, yol);
 }
 
 /**
@@ -271,7 +282,8 @@ function hedef(yol) {
  */
 async function apiIstek(yol, { butce = TOPLAM_BUTCE_MS, method = 'GET', govde = '' } = {}) {
   const { taban, derleme } = await aktifAdresCoz();
-  const kalan = Math.max(300, Math.min(TEK_ISTEK_MS, butce));
+  const baslangic = Date.now();
+  const kalanButce = () => Math.max(300, Math.min(TEK_ISTEK_MS, butce - (Date.now() - baslangic)));
   const tamYol = `/api${yol}`;
   const headers = await cihazBasliklari(method, tamYol, govde, derleme);
   if (!isNodeEnv) headers['x-rtv-path'] = yol;
@@ -279,24 +291,47 @@ async function apiIstek(yol, { butce = TOPLAM_BUTCE_MS, method = 'GET', govde = 
   const jwt = await getValidRecTvJwt();
   if (jwt) headers.authorization = `Bearer ${jwt}`;
 
-  try {
-    const res = await fetch(isNodeEnv ? `${taban}${tamYol}` : `/api/rtv${yol}`, {
-      method,
-      headers,
-      ...(govde ? { body: govde } : {}),
-      signal: AbortSignal.timeout(kalan),
-      cache: 'no-store'
-    });
-    rectvTani.deneme = Date.now();
-    rectvTani.durumKodu = res.status;
-    if (!res.ok) {
-      const govdeMetin = String(await res.text().catch(() => '')).slice(0, 120);
-      rectvTani.hata = `${res.status} ${govdeMetin}`.trim();
-      return null;
+  /* Dönen alan adı her dağıtımda kapatılabiliyor (TLS el sıkışmasında ECONNRESET).
+     O durumda AYNI imza ve AYNI yolla, ADRES_YEDEK üzerinden tek bir yeniden
+     deneme yapılır. Adres önbelleği kalıcı olarak değiştirilmez — sonraki çağrılarda
+     RC adresi yeniden denenir. Tarayıcıda istek her zaman /api/rtv kenar vekiline
+     gittiğinden yedek deneme oraya düşer; sunucu tarafındaki adresi değiştirmez. */
+  const denenecekTabanlar = [taban];
+  const yedekTaban = geciciAdres(ADRES_YEDEK);
+  if (yedekTaban && yedekTaban !== taban) denenecekTabanlar.push(yedekTaban);
+
+  let res = null;
+  for (const denenenTaban of denenecekTabanlar) {
+    try {
+      res = await fetch(hedefUret(denenenTaban, yol), {
+        method,
+        headers,
+        ...(govde ? { body: govde } : {}),
+        signal: AbortSignal.timeout(kalanButce()),
+        cache: 'no-store'
+      });
+      break;
+    } catch (err) {
+      // fetch'in kendisi patladı: yanıt hiç gelmedi, önceki RC 200'ü düşmesin.
+      rectvTani.deneme = Date.now();
+      rectvTani.durumKodu = 0;
+      rectvTani.hata = `baglanti: ${String((err && err.message) || err)}`;
     }
+  }
+  if (!res) return null;
+
+  rectvTani.deneme = Date.now();
+  rectvTani.durumKodu = res.status;
+  rectvTani.hata = ''; // yanıt geldi: önceki bağlantı hatası bayatladı.
+  if (!res.ok) {
+    // HTTP durum kodu ALINDI: sunucu yanıt verdi, yeniden deneme anlamsız.
+    const govdeMetin = String(await res.text().catch(() => '')).slice(0, 120);
+    rectvTani.hata = `${res.status} ${govdeMetin}`.trim();
+    return null;
+  }
+  try {
     return await res.json();
   } catch (err) {
-    rectvTani.deneme = Date.now();
     rectvTani.hata = String((err && err.message) || err);
     return null;
   }

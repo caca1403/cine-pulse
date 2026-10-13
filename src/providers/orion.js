@@ -74,7 +74,9 @@ function aramaSonuclari(ham) {
     const liste = Array.isArray(d?.results) ? d.results : (Array.isArray(d) ? d : []);
     return liste.map((x) => (typeof x === 'string' ? x : (x || {}))).filter(Boolean);
   } catch (_) {}
-  return [...t.matchAll(/href="([^"]+)"/g)].map((m) => `<a href="${m[1]}"></a>`);
+  // Preserve result titles in HTML responses too; reducing them to hrefs
+  // loses translated-title matches when the site slug differs from TMDB.
+  return [t];
 }
 
 /** Arama yanıtından İÇERİK bağlantılarını {url, baslik} olarak topla.
@@ -84,16 +86,23 @@ function icerikBaglantilari(sonuclar) {
   const at = /\/assets\/|\.css(\?|$)|\.js(\?|$)|\.png|\.jpe?g|\.svg|\.webp|\.ico|\.woff/i;
   const gorulen = new Set();
   const out = [];
-  const ekle = (u, baslik = '') => {
+  const ekle = (u, baslik = '', year = null) => {
     const s = String(u || '').trim();
     if (!s || at.test(s) || gorulen.has(s)) return;
     gorulen.add(s);
-    out.push({ url: s, baslik: String(baslik || '').trim() });
+    out.push({ url: s, baslik: String(baslik || '').trim(), year: Number(year) || null });
   };
   const hrefleriAl = (metin) => {
     // <a …href=…>…</a>: bağlantıyı İÇİNDEKİ başlıkla birlikte taşı —
     // başlıksız URL listesi yanlış içeriğe düşmenin ana yoluydu.
-    for (const m of String(metin).matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]{0,700}?)<\/a>/gi)) ekle(m[1], duzMetin(m[2]));
+    for (const m of String(metin).matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+      // Real result cards contain an inline SVG before h4.title (~1KB).
+      // A 700-character cap silently discarded the title and kept only href.
+      const baslik = m[2].match(/<h[1-6]\b[^>]*class=["'][^"']*\btitle\b[^"']*["'][^>]*>([\s\S]*?)<\/h[1-6]>/i)?.[1];
+      const alt = m[2].match(/<img\b[^>]*alt=["']([^"']+)["']/i)?.[1];
+      const year = m[2].match(/<span\b[^>]*class=["'][^"']*\byear\b[^"']*["'][^>]*>\s*(\d{4})/i)?.[1];
+      ekle(m[1], duzMetin(baslik || alt || m[2]), year);
+    }
     for (const m of String(metin).matchAll(/href=["']([^"']+)["']/gi)) ekle(m[1]);
   };
   for (const x of sonuclar) {
@@ -102,7 +111,7 @@ function icerikBaglantilari(sonuclar) {
       hrefleriAl(x);
     } else if (x && typeof x === 'object') {
       const bt = x.title || x.name || x.label || '';
-      for (const k of ['url', 'link', 'href', 'slug', 'permalink', 'path', 'watch_url']) if (x[k]) ekle(x[k], bt);
+      for (const k of ['url', 'link', 'href', 'slug', 'permalink', 'path', 'watch_url']) if (x[k]) ekle(x[k], bt, x.year);
       if (x.html) hrefleriAl(x.html);
     }
   }
@@ -110,6 +119,8 @@ function icerikBaglantilari(sonuclar) {
 }
 
 const _normal = (s) => String(s || '').toLowerCase()
+  .replace(/&(?:ouml|uuml|ccedil|scedil|gbreve|inodot|amp);/g, (entity) => ({ '&ouml;': 'ö', '&uuml;': 'ü', '&ccedil;': 'ç', '&scedil;': 'ş', '&gbreve;': 'ğ', '&inodot;': 'ı', '&amp;': '&' }[entity]))
+  .replace(/&#(?:x([0-9a-f]+)|(\d+));/g, (_, hex, dec) => String.fromCodePoint(Math.min(0x10ffff, parseInt(hex || dec, hex ? 16 : 10))))
   .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
   .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
   .replace(/[^a-z0-9]+/g, ' ').trim();
@@ -120,7 +131,7 @@ const _normal = (s) => String(s || '').toLowerCase()
  *  ARANIR: slug URL'de geçmeli VEYA sonuç başlığı istenen başlık varyantlarından
  *  birini taşımalı. Eşleşme yoksa RASTGELE bağlantı ASLA dönülmez (yanlış
  *  içerik oynatma riski); çağıran deterministik slug yoluna düşer. */
-function secIcerik(sonuclar, isFilm, sluglar = [], basliklar = []) {
+function secIcerik(sonuclar, isFilm, sluglar = [], basliklar = [], year = null) {
   const adaylar = icerikBaglantilari(sonuclar);
   const hedefler = basliklar.map(_normal).filter((h) => h.length > 2);
   const puan = (a) => {
@@ -128,10 +139,11 @@ function secIcerik(sonuclar, isFilm, sluglar = [], basliklar = []) {
     let p = 0;
     if (sluglar.some((sl) => sl && u.includes(sl))) p += 3;
     const bt = _normal(a.baslik);
-    if (bt && hedefler.some((h) => h === bt || h.includes(bt) || bt.includes(h))) p += 2;
+    const adlar = String(a.baslik).split(/\s+[-–—]\s+/).map(_normal);
+    if (hedefler.some((h) => adlar.includes(h))) p += 6;
+    else if (bt && hedefler.some((h) => h === bt || h.includes(bt) || bt.includes(h))) p += 2;
     return p;
   };
-  const uygun = (a) => (isFilm ? !/\/dizi\/|\/bolum\//i.test(a.url) : true);
   const tipOi = (a) => (isFilm ? /\/film\//i.test(a.url) ? 1 : 0 : /\/dizi\//i.test(a.url) && !/\/bolum\//i.test(a.url) ? 1 : 0);
   const enIyi = (liste) => {
     const skor = liste.map((a) => ({ a, s: puan(a) + tipOi(a) })).filter((x) => puan(x.a) > 0);
@@ -139,10 +151,33 @@ function secIcerik(sonuclar, isFilm, sluglar = [], basliklar = []) {
     skor.sort((x, y) => y.s - x.s);
     return skor[0].a.url;
   };
-  const havuz = adaylar.filter((a) => /\/(film|dizi|bolum)\//i.test(a.url) || /-izle(-\d+)?\/?(sezon|bolum|\?|#|$)/i.test(a.url) || /\/[a-z0-9-]+-izle(-\d+)?\/?$/i.test(a.url));
-  const kullan = havuz.length ? havuz : adaylar;
-  return enIyi(kullan.filter((a) => uygun(a) || (isFilm && /\/film\//i.test(a.url))))
-    || enIyi(kullan);
+  // Film slugs also contain -hd-izle-hdf-4, -hdf-hdf-7, leading numbers,
+  // or no "izle" suffix. A narrow URL pool dropped real films whenever
+  // the same search also returned a /dizi/ result.
+  // Some legacy anime series live at the SITE ROOT (bleach-izle-7), not
+  // under /dizi/. Movies use the same root pattern, so a root card only
+  // counts for TV when its title matches EXACTLY and carries no movie
+  // marker — this keeps "World Heroes' Mission"/"Reze Arc" films out.
+  const tamAd = (a) => {
+    const adlar = String(a.baslik).split(/\s+[-–—]\s+/).map(_normal);
+    return hedefler.some((h) => adlar.includes(h));
+  };
+  // NOTE: the marker check must look at the PATH ONLY — the site's own
+  // domain ("hdfilmcehennemi…") contains the literal word "film", which
+  // would otherwise disqualify every root card.
+  const uygunKok = (a) => {
+    const yol = String(a.url).replace(/^https?:\/\/[^/]+/i, '');
+    return !/film|movie/i.test(yol) && !/film|movie/i.test(a.baslik) && tamAd(a);
+  };
+  const havuz = adaylar.filter((a) => !/\/search(?:\/|\?|$)/i.test(a.url)
+    && (isFilm ? !/\/dizi\/|\/bolum\//i.test(a.url)
+      : /\/dizi\/|\/bolum\//i.test(a.url) || uygunKok(a)));
+  // Year is a tie-breaker, not a hard gate: the site lists an anime under
+  // its season/reboot year (Bleach 2018, Tokyo Ghoul 2017), so dropping
+  // every year-mismatched card erased real matches. Only choose among the
+  // year-matching cards when at least one exists (Cowboy Bebop 1998 vs 2021).
+  const yasi = year ? havuz.filter((a) => !a.year || Number(year) === a.year) : [];
+  return enIyi(yasi.length ? yasi : havuz);
 }
 
 function bolumBaglantisi(html, sezon, bolum) {
@@ -257,7 +292,7 @@ async function akisCoz(iframeUrl, contentUrl, base, trace, webView = false, sign
  * Nuvio/CloudStream `load()` eşdeğeri.
  * @returns {Promise<{sources:Array, trace:Array, iframe?:string}>}
  */
-export async function coz({ type = 'movie', title = '', originalTitle = '', titles = [], imdbId = null, tmdbId = null, season = 1, episode = 1, onSources = null, signal = null } = {}) {
+export async function coz({ type = 'movie', title = '', originalTitle = '', titles = [], imdbId = null, tmdbId = null, year = null, season = 1, episode = 1, onSources = null, signal = null } = {}) {
   const trace = izleyici();
   const isFilm = type === 'movie';
   const s = +season || 1, e = +episode || 1;
@@ -271,11 +306,12 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
   // — 1. arama (IMDB → başlık) — içerik URL'si
   let contentUrl = '';
   let contentHtml = '';
-  // Episode URLs are deterministic on this provider. Try the exact requested
-  // episode first, avoiding three search round trips and repeated page loads.
+  // Keep the successful episode shortcut, but this is only a GUESS: real
+  // slugs have arbitrary numbered suffixes and translated names. Never spend
+  // the hidden-browser budget on an unconfirmed address before search.
   if (!isFilm && baslik) {
     const path = `/dizi/${slugla(baslik)}-izle-3/sezon-${s}/bolum-${e}/`;
-    const html = await istek(`${base}${path}`, { ref: `${base}/`, headers: { 'User-Agent': UA }, trace, timeout: 16000, signal });
+    const html = await istek(`${base}${path}`, { ref: `${base}/`, headers: { 'User-Agent': UA }, trace, timeout: 2500, webView: false, signal });
     if (html && /data-video|alternative-link|<iframe/i.test(html) && html.toLowerCase().includes(slugla(baslik))) {
       contentUrl = `${base}${path}`;
       contentHtml = html;
@@ -292,7 +328,7 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
   // genel sonuç). IMDB ile arama sitede YOK (tt0903744 → 0 sonuç) — başlıklar
   // TR+ORJ denenir; bulunamazsa tek kelimeye yumuşatılır.
   const sluglar = [...new Set([baslik, ...alternatifBasliklar].map(slugla).filter(Boolean))];
-  const tamAramalar = [...new Set([baslik, ...alternatifBasliklar].filter(Boolean))];
+  const tamAramalar = [...new Set([temizBaslik(originalTitle), baslik, ...alternatifBasliklar].filter(Boolean))];
   const gevsekAramalar = [...new Set(tamAramalar.map((q) => q.split(/\s+/).slice(0, 1).join(' ')).filter((q) => q.length > 3 && !tamAramalar.includes(q)))];
   const aramalar = [...tamAramalar, ...gevsekAramalar].slice(0, 6);
   const aramaBasliklari = [title, originalTitle, ...titles].map(temizBaslik).filter(Boolean);
@@ -316,8 +352,14 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
     if (ham && yanitIzi.has(iz)) { trace.koy('arama-tekrar', { q }); break; }
     if (ham) yanitIzi.add(iz);
     trace.koy('arama', { q, sonuc: sonuc.length, yol: aramaYolu });
-    const bulunan = sonuc.length ? secIcerik(sonuc, isFilm, sluglar, aramaBasliklari) : '';
+    const bulunan = sonuc.length ? secIcerik(sonuc, isFilm, sluglar, aramaBasliklari, year) : '';
     if (bulunan) contentUrl = mutlak(bulunan, base);
+    else if (sonuc.length) {
+      // Cihaz hata ayıklama: arama sonuç getirdiyse ama hiçbiri eşleşmediyse
+      // GELEN kartları iz'e yaz — sitenin mobil oturuma farklı (az/adsız)
+      // kart döndürdüğü ölçüldü; eşleşme hatası ile veri farkı ayrışsın.
+      trace.koy('eslesmedi', { q, kartlar: icerikBaglantilari(sonuc).slice(0, 4).map((a) => ({ b: a.baslik, y: a.year || 0, u: String(a.url).slice(-46) })) });
+    }
   }
 
   // — 2. slug yolları (arama engelliyse) — sitedeki kalıp: TR/ORJ başlığın
@@ -328,7 +370,7 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
       : ['/izle-3', '/izle-2', '/izle'].map((suf) => `/dizi/${slug}${suf}/sezon-${s}/bolum-${e}/`);
     // TR/ORJ varyantları: site içeriği başka dildeki slug'la listeliyor olabilir.
     for (const alt of slugYedekleri.filter((x) => x && x !== slug).slice(0, 2)) {
-      if (isFilm) yollar.push(`/${alt}-izle/`, `/hd-${alt}-izle/`);
+      if (isFilm) yollar.push(`/${alt}-izle/`, `/hd-${alt}-izle/`, `/${alt}/`);
       else {
         // ORJ slug'lı series'ler (ölçüldü: Kalk Gidelim 200 dönerken ORJ
         // varyantı denememiştik): site ikili kalıp kullanıyor — tireli ESKİ
@@ -340,11 +382,11 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
     let deneme = 0;
     for (const b of bazlar) {
       for (const y of yollar) {
-        if (deneme++ >= 8) break; // bütçe: ~8 hızlı deneme
+        if (deneme++ >= 10) break; // bütçe: ~10 hızlı deneme (TR 3 + ORJ-1 3 + ORJ-2 3 + yedek taban)
         const html = await istek(`${b}${y}`, { ref: `${b}/`, headers: { 'User-Agent': UA }, trace, signal });
         if (html && /data-video|alternative-link|<iframe/i.test(html)) { contentUrl = `${b}${y}`; contentHtml = html; break; }
       }
-      if (contentUrl || deneme >= 8) break;
+      if (contentUrl || deneme >= 10) break;
     }
     trace.koy('slug-yolu', { contentUrl });
   }
@@ -368,6 +410,37 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
       if (bm) contentUrl = mutlak(bm, pageBase);
       trace.koy('bolum', { bulundu: Boolean(bm), yol: 'gosterim', contentUrl });
     }
+  }
+
+  // — 2.5 kimlik kapısı ("2000 ise 2000"): TMDB/IMDb verisi elimizdeyse
+  // sayfadaki PROVIDER'IN KENDİ tt kodu/yılı ile birebir karşılaştırılır.
+  // Aynı tt = aynı yapıt (tarih farkı önemsiz); farklı tt = BAŞKA yapıt →
+  // tek yayın bile listelenmez. Sayfa kimlik taşımıorsa doğrulanamaz ve
+  // mevcut davranışa dönülür (yanlış reddetme yerine tarafsızlık).
+  if (imdbId || year) {
+    const ids = new Set();
+    let yil = null;
+    const oku = (h) => {
+      if (!h) return;
+      for (const m of h.matchAll(/imdb\.com\\?\/title\\?\/(tt\d{6,8})/gi)) ids.add(m[1].toLowerCase());
+      if (!yil) yil = +((h.match(/class=["'][^"']*\byear\b[^"']*["'][^>]*>\s*(\d{4})/) || [])[1]
+        || (h.match(/<title>[\s\S]{0,160}?\b(19\d{2}|20\d{2})\b/) || [])[1] || 0) || null;
+    };
+    oku(contentHtml);
+    if (!ids.size) {
+      // Bölüm sayfası kimlik taşımayabilir; gösterim sayfası taşır (ölçüldü:
+      // bleach-izle-7 → imdb.com/title/tt5979872, HTTP 200).
+      const gosterim = contentUrl.replace(/\/sezon-\d+\/bolum-\d+\/?$/i, '/');
+      const gHtml = await istek(gosterim, { ref: `${pageBase}/`, headers: { 'User-Agent': UA }, trace, signal, timeout: 9000 });
+      oku(gHtml);
+      if (isFilm && gHtml && gosterim === contentUrl) contentHtml = gHtml; // film: oynatıcı da bu sayfada — yeniden indirme
+    }
+    const hedefImdb = (String(imdbId || '').match(/tt\d{6,8}/i) || [])[0];
+    const karsilastirilabilir = Boolean(hedefImdb && ids.size);
+    const imdbUydu = !karsilastirilabilir || ids.has(hedefImdb.toLowerCase());
+    const yilUydu = karsilastirilabilir && imdbUydu ? true : !(year && yil) || Number(year) === yil;
+    trace.koy('kimlik', { hedef: hedefImdb || String(year || ''), sayfa: [...ids][0] || '', yil: yil || 0, uydu: imdbUydu && yilUydu });
+    if (!imdbUydu || !yilUydu) return { sources: [], trace: trace.ozet(), iframe: '' };
   }
 
   // — 4/5/6. Oynatıcılar: CloseLoad ve Rapid AYRI AYRI kaynak olarak listelenir.

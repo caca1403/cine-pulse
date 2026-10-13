@@ -137,33 +137,47 @@ export default async function handler(request) {
       rcAdres ||
       ADRES_YEDEK;
 
-    const targetUrl = `${taban}/api${subPath}${queryString}`;
-
-    const forwardHeaders = new Headers();
-    // RecTV sunucusu okhttp UA'sı + kendi site Referer/Origin'i istiyor;
-    // #EXTM3U ve imzalı uçlar ancak böyle dönüyor.
-    forwardHeaders.set('user-agent', 'okhttp/4.12.0');
-    forwardHeaders.set('referer', `${taban}/`);
-    forwardHeaders.set('origin', taban);
-
-    for (const [k, v] of request.headers.entries()) {
-      const lk = k.toLowerCase();
-      // Host/UA/Referer/Origin vekil tarafından kurulur; x-rtv-* vekilin işidir.
-      if (lk === 'host' || lk === 'origin' || lk === 'referer' || lk === 'user-agent'
-        || lk === 'x-rtv-path' || lk === 'x-rtv-base' || lk === 'cookie') continue;
-      forwardHeaders.set(k, v);
-    }
+    // Dönen adres TLS'te ölü olabilir (ölçüldü: RC psrectv80 → ECONNRESET,
+    // aynı imza prectv70 ile 200). Bağlantı düzeyi hatada adaylar sırayla
+    // denenir; HTTP durum kodu alan deneme zaten cevaptır, tekrarlanmaz.
+    const adaylar = [taban];
+    if (ADRES_YEDEK && ADRES_YEDEK !== taban) adaylar.push(ADRES_YEDEK);
+    const ortam = ortamAdres && aileUygunMu(ortamAdres) ? ortamAdres : '';
+    if (ortam && !adaylar.includes(ortam)) adaylar.push(ortam);
 
     let body = null;
     if (request.method === 'POST' || request.method === 'PUT') {
       body = await request.text();
     }
 
-    const upstreamRes = await fetch(targetUrl, {
-      method: request.method,
-      headers: forwardHeaders,
-      body: body || undefined
-    });
+    let upstreamRes = null;
+    let cozulenTaban = taban;
+    for (const aday of adaylar) {
+      const forwardHeaders = new Headers();
+      // RecTV sunucusu okhttp UA'sı + kendi site Referer/Origin'i istiyor;
+      // #EXTM3U ve imzalı uçlar ancak böyle dönüyor.
+      forwardHeaders.set('user-agent', 'okhttp/4.12.0');
+      forwardHeaders.set('referer', `${aday}/`);
+      forwardHeaders.set('origin', aday);
+      for (const [k, v] of request.headers.entries()) {
+        const lk = k.toLowerCase();
+        // Host/UA/Referer/Origin vekil tarafından kurulur; x-rtv-* vekilin işidir.
+        if (lk === 'host' || lk === 'origin' || lk === 'referer' || lk === 'user-agent'
+          || lk === 'x-rtv-path' || lk === 'x-rtv-base' || lk === 'cookie') continue;
+        forwardHeaders.set(k, v);
+      }
+      try {
+        upstreamRes = await fetch(`${aday}/api${subPath}${queryString}`, {
+          method: request.method,
+          headers: forwardHeaders,
+          body: body || undefined
+        });
+        cozulenTaban = aday;
+        break;
+      } catch (_) {
+        if (aday === adaylar[adaylar.length - 1]) throw new Error(`rtv-upstream-baglanti-hatasi: ${new URL(aday).hostname}`);
+      }
+    }
 
     const responseData = await upstreamRes.arrayBuffer();
 
@@ -173,7 +187,7 @@ export default async function handler(request) {
     responseHeaders.set('Access-Control-Allow-Headers', '*');
     responseHeaders.set('Content-Type', upstreamRes.headers.get('content-type') || 'application/json');
     // Vekilin hangi adrese gittiği istemciye yalnız başlıkla bildirilir (gövde şekli değişmez).
-    responseHeaders.set('x-rtv-resolved', new URL(taban).hostname);
+    responseHeaders.set('x-rtv-resolved', new URL(cozulenTaban).hostname);
 
     return new Response(responseData, {
       status: upstreamRes.status,

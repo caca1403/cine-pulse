@@ -279,8 +279,13 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
   let secenek = null;
   let enPuan = 0;
   for (const k of kartlarList) {
+    // Başlık eşleşmesi ÖNKOŞUL: puanı 0 olan adaya tür bonusu (+2) uygulanmaz.
+    // (Yoksa alakasız ama "-movie-" taşıyan bir kart, eşleşen hiçbir aday
+    //  yokken seçilip YANLIŞ filmin sayfası açılıyordu.)
+    const es = puanla(k.ad, hedefler);
+    if (!es) continue;
     const tipUyar = isFilm ? /-movie-/i.test(k.url) : /-series-/i.test(k.url);
-    const p = puanla(k.ad, hedefler) + (tipUyar ? 2 : -2);
+    const p = es + (tipUyar ? 2 : -2);
     if (p > enPuan) { enPuan = p; secenek = k; }
   }
   // ilk adresölü ölüyse: domains.json + bilinenler ile yeniden dene
@@ -291,7 +296,9 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
       if (deneme.kart.length) {
         canliTaban = b;
         for (const k of deneme.kart) {
-          const p = puanla(k.ad, hedefler) + (isFilm === /-movie-/i.test(k.url) ? 2 : -2);
+          const es = puanla(k.ad, hedefler); // eşleşme önkoşul (yukarıdaki kural)
+          if (!es) continue;
+          const p = es + (isFilm === /-movie-/i.test(k.url) ? 2 : -2);
           if (p > enPuan) { enPuan = p; secenek = k; }
         }
         break;
