@@ -1,3 +1,11 @@
+## CinePulse v1.1.71
+
+- **Oynatıcı ses düzeltmesi:** Kaynak değiştirildiğinde ya da durdurulduğunda eski yayının sesi birkaç saniye sürükleniyordu; eski akış artık anında serbest bırakılıyor (durdur → bağ kopar → yeni kaynak başlar).
+- **Web oynatma:** Betelgeuse yıldızının yayınları aynı-kök, aralık (Range) destekli vekilden geçiriliyor; "listede görünüp 0:00'da takılma" sınıfı hata giderildi.
+- Kaynak adlandırması ve gizlilik modeli aynı: arayüzde yalnız kod adları.
+
+**Paketler:** Android APK (aynı imza anahtarı — mevcut kurulumlar güncellenir), Linux DEB, Windows EXE, Linux AppImage.
+
 ## CinePulse v1.1.70
 
 - **Yeni içerik türleri:** Belgesel ve Çocuk arşivleri menüde; katalog 19 yıldıza çıktı, defter tek kaynağa indirildi.
