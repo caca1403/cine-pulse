@@ -60,7 +60,9 @@ async function renderRoute() {
   const generation = ++routeGeneration;
   cleanupHomeView();
   flushScrollState();
-  const hash = resolveEntryHash(window.location.hash, isAppPlatform(), new URLSearchParams(window.location.search).has('oda'));
+  // '#/detail' gibi leading-slashli girdiler eskiden ana sayfaya düşüyordu
+  // (harici paylaşımlar/tarayıcı otomasyonu '#' sonrası '/' ekleyebiliyor).
+  const hash = resolveEntryHash(window.location.hash.replace(/^#\/+/, '#'), isAppPlatform(), new URLSearchParams(window.location.search).has('oda'));
   const isLanding = hash === '#showcase';
   document.body.classList.toggle('cp-landing-active', isLanding);
   document.title = isLanding ? 'CinePulse — Keşfet, Seç, Devam Et' : 'CinePulse - Modern Sinema & Dizi Platformu';
