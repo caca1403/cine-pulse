@@ -76,16 +76,21 @@ export function renderHeroSlider(items = []) {
   const inWatchlist = isWatchlist(id);
 
   let preloadLink = document.getElementById('hero-backdrop-preload');
-  if (!preloadLink) {
-    preloadLink = document.createElement('link');
-    preloadLink.id = 'hero-backdrop-preload';
-    preloadLink.rel = 'preload';
-    preloadLink.as = 'image';
-    document.head.appendChild(preloadLink);
+  // Backdrop adresi henüz hazır değilse (TMDB yavaş/görselsiz başlık) preload
+  // hiç eklenmez — boş/`/` href tarayıcı konsolunda "invalid href" uyarısı
+  // üretiyordu. Adres geldiğinde aynı akış linki oluşturur.
+  if (backdropUrl && typeof backdropUrl === 'string' && backdropUrl.startsWith('http')) {
+    if (!preloadLink) {
+      preloadLink = document.createElement('link');
+      preloadLink.id = 'hero-backdrop-preload';
+      preloadLink.rel = 'preload';
+      preloadLink.as = 'image';
+      document.head.appendChild(preloadLink);
+    }
+    preloadLink.href = backdropUrl;
+    preloadLink.fetchPriority = 'high';
   }
-  preloadLink.href = backdropUrl;
-  preloadLink.fetchPriority = 'high';
-  if (window.innerWidth > 768) preloadHeroBackdrop(backdropUrl, 'high');
+  if (window.innerWidth > 768 && backdropUrl) preloadHeroBackdrop(backdropUrl, 'high');
 
   return `
     <section class="hero-slider is-loading" id="hero-slider-section" aria-busy="true">
