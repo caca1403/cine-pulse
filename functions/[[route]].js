@@ -13,9 +13,17 @@ import release from '../api/release.js';
 import jet from '../api/jet.js';
 import rtv from '../api/rtv.js';
 import snx from '../api/snx.js';
+import resolve from '../cf/resolve.js';
 
 // yol -> mod (Vercel'de dosya adi neyse o; czm/dzs/kvip catch-all alias'idir)
-const NODE_FILES = { '/api/ddz': ddz, '/api/epg': epg, '/api/fanart': fanart, '/api/release': release };
+const NODE_FILES = {
+  '/api/ddz': ddz,
+  '/api/epg': epg,
+  '/api/fanart': fanart,
+  '/api/release': release,
+  // python resolve.py'nin web portu (ctv+dzs) — Faz 2
+  '/api/resolve': resolve,
+};
 const EDGE_FILES = { '/api/jet': jet, '/api/rtv': rtv, '/api/snx': snx };
 // rewrite: /api/x/DERLEYICI -> /api/x?path=DERLEYICI
 const PATH_REWRITE = new Set(['/api/snx', '/api/szd', '/api/jet', '/api/dzs', '/api/dzb', '/api/kvip']);

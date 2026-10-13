@@ -52,5 +52,19 @@ async function istek(path, init = {}) {
   check('X-Content-Type-Options var', r.headers.get('x-content-type-options') === 'nosniff', String(r.headers.get('x-content-type-options')));
 }
 
+// 6) /api/resolve ctv kanal listesi (python portu)
+{
+  const r = await istek('/api/resolve?provider=ctv');
+  const j = await r.json().catch(() => ({}));
+  check('resolve ctv liste', j.success === true && Array.isArray(j.channels) && j.channels.length > 10, `n=${(j.channels || []).length}`);
+}
+
+// 7) /api/resolve dzs film akisi (python portu)
+{
+  const r = await istek('/api/resolve?provider=dzs&type=movie&tmdbId=155');
+  const j = await r.json().catch(() => ({}));
+  check('resolve dzs film', j.success === true && String(j.streamUrl || '').includes('/api/hls_proxy'), JSON.stringify(j).slice(0, 100));
+}
+
 console.log(fail === 0 ? 'TUMU-GECTI' : `${fail} BASARISIZ`);
 process.exit(fail === 0 ? 0 : 1);
