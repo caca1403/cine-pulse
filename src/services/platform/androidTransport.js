@@ -7,7 +7,7 @@ export function androidRequestUrl(input, base = window.location.href) {
   const localOrigin = window.CinePulseNative?.getApiOrigin?.();
   if (localOrigin && url.href.startsWith(`${localOrigin}/api/`)) return url.href;
   const isAppApi = url.pathname.startsWith('/api/') &&
-    (url.origin === window.location.origin || url.hostname === 'cine-pulse-drab.vercel.app');
+    (url.origin === window.location.origin || url.hostname === 'cinepulse.cinepulse.workers.dev' || url.hostname === 'cine-pulse-drab.vercel.app');
   if (isAppApi) return apiUrl(`${url.pathname}${url.search}`);
   // Legacy worker URLs encode the actual upstream; native transport uses that upstream.
   // `aktar=1` istisnadır: sağlayıcı ISP tarafından engellenmişse (animecix.net gibi)

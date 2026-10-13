@@ -1,8 +1,8 @@
 /* APK'nın gerçekten yapabileceklerini ölç.
-   ÖNEMLİ: Kullanıcının IP'si DEĞİL — APK'da her istek Vercel'e gider.
-   Bu yüzden tüm kaynaklar production origin üzerinden sınanır. */
+   Bu araç web üretim origin'ini sınar; Android'in yerel ağ köprüsünü
+   simüle etmez. Gerçek APK testi ayrıca cihaz üzerinde yapılmalıdır. */
 
-const V = 'https://cine-pulse-drab.vercel.app';
+const V = 'https://cinepulse.cinepulse.workers.dev';
 const nf = globalThis.fetch;
 globalThis.fetch = (i, o) => { const u = typeof i === 'string' && i.startsWith('/') ? V + i : i; return nf(u, o); };
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };

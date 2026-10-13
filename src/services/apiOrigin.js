@@ -1,4 +1,4 @@
-const PUBLIC_API_ORIGIN = 'https://cine-pulse-drab.vercel.app';
+const PUBLIC_API_ORIGIN = 'https://cinepulse.cinepulse.workers.dev';
 const MKV_RELAY_ORIGIN = (import.meta.env?.VITE_MKV_RELAY_ORIGIN || '').replace(/\/$/, '');
 // EXE (Electron): tum /api trafigi yerel sidecar'a gider — kullanicinin kendi IP'si
 // + Python cozuculer + gizli WebView cookie'leri burada devreye girer (403 avantaji).
