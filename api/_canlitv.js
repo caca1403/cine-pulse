@@ -1,21 +1,29 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import dns from 'node:dns';
+// workerd: child_process yok; yerel curl dalina lazim oldugunda dinamuk aliniyor.
+let execFileAsync = null;
+try {
+  if (globalThis.process?.release?.name === 'node') {
+    const [{ execFile }, { promisify }] = await Promise.all([import('node:child_process'), import('node:util')]);
+    execFileAsync = promisify(execFile);
+  }
+} catch { /* worker: exec yok */ }
+// workerd (Cloudflare) node:dns saglamaz; ayar yalnizca Node'da anlamli.
+try {
+  const dnsMod = globalThis.process?.release?.name === 'node' ? (await import('node:dns')).default : null;
+  dnsMod?.setDefaultResultOrder?.('ipv4first');
+} catch { /* worker: ipv4 sirasi gerekmez */ }
 
 // Prefer reachable IPv4 endpoints rather than waiting for failing IPv6 routes.
-dns.setDefaultResultOrder('ipv4first');
 const BASE = 'https://www.canlitv.you';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const cache = new Map();
 const pending = new Map();
 const playerIds = new Map();
 
-const execFileAsync = promisify(execFile);
 async function html(url, referer) {
   // The local network resets many HTTP/1.1 connections to this source. Curl's
   // HTTP/2 transport is available locally; serverless uses the Fetch API.
   // Curl basarisizsa dogrudan fetch'e dus (hata firlatma).
-  if (!process.env.VERCEL) {
+  if (execFileAsync && !process.env.VERCEL) {
     try {
       const { stdout } = await execFileAsync('curl', ['-4', '-fsSL', '--connect-timeout', '2', '--max-time', '5', '--retry', '1', '--retry-all-errors', '--retry-delay', '0', '-A', UA, '-e', referer, url], { timeout: 11000, maxBuffer: 2 * 1024 * 1024 });
       if (stdout && stdout.length > 500) return stdout;

@@ -70,6 +70,14 @@ async function externalPassthrough(prefix, target, url, request) {
 export async function onRequest(context) {
   const request = context.request;
   const url = new URL(request.url);
+
+  // Pages _worker.js modu: statikles eslesmeyen GET'ler (SPA gezinti) buraya
+  // duser; uygulama hash-router kullaniyor -> /#/yol'a yonlendir.
+  if (request.method === 'GET' && !url.pathname.startsWith('/api') && url.pathname !== '/cinepulse.apk'
+      && !/\.[a-z0-9]{1,8}$/i.test(url.pathname)) {
+    return Response.redirect(`${url.origin}/#${url.pathname}${url.search}`, 302);
+  }
+
   try {
     if (typeof process !== 'undefined' && process.env) {
       process.env.VERCEL = '1';
@@ -98,7 +106,7 @@ export async function onRequest(context) {
   if (file) return runNodeHandler(file, request);
 
   const edge = EDGE_FILES[url.pathname];
-  if (edge) return withSecurity(await edge(effRequest, {}));
+  if (edge) return withSecurity(await edge(effRequest, { env: context.env || {}, waitUntil: context.waitUntil }));
 
   return runNodeHandler(cfall, effRequest);
 }
