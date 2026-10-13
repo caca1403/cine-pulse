@@ -21,3 +21,19 @@ release/
 # Local validation and private source mappings.
 reports/
 androguard.db
+
+# Sirlar (.env) ve Vercel yerel hali — depoya ASLA girmez (ornek: .env.example).
+.env
+.env.*
+!.env.example
+.vercel/
+
+# Derleme urunleri / cihaz kabuklari — commit edilmez, release asset olarak yayinlanir.
+android/app/src/main/assets/public/
+*.apk
+*.aab
+*.deb
+*.exe
+*.AppImage
+*.msi
+

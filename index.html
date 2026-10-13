@@ -129,8 +129,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   
-  <!-- Lucide Icons -->
-  <script defer src="https://unpkg.com/lucide@0.344.0"></script>
+  <!-- Lucide Icons — YEREL KOPYA. Eskiden yalnızca unpkg'ten yükleniyordu;
+       APK'da CDN erişimi kesildiğinde ARAYÜZÜN İKONLARI TAMAMEN KAYBOLUYOR
+       (logolar/üst bar boş görünüyordu). Artık paketin içinden gelir,
+       internetsiz de çalışır; yerel dosya bir şekilde açılamazsa CDN denenir. -->
+  <script defer src="./lucide.min.js" onerror="var s=document.createElement('script');s.src='https://unpkg.com/lucide@0.344.0';document.head.appendChild(s);"></script>
   
   <link rel="stylesheet" href="/src/styles/main.css" />
 </head>
