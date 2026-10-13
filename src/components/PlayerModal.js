@@ -143,6 +143,28 @@ export async function openPlayerModal({
   let playbackScope = createPlayerScope();
   const modalScope = createPlayerScope();
   const { setTimeout, clearTimeout, setInterval, clearInterval } = modalScope;
+  // Tek noktadan medya temizliği (Android WebView ses sızıntısı düzeltmesi).
+  // hls.js 1.6.x yeni Chromium/WebView'da ManagedMediaSource'u media elementine
+  // `srcObject` olarak bağlar. `removeAttribute('src')` bunu TEMİZLEMEZ; ardından
+  // çağrılan load(), srcObject hâlâ dolu olduğu için kaynağı yeniden bağlar ve
+  // eski kaynağın sesi MediaSource buffer'ından birkaç saniye daha akar.
+  // Sıra önemli: önce medyayı durdur ve boşalt (pause → srcObject/src → load),
+  // SONRA hls örneklerini destroy et, en son elementi DOM'dan kaldır
+  // (WebView'da DOM'dan düşmüş ama bağlı kalan media sesi sürdürebilir).
+  function releaseMediaElement(media, hlsInstances = []) {
+    if (!media) return;
+    try { media.pause(); } catch (_) {}
+    try { media.muted = true; } catch (_) {}
+    try { media.srcObject = null; } catch (_) {}
+    try { media.removeAttribute('src'); } catch (_) {}
+    try { while (media.firstChild) media.removeChild(media.firstChild); } catch (_) {}
+    try { media.load(); } catch (_) {}
+    for (const instance of hlsInstances) {
+      try { instance?.destroy(); } catch (_) {}
+    }
+    try { media.remove(); } catch (_) {}
+  }
+
   function disposePlayback() {
     playbackGeneration++;
     const video = modalContainer.querySelector('#hls-video-player');
@@ -154,19 +176,19 @@ export async function openPlayerModal({
     }
     playbackScope.dispose();
     playbackScope = createPlayerScope();
-    for (const instance of [activeHlsInstance, activeAudioHlsInstance]) {
-      try { instance?.destroy(); } catch (_) {}
-    }
+    const hlsInstances = [activeHlsInstance, activeAudioHlsInstance].filter(Boolean);
     activeHlsInstance = activeAudioHlsInstance = null;
     try { destroyTorrentStream(); } catch (_) {}
-    modalContainer.querySelectorAll('video, audio').forEach(media => {
-      try {
-        media.pause();
-        media.removeAttribute('src');
-        while (media.firstChild) media.removeChild(media.firstChild);
-        media.load();
-      } catch (_) {}
-    });
+    // Eski medya önce anında durdurulup boşaltılır, hls örnekleri medya
+    // boşaldıktan sonra helper içinde destroy edilir, element DOM'dan kalkar.
+    const mediaEls = Array.from(modalContainer.querySelectorAll('video, audio'));
+    mediaEls.forEach((media, i) => releaseMediaElement(media, i === 0 ? hlsInstances : []));
+    // Medya elementi yoksa (ör. iframe kaynağı) ama örnekler yaşıyorsa destroy et.
+    if (!mediaEls.length) {
+      for (const instance of hlsInstances) {
+        try { instance?.destroy(); } catch (_) {}
+      }
+    }
     modalContainer.querySelectorAll('iframe').forEach(iframe => {
       try {
         iframe.src = 'about:blank';
@@ -7288,14 +7310,7 @@ export async function openPlayerModal({
 
     // Stop and mute all video & audio elements inside modal immediately
     try {
-      const mediaElements = modalContainer.querySelectorAll('video, audio');
-      mediaElements.forEach(m => {
-        try {
-          m.pause();
-          m.removeAttribute('src');
-          m.load();
-        } catch (_) {}
-      });
+      modalContainer.querySelectorAll('video, audio').forEach(m => releaseMediaElement(m));
     } catch (_) {}
 
     // Clean up iframes
