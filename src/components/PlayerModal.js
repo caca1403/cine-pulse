@@ -494,6 +494,11 @@ export async function openPlayerModal({
   // Boş-durum rehberi: son taramanın başlangıcı — providerRuntime olay kayıtları
   // (denendi/hata/boş) yalnız bu andan sonrakiler için geçerlidir.
   let lastDiscoveryStartedAt = 0;
+  // Erken ağ sinyali (A tasarım kararı): tarama ~9 sn boş geçerse jenerik uyarı
+  // + tarama 0 ile biterse TEK otomatik yenileme. Metin bilinçli olarak genel —
+  // hangi kod adının ne yaptığı ASLA yazılmaz (sağlık/davranış ifşası yasağı).
+  let agNudgesiGosterildi = false;
+  let otomatikYenilemeYapildi = false;
   let currentServerIndex = 0;
   const getSourceContentKey = () => `${type}:${tmdbId || cleanSeriesName}:s${currentSeason}:e${currentEpisode}`;
   let categorizedServers = { dubbed: [], subtitled: [] };
@@ -1662,6 +1667,18 @@ export async function openPlayerModal({
     if (manageBtn) manageBtn.onclick = () => { try { openPluginsModal(); } catch (_) {} };
     const retryBtn = el.querySelector('#btn-empty-retry');
     if (retryBtn) retryBtn.onclick = () => { try { startServerDiscovery(); } catch (_) {} };
+    // TEK otomatik yenileme (A kararı): modal oturumunun taraması 0 kaynakla
+    // bittiyse kullanıcıya dokunmadan 3 sn sonra bir kez daha dene — 503 gibi
+    // kısa kesintilerde liste kendiliğinden dolar. İkicial 0'da rehber kalır,
+    // DÖNGÜ YOK (bayrak bir daha izin vermez; elle "Tekrar dene" her zaman serbest).
+    if (!otomatikYenilemeYapildi) {
+      otomatikYenilemeYapildi = true;
+      el.insertAdjacentHTML('beforeend', '<div style="font-size:.8rem;opacity:.75;margin-top:.4rem;">🔄 Tek otomatik deneme yapılıyor…</div>');
+      setTimeout(() => {
+        if (closed) return;
+        try { startServerDiscovery(); } catch (_) {}
+      }, 3000);
+    }
   }
 
   let isDownloadingOffline = false;
@@ -6170,7 +6187,7 @@ export async function openPlayerModal({
         if (want && have && (have === want || have.split('#')[0] === String(want).split('#')[0])) return;
       }
     } catch (_) {}
-    // Note: DiziBal streams are now resolved server-side in dizibalScraper.js
+    // Note: DiziBal streams are resolved by the clean Nero provider (providers/nero.js).
     // No client-side resolveDirectStream needed here
 
     // İlk seçilen hat, kullanıcı el ile kaynak değiştirdiğinde ve otomatik
@@ -6781,6 +6798,20 @@ export async function openPlayerModal({
 
     updateServerPillsEvents();
     updatePlayerContainer();
+
+    // Erken ağ sinyali: ~9 sn hiçbir kaynak akmadıysa liste alanında jenerik bir
+    // bilgi satırı göster (bilgi yalnız; taramayı/progressive akışı KESMEZ).
+    setTimeout(() => {
+      if (closed || generation !== discoveryGeneration || !isDiscoveryActive) return;
+      const toplam = (categorizedServers.dubbed || []).length + (categorizedServers.subtitled || []).length;
+      if (toplam > 0 || agNudgesiGosterildi) return;
+      agNudgesiGosterildi = true;
+      const el = document.getElementById('source-empty-guide');
+      if (el && el.classList.contains('hidden')) {
+        el.innerHTML = '<div style="font-size:.85rem;opacity:.9;">Kaynaklar şu an yanıt vermiyor — ağ/bölge engeli olabilir. Tarama sürüyor; bulununca listeler otomatik dolacak.</div>';
+        el.classList.remove('hidden');
+      }
+    }, 9000);
 
     // Fast 1.8s fallback: if user's category has 0 streams but alternative has ready streams, start immediately
     const fastPlaybackTimer = setTimeout(() => {

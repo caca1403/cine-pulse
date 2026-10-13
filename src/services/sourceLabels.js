@@ -35,7 +35,7 @@ export const SOURCE_FAMILIES = [
   { alias: 'Nova', provider: 'Sinewix', prefixes: ['snx'], sources: ['SWX', 'Sinewix'] },
   { alias: 'Astra', provider: 'Dizilla', prefixes: ['dzl_'], sources: ['Dizilla'] },
   { alias: 'Polaris', provider: 'RecTV', prefixes: ['tvr_', 'rectv_'], sources: ['TVR', 'RecTV'] },
-  // Nero yalniz Dizibal'dir (`dzb_`, dizibalScraper.js). `dzp_` Dizipal'idir ve
+  // Nero yalniz Dizibal'dir (`dzb_`, temiz cozum Nero'nun icinde — eski dizibalScraper silindi). `dzp_` Dizipal'idir ve
   // muhlif.js'in (kimlik.id 'dzp') tek onigidir; yoksa Nero, Muhlif'i etiketlerdi.
   { alias: 'Nero', provider: 'Dizibal', prefixes: ['dzb_'], sources: ['Dizibal'] },
   { alias: 'Corvus', provider: 'dizi77', prefixes: ['d77_'], sources: ['dizi77'] },

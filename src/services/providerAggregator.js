@@ -20,7 +20,8 @@
 import { fetchAnimecixSources } from './animecixScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchDizisolMovieSources, fetchDizisolEpisodeSources } from './dizisolScraper.js';
-import { fetchDizibalMovieSources, fetchDizibalEpisodeSources } from './dizibalScraper.js';
+// dizibalScraper SİLİNDİ: eski ölü scraper'dı; Dizibal yayınlarını bugün temiz
+// sağlayıcı Nero (src/providers/nero.js) kendi çözüyor — dosya yalnız ithaldı.
 import { fetchRecTvSources } from './rectvService.js';
 import { getSourceFamily } from './sourceLabels.js';
 import { zekaCeza, zekaKaydet } from './sourceIntelligence.js';
@@ -568,11 +569,27 @@ export async function getStreamingServersProgressive({
     return job;
   };
 
+  /** Tarayıcı-web: gömülü oynatıcı listelenmez (iframe kuralı — sidecar/cihaz
+   *  embed oynatabilir, tarayıcıda 4xx/ölü satır olur; kabul kıstası "iframe
+   *  yayın yok"). Doğrudan medya adresli (m3u8/mp4) "embed" tipi korunur. */
+  const webTarayici = !isNativeCapacitor() && typeof window !== 'undefined' &&
+    !(window.CinePulseDesktop?.isDesktop === true || (navigator.userAgent || '').includes('CinePulseDesktop'));
+
   /** Bir yayını iki dil listesine de yazar: çift dilli (dual) yayınlar hem
    *  dublaj hem altyazı sekmesinde görünür — tek dilde kaybolmaz. */
   const publishStreams = (rawList, category, derin = false) => {
     if (!Array.isArray(rawList) || rawList.length === 0) return [];
-    const valid = rawList.filter(isValidStream);
+    let rawIncoming = rawList;
+    if (webTarayici) {
+      rawIncoming = rawList.filter(raw => {
+        if (!raw) return false;
+        if (!(raw.isIframe || raw.type === 'embed')) return true;
+        const u = String(raw.streamUrl || raw.url || (typeof raw.getUrl === 'function' ? raw.getUrl() : '') || '');
+        return /\.(m3u8|mp4|mkv|webm|m4s|mpd)(\?|#|$)/i.test(u) || /\/api\/(?:hls_proxy|mkv_stream|stream_proxy)[?#]/i.test(u);
+      });
+      if (!rawIncoming.length) return [];
+    }
+    const valid = rawIncoming.filter(isValidStream);
     const added = [];
     let updated = false;
 
