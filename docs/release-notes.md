@@ -1,3 +1,16 @@
+## CinePulse v1.1.70
+
+- **Yeni içerik türleri:** Belgesel ve Çocuk arşivleri menüde; katalog 19 yıldıza çıktı, defter tek kaynağa indirildi.
+- **Canlı TV yıldızları:** Polaris yeniden yayında (film + dizi + 30+ canlı kanal); adres bilgisi artık sağlayıcının kendi ayar servisinden canlı okunur.
+- **Oynatıcı tepkiselliği:** kaynak siteler yanıt vermediğinde artık 9. saniyede uyarı + tek otomatik yeniden deneme; boş durumda hangi yıldızların denendiğini özetleyen rehber.
+- **Web düzeltmeleri:** tarayıcıda "hiç kaynak yok" sınıfı hatalar — vekil yolu ve çift-tarama korumasıyla giderildi; canlı TV kaynak adları kod adlarına çevrildi.
+- **Masaüstü:** "sıfır kaynak" hatası düzeltildi (tüm yıldızlar artık çalışıyordu, masaüstünde hiçbiri görünmüyordu); tek gizli tarayıcı kuyruğu düzeltildi; ikonlar çevrimdışı da görünür.
+- **Sağlama:** yayın adresleri açılışta doğrulanır, ölü/4xx hat listelenmez; iptal edilen aramada istekler anında düşer.
+
+**Paketler:** Android APK (aynı imza anahtarı — mevcut kurulumlar güncellenir), Linux DEB, Windows EXE, Linux AppImage.
+
+Yayınların erişilebilirliği kaynağa ve platforma bağlıdır. Bazı kaynaklar yalnızca Android'de açılır: bunlar tarayıcı motoru gerektiren bir güvenlik kontrolü kullanır.
+
 ## CinePulse v1.1.68
 
 - **Güncelleme uyarısı düzeltildi.** Aynı sürüm kuruluysa artık uyarı gelmiyor. Daha önce sürüm kodu yanlış hesaplandığı için güncel uygulamada bile sürekli "güncelle" bildirimi çıkıyordu.
