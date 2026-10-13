@@ -329,7 +329,13 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
     // TR/ORJ varyantları: site içeriği başka dildeki slug'la listeliyor olabilir.
     for (const alt of slugYedekleri.filter((x) => x && x !== slug).slice(0, 2)) {
       if (isFilm) yollar.push(`/${alt}-izle/`, `/hd-${alt}-izle/`);
-      else yollar.push(`/dizi/${alt}-izle-3/sezon-${s}/bolum-${e}/`);
+      else {
+        // ORJ slug'lı series'ler (ölçüldü: Kalk Gidelim 200 dönerken ORJ
+        // varyantı denememiştik): site ikili kalıp kullanıyor — tireli ESKİ
+        // kalıp + slash'lı YENİ kalıp. İkisi de denensin; deneme tavanı (8)
+        // bütçeyi yine sınırlıyor.
+        yollar.push(`/dizi/${alt}-izle-3/sezon-${s}/bolum-${e}/`, `/dizi/${alt}/izle-3/sezon-${s}/bolum-${e}/`, `/dizi/${alt}/izle/sezon-${s}/bolum-${e}/`);
+      }
     }
     let deneme = 0;
     for (const b of bazlar) {
