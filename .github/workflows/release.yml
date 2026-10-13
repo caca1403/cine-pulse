@@ -1,0 +1,247 @@
+# CinePulse public Release hatti — tag (vX.Y.Z) itilinca APK + DEB + EXE + AppImage uretir,
+# hepsini ayni GitHub Release'e koyar. Uydurma secret YOK: imza adlari build-apk.yml ile
+# birebir ayni (ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS /
+# ANDROID_KEY_PASSWORD + VITE_XTREAM_RELAY_ORIGIN) ve yalnizca ${{ secrets.X }} ile okunur.
+# Ayni keystore kaniti: scripts/build-android-release.py icindeki sabit SHA-256 parmak izi.
+# Sürüm tek kaynagi package.json; etiket onunla ayni olmali (asagidaki version-gate).
+name: Release CinePulse (APK + DEB + EXE + AppImage)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version-gate:
+    name: Surum kapisi (package.json tek kaynak)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: package.json gecerli mi (version + versionCode)
+        run: |
+          node -e "const p=require('./package.json'); if(!/^\d+\.\d+\.\d+$/.test(p.version)||!Number.isInteger(p.versionCode)) { console.error('package.json: version X.Y.Z ve versionCode tamsayi olmali'); process.exit(1); }"
+
+      - name: Etiket package.json surumuyle ayni mi (or. v1.1.70 <-> 1.1.70)
+        if: github.event_name == 'push'
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "${GITHUB_REF_NAME}" != "v${PKG_VERSION}" ]; then
+            echo "Etiket ${GITHUB_REF_NAME}, package.json surumu ${PKG_VERSION} ile ayni degil." >&2
+            echo "Once package.json version + versionCode guncelleyip commit'le; sürüm UYDURULMAZ." >&2
+            exit 1
+          fi
+
+      - name: Guncelleme manifestleri senkron mu (rapor; build'de otomatik uretilir)
+        run: node scripts/generate-update-manifest.mjs --check || echo "::warning::public/version.json|desktop-version.json package.json ile senkron degil. Hatti build sirasinda yeniden uretir; yerelde 'npm run manifest:sync' calistirin."
+
+  apk:
+    name: Android APK (signed, mevcut keystore secret'lari)
+    runs-on: ubuntu-latest
+    needs: version-gate
+    timeout-minutes: 40
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK (API 36)
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0'
+
+      - name: Setup Python provider runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Node Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Sync update manifest from package.json
+        run: node scripts/generate-update-manifest.mjs
+
+      - name: Build Web Application (Vite)
+        env:
+          VITE_XTREAM_RELAY_ORIGIN: ${{ secrets.VITE_XTREAM_RELAY_ORIGIN }}
+        run: npm run build
+
+      - name: Sync Web Assets to Android
+        run: |
+          mkdir -p android/app/src/main/assets/public
+          cp -r dist/* android/app/src/main/assets/public/
+          cp capacitor.config.json android/app/src/main/assets/capacitor.config.json
+          npx cap copy android || true
+          node scripts/clean-android-apk.mjs
+
+      - name: Grant Execute Permission to Gradlew
+        run: chmod +x android/gradlew
+
+      - name: Prepare release signing key
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/cinepulse.keystore"
+          test -s "$RUNNER_TEMP/cinepulse.keystore"
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      - name: Build Android Release APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/cinepulse.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Stage APK (ad manifest URL'leri ile ayni olmali)
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk cinepulse.apk
+          ls -la cinepulse.apk
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: cinepulse.apk
+          retention-days: 14
+
+  desktop-linux:
+    name: Desktop Linux (DEB + AppImage)
+    runs-on: ubuntu-latest
+    needs: version-gate
+    timeout-minutes: 40
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Node Dependencies
+        run: npm ci || npm install --legacy-peer-deps
+
+      - name: Build DEB + AppImage (package.json build config)
+        env:
+          VITE_XTREAM_RELAY_ORIGIN: ${{ secrets.VITE_XTREAM_RELAY_ORIGIN }}
+        run: |
+          node scripts/generate-update-manifest.mjs
+          npm run build
+          # --publish never: GITHUB_TOKEN ortamda dururken electron-builder'ın kendi
+          # başına Release'e yüklemeye çalışmasını engelle (yayın yetkisi job "release").
+          npx electron-builder --linux deb AppImage --publish never -c.electronDist=node_modules/electron/dist
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux
+          path: |
+            release/CinePulse-*.deb
+            release/CinePulse-*.AppImage
+          if-no-files-found: error
+          retention-days: 14
+
+  desktop-windows:
+    name: Desktop Windows (NSIS EXE)
+    runs-on: windows-latest
+    needs: version-gate
+    timeout-minutes: 45
+    # NOT: PUBLIC depoda GitHub-hosted Windows runner dakikalari UCRETSIZ ve sinirsizdir.
+    # Depo bir gun PRIVATE'a donerse Windows dakikalari kota/odemeyle 2x sayilir; o an
+    # bu job'ayi devre disi birakmak gerekebilir (EXE yerine web dagitimina donulur).
+    # EXE imzasizdir (code signing cert yok) — kullanicida SmartScreen uyarisi cikar; bkz docs/RELEASE.md.
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Node Dependencies
+        run: npm ci
+        shell: bash
+
+      - name: Build NSIS EXE (package.json build config)
+        env:
+          VITE_XTREAM_RELAY_ORIGIN: ${{ secrets.VITE_XTREAM_RELAY_ORIGIN }}
+        run: |
+          node scripts/generate-update-manifest.mjs
+          npm run build
+          npx electron-builder --win nsis --publish never
+        shell: bash
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: release/CinePulse-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: GitHub Release (tum artifactler)
+    runs-on: ubuntu-latest
+    needs: [version-gate, apk, desktop-linux, desktop-windows]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Regenerate update manifests (tek kaynak package.json)
+        run: node scripts/generate-update-manifest.mjs
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          name: CinePulse ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: |
+            release-assets/**/*
+            public/version.json
+            public/desktop-version.json
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          body_path: docs/release-notes.md
+          overwrite_files: true

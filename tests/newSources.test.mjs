@@ -23,35 +23,34 @@ let pass = 0, fail = 0;
 const ok = (c, m) => { c ? (pass++, console.log(`  ✓ ${m}`)) : (fail++, console.log(`  ✗ ${m}`)); };
 
 // ---------------------------------------------------------------- dizi77
-console.log('\n═══ dizi77.life (dizi kaynağı) ═══');
-const d77 = await import('../src/services/dizi77Scraper.js');
-const s77 = await d77.searchDizi77('walking');
-ok(Array.isArray(s77) && s77.length > 0, `arama: ${s77.length} dizi`);
-ok(s77.some(r => /walking/i.test(r.id + r.title)), 'hedef dizi listede');
-const t77 = await d77.searchDizi77('the walking dead');
-const target = t77.find(r => r.id === 'the-walking-dead') || t77[0];
-console.log(`    → "${target.title}" (${target.url})`);
-const src77 = await d77.fetchDizi77EpisodeSources(target.url, 1, 1);
-ok(src77.length > 0, `1.sezon 1.bolum oynatıcı: ${src77.length} kaynak`);
+console.log('\n═══ Corvus (temiz sağlayıcı — dizi77) ═══');
+// Eski dizi77Scraper doğrudan çağrısı (isIframe/gömülü oynatıcı bekleyen) ×
+// büyük temizlikle emekli edildi: dizi77 artık temiz sağlayıcı Corvus olarak
+// src/providers/corvus.js'te; "iframe listelenmez" kuralı gereği yalnız
+// oynatılabilir doğrudan akışlar döner.
+const { coz: cozCorvus } = await import('../src/providers/corvus.js');
+const cv = await cozCorvus({ type: 'tv', title: 'The Walking Dead', originalTitle: 'The Walking Dead', season: 1, episode: 1 });
+const src77 = (cv && cv.sources) || [];
+ok(src77.length > 0, `1.sezon 1.bolum çözüldü: ${src77.length} kaynak`);
 if (src77[0]) {
-  ok(/^https?:\/\//.test(src77[0].streamUrl), `iframe geçerli: ${src77[0].streamUrl.slice(0, 62)}`);
-  ok(src77[0].isIframe === true, 'isIframe işaretli (gömülü oynatıcı)');
+  ok(/^https?:\/\//.test(src77[0].url), `akış geçerli: ${src77[0].url.slice(0, 62)}`);
+  // Proje kuralı: gömülü oynatıcı LİSTELENMEZ — yalnız bizim oynatıcımızda
+  // oynayan doğrudan akışlar dönülür.
+  ok(src77[0].isIframe !== true, 'iframe değil (kural: gömülü oynatıcı listelenmez)');
+  ok(/^Corvus\b/.test(src77[0].name || src77[0].source || ''), 'etiket kod adıyla başlıyor (anonimlik)');
 }
 
-// ------------------------------------------------------------- sinemacc
-console.log('\n═══ sinemacc.com (film kaynağı) ═══');
-const smc = await import('../src/services/sinemaccScraper.js');
-const listS = await smc.searchSinemacc('film', false);
-ok(Array.isArray(listS) && listS.length > 0, `katalog: ${listS.length} film`);
-if (listS[0]) console.log(`    → "${listS[0].title}" (${listS[0].url})`);
-const srcS = await smc.fetchSinemaccSources({ title: listS[0]?.title || '', titles: [] });
-ok(srcS.length > 0, `oynatıcı çözüldü: ${srcS.length} kaynak`);
-if (srcS[0]) {
-  // Oynatici iframe'i calismaz (player.filmizle.in referer sart); FirePlayer
-  // API'sinden dogrudan HLS adresi alinir.
-  ok(srcS[0].isHls === true && srcS[0].streamUrl.includes('/api/hls_proxy'),
-     `dogrudan HLS cozuldu: ${String(srcS[0].rawStreamUrl || '').slice(0, 62)}`);
-}
+// ---------------------------------------- Halcyon (temiz sağlayıcı — sinemacc)
+console.log('\n═══ Halcyon (temiz sağlayıcı, film) ═══');
+const { coz: cozHalcyon } = await import('../src/providers/halcyon.js');
+const hal = await cozHalcyon({ type: 'movie', title: 'Interstellar', originalTitle: 'Interstellar', tmdbId: 157336 });
+const srcH = (hal && hal.sources) || [];
+ok(srcH.length > 0, `doğrudan yayın çözüldü: ${srcH.length} kaynak`);
+// iframe YASAK: yalnız bizim oynatıcımızda oynayan doğrudan akışlar listelenir
+ok(srcH.every((s) => !s.isIframe && s.url && !/^https?:\/\/[^/]+\/(player|embed)\//i.test(s.url)),
+   'yalnız doğrudan akış (gömülü oynatıcı yok)');
+// kaynak() sözleşmesi: etiket name/source alanlarında (eski `ad` alanı kalktı)
+ok(srcH.every((s) => /^Halcyon\b/.test(s.name || s.source || '')), 'etiketler kod adıyla başlıyor (anonimlik)');
 
 // ------------------------------------------------- jetfilm / filmmodu M3U
 console.log('\n═══ Film M3U kaynakları (VOD) ═══');

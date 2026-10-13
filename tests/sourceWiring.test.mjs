@@ -22,11 +22,11 @@ let pass = 0, fail = 0;
 const ok = (c, m) => { c ? (pass++, console.log(`  ✓ ${m}`)) : (fail++, console.log(`  ✗ ${m}`)); };
 
 // id -> { dosya, aggregator'da çağrılan fonksiyon, pakette aranacak özgün imza }
+// Yalnızca temiz sağlayıcısı OLMAYAN kaynaklar burada listelenir. Eski
+// scraper'ı silinen satırlar (sinemacc→Halcyon, dizibox→ELE) temiz kalıba
+// taşındı; onların bağlantısı 1b bölümünde doğrulanıyor.
 const KAYNAK_IMZALARI = [
-  { id: 'dizi77',   dosya: 'dizi77Scraper.js',   cagri: 'fetchDizi77Sources',   imza: 'https://dizi77.life' },
-  { id: 'sinemacc', dosya: 'sinemaccScraper.js', cagri: 'fetchSinemaccSources', imza: 'https://sinemacc.com' },
-  { id: 'vodm3u',   dosya: 'vodM3uSources.js',   cagri: 'fetchVodSources',      imza: 'patr0nq/flmS' },
-  { id: 'dizibox',  dosya: 'diziboxScraper.js',  cagri: 'fetchDiziBoxSources',  imza: 'diziboxizle.com' }
+  { id: 'vodm3u',   dosya: 'vodM3uSources.js',   cagri: 'fetchVodSources',      imza: 'patr0nq/flmS' }
 ];
 
 console.log('\n═══ 1) Kaynak kazıyıcısı → aggregator bağlantısı ═══');
@@ -40,6 +40,23 @@ for (const k of KAYNAK_IMZALARI) {
   // Çağrı sadece import'ta değil, gövdede de geçmeli.
   const cagriSayisi = (agg.match(new RegExp(`\\b${k.cagri}\\s*\\(`, 'g')) || []).length;
   ok(cagriSayisi > 0, `  ↳ '${k.cagri}()' aggregator gövdesinde ${cagriSayisi} kez çağrılıyor`);
+}
+
+console.log('\n═══ 1b) Temiz sağlayıcılar KAYIT + katalog bağlantısı ═══');
+const kayit = fs.readFileSync(path.join(ROOT, 'src/providers/index.js'), 'utf8');
+const TEMIZ = [
+  ['hdfc', 'orion', 'Orion'], ['anizium', 'aria', 'Aria'], ['animecix', 'tera', 'Tera'],
+  ['dzs', 'atlas', 'Atlas'], ['dizi77', 'corvus', 'Corvus'], ['jet', 'nimbus', 'Nimbus'],
+  ['sinemacc', 'halcyon', 'Halcyon'], ['hdfd', 'bellatrix', 'Bellatrix'],
+  ['d4kh', 'betelgeuse', 'Betelgeuse'], ['asy', 'aquila', 'Aquila'], ['slc', 'lyra', 'Lyra'],
+  ['dyu', 'echo', 'Echo'], ['dzp', 'muhlif', 'Muhlif'], ['czgx', 'lumen', 'Lumen'],
+  ['fhdf', 'sirius', 'Sirius'], ['fm', 'arcturus', 'Arcturus'], ['dzb', 'nero', 'Nero'],
+];
+for (const [id, dosya, kodAdi] of TEMIZ) {
+  ok(fs.existsSync(path.join(ROOT, 'src/providers', `${dosya}.js`)), `src/providers/${dosya}.js mevcut`);
+  ok(new RegExp(`${id}:\\s*\\(\\)\\s*=>\\s*import\\('\\./${dosya}\\.js'\\)`).test(kayit), `KAYIT: ${id} → ${dosya}.js`);
+  ok(fs.readFileSync(path.join(ROOT, 'src/providers', `${dosya}.js`), 'utf8').includes(`'${kodAdi}'`),
+     `  ↳ kimlik kod adı: ${kodAdi}`);
 }
 
 console.log('\n═══ 2) Katalog kaydı → kazıyıcı eşleşmesi ═══');

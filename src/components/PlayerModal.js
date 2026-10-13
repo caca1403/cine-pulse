@@ -16,6 +16,9 @@ import { createPlayerScope, renderPlayerIcons } from './playerLifecycle.js';
    ========================================================================== */
 
 import { getStreamingServers, getStreamingServersProgressive } from '../services/providerAggregator.js';
+import { PLUGIN_DEFS, isPluginEnabled, getPluginDisplay } from '../services/pluginCatalog.js';
+import { getProviderDiagnostics } from '../services/providerRuntime/diagnostics.js';
+import { openPluginsModal } from './PluginsModal.js';
 import { resolveDirectStream } from '../services/streamExtractors.js';
 import { rankSourcesForDevice, rememberFailedSource, rememberWorkingSource, sourceMatchesDescriptor as sourceReliabilityMatchesDescriptor } from '../services/sourceReliability.js';
 import {
@@ -488,6 +491,9 @@ export async function openPlayerModal({
 
   let currentCategory = 'dubbed'; // Her zaman dublaj ile başla
   let activeServers = [];
+  // Boş-durum rehberi: son taramanın başlangıcı — providerRuntime olay kayıtları
+  // (denendi/hata/boş) yalnız bu andan sonrakiler için geçerlidir.
+  let lastDiscoveryStartedAt = 0;
   let currentServerIndex = 0;
   const getSourceContentKey = () => `${type}:${tmdbId || cleanSeriesName}:s${currentSeason}:e${currentEpisode}`;
   let categorizedServers = { dubbed: [], subtitled: [] };
@@ -1587,6 +1593,75 @@ export async function openPlayerModal({
     updateServerPillsEvents();
     if (roomSync) renderRoomPlayerHud();
     refreshOfflineDownloadButton();
+    updateSourceEmptyGuide();
+  }
+
+  // ── Boş durum rehberi ─────────────────────────────────────────────────
+  // Kaynak araması 0 ile bittiğinde jenerik yazı yerine KOD ADI özeti gösterilir:
+  // kaç kod adı denendi, hangileri kapalı (menüden açılabilir), hangileri hata/
+  // engelli ağ nedeniyle boş döndü. Kayıt yoksa yalnız denenen/açık sayısı.
+  // METİNDE GERÇEK SİTE ADI GEÇMEZ — yalnız getAnonymousSourceLabel/ALIASES kod
+  // adları (getPluginDisplay → Orion, Luna…). Tek buton çifti: Eklentileri
+  // yönet (PluginsModal) + Tekrar dene (aynı taramayı yeniden başlatır).
+  function getSourceEmptyGuideHtml() {
+    const enc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const aliasOf = (id) => { try { return getPluginDisplay({ id }).alias; } catch (_) { return 'Nexus'; } };
+    const enabled = PLUGIN_DEFS.filter((d) => isPluginEnabled(d.id));
+    const disabled = PLUGIN_DEFS.filter((d) => !isPluginEnabled(d.id));
+    // providerRuntime olay/öğrenme kayıtları: yalnız bu taramanın provider
+    // olayları sayılır (resolved/empty/failed). Kayıt yoksa denenen bilinemez,
+    // açık kaynak sayısı gösterilir.
+    let triedCount = 0;
+    let failedIds = [];
+    let emptyCount = 0;
+    try {
+      const olaylar = getProviderDiagnostics().filter((e) => e && e.stage === 'provider' && Number(e.at) >= lastDiscoveryStartedAt);
+      triedCount = new Set(olaylar.map((e) => e.provider)).size;
+      failedIds = [...new Set(olaylar.filter((e) => e.state === 'failed').map((e) => e.provider))];
+      emptyCount = new Set(olaylar.filter((e) => e.state === 'empty').map((e) => e.provider)).size;
+    } catch (_) {}
+    const lines = [];
+    lines.push(triedCount
+      ? `${triedCount} kod adı denendi (${enabled.length} kod adı açık).`
+      : `${enabled.length} açık kod adı denendi.`);
+    if (disabled.length) {
+      const adlar = disabled.slice(0, 6).map((d) => enc(aliasOf(d.id))).join(', ');
+      lines.push(`Kapalı: ${adlar}${disabled.length > 6 ? ', …' : ''} — menüden açılabilir.`);
+    }
+    if (failedIds.length) {
+      const adlar = failedIds.slice(0, 6).map(aliasOf).map(enc).join(', ');
+      lines.push(`Yanıt vermedi / engelli ağ: ${adlar}${failedIds.length > 6 ? ', …' : ''}.`);
+    }
+    if (emptyCount) lines.push(`${emptyCount} kod adı bu içeriği bulmadan tamamlandı.`);
+    return `
+      <div style="font-weight:700;color:#fbbf24;margin-bottom:.35rem;">Bu içerik için kaynak yanıt vermedi</div>
+      <ul style="margin:0 0 .6rem;padding-left:1.1rem;color:#94a3b8;font-size:.76rem;line-height:1.5;text-align:left;">
+        ${lines.map((l) => `<li>${l}</li>`).join('')}
+      </ul>
+      <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;">
+        <button type="button" id="btn-empty-manage-plugins" style="padding:.4rem .9rem;border-radius:.6rem;border:1px solid rgba(223,255,118,.35);background:rgba(223,255,118,.1);color:#dfff76;font-size:.76rem;font-weight:700;cursor:pointer;">Eklentileri yönet</button>
+        <button type="button" id="btn-empty-retry" style="padding:.4rem .9rem;border-radius:.6rem;border:1px solid rgba(148,163,184,.35);background:rgba(148,163,184,.08);color:#cbd5e1;font-size:.76rem;font-weight:700;cursor:pointer;">Tekrar dene</button>
+      </div>`;
+  }
+
+  function updateSourceEmptyGuide() {
+    let el = null;
+    try { el = document.getElementById('source-empty-guide'); } catch (_) {}
+    if (!el) return;
+    // Yalnız tarama tamamen bittiğinde ve HİÇBİR dil kategorisinde kaynak
+    // yoksa görünür; aksi halde dil-seçili boş metni (dropdown) yeterlidir.
+    const total = (categorizedServers.dubbed || []).length + (categorizedServers.subtitled || []).length;
+    const show = !closed && !isSearching && !isDiscoveryActive && total === 0;
+    if (!show) {
+      if (!el.classList.contains('hidden')) { el.classList.add('hidden'); el.innerHTML = ''; }
+      return;
+    }
+    el.innerHTML = getSourceEmptyGuideHtml();
+    el.classList.remove('hidden');
+    const manageBtn = el.querySelector('#btn-empty-manage-plugins');
+    if (manageBtn) manageBtn.onclick = () => { try { openPluginsModal(); } catch (_) {} };
+    const retryBtn = el.querySelector('#btn-empty-retry');
+    if (retryBtn) retryBtn.onclick = () => { try { startServerDiscovery(); } catch (_) {} };
   }
 
   let isDownloadingOffline = false;
@@ -1646,7 +1721,7 @@ export async function openPlayerModal({
       list.push({
         server: srv,
         streamUrl: u,
-        displayName: srv.displayName || srv.name || 'Yayın Hattı',
+        displayName: getAnonymousSourceLabel(srv, activeServers || [srv]) || 'Yayın Hattı',
         isDirectVideo: Boolean(srv.isDirectVideo || /\.(?:mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u)),
         isHls: Boolean(srv.isHls || u.includes('.m3u8') || u.includes('/api/hls_proxy')),
         isTorrent: Boolean(srv.isTorrent || u.startsWith('magnet:')),
@@ -1800,7 +1875,7 @@ export async function openPlayerModal({
           const extraStreams = episodeSources.map(srv => ({
             server: srv,
             streamUrl: getStreamSafeUrl(srv),
-            displayName: srv.displayName || srv.name || 'DS 1080p',
+            displayName: srv.displayName || srv.name || 'Atlas 1080p',
             isDirectVideo: Boolean(srv.isDirectVideo),
             isHls: Boolean(srv.isHls),
             category: currentCategory
@@ -1913,7 +1988,7 @@ export async function openPlayerModal({
             <!-- OPTION 2: UYGULAMA İÇİ ÇEVRİMDIŞI İNDİR -->
             <div class="dl-option-card ${downloaded ? 'is-disabled-card' : ''}">
               <div class="dl-card-icon-wrap" style="background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3);">
-                <i data-lucide="cloud-download" style="width:20px;height:20px"></i>
+                <i data-lucide="download-cloud" style="width:20px;height:20px"></i>
               </div>
               <div class="dl-card-content">
                 <h5>Uygulama İçi Çevrimdışı İndir</h5>
@@ -2125,7 +2200,7 @@ export async function openPlayerModal({
         streams = (episodeSources || []).map(server => ({
           server,
           streamUrl: getStreamSafeUrl(server),
-          displayName: server.displayName || server.name || 'Dizisol',
+          displayName: server.displayName || server.name || 'Atlas',
           isDirectVideo: Boolean(server.isDirectVideo),
           isHls: Boolean(server.isHls),
           category: currentCategory
@@ -2146,7 +2221,7 @@ export async function openPlayerModal({
       for (const stream of candidates.slice(0, 5)) {
         if (activeDownloadAbortController.signal.aborted) throw new Error('İndirme iptal edildi');
         try {
-          activeDownloadProgress = { ...activeDownloadProgress, status: `${stream.displayName || 'Kaynak'} deneniyor...` };
+          activeDownloadProgress = { ...activeDownloadProgress, status: `${getAnonymousSourceLabel(stream.server || {}, candidates.map(c => c.server).filter(Boolean))} deneniyor...` };
           refreshOfflineDownloadButton();
           const isCurrentPlayingSource = stream.server === activeServers[currentServerIndex];
           const resolved = isCurrentPlayingSource
@@ -3021,7 +3096,7 @@ export async function openPlayerModal({
                   <span id="pill-speed-label">1x</span>
                 </button>
                 <button type="button" class="pill-bar-btn" id="pill-btn-subs" title="Altyazı Seçenekleri">
-                  <i data-lucide="subtitles" style="width: 14px; height: 14px;"></i>
+                  <i data-lucide="captions" style="width: 14px; height: 14px;"></i>
                   <span>Altyazı</span>
                 </button>
                 <button type="button" class="pill-bar-btn" id="pill-btn-audio" title="Ses Kanalı (Dublaj / Orijinal)">
@@ -3150,7 +3225,7 @@ export async function openPlayerModal({
                   <span>Dublaj & Ses</span>
                 </button>
                 <button type="button" class="audio-sub-tab-btn" id="audio-sub-tab-subs">
-                  <i data-lucide="subtitles" style="width: 13px; height: 13px;"></i>
+                  <i data-lucide="captions" style="width: 13px; height: 13px;"></i>
                   <span>Altyazı</span>
                 </button>
               </div>
@@ -3445,7 +3520,7 @@ export async function openPlayerModal({
         <div class="short-drama-artwork-copy"><span>KISA DİZİ · MİNİ SERİ · ${currentEpisode}. BÖLÜM</span><strong>${cleanSeriesName}</strong></div>
       </section>` : ''}
 
-      <!-- Dizisol Cinema Body (Title, Genres, Overview & Carousel) -->
+      <!-- Cinema Body (Title, Genres, Overview & Carousel) -->
       <div class="dizisol-cinema-body">
         <section class="player-editorial-header" aria-label="İçerik bilgisi">
           <div class="player-editorial-copy">
@@ -3556,6 +3631,8 @@ export async function openPlayerModal({
               </div>
             </div>
           </div>
+          <!-- Boş-durum rehberi: tarama 0 kaynakla bittiğinde görünür (kod adı özeti). -->
+          <div id="source-empty-guide" class="hidden" style="margin-top:.6rem;padding:.7rem .8rem;border:1px solid rgba(251,191,36,.25);border-radius:.7rem;background:rgba(251,191,36,.06);text-align:center;"></div>
         </section>
         `}
         </div>
@@ -6692,6 +6769,7 @@ export async function openPlayerModal({
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
     const generation = ++discoveryGeneration;
     const discoveryStartTime = Date.now();
+    lastDiscoveryStartedAt = discoveryStartTime;
     let sourceRefreshFrame = 0;
     isSearching = true;
     isDiscoveryActive = true;

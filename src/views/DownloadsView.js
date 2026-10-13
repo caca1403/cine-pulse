@@ -24,7 +24,7 @@ export function renderDownloadsView() {
           <small id="downloads-storage-note">İndirilen dosyalar yalnızca bu cihazda saklanır.</small>
         </div>
         <div class="downloads-list-heading"><h2>Kaydedilen diziler ve filmler</h2><span id="downloads-total">0 içerik</span></div>
-        <div class="downloads-list" id="downloads-list"><div class="downloads-loading"><i data-lucide="loader-circle"></i><span>İndirilenler yükleniyor…</span></div></div>
+        <div class="downloads-list" id="downloads-list"><div class="downloads-loading"><i data-lucide="loader-2"></i><span>İndirilenler yükleniyor…</span></div></div>
       </section>`,
     init: container => {
       const page = container.querySelector('#downloads-page');
@@ -92,7 +92,7 @@ export function renderDownloadsView() {
           .sort((a, b) => (b.latest || b.downloadedAt || 0) - (a.latest || a.downloadedAt || 0));
         page.querySelector('#downloads-total').textContent = `${content.length} içerik · ${items.length} dosya`;
         if (!content.length) {
-          list.innerHTML = `<div class="downloads-empty"><i data-lucide="cloud-download"></i><h3>Henüz içerik indirmedin</h3><p>Bir bölümü oynatıcıda açıp <b>İndir</b> düğmesine bas. İndirme ilerlemesini oradan görebilirsin.</p><a href="#home" class="downloads-browse-btn"><i data-lucide="compass"></i> İçeriklere göz at</a></div>`;
+          list.innerHTML = `<div class="downloads-empty"><i data-lucide="download-cloud"></i><h3>Henüz içerik indirmedin</h3><p>Bir bölümü oynatıcıda açıp <b>İndir</b> düğmesine bas. İndirme ilerlemesini oradan görebilirsin.</p><a href="#home" class="downloads-browse-btn"><i data-lucide="compass"></i> İçeriklere göz at</a></div>`;
           renderIcons(list);
           return;
         }

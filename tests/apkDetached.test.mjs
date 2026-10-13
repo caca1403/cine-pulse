@@ -60,7 +60,7 @@ ok(siraDuzenli, 'çözümleyiciler sırayla deneniyor (önce Android, sonra masa
 // 5) Vercel'e giden tek yol: /api/proxy — kaynak sorgularında kullanılmıyor
 const pa = oku('src/services/providerAggregator.js');
 const hdfcSatiri = pa.split('\n').filter((l) => l.includes('hdfc') && l.includes('fetchHdfilmcehennemiSources'));
-ok(hdfcSatiri.length === 1, 'Orion aggregator\'da tek yerde bağlı');
+ok(hdfcSatiri.length === 0, 'eski HDFC scraper çağrısı aggregator\'dan tamamen söküldü (tek yol temiz Orion)');
 
 console.log(`\n  Zincir: cihaz IP → doğrudan → gizli WebView → yedek/proxy`);
 console.log(`  Yani APK'da hiçbir kaynak sorgusu Vercel üzerinden gitmiyor.\n`);

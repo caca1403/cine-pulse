@@ -268,15 +268,15 @@ export async function fetchDramalarEpisodeSources({
   const sourceIsDub = titleText.includes('dublaj') || isDub === true;
 
   const label = sourceIsDub
-    ? `🇹🇷 Dramalar VIP S${seasonNum}E${episodeNum} (TR Dublaj 1080p)`
-    : `⚡ Dramalar VIP S${seasonNum}E${episodeNum} (TR Altyazı 1080p)`;
+    ? `🇹🇷 Dora VIP S${seasonNum}E${episodeNum} (TR Dublaj 1080p)`
+    : `⚡ Dora VIP S${seasonNum}E${episodeNum} (TR Altyazı 1080p)`;
 
   return [{
     id: `dml_ep_${matchedItem.coverHash}_${seasonNum}_${episodeNum}`,
     name: label,
     displayName: label,
-    badge: '👑 Dramalar VIP',
-    source: 'Dramalar VIP',
+    badge: '👑 Dora VIP',
+    source: 'Dora',
     url: streamUrl,
     streamUrl: streamUrl,
     rawStreamUrl: streamUrl,

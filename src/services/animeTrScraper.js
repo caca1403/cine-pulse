@@ -138,8 +138,8 @@ export async function fetchAnimeTrSources({ titles = [], seriesTitle = '', title
           uniqueProviders.add(pKey);
           sources.push({
             id: `antr_${pKey}_${episode}_${isDub ? 'dub' : 'sub'}_${sources.length}`,
-            name: `AnimeTR - ${item.provider} (${isDub ? '1080p TR Dublaj' : '1080p Altyazılı'})`,
-            badge: isDub ? `🎌 Dublaj` : `🎌 ${item.provider}`,
+            name: `Kitsu - Oynatıcı (${isDub ? '1080p TR Dublaj' : '1080p Altyazılı'})`,
+            badge: isDub ? `🎌 Dublaj` : `🎌 Oynatıcı`,
             category: isDub ? 'dubbed' : 'subtitled',
             streamUrl: item.url,
             url: item.url,

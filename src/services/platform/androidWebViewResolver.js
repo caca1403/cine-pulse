@@ -74,14 +74,24 @@ function dispatchPage(url, { timeoutMs = 22000, media = false } = {}) {
 }
 
 /** The native resolver owns one WebView; serialize jobs and coalesce duplicates. */
+let kuyrukSayac = 0;
+/** Cihazda TEK gizli WebView var. Bir çözümleme sürerken ikincisi sıraya
+ *  giriyor ve sırada bekleyen iş çoğunlukla süresi doluyor (resolver-queue-timeout).
+ *  Sağlayıcılar bunun için "meşgul mi?" diye sorup pahalı yolu atlayabilir. */
+export function resolverMesgulMu() { return kuyrukSayac > 0; }
+
 export function resolvePageInNativeWebView(url, options = {}) {
   const key = `${Boolean(options.media)}:${url}`;
   if (inflight.has(key)) return inflight.get(key);
   const deadline = Date.now() + (options.timeoutMs || 22000);
   const task = queue.then(() => {
     const remaining = deadline - Date.now();
-    if (remaining < 1000) return null;
-    return dispatchPage(url, { ...options, timeoutMs: remaining });
+    // Sırada o kadar az süre kaldı ki bu iş hiç başlamadan ölecek — boşuna
+    // yer kaplama, hemen düş.
+    if (remaining < 4000) return null;
+    kuyrukSayac++;
+    return dispatchPage(url, { ...options, timeoutMs: remaining })
+      .finally(() => { kuyrukSayac = Math.max(0, kuyrukSayac - 1); });
   });
   queue = task.catch(() => null);
   const result = task.finally(() => inflight.delete(key));

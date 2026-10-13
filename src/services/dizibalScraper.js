@@ -199,8 +199,8 @@ export async function fetchDizibalEpisodeSources({ titles = [], seriesTitle, ori
       const isHls = Boolean(streamUrl);
       return [{
         id: `dzb_tv_s${sNum}e${epNum}_${pv.slice(0, 8)}`,
-        name: isDub ? `DP S${sNum}B${epNum} (TR Dublaj)` : `DP S${sNum}B${epNum} (TR Altyazı)`,
-        displayName: `DP S${sNum}B${epNum}`,
+        name: isDub ? `Nero S${sNum}B${epNum} (TR Dublaj)` : `Nero S${sNum}B${epNum} (TR Altyazı)`,
+        displayName: `Nero S${sNum}B${epNum}`,
         source: 'Dizibal',
         rawStreamUrl: streamUrl || embedUrl,
         referer: `${findPvHost(epHtml)}/`,
@@ -240,8 +240,8 @@ export async function fetchDizibalMovieSources({ titles = [], title, originalTit
       const isHls = Boolean(streamUrl);
       return [{
         id: `dzb_mov_${pv.slice(0, 8)}`,
-        name: isDub ? 'DP Film (TR Dublaj)' : 'DP Film (TR Altyazı)',
-        displayName: 'DP Film',
+        name: isDub ? 'Nero Film (TR Dublaj)' : 'Nero Film (TR Altyazı)',
+        displayName: 'Nero Film',
         source: 'Dizibal',
         rawStreamUrl: streamUrl || embedUrl,
         referer: `${findPvHost(pageHtml)}/`,

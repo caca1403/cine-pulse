@@ -266,6 +266,126 @@ function tara(html, ...desenler) {
 
 /* ══════════════════════════ 4. KALIPLAR ══════════════════════════ */
 
+/**
+ * 4a-0. TauVideo (tau-video.xyz) — AnimeciX'in yerleşik oynatıcısı.
+ *
+ * ÖLÇÜLDÜ (canlı doğrulandı): /embed/<id> adresi bir Vite/React SPA'sıdır;
+ * HTML'inde yayın YOKTUR (`<div id="root">` + bundle). Oynatıcı bundle'ı
+ * (`/assets/index-*.js`) adresin son yol parçasını kimlik alıp
+ *
+ *    GET https://tau-video.xyz/api/video/<id>[?vid=<vid>]
+ *
+ * ucunu çağırıyor ve düz JSON geliyor:
+ *    { "urls": [ { "label": "1080p", "url": "https://…/x.mp4", "size": 294227895 } … ],
+ *      "title_id": 25, "season_number": 1, "episode_number": 1, "duration": 1541 }
+ *
+ * İmza/token YOK: ucu başlıksız çağırmak yeterli (x-player-sig HMAC'ı yalnız
+ * "most-sought" istatistik ucu için; yayına gerek yok). Verilen adresler
+ * düz MP4'tür — sunucular `Range` destekliyor (HTTP 206, `ftyp` baytı) ve
+ * Referer zorunlu değil. Bu yüzden JENERİK TARAMA BOŞUNA: sayfa boş,
+ * iframe yok, video etiketi yok → kayıp. Tek istekte doğrudan yayın.
+ *
+ * KAYIT: aşağıdaki HOST_COZUCULER tablosu (bkz. 7. Ana Çözümleyici).
+ */
+const TAUVIDEO_HOST = /(?:^|\.)tau-?video\.[a-z][a-z0-9.-]*$/i;
+const TAU_API_KOK = 'https://tau-video.xyz';
+
+/** Kalite etiketine göre sıra (yüksek → düşük); bilinmeyen etiket ortada. */
+const TAU_KALITE = { '2160p': 6, '4k': 6, '1440p': 5, '1080p': 4, '720p': 3, '480p': 2, '360p': 1, '240p': 0 };
+
+/**
+ * JSON ucu katmanlı çağrılır (doğrudan → worker → uygulama proxy), ama
+ * `getHtml`den farkı: kısa gövdeli bir JSON "engelleyici sayfa" sayılmaz.
+ * (getHtml 400 bayt altındaki her şeyi reddediyor; API yanıtı bazen kısa.)
+ */
+async function tauJsonGet(url, ref, timeout) {
+  const denemeler = [
+    async () => {
+      const r = await fetch(url, {
+        signal: AbortSignal.timeout(timeout),
+        headers: { 'User-Agent': UA, Accept: 'application/json, text/plain, */*', ...(ref ? { Referer: ref } : {}) }
+      });
+      return r.ok ? await r.text() : '';
+    },
+    async () => (await workerGet(url, timeout)).metin,
+    async () => (await proxyGet(url, ref, timeout)).metin,
+  ];
+  for (const dene of denemeler) {
+    try {
+      const metin = await dene();
+      if (metin && metin.trimStart().startsWith('{')) return metin;
+    } catch (_) { /* sonraki katman */ }
+  }
+  return '';
+}
+
+/**
+ * TauVideo gömülü adresini doğrudan yayına çevirir.
+ * @returns {{url:string, referer:string, etiket:string}|null} çözülemezse null
+ */
+export async function extractTauvideoStream(url, referer = '', bitis = 0) {
+  if (!url || !TAUVIDEO_HOST.test(hostOf(url))) return null;
+  const id = ((String(url).match(/\/(?:embed-2|embed|v|e|d)\/([A-Za-z0-9_-]{6,64})/i) || [])[1]
+    || (String(url).match(/([a-f0-9]{24})/i) || [])[1] || '');
+  if (!id) return null;
+
+  let vid = '';
+  try { vid = new URL(url).searchParams.get('vid') || ''; } catch (_) {}
+  const ref = referer || `${(() => { try { return new URL(url).origin; } catch (_) { return TAU_API_KOK; } })()}/`;
+  const kalan = bitis ? Math.max(900, Math.min(12000, bitis - Date.now())) : 12000;
+
+  // API kokü gömülü adresin kendi origin'idir (ayna alan adları kendi ucuru
+  // üzerinden yürür); oradan alamazsak bilinen merkezi kok denenir.
+  let kok = ref;
+  try { kok = new URL(url).origin; } catch (_) { kok = TAU_API_KOK; }
+  const adayKokler = [...new Set([kok, TAU_API_KOK])];
+
+  for (const k of adayKokler) {
+    if (bitis && Date.now() > bitis) return null;
+    const api = `${k}/api/video/${encodeURIComponent(id)}${vid ? `?vid=${encodeURIComponent(vid)}` : ''}`;
+    const ham = await tauJsonGet(api, ref, kalan);
+    if (!ham) continue;
+    let veri = null;
+    try { veri = JSON.parse(ham); } catch (_) { continue; }
+
+    const hamAdaylar = Array.isArray(veri?.urls) ? veri.urls
+      : Array.isArray(veri?.sources) ? veri.sources
+      : (veri?.url ? [{ label: '', url: veri.url }] : []);
+    const adaylar = hamAdaylar
+      .map((x) => ({
+        etiket: String(x?.label || x?.quality || '').toLowerCase(),
+        url: temizle(typeof x === 'string' ? x : (x?.url || x?.file || x?.src || '')),
+        size: Number(x?.size) || 0,
+      }))
+      .filter((x) => /^https?:\/\//i.test(x.url) && !REKLAM_RE.test(x.url));
+    if (!adaylar.length) continue;
+
+    // HLS varsa onu tercih et (uyarlanabilir), yoksa en yüksek kaliteli MP4.
+    const skor = (x) => (MEDIA_EXT.test(x.url) ? 100 : 0)
+      + (/.m3u8/i.test(x.url) ? 50 : 0)
+      + (TAU_KALITE[x.etiket] ?? 2) * 5 + Math.min(4, Math.round(x.size / 1e8));
+    adaylar.sort((a, b) => skor(b) - skor(a));
+    const sec = adaylar[0];
+    if (!/^https?:\/\//i.test(sec.url)) continue;
+    return {
+      url: sec.url,
+      referer: `${TAU_API_KOK}/`,
+      etiket: sec.etiket ? sec.etiket.toUpperCase() : '',
+      alternatifler: adaylar.slice(1).map((x) => x.url),
+    };
+  }
+  return null;
+}
+
+/**
+ * HOST KAYIT TABLOSU — jenerik taramanın işe yaramadığı (SPA) ama kendi
+ * API'si olan oynatıcılar. Ana çözümleyici, sayfayı indirmeden ÖNCE burada
+ * bakınır: tek istekte kesin yayın. Çözülemezse jenerik yola düşülür.
+ */
+const HOST_COZUCULER = [
+  { ad: 'tauvideo', test: (host) => TAUVIDEO_HOST.test(host), coz: (u, ref, bitis) => extractTauvideoStream(u, ref, bitis) },
+];
+
 /** 4a. SecuredLink — HDPlayerSystem / player.filmizle.in ailesi */
 async function kalipSecuredLink(url, ref) {
   const m = url.match(/\/(?:video|hdplayer|player|embed)\/([A-Za-z0-9_-]{8,90})/) || url.match(/[?&]data=([^&]+)/);
@@ -637,8 +757,16 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set(), 
   if (!url || !/^https?:\/\//i.test(url)) return null;
   if (gordum.has(url) || gordum.size > 8) return null;
   // Sert süre sınırı: çağıran (otonom çözümleyici / oynatıcı) bekletilmez.
-  const kalan = bitis ? Math.max(0, bitis - Date.now()) : 0;
-  if (bitis && kalan < 900) return null;
+  const kalanMs = () => (bitis ? Math.max(0, bitis - Date.now()) : 0);
+  if (bitis && kalanMs() < 900) return null;
+  /* BÜTÇE: `bitis` gerçek bir sınirdir. Ölçüldü: denetlenmezken tek bir
+     doodstream denemesi 29 saniye sürüp tüm sağlayıcıyı zaman aşımına
+     düşürüyordu. Kalan süreden uzun hiçbir adım bekletilmez. */
+  const butcle = async (vad) => {
+    const k = kalanMs();
+    if (!k) return null;
+    return await Promise.race([vad, new Promise((sonlandir) => setTimeout(() => sonlandir(null), Math.max(300, k)))]);
+  };
   gordum.add(url);
 
   if (isDirectStream(url)) {
@@ -647,15 +775,27 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set(), 
 
   const ref = referer || (() => { try { return `${new URL(url).origin}/`; } catch (_) { return ''; } })();
 
+  // ── KAYITLI HOSTLAR (SPA oynatıcılar): sayfasında aranacak bir şey yok,
+  //    yayın kendi API'sinde. Sayfa indirmeden önce tek istekte çözülür.
+  const host = hostOf(url);
+  for (const kayit of HOST_COZUCULER) {
+    if (bitis && Date.now() > bitis) return null;
+    if (!kayit.test(host, url)) continue;
+    const bul = await butcle(kayit.coz(url, ref, bitis));
+    if (bul && /^https?:\/\//i.test(bul.url)) {
+      return { referer: ref, subtitles: [], ...bul, via: bul.via || kayit.ad };
+    }
+  }
+
   // Bize doğrudan bir API ucu verilmiş olabilir (ör. ".../dl?op=get_stream&view_id=…").
   // Bu durumda sayfaya gitmeye gerek yok, ucu bir kez çağırmak yeterli.
   if (/[?&]op=get_stream|[?&]do=getVideo/i.test(url)) {
-    const dogrudanApi = await apiUrlCoz(url, ref);
+    const dogrudanApi = await butcle(apiUrlCoz(url, ref));
     if (dogrudanApi) return dogrudanApi;
   }
 
   // ── Ucuz ve kesin olanlar önce
-  const hamHtml = providedHtml || await getHtml(url, { ref, timeout: 16000 });
+  const hamHtml = providedHtml || await butcle(getHtml(url, { ref, timeout: bitis ? Math.min(16000, Math.max(1500, kalanMs())) : 16000 }));
   if (!hamHtml) return null;
 
   // ŞİFRELİ OYNATICI: Gerçek oynatıcı HTML'i sayfada düz metin olarak
@@ -670,7 +810,7 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set(), 
 
   // /dl API: sayfadaki reklam adresleri "file:" olarak da geçtiği için
   // önce bu denenmeli, yoksa erken dönüş yanlış yayını yakalar.
-  const dl = await kalipDlApi(url, html);
+  const dl = await butcle(kalipDlApi(url, html));
   if (dl) return { ...dl, via: 'dl-api' };
 
 
@@ -682,7 +822,7 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set(), 
     const coz = base64Coz(m[1]);
     const abs = coz ? mutlak(url, coz) : '';
     if (!abs || REKLAM_RE.test(abs)) continue;
-    const ic = await extractEmbedStream(abs, url, gordum, bitis);
+    const ic = await butcle(extractEmbedStream(abs, url, gordum, bitis));
     if (ic && MEDIA_EXT.test(ic.url)) return { ...ic, via: `${ic.via}+base64` };
     return { url: abs, referer: ref, via: 'base64-iframe', subtitles: altyazilariCikar(html, url) };
   }
@@ -698,21 +838,21 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set(), 
 
   // ── Bilinen gömülü kalıpları
   if (bitis && Date.now() > bitis) return null;
-  const sl = await kalipSecuredLink(url, ref);
+  const sl = await butcle(kalipSecuredLink(url, ref));
   if (sl) return { ...sl, via: 'securedlink' };
 
   if (bitis && Date.now() > bitis) return null;
-  const vp = await kalipVideoPlayer(url, ref, html);
+  const vp = await butcle(kalipVideoPlayer(url, ref, html));
   if (vp) return { ...vp, via: 'videoPlayer' };
 
   // ── Sayfa içi tarama
   const jl = jsonLdCoz(html);
   if (jl) {
-    const ic = await extractEmbedStream(mutlak(url, jl), url, gordum);
+    const ic = await butcle(extractEmbedStream(mutlak(url, jl), url, gordum, bitis));
     if (ic) return { ...ic, via: `${ic.via}+jsonld` };
   }
 
-  const pj = await kalipPackedJs(html, url, ref);
+  const pj = await butcle(kalipPackedJs(html, url, ref));
   if (pj) return { ...pj, via: 'packedjs', subtitles: altyazilariCikar(html, url) };
 
   const b64 = base64GizliCoz(html);
@@ -725,15 +865,15 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set(), 
   if (lz) return { url: lz, referer: ref, via: 'lazy-src', subtitles: altyazilariCikar(html, url) };
 
   if (bitis && Date.now() > bitis) return null;
-  const bp = await kalipBePlayer(url, ref, html);
+  const bp = await butcle(kalipBePlayer(url, ref, html));
   if (bp) return { ...bp, via: 'bePlayer' };
 
   if (bitis && Date.now() > bitis) return null;
-  const nd = await kalipNonce(url, ref, html);
+  const nd = await butcle(kalipNonce(url, ref, html));
   if (nd) return { ...nd, via: 'nonce' };
 
   if (bitis && Date.now() > bitis) return null;
-  const pl = await kalipPlaylist(url, ref, html);
+  const pl = await butcle(kalipPlaylist(url, ref, html));
   if (pl) return { ...pl, via: 'playlist-api' };
 
   // ── Son çare: sayfadaki TÜM iframe adresleri
@@ -744,7 +884,7 @@ export async function extractEmbedStream(url, referer = '', gordum = new Set(), 
   }
   for (const src of iframeler.slice(0, 2)) {
     if (bitis && Date.now() > bitis) break;
-    const ic = await extractEmbedStream(src, url, gordum, bitis);
+    const ic = await butcle(extractEmbedStream(src, url, gordum, bitis));
     if (ic && MEDIA_EXT.test(ic.url)) return { ...ic, via: `${ic.via}+iframe` };
   }
 

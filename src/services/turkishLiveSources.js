@@ -23,10 +23,19 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000;   // 6 saat
 const STALE_TTL_MS = 48 * 60 * 60 * 1000;  // ag hatasi payi: 48 saat
 
 export const LIVE_SOURCES = [
-  { id: 'kral', label: 'Kral TV', icon: 'tv' },
-  { id: 'izlego', label: 'İzleGo', icon: 'globe' },
-  { id: 'turhan', label: 'Turhan TV', icon: 'radio-tower' }
+  { id: 'kral', label: 'Pulsar 1', icon: 'tv' },
+  { id: 'izlego', label: 'Pulsar 3', icon: 'globe' },
+  { id: 'turhan', label: 'Pulsar 2', icon: 'radio-tower' }
 ];
+
+// Görünür etiket tek yerden: sunucu tarafı (api/_liveSources.js) bu üç kaynağı
+// "Pulsar 1/2/3"e çevirdi — istemci AYNI adı kullanır (gerçek kaynak adları yalnız
+// kod yorumlarında kalır). id sabittir; etiket HER ZAMAN id'den üretilir, yoksa
+// eski localStorage önbelleklerindeki adlar ekrana sızabilirdi.
+const YAYIN_ETIKETI = { kral: 'Pulsar 1', turhan: 'Pulsar 2', izlego: 'Pulsar 3' };
+function gorunurEtiket(id, eskiLabel) {
+  return YAYIN_ETIKETI[id] || eskiLabel || id;
+}
 
 // Relative API yolunu platformun dogru origin'ine cevirir.
 // Desktop -> yerel sidecar, APK -> Vercel, web -> ayni origin.
@@ -112,7 +121,7 @@ export function getCachedSource(id) {
   const age = Date.now() - (entry.savedAt || 0);
   return {
     id,
-    label: entry.label || id,
+    label: gorunurEtiket(id, entry.label),
     channels: entry.channels,
     count: entry.channels.length,
     savedAt: entry.savedAt,
@@ -159,7 +168,7 @@ export async function refreshLiveSources({ force = false } = {}) {
     if (!s || !s.ok || !Array.isArray(s.channels) || !s.channels.length) continue;
     gotIds.add(s.id);
     writeSource(s.id, {
-      label: s.label || s.id,
+      label: gorunurEtiket(s.id, s.label),
       channels: s.channels,
       savedAt: Number(payload?.savedAt) || Date.now()
     });
@@ -170,7 +179,7 @@ export async function refreshLiveSources({ force = false } = {}) {
   if (!gotIds.has('kral')) {
     const direct = await fetchKralDirect().catch(() => null);
     if (direct && direct.length) {
-      writeSource('kral', { label: 'Kral TV', channels: direct, savedAt: Date.now() });
+      writeSource('kral', { label: 'Pulsar 1', channels: direct, savedAt: Date.now() });
     }
   }
 
@@ -279,7 +288,7 @@ export function buildChannels(sources, { resolveLogo, maxAlt = 6, maxTurkish = 5
         const channel = {
           id: `${src.id}_${stableId(ch.name, ch.streamUrl)}`,
           srcKey: src.id,
-          srcLabel: src.label || src.id,
+          srcLabel: gorunurEtiket(src.id, src.label),
           name: ch.name,
           logo: (typeof resolveLogo === 'function' && resolveLogo(ch.name)) || '',
           category: ch.category || 'national',

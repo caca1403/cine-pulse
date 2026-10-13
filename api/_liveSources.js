@@ -362,22 +362,31 @@ export function parseIzlegoChannels(text) {
 }
 
 // izlego.eu, Vercel/datacenter IP'lerine 429 döner (aynı liste ev IP'sinden
-// 200 ile gelir). Bu yüzden iki yol deniyoruz:
-//   1) Repodaki anlık görüntü (api/data/izlego.m3u) — ev IP'sinden çekildi
-//   2) Canlı URL + CF Worker
-// Anlık görüntü tazelendiğinde ilk yol kendiliğinden güncellenir.
-const IZLOGO_SNAPSHOT =
-  'https://raw.githubusercontent.com/caca1403/cine-pulse/main/api/data/izlego.m3u';
+// 200 ile gelir). Sıra: 1) CANLI site (birinci kaynak) 2) depodaki STATİK
+// kopya (api/data/izlego.m3u). Kopya ARTIK yerel dosyadan okunur; kendi
+// depomuza raw.githubusercontent üzerinden bağımlılık YOK (repo private
+// olunca o adres 404 verirdi). Node dışı ortamda (APK WebView) sessizce boşa
+// döner; modül tarayıcıda da kullanılabilir kalır.
+async function yerelKopya() {
+  try {
+    if (typeof process === 'undefined' || !process.versions?.node) return '';
+    const fsMod = await import(/* @vite-ignore */ 'node:fs');
+    const urlMod = await import(/* @vite-ignore */ 'node:url');
+    // fileURLToPath şart: yol Türkçe karakter içerince pathname yüzde-kodlu gelir.
+    const dizin = urlMod.fileURLToPath(new URL('./data/', import.meta.url));
+    const metin = fsMod.readFileSync(dizin + 'izlego.m3u', 'utf8');
+    return metin && metin.includes('#EXTINF') ? metin : '';
+  } catch (_) {
+    return '';
+  }
+}
 
 export async function fetchIzlegoChannels() {
   let text = '';
   try {
-    text = await fetchText(IZLOGO_SNAPSHOT, { userAgent: BROWSER_UA, timeout: 15000 });
-    if (!text || !text.includes('#EXTINF')) text = '';
-  } catch (_) {}
-  if (!text) {
     text = await fetchText(IZLOGO_M3U_URL, { userAgent: BROWSER_UA, timeout: 20000 });
-  }
+  } catch (_) {}
+  if (!text || !text.includes('#EXTINF')) text = await yerelKopya();
   if (!text || !text.includes('#EXTINF')) return [];
   return parseIzlegoChannels(text);
 }
@@ -476,10 +485,13 @@ export async function fetchTurhanChannels() {
 }
 
 // ------------------------------------------------------------- genel API
+// ANONİMLİK: kullanıcıya görünen kaynak adlarında gerçek site adı YOK
+// (pluginCatalog ALIASES'teki 'Pulsar' kod adı). `id` alanları DEĞİŞMEZ —
+// istemci (turkishLiveSources/LiveTvView) id ile eşleştiriyor.
 const FETCHERS = {
-  kral: { label: 'Kral TV (M3U Plus)', fn: fetchKralChannels },
-  turhan: { label: 'Turhan TV (Fixbet)', fn: fetchTurhanChannels },
-  izlego: { label: 'İzleGo (Ulusal + Yabancı)', fn: fetchIzlegoChannels }
+  kral: { label: 'Pulsar 1 (Ulusal)', fn: fetchKralChannels },
+  turhan: { label: 'Pulsar 2 (Ulusal)', fn: fetchTurhanChannels },
+  izlego: { label: 'Pulsar 3 (Ulusal + Yabancı)', fn: fetchIzlegoChannels }
 };
 
 export function isLiveSourceId(id) {

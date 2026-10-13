@@ -6,14 +6,19 @@
 
 import { isStrictMediaTitleMatch } from './mediaMatcher.js';
 
-const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
-const TOKEN_KEY = 'hlxjl1c2w281ax473rt1ofgrvhyjvi';
-const CLIENT_KEY = '16ghkdz5qnwinkyebwopbd94b49xhs';
+// Sırlar depoda DURMAZ: yerel `.env` (git dışı) veya CI secret üzerinden derleme
+// anında enjekte edilir (Vite `VITE_` öneki). Sır yokken bu kaynak çalışma
+// zamanında sessizce 0 kaynak döndürür (aşağıdaki guard).
+// Android/cihaz derlemesi: `cap sync` bu dosyayı dist'e gömer → değeri build
+// ortamındaki `.env` sağlar; cihaza düz metin sır commit edilmez.
+const CF_WORKER_PROXY = (import.meta.env?.VITE_ANIZIUM_WORKER || '').replace(/\/$/, '');
+const TOKEN_KEY = import.meta.env?.VITE_ANIZIUM_TOKEN_KEY || '';
+const CLIENT_KEY = import.meta.env?.VITE_ANIZIUM_CLIENT_KEY || '';
 
-// Authenticated session credentials
-const ANIZIUM_SESSION = '035f01015659595301060601525f39060c094e03515b442d13590e1a1c405b085b55031c5c5b475d57035c5c54415a001b04071f4446';
-const ANIZIUM_PROFILE = '15632429';
-const ANIZIUM_USER_ID = '38534241025665';
+// Authenticated session credentials (yalnız .env'den)
+const ANIZIUM_SESSION = import.meta.env?.VITE_ANIZIUM_SESSION || '';
+const ANIZIUM_PROFILE = import.meta.env?.VITE_ANIZIUM_PROFILE || '';
+const ANIZIUM_USER_ID = import.meta.env?.VITE_ANIZIUM_USER_ID || '';
 
 function normalizeTitle(t) {
   if (!t) return '';
@@ -89,7 +94,7 @@ async function fetchAniziumApi(url, timeoutMs = 4500) {
   } catch (_) {}
 
   // 2. CF Worker proxy fallback
-  if (isBrowser) {
+  if (isBrowser && CF_WORKER_PROXY) {
     try {
       const proxyUrl = `${CF_WORKER_PROXY}?url=${encodeURIComponent(url)}`;
       const res = await fetch(proxyUrl, {
@@ -118,6 +123,9 @@ export async function fetchAniziumSources({
   episode = 1,
   isDub = false
 } = {}) {
+  // Sır enjekte edilmemişse (`.env` yok) sessizce boş dön — uygulama çalışmaya devam eder.
+  if (!ANIZIUM_SESSION || !TOKEN_KEY) return [];
+
   const candidateQueries = [...new Set([
     originalTitle,
     seriesTitle,

@@ -19,8 +19,8 @@ export function fetchSmashyStreamSources({ type = 'movie', tmdbId, season = 1, e
   return [
     {
       id: `smashystream_${tmdbId}_s${sNum}e${epNum}`,
-      name: isMovie ? 'SmashyStream VIP (1080p)' : `SmashyStream S${sNum}B${epNum}`,
-      displayName: 'SmashyStream (1080p)',
+      name: isMovie ? 'Cosmo VIP (1080p)' : `Cosmo S${sNum}B${epNum}`,
+      displayName: 'Cosmo (1080p)',
       badge: '⚡ SmashyStream',
       source: 'SmashyStream',
       url: smashyUrl,

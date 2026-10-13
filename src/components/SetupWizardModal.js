@@ -5,7 +5,7 @@
 
 import { renderIcons } from '../services/icons.js';
 import { showToast } from './Toast.js';
-import { getProviders, setProviderEnabled, persistProviderState } from '../services/providers/providerRegistry.js';
+import { listPlugins, setPluginEnabled } from '../services/pluginCatalog.js';
 import { getUserSettings, saveUserSettings } from '../services/storage.js';
 import { isDesktopApp } from '../services/platformBridge.js';
 import { canUseDesktopSetup } from '../services/desktopSetupPolicy.js';
@@ -111,14 +111,25 @@ async function runSystemDiagnostics() {
  * Kaynakları Canlı Test Et (Ping)
  */
 async function pingProviders() {
-  const providers = getProviders();
+  const plugins = listPlugins();
   showToast('Kaynak hızları test ediliyor…', 'info');
 
-  const promises = providers.map(async (p) => {
+  // Alan adları tek kaynaktan gelir: site sürücüleri (siteProviders) + eklenti
+  // id eşlemesi (inventory). Eski köprülerdeki p.baseUrl buradan taşındı.
+  const adresler = {};
+  try {
+    const [{ SITE_PLUGIN_IDS }, { SITES }] = await Promise.all([
+      import('../services/providerRuntime/inventory.js'),
+      import('../services/siteProviders.js'),
+    ]);
+    for (const [site, id] of Object.entries(SITE_PLUGIN_IDS)) adresler[id] = (SITES[site]?.yedek || [])[0] || '';
+  } catch (_) {}
+
+  const promises = plugins.map(async (p) => {
     const start = performance.now();
     try {
       // Hızlı HEAD veya lightweight arama testi
-      const testUrl = p.baseUrl || 'https://www.google.com';
+      const testUrl = adresler[p.id] || 'https://www.google.com';
       await fetch(`http://127.0.0.1:4000/api/proxy?url=${encodeURIComponent(testUrl)}`, {
         signal: AbortSignal.timeout(3500)
       }).catch(() => null);
@@ -361,7 +372,7 @@ function renderStep1Requirements() {
             </div>
             <div>
               <div style="font-weight: 600; font-size: 0.92rem; color: #f1f5f9;">Python 3 Çözücü Çekirdeği</div>
-              <div style="font-size: 0.78rem; color: #94a3b8;">${py.version || 'HDFC, SetFilm ve SezonlukDizi ayrıştırıcı'}</div>
+              <div style="font-size: 0.78rem; color: #94a3b8;">${py.version || 'Python tabanlı ayrıştırıcı çekirdeği'}</div>
             </div>
           </div>
           <div>
@@ -422,7 +433,7 @@ function renderStep1Requirements() {
  * Adım 2: Eklenti & Kaynak Seçimi (Cloudstream Stili)
  */
 function renderStep2Providers() {
-  const providers = getProviders();
+  const plugins = listPlugins();
 
   return `
     <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -452,7 +463,7 @@ function renderStep2Providers() {
 
       <!-- Provider List -->
       <div style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 4px;">
-        ${providers.map((p) => {
+        ${plugins.map((p) => {
           const lat = providerLatencies.get(p.id);
           let latBadge = '';
           if (lat !== undefined) {
@@ -465,14 +476,14 @@ function renderStep2Providers() {
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
               <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(225,29,72,0.15); color: #f43f5e; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;">
-                  ${(p.name || 'P')[0]}
+                  ${(p.alias || 'P')[0]}
                 </div>
                 <div>
                   <div style="font-weight: 600; font-size: 0.88rem; color: #f1f5f9; display: flex; align-items: center; gap: 8px;">
-                    <span>${p.name}</span>
+                    <span>${p.alias}</span>
                     ${latBadge}
                   </div>
-                  <div style="font-size: 0.74rem; color: #94a3b8;">${p.types ? p.types.join(', ') : 'Film & Dizi VIP'}</div>
+                  <div style="font-size: 0.74rem; color: #94a3b8;">${(p.kinds || []).join(' / ') || 'Film & Dizi'}${p.desc ? ` · ${p.desc}` : ''}</div>
                 </div>
               </div>
               <label style="position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer;">
@@ -569,7 +580,7 @@ function renderStep3Player() {
  * Adım 4: Tamamlandı & Başlat
  */
 function renderStep4Finish() {
-  const activeProvidersCount = getProviders().length;
+  const activeProvidersCount = listPlugins().filter((p) => p.enabled !== false).length;
 
   return `
     <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; padding: 10px 0;">
@@ -655,12 +666,11 @@ function attachStep1Events() {
 function attachStep2Events() {
   document.getElementById('btn-ping-providers')?.addEventListener('click', pingProviders);
 
-  // Toggle handlers
+  // Toggle handlers — kalıcılık pluginCatalog'da (localStorage + EXE userData)
   document.querySelectorAll('.provider-toggle-input').forEach((input) => {
     input.addEventListener('change', async (e) => {
       const id = e.target.getAttribute('data-provider-id');
-      await setProviderEnabled(id, e.target.checked);
-      await persistProviderState();
+      await setPluginEnabled(id, e.target.checked);
     });
   });
 
@@ -668,19 +678,16 @@ function attachStep2Events() {
   document.querySelectorAll('.btn-provider-preset').forEach((btn) => {
     btn.addEventListener('click', async (e) => {
       const preset = e.currentTarget.getAttribute('data-preset');
-      const all = getProviders();
+      const all = listPlugins();
+      // Hızlı/CDN odaklı hatlar ve yerli kataloglar — eklenti id'leriyle.
+      const hizli = new Set(['dyu', 'dzs', 'dzb', 'snx', 'lookmovie', 'smashy', 'tvr', 'torrent']);
+      const yerli = new Set(['hdfc', 'slc', 'fhdf', 'fxs', 'jet', 'sinemacc', 'fm', 'dizi77', 'dzyf', 'hdfd', 'd4kh', 'dzp']);
       for (const p of all) {
-        if (preset === 'all') {
-          await setProviderEnabled(p.id, true);
-        } else if (preset === 'fast') {
-          const isFast = ['sinewix', 'diziyou', 'dizisol', 'rectv', 'lookmovie'].includes(p.id);
-          await setProviderEnabled(p.id, isFast);
-        } else if (preset === 'tr') {
-          const isTr = ['hdfilmcehennemi', 'sezonlukdizi', 'dizisol', 'diziyo', 'webteizle'].includes(p.id);
-          await setProviderEnabled(p.id, isTr);
-        }
+        let on = true;
+        if (preset === 'fast') on = hizli.has(p.id);
+        else if (preset === 'tr') on = yerli.has(p.id);
+        await setPluginEnabled(p.id, on);
       }
-      await persistProviderState();
       renderStepContent();
       showToast('Kaynak şablonu uygulandı!', 'success');
     });

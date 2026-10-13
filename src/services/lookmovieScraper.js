@@ -205,8 +205,8 @@ export async function fetchOfficialLookMovieSources({
     return [
       {
         id: `lookmovie_direct_${hit.id_show || hit.id_movie || hit.slug}_s${sNum}e${epNum}`,
-        name: isMovie ? 'LookMovie HLS (1080p TR Altyazı)' : `LookMovie HLS S${sNum}B${epNum} (TR Altyazı)`,
-        displayName: 'LookMovie HLS (1080p)',
+        name: isMovie ? 'Halo HLS (1080p TR Altyazı)' : `Halo HLS S${sNum}B${epNum} (TR Altyazı)`,
+        displayName: 'Halo HLS (1080p)',
         badge: '🎬 LookMovie Direct',
         source: 'LookMovie',
         url: finalStreamUrl,

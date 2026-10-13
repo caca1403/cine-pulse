@@ -10,7 +10,10 @@ export function androidRequestUrl(input, base = window.location.href) {
     (url.origin === window.location.origin || url.hostname === 'cine-pulse-drab.vercel.app');
   if (isAppApi) return apiUrl(`${url.pathname}${url.search}`);
   // Legacy worker URLs encode the actual upstream; native transport uses that upstream.
-  if (url.hostname === 'wild-credit-e1ae.cagatayca07.workers.dev' && url.searchParams.has('url')) {
+  // `aktar=1` istisnadır: sağlayıcı ISP tarafından engellenmişse (animecix.net gibi)
+  // cihazın kendi IP'si TLS aşamasında ölür; kaçış yolunun gerçekten worker'a
+  // gitmesi gerekir.
+  if (url.hostname === 'wild-credit-e1ae.cagatayca07.workers.dev' && url.searchParams.has('url') && !url.searchParams.has('aktar')) {
     const target = new URL(url.searchParams.get('url'));
     if (!/^https?:$/.test(target.protocol)) throw new TypeError('Invalid upstream URL');
     return target.href;

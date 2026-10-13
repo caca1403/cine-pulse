@@ -17,27 +17,20 @@
    - LookMovie VIP / 2Embed VIP / VidSrc VIP (Clean, low-ad 1080p embeds)
    ========================================================================== */
 
-import { fetchSezonlukDiziEpisodeSources } from './sezonlukDiziScraper.js';
-import { fetchSinewixSources } from './sinewixScraper.js';
 import { fetchAnimecixSources } from './animecixScraper.js';
 import { fetchAnimeTrSources } from './animeTrScraper.js';
 import { fetchDizisolMovieSources, fetchDizisolEpisodeSources } from './dizisolScraper.js';
 import { fetchDizibalMovieSources, fetchDizibalEpisodeSources } from './dizibalScraper.js';
-import { fetchDiziyoMovieSources, fetchDiziyoEpisodeSources } from './diziyoScraper.js';
-import { fetchDiziyouSources } from './diziyouScraper.js';
-import { fetchHdfBestMovieSources } from './hdfilmizleBestScraper.js';
 import { fetchRecTvSources } from './rectvService.js';
+import { getSourceFamily } from './sourceLabels.js';
+import { zekaCeza, zekaKaydet } from './sourceIntelligence.js';
 import { fetchKidsVipSources, fetchKidsVipMovieSources } from './kidsVipScraper.js';
 import { fetchSmashyStreamSources } from './smashyStreamService.js';
 import { fetchTorrentStreamSources } from './torrentStreamService.js';
 import { fetchOfficialLookMovieSources } from './lookmovieScraper.js';
-import { fetchHdfilmcehennemiSources } from './hdfilmcehennemiScraper.js';
-import { fetchJetFilmSources, fetchJetFilmEpisodeSources } from './jetFilmScraper.js';
+// NOT: eski hdfilmcehennemiScraper import'u kaldırıldı — hdfc'yi temiz Orion üretir.
 import { fetchVodSources, loadVodSource } from './vodM3uSources.js';
 import { fetchDizi77Sources } from './dizi77Scraper.js';
-import { fetchDiziBoxSources } from './diziboxScraper.js';
-import { fetchSinemaccSources } from './sinemaccScraper.js';
-import { fetchFilmMakinesiSources } from './filmmakinesiScraper.js';
 import { siteListesi } from './siteProviders.js';
 
 // Coklu site surucusu: her site kendi PLUGIN_DEFS anahtariyla acilip kapaliyor.
@@ -45,7 +38,9 @@ import { siteListesi } from './siteProviders.js';
 const SITE_SURUCULERI = [
   { anahtar: 'hdfc', site: 'hdfilmcehennemi' },
   { anahtar: 'slc', site: 'selcukflix' },
-  { anahtar: 'setf', site: 'setfilm' },
+  // { anahtar: 'setf', site: 'setfilm' } — SİLİNDİ: yayın adresleri sunucuda
+  // 404 (fastplay master.txt) → ölü kaynak; katalogdan da tamamen söküldü.
+  // { anahtar: 'k666', site: 'film666' } — SİLİNDİ: adres zinciri ölü/BTK engelli.
   { anahtar: 'fxs', site: 'filmekseni' },
   // Çözülmüş sağlayıcılardan çıkan aile sunucuları (hepsi aynı API
   // kalıbını kullanıyor: /api/search?q=). Alan adları değişince
@@ -65,9 +60,7 @@ const SITE_SURUCULERI = [
   { anahtar: 'ajax', site: 'ajaxSearch' },
   { anahtar: 'filmdizi', site: 'filmDiziList' },
   { anahtar: 'rplayer', site: 'rplayerVideo' },
-  // Patron eklentilerinden kalan ikisi — daha once yapilandirmasi vardi
-  // ama TARAMAYA BAGLI DEGILDI (yani hic sorgulanmiyordu).
-  { anahtar: 'k666', site: 'film666' },
+  // Patron eklentilerinden kalanlar — k666 SİLİNDİ (ölü/BTK zinciri, bkz. üst blok).
   { anahtar: 'dzyf', site: 'dizify' },
   // HDFilmDelisi ve 4KHD — Nuvio'da aktif, bizde kayitli degildi
   { anahtar: 'hdfd', site: 'hdfilmdelisi' },
@@ -84,15 +77,78 @@ const VOD_M3U_IDS = ['jetfilm', 'filmmodu', 'filmmakinesi', 'fhdfi'];
 import { fetchAniziumSources } from './aniziumScraper.js';
 import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
 import { fetchDramalarEpisodeSources } from './dramalarScraper.js';
-import './providers/index.js';
-import { getProviders } from './providers/providerRegistry.js';
-import { isPluginEnabled, PLUGIN_DEFS } from './pluginCatalog.js';
+import { isPluginEnabled, PLUGIN_DEFS, getPluginDisplay } from './pluginCatalog.js';
+
+/** Eklenti kimliğinden anonim aile adı — öğrenme beyninin anahtarı.
+ *  Gerçek site adı hiçbir yerde saklanmaz, sadece yıldız kodu kullanılır. */
+function aileAdi(kimlik) {
+  const def = PLUGIN_DEFS.find((d) => d.id === kimlik || d.registry === kimlik);
+  try { return def ? getPluginDisplay(def).alias : String(kimlik || ''); } catch (_) { return String(kimlik || ''); }
+}
 import { isNativeCapacitor } from './apiOrigin.js';
 import { prepareAndroidSources } from './providerRuntime/playback.js';
+// TEMİZ KAYIT DEFTERİ — Orion/Vega/Aria/Tera/Atlas/Corvus. Batch'ten
+// bağımsız yayımlanır: hangi dal çalışırsa çalışsın listede garantili olur.
+import { kayitliKimlikler, saglayiciYukle } from '../providers/index.js';
 import { recordProviderEvent } from './providerRuntime/diagnostics.js';
 
+/** Temiz sağlayıcısı olan id'ler. Aynı siteyi hem temiz sağlayıcı hem de eski
+ *  site sürücüsü / scraper'ı ile İKİ KEZ sorgulamamak için kullanılır
+ *  (inventory.js'teki "tek kayıt defteri" kuralının masaüstü karşılığı). */
+const TEMIZ_IDLER = new Set(kayitliKimlikler());
+
+/** Basit eşzamanlılık sınırı — masaüstünde tek gizli motor ve tek hat var,
+ *  18 sağlayıcıyı birden salmak listeyi yavaşlatıyordu. */
+function siraliCalistir(limit) {
+  let aktif = 0;
+  const kuyruk = [];
+  const bitir = () => {
+    aktif = Math.max(0, aktif - 1);
+    const sonraki = kuyruk.shift();
+    if (sonraki) sonraki();
+  };
+  return (is) => new Promise((coz, reddet) => {
+    const baslat = () => {
+      aktif += 1;
+      Promise.resolve()
+        .then(() => is())
+        .then((sonuc) => { coz(sonuc); bitir(); }, (hata) => { reddet(hata); bitir(); });
+    };
+    if (aktif < limit) baslat();
+    else kuyruk.push(baslat);
+  });
+}
+
+/** Masaüstü/web dalı için TEK temiz sağlayıcı görevi (APK dalındaki
+ *  temizGorevler'in karşılığı). `mediaType` dışarıdan gelir — APK bloğundaki
+ *  aynı adlı değişken bu dalda görünmez (ReferenceError tuzağı). */
+async function temizSaglayiciTara({ sirasi, id, mediaType, isAnime, targetTitle, originalTitle, candidateTitles, targetYear, tmdbId, imdbId, season, episode, off, addStreams }) {
+  if (off(id)) return [];
+  const basladi = Date.now();
+  try {
+    return await sirasi(async () => {
+      const mod = await saglayiciYukle(id);
+      if (!mod || typeof mod.coz !== 'function') return [];
+      const tipler = (mod.kimlik && mod.kimlik.mediaTypes) || [];
+      if (!(tipler.includes(mediaType) || (isAnime && tipler.includes('anime')))) return [];
+      const cikti = await mod.coz({
+        type: mediaType, title: targetTitle, originalTitle, titles: candidateTitles,
+        year: targetYear, tmdbId, imdbId, season, episode,
+      });
+      const hamKaynak = (cikti && cikti.sources) || [];
+      zekaKaydet({ aile: aileAdi(id), olay: hamKaynak.length ? 'cozuldu' : 'bos', ms: Date.now() - basladi });
+      addStreams(hamKaynak.filter(s => s.category === 'dubbed'), 'dubbed');
+      addStreams(hamKaynak.filter(s => s.category !== 'dubbed'), 'subtitled');
+      return hamKaynak;
+    });
+  } catch (_) {
+    zekaKaydet({ aile: aileAdi(id), olay: 'bos', ms: Date.now() - basladi });
+    return [];
+  }
+}
+
 // Cache version
-const CACHE_VERSION = 'v46';
+const CACHE_VERSION = 'v47';
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
 
 // In-Memory Stream Cache for instant 0ms lookups
@@ -192,108 +248,41 @@ async function resolveCandidateTitles(type, tmdbId, targetTitle, originalTitle) 
 }
 
 function formatStreamName(s, category = '') {
+  // Anonimlik: gercek site adi veya kisaltasi ASLA etikete cikmaz (eski
+  // dallar "HDFilmCehennemi", "DP", "SWX", "WTZ" gibi ham adlar uretiyordu).
+  // Jenerik bicim: "Sunucu <harf> <kalite> <dil>". Harf, id/url'den turetilen
+  // sabit indekstir; ayni hat her seferinde ayni adi alir.
   const url = (s.url || s.streamUrl || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
   const raw = (s.displayName || s.name || '').toLowerCase();
   const id = (s.id || '').toLowerCase();
+  const hay = `${raw} ${url}`;
 
-  if (id.startsWith('hdfc_') || raw.includes('hdfilmcehennemi') || raw.includes('hdfc')) {
-    // Not: DS rapidrame gibi baska saglayicilarin 'rapidrame' adlari buraya
-    // girmesin diye CloseLoad/Rapidrame dallari sadece hdfc id'lerine bakar.
-    if (id.includes('rapid')) {
-      if (category === 'dubbed' || raw.includes('dub')) return 'Rapidrame Dublaj 1080p';
-      return 'Rapidrame Altyazı 1080p';
-    }
-    if (id.includes('close')) {
-      if (category === 'dubbed' || raw.includes('dub')) return 'CloseLoad Dublaj 1080p';
-      return 'CloseLoad Altyazı 1080p';
-    }
-    if (category === 'dubbed' || raw.includes('dub')) return 'HDFilmCehennemi Dublaj 1080p';
-    return 'HDFilmCehennemi Altyazı 1080p';
-  }
-  if (id.startsWith('dzb_') || id.startsWith('dzp_') || raw.includes('dizibal') || raw.includes('dizipal') || raw.includes('dp')) {
-    if (raw.includes('player')) {
-      return category === 'dubbed' ? 'DP DiziBal Player (TR Dublaj)' : 'DP DiziBal Player (TR Altyazı)';
-    }
-    if (category === 'dubbed' || raw.includes('dub')) return 'DP 1080p (TR Dublaj)';
-    if (category === 'subtitled' || raw.includes('alt') || raw.includes('sub')) return 'DP 1080p (TR Altyazı)';
-    return 'DP 1080p';
-  }
-  if (id.startsWith('dzs_') || raw.includes('dizisol')) {
-    return (s.displayName || s.name || 'Ana Yayın').replace(/^DS\s*/i, 'Yayın ').replace(/dizisol/gi, 'Yayın').trim();
-  }
-  if (id.startsWith('snx') || raw.includes('sinewix') || raw.includes('swx')) {
-    if (raw.includes('mkv')) return 'SWX 1080p (MKV)';
-    return 'SWX 1080p Direct';
-  }
-  if (id.startsWith('tvr_') || id.startsWith('rectv_') || raw.includes('rectv') || raw.includes('tvr')) {
-    return s.displayName || s.name || '  TVR VIP 1080p';
-  }
-  if (id.startsWith('lookmovie_') || raw.includes('lookmovie')) {
-    return s.displayName || s.name || '  LookMovie VIP 1080p';
-  }
-  if (id.startsWith('twoembed_') || raw.includes('2embed')) {
-    return s.displayName || s.name || '  2Embed VIP 1080p';
-  }
-  if (id.startsWith('dml_') || raw.includes('dramalar')) {
-    return s.displayName || s.name || '  Dramalar VIP 1080p';
-  }
-  if (id.startsWith('ddz_') || raw.includes('dramadizilerim')) {
-    return s.displayName || s.name || '  DDZ VIP 1080p';
-  }
-  if (id.startsWith('dzy_') || raw.includes('diziyo')) {
-    if (url.includes('vidmoly')) return 'Diziyo VidMoly 1080p';
-    return s.displayName || s.name || 'Diziyo 1080p';
-  }
-  if (id.startsWith('dyu_') || raw.includes('diziyou')) {
-    return s.displayName || s.name || 'Diziyou 1080p';
-  }
-  if (id.startsWith('hdfb_') || raw.includes('hdfilmizle')) {
-    return s.displayName || s.name || 'HDF 1080p';
-  }
-  if (id.startsWith('kvip_') || raw.includes('kids vip')) {
-    return s.displayName || s.name || '  Kids VIP Direct 1080p';
-  }
-  if (id.startsWith('az_') || id.startsWith('anizium_') || raw.includes('anizium') || raw.includes('az ')) {
-    return s.displayName || s.name || 'AZ 4K/1080p VIP';
-  }
-  if (id.startsWith('acx_') || raw.includes('animecix')) {
-    return s.displayName || s.name || 'AX Tau Direct 1080p';
-  }
-  if (id.startsWith('setf_') || raw.includes('setfilm') || raw.includes('setplay') || raw.includes('fastplay')) {
-    const low = raw;
-    if (low.includes('fastplay')) return category === 'dubbed' ? 'FastPlay Dublaj 1080p' : 'FastPlay Altyazı 1080p';
-    if (low.includes('setplay')) return category === 'dubbed' ? 'SetPlay Dublaj 1080p' : 'SetPlay Altyazı 1080p';
-    if (low.includes('closeload')) return category === 'dubbed' ? 'CloseLoad Dublaj 1080p' : 'CloseLoad Altyazı 1080p';
-    if (low.includes('rapid')) return category === 'dubbed' ? 'Rapidrame Dublaj 1080p' : 'Rapidrame Altyazı 1080p';
-    return s.displayName || s.name || 'SetFilm 1080p';
-  }
-  if (id.startsWith('wtz_') || id.startsWith('webteizle_') || raw.includes('webteizle') || raw.includes('wtz')) {
-    if (url.includes('vidmoly')) return 'WTZ VidMoly 1080p';
-    if (url.includes('filemoon') || url.includes('bysezoxexe')) return 'WTZ Filemoon 1080p';
-    if (url.includes('pixeldrain')) return 'WTZ Pixel 1080p';
-    if (url.includes('ok.ru')) return 'WTZ Okru 1080p';
-    if (raw.includes('closeload')) return 'WTZ CloseLoad 1080p';
-    if (raw.includes('rapid')) return 'WTZ Rapid 1080p';
-    return s.displayName || s.name || 'WTZ 1080p';
-  }
-  // Cloudstream cift-tip mantigi: SelcukFlix (Pichive HLS) hem film hem dizide ayni etiket.
-  if (id.startsWith('slc_') || raw.includes('selcukflix') || raw.includes('selcuk') || raw.includes('pichive')) {
-    return s.displayName || s.name || (category === 'dubbed' ? 'SelcukFlix Dublaj 1080p' : 'SelcukFlix Altyazı 1080p');
-  }
-  // Cloudstream dizi-only mantigi: Dizilla (Pichive iframe/HLS) sadece dizide.
-  if (id.startsWith('dzl_') || raw.includes('dizilla')) {
-    return s.displayName || s.name || (category === 'dubbed' ? 'Dizilla Dublaj 1080p' : 'Dizilla Altyazı 1080p');
-  }
-  if (id.startsWith('fhdf_') || id.startsWith('fullhd') || raw.includes('fullhd') || raw.includes('fullhdfilm')) {
-    return s.displayName || s.name || 'FullHD 1080p';
-  }
-  if (id.startsWith('szd_')) {
-    if (url.includes('vidmoly')) return 'SZ VidMoly 1080p';
-    if (url.includes('sibnet')) return 'SZ Sibnet HD';
-    return s.displayName || s.name || 'SZ 1080p';
-  }
+  const kalite = /\b(?:4k|2160p)\b/.test(hay) ? '4K'
+    : /\b1080p\b/.test(hay) ? '1080p'
+      : /\b720p\b/.test(hay) ? '720p'
+        : /\b480p\b/.test(hay) ? '480p'
+          : '1080p';
 
-  return s.displayName || s.name || 'VIP 1080p';
+  let dil = '';
+  if (category === 'dubbed' || /dub(?:laj)?\b/.test(hay)) dil = 'Dublaj';
+  else if (category === 'subtitled' || /altyaz[\u0131i]|\bsub\b/.test(hay)) dil = 'Altyaz\u0131';
+
+  const seed = id || url || raw;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  const harf = String.fromCharCode(65 + (hash % 26));
+
+  return [`Sunucu ${harf}`, kalite, dil].filter(Boolean).join(' ');
+}
+
+const IKI_DIL_MUSTERISI = /dual|trdual|trdub|dublaj/i;
+
+/** Çift dilli (Türkçe seslendirme + altyazı taşıyan) yayınları karşı dil
+ *  listesinin girdisine çevirir. Yayınlayıcı katman tek yönlü çağırır. */
+export function ciftDilKopyalari(eklenen, karsiKategori) {
+  return (eklenen || [])
+    .filter(s => s && (s.isDual || IKI_DIL_MUSTERISI.test(s.streamUrl || s.url || '')))
+    .map(s => ({ ...s, id: `${s.id}_${karsiKategori === 'subtitled' ? 'xs' : 'xd'}`, category: karsiKategori }));
 }
 
 function formatStreamItem(s, category, fallbackName) {
@@ -411,7 +400,7 @@ function isValidStream(s) {
   return true;
 }
 
-function getStreamPriorityScore(s) {
+function temelOncelikSkoru(s) {
   const url = (s.url || s.streamUrl || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
   // DOĞRUDAN YAYIN HER ZAMAN GÖMÜLÜDEN ÖNCE GELİR.
   // Sağlayıcı ne olursa olsun: bizim oynatıcıyla açılan doğrudan yayın
@@ -478,6 +467,14 @@ function getStreamPriorityScore(s) {
   if (id.startsWith('atr_') || raw.includes('animetr')) return 17 + ceza;
 
   return 20 + ceza;
+}
+
+/** ÖĞRENMİŞ SIRALAMA: temel sıra + bu cihazda öğrenilen güven cezası.
+ *  Aynı ailenin tekrar tekrar ölen hattı aşağı düşer; oynatan hat yükselir. */
+function getStreamPriorityScore(s) {
+  let uyarinca = 0;
+  try { uyarinca = zekaCeza(getSourceFamily(s).alias); } catch (_) { uyarinca = 0; }
+  return temelOncelikSkoru(s) + uyarinca;
 }
 
 /**
@@ -571,10 +568,13 @@ export async function getStreamingServersProgressive({
     return job;
   };
 
-  const publishStreams = (rawList, category) => {
+  /** Bir yayını iki dil listesine de yazar: çift dilli (dual) yayınlar hem
+   *  dublaj hem altyazı sekmesinde görünür — tek dilde kaybolmaz. */
+  const publishStreams = (rawList, category, derin = false) => {
     if (!Array.isArray(rawList) || rawList.length === 0) return [];
     const valid = rawList.filter(isValidStream);
     const added = [];
+    let updated = false;
 
     for (const raw of valid) {
       const formatted = formatStreamItem(raw, category, category === 'dubbed' ? 'VIP 1080p' : 'VIP Altyazılı');
@@ -582,6 +582,16 @@ export async function getStreamingServersProgressive({
       const id = (formatted.id || '').toLowerCase();
       const providerPrefix = id.split('_').slice(0, 2).join('_');
       const urlKey = `${providerPrefix}||${urlStr}`;
+      const existingList = category === 'dubbed' ? currentDubbed : currentSubtitled;
+      const existing = existingList.find(source => source.id === formatted.id &&
+        (source.streamUrl || source.url || '').trim().toLowerCase() === urlStr);
+      if (existing) {
+        if (existing.verification?.state !== formatted.verification?.state || existing.autoPlayable !== formatted.autoPlayable) {
+          Object.assign(existing, formatted);
+          updated = true;
+        }
+        continue;
+      }
 
       if (category === 'dubbed') {
         if (!seenDubUrls.has(urlKey)) {
@@ -600,6 +610,12 @@ export async function getStreamingServersProgressive({
       }
     }
 
+    // Çift dilli yayınlar karşı dile de kopyalanır (tek yönlü — döngü olmaz).
+    if (!derin && added.length) {
+      const kopyalar = ciftDilKopyalari(added, category === 'dubbed' ? 'subtitled' : 'dubbed');
+      if (kopyalar.length) publishStreams(kopyalar, category === 'dubbed' ? 'subtitled' : 'dubbed', true);
+    }
+
     // Subtitle sharing
     const discoveredSubs = [...currentSubtitled, ...currentDubbed]
       .find(s => Array.isArray(s.subtitles) && s.subtitles.length > 0)?.subtitles;
@@ -613,7 +629,7 @@ export async function getStreamingServersProgressive({
       }
     }
 
-    if (added.length > 0) {
+    if (added.length > 0 || updated) {
       onUpdate({
         dubbed: [...currentDubbed],
         subtitled: [...currentSubtitled],
@@ -680,18 +696,51 @@ export async function getStreamingServersProgressive({
     if (enriched?.candidateTitles?.length) candidateTitles = enriched.candidateTitles;
     targetYear = targetYear || enriched?.detectedYear;
     const mediaType = isMovie ? 'movie' : 'tv';
-    const anime = type === 'anime' || enriched?.isAnimation;
-    const registryState = new Map(getProviders().map(provider => [provider.id, true]));
-    const priority = { dyu: 0, lookmovie: 0, dzs: 1, dizi77: 1, dzb: 2, hdfc: 3, snx: 3, tvr: 4 };
+    const anime = type === 'anime' || enriched?.isAnimation === true;
+    /* Anime eklentileri animasyon TESPTİNİN 1,2 saniyelik yarışına bağlanmaz:
+       TMDB türü yetişmediğinde Aria (Anizium) ve Tera (Animecix) tümüyle
+       eleniyordu — ölçülen "anime kaynağı hiç gelmiyor" buydu. Anime siteleri
+       olmayan başlıkta zaten boş döner, maliyeti düşük.
+       Animasyon doğrulandığında ise en başa alınır: Anizium doğrudan mp4/m3u8
+       döndürdüğü için listeyi o doldurur ("hızlı çıkmalı"). */
+    const oncelik = {
+      ...(anime ? { anizium: -6, animecix: -5, animetr: -4, asy: -3, kidsvip: -3 } : {}),
+      dyu: 0, lookmovie: 0, dzs: 1, dizi77: 1, dzb: 2, hdfc: 3, snx: 3, tvr: 4,
+    };
     const definitions = listProviderDefinitions().filter(provider =>
       !provider.experimental && !off(provider.id) &&
-      (provider.mediaTypes.includes(mediaType) || anime && provider.mediaTypes.includes('anime'))
-    ).sort((a, b) => (priority[a.id] ?? 10) - (priority[b.id] ?? 10));
+      (provider.mediaTypes.includes(mediaType) || provider.mediaTypes.includes('anime'))
+    ).sort((a, b) => (oncelik[a.id] ?? 10) - (oncelik[b.id] ?? 10));
+    // — TEMİZ SAĞLAYICILAR: batch ile eşzamanlı, kendi yayın kanallarıyla —
+
+    const temizGorevler = kayitliKimlikler().filter(id => !definitions.some(definition => definition.id === id)).map(async (temizId) => {
+      const basladi = Date.now();
+      try {
+        if (off(temizId)) return;
+        const temizMod = await saglayiciYukle(temizId);
+        if (!temizMod || typeof temizMod.coz !== 'function') return;
+        const kim = temizMod.kimlik || { mediaTypes: [mediaType] };
+        const tipler = kim.mediaTypes || [];
+        if (!(tipler.includes(mediaType) || (anime && tipler.includes('anime')))) return;
+        const cikti = await temizMod.coz({
+          type: mediaType, title: targetTitle, originalTitle, titles: candidateTitles,
+          year: targetYear, tmdbId, imdbId, season, episode,
+        });
+        const hamKaynak = (cikti && cikti.sources) || [];
+        // ÖĞRENME: bu aile bu içerik için ne üretti, kaç ms'de?
+        zekaKaydet({ aile: aileAdi(temizId), olay: hamKaynak.length ? 'cozuldu' : 'bos', ms: Date.now() - basladi });
+        if (!hamKaynak.length) return;
+        const hazir = await prepareAndroidSources(hamKaynak, { fallbackOnFailure: true, diagnose: recordProviderEvent,
+          onReady: source => publishStreams([source], source.category === 'dubbed' ? 'dubbed' : 'subtitled') });
+        for (const kay of hazir) publishStreams([kay], kay.category === 'dubbed' ? 'dubbed' : 'subtitled');
+      } catch (_) {}
+    });
+
     await runProviderBatch(definitions, {
       type: mediaType, title: targetTitle, originalTitle, titles: candidateTitles, year: targetYear,
       tmdbId, imdbId, season, episode,
     }, {
-      concurrency: 4, timeoutMs: 90000, diagnose: recordProviderEvent,
+      concurrency: 8, timeoutMs: 30000, diagnose: recordProviderEvent,
       onResult: async ({ sources }) => {
         const prepared = await prepareAndroidSources(sources, { fallbackOnFailure: true, diagnose: recordProviderEvent,
           onReady: source => publishStreams([source], source.category === 'dubbed' ? 'dubbed' : 'subtitled') });
@@ -699,6 +748,8 @@ export async function getStreamingServersProgressive({
         publishStreams(prepared.filter(source => source.category !== 'dubbed'), 'subtitled');
       }
     });
+    await Promise.allSettled(temizGorevler);
+
     const payload = {
       dubbed: [...currentDubbed], subtitled: [...currentSubtitled],
       totalServers: currentDubbed.length + currentSubtitled.length,
@@ -712,20 +763,11 @@ export async function getStreamingServersProgressive({
     return payload;
   }
 
+  // — MASAÜSTÜ / WEB DALI: temiz KAYIT tek doğruluk kaynağı —
+  const temizTur = isMovie ? 'movie' : 'tv';
+  const temizSirasi = siraliCalistir(6);
+
   const tasks = [
-    // 0. Registry provider'ları (setf/wtz dahil — asagidaki ayri 8c/8d
-    // bloklari kaldirildi, cift cagri yavaslatiyordu)
-    ...getProviders()
-      .filter((p) => p.id !== 'hdfc' && isPluginEnabled(p.id)) // hdfc aşağıda özel kategorili ekleniyor
-      .map((p) => (async () => {
-        try {
-          const res = await p.fetchSources({ type, tmdbId, imdbId, title: targetTitle, originalTitle, seriesTitle: targetTitle, season, episode });
-          if (Array.isArray(res) && res.length) {
-            addStreams(res.filter((s) => s.category === 'dubbed'), 'dubbed');
-            addStreams(res.filter((s) => s.category !== 'dubbed'), 'subtitled');
-          }
-        } catch (_) {}
-      })()),
     // 1. RecTV VIP (1080p VIP direct streams)
     off('tvr') ? [] : fetchRecTvSources({ type, title: targetTitle, originalTitle, season, episode, year: targetYear })
       .then(res => {
@@ -745,145 +787,6 @@ export async function getStreamingServersProgressive({
         }
       }).catch(() => []),
 
-    // 2. Sinewix VIP: one API search/detail request, then split its results.
-    off('snx') ? [] : fetchSinewixSources({ type, titles: candidateTitles, title: targetTitle, seriesTitle: targetTitle, originalTitle, year: targetYear, season, episode, imdbId, isDub: null })
-      .then(res => {
-        if (!Array.isArray(res) || res.length === 0) return;
-        const subs = res.filter(s => s.category === 'subtitled' || (s.badge || '').includes('Altyazı'));
-        const dubs = res.filter(s => !subs.includes(s));
-        addStreams(dubs, 'dubbed');
-        addStreams(subs, 'subtitled');
-      }).catch(() => []),
-
-    // 3. DiziBal's own AlphaStream player (avoids expiring direct-CDN URLs)
-    (isMovie
-      ? off('dzb') ? [] : fetchDizibalMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle })
-      : off('dzb') ? [] : fetchDizibalEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode })
-    ).then(res => {
-      if (!Array.isArray(res) || res.length === 0) return;
-      for (const s of res) {
-        addStreams([{
-          ...s,
-          id: `${s.id}_dub`,
-          name: isMovie ? 'DP DiziBal Player (TR Dublaj)' : `DP DiziBal Player Dublaj S${season}B${episode}`,
-          displayName: isMovie ? 'DP DiziBal Player (TR Dublaj)' : `DP DiziBal Player Dublaj (S${season}B${episode})`,
-          badge: '  DiziBal Orijinal Player',
-          category: 'dubbed'
-        }], 'dubbed');
-
-        addStreams([{
-          ...s,
-          id: `${s.id}_sub`,
-          name: isMovie ? 'DP DiziBal Player (TR Altyazı)' : `DP DiziBal Player Altyazı S${season}B${episode}`,
-          displayName: isMovie ? 'DP DiziBal Player (TR Altyazı)' : `DP DiziBal Player Altyazı (S${season}B${episode})`,
-          badge: '  DiziBal Orijinal Player',
-          category: 'subtitled'
-        }], 'subtitled');
-
-      }
-    }).catch(() => []),
-
-    // 4. Dizisol (DS 1080p HLS - Instant Dual TR Dub & Sub)
-    (isMovie
-      ? off('dzs') ? [] : fetchDizisolMovieSources({ titles: candidateTitles, tmdbId, title: targetTitle, originalTitle, year: targetYear })
-      : off('dzs') ? [] : fetchDizisolEpisodeSources({ titles: candidateTitles, tmdbId, seriesTitle: targetTitle, originalTitle, season, episode })
-    ).then(res => {
-      if (!Array.isArray(res) || res.length === 0) return;
-      for (const s of res) {
-        addStreams([{
-          ...s,
-          id: `${s.id}_dub`,
-          name: s.name ? s.name.replace(/\(Altyazı\)/i, '(TR Dublaj)') : 'DS 1080p (TR Dublaj)',
-          displayName: s.displayName ? s.displayName.replace(/\(Altyazı\)/i, '(TR Dublaj)') : 'DS 1080p (TR Dublaj)',
-          badge: '  TR Dublaj',
-          category: 'dubbed'
-        }], 'dubbed');
-
-        addStreams([{
-          ...s,
-          id: `${s.id}_sub`,
-          name: s.name ? s.name.replace(/\(Dublaj\)/i, '(TR Altyazı)') : 'DS 1080p (TR Altyazı)',
-          displayName: s.displayName ? s.displayName.replace(/\(Dublaj\)/i, '(TR Altyazı)') : 'DS 1080p (TR Altyazı)',
-          badge: '  TR Altyazı',
-          category: 'subtitled'
-        }], 'subtitled');
-      }
-    }).catch(() => []),
-
-    // 5. Diziyo (Direct 1080p HLS)
-    isMovie
-      ? off('dzy') ? [] : fetchDiziyoMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : off('dzy') ? [] : fetchDiziyoEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => []),
-
-    isMovie
-      ? off('dzy') ? [] : fetchDiziyoMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : off('dzy') ? [] : fetchDiziyoEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
-    // 6. Diziyou exposes one episode player. Keep it reachable from both tabs;
-    // the player itself owns the available audio/subtitle tracks.
-    off('dyu') ? [] : fetchDiziyouSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-          .then(res => {
-            if (Array.isArray(res) && res.length > 0) {
-              addStreams(res, 'subtitled');
-              addStreams(res.map(s => ({
-                ...s,
-                id: `${s.id}_dub`,
-                name: (s.name || 'Diziyou').replace(/\s*\(TR Altyazı\)/i, ''),
-                category: 'dubbed'
-              })), 'dubbed');
-            }
-          }).catch(() => [])
-      ,
-
-    // 7. SezonlukDizi (1080p VIP)
-    off('szd') ? [] : fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => []),
-
-    off('szd') ? [] : fetchSezonlukDiziEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, title: targetTitle, originalTitle, season, episode, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
-    // 8. HDFilmizle Best (Movies)
-    isMovie
-      ? off('hdfb') ? [] : fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : Promise.resolve([]),
-
-    isMovie
-      ? off('hdfb') ? [] : fetchHdfBestMovieSources({ titles: candidateTitles, title: targetTitle, originalTitle, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : Promise.resolve([]),
-
-    // 8b. FilmEkseni/JetFilm player (movie and series fallback)
-    isMovie
-      ? off('jet') ? [] : fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : off('jet') ? [] : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
-          .then(res => addStreams(res, 'dubbed')).catch(() => []),
-
-    isMovie
-      ? off('jet') ? [] : fetchJetFilmSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => [])
-      : off('jet') ? [] : fetchJetFilmEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
-          .then(res => addStreams(res, 'subtitled')).catch(() => []),
-
-    // 8e. DiziBox (dizi odakli katalog). Bolum sayfalari ok.ru gomulu
-    // oynatici dondurur; dizibox.live CF'li, diziboxizle.com aynasidir.
-    !isMovie
-      ? off('dizibox') ? [] : fetchDiziBoxSources({ titles: candidateTitles, title: targetTitle, season, episode })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : [],
-
-    // 8e. sinemacc (film odakli katalog). Oynatici iframe'i referer sart
-    // oldugu icin calismaz; FirePlayer API'sinden DOGRUDAN HLS alinir.
-    isMovie
-      ? off('sinemacc') ? [] : fetchSinemaccSources({ titles: candidateTitles, title: targetTitle, originalTitle, year: targetYear })
-          .then(res => addStreams(res, 'dubbed')).catch(() => [])
-      : [],
-
     // 8f. Toplu film M3U kataloglari (Jet Film / Film Modu). Dogrudan dosya
     // adresleri; #EXTVLCOPT UA/referer degerleri proxy'ye devredilir, yoksa
     // cogu baglanti 403 donuyor. Yalnizca film.
@@ -892,15 +795,6 @@ export async function getStreamingServersProgressive({
           .then(() => fetchVodSources({ titles: candidateTitles, title: targetTitle, year: targetYear }))
           .then(res => addStreams(res, 'dubbed')).catch(() => [])
       : [],
-
-    // 8g. Film Makinesi (film + dizi). siteurl.txt'ten guncel alan adi,
-    // IMDb ID ile arama; oynatici sifreli olabilir, genel cozucu devreye girer.
-    off('fm') ? []
-      : fetchFilmMakinesiSources({
-          titles: candidateTitles, title: targetTitle,
-          tmdbId: String(tmdbId || '').replace(/^[a-z]{2,4}_/, ''), imdbId,
-          mediaType: isMovie ? 'movie' : 'tv', season, episode
-        }).then(res => addStreams(res, isMovie ? 'dubbed' : 'dubbed')).catch(() => []),
 
     // 8h. Coklu site surucusu (HDFilmCehennemi / SelcukFlix / SetFilm /
     // FilmEkseni). Her biri kendi eklenti anahtariyla kontrol edilir.
@@ -911,12 +805,6 @@ export async function getStreamingServersProgressive({
         mediaType: isMovie ? 'movie' : 'tv', season, episode
       })
     ))).then(heps => addStreams(heps.flat().map((source, index) => ({ ...source, id: source.id || `site_${index}`, streamUrl: source.url })), 'dubbed')).catch(() => []),
-
-    // 8e. dizi77 (dizi odakli katalog). Yalnizca dizi; film tarafi yok.
-    isMovie
-      ? []
-      : off('dizi77') ? [] : fetchDizi77Sources({ titles: candidateTitles, title: targetTitle, season, episode })
-          .then(res => addStreams(res, 'dubbed')).catch(() => []),
 
     // 8c/8d kaldirildi: setf+wtz registry (task 0) uzerinden tek sefer
     // cagriliyor; ayri direct cagrilar ayni backend'e 2. kez vurup
@@ -974,16 +862,19 @@ export async function getStreamingServersProgressive({
         }
       }).catch(() => []),
 
-    // 13. HDF players — CloseLoad & Rapidrame ayri kaynak (kosullu: basaran player listelenir)
-    off('hdfc') ? [] : fetchHdfilmcehennemiSources({ type, tmdbId, imdbId, title: targetTitle, originalTitle, season, episode })
-      .then(res => {
-        if (!Array.isArray(res) || res.length === 0) return [];
-        addStreams(res.filter(s => s.category === 'dubbed'), 'dubbed');
-        addStreams(res.filter(s => s.category !== 'dubbed'), 'subtitled');
-      }).catch(err => {
-        console.error('[providerAggregator] HDFC error:', err);
-        return [];
-      }),
+    // 13. TEMİZ KAYIT (Orion, Atlas, Nero, Vela, Lyra…) — masaüstü/web artık
+    // APK ile BİREBİR aynı kaynaktan beslenir: src/providers/index.js KAYIT.
+    // Eski hdfilmcehennemiScraper ve eski site blokları silindi; 8h site
+    // sürücüleri yalnız yedek olarak duruyor.
+    // DÜZELTME: eski satır `mediaType` kullanıyordu; o değişken yalnız APK
+    // (isNativeCapacitor) bloğunda tanımlı — masaüstünde ReferenceError doğurup
+    // .catch() içinde sessizce yutuluyor, Orion dahil HİÇBİR temiz sağlayıcı
+    // listeye kaynak veremiyordu. Tur tipi burada ayrıca hesaplanır.
+    ...kayitliKimlikler().map((temizId) => temizSaglayiciTara({
+      sirasi: temizSirasi,
+      id: temizId, mediaType: temizTur, isAnime, targetTitle, originalTitle,
+      candidateTitles, targetYear, tmdbId, imdbId, season, episode, off, addStreams
+    })),
 
     // 14. DramaDizilerim & Dramalar (Fallback to short drama sources if requested as standard series)
     !isMovie
@@ -1015,18 +906,12 @@ export async function getStreamingServersProgressive({
     candidateTitles = enriched.candidateTitles;
     if (!targetYear && enriched.detectedYear) targetYear = enriched.detectedYear;
 
-    const aliasSearches = [
-      isMovie
-        ? off('dzb') ? [] : fetchDizibalMovieSources({ titles: extraTitles, title: targetTitle, originalTitle, isDub: false }).then(res => addStreams(res, 'subtitled'))
-        : off('dzb') ? [] : fetchDizibalEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled')),
-      !isMovie
-        ? off('szd') ? [] : fetchSezonlukDiziEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: true }).then(res => addStreams(res, 'dubbed'))
-        : Promise.resolve([]),
-      !isMovie
-        ? off('szd') ? [] : fetchSezonlukDiziEpisodeSources({ titles: extraTitles, seriesTitle: targetTitle, originalTitle, season, episode, isDub: false }).then(res => addStreams(res, 'subtitled'))
-        : Promise.resolve([])
-    ];
-    return Promise.allSettled(aliasSearches);
+    /* Eski alias taramaları (DiziBal / SezonlukDizi) kaldırıldı: aynı siteler
+       artık temiz sağlayıcılar (Nero, Atlas, Corvus…) tarafından kendi başlık
+       varyantlarıyla çözülüyor. Buradaki ikinci çağrı hem site adını etikete
+       taşıyor (anonimlik) hem de aynı backend'e tekrar vurup listeyi
+       yavaşlatıyordu. SezonlukDizi'nin sağlayıcısı zaten devre dışı. */
+    return [];
   });
 
   // Keep media type and episode identity exact; never return episode 1 for a movie.

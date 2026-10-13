@@ -26,18 +26,14 @@ await dene('dizi77', async () => {
   return s[0] ? { url: s[0].streamUrl } : null;
 });
 
-const smc = await import('../src/services/sinemaccScraper.js');
+// NOT: sinemaccScraper.js ve diziboxScraper.js silindi — sinemacc'ı temiz
+// sağlayıcısı Halcyon, dizibox'u bilinçli olarak HİÇBİRİ üretir (KAYIT'ta yok:
+// CF 403 + yalnız gömülü oynatıcı). Bu iki satır APK ölçümünü kırmıştı.
+const sinemacc = await import('../src/providers/halcyon.js');
 await dene('sinemacc', async () => {
-  const l = await smc.searchSinemacc('film', false);
-  if (!l.length) return null;
-  const s = await smc.fetchSinemaccSources({ title: l[0].title, titles: [] });
-  return s[0] ? { url: s[0].rawStreamUrl || s[0].streamUrl } : null;
-});
-
-const dbx = await import('../src/services/diziboxScraper.js');
-await dene('DiziBox', async () => {
-  const s = await dbx.fetchDiziBoxSources({ titles: ['56 Days'], title: '56 Days', season: 1, episode: 1 });
-  return s[0] ? { url: s[0].streamUrl } : null;
+  const s = await sinemacc.coz({ type: 'movie', title: 'Yolcu', titles: ['Yolcu'], year: 2023 });
+  const kaynak = ((s && s.sources) || [])[0];
+  return kaynak ? { url: kaynak.rawStreamUrl || kaynak.streamUrl || kaynak.url } : null;
 });
 
 const vod = await import('../src/services/vodM3uSources.js');

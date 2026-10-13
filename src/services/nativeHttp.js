@@ -24,6 +24,7 @@
 
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { cihazCerezHeaderi } from './platform/deviceCookies.js';
+import { tarayiciUA, tarayiciBasliklari } from './platform/clientProfile.js';
 
 function nativeAndroidMi() {
   try {
@@ -53,15 +54,14 @@ export function nativeHttpAktifMi() {
 export async function cihazGet(url, { ref = '', headers = {}, timeout = 15000 } = {}) {
   if (!nativeAndroidMi()) return { ok: false, status: 0, text: '', headers: {} };
   const h = {
-    'User-Agent': headers['User-Agent'] || headers['user-agent']
-      || 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-    Accept: headers.Accept || headers.accept || '*/*',
-    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8',
-    ...headers
+    ...tarayiciBasliklari({ Accept: headers.Accept || headers.accept || '*/*' }),
+    ...headers,
   };
   if (ref) h.Referer = ref;
   // Gizli WebView'in çözdüğü Cloudflare çerezini taşı: challenge bir kez
   // çözülür, sonraki istekler engellenmez (zaman aşımının kökü buydu).
+  // UA ise çerezin BAĞLI OLDUĞU parmak izidir: challenge'ı çözen WebView'in
+  // UA'sı neyse o gönderilir, yoksa CF her istekte yeniden challenge sorar.
   if (!h.Cookie && !h.cookie) {
     const c = cihazCerezHeaderi(url);
     if (c) h.Cookie = c;
@@ -84,10 +84,11 @@ export async function cihazGet(url, { ref = '', headers = {}, timeout = 15000 } 
 export async function cihazPost(url, body, { ref = '', headers = {}, timeout = 15000 } = {}) {
   if (!nativeAndroidMi()) return { ok: false, status: 0, text: '', headers: {} };
   const h = {
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-    // Bu başlık olmadan çoğu AJAX ucu JSON yerine HTML döner.
-    'X-Requested-With': 'XMLHttpRequest',
+    ...tarayiciBasliklari({
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      // Bu başlık olmadan çoğu AJAX ucu JSON yerine HTML döner.
+      'X-Requested-With': 'XMLHttpRequest',
+    }),
     ...headers
   };
   if (ref) h.Referer = ref;
@@ -151,7 +152,21 @@ async function gizliWebViewDeneme(url, timeout) {
     try {
       const wv = await loader();
       if (!wv.hasNativeWebViewResolver?.()) continue;
-      const hit = await wv.resolvePageInNativeWebView(url, { timeoutMs: zaman });
+      // Cihazda TEK gizli WebView var. Zaten bir çözümleme sürüyken ikinciyi
+      // sıraya sokmak iki tarafı da yakıyor (sırada bekleyen iş süresi doluyor,
+      // sağlayıcının tüm bütçesi gidiyordu). Meşgulse bu isteği geç düş.
+      if (wv.resolverMesgulMu?.()) return '';
+      const t0 = Date.now();
+      let hit = await wv.resolvePageInNativeWebView(url, { timeoutMs: zaman });
+      const kullanilabilir = (h) => h && !wv.looksBlocked?.(h) &&
+        (String(h.text || h.html || '').trim().startsWith('{') || !!(h.html || '').trim());
+      // TEK YİNELEME — ve yalnızca ilk deneme HIZLI düştüyse. İlk deneme
+      // bütçesinin çoğunu yediyse ikinci deneme de yiyecek; sağlayıcının
+      // zaman aşımına (30 sn) yürüyeceği için boşuna sıra kapma yok.
+      if (!kullanilabilir(hit) && Date.now() - t0 < 7000) {
+        const kalan = Math.min(9000, Math.max(4000, zaman - 6000));
+        hit = await wv.resolvePageInNativeWebView(url, { timeoutMs: kalan });
+      }
       if (!hit || wv.looksBlocked?.(hit)) continue;
       const raw = String(hit.text || '').trim();
       const body = (raw.startsWith('{') || raw.startsWith('[')) ? raw : (hit.html || raw);
@@ -172,14 +187,20 @@ export function engelSayfaMi(metin) {
   const bas = t.slice(0, 300).trimStart().toLowerCase();
   // JSON / m3u8 / düz metin API yanıtı — engel değildir
   if (bas.startsWith('{') || bas.startsWith('[') || bas.startsWith('#extm3u')) return false;
-  if (t.length > 60000 && !/just a moment|attention required|cf-browser-verification|checking your browser/i.test(t.slice(0, 8000))) return false;
   const ilk = t.slice(0, 8000).toLowerCase();
-  return ilk.includes('just a moment') || ilk.includes('attention required')
-      || ilk.includes('cf-browser-verification') || ilk.includes('checking your browser')
-      || ilk.includes('enable javascript and cookies');
+  const IZLER = [
+    'just a moment', 'attention required', 'cf-browser-verification', 'checking your browser',
+    'enable javascript and cookies', 'verifying you are human', 'verify you are human',
+    'challenge-platform', 'cf-chl', 'cf_chl_', 'turnstile', 'cloudflare bot',
+    'you have been blocked', 'request unsuccessful', 'ddos-guard', 'security check',
+    'access denied', 'error 1020', 'error code: 1020', 'sorry, you cannot access',
+  ];
+  const engel = IZLER.some((iz) => ilk.includes(iz));
+  if (!engel && t.length > 60000) return false;
+  return engel;
 }
 
-export async function akilliGet(url, { ref = '', timeout = 15000, yedekCek = null, headers = {} } = {}) {
+export async function akilliGet(url, { ref = '', timeout = 15000, yedekCek = null, headers = {}, webView = true } = {}) {
   // 1) Android: cihazın kendi IP'sinden (CapacitorHttp)
   if (nativeAndroidMi()) {
     const r = await cihazGet(url, { ref, timeout, headers });
@@ -196,8 +217,14 @@ export async function akilliGet(url, { ref = '', timeout = 15000, yedekCek = nul
   // 3) GİZLİ WEBVIEW — Cloudflare JS challenge için gerçek tarayıcı motoru.
   //    Önceden sadece `yedekCek` verildiğinde deniyordu; çağıranların
   //    çoğu vermediği için masaüstünde hiç devreye girmiyordu.
-  const wv = await gizliWebViewDeneme(url, timeout);
-  if (wv) return wv;
+  //    `webView: false`: gizli WebView 10-24 saniye sürebilir. Bir sayfada
+  //    BİR challenge yeter; aynı sayfanın geri kalan istekleri (oynatıcı
+  //    butonları, gömülü oynatıcılar) bu pahalı yolu denemez — ölçüldü,
+  //    Orion'un yavaşlığının ana nedeni buydu.
+  if (webView) {
+    const wv = await gizliWebViewDeneme(url, timeout);
+    if (wv) return wv;
+  }
 
   // 4) Çağıranın kendi yedeği (proxy/worker zinciri)
   if (typeof yedekCek === 'function') {
@@ -214,7 +241,7 @@ export async function akilliGet(url, { ref = '', timeout = 15000, yedekCek = nul
  * tarayıcıda ve testte her POST boş dönüyordu (ölçüldü: FilmEkseni araması
  * hiç sonuç vermiyordu).
  */
-async function duzPost(url, body, { ref, timeout }) {
+async function duzPost(url, body, { ref, timeout, headers = {} }) {
   try {
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), timeout);
@@ -227,6 +254,7 @@ async function duzPost(url, body, { ref, timeout }) {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         // Bu başlık olmadan çoğu AJAX ucu JSON yerine HTML döner.
         'X-Requested-With': 'XMLHttpRequest',
+        ...headers,
         ...(ref ? { Referer: ref } : {})
       },
       body
@@ -240,16 +268,16 @@ async function duzPost(url, body, { ref, timeout }) {
 }
 
 /** Akıllı POST — cihazda cihazın IP'sinden, yoksa doğrudan istek. */
-export async function akilliPost(url, body, { ref = '', timeout = 15000, yedekCek = null } = {}) {
+export async function akilliPost(url, body, { ref = '', timeout = 15000, yedekCek = null, headers = {} } = {}) {
   if (nativeAndroidMi()) {
-    const r = await cihazPost(url, body, { ref, timeout });
+    const r = await cihazPost(url, body, { ref, timeout, headers });
     if (r.ok && r.text && !engelSayfaMi(r.text)) return r.text;
   }
   if (typeof yedekCek === 'function') {
     try {
-      const t = await yedekCek(url, { ref, timeout });
+      const t = await yedekCek(url, { ref, timeout, headers });
       if (t) return t;
     } catch (_) {}
   }
-  return duzPost(url, body, { ref, timeout });
+  return duzPost(url, body, { ref, timeout, headers });
 }

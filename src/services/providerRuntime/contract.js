@@ -45,11 +45,37 @@ export function validateProvider(definition) {
   return definition;
 }
 
+/**
+ * Sayısal kalite sırası — CloudStream `sortUrls` kalıbı (`sortedBy { -quality }`):
+ * 2160/4K→4, 1080/FHD→3, 720→2, 480→1, 360→0, bilinmeyen/Auto→-1 (en son).
+ * `quality`/`kalite`/ad metnindeki "4K", "1080p", "720p" gibi ifadelerden türer;
+ * yayın listesi bu alanla azalan sıralanır (kalitesiz en sonda).
+ */
+export function qualityRank(source) {
+  if (typeof source === 'number') return Number.isFinite(source) ? source : -1;
+  if (typeof source === 'string') return rankFromText(source);
+  if (!source || typeof source !== 'object') return -1;
+  if (typeof source.qualityRank === 'number' && Number.isFinite(source.qualityRank)) return source.qualityRank;
+  return rankFromText(`${source.quality ?? ''} ${source.kalite ?? ''} ${source.name ?? ''} ${source.displayName ?? ''}`);
+}
+
+function rankFromText(metin) {
+  const t = String(metin || '').toLowerCase();
+  const sayiVar = (sayi) => new RegExp(`(^|[^0-9])${sayi}p?([^0-9]|$)`).test(t);
+  if (sayiVar(2160) || /(^|[^a-z0-9])(4k|uhd)([^a-z0-9]|$)/.test(t)) return 4;
+  if (sayiVar(1080) || /(^|[^a-z0-9])fhd([^a-z0-9]|$)/.test(t)) return 3;
+  if (sayiVar(720)) return 2;
+  if (sayiVar(480)) return 1;
+  if (sayiVar(360)) return 0;
+  return -1;
+}
+
 export function normalizeStream(raw, { provider = '', index = 0 } = {}) {
   const url = mutlakApiAdresi(raw?.streamUrl || raw?.url || (typeof raw?.getUrl === 'function' ? raw.getUrl() : ''));
   if (!url || typeof url !== 'string') return null;
   return {
     ...raw,
+    qualityRank: qualityRank(raw),
     id: raw.id || `${provider}_${index}`,
     provider: raw.provider || provider,
     name: raw.name || raw.displayName || provider,

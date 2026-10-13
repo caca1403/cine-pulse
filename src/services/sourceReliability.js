@@ -3,6 +3,14 @@ const LAST_SOURCE_KEY = 'cinepulse_last_source_v1';
 const MAX_HEALTH_ENTRIES = 180;
 const MAX_LAST_ENTRIES = 80;
 
+import { getSourceFamily } from './sourceLabels.js';
+import { zekaKaydet } from './sourceIntelligence.js';
+
+/** Oynatmayla doğrulanan / ölen kaynağı aile bazında öğrenme beynine yazar. */
+function ogren(olay, source) {
+  try { zekaKaydet({ aile: getSourceFamily(source).alias, olay }); } catch (_) { /* öğrenme opsiyoneldir */ }
+}
+
 function safeRead(key, fallback = {}) {
   try {
     const parsed = JSON.parse(localStorage.getItem(key) || '');
@@ -81,6 +89,7 @@ export function rankSourcesForDevice(sources, { contentKey = '', category = '' }
 
 export function rememberWorkingSource({ contentKey, category = '', source }) {
   if (!source) return;
+  ogren('oynadi', source);
   const health = safeRead(HEALTH_KEY);
   const key = healthKey(source, category);
   const old = health[key] || {};
@@ -106,6 +115,7 @@ export function rememberWorkingSource({ contentKey, category = '', source }) {
 
 export function rememberFailedSource({ category = '', source }) {
   if (!source) return;
+  ogren('hata', source);
   const health = safeRead(HEALTH_KEY);
   const key = healthKey(source, category);
   const old = health[key] || {};

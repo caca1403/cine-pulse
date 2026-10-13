@@ -270,7 +270,7 @@ export function renderLiveTvView() {
 
           <!-- Big Center OSD Banner on Channel Switch -->
           <div class="tv-osd-banner hidden" id="tv-osd">
-            <img id="tv-osd-logo" class="tv-osd-logo" src="" alt="" />
+            <img id="tv-osd-logo" class="tv-osd-logo" alt="" />
             <div class="tv-osd-info">
               <div class="tv-osd-name" id="tv-osd-name"></div>
               <div class="tv-osd-meta">
@@ -739,11 +739,11 @@ export function renderLiveTvView() {
         const epg = getChannelEpg(activeChannel);
 
         if (osdLogo) {
-          osdLogo.src = activeChannel.logo;
           osdLogo.onerror = () => {
             osdLogo.onerror = null;
             osdLogo.src = getChannelBadgeSvg(activeChannel.name, activeChannel.category);
           };
+          osdLogo.src = activeChannel.logo || getChannelBadgeSvg(activeChannel.name, activeChannel.category);
         }
         if (osdName) osdName.textContent = activeChannel.name;
         if (osdQuality) osdQuality.textContent = activeChannel.quality;

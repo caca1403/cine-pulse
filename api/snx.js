@@ -4,7 +4,9 @@ export const config = {
   runtime: 'edge'
 };
 
-const CF_WORKER_PROXY = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+// Üçüncü taraf relay adresi Vercel ortam değişkeninden okunur (CP_SNX_RELAY);
+// mevcut worker yedek olarak durur — tanım olmasa da uç çalışmaya devam eder.
+const CF_WORKER_PROXY = (process.env.CP_SNX_RELAY || 'https://wild-credit-e1ae.cagatayca07.workers.dev').replace(/\/$/, '');
 
 export default async function handler(request) {
   const blockedResponse = guardEdgeRequest(request, { limit: 180, bucket: 'snx' });

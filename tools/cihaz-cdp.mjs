@@ -54,11 +54,17 @@ export async function cdpAc({ port = PORT, pkg = PKG } = {}) {
     if (m.id && bekleyen.has(m.id)) { bekleyen.get(m.id)(m); bekleyen.delete(m.id); }
     else if (m.method) olaylar.push(m);
   });
-  const gonder = (method, params = {}) => new Promise((c, h) => {
+  // `sure`: beklenen yanıt için üst sınır. Uzun JS işleri (örn. provider
+  // taraması ~90 sn) 15 sn'lik varsayılanla "zaman asimi" yiyordu.
+  const gonder = (method, params = {}, sure = 15000) => new Promise((c, h) => {
     const i = ++id;
-    bekleyen.set(i, m => (m.error ? h(new Error(m.method + ': ' + JSON.stringify(m.error))) : c(m.result)));
+    const timer = setTimeout(() => { if (bekleyen.has(i)) { bekleyen.delete(i); h(new Error(method + ' zaman asim')); } }, sure);
+    bekleyen.set(i, m => {
+      clearTimeout(timer);
+      if (m.error) h(new Error(method + ': ' + JSON.stringify(m.error)));
+      else c(m.result);
+    });
     soket.send(JSON.stringify({ id: i, method, params }));
-    setTimeout(() => { if (bekleyen.has(i)) { bekleyen.delete(i); h(new Error(method + ' zaman asim')); } }, 600000);
   });
   return {
     gonder,
@@ -69,7 +75,7 @@ export async function cdpAc({ port = PORT, pkg = PKG } = {}) {
       const r = await gonder('Runtime.evaluate', {
         expression: `(async()=>{ try { return JSON.stringify(await (${ifade})); } catch(e) { return JSON.stringify({__hata: String(e && e.stack || e)}); } })()`,
         awaitPromise: true, returnByValue: true, timeout: 600000
-      });
+      }, 300000);
       if (r.exceptionDetails) throw new Error(r.exceptionDetails.text + ' ' + (r.exceptionDetails.exception?.description || ''));
       const ham = r.result?.value;
       try { return typeof ham === 'string' ? JSON.parse(ham) : ham; } catch (_) { return ham; }

@@ -17,6 +17,8 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
+    "manifest:sync": "node scripts/generate-update-manifest.mjs",
+    "manifest:check": "node scripts/generate-update-manifest.mjs --check",
     "server": "node server/mediaServer.js",
     "tunnel": "npx localtunnel --port 4000",
     "electro:dev": "electron electron/main.cjs",

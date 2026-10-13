@@ -16,15 +16,15 @@
 import { apiUrl, isLocalDevHost } from './apiOrigin.js';
 
 export const VOD_M3U_SOURCES = [
-  { id: 'jetfilm', label: 'Jet Film', kinds: ['film'],
+  { id: 'jetfilm', label: 'Pulsar 1', kinds: ['film'],
     url: 'https://raw.githubusercontent.com/patr0nq/flmS/refs/heads/main/jetfilm_tum.m3u' },
-  { id: 'filmmodu', label: 'Film Modu', kinds: ['film'],
+  { id: 'filmmodu', label: 'Pulsar 2', kinds: ['film'],
     url: 'https://raw.githubusercontent.com/patr0nq/flmS/refs/heads/main/filmmodu_tum.m3u' },
   // Depoda şu an boş (8 bayt, yalnızca "#EXTM3U"). Yine de kayıtlı tutuluyor:
   // sahibi doldurduğu anda kod değişmeden otomatik çalışmaya başlar.
-  { id: 'filmmakinesi', label: 'Film Makinesi', kinds: ['film'],
+  { id: 'filmmakinesi', label: 'Pulsar 3', kinds: ['film'],
     url: 'https://raw.githubusercontent.com/patr0nq/flmS/refs/heads/main/filmmakinesi_tum.m3u' },
-  { id: 'fhdfi', label: 'FHDF İzle', kinds: ['film'],
+  { id: 'fhdfi', label: 'Pulsar 4', kinds: ['film'],
     url: 'https://raw.githubusercontent.com/patr0nq/flmS/refs/heads/main/fhdfi_tum.m3u' }
 ];
 

@@ -90,7 +90,7 @@ export function openPluginsModal() {
               <div class="plugin-row-info">
                 <div class="plugin-kinds">${(p.kinds || []).map((k) => `<span>${escapeText(k)}</span>`).join('')}</div>
                 <p>${escapeText(p.desc || '')}</p>
-                ${p.warn ? `<p class="plugin-warn"><i data-lucide="triangle-alert" style="width:12px;height:12px;"></i><span>${escapeText(p.warn)}</span></p>` : ''}
+                ${p.warn ? `<p class="plugin-warn"><i data-lucide="alert-triangle" style="width:12px;height:12px;"></i><span>${escapeText(p.warn)}</span></p>` : ''}
               </div>
               <button type="button" class="plugin-toggle" role="switch" aria-checked="${p.enabled}" aria-label="${escapeText(p.alias || p.id)} ${p.enabled ? 'kapat' : 'aç'}" data-toggle="${escapeText(p.id)}">
                 <span class="plugin-toggle-knob"></span>
@@ -132,6 +132,16 @@ export function openPluginsModal() {
         showToast(nowOn ? 'Eklenti açıldı.' : 'Eklenti kapatıldı.', nowOn ? 'success' : 'info');
       }, { signal });
     });
+
+    /* DEVTEST-YALNIZ "Kaynak tanılama" bölümü (kullanıcıya açık sağlık ekranı
+       DEGIL): main.js'deki ölçüm kancasıyla birebir aynı kapıdan geçer. Bayrak
+       yokken bu dal derlenmez, panel dosyası pakete hiç girmez — bu yüzden
+       public çıktıda bölümün başlık/buton metni bulunamaz. */
+    if (import.meta.env.VITE_DEVICE_SWEEP === '1') {
+      import('../devtools/diagnosticsPanel.js')
+        .then((m) => m.baglantiKur(root, signal))
+        .catch(() => {});
+    }
   };
 
   root.addEventListener('click', (e) => {

@@ -1,4 +1,6 @@
-const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
+// SABİT ANAHTAR → Vercel ortam değişkeni (CP_TMDB_API_KEY). Düşen değer
+// yedek olarak durur: ortam tanımı olmasa da site çalışmaya devam eder.
+const TMDB_API_KEY = process.env.CP_TMDB_API_KEY || '4e44d9029b1270a757cddc766a1bcb63';
 
 function pickArtwork(images) {
   if (!Array.isArray(images)) return null;

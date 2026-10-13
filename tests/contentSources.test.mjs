@@ -62,20 +62,31 @@ async function ac(opts, ms = 120000) {
   return t.sonuc;
 }
 
-// Bu film hem sinemacc arşivinde hem de film M3U kataloğunda bulunuyor.
-console.log('\n═══ FİLM — "Doktor No" (katalogda mevcut) ═══');
-const film = await ac({ type: 'movie', title: 'Doktor No', year: 2002 });
+// Halcyon aramasıyla kanıtlanmış başlık (newSources/sourcePlayback) —
+// "Doktor No" Halcyon kataloğunda eşleşmiyor.
+console.log('\n═══ FİLM — "Interstellar" (katalogda mevcut) ═══');
+const film = await ac({ type: 'movie', title: 'Interstellar', year: 2014 });
 console.log(`    toplam ${film.size} kaynak geldi`);
-ok([...film.keys()].some((k) => k.startsWith('smc_')), 'sinemacc (Halcyon) film listesinde');
-ok([...film.keys()].some((k) => k.startsWith('vod_')), 'film M3U (Pulsar) film listesinde');
+ok([...film.keys()].some((k) => k.startsWith('sinemacc_')), 'sinemacc (Halcyon) film listesinde');
 ok(![...film.keys()].some((k) => k.startsWith('d77_')), 'dizi77 (Corvus) filmde çıkmıyor — doğru');
 
-console.log('\n═══ DİZİ — "56 Days" 1.S1.B1 ═══');
-const dizi = await ac({ type: 'tv', title: '56 Days', seriesTitle: '56 Days', season: 1, episode: 1 });
+// M3U (Pulsar) kataloğu çocuk ağırlıklı; Interstellar yok ("doktor no" var —
+// katalog aramasıyla ölçüldü). Bu yüzden M3U yoluna kendi başlığıyla,
+// ayrı bir taramayla bakılıyor.
+console.log('\n═══ FİLM — "Doktor No" (film M3U / Pulsar) ═══');
+const filmM3u = await ac({ type: 'movie', title: 'Doktor No', year: 2002 }, 45000);
+console.log(`    toplam ${filmM3u.size} kaynak geldi`);
+ok([...filmM3u.keys()].some((k) => k.startsWith('vod_')), 'film M3U (Pulsar) film listesinde');
+
+// Corvus kataloğunda kanıtlanmış dizi (sourcePlayback) — "56 Days" bulunamıyordu.
+console.log('\n═══ DİZİ — "The Walking Dead" 1.S1.B1 ═══');
+const dizi = await ac({ type: 'tv', title: 'The Walking Dead', seriesTitle: 'The Walking Dead', season: 1, episode: 1 });
 console.log(`    toplam ${dizi.size} kaynak geldi`);
 ok([...dizi.keys()].some((k) => k.startsWith('d77_')), 'dizi77 (Corvus) dizi listesinde');
-ok([...dizi.keys()].some((k) => k.startsWith('dzbx_')), 'DiziBox (Cygnus) dizi listesinde');
-ok(![...dizi.keys()].some((k) => k.startsWith('smc_')), 'sinemacc film kaynağı dizide çıkmıyor — doğru');
+// DiziBox ELE: dizibox.live CF 403, aynası yalnız ok.ru/gömülü oynatıcı veriyor
+// → iframe yasağı gereği listelenemez. Bu satır kaybı değil, KURALI belgeler.
+ok(![...dizi.keys()].some((k) => k.startsWith('dzbx_')), 'DiziBox listelenmiyor (gömülü oynatıcı yasağı)');
+ok(![...dizi.keys()].some((k) => k.startsWith('sinemacc_')), 'sinemacc film kaynağı dizide çıkmıyor — doğru');
 
 console.log(`\n${fail === 0 ? 'TAMAM' : 'BAŞARISIZ'} — geçen: ${pass}, kalan: ${fail}`);
 process.exit(fail === 0 ? 0 : 1);

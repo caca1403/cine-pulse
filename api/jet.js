@@ -1,4 +1,5 @@
 import { guardEdgeRequest } from './_security.js';
+import { anonimJson } from './_anonim.js';
 
 export const config = {
   runtime: 'edge'
@@ -69,6 +70,15 @@ export default async function handler(request) {
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     responseHeaders.set('Access-Control-Allow-Headers', '*');
     responseHeaders.set('Content-Type', upstreamRes.headers.get('content-type') || 'text/html; charset=utf-8');
+
+    // ANONİMLİK: JSON gövdedeki name/source/badge/label değerleri kod adıyla
+    // döner (Nimbus). Alan adları, sırası ve durum kodu AYNEN kalır — istemci
+    // parse'ı değişmez. HTML içeriğe dokunulmaz (istemci onu yapı olarak kullanır).
+    const ustTip = upstreamRes.headers.get('content-type') || '';
+    if (ustTip.includes('json')) {
+      const metin = await upstreamRes.text().catch(() => '');
+      return new Response(anonimJson(metin), { status: upstreamRes.status, headers: responseHeaders });
+    }
 
     return new Response(upstreamRes.body, {
       status: upstreamRes.status,

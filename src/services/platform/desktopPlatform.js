@@ -19,13 +19,9 @@ export async function initDesktopPlatform() {
   // 3. Yerel Medya Servisi (Sidecar: 4000 portu) Bağlantı Kontrolü
   checkDesktopSidecarHealth();
 
-  // 4. Cloudstream Tarzı Kayıtlı Eklenti/Provider Durumunu Geri Yükle
-  try {
-    const { loadPersistedProviderState } = await import('../providers/providerRegistry.js');
-    await loadPersistedProviderState();
-  } catch (err) {
-    console.warn('[DesktopPlatform] Provider durumu yüklenirken hata:', err);
-  }
+  // 4. Kayıtlı eklenti durumu: tek doğruluk kaynağı pluginCatalog —
+  // getPluginState() userData'ı (masaüstü) kendisi okur; ayrı bir provider
+  // deposu yüklemeye gerek yok (eski registry köprüleri kaldırıldı).
 
   // A URL flag or desktop-looking UA is not a native installation bridge.
   // Healthy installations do not need an optimization wizard at every first run.

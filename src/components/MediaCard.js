@@ -243,7 +243,7 @@ export function renderMediaCard(item, options = {}) {
           decoding="async"
           onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'"
         />
-        <img class="card-fanart-logo" alt="" aria-hidden="true" />
+        <img class="card-fanart-logo" alt="" aria-hidden="true" hidden onload="this.hidden=false" onerror="this.hidden=true" />
         
         <div class="card-glass-glow"></div>
 
