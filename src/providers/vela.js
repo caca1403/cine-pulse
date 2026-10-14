@@ -56,6 +56,41 @@ function kacisliJson(s) {
   try { return JSON.parse(ac); } catch (_) { return null; }
 }
 
+/* ── KİMLİK KAPISI (saf birim — dışa aktık, test edilir) ──────────────────
+   Ölçülen kaza: site araması BUZ GİBİ bulanık (canlı ölçüm: "Miraculous" →
+   "Big George Foreman"!) ve eski çift-yönlü `includes()` kapısı, "Mucize
+   Uğurböceği" hedefini alt-dizeyle sıradan "Mucize" kartına bağlayıp
+   sitenin normal dizisinin bölümünü listeliyordu. Doktrin "2000 se 2000"
+   (emsal: arsiv.puanla / sezon.adaylarSec): tam=6, "<hedef> " öneşek=4,
+   İÇEREN/alt-dize=0. Çocuk/anime markaları (Mucize Uğurböceği, Rafadan
+   Tayfa, Kaçak Kız...) tam bu yüzden alt-dizeyle ASLA kabul edilmez;
+   şüphede doğru cevap 0 kaynaktır. */
+export function eslesmePuan(kartAdi, hedefler) {
+  // Kart gürültüsü: önde "The" (TMDB tr-TR "Matrix" der, kart "Matrix"),
+  // sonda site kuyruğu " izle" ("Matrix 2: Reloaded izle"). İkisi de KİMLİK
+  // parçası değildir; soyulur. ("A/An" SOYULMAZ — "An Teacher" ≠ "Teacher"
+  // yanlış-pozitifine yol açardı.) Alt-dize/alt-ad hâlâ yasaktır.
+  const kart = norm(kartAdi).replace(/^the\s+/, '').replace(/(\s+izle)+$/, '');
+  if (!kart) return 0;
+  let en = 0;
+  for (const h of hedefler || []) {
+    const hedef = norm(h).replace(/^the\s+/, '');
+    if (!hedef || hedef.length < 3) continue;
+    if (kart === hedef) en = Math.max(en, 6);
+    else if (kart.startsWith(`${hedef} `)) en = Math.max(en, 4); // "La Casa de Papel 2" ⊃ hedef
+    // kart hedefin kısaltması/uzantısı ("Mucize" ⊂ "Mucize Uğurböceği") → PUAN YOK
+  }
+  return en;
+}
+
+/** Yıl kapısı: hedef yılı biliniyorsa kart yılı OLmalı ve ±1 içinde kalmalı
+    (tek adayda da uygulanır — eskiden yalnız >1 adayda çalışıp kaçırıyordu). */
+export function yilUyar(yil, kartYili) {
+  if (!yil) return true;
+  const a = parseInt(kartYili, 10);
+  return Number.isFinite(a) && a > 0 && Math.abs(a - (+yil || 0)) <= 1;
+}
+
 /* ── ADIM 1: ara() — JSON aramasından içerik sayfasının adresi ────────── */
 async function aramaTek(query, taban, deadline, trace) {
   const ham = await istek(`${taban}/api/search?q=${encodeURIComponent(query)}`, {
@@ -88,15 +123,17 @@ async function ara(adaylar, dizi, yil, tabanRef, deadline, trace) {
       ? /series/i.test(String(it.contentableType || '')) || String(it.slug || '').startsWith('dizi/')
       : !/series/i.test(String(it.contentableType || '')) && !String(it.slug || '').startsWith('dizi/'));
     const tip = liste.filter((it) => it?.slug && tipli(it));
-    let bulunan = tip.filter((it) => norm(it.title) && adaylar.some((t) => norm(t) === norm(it.title)));
-    if (!bulunan.length) bulunan = tip.filter((it) => norm(it.title) && adaylar.some((t) => norm(t).includes(norm(it.title)) || norm(it.title).includes(norm(t))));
-    if (yil && bulunan.length > 1) {
-      const yas = bulunan.filter((it) => Math.abs((parseInt(it.releaseYear, 10) || 0) - (+yil || 0)) <= 1);
-      if (yas.length) bulunan = yas;
-    }
-    if (bulunan.length) {
-      const slug = String(bulunan[0].slug).replace(/^\/+|\/+$/g, '');
-      trace.koy('eslesme', { baslik: bulunan[0].title, slug });
+    // KİMLİK KAPISI: yalnız tam/öneşek + yıl ±1; tek adayda da denetlenir.
+    const gecen = tip
+      .map((it) => ({ it, puan: eslesmePuan(it.title, adaylar) }))
+      .filter((x) => x.puan >= 4 && yilUyar(yil, x.it.releaseYear))
+      .sort((a, b) => b.puan - a.puan
+        || (Math.abs((parseInt(a.it.releaseYear, 10) || 0) - (+yil || 0))
+          - Math.abs((parseInt(b.it.releaseYear, 10) || 0) - (+yil || 0))));
+    if (tip.length && !gecen.length) trace.koy('kimlik-kapi', { q: q.slice(0, 26), aday: tip.length, gecen: 0 });
+    if (gecen.length) {
+      const slug = String(gecen[0].it.slug).replace(/^\/+|\/+$/g, '');
+      trace.koy('eslesme', { baslik: gecen[0].it.title, slug, puan: gecen[0].puan });
       return { sayfa: `${taban}/${slug}/`, taban };
     }
   }
