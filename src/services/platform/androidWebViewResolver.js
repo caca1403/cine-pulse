@@ -109,5 +109,10 @@ export function looksBlocked(result) {
     || sample.includes('enable javascript and cookies')
     || sample.includes('challenge-platform')
     || sample.includes('attention required')
-    || sample.includes('cf-chl');
+    || sample.includes('cf-chl')
+    // hız limiti imzaları: challenge'tan ayrışsın (Orion raporu #5)
+    || sample.includes('error code: 1015')
+    || sample.includes('error 1015')
+    || sample.includes('you have been rate limited')
+    || sample.includes('too many requests');
 }

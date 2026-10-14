@@ -17,7 +17,7 @@
    koptuğunu görebiliriz.
    ========================================================================== */
 
-import { akilliGet, akilliPost, nativeHttpAktifMi } from '../services/nativeHttp.js';
+import { akilliGet, akilliPost, nativeHttpAktifMi, sonHttpDurumu } from '../services/nativeHttp.js';
 
 /* ── 1. HTTP (hibrit) ─────────────────────────────────────────────────── */
 
@@ -82,7 +82,8 @@ export async function istek(url, { ref = '', headers = {}, timeout = 12000, yede
     : yedekCek;
   try {
     const ham = await iptalYarisi(akilliGet(url, { ref, timeout, headers, yedekCek: yedek, webView, signal: birlesik }), signal, '');
-    if (trace) trace.koy('http', { ...kural, uz: (ham || '').length, yol: signal?.aborted ? 'iptal' : ham ? 'akilli' : 'bos' });
+    // st: son HTTP durum kodu (403/404/429 ayrımı — Orion kök neden raporu #1).
+    if (trace) trace.koy('http', { ...kural, uz: (ham || '').length, st: sonHttpDurumu(url), yol: signal?.aborted ? 'iptal' : ham ? 'akilli' : 'bos' });
     return ham || '';
   } catch (e) {
     if (trace) trace.koy('http', { ...kural, hata: String(e).slice(0, 80) });

@@ -74,8 +74,10 @@ export async function cihazGet(url, { ref = '', headers = {}, timeout = 15000 } 
       readTimeout: timeout,
       connectTimeout: Math.min(timeout, 8000)
     });
+    kaydetSt(url, r.status);
     return { ok: r.status >= 200 && r.status < 300, status: r.status, text: cevapMetni(r), headers: r.headers || {} };
   } catch (_) {
+    kaydetSt(url, 0);
     return { ok: false, status: 0, text: '', headers: {} };
   }
 }
@@ -117,12 +119,29 @@ export async function cihazPost(url, body, { ref = '', headers = {}, timeout = 1
  */
 const UA_MOBIL = 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
 
+/* ── Son HTTP durumu (gözlemlenebilirlik) ───────────────────────────────
+   Orion kök neden raporu #1: `uz:0` tek başına 403 (CF challenge), 429/1015
+   (hız limiti) ve ağ hatasından ayrılmıyordu. Capped Map; yalnız iz amaçlı. */
+const SON_ST = new Map();
+function kaydetSt(url, st) {
+  try {
+    if (SON_ST.size > 300) SON_ST.delete(SON_ST.keys().next().value);
+    SON_ST.set(String(url), { st: Number(st) || 0, t: Date.now() });
+  } catch (_) { /* iz katmanı asla akışı kırmaz */ }
+}
+/** Bu URL'nin en son HTTP durum kodu (2 dk taze; yoksa 0). */
+export function sonHttpDurumu(url) {
+  const v = SON_ST.get(String(url));
+  return v && Date.now() - v.t < 120000 ? v.st : 0;
+}
+
 async function duzGet(url, { ref, timeout, headers = {} }) {
   try {
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), timeout);
     const r = await fetch(url, { signal: ac.signal, headers: { 'User-Agent': UA_MOBIL, Accept: '*/*', ...headers, ...(ref ? { Referer: ref } : {}) } });
     clearTimeout(t);
+    kaydetSt(url, r.status);
     if (!r.ok) return '';
     return await r.text();
   } catch (_) {
@@ -194,6 +213,8 @@ export function engelSayfaMi(metin) {
     'challenge-platform', 'cf-chl', 'cf_chl_', 'turnstile', 'cloudflare bot',
     'you have been blocked', 'request unsuccessful', 'ddos-guard', 'security check',
     'access denied', 'error 1020', 'error code: 1020', 'sorry, you cannot access',
+    // 1015 hız limitidir, challenge DEĞİL — ayrışsın (Orion kök neden raporu #5)
+    'error 1015', 'error code: 1015', 'you have been rate limited', 'too many requests',
   ];
   const engel = IZLER.some((iz) => ilk.includes(iz));
   if (!engel && t.length > 60000) return false;
@@ -204,6 +225,7 @@ export async function akilliGet(url, { ref = '', timeout = 15000, yedekCek = nul
   // 1) Android: cihazın kendi IP'sinden (CapacitorHttp)
   if (nativeAndroidMi()) {
     const r = await cihazGet(url, { ref, timeout, headers });
+    kaydetSt(url, r.status); // telemetri: cihaz dalının durumu da iz'e düşsün
     // Engel sayfası gelse bile BAŞARILI sayılmaz: zincir devam eder ve
     // gizli WebView challenge'ı çözer. Önceden challenge HTML'i geçerli
     // içerik gibi dönülüyor, arayan katman boş sonuç üretiyordu.

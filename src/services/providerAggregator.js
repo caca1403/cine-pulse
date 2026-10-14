@@ -741,7 +741,7 @@ export async function getStreamingServersProgressive({
        döndürdüğü için listeyi o doldurur ("hızlı çıkmalı"). */
     const oncelik = {
       ...(anime ? { anizium: -6, animecix: -5, animetr: -4, asy: -3, kidsvip: -3 } : {}),
-      dyu: 0, lookmovie: 0, dzs: 1, dizi77: 1, dzb: 2, hdfc: 3, snx: 3, tvr: 4,
+      dyu: 0, lookmovie: 0, dzs: 1, dizi77: 1, dzb: 2, snx: 3, tvr: 4, // hdfc:3 kaldırıldı — WebView kapısı uygulandı, öğrenme sıralarını belirler
     };
     const definitions = listProviderDefinitions().filter(provider =>
       !provider.experimental && !off(provider.id) &&

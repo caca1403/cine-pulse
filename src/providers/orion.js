@@ -18,7 +18,7 @@ import {
 } from './kit.js';
 import { be } from '../services/hdfcDecoders.js';
 
-const BILINEN = ['https://www.hdfilmcehennemi.nl', 'https://www.hdfilmcehennemi.now', 'https://hdfilmcehennemi.com'];
+const BILINEN = ['https://www.hdfilmcehennemi.nl', 'https://hdfilmcehennemi.com']; // .now self-signed (ölçüldü) — çıkarıldı
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const PLAYER_UA = 'okhttp/4.9.2';
 
@@ -253,7 +253,7 @@ async function adayIframe(ada, ctx, trace, webView = false, signal = null) {
 
 /** Sayfadaki oynatıcı ADAYLARINI listeler (buton iframe'leri henüz çözülmez). */
 async function oynaticiAdaylariBul(ctx, trace, signal = null) {
-  const sayfa = ctx.html || await istek(ctx.contentUrl, { ref: `${ctx.base}/`, headers: { 'User-Agent': UA }, trace, timeout: 16000, signal });
+  const sayfa = ctx.html || await istek(ctx.contentUrl, { ref: `${ctx.base}/`, headers: { 'User-Agent': UA }, trace, timeout: 16000, signal, webView: false });
   if (!sayfa) return [];
   const adaylar = oynaticiAdaylari(sayfa, ctx.base).slice(0, 3);
   trace.koy('oynatici-adaylari', adaylar.map((a) => a.ad || a.videoId));
@@ -330,19 +330,21 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
   const sluglar = [...new Set([baslik, ...alternatifBasliklar].map(slugla).filter(Boolean))];
   const tamAramalar = [...new Set([temizBaslik(originalTitle), baslik, ...alternatifBasliklar].filter(Boolean))];
   const gevsekAramalar = [...new Set(tamAramalar.map((q) => q.split(/\s+/).slice(0, 1).join(' ')).filter((q) => q.length > 3 && !tamAramalar.includes(q)))];
-  const aramalar = [...tamAramalar, ...gevsekAramalar].slice(0, 6);
+  const aramalar = [...tamAramalar, ...gevsekAramalar].slice(0, 3); // tavan 3 (rapor #4)
   const aramaBasliklari = [title, originalTitle, ...titles].map(temizBaslik).filter(Boolean);
   const yanitIzi = new Set();
   let aramaYolu = '/search/?q=';
   for (const q of aramalar.filter(Boolean)) {
     if (contentUrl) break;
     const ara = async (yol) => istek(`${base}${yol}${encodeURIComponent(q)}`, {
-      ref: `${base}/`, trace, signal, timeout: 8000,
+      ref: `${base}/`, trace, signal, timeout: 8000, webView: false,
       headers: { 'User-Agent': UA, 'X-Requested-With': 'fetch', Accept: 'application/json, text/plain, */*' },
     });
     let ham = await ara(aramaYolu);
     let sonuc = aramaSonuclari(ham);
-    if (!sonuc.length && aramaYolu === '/search/?q=') {
+    // Yedek uç yalnız İLK UÇ HTTP'HATASI verdiyse denenir (rapor #4): 200+boş
+    // JSON "yok" demektir, ikinci uca gitmek 8 sn boşuna bekleme olurdu.
+    if (!sonuc.length && !ham && aramaYolu === '/search/?q=') {
       ham = await ara('/search?q='); sonuc = aramaSonuclari(ham);
       if (sonuc.length) aramaYolu = '/search?q=';
     }
@@ -383,7 +385,7 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
     for (const b of bazlar) {
       for (const y of yollar) {
         if (deneme++ >= 10) break; // bütçe: ~10 hızlı deneme (TR 3 + ORJ-1 3 + ORJ-2 3 + yedek taban)
-        const html = await istek(`${b}${y}`, { ref: `${b}/`, headers: { 'User-Agent': UA }, trace, signal });
+        const html = await istek(`${b}${y}`, { ref: `${b}/`, headers: { 'User-Agent': UA }, trace, signal, webView: false });
         if (html && /data-video|alternative-link|<iframe/i.test(html)) { contentUrl = `${b}${y}`; contentHtml = html; break; }
       }
       if (contentUrl || deneme >= 10) break;
@@ -400,12 +402,12 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
   // türetilir: {dizi}/sezon-S/bolum-E/ — önce onu doğrudan dene.
   if (!isFilm && !contentUrl.includes(`/sezon-${s}/bolum-${e}/`)) {
     const ep = mutlak(`${String(contentUrl).replace(/\/+$/, '')}/sezon-${s}/bolum-${e}/`, base);
-    const epHtml = await istek(ep, { ref: `${pageBase}/`, headers: { 'User-Agent': UA }, trace, signal });
+    const epHtml = await istek(ep, { ref: `${pageBase}/`, headers: { 'User-Agent': UA }, trace, signal, webView: false });
     if (epHtml && /data-video|alternative-link|<iframe/i.test(epHtml)) {
       contentUrl = ep; contentHtml = epHtml;
       trace.koy('bolum', { bulundu: true, yol: 'deterministik', contentUrl });
     } else {
-      const showHtml = contentHtml || await istek(contentUrl, { ref: `${pageBase}/`, headers: { 'User-Agent': UA }, trace, signal });
+      const showHtml = contentHtml || await istek(contentUrl, { ref: `${pageBase}/`, headers: { 'User-Agent': UA }, trace, signal, webView: false });
       const bm = bolumBaglantisi(showHtml, s, e);
       if (bm) contentUrl = mutlak(bm, pageBase);
       trace.koy('bolum', { bulundu: Boolean(bm), yol: 'gosterim', contentUrl });
@@ -431,7 +433,7 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
       // Bölüm sayfası kimlik taşımayabilir; gösterim sayfası taşır (ölçüldü:
       // bleach-izle-7 → imdb.com/title/tt5979872, HTTP 200).
       const gosterim = contentUrl.replace(/\/sezon-\d+\/bolum-\d+\/?$/i, '/');
-      const gHtml = await istek(gosterim, { ref: `${pageBase}/`, headers: { 'User-Agent': UA }, trace, signal, timeout: 9000 });
+      const gHtml = await istek(gosterim, { ref: `${pageBase}/`, headers: { 'User-Agent': UA }, trace, signal, timeout: 9000, webView: false });
       oku(gHtml);
       if (isFilm && gHtml && gosterim === contentUrl) contentHtml = gHtml; // film: oynatıcı da bu sayfada — yeniden indirme
     }
@@ -451,7 +453,11 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
   const BUTCE_MS = 45000;
   const ctx = { base: pageBase, contentUrl, html: contentHtml };
   const adaylar = await oynaticiAdaylariBul(ctx, trace, signal);
-  if (!adaylar.length) return { sources: [], trace: trace.ozet(), iframe: '' };
+  if (!adaylar.length) {
+    // Sessiz dönüş yok (rapor #2): "iz kimlik'te kesik" belirsizliği biter.
+    trace.koy('oynatici-yok', { neden: ctx.html ? 'onbellek' : 'sayfa-bos' });
+    return { sources: [], trace: trace.ozet(), iframe: '' };
+  }
   const durum = adaylar.map((a) => ({ ...a, iframeUrl: a.iframeUrl || '', m3u8: '', kaynakHtml: '' }));
 
   const tur = async (webView) => {
