@@ -4,9 +4,8 @@
    Features 100% CORS-Free Direct 1080p HLS Streams & Multi-audio support.
    ========================================================================== */
 
-import { isStrictMediaTitleMatch } from './mediaMatcher.js';
-
 const BASE_URL = 'https://dramadizilerim.com';
+const PLAYER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 function toTurkishSlug(title) {
   if (!title) return '';
@@ -24,17 +23,63 @@ function toTurkishSlug(title) {
     .replace(/-+/g, '-');
 }
 
-function normalizeTitle(str) {
-  if (!str) return '';
-  return str
+/* ── Kimlik kapısı ("2000 se 2000") ─────────────────────────────────────────
+   Kısa dizi markaları kısa adlar taşır (Kral, Aşk, Bad, Lulu…); aramanın
+   kırpık/İÇEREN (substring) eşleşmeleri NORMAL dizi sorgularında başka
+   yapımın bölümlerini döndürüyordu (canlı ölçüm 2026-10: q=Kral → 48 kart:
+   "Kraliçenin Kanı", "Kralın Hekim Gelini"… → "Kral" hedefinde yanlış
+   eşleşme). YIL KAPISI: canlı ölçümde kart/search HTML'inde hiçbir yıl
+   alanı yok (ld+json genel şablon; year|yayın tarihi 0 isabet), alt yazı
+   enjeksiyonu da içermiyor → kaynak yıl taşımıyorsa tek güvenli kapı
+   birebir başlıktır. Substring/inner eşleşme her halükârda YETERLİ değildir. */
+
+const IDENTITY_NOISE = new Set([
+  'hd', 'full', 'vip', 'izle', 'seyret', 'film', 'dizi', 'anime', 'turkce',
+  'dublaj', 'dublajli', 'dublaji', 'altyazili', 'altyazi', 'sezon', 'bolum',
+  'fragman', 'filmi', 'dizisi'
+]);
+
+/** Türkçe karakter duyarsız, noktalama→boşluk, çoklu boşluk→tek, gürültü
+ *  kelimeler atılmış tam eşleştirme anahtarı. */
+export function identityKey(value) {
+  if (!value) return '';
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ı/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c')
-    .replace(/[^a-z0-9]/g, '');
+    .replace(/[ğüşıöçĞÜŞİÖÇ]/g, ch => ({
+      ğ: 'g', ü: 'u', ş: 's', ı: 'i', ö: 'o', ç: 'c',
+      Ğ: 'g', Ü: 'u', Ş: 's', İ: 'i', Ö: 'o', Ç: 'c'
+    }[ch]))
+    .replace(/['’ʼ`]/g, '')          // kesme işareti kelimeyi bölmez: Kraliçe'nin ≡ Kralicenin
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(' ')
+    // Tek harf ek artıkları ("Aşk-ı" → "i") ve yıl süsleri anahtar dışında;
+    // yıl doğrulaması ±1 kuralıyla shortDramaIdentityMatch içinde yapılır.
+    .filter(w => w && w.length > 1 && !IDENTITY_NOISE.has(w) && !/^(?:19|20)\d{2}$/.test(w))
+    .join(' ');
+}
+
+/** Başlık/metni içindeki 19xx/20xx yılı (kaynak yıl alanı yaymıyorsa null). */
+export function extractYearFromText(value) {
+  const m = String(value || '').match(/\b(?:19|20)\d{2}\b/);
+  return m ? parseInt(m[0], 10) : null;
+}
+
+/** KAPI: normalize TAM eşleşme şart; hedef yılı biliniyorsa adayda yıl
+ *  varsa ±1 içinde olmalı (kaynakta yıl alanı olmadığı için adayda yıl
+ *  yoksa birebir başlık eşleşmesi tek geçerli kapı olarak kalır). */
+export function shortDramaIdentityMatch(candidate, targetTitles, targetYear = null) {
+  const candKey = identityKey(candidate);
+  if (!candKey) return false;
+  const titles = (Array.isArray(targetTitles) ? targetTitles : [targetTitles]).filter(Boolean);
+  const candYear = extractYearFromText(candidate);
+  // Yıl hedefte bilinuyorsa (parametre veya hedef başlığındaki yıl) adayda
+  // yıl varsa ±1 içinde olmalı; adayda yıl yoksa kaynak yıl alanı
+  // taşımadığından (canlı ölçüm) birebir başlık tek geçerli kapıdır.
+  const knownYears = [Number(targetYear) || null, ...titles.map(extractYearFromText)].filter(Boolean);
+  if (candYear && knownYears.length && !knownYears.some(y => Math.abs(candYear - y) <= 1)) return false;
+  return titles.some(t => identityKey(t) === candKey);
 }
 
 async function fetchSafe(pathUrl, options = {}) {
@@ -62,7 +107,7 @@ async function fetchSafe(pathUrl, options = {}) {
     const res = await fetch(targetUrl, {
       ...options,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'User-Agent': PLAYER_UA,
         'Referer': BASE_URL,
         ...(options.headers || {})
       },
@@ -366,28 +411,90 @@ export async function fetchDramaEpisodeStream(slug, season = 1, episode = 1) {
   return null;
 }
 
+/* ── Altyazı (kit.js "5. Altyazı" sözleşmesiyle birebir aynı şekil) ─────────
+   Canlı ölçüm (2026-10, 4 bölüm / 3 marka dramabox+netshort+reelshort): bu
+   sitede altyazı kanalının TEK kaynağı embed.php'nin sunucu-tarafı
+   `window._captionUrl` enjeksiyonudur; örneklerin tamamında boş kaldı
+   (sunucu teşhis yorumu: "[DEBUG-SUB] netshortSubtitles count: 0" /
+   "first subtitle url: NONE") ve dönen m3u8'lerde #EXT-X-MEDIA:TYPE=SUBTITLES
+   grubu yok — altyazılar videoya gömülü (hardsub). ESKİ ARIZA: scraper hiç
+   `subtitles` üretmiyordu; oynatıcı da sahte/ölü bir tek-altyazı şeridi
+   gösteriyordu ("altyazılar çalışmıyor"). KURAL: erişilemeyen veya HTML
+   dönen altyazı ASLA listelenmez — ya gerçekten WebVTT/SRT dönen uç eklenir
+   ya da alan boş bırakılır (ölü kaynak yok). */
+
+/** embed.php HTML'inden `window._captionUrl/_captionLabel/_captionLang`
+ *  üçlüsünü kit.js `tracksAltyazilari` sözleşmesiyle çıkarır (url+src+label+
+ *  language+headers), göreli adresi mutlaklaştırır. Boş/eksikse []. */
+export function extractCaptionTracks(embedHtml) {
+  const html = String(embedHtml || '');
+  const raw = html.match(/window\._captionUrl\s*=\s*["']([^"']*)["']/);
+  if (!raw || !raw[1].trim()) return [];
+  let url = raw[1].trim();
+  if (url.startsWith('//')) url = 'https:' + url;
+  else if (!/^https?:\/\//i.test(url)) url = `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  const label = (html.match(/window\._captionLabel\s*=\s*["']([^"']*)["']/) || [])[1] || 'Türkçe';
+  const language = (html.match(/window\._captionLang\s*=\s*["']([^"']*)["']/) || [])[1] || 'tr';
+  return [{
+    url,
+    src: url,
+    label,
+    language,
+    headers: { Referer: `${BASE_URL}/`, 'User-Agent': PLAYER_UA, Accept: '*/*' }
+  }];
+}
+
+/** Gerçek WebVTT/SRT mi? (HTML/XML/kimlik-avı yanıtlarını reddeder.) */
+export function looksLikeCaption(text, contentType = '') {
+  if (/text\/html/i.test(String(contentType || ''))) return false;
+  const head = String(text || '').replace(/^\uFEFF/, '').trimStart().slice(0, 4000);
+  if (!head || /^\s*(?:<!doctype|<html|<\?xml|<script)/i.test(head)) return false;
+  if (/^WEBVTT/i.test(head)) return true;
+  return /\d{2}:\d{2}:\d{2}[.,]\d{3}\s*-->/.test(head);
+}
+
+/** Canlı doğrulama: yalnız gerçekten VTT/SRT dönen uçları listeler. */
+async function verifyCaptionTracks(tracks) {
+  const alive = [];
+  for (const track of tracks || []) {
+    const res = await fetchSafe(track.url, { headers: track.headers, timeout: 7000 }).catch(() => null);
+    if (!res || !res.ok) continue;
+    const ct = (typeof res.headers?.get === 'function' ? res.headers.get('content-type') : '') || '';
+    const body = await res.text().catch(() => '');
+    if (looksLikeCaption(body, ct)) alive.push(track);
+  }
+  return alive;
+}
+
 /**
  * Extracts direct HLS / MP4 stream from DramaDizilerim for a given series and episode
  */
 export async function fetchDramaDizilerimEpisodeSources({
   titles = [],
   seriesTitle = '',
+  title = '',
+  originalTitle = '',
+  year = null,
   season = 1,
   episode = 1,
   isDub = true
-}) {
-  const allTitles = [...new Set([...titles, seriesTitle])].filter(t => t && typeof t === 'string' && t.trim().length > 1);
+} = {}) {
+  const allTitles = [...new Set([...titles, seriesTitle, title, originalTitle])]
+    .filter(t => t && typeof t === 'string' && t.trim().length > 1);
   if (allTitles.length === 0) return [];
 
+  const targetYear = Number(year) || null;
   const seasonNum = parseInt(season, 10) || 1;
   const episodeNum = parseInt(episode, 10) || 1;
 
   let matchedSlug = null;
   let matchedItem = null;
 
-  // 1. Direct slug test
+  // 1. Direct slug test — site bilinmeyen slug'larda 404 dönüyor (ölçüldü),
+  //    yayın sayfası başlığı aşağıda ayrıca kimlik denetiminden geçer.
   for (const t of allTitles) {
     const s = toTurkishSlug(t);
+    if (!s) continue;
     const testPath = `/izle/${s}?s=${seasonNum}&e=${episodeNum}`;
     const headCheck = await fetchSafe(testPath, { method: 'HEAD', timeout: 3500 });
     if (headCheck && headCheck.ok) {
@@ -396,33 +503,21 @@ export async function fetchDramaDizilerimEpisodeSources({
     }
   }
 
-  // 2. Search by titles if direct slug didn't match
+  // 2. Search by titles if direct slug didn't match — KAPI: normalize tam
+  //    eşleşme şart. Eski 0.75 benzerlik eşiği ve içeren/içerilen (substring)
+  //    yedek eşleştirme kaldırıldı; kısa dizi markaları kısa ad taşıdığı için
+  //    substring NORMAL dizi sorgularında başka yapımı döndürüyordu.
   if (!matchedSlug) {
     for (const t of allTitles) {
       const searchResults = await searchDramaDizilerim(t);
-      if (searchResults.length > 0) {
-        // Try strict media title matching
-        for (const item of searchResults) {
-          if (isStrictMediaTitleMatch(item.title, allTitles, 0.75)) {
-            matchedSlug = item.slug;
-            matchedItem = item;
-            break;
-          }
-        }
-        if (matchedSlug) break;
-
-        // Try normalized fuzzy matching
-        const normTarget = normalizeTitle(t);
-        const best = searchResults.find(r => {
-          const normR = normalizeTitle(r.title);
-          return normR === normTarget || normR.includes(normTarget) || normTarget.includes(normR);
-        });
-
-        if (best) {
-          matchedSlug = best.slug;
-          matchedItem = best;
-          break;
-        }
+      const best = searchResults.find(r =>
+        shortDramaIdentityMatch(r.title, allTitles, targetYear) ||
+        (!!identityKey(r.slug) && allTitles.some(x => identityKey(x) === identityKey(r.slug)))
+      );
+      if (best) {
+        matchedSlug = best.slug;
+        matchedItem = best;
+        break;
       }
     }
   }
@@ -436,6 +531,16 @@ export async function fetchDramaDizilerimEpisodeSources({
 
   const watchHtml = await watchRes.text().catch(() => '');
   if (!watchHtml) return [];
+
+  // 3b. Kimlik denetimi: izleme sayfasının başlığı ("Ad N. Bölüm Full HD
+  //     İzle | Drama Dizilerim") hedefle birebir eşleşmezse tek kaynak bile
+  //     listelenmez — "2000 se 2000".
+  const watchTitleRaw = (watchHtml.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '';
+  const watchTitle = cleanDramaTitle(watchTitleRaw)
+    .replace(/\s*\d+\s*\.?\s*(?:b[oö]l[uü]m|sezon)\b[\s\S]*$/i, '')
+    .replace(/\s*[|\-–]\s*Drama\s*Dizilerim[\s\S]*$/i, '')
+    .trim();
+  if (watchTitle && !shortDramaIdentityMatch(watchTitle, allTitles, targetYear)) return [];
 
   // 4. Extract embed.php URL from data-src or src
   const embedMatch = watchHtml.match(/(?:data-src|src)=["']([^"']*embed\.php[^"']*)["']/i);
@@ -475,6 +580,10 @@ export async function fetchDramaDizilerimEpisodeSources({
       ? `🇹🇷 DDZ VIP S${seasonNum}E${episodeNum} (TR Dublaj)`
       : `⚡ DDZ VIP S${seasonNum}E${episodeNum} (TR Altyazı)`;
 
+    // Yalnız canlı doğrulanmış (gerçek VTT/SRT dönen) altyazılar listelenir;
+    // HTML/erişilemez uç hiçbir koşulda altyazı olarak gösterilmez.
+    const subtitles = await verifyCaptionTracks(extractCaptionTracks(embedHtml));
+
     streams.push({
       id: `ddz_ep_${matchedSlug}_${seasonNum}_${episodeNum}`,
       name: label,
@@ -488,6 +597,7 @@ export async function fetchDramaDizilerimEpisodeSources({
       isHls: isM3U8,
       isDirectVideo: true,
       priority: 2,
+      subtitles,
       getUrl: () => rawUrl
     });
   }

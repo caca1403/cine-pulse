@@ -45,6 +45,7 @@ export const KAYIT = {
   fxs: () => import('./vela.js'),          // Vela (eski fxs köprüsü — hatlar cihazda doğrudan çözülür)
   blgx: () => import('./perseus.js'),      // Perseus (belgesel; doğrudan mp4, gömülü slotlar elenir)
   arhv: () => import('./arsiv.js'),        // Deneb (arşiv; doğrudan mp4, kimlik kapılı — çizgi/belgesel/klasik)
+  szd: () => import('./sezon.js'),         // Vega (dizi/animasyon/belgesel havuzu; oynatıcı gizli WebView'da çözülür)
   // k666 (666Film) bilinçli olarak YOK: adres zinciri ölü/BTK engelli → ölü kaynak listeler.
   // dizibox bilinçli olarak YOK: CF 403 + oynatıcıları yalnız gömülü (iframe) → kural gereği listelenemez.
 };
