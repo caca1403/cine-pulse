@@ -10,6 +10,9 @@ export const SOURCE_FAMILIES = [
   { alias: 'Atlas', provider: 'Dizisol', prefixes: ['dzs_'], sources: ['DS', 'Dizisol'] },
   { alias: 'Orion', provider: 'HDFilmCehennemi', prefixes: ['hdfc_'], sources: ['CloseLoad', 'Rapidrame', 'HDFilmCehennemi'] },
   { alias: 'Luna', provider: 'SezonlukDizi', prefixes: ['szd_'], sources: ['SZ'] },
+  // Polar/Pamuk: 2026-10-15 keşif — canlı uçtan uca doğrulanmış (bkz. provider dosyası yorumları).
+  { alias: 'Polar', provider: 'DiziPod', prefixes: ['polar_'], sources: ['DiziPod'] },
+  { alias: 'Pamuk', provider: 'SuperCartoons', prefixes: ['pamuk_'], sources: ['SuperCartoons'] },
   { alias: 'Nimbus', provider: 'jetFilm', prefixes: ['jet_'], sources: ['Jet'] },
   // Temiz saglayici `sinemacc_` uretir (halcyon.js); `smc_` eski eklenti yolunun
   // yedek onekidir — baska bir aile tarafindan iddia edilmedigi ici tutuluyor.

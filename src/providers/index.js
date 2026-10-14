@@ -46,6 +46,8 @@ export const KAYIT = {
   blgx: () => import('./perseus.js'),      // Perseus (belgesel; doğrudan mp4, gömülü slotlar elenir)
   arhv: () => import('./arsiv.js'),        // Deneb (arşiv; doğrudan mp4, kimlik kapılı — çizgi/belgesel/klasik)
   szd: () => import('./sezon.js'),         // Vega (dizi/animasyon/belgesel havuzu; oynatıcı gizli WebView'da çözülür)
+  polar: () => import('./polar.js'),       // Polar (belgesel + çocuk dizisi arşivi; REST arama → doğrulanmış HLS, birebir S/E kapısı)
+  pamuk: () => import('./pamuk.js'),       // Pamuk (klasik çizgi kısa filmler; birebir başlık kapısı, doğrudan mp4)
   // k666 (666Film) bilinçli olarak YOK: adres zinciri ölü/BTK engelli → ölü kaynak listeler.
   // dizibox bilinçli olarak YOK: CF 403 + oynatıcıları yalnız gömülü (iframe) → kural gereği listelenemez.
 };

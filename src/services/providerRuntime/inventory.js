@@ -110,8 +110,10 @@ const TEMIZ_SAGLAYICILAR = Object.fromEntries(
 
 /** Devre dışı sağlayıcılar (eski, üst üste yığılmış kod yolları).
  *  setf (Vega) artık burada tutulmuyor: katalog satırı, alias'ı ve site bağları
- *  tamamen kaldırıldı (yayın adresleri sunucuda 404 dönüyordu). */
-const DEVRE_DISI = new Set(['szd']);
+ *  tamamen kaldırıldı (yayın adresleri sunucuda 404 dönüyordu).
+ *  `szd` de çıkarıldı: id artık temiz sezon.js (Vega) olarak KAYIT'ta yaşıyor —
+ *  eski setf engeli temiz kaydı da siliyor, envanter/KAYIT çelişkisi doğuruyordu. */
+const DEVRE_DISI = new Set();
 
 for (const id of DEVRE_DISI) providerMap.delete(id);
 export async function checkProviderAdapters() {

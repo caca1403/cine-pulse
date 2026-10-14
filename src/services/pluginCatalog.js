@@ -33,7 +33,7 @@ const ALIASES = {
   // hdfc eklentisi altında çalışır) ve 'Saiph' adını iki kez kullanıyordu.
   // Kaldırıldı; asy eklentisi 'Aquila' adını aldı.
   hdfd: 'Bellatrix', d4kh: 'Betelgeuse', vidlk: 'Toliman',
-  dzp: 'Muhlif', asy: 'Aquila'
+  dzp: 'Muhlif', asy: 'Aquila', polar: 'Polar', pamuk: 'Pamuk'
 };
 
 // id: toplayici anahtari. kinds: movie+tv / tv / movie / live disinda kisa etiket.
@@ -86,7 +86,9 @@ export const PLUGIN_DEFS = [
   { id: 'twoembed', kinds: ['film', 'dizi'], desc: 'Gomulu adres dogrudan uretilir; site adresi degisirse otomatik.' },
   { id: 'vidlk', kinds: ['film', 'dizi'], desc: 'Sifreli kimlikle yayin ucu; iki adimli istek.' },
   { id: 'dzp', kinds: ['film', 'dizi'], desc: 'Ajax arama ucu; bolum sayfalari cozulur.' },
-  { id: 'asy', kinds: ['anime'], desc: 'Anime katalogu; sezon/bolum sayfalari cozulur.' }
+  { id: 'asy', kinds: ['anime'], desc: 'Anime katalogu; sezon/bolum sayfalari cozulur.' },
+  { id: 'polar', kinds: ['belgesel', 'cocuk'], desc: 'Belgesel ve çocuk dizisi arşivi; sezon/bölüm birebir eşleşmede doğrulanmış HLS hat.' },
+  { id: 'pamuk', kinds: ['cocuk'], desc: 'Klasik çizgi film kısa arşivi; birebir başlık eşleşmesinde doğrulanmış doğrudan mp4.' }
 ];
 
 function aliasOf(def) {
