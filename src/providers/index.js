@@ -44,6 +44,7 @@ export const KAYIT = {
   dzb: () => import('./nero.js'),          // Nero (doğrudan HLS + VTT altyazı, ~1,5 sn)
   fxs: () => import('./vela.js'),          // Vela (eski fxs köprüsü — hatlar cihazda doğrudan çözülür)
   blgx: () => import('./perseus.js'),      // Perseus (belgesel; doğrudan mp4, gömülü slotlar elenir)
+  arhv: () => import('./arsiv.js'),        // Deneb (arşiv; doğrudan mp4, kimlik kapılı — çizgi/belgesel/klasik)
   // k666 (666Film) bilinçli olarak YOK: adres zinciri ölü/BTK engelli → ölü kaynak listeler.
   // dizibox bilinçli olarak YOK: CF 403 + oynatıcıları yalnız gömülü (iframe) → kural gereği listelenemez.
 };

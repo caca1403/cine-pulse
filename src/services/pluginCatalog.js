@@ -22,7 +22,7 @@ const ALIASES = {
   anizium: 'Aria', animecix: 'Tera', animetr: 'Kitsu', kidsvip: 'Pico',
   dramalar: 'Dora', dramadizilerim: 'Rhea', torrent: 'Hydra',
   dizi77: 'Corvus', sinemacc: 'Halcyon', vodm3u: 'Pulsar',
-  czgx: 'Lumen', blgx: 'Perseus',
+  czgx: 'Lumen', blgx: 'Perseus', arhv: 'Deneb',
   // Yeni siteler — anonim kod adlariyla (site adlari arayuzde gorunmez)
   fm: 'Arcturus', dzyf: 'Regulus', vidy: 'Altair',
   hdps: 'Rigel', ksd: 'Sadr', pichive: 'Antares', vidload: 'Spica',
@@ -68,6 +68,7 @@ export const PLUGIN_DEFS = [
   // Belgesel tür anahtarı: `belgesel` (inventory.js TYPE haritasında movie↔tv
   // çiftine açılır; arayüzde tür etiketi olarak gösterilir).
   { id: 'blgx', kinds: ['belgesel', 'dizi'], desc: 'Belgesel arşivi; doğrudan mp4 hat, gömülü oynatıcı listelenmez.' },
+  { id: 'arhv', kinds: ['film', 'dizi', 'cocuk', 'belgesel'], desc: 'Kamuya açık arşiv; doğrudan mp4, yıl kimlik kapılı (çizgi/belgesel/klasik).' },
   { id: 'dramalar', kinds: ['kisa-dizi'], desc: 'Kısa drama doğrudan CDN.' },
   { id: 'dramadizilerim', kinds: ['kisa-dizi'], desc: 'Kısa dizi başlıkları, dört ayrı hat.' },
   { id: 'torrent', kinds: ['film', 'dizi'], desc: 'P2P eşler arası akış.', warn: 'Başlaması eş sayısına bağlıdır; bulamazsa bekler.' },
