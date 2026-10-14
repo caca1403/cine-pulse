@@ -111,7 +111,7 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
 
   // 2) puan sırasıyla en çok 2 kayıt: metadata → bölüm uyumu → dosya → bayt probe
   const kaynaklar = [];
-  for (const d of docs.sort((a, b) => b._puan - a._puan).slice(0, 2)) {
+  for (const d of docs.sort((a, b) => b._puan - a._puan).slice(0, 3)) {
     if (!d.identifier) continue;
     const ham = await istek(`${UST}${encodeURIComponent(d.identifier)}`, {
       ref: 'https://archive.org/', headers: { Accept: 'application/json', 'User-Agent': UA_ARSIV }, timeout: 8000, trace, webView: false,
@@ -123,8 +123,11 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
     const iz = bolumIzi(d.title || d.identifier);
     if (!bolumUyar(iz, s, e, isFilm)) { trace.koy('bolum-red', { id: d.identifier, istenen: `S${s}B${e}`, iz: iz ? JSON.stringify(iz) : 'yok' }); continue; }
 
+    // Cihazda ölçüldü (2026-10-15): orijinal yükleme "MPEG4" etiketlidir,
+    // "h.264" yalnız .ia.mp4 türevinde — türev ad bazen atlanır, ad filtresi
+    // yine de korunur. İkisi de ExoPlayer'da çalan h.264 mp4'tür.
     const mp4ler = (meta.files || [])
-      .filter((f) => f && f.format === 'h.264' && /\.mp4$/i.test(f.name || '') && !/\.ia\.mp4$/i.test(f.name || ''))
+      .filter((f) => f && /^(h\.264|mpeg4)$/i.test(String(f.format || '')) && /\.mp4$/i.test(f.name || '') && !/\.ia\.mp4$/i.test(f.name || ''))
       .sort((a, b) => (Number(b.height) || 0) - (Number(a.height) || 0));
     if (!mp4ler.length) { trace.koy('dosya', { id: d.identifier, mp4: 0 }); continue; }
 

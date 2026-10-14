@@ -8,9 +8,9 @@ const meta = (files, dark = false) => JSON.stringify({
   is_dark: dark, server: 'ia600000.us.archive.org', dir: '/0/items/x',
   files, metadata: { title: 'x' },
 });
-const f1080 = { name: 'Film 1080.mp4', format: 'h.264', height: '1080', size: '10' };
-const f720 = { name: 'Film 720.mp4', format: 'h.264', height: '720', size: '9' };
-const fIA = { name: 'Film.ia.mp4', format: 'h.264', height: '1080', size: '10' };
+const f1080 = { name: 'Film 1080.mp4', format: 'MPEG4', height: '1080', size: '10' };
+const f720 = { name: 'Film 720.mp4', format: 'MPEG4', height: '720', size: '9' };
+const fIA = { name: 'Film.ia.mp4', format: 'h.264 IA', height: '1080', size: '10' };
 
 async function run(args, { yearDocs = [], openDocs = [], metaJson = null, probe = '\u0000\u0000\u0000 ftypisompaddingpadding' } = {}) {
   const once = globalThis.fetch;
@@ -79,4 +79,13 @@ test('ölü dosya (boş probe) listelenmez', async () => {
     probe: '',
   });
   assert.equal(r.n, 0);
+});
+
+test('h.264 transcode türevi de kabul edilir (MPEG4 orijinal yoksa)', async () => {
+  const r = await run({ type: 'movie', title: 'Night of the Living Dead', year: 1968 }, {
+    yearDocs: [doc('nold', 'Night of the Living Dead', 1968)],
+    metaJson: meta([{ name: 'NightOfTheLivingDead_1080p.mp4', format: 'h.264', height: '480', size: '8' }]),
+  });
+  assert.equal(r.n, 1, JSON.stringify(r.trace));
+  assert.match(r.ilk.name, /^Deneb 480p/);
 });
