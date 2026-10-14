@@ -107,6 +107,23 @@ public class MainActivity extends BridgeActivity {
             return mediaGateway == null ? "" : mediaGateway.origin();
         }
 
+        // Pulsar kataloğu: magnet → harici torrent uygulaması. Uygulama bulunamazsa
+        // "YOK" dön (JS panoya düşer) — klik sessiz ölmesin (ölü özellik kuralı).
+        @JavascriptInterface
+        public String openMagnet(String magnet) {
+            try {
+                String m = magnet == null ? "" : magnet.trim();
+                if (!m.startsWith("magnet:")) return "YOK";
+                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(m));
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (i.resolveActivity(getPackageManager()) == null) return "YOK";
+                startActivity(i);
+                return "OK";
+            } catch (Exception e) {
+                return "YOK";
+            }
+        }
+
         @JavascriptInterface
         public String getInstalledVersion() {
             try {

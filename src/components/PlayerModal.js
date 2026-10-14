@@ -17,6 +17,7 @@ import { createPlayerScope, renderPlayerIcons } from './playerLifecycle.js';
 
 import { getStreamingServers, getStreamingServersProgressive } from '../services/providerAggregator.js';
 import { PLUGIN_DEFS, isPluginEnabled, getPluginDisplay } from '../services/pluginCatalog.js';
+import { fetchPulsarCatalogRows } from '../services/pulsarCatalog.js';
 import { getProviderDiagnostics } from '../services/providerRuntime/diagnostics.js';
 import { openPluginsModal } from './PluginsModal.js';
 import { resolveDirectStream } from '../services/streamExtractors.js';
@@ -2381,6 +2382,87 @@ export async function openPlayerModal({
   // Alias to prevent any ReferenceError
   const renderSourcesPopoverContent = renderSourcesPopoverList;
 
+  // ── Pulsar: salt-okunur P2P kataloğu (ölçüm: torrent raporu 2026-10-15) ─────
+  // Satırlar OYNATILABİLİR kaynak değildir (streamUrl boş; P2P motoru uygulamada
+  // yok — ölçüldü). activeServers'a ASLA karışmaz; ayrı bölümde listelenir ve
+  // dokunma harici eylemdir: openMagnet köprüsü, yoksa panoya kopyala.
+  // 🇹🇷 bayrağı altyazı dilidir — "TR Dublaj" diye sunulmaz (satır şablonu öyle gelir).
+  const pulsarBosla = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let pulsarOnek = { anahtar: '', satirlar: null };
+
+  const pulsarMagnetAc = (magnet) => {
+    const m = String(magnet || '');
+    if (!m.startsWith('magnet:')) return;
+    try {
+      if (window.CinePulseNative && typeof window.CinePulseNative.openMagnet === 'function'
+        && window.CinePulseNative.openMagnet(m) === 'OK') {
+        showToast('⚡ Bir torrent uygulaması açılıyor — oynatma o uygulamada yapılır.', 'info');
+        return;
+      }
+    } catch (_) { /* köprü yoksa/temizlenmemişse panoya düş */ }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(m).then(
+          () => showToast('🔗 Magnet bağlantısı panoya kopyalandı — bu satır uygulama içinde oynatılmaz; bir torrent uygulamasında yapıştırın.', 'info'),
+          () => showToast('Bu katalog satırı uygulama içinde oynatılmaz.', 'info')
+        );
+        return;
+      }
+    } catch (_) { /* bazı webview'larda clipboard kapalı */ }
+    showToast('Bu katalog satırı uygulama içinde oynatılmaz.', 'info');
+  };
+
+  const pulsarSatirlariEkle = (listEl) => {
+    if (!listEl || !currentImdbId) return; // kimliksiz (imdb'siz) katalog sorulmaz
+    const anahtar = `${currentImdbId}|${isSeries ? 'tv' : 'movie'}|${currentSeason}|${currentEpisode}`;
+    const sira = (listEl._pulsarSira = (listEl._pulsarSira || 0) + 1);
+    const guncelMi = () => listEl._pulsarSira === sira; // dropdown yeniden kurulduysa eski yanıt basılmaz
+    const baslikEkle = (metin) => {
+      const d = document.createElement('div');
+      d.style.cssText = 'padding:0.5rem 0.75rem 0.25rem;font-size:0.68rem;color:#8b93a7;text-transform:uppercase;letter-spacing:0.06em;';
+      d.textContent = metin;
+      listEl.appendChild(d);
+      return d;
+    };
+    const yaz = (satirlar) => {
+      for (const s of satirlar) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'smart-dropdown-item';
+        b.innerHTML = `
+          <div class="smart-dropdown-item-left">
+            <span class="smart-source-dot" style="background:#a78bfa"></span>
+            <span class="smart-dropdown-item-name">${pulsarBosla(s.ad)}</span>
+          </div>
+          <div class="smart-dropdown-item-right"><span class="smart-dropdown-playing">${pulsarBosla(s.aciklama)}</span></div>`;
+        b.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          pulsarMagnetAc(s.magnet);
+        });
+        listEl.appendChild(b);
+      }
+    };
+    if (pulsarOnek.anahtar === anahtar && pulsarOnek.satirlar) {
+      if (pulsarOnek.satirlar.length) {
+        baslikEkle('⚡ P2P Kataloğu · harici açılır');
+        yaz(pulsarOnek.satirlar);
+      }
+      return;
+    }
+    const bekleme = baslikEkle('⚡ P2P kataloğu hazırlanıyor…');
+    fetchPulsarCatalogRows({ imdbId: currentImdbId, type: isSeries ? 'tv' : 'movie', season: currentSeason, episode: currentEpisode })
+      .then((satirlar) => {
+        pulsarOnek = { anahtar, satirlar };
+        if (!guncelMi()) return;
+        bekleme.remove();
+        if (!satirlar.length) return; // TR işaretli satır yok → boş bölüm bırakılmaz
+        baslikEkle('⚡ P2P Kataloğu · harici açılır');
+        yaz(satirlar);
+      })
+      .catch(() => { if (guncelMi()) bekleme.remove(); });
+  };
+
   function renderSmartSourcesBar() {
     const bar = document.getElementById('player-smart-sources-bar');
     if (!bar) return;
@@ -2583,6 +2665,8 @@ export async function openPlayerModal({
           });
         });
       }
+      // Salt-katalog şeridi: gerçek kaynak listesinin altına, ayrı bölüm olarak.
+      pulsarSatirlariEkle(dropdownList);
       dropdownList.scrollTop = prevListScroll;
     }
 
