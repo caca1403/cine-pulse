@@ -281,6 +281,43 @@ export function baslikEslesir(a, adaylar) {
   });
 }
 
+/** Sıkı başlık puanı (emsal: arsiv.js `puanla`): tam=6, "hedef …" öneşek=4,
+ *  içeren=2, ilgisiz=0. Kapı eşiği ≥4 olmalı — içeren ASLA kabul edilmez. */
+export function adPuan(kartAdi, hedefler) {
+  // toLowerCase TR-I açığı kapatılır: 'İ'→'i̇'(i+U+0307) ve 'ı'→'i' tek sınıfa
+  // katlanır; yoksa "MUHTEŞEM YÜZYIL" ≠ "Muhteşem Yüzyıl" kalırdı (test yakaladı).
+  const s = (x) => String(x || '').toLowerCase().replace(/i\u0307/g, 'i').replace(/ı/g, 'i')
+    .replace(/[^a-z0-9çğıöşü ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const k = s(kartAdi);
+  if (!k) return 0;
+  let en = 0;
+  for (const h of (hedefler || []).map(s).filter(Boolean)) {
+    if (k === h) return 6;
+    let p = 0;
+    if (k.startsWith(`${h} `)) p = 4;
+    else if (k.includes(h)) p = 2;
+    if (p > en) en = p;
+  }
+  return en;
+}
+
+/** Yıl kapısı (doktrin "2000 se 2000"): hedef yılı bilinmeyen veya kartında yıl
+ *  kanıtı olmayan aday geçer (kanıt yoksa ihbar yok); ikisi de biliniyorsa ±1
+ *  şart. Kart yılı metindeki/alanındaki bağımsız (19|20)yy sayısından alınır. */
+export function yilUyar(hedefYil, ...metinler) {
+  const h = parseInt(hedefYil, 10);
+  if (!h || h < 1900 || h > 2100) return true;
+  const yillar = [];
+  for (const m of metinler) {
+    const t = String(m ?? '').trim();
+    if (!t) continue;
+    if (/^\d{4}$/.test(t)) { const n = parseInt(t, 10); if (n >= 1900 && n <= 2100) yillar.push(n); continue; }
+    for (const mm of t.matchAll(/(?:^|[^0-9a-zA-Z])((?:19|20)\d{2})(?:[^0-9]|$)/g)) yillar.push(parseInt(mm[1], 10));
+  }
+  if (!yillar.length) return true;
+  return yillar.some((y) => Math.abs(y - h) <= 1);
+}
+
 /* ── 5. Altyazı ───────────────────────────────────────────────────────── */
 
 /** `tracks:[{file,label,kind}]` → altyazı listesi. */

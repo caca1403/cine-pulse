@@ -123,7 +123,10 @@ function aramaSec(parsed, imdb, terim, adayBasliklar) {
   if (!items.length) return null;
   const idIle = imdb ? items.find((x) => x?.object_related_imdb_id === imdb) : null;
   const adla = items.find((x) => x?.object_name && baslikEslesir(x.object_name, [...(adayBasliklar || []), terim].filter(Boolean)) && x?.used_slug);
-  const it = idIle || (items.length === 1 ? items[0] : null) || adla || items[0];
+  // Kör seçim YASAK (denetim matrisi #1): tek-sonuç ve items[0] kısayolları
+  // dolgu/çöp yanıtta kimlik kanıtsız içeriğe indiriyordu — imdb veya başlık
+  // kanıtı yoksa hiçbir şey seçilmez.
+  const it = idIle || adla;
   const slug = it?.used_slug || it?.slug || '';
   return slug ? { slug, ad: it?.object_name || it?.title || '' } : null;
 }

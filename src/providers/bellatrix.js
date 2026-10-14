@@ -34,7 +34,7 @@
 
 import {
   istek, izleyici, koken, m3u8eCevir, medyaMi, kaynak, baslikEslesir,
-  temizBaslik, slugla, siteurlHaritasi,
+  temizBaslik, slugla, siteurlHaritasi, yilUyar,
 } from './kit.js';
 import { b64Kaydir } from '../services/hdfcDecoders.js';
 
@@ -115,7 +115,7 @@ function yayinTipi(url) {
 
 /* ── arama eşleştirme ─────────────────────────────────────────────────── */
 
-function esSec(liste, { adaylar, imdbId }) {
+function esSec(liste, { adaylar, imdbId, yil = null }) {
   const arr = Array.isArray(liste) ? liste : [];
   if (!arr.length) return null;
   if (imdbId) {
@@ -123,8 +123,11 @@ function esSec(liste, { adaylar, imdbId }) {
       || String(x.imdbId || '').toLowerCase() === `tt${String(imdbId).toLowerCase()}`);
     if (tam) return tam;
   }
-  return arr.find((x) => baslikEslesir(adaylar[0] || '', [x.baslik, x.orijinalBaslik].filter(Boolean))
-    || baslikEslesir(x.baslik || '', adaylar) || baslikEslesir(x.orijinalBaslik || '', adaylar)) || null;
+  // Yıl kapısı: başlık eşleşse bile yılı >1 öte kart reddedilir (yeniden
+  // çevrimler/aynı adlı sezonlar — denetim matrisi 4. madde).
+  return arr.find((x) => yilUyar(yil, x.yil, `${x.baslik} ${x.orijinalBaslik || ''}`)
+    && (baslikEslesir(adaylar[0] || '', [x.baslik, x.orijinalBaslik].filter(Boolean))
+      || baslikEslesir(x.baslik || '', adaylar) || baslikEslesir(x.orijinalBaslik || '', adaylar))) || null;
 }
 
 /* ── oynatıcı çözümü ──────────────────────────────────────────────────── */
@@ -148,7 +151,7 @@ async function embedCoz(videoUrl, ref, trace, webView = false) {
 
 /* ── ana akış ─────────────────────────────────────────────────────────── */
 
-export async function coz({ type = 'movie', title = '', originalTitle = '', titles = [], imdbId = null, tmdbId = null, season = 1, episode = 1 } = {}) {
+export async function coz({ type = 'movie', title = '', originalTitle = '', titles = [], year = null, imdbId = null, tmdbId = null, season = 1, episode = 1 } = {}) {
   const trace = izleyici();
   const bas = Date.now();
   const isFilm = type === 'movie';
@@ -164,8 +167,8 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
     const j = await jsonAl(`${base}/api/search?q=${encodeURIComponent(q)}`, `${base}/`, trace);
     if (!j) continue;
     trace.koy('arama', { q: String(q).slice(0, 30), film: (j.results || []).length, dizi: (j.series || []).length });
-    if (isFilm) secim = secim || esSec(j.results, { adaylar: adayBasliklar, imdbId });
-    else seri = seri || esSec(j.series, { adaylar: adayBasliklar, imdbId });
+    if (isFilm) secim = secim || esSec(j.results, { adaylar: adayBasliklar, imdbId, yil: year });
+    else seri = seri || esSec(j.series, { adaylar: adayBasliklar, imdbId, yil: year });
     if (isFilm ? secim : seri) break;
   }
   const hedef = isFilm ? secim : seri;

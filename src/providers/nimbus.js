@@ -15,7 +15,7 @@
 
 import {
   istek, gonder, izleyici, mutlak, koken, medyaMi, kaynak,
-  temizBaslik, slugla, baslikEslesir, duzMetin, alanAdiCoz,
+  temizBaslik, slugla, baslikEslesir, duzMetin, alanAdiCoz, yilUyar,
 } from './kit.js';
 import { extractEmbedStream } from '../services/embedExtractors.js';
 
@@ -51,9 +51,10 @@ function aramaKartlari(html, base) {
   return cikar;
 }
 
-function secKart(kartlar, adayAdlar, isFilm) {
+function secKart(kartlar, adayAdlar, isFilm, yil = null) {
   const turIyi = (k) => (isFilm ? /\/film\//.test(k.url) : /\/dizi\//.test(k.url));
-  return kartlar.find((k) => turIyi(k) && adayAdlar.some((a) => baslikEslesir(a, [k.ad]))) || null;
+  return kartlar.find((k) => turIyi(k) && adayAdlar.some((a) => baslikEslesir(a, [k.ad]))
+    && yilUyar(yil, k.ad)) || null;
 }
 
 /* ── oynatıcı düğmeleri (çok satırlı attribute'lar dahil) ─────────────── */
@@ -187,7 +188,7 @@ export async function coz(args = {}) {
   return { sources: ctx.liste, trace: ctx.trace.ozet() };
 }
 
-async function anaAkis({ type = 'movie', title = '', originalTitle = '', titles = [], imdbId = null, season = 1, episode = 1 } = {}, ctx) {
+async function anaAkis({ type = 'movie', title = '', originalTitle = '', titles = [], year = null, imdbId = null, season = 1, episode = 1 } = {}, ctx) {
   const trace = ctx.trace;
   const bas = ctx.bas;
   const bitis = ctx.bitis;
@@ -223,7 +224,7 @@ async function anaAkis({ type = 'movie', title = '', originalTitle = '', titles 
     });
     const kartlar = aramaKartlari(ham, base);
     trace.koy('arama', { q, sonuc: kartlar.length });
-    const kart = secKart(kartlar, adAdaylari, isFilm);
+    const kart = secKart(kartlar, adAdaylari, isFilm, year);
     if (kart) { contentUrl = kart.url; break; }
     if (Date.now() - bas > 9000) break;
   }
@@ -232,7 +233,11 @@ async function anaAkis({ type = 'movie', title = '', originalTitle = '', titles 
     for (const ad of [...new Set([slugla(originalTitle || ''), slugla(title || '')])].filter(Boolean)) {
       const yol = `${base}/${isFilm ? 'film' : 'dizi'}/${ad}`;
       const html = await istek(yol, { ref: `${base}/`, headers: { 'User-Agent': UA }, trace, timeout: 8000, webView: false });
-      if (html && /player-source-btn/.test(html)) { contentUrl = yol; pageHtml = html; break; }
+      // Slug tahmini kimlik kanıtsız kabul edilmez (denetim matrisi #2):
+      // sayfa başlığı hedef başlıklarından birini doğrulamalı.
+      const sb = html ? ((html.match(/<title>([^<]*)</i) || [])[1] || '') : '';
+      if (html && /player-source-btn/.test(html)
+        && [originalTitle, title].filter(Boolean).some((ad2) => baslikEslesir(ad2, [sb]))) { contentUrl = yol; pageHtml = html; break; }
       if (Date.now() - bas > 11000) break;
     }
   }

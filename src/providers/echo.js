@@ -15,7 +15,7 @@
 
 import {
   istek, gonder, izleyici, anchorlar, mutlak, m3u8eCevir, medyaMi,
-  kaynak, temizBaslik, baslikEslesir, alanAdiCoz, tmdbMeta,
+  kaynak, temizBaslik, baslikEslesir, alanAdiCoz, tmdbMeta, adPuan, yilUyar,
 } from './kit.js';
 
 const BILINEN = ['https://www.diziyou.one'];
@@ -34,11 +34,13 @@ function aramaAdaylari(ham, taban) {
 }
 
 /** Arama listesinden doğru içeriği seç: birebir eşleşme önce, sonra kapsama. */
-function icerikSec(adaylar, arananlar, isFilm) {
+function icerikSec(adaylar, arananlar, isFilm, yil = null) {
   const tam = adaylar.filter((a) => arananlar.some((t) => t && baslikEslesir(t, [a.metin]) &&
     a.metin.toLowerCase().trim() === t.toLowerCase().trim()));
-  const kism = adaylar.filter((a) => arananlar.some((t) => t && baslikEslesir(t, [a.metin])));
-  const havuz = tam.length ? tam : kism;
+  // Sağlam kısmî: tam veya "hedef …" öneşek (adPuan≥4). İçeren taraf (puan 2)
+  // ASLA kabul edilmez — kısa ad kapsaması yanlış yapım getiriyordu.
+  const kism = adaylar.filter((a) => arananlar.some((t) => t && adPuan(a.metin, [t]) >= 4));
+  const havuz = (tam.length ? tam : kism).filter((a) => yilUyar(yil, a.metin));
   if (!havuz.length) return '';
   if (isFilm) {
     const f = havuz.find((a) => /-film\b|\/film\//i.test(a.url));
@@ -104,7 +106,7 @@ function depoyuCoz(sayfaHtml, base, trace, etiket) {
 }
 
 /** Nuvio `load()` eşdeğeri. */
-export async function coz({ type = 'tv', title = '', originalTitle = '', titles = [], season = 1, episode = 1, tmdbId = null, signal = null } = {}) {
+export async function coz({ type = 'tv', title = '', originalTitle = '', titles = [], year = null, season = 1, episode = 1, tmdbId = null, signal = null } = {}) {
   const trace = izleyici();
   const isFilm = type === 'movie';
   const s = +season || 1, e = +episode || 1;
@@ -129,7 +131,7 @@ export async function coz({ type = 'tv', title = '', originalTitle = '', titles 
         { ref: `${base}/`, headers: { 'User-Agent': UA }, timeout: 8000, trace, signal });
       const adaylar = aramaAdaylari(ham, base);
       trace.koy('arama', { q: q.slice(0, 30), sonuc: adaylar.length });
-      icerikUrl = icerikSec(adaylar, [q, ...anahtarlar], isFilm);
+      icerikUrl = icerikSec(adaylar, [q, ...anahtarlar], isFilm, year);
     }
   };
   await ara([...anahtarlar]);
@@ -151,7 +153,10 @@ export async function coz({ type = 'tv', title = '', originalTitle = '', titles 
       // tahmin: kalıp denemesi (bölüm listesi kapalıysa)
       const tahmin = `${hedef.replace(/\/$/, '')}-${s}-sezon-${e}-bolum/`;
       const t = await istek(tahmin, { ref: `${base}/`, headers: { 'User-Agent': UA }, timeout: 6000, trace, webView: false, signal });
-      if (t && /diziyouPlayer/i.test(t)) hedef = tahmin;
+      // Tahmin URL yalnız oynatıcı iziyle kabul edilmez (denetim matrisi #3):
+      // sayfa başlığı hedef yapımlardan birini doğrulamalı.
+      const tb = t ? ((t.match(/<title>([^<]*)</i) || [])[1] || '') : '';
+      if (t && /diziyouPlayer/i.test(t) && verilen.some((ad2) => baslikEslesir(ad2, [tb]))) hedef = tahmin;
       else { trace.koy('sonuc', { n: 0, neden: `bolum-bulunamadi S${s}E${e}` }); return { sources: [], trace: trace.ozet() }; }
     }
     trace.koy('bolum', { hedef });

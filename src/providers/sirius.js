@@ -15,7 +15,7 @@
 
 import {
   istek, gonder, izleyici, mutlak, koken, medyaMi, kaynak,
-  temizBaslik, slugla, baslikEslesir, duzMetin, m3u8eCevir, alanAdiCoz,
+  temizBaslik, slugla, baslikEslesir, duzMetin, m3u8eCevir, alanAdiCoz, yilUyar,
 } from './kit.js';
 import { extractEmbedStream } from '../services/embedExtractors.js';
 
@@ -171,7 +171,7 @@ async function gomulenCoz(gomulen, ref, anahtar, trace, bitis, signal = null) {
   return sonuc;
 }
 
-export async function coz({ type = 'movie', title = '', originalTitle = '', titles = [], signal = null } = {}) {
+export async function coz({ type = 'movie', title = '', originalTitle = '', titles = [], year = null, signal = null } = {}) {
   const trace = izleyici();
   const bas = Date.now();
   const bitis = bas + 14000;
@@ -187,7 +187,7 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
     const ham = await istek(`${base}/arama/${encodeURIComponent(q)}`, { ref: `${base}/`, headers: { 'User-Agent': UA }, trace, timeout: 9000, webView: false, signal });
     const kartlar = aramaKartlari(ham, base);
     trace.koy('arama', { q, sonuc: kartlar.length });
-    const kart = kartlar.find((k) => adAdaylari.some((a) => baslikEslesir(a, [k.ad])));
+    const kart = kartlar.find((k) => adAdaylari.some((a) => baslikEslesir(a, [k.ad])) && yilUyar(year, k.ad));
     if (kart) { contentUrl = kart.url; break; }
     if (Date.now() - bas > 7000) break;
   }
@@ -196,7 +196,7 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
     const ham = await istek(`${base}/arama/${encodeURIComponent(slugla(adAdaylari[0] || '') || adAdaylari[0] || '')}`, {
       ref: `${base}/`, headers: { 'User-Agent': UA }, trace, timeout: 20000, webView: true, signal,
     });
-    const kart = aramaKartlari(ham, base).find((k) => adAdaylari.some((a) => baslikEslesir(a, [k.ad])));
+    const kart = aramaKartlari(ham, base).find((k) => adAdaylari.some((a) => baslikEslesir(a, [k.ad])) && yilUyar(year, k.ad));
     if (kart) contentUrl = kart.url;
   }
   if (!contentUrl) { trace.koy('sonuc', { n: 0, ms: Date.now() - bas }); return { sources: [], trace: trace.ozet() }; }
