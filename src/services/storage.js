@@ -9,8 +9,29 @@ const STORAGE_KEYS = {
   FAVORITES: 'sineflix_favorites_v1',
   WATCHLIST: 'sineflix_watchlist_v1',
   USER_SETTINGS: 'sineflix_user_settings_v1',
-  ANIME_IDS: 'sineflix_anime_ids_v1'
+  ANIME_IDS: 'sineflix_anime_ids_v1',
+  FLOW_PILOT_TERCIH: 'sineflix_flow_pilot_tercih_v1'
 };
+
+// Akış Otopilotu tercih erişimcileri — flowPilot.js saf çekirdeğine enjekte
+// edilen kullanıcı tercihi ('dub' | 'altyazi' | 'farketmez').
+export function getFlowPilotTercih() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return 'farketmez';
+    const v = localStorage.getItem(STORAGE_KEYS.FLOW_PILOT_TERCIH);
+    return (v === 'dub' || v === 'altyazi') ? v : 'farketmez';
+  } catch { return 'farketmez'; }
+}
+
+export function setFlowPilotTercih(v) {
+  const gecerli = (v === 'dub' || v === 'altyazi') ? v : 'farketmez';
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(STORAGE_KEYS.FLOW_PILOT_TERCIH, gecerli);
+    }
+  } catch { /* depolama yoksa sessiz: tercih sadece oturum içi kalmamış olur */ }
+  return gecerli;
+}
 
 let _animeIdsSet = null;
 

@@ -34,6 +34,9 @@ import {
   isRegisteredAnimeId,
   isAnimeRecord
 } from '../services/storage.js';
+import { getFlowPilotTercih, setFlowPilotTercih } from '../services/storage.js';
+import { akışOtopilotu, aileKodu, nedenMetni } from '../services/flowPilot.js';
+import { zekaGuven } from '../services/sourceIntelligence.js';
 import { showToast } from './Toast.js';
 import { translateToTurkish } from '../services/tmdbApi.js';
 import { returnToDecisionRoomModal } from './DecisionRoomModal.js';
@@ -2600,6 +2603,7 @@ export async function openPlayerModal({
 
     if (dropdownList) {
       const prevListScroll = dropdownList.scrollTop || 0;
+      let fpHedefIdx = -1; // Akış Otopilotu hedefi — activeServers uzayında indeks
       if (safeServers.length === 0) {
         const otherCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
         const otherCount = categorizedServers?.[otherCat]?.length || 0;
@@ -2652,7 +2656,52 @@ export async function openPlayerModal({
           </div>
         `;
         } else {
-          dropdownList.innerHTML = itemsHtml;
+          // ⚡ Akış Otopilotu — Netflix tarzı öneri satırı, listenin en üstü.
+          // Saf çekirdek (flowPilot.js) burada enjekte edilen sinyallerle
+          // koşar: cihaz sıralaması + aile geçmişi + kullanıcı tercihi +
+          // gece kuşağı. Catalog satırları activeServers'a hiç karışmaz.
+          let otopilotSatiri = '';
+          try {
+            const fpHavuz = [];
+            safeServers.forEach((s, i) => { if (s && !s.failed && !s.isCatalogOnly) fpHavuz.push({ srv: s, i }); });
+            if (fpHavuz.length >= 2) {
+              const fpDuz = fpHavuz.map(x => x.srv);
+              const fpSirali = rankSourcesForDevice(fpDuz, { contentKey: getSourceContentKey(), category: currentCategory || '' });
+              const fpN = fpSirali.length;
+              const fpSkor = {};
+              fpSirali.forEach((s, pos) => {
+                const p = fpDuz.indexOf(s);
+                if (p >= 0) fpSkor[p] = Math.round(((fpN - 1 - pos) / Math.max(1, fpN - 1)) * 100);
+              });
+              const fpGuven = {};
+              fpDuz.forEach(s => { const a = aileKodu(String((s && s.id) || '')); if (!(a in fpGuven)) fpGuven[a] = zekaGuven(a); });
+              const fpSaat = new Date().getHours();
+              const fpKarar = akışOtopilotu({
+                kaynaklar: fpDuz,
+                cihazSkorlari: fpSkor,
+                aileGuveni: fpGuven,
+                tercih: getFlowPilotTercih(),
+                geceKoveti: (fpSaat >= 23 || fpSaat < 7)
+              });
+              if (fpKarar && fpHavuz[fpKarar.idx]) {
+                fpHedefIdx = fpHavuz[fpKarar.idx].i;
+                const fpEtiket = getSourceLabel(fpHavuz[fpKarar.idx].srv, fpHedefIdx);
+                const fpTercih = getFlowPilotTercih();
+                const fpChip = (v, lbl) => `<button type="button" data-fp-tercih="${v}" style="cursor:pointer;border:1px solid ${fpTercih === v ? 'rgba(223,255,118,0.6)' : 'rgba(148,163,184,0.35)'};background:${fpTercih === v ? 'rgba(223,255,118,0.12)' : 'transparent'};color:${fpTercih === v ? '#dfff76' : '#94a3b8'};border-radius:999px;padding:0.1rem 0.5rem;font-size:0.64rem;">${lbl}</button>`;
+                otopilotSatiri = `
+                  <div style="padding:0.55rem 0.75rem;border-bottom:1px solid rgba(148,163,184,0.15);display:flex;flex-wrap:wrap;gap:0.45rem;align-items:center;font-size:0.74rem;">
+                    <span style="color:#dfff76;font-weight:700;">⚡ Önerilen</span>
+                    <span style="color:#e2e8f0;font-weight:600;">${escHtml(fpEtiket)}</span>
+                    <span style="color:#94a3b8;flex:1 1 100%;">${escHtml(nedenMetni(fpKarar.nedenler))}</span>
+                    <button type="button" id="fp-sec" style="cursor:pointer;border:1px solid rgba(223,255,118,0.5);background:rgba(223,255,118,0.1);color:#dfff76;border-radius:8px;padding:0.2rem 0.6rem;font-size:0.68rem;">Şimdi oynat</button>
+                    ${fpChip('dub', '🎧 Dublaj')}
+                    ${fpChip('altyazi', '💬 Altyazı')}
+                    ${fpChip('farketmez', 'Kararsız')}
+                  </div>`;
+              }
+            }
+          } catch { /* öneri satırı opsiyoneldir — kaynak listesi asla kırılmaz */ }
+          dropdownList.innerHTML = otopilotSatiri + itemsHtml;
         }
 
         dropdownList.querySelectorAll('.smart-dropdown-item[data-server-idx]').forEach(item => {
@@ -2663,6 +2712,24 @@ export async function openPlayerModal({
             const idx = parseInt(item.getAttribute('data-server-idx'), 10);
             switchToSmartSource(idx);
           });
+        });
+        // ⚡ Akış Otopilotu bağları: "Şimdi oynat" + tercih çipleri.
+        const fpOynatBtn = dropdownList.querySelector('#fp-sec');
+        if (fpOynatBtn) {
+          fpOynatBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeSmartDropdown();
+            if (fpHedefIdx >= 0) switchToSmartSource(fpHedefIdx);
+          };
+        }
+        dropdownList.querySelectorAll('[data-fp-tercih]').forEach(chip => {
+          chip.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setFlowPilotTercih(chip.getAttribute('data-fp-tercih'));
+            renderSmartSourcesBar(); // satırı yeni tercihle anında yeniden kur
+          };
         });
       }
       // Salt-katalog şeridi: gerçek kaynak listesinin altına, ayrı bölüm olarak.
