@@ -20,7 +20,7 @@ const ALIASES = {
   dyu: 'Echo', dzb: 'Nero', tvr: 'Polaris', jet: 'Nimbus',
   lookmovie: 'Halo', smashy: 'Cosmo', twoembed: 'Zenit',
   anizium: 'Aria', animecix: 'Tera', animetr: 'Kitsu', kidsvip: 'Pico',
-  dramalar: 'Dora', dramadizilerim: 'Rhea', torrent: 'Hydra',
+  dramalar: 'Dora', dramadizilerim: 'Rhea', torrent: 'Hidra', szd: 'Vega',
   dizi77: 'Corvus', sinemacc: 'Halcyon', vodm3u: 'Pulsar',
   czgx: 'Lumen', blgx: 'Perseus', arhv: 'Deneb',
   // Yeni siteler — anonim kod adlariyla (site adlari arayuzde gorunmez)
@@ -69,6 +69,7 @@ export const PLUGIN_DEFS = [
   // çiftine açılır; arayüzde tür etiketi olarak gösterilir).
   { id: 'blgx', kinds: ['belgesel', 'dizi'], desc: 'Belgesel arşivi; doğrudan mp4 hat, gömülü oynatıcı listelenmez.' },
   { id: 'arhv', kinds: ['film', 'dizi', 'cocuk', 'belgesel'], desc: 'Kamuya açık arşiv; doğrudan mp4, yıl kimlik kapılı (çizgi/belgesel/klasik).' },
+  { id: 'szd', kinds: ['dizi', 'anime', 'cocuk', 'belgesel'], desc: 'Dizi/animasyon/belgesel havuzu; oynatıcı gerçek tarayıcıda çözülür, akış yakalanır.' },
   { id: 'dramalar', kinds: ['kisa-dizi'], desc: 'Kısa drama doğrudan CDN.' },
   { id: 'dramadizilerim', kinds: ['kisa-dizi'], desc: 'Kısa dizi başlıkları, dört ayrı hat.' },
   { id: 'torrent', kinds: ['film', 'dizi'], desc: 'P2P eşler arası akış.', warn: 'Başlaması eş sayısına bağlıdır; bulamazsa bekler.' },
