@@ -22,7 +22,8 @@ const loadView = {
   popular: () => import('./views/PopularListView.js'),
   showcase: () => import('./views/ShowcaseView.js'),
   livetv: () => import('./views/LiveTvView.js'),
-  drama: () => import('./views/DramaView.js')
+  drama: () => import('./views/DramaView.js'),
+  kanalim: () => import('./views/ChannelView.js')
 };
 import { trackScrollState, flushScrollState, restoreAllScrollState } from './services/scrollManager.js';
 import { getUserSettings } from './services/storage.js';
@@ -106,6 +107,8 @@ async function renderRoute() {
       return;
     }
     viewName = 'livetv';
+  } else if (hash === '#kanalim') {
+    viewName = 'kanalim';
   } else if (hash === '#discover') {
     viewName = 'discover';
   } else if (hash === '#library') {
@@ -172,6 +175,9 @@ async function renderRoute() {
   } else if (viewName === 'discover') {
     const { renderDiscoverView } = await loadView.discover();
     viewResult = await renderDiscoverView('tv');
+  } else if (viewName === 'kanalim') {
+    const { renderChannelView } = await loadView.kanalim();
+    viewResult = await renderChannelView();
   } else if (viewName === 'library') {
     const { renderLibraryView } = await loadView.library();
     viewResult = renderLibraryView();

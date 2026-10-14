@@ -52,6 +52,7 @@ export function renderNavbar(currentView = 'home') {
           ${window.CinePulseDesktop?.isDesktop ? `<button type="button" id="btn-desktop-update" class="cp-icon-button" title="GitHub sürüm sayfasını aç" aria-label="GitHub sürüm sayfasını aç">${icon('refresh-cw')}</button>` : ''}
           ${offline && isKid ? `<a href="#downloads" class="cp-nav-action cp-mobile-downloads" aria-label="İndirilenler" title="İndirilenler">${icon('download')}<span>İndirilenler</span></a>` : ''}
           ${app && !isKid ? `<a href="#livetv" class="cp-live ${currentView === 'livetv' ? 'active' : ''}"><span></span>Canlı TV</a>` : ''}
+          <a href="#kanalim" class="cp-nav-action ${currentView === 'kanalim' ? 'active' : ''}" title="KANALIM" aria-label="KANALIM">${icon('clapperboard')}<span>KANALIM</span></a>
           <a href="#library" class="cp-nav-action ${currentView === 'library' ? 'active' : ''}" title="Listem" aria-label="Listem">${icon('bookmark')}<span>Listem</span></a>
           ${!isKid ? `<button type="button" data-open-decision-room class="cp-nav-action" title="Birlikte seç" aria-label="Birlikte seç">${icon('users-round')}<span>Birlikte</span></button>` : ''}
           <button type="button" id="btn-nav-notifications" class="cp-icon-button cp-bell" aria-label="Bildirimler${unread ? `, ${unread} okunmamış` : ''}" title="Bildirimler">${icon('bell')}<span id="nav-notif-badge" class="cp-notification-dot ${unread ? '' : 'hidden'}">${unread}</span></button>
@@ -80,6 +81,7 @@ export function renderNavbar(currentView = 'home') {
             ${actionTile('bar-chart-3', 'Trakt.tv', 'İzleme geçmişini eşitle', 'id="btn-hub-trakt"', 'cp-trakt')}
             ${actionTile('puzzle', 'Eklentiler', 'Kaynakları gör ve yönet', 'id="btn-hub-plugins"')}
             ${app ? actionTile('radio', 'Canlı TV', 'Canlı yayınları keşfet', 'href="#livetv"', '', 'a') : ''}
+            ${actionTile('clapperboard', 'KANALIM', 'Kişisel yayın akışın', 'href="#kanalim"', '', 'a')}
             ${offline ? actionTile('download', 'İndirilenler', 'Çevrimdışı izlemeye devam et', 'href="#downloads"', '', 'a') : ''}
           </div>
         </div>
