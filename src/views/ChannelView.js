@@ -646,14 +646,25 @@ export async function renderChannelView(secenekler = {}) {
       async function rehberiKopyala() {
         const metin = kanalRehberiMetni(program, simdiDkAl(), { kanalAd: kanalTanima(GORUNUM.slug).ad });
         if (!metin) return;
-        const ok = await panoyaKoy(metin);
-        showToast(ok ? 'Bu akşamın rehberi kopyalandı 📋' : 'Kopyalanamadı', ok ? 'success' : 'warning');
+        let ok = false;
+        try {
+          ok = await panoyaKoy(metin);
+        } catch (_) {
+          ok = false;
+        }
+        try {
+          showToast(ok ? 'Bu akşamın rehberi kopyalandı 📋' : 'Kopyalanamadı', ok ? 'success' : 'warning');
+        } catch (_) {
+          /* bildirim kabı yoksa sessizce geç */
+        }
       }
 
       // EPG/kaçırdıklar kartı: oynatıcı AÇMAZ; olay + hash yönlendirmesi yapar.
       // Ana oturum 'kanal-slot-secildi' olayını dinleyip oynatıcıya bağlar.
       scope.on(container, 'click', (e) => {
-        const hedef = e.target instanceof Element ? e.target : null;
+        // Lucide ikonları <svg> ile değiştirir: `closest` varsa yeterli (Element
+        // sınıfına güvenmek SVG/altın DOM hedeflerinde erişilemez olabilir).
+        const hedef = e.target && typeof e.target.closest === 'function' ? e.target : null;
         if (!hedef) return;
 
         const kanalDugme = hedef.closest('[data-kanal]');
