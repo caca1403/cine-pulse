@@ -101,11 +101,23 @@ async function ara(base, sorgu, trace) {
 
 function dosyaLinkleri(blok, taban) {
   const out = [];
+  let tabanHosti = '';
+  try { tabanHosti = new URL(taban).host.replace(/^www\./, ''); } catch (_) {}
   // span ŞARTI YOK (ölçüldü: sayfada span'sız 441, span'lı 74 link vardı —
-  // "Download HubCloud&nbsp;<svg…>" butonları hiç görülmüyordu)
-  for (const m of String(blok).matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]{0,400}?)<\/a>/gi)) {
+  // "Download HubCloud&nbsp;<svg…>" butonları hiç görülmüyordu).
+  // 2026-10-15 ŞABLON KAYMASI: buton etiketine satır İÇİ <svg> ikon eklendi —
+  // iç içerik 463-472 B (ölçüldü: /interstellar-movie-458/, 9 blok × 2 buton).
+  // Eski 400 B pencere </a>'a ulaşamıyor, dosya listesi BOŞ kalıyordu → 1200 B.
+  for (const m of String(blok).matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]{0,1200}?)<\/a>/gi)) {
     const url = mutlak(m[1], taban);
     if (!/^https?:\/\//i.test(url)) continue;
+    // Site-içi gezinme/footer bağlantıları (/about, /contact, /dmca) dosya DEĞİLDİR:
+    // son download-item bloğundan sonra sayfa altbilgisi de bloğa sızıyor. Gerçek
+    // indirme bağlantıları daima DIŞ sunucudadır (ölçüldü: greenmotors.club,
+    // hdhub4u.download) — aynı-adrese bağlı bağlantı eleme şablon düzeltmesidir, kapı değil.
+    let host = '';
+    try { host = new URL(url).host.replace(/^www\./, ''); } catch (_) {}
+    if (host && host === tabanHosti) continue;
     if (/report|t\.me|telegram|google\.com|discord|facebook|twitter|x\.com\/home/i.test(`${url} ${m[2]}`)) continue;
     if (out.some((x) => x.url === url)) continue;
     out.push({ url, ad: entityCoz(duzMetin(m[2])).slice(0, 60) || 'İndir' });

@@ -44,7 +44,9 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
   const trace = izleyici();
   const s = +season || 1, e = +episode || 1;
   // İptal sinyali kabul ediyorsak ALT kazıyıcıya da geçir (iptal yayılımı).
-  const ortak = { title: title || originalTitle, originalTitle, titles, tmdbId, imdbId, season: s, episode: e, signal };
+  // onEvent: alt kazıyıcı engelde son iyi önbellekle devam ederse iz'e anonim
+  // 'cache-fallback' olayı düşer (yalnız adet/yas — site adı taşımaz).
+  const ortak = { title: title || originalTitle, originalTitle, titles, tmdbId, imdbId, season: s, episode: e, signal, onEvent: (ad, veri) => trace.koy(ad, veri) };
   let ham = [];
   try {
     ham = type === 'movie'

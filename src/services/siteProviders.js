@@ -59,7 +59,19 @@ export const SITES = {
     // İki adımlı: önce şifreleme ucu, sonra yayın ucu
     sifreliKimlik: async (tmdbId) => {
       const y = await akilliGet(`https://enc-dec.app/api/enc-vidlink?text=${encodeURIComponent(tmdbId)}`, { timeout: 8000 });
-      return String(y || '').trim().replace(/^["']|["']$/g, '');
+      const ham = String(y || '').trim();
+      // Ölçüm 2026-10-15: uç A/B gibi bazen düz metin, bazen
+      // {"status":200,"result":"AAAA…"} zarfı dönüyor. Zarfta ham gövde kimlik
+      // sanılınca bozuk ID → vidlink boş/engelli yanıt → 0 kaynak. İki biçim
+      // de tanınır; zarf çözülemezse eski düz-metin davranışı korunur.
+      if (ham.startsWith('{')) {
+        try {
+          const j = JSON.parse(ham);
+          const ic = String(j?.result ?? '').trim().replace(/^["']|["']$/g, '');
+          if (ic) return ic;
+        } catch (_) { /* düz metin varsayımına düş */ }
+      }
+      return ham.replace(/^["']|["']$/g, '');
     },
     ara: { yontem: 'DOGRUDAN', yol: () => '', tur: () => true },
     icerik: (u) => u

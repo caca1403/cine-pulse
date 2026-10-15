@@ -40,8 +40,11 @@ const duz = (s) => String(s || '')
   .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
   .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 
-/** Ölçülen gürültü: fragman/sahne/yabancı dublaj kopyaları. */
-const COP = /trailer|fragman|teaser|clip|scene|sahne|behind the scenes|kamera arkasi|mandarin|cantonese|vietnamese|hindi dub|spanish dub|german dub|earrape/i;
+/** Ölçülen gürültü: fragman/sahne/yabancı dublaj kopyaları.
+ *  2026-10-15 canlı ek (Interstellar/The Matrix doğrulaması): "Interstellar (2014)
+ *  Interview/Featurette/Soundtrack" kartları öneşek kapısından (4) geçip FİLM
+ *  yerine söyleşi/kısa listeleniyordu; "…Promo 1999 (CTV)" tam öneşekti. */
+const COP = /trailer|fragman|teaser|clip|scene|sahne|behind the scenes|kamera arkasi|mandarin|cantonese|vietnamese|hindi dub|spanish dub|german dub|earrape|\binterview\b|\bfeaturette\b|\bsoundtrack\b|\bpromo\b/i;
 
 /** doc.title → hedefe göre puan. 0 = elenir. */
 function puanla(dokAdi, hedefler) {
@@ -81,12 +84,27 @@ function bolumUyar(iz, s, e, isFilm) {
 /* ── 1. arama ─────────────────────────────────────────────────────────── */
 async function ara(hedefler, yil, trace) {
   const q = hedefler.slice(0, 2).map((h) => `title:("${h.replace(/["\\]/g, '')}")`).join(' OR ');
+  // TEK maddede parantez YOK (2026-10-15 şablon kayması, ölçüldü): Solr,
+  // `(title:("Interstellar")) AND year:2014` biçiminde sıralamayı değiştiriyor
+  // ve gerçek film (YIFY kaydı) ilk satırların dışına düşüyor; parantezsiz aynı
+  // sorgu satır-1 veriyor. OR birleşiminde parantez zorunlu ve bozmuyor (ölçüldü).
+  // rows 8→50: Interstellar numFound=33, gerçek kayıt rank-18 (5/5 çağrıda sabit
+  // ölçüldü) — tek istek, daha geniş pencere; EŞİK/KAPI DEĞİŞMEZ (puan + yıl aynı).
+  const govde = q.includes(' OR ') ? `(${q})` : q;
   const kosul = yil ? ` AND year:${yil}` : '';
-  const url = `${APAR}?q=${encodeURIComponent(`(${q})${kosul} AND mediatype:(movies)`)}&fl[]=identifier&fl[]=title&fl[]=year&rows=8&output=json`;
+  const url = `${APAR}?q=${encodeURIComponent(`${govde}${kosul} AND mediatype:(movies)`)}&fl[]=identifier&fl[]=title&fl[]=year&rows=50&output=json`;
   const ham = await istek(url, { ref: 'https://archive.org/', headers: { Accept: 'application/json', 'User-Agent': UA_ARSIV }, timeout: 8000, trace, webView: false });
   try {
     const docs = JSON.parse(ham)?.response?.docs || [];
-    return docs.map((d) => ({ identifier: d.identifier, title: d.title || '', year: d.year || null, _puan: puanla(d.title || d.identifier || '', hedefler) }));
+    // Eşit puanda yıl-içeren başlık öne çıkar ("Interstellar. 2014.1080p…mp4" gerçek
+    // yayındır; "Interstellar Impressions with Digi and Vic" sohbet videosudur —
+    // 2026-10-15 canlı ölçüm). Bu SIRALAMA kuralıdır, kimlik kapısı değil.
+    const yilIzi = yil ? ` ${String(yil).trim()} ` : '';
+    return docs.map((d) => ({
+      identifier: d.identifier, title: d.title || '', year: d.year || null,
+      _puan: puanla(d.title || d.identifier || '', hedefler),
+      _yilbaslik: yilIzi && ` ${duz(d.title || '')} `.includes(yilIzi) ? 1 : 0,
+    }));
   } catch (_) { return []; }
 }
 
@@ -111,7 +129,7 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
 
   // 2) puan sırasıyla en çok 2 kayıt: metadata → bölüm uyumu → dosya → bayt probe
   const kaynaklar = [];
-  for (const d of docs.sort((a, b) => b._puan - a._puan).slice(0, 3)) {
+  for (const d of docs.sort((a, b) => (b._puan - a._puan) || (b._yilbaslik - a._yilbaslik)).slice(0, 3)) {
     if (!d.identifier) continue;
     const ham = await istek(`${UST}${encodeURIComponent(d.identifier)}`, {
       ref: 'https://archive.org/', headers: { Accept: 'application/json', 'User-Agent': UA_ARSIV }, timeout: 8000, trace, webView: false,
@@ -119,6 +137,13 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
     let meta = null;
     try { meta = JSON.parse(ham); } catch (_) {}
     if (!meta || meta.is_dark || !meta.server || !meta.dir) { trace.koy('kayit', { id: d.identifier, karanlik: Boolean(meta && meta.is_dark) }); continue; }
+
+    // Fragman koleksiyonu kapısı (2026-10-15 ölçüldü): "The Matrix" başlığıyla
+    // turner_video_48451 TAM eşleşti ama collection'ı movie_trailers_unsorted'dı —
+    // 145 MB/480p ≈ fragman, 136 dk'lık film değil. Başlıkta "trailer" yazması
+    // gerekmiyor; koleksiyon etiketi kimlik kanıtıdır (GEVŞETME değil, sıkılaştırma).
+    const kol = [].concat((meta.metadata && meta.metadata.collection) || []).join(',');
+    if (/trailer|fragman/i.test(kol)) { trace.koy('kayit', { id: d.identifier, kok: 'fragman-koleksiyonu' }); continue; }
 
     const iz = bolumIzi(d.title || d.identifier);
     if (!bolumUyar(iz, s, e, isFilm)) { trace.koy('bolum-red', { id: d.identifier, istenen: `S${s}B${e}`, iz: iz ? JSON.stringify(iz) : 'yok' }); continue; }

@@ -251,9 +251,27 @@ async function adayIframe(ada, ctx, trace, webView = false, signal = null) {
   return u ? mutlak(u, ctx.base) : '';
 }
 
-/** Sayfadaki oynatıcı ADAYLARINI listeler (buton iframe'leri henüz çözülmez). */
-async function oynaticiAdaylariBul(ctx, trace, signal = null) {
-  const sayfa = ctx.html || await istek(ctx.contentUrl, { ref: `${ctx.base}/`, headers: { 'User-Agent': UA }, trace, timeout: 16000, signal, webView: false });
+/** Ağ kilidi KANITI: iz'de TV-yolu isteğinin 403'ü (CF challenge sayfası engelSayfaMi'de
+ *  süzüldüğü için gövde görünmez — tek kalıcı işaret sonHttpDurumu). Kanıtsız boşluk
+ *  "içerik yok" olabilir; pahalı motora YALNIZ kilit işaretinde gidilir (madde 0/b). */
+function tvYolu403(trace) {
+  return (trace?.kayit || []).some((k) => k.ad === 'http' && k.st === 403 && /\/dizi\/|\/bolum\/|\/sezon-\d+\/bolum-|\/video\//i.test(String(k.url || '')));
+}
+
+/** Onaylı yedek kapısı (YAPILACAKLAR #0 seçeneği b): gizli motor turu YALNIZ
+ *  (1) TV yolunda, (2) hızlı tur hiç yayın bulamadıysa, (3) izde 403 kilidi
+ *  KANITLIYSA ve (4) motor boşsa açılır. Film yolu koşulu geçemez (film hızlı
+ *  turda 1-2 sn'de yayın buluyor — ölçüldü). SAF fonksiyon: testte doğrulanır. */
+export function pahaliTuraIzin({ isFilm = false, yayinYok = false, kanit = false, motorBos = false } = {}) {
+  return !isFilm && yayinYok && kanit && motorBos;
+}
+
+/** Sayfadaki oynatıcı ADAYLARINI listeler (buton iframe'leri henüz çözülmez).
+ *  `webView:true` yalnız gizli motor yedek turunda verilir: TV sayfaları CF
+ *  challenge'a 403 veriyor (ölçüldü 2026-10-15: aynı IP+UA'da /dizi/* → 403
+ *  challenge, film sayfaları → 200; header/UA varyasyonu sonucu değiştirmiyor). */
+async function oynaticiAdaylariBul(ctx, trace, signal = null, webView = false) {
+  const sayfa = ctx.html || await istek(ctx.contentUrl, { ref: `${ctx.base}/`, headers: { 'User-Agent': UA }, trace, timeout: 16000, signal, webView });
   if (!sayfa) return [];
   const adaylar = oynaticiAdaylari(sayfa, ctx.base).slice(0, 3);
   trace.koy('oynatici-adaylari', adaylar.map((a) => a.ad || a.videoId));
@@ -452,11 +470,24 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
   const bas = Date.now();
   const BUTCE_MS = 45000;
   const ctx = { base: pageBase, contentUrl, html: contentHtml };
-  const adaylar = await oynaticiAdaylariBul(ctx, trace, signal);
+  let adaylar = await oynaticiAdaylariBul(ctx, trace, signal);
   if (!adaylar.length) {
     // Sessiz dönüş yok (rapor #2): "iz kimlik'te kesik" belirsizliği biter.
-    trace.koy('oynatici-yok', { neden: ctx.html ? 'onbellek' : 'sayfa-bos' });
-    return { sources: [], trace: trace.ozet(), iframe: '' };
+    // TV + 403 KANITI istisnası (YAPILACAKLAR #0 onaylı seçenek b): CF challenge
+    // sayfayı yuttuysa aday listesi HİÇ kurulamaz; eski davranışta buradan sessiz
+    // 0 dönülüyordu. Kanıtlı kilitte gizli motor challenge'ı BİR kez çözer
+    // (cf_clearance paylaşılır), adaylar bir daha kurulur. Kapı TV+0-yayın+kanıt+
+    // motor-boş; film yolu koşulu geçemez. Kanıtsız boşluk eski davranışı korur.
+    const kanit = tvYolu403(trace);
+    const motorBos = await tarayiciMotoruBos();
+    if (!pahaliTuraIzin({ isFilm, yayinYok: true, kanit, motorBos })) {
+      trace.koy('oynatici-yok', { neden: ctx.html ? 'onbellek' : 'sayfa-bos' });
+      return { sources: [], trace: trace.ozet(), iframe: '' };
+    }
+    trace.koy('webview-sayfa', { neden: 'cf-403', contentUrl });
+    const cozum = await istek(contentUrl, { ref: `${pageBase}/`, headers: { 'User-Agent': UA }, trace, signal, timeout: 12000, webView: true });
+    if (cozum && /data-video|alternative-link|<iframe/i.test(cozum)) { ctx.html = cozum; adaylar.push(...await oynaticiAdaylariBul(ctx, trace, signal, true)); }
+    if (!adaylar.length) { trace.koy('oynatici-yok', { neden: kanit ? 'cf-403' : (ctx.html ? 'onbellek' : 'sayfa-bos') }); return { sources: [], trace: trace.ozet(), iframe: '' }; }
   }
   const durum = adaylar.map((a) => ({ ...a, iframeUrl: a.iframeUrl || '', m3u8: '', kaynakHtml: '' }));
 
@@ -522,7 +553,16 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
   // WebView motoru boşsa VE hızlı tur hiç yayın bulamadıysa denenir.
   const eksikSunucu = durum.filter((d) => !d.m3u8).length;
   const motorBos = await tarayiciMotoruBos();
-  if (PAHALI_TUR && eksikSunucu && !liste.length && motorBos && Date.now() - bas < 9000) {
+  // TV yedek turu (onaylı istisna, YAPILACAKLAR #0/b): izde 403 kilidi KANITLIYSA
+  // ve hızlı tur hiç yayın bulamadıysa gizli motor bir kez denenir — ölçüldü
+  // (2026-10-15): TV uçları (.nl /dizi/ ve /video/) challenge'a 403, film 200.
+  // Challenge çözümü süre yiyebildiği için 9 sn'lik "hızlı-düş" tavanı TV kanıtlı
+  // yolda sağlayıcı bütçesine (BUTCE_MS) çıkar; film yolu yalnız PAHALI_TUR ile
+  // davranır (DEĞİŞMEDİ).
+  const yedekGecerli = eksikSunucu && !liste.length && motorBos
+    && pahaliTuraIzin({ isFilm, yayinYok: true, kanit: tvYolu403(trace), motorBos: true });
+  if ((PAHALI_TUR && eksikSunucu && !liste.length && motorBos && Date.now() - bas < 9000)
+    || (yedekGecerli && Date.now() - bas < BUTCE_MS)) {
     trace.koy('webview-turu', { eksik: eksikSunucu, gecen: Date.now() - bas });
     await Promise.race([
       tur(true),
