@@ -1,13 +1,13 @@
 {
-  "version": "1.1.75",
-  "versionCode": 185,
+  "version": "1.1.76",
+  "versionCode": 186,
   "releaseDate": "2026-10-15",
-  "title": "CinePulse v1.1.75",
-  "releaseNotes": "CinePulse 1.1.75 — P2P + Debrid + motor hazirligi\n\n- P2P ile Oynat (masaustu): Ana ekranda yeni dugme — magnet adresi yapistir, yerel motor esleri bulunca film reklamsiz acilir. Onay kaydi yalniz cihazda.\n- VEGA (Real-Debrid): Profil menusunden hesabini bagla, 'Hesabi Test Et' ile durumunu gor. Anahtar yalniz cihazinda saklanir.\n- Oynaticiya temiz dogrudan akis girisi (directPlaybackUrl) — yerel ve P2P akislar artik indirme aramasina takilmadan aciliyor.\n- mpv motor fizibilitesi tamamlandi: ayri surec + guvenli IPC yolu secildi, siradaki surumde geliyor.\n\nNot: P2P ve VEGA ayarlari masaustunde; Android'de arayuz gorunmez.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.75/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.75/cinepulse.apk",
-  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.75/CinePulse-Setup-1.1.75.exe",
-  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.75/CinePulse-1.1.75.AppImage",
-  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.75/CinePulse-1.1.75.deb",
+  "title": "CinePulse v1.1.76",
+  "releaseNotes": "CinePulse 1.1.76 — Kaynak onarimi: yildizlar geri dondu\n\n- Orion (dizi): yeni cozum ucu — bolum dogrudan cozuluyor; bazi aglarda bos donen dizi kuyrugu yeniden kaynak veriyor.\n- Betelgeuse: yil etiketi tasimayan dogru kartlar artik elenmiyor; film kuyrugunda belirgin artis.\n- Deneb: arsiv altyapisi degisikligine uyumlandi; klasik cizgi film ve arsiv basliklari geri geldi.\n- Atlas: engelleyici dogrulamali aglarda son-bilgi onbellegiyle 10 saate kadar kaynak tasir.\n- Toliman: sifreleme ucunun yeni yanit bicimi desteklendi.\n- Sirius, Vega, Lyra, Arcturus: cihaz yolunda (gizli tarayici) cozilmeye devam eder; dizeler saglam.\n- Cizgi film: Polar, Pamuk, Aria, Tera ve Lumen canli dogrulandi; Lumen icerik bazli (sitede dogrudan hat olmayan baslik bos donebilir).",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.76/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.76/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.76/CinePulse-Setup-1.1.76.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.76/CinePulse-1.1.76.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.76/CinePulse-1.1.76.deb",
   "mandatory": false
 }
