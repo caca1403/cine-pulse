@@ -25,7 +25,7 @@ globalThis.document = {
   createElement: () => ({ style: {}, setAttribute() {}, addEventListener() {} }),
   body: { appendChild() {} }, documentElement: { style: {} }
 };
-globalThis.navigator = { userAgent: 'node', platform: 'node' };
+Object.defineProperty(globalThis, 'navigator', { value: { userAgent: 'node', platform: 'node' }, configurable: true, writable: true });
 const { webcrypto } = await import('node:crypto');
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
