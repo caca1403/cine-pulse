@@ -116,6 +116,10 @@ export function openProfileModal() {
               <i data-lucide="tv" style="width: 14px; height: 14px; color: #ed1c24;"></i>
               <span>Trakt.tv</span>
             </button>
+            <button class="btn-manage-profiles" id="btn-modal-open-debrid" title="VEGA Ayarları">
+              <i data-lucide="zap" style="width: 14px; height: 14px; color: #dfff76;"></i>
+              <span>VEGA</span>
+            </button>
             <button class="btn-manage-profiles" id="btn-modal-open-plugins" title="Kaynak Eklentileri">
               <i data-lucide="puzzle" style="width: 14px; height: 14px; color: #dfff76;"></i>
               <span>Eklentiler</span>
@@ -233,6 +237,15 @@ export function openProfileModal() {
       traktBtn.onclick = () => {
         closeProfileModal();
         openTraktModal();
+      };
+    }
+
+    const debridBtn = modalContainer.querySelector('#btn-modal-open-debrid');
+    if (debridBtn) {
+      debridBtn.onclick = async () => {
+        closeProfileModal();
+        const { openDebridModal } = await import('./DebridModal.js');
+        openDebridModal();
       };
     }
 
