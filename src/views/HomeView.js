@@ -10,14 +10,15 @@ import {
   fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated, fetchPopularAnime, fetchPopularDocumentaries,
   fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsAdventures, fetchKidsDocumentaries, fetchKidsAnime,
   fetchKidsAnimationSeries, fetchKidsClassicCartoonSeries,
-  fetchAdultAnimationSeries, fetchCartoonSeries
+  fetchAdultAnimationSeries, fetchCartoonSeries, fetchRecommendations
 } from '../services/tmdbApi.js';
-import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile, isItemKidSafe } from '../services/storage.js';
+import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile, isItemKidSafe, getFavorites } from '../services/storage.js';
 import { renderHeroSlider, attachHeroSliderEvents, stopHeroSlider } from '../components/HeroSlider.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
 import { collectWithin } from '../services/startupBudget.js';
 import { railScrollMemory } from '../services/scrollManager.js';
+import { tohumSec, onbellekAnahtari, cacheOku, cacheYaz, satirBasligi, KISISSEL_SATIR_TIPI } from '../services/personalRails.js';
 
 // Cache home TMDB data & rail state across navigations
 let homeDataCache = null;
@@ -615,6 +616,42 @@ export async function renderHomeView() {
           initInfiniteRails(extra);
         });
       }
+
+      // Kişisel satır: "Çünkü {ad} izledin" (Netflix Öneri #1 — personalRails.js SAF çekirdeği).
+      // Tohum = en son izlenen 1 yapıt; öneriler 6 saatlik localStorage önbellekten gelir,
+      // yoksa tek TMDB recommendations isteğiyle çekilir. Ana Sayfa'yı asla kırmaz.
+      (async () => {
+        try {
+          const tohumlar = tohumSec(watchHistory, getFavorites(), { maks: 2 });
+          if (tohumlar.length === 0) return;
+          const tohum = tohumlar[0];
+          const anahtar = onbellekAnahtari(KISISSEL_SATIR_TIPI, tohum);
+          const depo = typeof localStorage !== 'undefined' ? localStorage : null;
+          let ogeler = cacheOku(depo, anahtar);
+          if (!ogeler) {
+            ogeler = await fetchRecommendations(tohum.tur, tohum.tmdbId);
+            if (ogeler && ogeler.length > 0) cacheYaz(depo, anahtar, ogeler);
+          }
+          if (!ogeler || ogeler.length === 0) return;
+          if (!container.isConnected || !(window.location.hash || '#home').startsWith('#home')) return;
+          const temiz = filterForActiveProfile(ogeler).slice(0, 18);
+          if (temiz.length < 4) return;
+          const holder = document.createElement('div');
+          holder.innerHTML = renderInfiniteRail({
+            id: 'rail-personal-cunku',
+            icon: 'sparkles',
+            title: satirBasligi(tohum.ad),
+            accent: '#f472b6',
+            items: temiz
+          });
+          const anchor = container.querySelector('#continue-watching-rail')?.closest('.rail-section');
+          if (anchor) anchor.after(holder);
+          else container.querySelector('.home-view')?.prepend(holder);
+          renderIcons(holder);
+          attachMediaCardEvents(holder);
+          attachRailScrolling(holder);
+        } catch (_) { /* kişisel satır opsiyoneldir */ }
+      })();
 
       // Delete from continue watching
       container.querySelectorAll('.btn-delete-history').forEach(btn => {

@@ -1358,3 +1358,20 @@ export async function fetchPersonDetails(personId) {
   }
   return data;
 }
+
+/**
+ * "Çünkü bunu izledin" kişisel satır önerileri (Netflix Öneri #1 — personalRails.js çekirdeği).
+ * TMDB /{tur}/{id}/recommendations; çıktı diğer Ana Sayfa satırlarıyla aynı normalize
+ * biçimdedir (type/media_type set edilir). anime → tv olarak çekilir (DetailView normalizasyonu).
+ * Ağ hatasında/idsiz her zaman [] döner, atmaz.
+ */
+export async function fetchRecommendations(type = 'tv', tmdbId, page = 1) {
+  const t = type === 'movie' ? 'movie' : 'tv';
+  const id = Number(tmdbId);
+  if (!Number.isFinite(id) || id <= 0) return [];
+  const data = await tmdbFetch(`/${t}/${id}/recommendations`, { page, language: 'tr-TR' });
+  if (!data || !Array.isArray(data.results)) return [];
+  return data.results
+    .filter(item => item && (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => ({ ...item, type: t, media_type: t }));
+}
