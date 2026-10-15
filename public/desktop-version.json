@@ -1,13 +1,13 @@
 {
-  "version": "1.1.72",
-  "versionCode": 182,
-  "releaseDate": "2026-10-13",
-  "title": "CinePulse v1.1.72",
-  "releaseNotes": "Oynatici: kaynak degisiminde/durdurmada eski yayinin sesi bir kac saniye surukleniyordu — eski akis artik aninda serakiliyor. Web: Betelgeuse yildizinin yayinlari ayni-kok, aralik destekli vekilden geciyor; listede gorunup 0:00da takilma sinifi hatasi giderildi. Kaynak adlandirmasi ve gizlilik ayni: yalniz kod adi.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.72/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.72/cinepulse.apk",
-  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.72/CinePulse-Setup-1.1.72.exe",
-  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.72/CinePulse-1.1.72.AppImage",
-  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.72/CinePulse-1.1.72.deb",
+  "version": "1.1.74",
+  "versionCode": 184,
+  "releaseDate": "2026-10-15",
+  "title": "CinePulse v1.1.74",
+  "releaseNotes": "Ana Sayfa: 'Cunku bunu izledin' kisisel oneri satiri — izlenen yapitlara gore TMDB onerileri, 6 saat onbellek, profil filtresi. Oyuncu: Siradaki Bolum politikasi — autoplayNext ayari artik gercekten calisiyor; son bolumde 8 sn'lik post-play karti, ayardan tamamen kapatilabilir. Kutuphane: Node 24 test uyumu.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.74/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.74/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.74/CinePulse-Setup-1.1.74.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.74/CinePulse-1.1.74.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.74/CinePulse-1.1.74.deb",
   "mandatory": false
 }
