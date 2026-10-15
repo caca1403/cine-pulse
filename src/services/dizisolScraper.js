@@ -65,16 +65,36 @@ async function fetchDizisolApi(endpoint, options = {}) {
   // JSON görünümlü gövde mi? Challenge sayfaları bazen 200 ile de döner;
   // `res.ok` tek başına "çözülebilir JSON" garantisi değildir (ölçüldü:
   // Turnstile 403-HTML kadar 200-HTML de üretiyor).
-  const jsonGibiMi = (metin) => {
-    const b = String(metin || '').trimStart()[0];
-    return b === '{' || b === '[';
+  // Gizli WebView JSON uç noktasını gerçek motorla açtığında Chrome JSON'u
+  // <pre> içine sarar — ham JSON değilse HTML kabuğundaki dış parantezi kaz.
+  const jsonKaz = (metin) => {
+    const t = String(metin || '').trim();
+    const bas = t[0];
+    if ((bas === '{' || bas === '[') && !engelSayfaMi(t)) return t;
+    const kaz = (ac, kapa) => {
+      const i = t.indexOf(ac);
+      const j = t.lastIndexOf(kapa);
+      if (i === -1 || j <= i) return '';
+      const aday = t.slice(i, j + 1);
+      try { JSON.parse(aday); return aday; } catch (_) { return ''; }
+    };
+    // DIŞ yapı, daha erken başlayan adadır: "[{..}]" gövdesinde '{' ile
+    // kazmak içteki tek nesneyi çıkarır ve arama "0 sonuç" olur (test yakaladı).
+    const iC = t.indexOf('{');
+    const iD = t.indexOf('[');
+    const onece = (iD !== -1 && (iC === -1 || iD < iC)) ? [kaz('[', ']'), kaz('{', '}')] : [kaz('{', '}'), kaz('[', ']')];
+    for (const aday of onece) {
+      if (aday && !engelSayfaMi(aday)) return aday;
+    }
+    return '';
   };
 
   try {
     const res = await Promise.any([fetchGateway(), fetchDirect()]);
     const metin = await res.text().catch(() => '');
-    if (jsonGibiMi(metin) && !engelSayfaMi(metin)) {
-      return new Response(metin, { status: res.status, headers: { 'Content-Type': 'application/json' } });
+    const temiz = jsonKaz(metin);
+    if (temiz) {
+      return new Response(temiz, { status: res.status, headers: { 'Content-Type': 'application/json' } });
     }
     // Geçerli sayılan yanıtın gövdesi JSON değil → engelli sayılır ve
     // aşağıdaki gizli WebView denemesine düşülür.
@@ -91,8 +111,9 @@ async function fetchDizisolApi(endpoint, options = {}) {
       headers: { Accept: 'application/json, text/plain, */*' },
       webView: true,
     });
-    if (metin && jsonGibiMi(metin) && !engelSayfaMi(metin)) {
-      return new Response(metin, { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const temiz = jsonKaz(metin);
+    if (temiz) {
+      return new Response(temiz, { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
   } catch (_) { /* motor meşgul/ yok → null */ }
   return null;
@@ -166,8 +187,20 @@ async function fetchDizisolJson(endpoint, options = {}) {
     const res = await fetchDizisolApi(cleanEndpoint, netOptions);
     if (!res) return null;
     // Challenge HTML / JSON dışı gövde → null → cache-fallback devreye girer.
-    const data = await res.json().catch(() => null);
-    return data || null;
+    const veri = await res.json().catch(() => null);
+    if (!veri) return null;
+    // Site zarf değiştirdi (ölçüldü): bazı uçlar artık düz dizi/nesne yerine
+    // {"status":200,"result":<eski şekil>} dönüyor. Dış katman açılmazsa her
+    // arama "geçerli ama boş" görünüyordu — Kaynaklar'ın kaybolma nedeni.
+    if (!Array.isArray(veri) && typeof veri === 'object' && 'result' in veri) {
+      const ic = veri.result;
+      if (Array.isArray(ic)) return ic;
+      if (ic && typeof ic === 'object') {
+        if (Array.isArray(ic.data)) return ic.data;
+        return ic;
+      }
+    }
+    return veri;
   }, onEvent);
 }
 

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { coz } from '../src/providers/atlas.js';
+import { searchDizisol } from '../src/services/dizisolScraper.js';
 
 /* Cache-fallback savunması (Atlas / dizisolScraper):
    Site API'si kısa süreli engelleme (challenge HTML / 403) verdiğinde, son iyi
@@ -157,4 +158,29 @@ test('200-HTML challenge "başarılı" sayılmaz: null → lastGood zincirine d�
     // sızıntı yok ve sonsuz döngü yok: istek sayısı sonlu kalmalı.
     assert.ok(istekler.length < 20, `sınırsız tekrar olmamalı: ${istekler.length}`);
   } finally { geriAl(); geriSaat(); }
+});
+
+/* ── Site şekil değişikliği: zarf açma + HTML içinden JSON kazma ─────────── */
+
+test('zarf: {"status":200,"result":[...]} açılır — arama boş görünmez', async () => {
+  const { geriAl } = sahteAg(() => iyiJson({
+    status: 200,
+    result: [{ tmdbId: 71446, title: 'Zarf Denemesi', type: 'tv', season: 1, episode: 1 }]
+  }));
+  try {
+    const bulunan = await searchDizisol('zarf denemesi xyz');
+    assert.equal(bulunan.length, 1, 'zarf içi dizi açılmalı');
+    assert.equal(bulunan[0].tmdbId, 71446);
+  } finally { geriAl(); }
+});
+
+test('webview gövdesi: Chrome JSON görünürü (<pre> sarmalı) bile parse edilir', async () => {
+  const kabuk = '<html><head><title>dizisol.com/api/movies/search?q=onerik xyz</title></head>'
+    + '<body><pre>[{"tmdbId":424242,"title":"Onerik Xyz","type":"tv"}]</pre></body></html>';
+  const { geriAl } = sahteAg(() => new Response(kabuk, { status: 200, headers: { 'content-type': 'text/html' } }));
+  try {
+    const bulunan = await searchDizisol('onerik xyz');
+    assert.equal(bulunan.length, 1, 'HTML kabuğu içindeki JSON kazınmalı');
+    assert.equal(bulunan[0].tmdbId, 424242);
+  } finally { geriAl(); }
 });
