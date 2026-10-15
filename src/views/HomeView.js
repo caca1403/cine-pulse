@@ -19,6 +19,7 @@ import { showToast } from '../components/Toast.js';
 import { collectWithin } from '../services/startupBudget.js';
 import { railScrollMemory } from '../services/scrollManager.js';
 import { tohumSec, onbellekAnahtari, cacheOku, cacheYaz, satirBasligi, KISISSEL_SATIR_TIPI } from '../services/personalRails.js';
+import { isP2pAvailable } from '../services/p2pService.js';
 
 // Cache home TMDB data & rail state across navigations
 let homeDataCache = null;
@@ -511,6 +512,11 @@ export async function renderHomeView() {
       ${!hasPrimaryContent({ trending, popularTV, popularMovies }) ? '<div class="container" role="status" style="padding:5rem 1rem 2rem"><p>İçerik servisine ulaşılamadı. Bağlantını kontrol edip yeniden deneyebilirsin.</p><button class="btn btn-primary" id="btn-home-retry">Yeniden Dene</button></div>' : ''}
       ${heroHTML || '<div class="home-hero-spacer" style="height:84px;flex:none;"></div>'}
 
+      ${isP2pAvailable() ? `<div class="container p2p-launch-row">
+        <button id="btn-p2p-launch" class="p2p-launch-btn" type="button">🛰 P2P ile Oynat</button>
+        <span class="p2p-launch-hint">magnet adresiyle reklamsız yerel oynatma — yalnızca masaüstü</span>
+      </div>` : ''}
+
       ${renderContinueWatchingSection(watchHistory)}
 
       ${railsHTML}
@@ -523,6 +529,10 @@ export async function renderHomeView() {
       container.querySelector('#btn-home-retry')?.addEventListener('click', () => {
         clearHomeCache();
         window.dispatchEvent(new HashChangeEvent('hashchange'));
+      });
+      container.querySelector('#btn-p2p-launch')?.addEventListener('click', async () => {
+        const { openP2pModal } = await import('../components/P2pModal.js');
+        openP2pModal();
       });
       const sliderItems = (heroItems && heroItems.length > 0) ? heroItems : trending;
       if (sliderItems && sliderItems.length > 0) attachHeroSliderEvents(sliderItems);

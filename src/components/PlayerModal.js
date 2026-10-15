@@ -85,6 +85,9 @@ export async function openPlayerModal({
   shortDramaEpisodes = [],
   offlinePlaybackUrl = '',
   offlineMediaKind = 'file',
+  directPlaybackUrl = '',
+  directMediaKind = 'file',
+  directMediaLabel = '',
   currentTime = 0,
   duration = 0,
   seasonsList = [],
@@ -138,6 +141,15 @@ export async function openPlayerModal({
       duration = 0;
       roomSync = null;
     }
+  }
+  // Doğrudan satır (masaüstü P2P ve benzeri yerel akışlar): URL çağıran tarafın.
+  // İndirme aramasından GEÇMEZ — keşif de yapılmaz, tek sunucu bu URL'dir.
+  if (directPlaybackUrl && !offlinePlaybackUrl) {
+    offlinePlaybackUrl = directPlaybackUrl;
+    offlineMediaKind = directMediaKind || 'file';
+    roomSync = null;
+    currentTime = 0;
+    duration = 0;
   }
   const isOfflinePlayback = Boolean(offlinePlaybackUrl);
   const isNativeOfflinePlayback = isOfflinePlayback && isNativeAndroidApp();
@@ -7243,7 +7255,8 @@ export async function openPlayerModal({
 
   // Native offline entries bypass discovery and play the device cache directly.
   if (offlinePlaybackUrl) {
-    const offlineServer = { source: 'OFFLINE', name: 'Cihaza indirilen', displayName: 'Cihaza indirilen', streamUrl: offlinePlaybackUrl, isDirectVideo: offlineMediaKind !== 'hls', isHls: offlineMediaKind === 'hls' };
+    const offlineLabel = directMediaLabel || 'Cihaza indirilen';
+    const offlineServer = { source: 'OFFLINE', name: offlineLabel, displayName: offlineLabel, streamUrl: offlinePlaybackUrl, isDirectVideo: offlineMediaKind !== 'hls', isHls: offlineMediaKind === 'hls' };
     categorizedServers = { dubbed: [offlineServer], subtitled: [] };
     activeServers = categorizedServers.dubbed;
     currentServerIndex = 0;

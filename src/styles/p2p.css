@@ -1,0 +1,133 @@
+/* ==========================================================================
+   CinePulse Studio — P2P oynatıcı penceresi (F1)
+   ========================================================================== */
+
+.p2p-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(4, 6, 12, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.p2p-card {
+  position: relative;
+  width: min(560px, 100%);
+  padding: 1.4rem 1.5rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0e1220;
+  color: #e8ecf6;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.p2p-close {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.8rem;
+  border: none;
+  background: transparent;
+  color: #93a0b8;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+  border-radius: 8px;
+}
+.p2p-close:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+
+.p2p-title { margin: 0 0 0.25rem; font-size: 1.15rem; }
+.p2p-sub { margin: 0 0 1rem; font-size: 0.85rem; color: #93a0b8; line-height: 1.45; }
+
+.p2p-consent {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.7rem 0.8rem;
+  margin-bottom: 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 196, 0, 0.25);
+  background: rgba(255, 196, 0, 0.07);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #d8deeb;
+  cursor: pointer;
+}
+.p2p-consent input { margin-top: 0.15rem; accent-color: #ffc400; }
+
+.p2p-input {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 74px;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e8ecf6;
+  font-family: ui-monospace, 'Cascadia Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.p2p-input:focus { outline: none; border-color: rgba(56, 189, 248, 0.55); }
+
+.p2p-primary {
+  width: 100%;
+  margin-top: 0.8rem;
+  padding: 0.65rem 1rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.p2p-primary:hover:not(:disabled) { filter: brightness(1.12); }
+.p2p-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.p2p-status { margin-top: 1rem; }
+.p2p-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.p2p-chip {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  font-size: 0.74rem;
+  color: #bfe4fb;
+}
+.p2p-chip.pulse { animation: p2p-pulse 1.6s ease-in-out infinite; }
+@keyframes p2p-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+.p2p-note { margin: 0.6rem 0 0; font-size: 0.8rem; color: #93a0b8; line-height: 1.45; }
+.p2p-file { margin: 0.6rem 0 0; font-size: 0.85rem; color: #e8ecf6; word-break: break-word; }
+.p2p-warn { margin: 0.6rem 0 0; font-size: 0.82rem; color: #fbbf24; line-height: 1.5; }
+.p2p-status.ready .p2p-primary { background: linear-gradient(135deg, #34d399, #059669); }
+
+/* Ana ekran başlatıcı satırı (yalnız masaüstü) */
+.p2p-launch-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding-top: 0.9rem;
+  padding-bottom: 0.2rem;
+  flex-wrap: wrap;
+}
+.p2p-launch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  background: rgba(99, 102, 241, 0.14);
+  color: #c7d2fe;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.p2p-launch-btn:hover { background: rgba(99, 102, 241, 0.26); }
+.p2p-launch-hint { font-size: 0.76rem; color: #8b96ab; }
