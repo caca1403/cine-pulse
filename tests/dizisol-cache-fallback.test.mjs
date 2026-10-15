@@ -135,3 +135,26 @@ test('dizi: tüm yollar engelli — bölüm son iyi listeden gelir, cache-fallba
     assert.ok(!gorunen.includes('dizisol'), 'iz/gorunen alanlar site adini tasimamali');
   } finally { geriAl(); geriSaat(); }
 });
+
+/* ── 200 ile dönen challenge sayfası (fetchDizisolApi gövde doğrulaması) ─── */
+
+test('200-HTML challenge "başarılı" sayılmaz: null → lastGood zincirine düşer', async () => {
+  // Önce taze önbellek doldur (film yolu).
+  const dol = sahteAg((u) => (u.includes('/api/resolve?')
+    ? iyiJson({ success: true, streams: [{ provider: 'VIP', tag: 'vip', rawStreamUrl: 'https://cdn.example.org/film-200.m3u8', streamUrl: 'https://cdn.example.org/film-200.m3u8', subtitles: [] }] })
+    : engelli()));
+  try { await coz({ ...COZ_FILM, tmdbId: '910003' }); } finally { dol.geriAl(); }
+
+  // Engelleme kalkmış gibi 200 + HTML challenge dönüyor (Turnstile ölçümü).
+  const geriSaat = saatIlerlet(3 * 60 * 1000);
+  const { istekler, geriAl } = sahteAg(() => new Response(CHALLENGE_HTML, { status: 200, headers: { 'content-type': 'text/html' } }));
+  try {
+    const r = await coz({ ...COZ_FILM, tmdbId: '910003' });
+    assert.equal(r.sources.length, 1, `200-HTML JSON değildir; son iyi yanıt konuşmalı: ${JSON.stringify(r.trace)}`);
+    assert.ok(r.sources[0].url.includes('film-200.m3u8'));
+    assert.ok(r.trace.some(e => e.ad === 'cache-fallback'), 'izde cache-fallback olmalı');
+    // Gizli WebView denemesi Node/testte ağı yalnız mock üzerinden görür —
+    // sızıntı yok ve sonsuz döngü yok: istek sayısı sonlu kalmalı.
+    assert.ok(istekler.length < 20, `sınırsız tekrar olmamalı: ${istekler.length}`);
+  } finally { geriAl(); geriSaat(); }
+});

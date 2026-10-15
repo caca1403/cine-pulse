@@ -5,6 +5,7 @@
    ========================================================================== */
 
 import { apiUrl } from './apiOrigin.js';
+import { akilliGet, engelSayfaMi } from './nativeHttp.js';
 
 const DIZISOL_API_BASE = 'https://dizisol.com/api';
 
@@ -61,11 +62,40 @@ async function fetchDizisolApi(endpoint, options = {}) {
     throw new Error('Gateway fetch failed');
   };
 
+  // JSON görünümlü gövde mi? Challenge sayfaları bazen 200 ile de döner;
+  // `res.ok` tek başına "çözülebilir JSON" garantisi değildir (ölçüldü:
+  // Turnstile 403-HTML kadar 200-HTML de üretiyor).
+  const jsonGibiMi = (metin) => {
+    const b = String(metin || '').trimStart()[0];
+    return b === '{' || b === '[';
+  };
+
   try {
-    return await Promise.any([fetchGateway(), fetchDirect()]);
-  } catch (_) {
-    return null;
-  }
+    const res = await Promise.any([fetchGateway(), fetchDirect()]);
+    const metin = await res.text().catch(() => '');
+    if (jsonGibiMi(metin) && !engelSayfaMi(metin)) {
+      return new Response(metin, { status: res.status, headers: { 'Content-Type': 'application/json' } });
+    }
+    // Geçerli sayılan yanıtın gövdesi JSON değil → engelli sayılır ve
+    // aşağıdaki gizli WebView denemesine düşülür.
+  } catch (_) { /* iki yol da düştü → webview */ }
+
+  // TEK gizli WebView denemesi (cihaz/masaüstü gerçek tarayıcı motoru):
+  // Cloudflare Turnstile challenge'ı yalnız gerçek motorla geçilir; geçen
+  // çerez paylaşıldığı için aynı oturumda bu yol genelde BİR kez yürür.
+  // Motor yoksa (web testi/Node) gizli deneme anında '' döner — davranış
+  // eskisi gibi null → lastGood (cache-fallback) zincirine düşer.
+  try {
+    const metin = await akilliGet(directUrl, {
+      timeout: 12000,
+      headers: { Accept: 'application/json, text/plain, */*' },
+      webView: true,
+    });
+    if (metin && jsonGibiMi(metin) && !engelSayfaMi(metin)) {
+      return new Response(metin, { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+  } catch (_) { /* motor meşgul/ yok → null */ }
+  return null;
 }
 
 // key -> { data, timestamp, promise, lastGood, lastGoodAt }
