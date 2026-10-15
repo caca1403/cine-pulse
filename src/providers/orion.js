@@ -468,7 +468,11 @@ export async function coz({ type = 'movie', title = '', originalTitle = '', titl
   // 2) Yalnızca bir sunucu bile yayın vermediyse ve bütçe varsa, eksikler
   // gizli tarayıcıyla (Cloudflare'ı gerçek motorla çözer) bir kez daha denenir.
   const bas = Date.now();
-  const BUTCE_MS = 45000;
+  // DÜZELTME 1.1.76: 45 sn, agregatörün 30 sn şapkasını aşıyordu → TV turu
+  // pencere AÇIKKEN bile sonuçlanamadan kesiliyordu (cihazda Orion TV hep 0).
+  // Tavan, dış bütçenin altında kalacak şekilde indirildi; WebView turu (≤12 sn)
+  // + hızlı turlar bu pencereye sığar.
+  const BUTCE_MS = 24000;
   const ctx = { base: pageBase, contentUrl, html: contentHtml };
   let adaylar = await oynaticiAdaylariBul(ctx, trace, signal);
   if (!adaylar.length) {
