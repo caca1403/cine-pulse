@@ -1,13 +1,13 @@
 {
-  "version": "1.1.74",
-  "versionCode": 184,
+  "version": "1.1.75",
+  "versionCode": 185,
   "releaseDate": "2026-10-15",
-  "title": "CinePulse v1.1.74",
-  "releaseNotes": "Ana Sayfa: 'Cunku bunu izledin' kisisel oneri satiri — izlenen yapitlara gore TMDB onerileri, 6 saat onbellek, profil filtresi. Oyuncu: Siradaki Bolum politikasi — autoplayNext ayari artik gercekten calisiyor; son bolumde 8 sn'lik post-play karti, ayardan tamamen kapatilabilir. Kutuphane: Node 24 test uyumu.",
-  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.74/cinepulse.apk",
-  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.74/cinepulse.apk",
-  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.74/CinePulse-Setup-1.1.74.exe",
-  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.74/CinePulse-1.1.74.AppImage",
-  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.74/CinePulse-1.1.74.deb",
+  "title": "CinePulse v1.1.75",
+  "releaseNotes": "CinePulse 1.1.75 — P2P + Debrid + motor hazirligi\n\n- P2P ile Oynat (masaustu): Ana ekranda yeni dugme — magnet adresi yapistir, yerel motor esleri bulunca film reklamsiz acilir. Onay kaydi yalniz cihazda.\n- VEGA (Real-Debrid): Profil menusunden hesabini bagla, 'Hesabi Test Et' ile durumunu gor. Anahtar yalniz cihazinda saklanir.\n- Oynaticiya temiz dogrudan akis girisi (directPlaybackUrl) — yerel ve P2P akislar artik indirme aramasina takilmadan aciliyor.\n- mpv motor fizibilitesi tamamlandi: ayri surec + guvenli IPC yolu secildi, siradaki surumde geliyor.\n\nNot: P2P ve VEGA ayarlari masaustunde; Android'de arayuz gorunmez.",
+  "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.75/cinepulse.apk",
+  "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.75/cinepulse.apk",
+  "windowsSetupUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.75/CinePulse-Setup-1.1.75.exe",
+  "linuxAppImageUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.75/CinePulse-1.1.75.AppImage",
+  "linuxDebUrl": "https://github.com/caca1403/cine-pulse/releases/download/v1.1.75/CinePulse-1.1.75.deb",
   "mandatory": false
 }
