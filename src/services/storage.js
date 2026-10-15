@@ -1873,7 +1873,7 @@ export function getUserSettings() {
   if (_userSettingsCache) return _userSettingsCache;
   _userSettingsCache = getLocalItem(STORAGE_KEYS.USER_SETTINGS, {
     autoplayNext: true,
-    preferredResolution: '1080p',
+    preferredResolution: '1080p', // Şimdilik sembolik: sunucular en iyi kullanılabilir kalitede oynatılır. Gerçek kalite kontrolü/switch YAPMA — sahte callback YASAK (bknz. netflix analizi §B).
     theme: 'dark',
     subtitlesEnabled: true,
     cardLayout: 'portrait',

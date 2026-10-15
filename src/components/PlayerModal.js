@@ -34,6 +34,7 @@ import {
   isRegisteredAnimeId,
   isAnimeRecord
 } from '../services/storage.js';
+import { evaluateNextEpisode } from '../services/nextEpisodePolicy.js';
 import { getFlowPilotTercih, setFlowPilotTercih } from '../services/storage.js';
 import { akışOtopilotu, aileKodu, nedenMetni } from '../services/flowPilot.js';
 import { zekaGuven } from '../services/sourceIntelligence.js';
@@ -4587,6 +4588,47 @@ export async function openPlayerModal({
       }
     };
 
+    // Post-play kartı (Netflix Öneri #2): 'beklet' kararında gösterilir.
+    // finalBolumMu parametre olarak gelir — ended kapsamındaki const'a erişim yoktu (ReferenceError düzeltmesi).
+    const showPostPlayCard = (finalBolumMu) => {
+      if (bingeCard) bingeCard.classList.add('hidden');
+      const baslik = finalBolumMu
+        ? 'Sezon tamamlandı'
+        : `${currentSeason}. Sezon ${currentEpisode + 1}. Bölüm geliyor`;
+      const aciklama = finalBolumMu ? 'İzlediğin için teşekkürler.' : 'Hazır olduğunda devam et.';
+      const cardHtml = `
+        <div id="custom-post-play-card" class="post-play-card" role="dialog" aria-labelledby="post-play-title">
+          <div class="post-play-body">
+            <span class="post-play-tag">Sıradaki</span>
+            <h3 class="post-play-title" id="post-play-title">${baslik}</h3>
+            <p class="post-play-sub">${aciklama}</p>
+          </div>
+          <div class="post-play-actions">
+            <button id="post-play-resume" class="post-play-main-btn" type="button">${finalBolumMu ? 'Kapat' : 'Şimdi Oynat'}</button>
+            <button id="post-play-cancel" class="post-play-cancel-btn" type="button">İptal</button>
+          </div>
+        </div>
+      `;
+      // innerHTML += video elemanını ve içindeki tüm dinleyicileri yeniden yaratırdı — beforeend güvenli.
+      wrapper.insertAdjacentHTML('beforeend', cardHtml);
+      const card = wrapper.querySelector('#custom-post-play-card');
+      if (!card) return;
+      let kapandi = false;
+      const removeCard = () => {
+        if (kapandi) return;
+        kapandi = true;
+        clearTimeout(postPlayTimer);
+        card.remove();
+      };
+      const postPlayTimer = setTimeout(removeCard, 8000);
+      document.getElementById('post-play-resume')?.addEventListener('click', () => {
+        removeCard();
+        if (!finalBolumMu) triggerNextEpisode();
+      });
+      document.getElementById('post-play-cancel')?.addEventListener('click', removeCard);
+      card.addEventListener('click', (e) => { if (e.target === card) removeCard(); });
+    };
+
     if (bingeJumpBtn) {
       bingeJumpBtn.onclick = (e) => {
         e.stopPropagation();
@@ -4815,6 +4857,32 @@ export async function openPlayerModal({
         window.dispatchEvent(new CustomEvent('cinepulse:room-playback-finished', {
           detail: { roomCode: roomSync.roomCode, mediaId: roomSync.mediaId, type: roomSync.type, season: currentSeason, episode: currentEpisode }
         }));
+      }
+      // Sıradaki Bölüm politikası (Netflix Öneri #2) — yalnızca dizilerde çalışır, film sessiz biter.
+      if (isSeries) {
+        const currentSeasonEpCount = getSeasonEpisodeCount(currentSeason);
+        const hasNextSeason = currentSeasonsList.some(s => s.season_number === currentSeason + 1);
+        const finalBolumMu = currentEpisode >= currentSeasonEpCount && !hasNextSeason;
+        const policy = evaluateNextEpisode({
+          autoplayNext: getUserSettings().autoplayNext,
+          kalanSn: Math.max(0, Math.ceil((videoEl.duration || 0) - (videoEl.currentTime || 0))),
+          sezonMu: true,
+          finalBolumMu,
+          kullaniciEtkilestimi: hasSkippedIntro,
+        });
+        switch (policy.gec) {
+          case 'kapat':
+            // Ayar kapalı — ilerleme zaten kaydedildi, otomatik geçiş yok.
+            showToast('Otomatik geçiş kapalı — sonraki bölümü kendin seçebilirsin.', 'info');
+            break;
+          case 'beklet':
+            showPostPlayCard(finalBolumMu);
+            break;
+          case 'otomatik':
+          default:
+            triggerNextEpisode();
+            break;
+        }
       }
       startRoomFinishDecision();
     });
