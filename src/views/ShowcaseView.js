@@ -7,7 +7,6 @@ import '../styles/showcase.css';
 const RELEASES = 'https://github.com/caca1403/cine-pulse/releases';
 const base = import.meta.env.BASE_URL;
 const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
-const enter = (label = 'Siteye Gir', extra = '') => `<a class="cp-landing-button cp-landing-primary ${extra}" href="#home">${label}${icon('arrow-up-right')}</a>`;
 
 const benefits = [
   ['compass', 'İzleyecek bir şey bul.', 'Film, dizi, anime ve farklı kategoriler. Arama, yapım detayları ve önerilerle bir sonraki hikâyene karar ver.'],
@@ -16,17 +15,17 @@ const benefits = [
   ['sliders-horizontal', 'Deneyimini kendin seç.', 'Dublaj ve altyazılı seçenekleri ayrı gör. Mevcut alternatifler arasında geçiş yap; destekleyen yayınlarda ses, hız ve altyazıyı ayarla.']
 ];
 const comparison = [
-  ['Keşif, arama ve yapım detayları', 'Var', 'Var', 'Var'],
-  ['Listeler ve izleme ilerlemesi', 'Var', 'Var', 'Var'],
-  ['Film / dizi oynatma', 'Kaynağa bağlı', 'Kaynağa bağlı', 'Kaynağa bağlı'],
-  ['Canlı TV ve yayın akışı', 'Yok', 'Var', 'Var'],
-  ['İndirme ve çevrimdışı kütüphane', 'Yok', 'Yok', 'Desteklenen içeriklerde'],
-  ['Uygulama içi gerçek tarayıcıyla doğrulama', 'Yok', 'Destekli yayınlarda', 'Kaynağa bağlı'],
-  ['JSON yedekleme ve aktarım', 'Var', 'Var', 'Var']
+  ['Keşif, arama ve yapım detayları', 'Var', 'Var'],
+  ['Listeler ve izleme ilerlemesi', 'Var', 'Var'],
+  ['Film / dizi oynatma', 'Kaynağa bağlı', 'Kaynağa bağlı'],
+  ['Canlı TV ve yayın akışı', 'Var', 'Var'],
+  ['İndirme ve çevrimdışı kütüphane', 'Yok', 'Desteklenen içeriklerde'],
+  ['Uygulama içi gerçek tarayıcıyla doğrulama', 'Destekli yayınlarda', 'Kaynağa bağlı'],
+  ['JSON yedekleme ve aktarım', 'Var', 'Var']
 ];
 const faqs = [
-  ['Siteye girmek için uygulama indirmem gerekiyor mu?', 'Hayır. “Siteye Gir” ile normal CinePulse ekranına geçebilirsin. Keşif, arama, içerik detayları ve listeler tarayıcıda kullanılabilir. Uygulama, ek platform özellikleri isteyenler için bir seçenek.'],
-  ['Web sürümünde tam olarak ne eksik?', 'Web; keşif, arama, listeler ve tüm kurulum paketlerinin toplandığı indirme merkezidir. Oynatma tarayıcının bağlantı ve yerleştirme kurallarına bağlı olduğundan kesinlik garanti edilmez; tam oynatma deneyimi için Windows, Linux veya Android paketlerinden birini kullan.'],
+  ['Siteye girmek için uygulama indirmem gerekiyor mu?', 'Bu site tanıtım ve indirme merkezidir; oynatma ve keşif uygulamada çalışır. Windows, Linux veya Android paketlerinden birini kurman yeterli.'],
+  ['Web sürümünde tam olarak ne eksik?', 'Web artık oynatma sunmuyor — kaynak taraması tarayıcı kurallarına takıldığı için tamamen uygulamaya taşındı. Siteden paketleri indirip kurabilirsin.'],
   ['Uygulamada bütün yayınlar kesin çalışıyor mu?', 'Hayır. Masaüstünün yerel medya desteği ve doğrulama alanı bazı bağlantılarda ek imkân sağlar; yine de yayın kaldırılmış, erişime kapalı veya geçici olarak bozuk olabilir. Böyle bir durumda başka bir alternatifi dene.'],
   ['Hesap açmam veya giriş yapmam şart mı?', 'Temel kullanıma hesap açmadan başlayabilirsin. Kişisel profil bu cihazdaki deneyimini düzenler. Trakt bağlantısı ise izleme geçmişi ve listelerini senkronize etmek istediğinde kullanabileceğin isteğe bağlı bir özellik.'],
   ['Listelerim başka cihazda da görünür mü?', 'Yerel listelerin ve ilerlemen kullandığın tarayıcı / cihazda saklanır; kendiliğinden bütün cihazlara taşınmaz. Profildeki JSON yedekleme ve içe aktarma seçeneklerini kullanabilirsin. Trakt bağlantısı desteklediği veriler için ayrı bir senkronizasyon seçeneğidir.'],
@@ -52,16 +51,15 @@ export function renderShowcaseView() {
     html: `<div class="cp-landing">
       <header class="cp-landing-nav">
         <a class="cp-landing-brand" href="#showcase" aria-label="CinePulse tanıtım">${renderSiteLogo('cp-landing-logo')}<span>Cine<span>Pulse</span></span></a>
-        <nav aria-label="Tanıtım bölümleri"><button data-landing-section="landing-downloads">İndir</button><button data-landing-section="landing-features">Özellikler</button><button data-landing-section="landing-compare">Web mi, uygulama mı?</button><button data-landing-section="landing-faq">Sık Sorulanlar</button></nav>
-        ${enter('Siteye Gir', 'cp-landing-nav-enter')}
+        <nav aria-label="Tanıtım bölümleri"><button data-landing-section="landing-downloads">İndir</button><button data-landing-section="landing-features">Özellikler</button><button data-landing-section="landing-compare">Masaüstü mü, Android mi?</button><button data-landing-section="landing-faq">Sık Sorulanlar</button></nav>
       </header>
       <main>
         <section class="cp-landing-hero cp-landing-shell" aria-labelledby="landing-title">
           <div class="cp-landing-hero-copy">
             <a class="cp-landing-version" href="${RELEASES}" target="_blank" rel="noopener noreferrer"><span></span>CINEPULSE STUDIO <b>v${pkg.version}</b>${icon('arrow-up-right')}</a>
             <h1 id="landing-title">Uygulaman<br>hazır.<br><em>İndir, kur, izle.</em></h1>
-            <p class="cp-landing-lead">Web; keşif, listeler ve tüm kurulum paketlerinin toplandığı indirme merkezidir.<br class="cp-landing-desktop-break"> Tam oynatma deneyimi için işletim sistemine uygun paketi kur.</p>
-            <div class="cp-landing-actions"><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button>${enter('Webde Keşfet', 'cp-landing-button cp-landing-secondary')}</div>
+            <p class="cp-landing-lead">CinePulse tanıtım ve indirme merkezi.<br class="cp-landing-desktop-break"> Film, dizi ve anime keşfi, kütüphane ve oynatma — hepsi uygulamada.</p>
+            <div class="cp-landing-actions"><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button><a class="cp-landing-button cp-landing-secondary" href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm Notları${icon('arrow-up-right')}</a></div>
             <div class="cp-landing-hero-note">${icon('shield-check')}Android APK her sürümde aynı kalıcı anahtarla imzalanır — üzerine güncelleme verilerini silmez.</div>
           </div>
           <div class="cp-landing-preview" aria-label="CinePulse keşif ve oynatıcı arayüzünü temsil eden tanıtım görseli">
@@ -72,21 +70,21 @@ export function renderShowcaseView() {
             <div class="cp-landing-source-chip">${icon('layers')}Birden fazla seçenek.<strong>Tek oynatıcı.</strong></div>
           </div>
         </section>
-        <div class="cp-landing-platforms cp-landing-shell"><span>NEREDEN İSTERSEN</span><p>${icon('globe')}Web</p><p>${icon('monitor')}Windows</p><p>${icon('terminal')}Linux</p><p>${icon('smartphone')}Android</p></div>
+        <div class="cp-landing-platforms cp-landing-shell"><span>NEREDEN İSTERSEN</span><p>${icon('monitor')}Windows</p><p>${icon('terminal')}Linux</p><p>${icon('smartphone')}Android</p></div>
         <section id="landing-downloads" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-downloads-title"><div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">PAKETLER · v${pkg.version}</span><h2 id="landing-downloads-title">CinePulse'u<br><span>ekranına taşı.</span></h2><p>İşletim sistemine uygun dosyayı seç. Kurulum paketleri resmî GitHub Releases üzerinden doğrudan indirilir; ZIP açman gerekmez.</p></div><div class="cp-landing-downloads">${packages.map(([symbol,title,detail,url,label,platform])=>`<article data-platform-download="${platform}">${icon(symbol)}<h3>${title} <small class="cp-landing-pkgver" data-pkgver></small></h3><p>${detail}</p><a class="cp-landing-button cp-landing-secondary" href="${url}" target="_blank" rel="noopener noreferrer" data-pkgurl>${label}${icon('arrow-down-to-line')}</a></article>`).join('')}</div><div class="cp-landing-download-footer"><span>Android için kalıcı release imzası · Windows 10+ · Debian/Ubuntu · Flatpak'li dağıtımlar</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-up-right')}</a></div></section>
         <section id="landing-features" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-features-title">
           <div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">DENEYİMİN SONUCU</span><h2 id="landing-features-title">Daha az arayış.<br><span>Daha çok kendi listen.</span></h2><p>Sadece bir oynatıcı değil. Ne keşfettiğini, ne izlediğini ve sırada ne olduğunu bir arada tutan bir alan.</p></div>
           <div class="cp-landing-benefits">${benefits.map(([symbol,title,text],i)=>`<article class="cp-landing-benefit"><div>${icon(symbol)}<span>0${i+1}</span></div><h3>${title}</h3><p>${text}</p></article>`).join('')}</div>
         </section>
         <section id="landing-compare" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-compare-title">
-          <div class="cp-landing-compare-intro"><div><span class="cp-landing-eyebrow">AYNI CINEPULSE, FARKLI İMKÂNLAR</span><h2 id="landing-compare-title">Webde ne var?<br><span>Uygulamada ne açılıyor?</span></h2></div><p>Tarayıcı hızlı bir başlangıç sunar. Canlı TV, çevrimdışı izleme veya ek oynatma uyumluluğu istiyorsan ihtiyacına uygun uygulamayı seç.</p></div>
-          <div class="cp-landing-table-wrap" tabindex="0" role="region" aria-label="Web ve uygulama özellik karşılaştırması"><table class="cp-landing-compare-table"><caption class="cp-landing-sr-only">CinePulse platform özellikleri</caption><thead><tr><th scope="col">Özellik</th><th scope="col">Web<span>Kurulumsuz</span></th><th scope="col">Masaüstü<span>Windows / Linux</span></th><th scope="col">Android<span>Telefon / Tablet</span></th></tr></thead><tbody>${comparison.map(([feature,...values])=>`<tr><th scope="row">${feature}</th>${values.map(value=>`<td><span class="cp-landing-status ${value==='Var'?'is-available':value==='Yok'?'is-unavailable':'is-conditional'}">${icon(value==='Var'?'check':value==='Yok'?'minus':'circle-dot')}${value}</span></td>`).join('')}</tr>`).join('')}</tbody></table></div>
-          <div class="cp-landing-web-note">${icon('info')}<p><strong>Webde oynatma neden farklı?</strong> Web sürümü keşif, listeler ve indirme merkezidir; kaynak taraması ve oynatma tarayıcının bağlantı/yerleştirme kurallarına takılır. Kesin oynatma için Windows, Linux veya Android paketlerinden birini kur. Uygulamada da her bağlantının çalışacağını garanti etmez; kullanılabilir yayınlar seçilen kaynağa göre değişir.</p></div>
+          <div class="cp-landing-compare-intro"><div><span class="cp-landing-eyebrow">AYNI CINEPULSE, FARKLI İMKÂNLAR</span><h2 id="landing-compare-title">Masaüstünde ne var?<br><span>Android'de ne açılıyor?</span></h2></div><p>Bu site tanıtım ve indirme merkezidir — oynatma uygulamada çalışır. İhtiyacına göre paketi seç.</p></div>
+          <div class="cp-landing-table-wrap" tabindex="0" role="region" aria-label="Masaüstü ve Android özellik karşılaştırması"><table class="cp-landing-compare-table"><caption class="cp-landing-sr-only">CinePulse platform özellikleri</caption><thead><tr><th scope="col">Özellik</th><th scope="col">Masaüstü<span>Windows / Linux</span></th><th scope="col">Android<span>Telefon / Tablet</span></th></tr></thead><tbody>${comparison.map(([feature,...values])=>`<tr><th scope="row">${feature}</th>${values.map(value=>`<td><span class="cp-landing-status ${value==='Var'?'is-available':value==='Yok'?'is-unavailable':'is-conditional'}">${icon(value==='Var'?'check':value==='Yok'?'minus':'circle-dot')}${value}</span></td>`).join('')}</tr>`).join('')}</tbody></table></div>
+          <div class="cp-landing-web-note">${icon('info')}<p><strong>Web sitesi neden oynatmıyor?</strong> Web yalnızca tanıtım ve indirme merkezidir; kaynak taraması ve oynatma tarayıcı kurallarına takıldığı için uygulamaya taşındı. Tam deneyim için yukarıdaki paketlerden birini kur.</p></div>
         </section>
-        <section class="cp-landing-start cp-landing-shell" aria-labelledby="landing-start-title"><div><span class="cp-landing-eyebrow">ÜÇ ADIM, KENDİ AKIŞIN</span><h2 id="landing-start-title">Hazırlık yok.<br><span>Keşifle başla.</span></h2>${enter('İçeriklere Git')}</div><ol><li><span>01</span><div><h3>İlgini çekeni bul.</h3><p>Ana sayfadan, aramadan veya kategorilerden ilerle. Diziyse sezon ve bölümünü seç.</p></div></li><li><span>02</span><div><h3>Dilini ve yayınını seç.</h3><p>Dublaj / altyazılı seçenekleri gör. Açılmayan bir bağlantıda diğer alternatife geç.</p></div></li><li><span>03</span><div><h3>Listene ekle, geri dön.</h3><p>Beğendiklerini sakla. Ara verdiğinde kütüphanenden kaldığın yere dön.</p></div></li></ol></section>
+        <section class="cp-landing-start cp-landing-shell" aria-labelledby="landing-start-title"><div><span class="cp-landing-eyebrow">ÜÇ ADIM, KENDİ AKIŞIN</span><h2 id="landing-start-title">Hazırlık yok.<br><span>Keşifle başla.</span></h2><button class="cp-landing-button cp-landing-secondary" data-landing-section="landing-downloads">${icon('download')}Paketi Kur</button></div><ol><li><span>01</span><div><h3>İlgini çekeni bul.</h3><p>Ana sayfadan, aramadan veya kategorilerden ilerle. Diziyse sezon ve bölümünü seç.</p></div></li><li><span>02</span><div><h3>Dilini ve yayınını seç.</h3><p>Dublaj / altyazılı seçenekleri gör. Açılmayan bir bağlantıda diğer alternatife geç.</p></div></li><li><span>03</span><div><h3>Listene ekle, geri dön.</h3><p>Beğendiklerini sakla. Ara verdiğinde kütüphanenden kaldığın yere dön.</p></div></li></ol></section>
         <section class="cp-landing-release cp-landing-shell" aria-labelledby="landing-release-title"><div><span class="cp-landing-eyebrow">v${pkg.version} · BU SÜRÜMÜN ODAĞI</span><h2 id="landing-release-title">Kaynaklar tazelendi.<br><span>Kurulum seçenekleri çoğaldı.</span></h2><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notlarını gör ${icon('arrow-up-right')}</a></div><ul><li>${icon('timer')}<div><strong>Daha zengin Türkçe dublaj hattı</strong><p>Yeni yıldız kod adlı kaynaklar eklendi; dublaj / altyazı ayrımı gerçek etiketlerle listeleniyor.</p></div></li><li>${icon('panel-right')}<div><strong>İzleme ilerlemesi anında güncelleniyor</strong><p>Sezonu izlendi işaretleme artık uygulamayı kapatmadan görünür; kütüphane ve devam listeleri taze kalıyor.</p></div></li><li>${icon('download')}<div><strong>Flatpak desteği</strong><p>Windows EXE, Android APK, Linux DEB ve yeni Flatpak paketi doğrudan Releases'te. Android sürümleri aynı kalıcı anahtarla imzalanıyor.</p></div></li></ul></section>
         <section id="landing-faq" class="cp-landing-section cp-landing-shell cp-landing-faq" aria-labelledby="landing-faq-title"><div><span class="cp-landing-eyebrow">AKLINDA KALMASIN</span><h2 id="landing-faq-title">Sık sorulan<br><span>sorular.</span></h2><p>Başlamadan önce neyin nerede çalıştığını bil.</p></div><div class="cp-landing-questions">${faqs.map(([question,answer])=>`<details><summary>${question}${icon('plus')}</summary><p>${answer}</p></details>`).join('')}</div></section>
-        <section class="cp-landing-final cp-landing-shell"><span class="cp-landing-eyebrow">ŞİMDİ SIRA SENDE</span><h2>İndir, kur.<br><span>Bu akşamın hikâyesini bul.</span></h2><p>Önce paketleri görmek mi istiyorsun, yoksa keşfe hemen başlamak mı?</p><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button><a href="#showcase" data-landing-section="landing-downloads"></a>${enter('Webde Keşfet')}<a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-right')}</a></section>
+        <section class="cp-landing-final cp-landing-shell"><span class="cp-landing-eyebrow">ŞİMDİ SIRA SENDE</span><h2>İndir, kur.<br><span>Bu akşamın hikâyesini bul.</span></h2><p>İşletim sistemine uygun paketi indir; kurulum bir dakika sürer.</p><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-right')}</a></section>
       </main>
       <footer class="cp-landing-footer cp-landing-shell"><a class="cp-landing-brand" href="#showcase">${renderSiteLogo('cp-landing-logo')}<span>Cine<span>Pulse</span></span></a><span>Senin ekranın. Senin akışın.</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">GitHub Releases ${icon('arrow-up-right')}</a></footer>
     </div>`,
