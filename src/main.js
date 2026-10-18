@@ -188,15 +188,13 @@ async function renderRoute() {
   } else if (hash === '#documentary') {
     viewName = 'documentary';
   } else if (hash === '#livetv') {
-    // Canli TV yalnizca uygulamada (APK/EXE); webden gelinirse tanitima yonlendir
-    if (!isAppPlatform()) {
-      try {
-        sessionStorage.setItem('cp_livetv_web_block', '1');
-      } catch (_) {}
-      window.location.replace('#showcase');
-      return;
-    }
-    viewName = 'livetv';
+    // Canlı TV geçici olarak TAMAMEN kapalı (2026-10-19) — platformdan bağımsız;
+    // yeniden açılana kadar tüm girişler tanıtım/ana ekrana döner.
+    try {
+      sessionStorage.setItem('cp_livetv_web_block', '1');
+    } catch (_) {}
+    window.location.replace('#showcase');
+    return;
   } else if (hash === '#kanalim') {
     viewName = 'kanalim';
   } else if (hash === '#discover') {

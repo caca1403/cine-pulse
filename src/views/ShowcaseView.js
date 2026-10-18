@@ -18,7 +18,7 @@ const comparison = [
   ['Keşif, arama ve yapım detayları', 'Var', 'Var'],
   ['Listeler ve izleme ilerlemesi', 'Var', 'Var'],
   ['Film / dizi oynatma', 'Kaynağa bağlı', 'Kaynağa bağlı'],
-  ['Canlı TV ve yayın akışı', 'Var', 'Var'],
+  ['Canlı TV ve yayın akışı', 'Geçici olarak kapalı', 'Geçici olarak kapalı'],
   ['İndirme ve çevrimdışı kütüphane', 'Yok', 'Desteklenen içeriklerde'],
   ['Uygulama içi gerçek tarayıcıyla doğrulama', 'Destekli yayınlarda', 'Kaynağa bağlı'],
   ['JSON yedekleme ve aktarım', 'Var', 'Var']

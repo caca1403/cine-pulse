@@ -1,8 +1,8 @@
 {
-  "version": "1.1.77",
-  "versionCode": 187,
+  "version": "1.1.78",
+  "versionCode": 188,
   "releaseDate": "2026-10-18",
-  "title": "CinePulse v1.1.77",
+  "title": "CinePulse v1.1.78",
   "releaseNotes": "CinePulse 1.1.75 — P2P + Debrid + motor hazirligi\n\n- P2P ile Oynat (masaustu): Ana ekranda yeni dugme — magnet adresi yapistir, yerel motor esleri bulunca film reklamsiz acilir. Onay kaydi yalniz cihazda.\n- VEGA (Real-Debrid): Profil menusunden hesabini bagla, 'Hesabi Test Et' ile durumunu gor. Anahtar yalniz cihazinda saklanir.\n- Oynaticiya temiz dogrudan akis girisi (directPlaybackUrl) — yerel ve P2P akislar artik indirme aramasina takilmadan aciliyor.\n- mpv motor fizibilitesi tamamlandi: ayri surec + guvenli IPC yolu secildi, siradaki surumde geliyor.\n\nNot: P2P ve VEGA ayarlari masaustunde; Android'de arayuz gorunmez.",
   "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
   "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",

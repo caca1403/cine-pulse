@@ -161,7 +161,7 @@ export function renderNavbar(currentView = 'home') {
               ${actionTile('dices', 'Şanslı Çark', 'Seçimi şansa bırak', 'id="btn-hub-random-spin"')}
               ${actionTile('sparkles', 'SÉRA', 'Sana özel öneriler', 'href="https://caca1403.github.io/dizionerisistemi/" target="_blank" rel="noopener noreferrer"', '', 'a')}
               ${actionTile('bar-chart-3', 'Trakt.tv', 'İzleme geçmişini eşitle', 'id="btn-hub-trakt"', 'cp-trakt')}
-              ${app ? actionTile('radio', 'Canlı TV', 'Canlı yayınları keşfet', 'href="#livetv"', '', 'a') : ''}
+
               ${actionTile('clapperboard', 'KANALIM', 'Kişisel yayın akışın', 'href="#kanalim"', '', 'a')}
               ${offline ? actionTile('download', 'İndirilenler', 'Çevrimdışı izlemeye devam et', 'href="#downloads"', '', 'a') : ''}
             </div>

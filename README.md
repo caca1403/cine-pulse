@@ -48,7 +48,7 @@ CinePulse; film, dizi ve anime **keşfini**, kişisel **izleme takibini** ve **o
 | **Profiller** | Ayrı profiller ve çocuk profiline uygun içerik filtreleri (yaş türü engelleme). |
 | **Trakt** | İsteğe bağlı izleme geçmişi ve liste senkronizasyonu. |
 | **Veri taşınabilirliği** | JSON yedekleme ve başka cihazda içe aktarma; güncelleme sonrası veriler **birebir korunur**. |
-| **Canlı TV** | Windows, Linux ve Android'de canlı yayın akışı (web'de yok). |
+| **Canlı TV** | Canlı yayın akışı — **geçici olarak kapalı** (yeniden açılana kadar gizli). |
 | **Çevrimdışı** | Android'de desteklenen içerikleri indirme. |
 
 ### Platform farkları
@@ -57,7 +57,7 @@ CinePulse; film, dizi ve anime **keşfini**, kişisel **izleme takibini** ve **o
 | :--- | :---: | :---: | :---: |
 | Keşif, listeler, ilerleme | ✓ | ✓ | ✓ |
 | İçerik oynatma | Kaynağa bağlı | Kaynağa bağlı | Kaynağa bağlı |
-| Canlı TV / yayın akışı | — | ✓ | ✓ |
+| Canlı TV / yayın akışı | — | Geçici kapalı | Geçici kapalı |
 | Çevrimdışı indirme | — | — | Desteklenen içeriklerde |
 | Uygulama içi tarayıcıyla doğrulama | — | Destekli yayınlarda | Kaynağa bağlı |
 | JSON yedekleme | ✓ | ✓ | ✓ |
