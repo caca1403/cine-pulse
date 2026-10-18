@@ -1,4 +1,5 @@
 import dns from 'dns';
+import https from 'https';
 try { dns.setDefaultResultOrder('ipv4first'); } catch (_) {}
 import { resolveCanliChannel } from '../api/_canlitv.js';
 /**
@@ -450,6 +451,49 @@ async function getTorrentVideoFile(infoHashOrMagnet) {
   pendingTorrents.set(infoHash, loadPromise);
   loadPromise.catch(() => {}).finally(() => pendingTorrents.delete(infoHash));
   return loadPromise;
+}
+
+// ============ Dizisol IP-by-DoH yardımcısı ============
+// Operatör DNS'i dizisol.com'u çözemeyince (ölçüldü: cihazda ERR_NAME_NOT_RESOLVED,
+// node'da getaddrinfo ENOTFOUND) adresi DoH'dan al, TLS'i o IP'ye servername=gerçek
+// ad ile kur — sertifika yine gerçek ada karşı doğrulanır (Node bunu sunucudaki SNI
+// ile yapar). Yalnız GET JSON uçları için; m3u8/video akışı bu yoldan geçirilmez.
+let _dzsIpCache = { ip: '', zaman: 0 };
+async function dzsTemizIp() {
+  if (_dzsIpCache.ip && Date.now() - _dzsIpCache.zaman < 600000) return _dzsIpCache.ip;
+  for (const u of [
+    'https://cloudflare-dns.com/dns-query?name=dizisol.com&type=A',
+    'https://dns.google/resolve?name=dizisol.com&type=A'
+  ]) {
+    try {
+      const r = await fetch(u, { headers: { Accept: 'application/dns-json' }, signal: AbortSignal.timeout(5000) });
+      if (!r.ok) continue;
+      const j = await r.json().catch(() => null);
+      const kayit = (j && Array.isArray(j.Answer) ? j.Answer : []).find((a) => a.type === 1 && a.data);
+      if (kayit) { _dzsIpCache = { ip: kayit.data, zaman: Date.now() }; return kayit.data; }
+    } catch (_) { /* sonraki DoH sağlayıcısına düş */ }
+  }
+  return '';
+}
+
+function dzsIpGetir(pathWithQuery, basliklar) {
+  return new Promise(async (resolve) => {
+    try {
+      const ip = await dzsTemizIp();
+      if (!ip) return resolve(null);
+      const req = https.request({
+        host: ip, port: 443, path: pathWithQuery, method: 'GET',
+        servername: 'dizisol.com', headers: basliklar, timeout: 9000
+      }, (res) => {
+        let buf = '';
+        res.on('data', (c) => { buf += c; });
+        res.on('end', () => resolve({ durum: res.statusCode, govde: buf, tip: res.headers['content-type'] || 'application/json' }));
+      });
+      req.on('timeout', () => req.destroy(new Error('dzs-ip-zamanasimi')));
+      req.on('error', () => resolve(null));
+      req.end();
+    } catch (_) { resolve(null); }
+  });
 }
 
 // ============ HTTP Server ============
@@ -1214,20 +1258,36 @@ const server = http.createServer(async (req, res) => {
     const subPath = reqUrl.pathname.replace(/^(\/api)?\/dzs/, '') || '/';
     const targetUrl = `https://dizisol.com/api${subPath}${reqUrl.search}`;
     try {
-      const upstreamRes = await fetch(targetUrl, {
-        method: req.method,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Referer': 'https://dizisol.com/',
-          'Accept': 'application/json, text/plain, */*'
-        }
-      });
-      const data = await upstreamRes.text();
-      res.writeHead(upstreamRes.status, {
-        'Content-Type': upstreamRes.headers.get('content-type') || 'application/json',
+      const hedef = new URL(targetUrl);
+      const basliklar = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': 'https://dizisol.com/',
+        'Accept': 'application/json, text/plain, */*'
+      };
+      let durum = 0, govde = '', tip = 'application/json';
+      try {
+        const upstreamRes = await fetch(targetUrl, { method: req.method, headers: basliklar });
+        govde = await upstreamRes.text();
+        durum = upstreamRes.status;
+        tip = upstreamRes.headers.get('content-type') || 'application/json';
+      } catch (_) { /* DNS/ağ hatası → aşağıdaki IP yoluna düş */ }
+      // DNS düzeyinde engel çözümü (ölçüldü 2026-10): operatör DNS'i dizisol.com'u
+      // çözemiyor (tarayıcı güvenli DNS ile açar, sistem/node açamıyor). JSON
+      // alınamadıysa adresi DoH'dan al, TLS'i IP'ye servername=gerçek ad ile kur
+      // — sertifika yine gerçek ada karşı doğrulanır.
+      const jsonMu = govde && (govde.trimStart()[0] === '{' || govde.trimStart()[0] === '[');
+      if (!jsonMu && req.method === 'GET') {
+        try {
+          const r2 = await dzsIpGetir(hedef.pathname + hedef.search, basliklar);
+          const ilk = (r2?.govde || '').trimStart()[0];
+          if (r2 && (ilk === '{' || ilk === '[')) { durum = r2.durum; govde = r2.govde; tip = r2.tip; }
+        } catch (_) { /* ne geldiğiyle devam et */ }
+      }
+      res.writeHead(durum || 502, {
+        'Content-Type': tip,
         'Access-Control-Allow-Origin': '*'
       });
-      res.end(data);
+      res.end(govde || JSON.stringify({ error: 'dizisol-ag' }));
       return;
     } catch (err) {
       res.writeHead(502, { 'Content-Type': 'application/json' });

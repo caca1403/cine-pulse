@@ -39,6 +39,120 @@ def _looks_like_cf_challenge(html):
         return False
 
 
+# ── DNS düzeyinde engel aşımı (DoH + TLS-by-IP) ─────────────────────────────
+# Operatör DNS'i bazı alan adlarını çözmüyor; tarayıcı güvenli DNS ile açıyor.
+# Adresi DoH'dan (Cloudflare/Google) çöz, TLS'i o IP'ye SNI=gerçek ad ile kur.
+# Sertifika doğrulaması gerçek ad üzerinden AYNEN yapılır — gevşetme yoktur.
+_doh_cache = {}
+
+
+def _dns_hatasi_mi(exc):
+    s = str(exc).lower()
+    return ('getaddrinfo' in s or 'gaierror' in s or 'name or service not known' in s
+            or 'nodename nor servname' in s or 'temporarily failed' in s
+            or 'try again' in s and 'name' in s)
+
+
+def _temiz_ip(host):
+    simdi = _time.time()
+    veri = _doh_cache.get(host)
+    if veri and simdi - veri[1] < 600:
+        return veri[0]
+    for kalip in ('https://cloudflare-dns.com/dns-query?name=%s&type=A',
+                  'https://dns.google/resolve?name=%s&type=A'):
+        try:
+            istek = urllib.request.Request(
+                kalip % urllib.parse.quote(host),
+                headers={'Accept': 'application/dns-json', 'User-Agent': FULL_UA})
+            with urllib.request.urlopen(istek, timeout=5) as yanit:
+                j = json.loads(yanit.read().decode('utf-8', 'ignore'))
+            for kayit in (j.get('Answer') or []):
+                if kayit.get('type') == 1 and kayit.get('data'):
+                    _doh_cache[host] = (kayit['data'], simdi)
+                    return kayit['data']
+        except Exception:
+            continue
+    return None
+
+
+def _sni_get(url, headers, timeout=7):
+    import http.client
+    import socket as _socket
+    import ssl as _ssl
+    p = urllib.parse.urlsplit(url)
+    if p.scheme != 'https' or not p.hostname:
+        raise RuntimeError('sni-yalnizz-https')
+    ip = _temiz_ip(p.hostname)
+    if not ip:
+        raise RuntimeError('doh-bos')
+    port = p.port or 443
+    zemin = _ssl.create_default_context()
+    ad = p.hostname
+    yol = (p.path or '/') + (('?' + p.query) if p.query else '')
+
+    class _IpBaglanti(http.client.HTTPSConnection):
+        def connect(self):
+            ham = _socket.create_connection((ip, port), self.timeout)
+            # server_hostname=gerçek ad → SNI doğru gider, sertifika gerçek
+            # ada karşı doğrulanır; yalnız TCP temiz IP'ye bağlanır.
+            self.sock = zemin.wrap_socket(ham, server_hostname=ad)
+
+    c = _IpBaglanti(ip, port, timeout=timeout)
+    try:
+        govde = dict(headers or {})
+        govde['Host'] = ad
+        c.request('GET', yol, headers=govde)
+        r = c.getresponse()
+        return r.status, r.read()
+    finally:
+        try:
+            c.close()
+        except Exception:
+            pass
+
+
+def _dns_ip_json(url, referer, timeout, extra_headers):
+    """DNS bloklu ortamlarda JSON Getir: adres DoH'dan, bağlantı IP üzerinden.
+    1) curl --resolve (parmak izi güçlü; bu repoda urllib'imz CF'lerce kırpılıyor
+       — dosya başındaki curl düşüşü aynı gerçeğin kanıtı), 2) python SNI-TLS."""
+    try:
+        p = urllib.parse.urlsplit(url)
+        if not p.hostname:
+            return None
+        ip = _temiz_ip(p.hostname)
+        if not ip:
+            return None
+        if _HAS_CURL:
+            cmd = ['curl', '-4', '-sS', '--compressed',
+                   '--max-time', str(max(3, int(timeout))),
+                   '--resolve', '%s:443:%s' % (p.hostname, ip),
+                   '-H', 'User-Agent: ' + FULL_UA,
+                   '-H', 'Accept: application/json, text/plain, */*']
+            if referer:
+                cmd += ['-H', 'Referer: ' + referer]
+            for k, v in (extra_headers or {}).items():
+                cmd += ['-H', '%s: %s' % (k, v)]
+            cmd.append(url)
+            try:
+                r = _subprocess.run(cmd, capture_output=True, timeout=max(5, timeout + 3))
+                metin = (r.stdout or b'').decode('utf-8', 'ignore')
+                if metin and metin[0] in '[{':
+                    return json.loads(metin)
+            except Exception:
+                pass
+        hdr = {'User-Agent': FULL_UA, 'Accept': 'application/json, text/plain, */*'}
+        if referer:
+            hdr['Referer'] = referer
+        if extra_headers:
+            hdr.update(extra_headers)
+        durum, govde = _sni_get(url, hdr, timeout=timeout)
+        if 200 <= durum < 400:
+            return json.loads(govde.decode('utf-8', 'ignore'))
+    except Exception:
+        pass
+    return None
+
+
 def _worker_fetch(url, referer='', timeout=10, post_data=None):
     """Worker uzerinden GET (post_data yoksa) veya form POST yapar.
     Vercel'den dogrudan erisilemeyen ama worker'dan acilan siteler icin."""
@@ -150,6 +264,13 @@ def fetch_html(url, referer='', timeout=7, extra_headers=None, attempts=2, worke
 
 
 def fetch_json(url, referer='', timeout=7, extra_headers=None, method='GET', data=None, attempts=2):
+    # DNS düzeyinde engel çözümü (ölçüldü 2026-10, cihaz): operatör DNS'i
+    # dizisol.com gibi alan adlarını çözmüyor (WebView: ERR_NAME_NOT_RESOLVED,
+    # urllib: gaierror) — tarayıcı güvenli DNS kullandığı için siteyi açıyor,
+    # uygulamaysa hiç ulaşamıyordu. Son çare: adresi DoH'dan al, TLS'i temiz
+    # IP'ye SNI=gerçek ad ile kur. Sertifika yine gerçek ada karşı doğrulanır
+    # (check_hostname AÇIK — hiçbir doğrulama gevşetilmez, yalnız TCP IP'ye).
+    son_hata = None
     for i in range(max(1, attempts)):
         try:
             headers = {'User-Agent': FULL_UA, 'Accept': 'application/json, text/plain, */*'}
@@ -163,13 +284,16 @@ def fetch_json(url, referer='', timeout=7, extra_headers=None, method='GET', dat
             req = urllib.request.Request(url, data=body, headers=headers, method=method)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 return json.loads(resp.read().decode('utf-8'))
-        except Exception:
+        except Exception as e:
+            son_hata = e
             if i < attempts - 1:
                 try:
                     import time as _t
                     _t.sleep(0.3 + 0.3 * i)
                 except Exception:
                     pass
+    if son_hata is not None and _dns_hatasi_mi(son_hata):
+        return _dns_ip_json(url, referer, timeout, extra_headers)
     return None
 
 
