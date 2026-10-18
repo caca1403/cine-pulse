@@ -240,6 +240,14 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Sabit isimli indirme kopyalari (releases/latest/download icin)
+        run: |
+          cd release-assets
+          for f in CinePulse-Setup-*.exe; do [ -e "$f" ] && cp -f "$f" CinePulse-Setup.exe; done
+          for f in CinePulse-*.deb; do [ -e "$f" ] && cp -f "$f" CinePulse.deb; done
+          for f in CinePulse-*.flatpak; do [ -e "$f" ] && cp -f "$f" CinePulse.flatpak; done
+          ls -la
+
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:

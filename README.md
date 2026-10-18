@@ -71,10 +71,12 @@ Paketler **[resmî GitHub Releases](https://github.com/caca1403/cine-pulse/relea
 | Platform | Paket | Bağlantı |
 | :--- | :--- | :--- |
 | **Web** | Kurulumsuz | [Siteyi aç](https://cinepulse.cinepulse.workers.dev/) |
-| **Windows** | EXE | [CinePulse-Setup-1.1.77.exe](https://github.com/caca1403/cine-pulse/releases/download/v1.1.77/CinePulse-Setup-1.1.77.exe) |
+| **Windows** | EXE | [CinePulse-Setup.exe](https://github.com/caca1403/cine-pulse/releases/latest/download/CinePulse-Setup.exe) |
 | **Android** | APK | [cinepulse.apk](https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk) |
-| **Linux / Debian, Ubuntu** | DEB | [CinePulse-1.1.77.deb](https://github.com/caca1403/cine-pulse/releases/download/v1.1.77/CinePulse-1.1.77.deb) |
-| **Linux / Flatpak** | Flatpak | [CinePulse-1.1.77.flatpak](https://github.com/caca1403/cine-pulse/releases/download/v1.1.77/CinePulse-1.1.77.flatpak) |
+| **Linux / Debian, Ubuntu** | DEB | [CinePulse.deb](https://github.com/caca1403/cine-pulse/releases/latest/download/CinePulse.deb) |
+| **Linux / Flatpak** | Flatpak | [CinePulse.flatpak](https://github.com/caca1403/cine-pulse/releases/latest/download/CinePulse.flatpak) |
+
+> Bağlantılar sürüm adı taşımaz; her zaman **en son sürüme** iner. Sürümlü dosyalar ve sürüm notları [Releases](https://github.com/caca1403/cine-pulse/releases/latest) sayfasındadır.
 
 - **Android:** APK, eski sürümle **aynı kalıcı anahtarla** imzalanır — üzerine güncelleyebilirsin (verilerin silinmez).
 - **Flatpak:** Fedora, elementaryOS, Zorin vb. Flatpak destekli dağıtımlar içindir.

@@ -31,13 +31,18 @@ if (!/^\d+\.\d+\.\d+$/.test(String(pkg.version || '')) || !Number.isInteger(pkg.
   process.exit(1);
 }
 
-const base = `https://github.com/${slug}/releases/download/v${pkg.version}`;
+// Butonlar dogrudan GitHub "latest" varliklarina iner — surum adi tasidiklari
+// icin HICBIR ZAMAN eskimez; yeni surum cikinca ayni bag calismaya devam eder.
+const latest = `https://github.com/${slug}/releases/latest/download`;
 const urls = {
-  downloadUrl: `${base}/cinepulse.apk`,
-  githubDownloadUrl: `${base}/cinepulse.apk`,
-  windowsSetupUrl: `${base}/CinePulse-Setup-${pkg.version}.exe`,
-  linuxFlatpakUrl: `${base}/CinePulse-${pkg.version}.flatpak`,
-  linuxDebUrl: `${base}/CinePulse-${pkg.version}.deb`,
+  downloadUrl: `${latest}/cinepulse.apk`,
+  githubDownloadUrl: `${latest}/cinepulse.apk`,
+  windowsSetupUrl: `${latest}/CinePulse-Setup.exe`,
+  linuxFlatpakUrl: `${latest}/CinePulse.flatpak`,
+  linuxDebUrl: `${latest}/CinePulse.deb`,
+  // Eski istemciler (<=1.1.75) bu anahtari okur: AppImage kaldirildigi icin
+  // dogrudan son surum sayfasina yonlenir, kullanici yeni paketleri gorur.
+  linuxAppImageUrl: `https://github.com/${slug}/releases/latest`,
 };
 
 const problems = [];
@@ -49,7 +54,7 @@ for (const rel of ['public/version.json', 'public/desktop-version.json']) {
   if (manifest.desktop && typeof manifest.desktop === 'object') {
     expected['desktop.version'] = pkg.version;
     expected['desktop.versionCode'] = pkg.versionCode;
-    for (const key of ['windowsSetupUrl', 'linuxFlatpakUrl', 'linuxDebUrl']) {
+    for (const key of ['windowsSetupUrl', 'linuxFlatpakUrl', 'linuxDebUrl', 'linuxAppImageUrl']) {
       if (key in manifest.desktop) expected[`desktop.${key}`] = urls[key];
     }
   }

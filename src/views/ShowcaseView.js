@@ -39,12 +39,14 @@ export function renderShowcaseView() {
   // Derleme-anlik yedek: canli manifest gelene kadar gosterilir.
   // init() calisinca her kart kendi platform manifestinden dogru surume
   // gecer; tek bump butun kartlari ayni surume tasimaz.
-  const release = `${RELEASES}/download/v${pkg.version}`;
+  // Butonlar surum adi tasimaz — GitHub "latest" varliklarina dogrudan iner
+  // ve yeni surum cikinca ayni baglar guncel kalir.
+  const son = `${RELEASES}/latest/download`;
   const packages = [
-    ['monitor', 'Windows', 'EXE kurulum sihirbazı', `${release}/CinePulse-Setup-${pkg.version}.exe`, 'EXE İndir', 'windows'],
-    ['smartphone', 'Android', 'Telefon ve tablet için APK', `${RELEASES}/latest/download/cinepulse.apk`, 'APK İndir', 'android'],
-    ['package', 'Linux · DEB', 'Debian / Ubuntu tabanlı sistemler', `${release}/CinePulse-${pkg.version}.deb`, 'DEB İndir', 'deb'],
-    ['layers', 'Linux · Flatpak', 'Flatpak destekli dağıtımlar (Fedora, elementaryOS vb.)', `${release}/CinePulse-${pkg.version}.flatpak`, 'Flatpak İndir', 'flatpak']
+    ['monitor', 'Windows', 'EXE kurulum sihirbazı', `${son}/CinePulse-Setup.exe`, 'EXE İndir', 'windows'],
+    ['smartphone', 'Android', 'Telefon ve tablet için APK', `${son}/cinepulse.apk`, 'APK İndir', 'android'],
+    ['package', 'Linux · DEB', 'Debian / Ubuntu tabanlı sistemler', `${son}/CinePulse.deb`, 'DEB İndir', 'deb'],
+    ['layers', 'Linux · Flatpak', 'Flatpak destekli dağıtımlar (Fedora, elementaryOS vb.)', `${son}/CinePulse.flatpak`, 'Flatpak İndir', 'flatpak']
   ];
   return {
     html: `<div class="cp-landing">
