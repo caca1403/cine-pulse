@@ -11,7 +11,7 @@
 const ANAHTARLAR = ['name', 'source', 'badge', 'label', 'provider', 'siteName', 'site'];
 
 // alan değerinde geçen gerçek site izleri → kod adı (src/providers KAYIT +
-// pluginCatalog ALIASES ile birebir aynı adlar)
+// sourceLabels SOURCE_FAMILIES ile birebir aynı adlar)
 const IZLER = [
   { re: /dizisol/i, ad: 'Atlas' },
   { re: /sezonluk\s*dizi/i, ad: 'Luna' },

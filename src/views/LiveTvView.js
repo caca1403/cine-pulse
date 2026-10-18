@@ -1,6 +1,6 @@
-import { disposeLiveMedia } from '../services/livePlayback.js';
+import { disposeLiveMedia } from '../services/canli/livePlayback.js';
 import Hls from 'hls.js';
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 import { createPlayerScope } from '../components/playerLifecycle.js';
 /* ==========================================================================
    CinePulse Studio - Cinema IPTV Platform (Full-Width Player + Bottom Grid)
@@ -8,19 +8,19 @@ import { createPlayerScope } from '../components/playerLifecycle.js';
    100% Native HLS.js Direct Playback — Zero Iframes, Zero Ads
    ========================================================================== */
 
-import { LIVE_TV_CATEGORIES, LIVE_TV_CHANNELS, getChannelBadgeSvg } from '../services/liveTvChannels.js';
-import { normalizeCanliName } from '../services/canliTvChannels.js';
+import { LIVE_TV_CATEGORIES, LIVE_TV_CHANNELS, getChannelBadgeSvg } from '../services/canli/liveTvChannels.js';
 import {
-  getAllCachedSources, probeLiveSources, buildChannels, probeChannels
-} from '../services/turkishLiveSources.js';
+  getAllCachedSources, probeLiveSources, buildChannels, probeChannels, kanalAnahtari
+} from '../services/canli/turkishLiveSources.js';
 import {
   sortByPopularity, resolveLocalLogo
-} from '../services/iptvOrgChannels.js';
-import { getChannelEpg, initEpgService, stopEpgService } from '../services/epgService.js';
+} from '../services/canli/iptvOrgChannels.js';
+import { getChannelEpg, initEpgService, stopEpgService } from '../services/canli/epgService.js';
 import { showToast } from '../components/Toast.js';
-import { isKidProfileActive } from '../services/storage.js';
-import { apiUrl, isNativeCapacitor } from '../services/apiOrigin.js';
-import { getAltSources, getPreferredSourceKey, setPreferredSourceKey, getRelayOrigin, setRelayOrigin, getTsBases, getTsBaseIdx, setTsBaseIdx } from '../services/xtreamAltSources.js';
+import { isKidProfileActive } from '../services/altyapi/storage.js';
+import { apiUrl, isNativeCapacitor } from '../services/altyapi/apiOrigin.js';
+import { nativeRotaDestekliMi } from '../services/platform/nativePlayer.js';
+import { getAltSources, getPreferredSourceKey, setPreferredSourceKey, getRelayOrigin, setRelayOrigin, getTsBases, getTsBaseIdx, setTsBaseIdx } from '../services/dogrudan/xtreamAltSources.js';
 
 const FAVS_STORAGE_KEY = 'cinepulse_live_favs';
 
@@ -114,32 +114,118 @@ export function renderLiveTvView() {
     return isNativeCapacitor() ? apiUrl(proxied) : proxied;
   }
 
+  /* ── Kalıcı "kazanmış ana yayın" kaydı ────────────────────────────────
+     Kullanıcı (2026-10-17): "aynı içeriği sunanları birleştir, en stabilini
+     ana, diğerini ona yedek yap — DURUMA GÖRE". Hangi yayınların gerçekten
+     yaşadığı cihazdan/ağdan ağa değiştiği için buna STATİK karar verilemez:
+     sağlık denetiminde yaşayan yedeyi bulunca o yayın ANA yayın olur ve
+     kanalda kalıcı olarak saklanır → bir sonraki açılışta doğrudan stabil
+     yayın denenir, "yayına bağlanılıyor" beklemez. */
+  const PRIMARY_KEY = '***';
+  function okuBirinciller() {
+    try { return JSON.parse(localStorage.getItem(PRIMARY_KEY) || '{}') || {}; } catch (_) { return {}; }
+  }
+  function birincilKaydet(id, url) {
+    try {
+      const mevcut = okuBirinciller();
+      if (mevcut[id] === url) return;
+      mevcut[id] = url;
+      localStorage.setItem(PRIMARY_KEY, JSON.stringify(mevcut));
+    } catch (_) {}
+  }
+  /** Kalıcı kayda göre kanalın ana yayınını değiştirir (yedek → ana). */
+  function kalıcıAnaUygula(c) {
+    const birinciller = okuBirinciller();
+    const url = birinciller[c.id];
+    if (!url || !Array.isArray(c.altStreams)) return c;
+    const i = c.altStreams.findIndex((a) => a.url === url);
+    if (i < 0) return c;
+    const [kazanan] = c.altStreams.splice(i, 1);
+    c.altStreams.unshift({ url: c.streamUrl, isTs: c.isTs === true, headers: c.headers || null });
+    c.streamUrl = kazanan.url;
+    c.isTs = kazanan.isTs === true;
+    c.headers = kazanan.headers || null;
+    return c;
+  }
+
   // Omurga: LIVE_TV_CHANNELS (resmi dogrudan CDN akislari) + M3U kaynaklari.
   // Onceki "uzak canli" kaynaklari (iptv-org, TVR/ReçTV) kaldirildi: coprek
   // ve cogu zaman oluyordu. Yerine Turkcan TV M3U listeleri geliyor.
-  const curatedBase = (LIVE_TV_CHANNELS || []).map(c => ({
-    ...c,
-    streamUrl: toProxiedLiveUrl(c.streamUrl),
-    logo: resolveLocalLogo(c.name) || c.logo || getChannelBadgeSvg(c.name, c.category)
-  }));
-  const curatedNames = new Set(curatedBase.map((c) => normalizeCanliName(c.name)));
+  // ÖLÇÜLEN HATA (2026-10-17): sunucuya özel rotalar (/api/live_tv_stream —
+  // DMAX/TLC) cihaz köprüsünde YOK; listeye girse "native route unavailable"
+  // veriyordu. Cihazda bu kanallar BU YÜZDEN baştan listelenmez ve aynı adı
+  // taşıyan M3U yayınını da gölgelemez (DMAX/TLC artık M3U'dan gelir).
+  const rotaOk = (c) => !isNativeCapacitor() || nativeRotaDestekliMi(c.streamUrl);
+  const curatedBase = (LIVE_TV_CHANNELS || [])
+    .filter((c) => rotaOk(c))
+    .map(c => ({
+      ...c,
+      streamUrl: toProxiedLiveUrl(c.streamUrl),
+      logo: resolveLocalLogo(c.name) || c.logo || getChannelBadgeSvg(c.name, c.category)
+    }));
+  /* Kürasyon listesi ile M3U havuzu AYNI kanalı iki kez verebiliyor
+     ("TRT Müzik" ↔ "TRT MUZIK", "A2 TV" ↔ "A2", "Çiftçi TV" ↔ "CIFTCI TV").
+     ÖLÇÜLDÜ (apk43, Müzik kategorisi 17 kart: TRT Müzik iki kez). Eski
+     normalizeCanliName Türkçe/ASCII yazım farkını görmediği için kaçırıyordu;
+     kanalAnahtari ülke/kalite ekini temizleyip ASCII'ye katlar, "…TV"
+     varyantı da eşleştirilir.
+     KÜRASYON ANA YAYIN OLUR, M3U ADRESLERİ YEDEK OLUR. (Sadece M3U kopyasını
+     silmek yetmezdi: apk44 ölçümü — ATV resmi CDN yayını tek başına kaldı,
+     cihazda 20 sn içinde akmadı ve yedek adresi de olmadığı için kanal
+     "yanıt vermedi" verdi. Artık M3U adresleri zincire ekleniyor.) */
+  const kürasyonHaritası = new Map();
+  for (const c of curatedBase) {
+    const k = kanalAnahtari(c.name);
+    if (!k) continue;
+    kürasyonHaritası.set(k, c);
+    const kisa = k.replace(/TV$/, '');
+    if (kisa.length >= 2 && kisa !== k && !kürasyonHaritası.has(kisa)) kürasyonHaritası.set(kisa, c);
+  }
+  const kürasyonEşleşeni = (ad) => {
+    const k = kanalAnahtari(ad);
+    if (!k) return null;
+    if (kürasyonHaritası.has(k)) return kürasyonHaritası.get(k);
+    const kisa = k.replace(/TV$/, '');
+    return kisa.length >= 2 && kisa !== k && kürasyonHaritası.has(kisa) ? kürasyonHaritası.get(kisa) : null;
+  };
+  /** M3U kanalının adreslerini kürasyon kanalının YEDEKLERİ yapar. */
+  function yedekleriEkle(hedef, kaynakKanal) {
+    hedef.altStreams = Array.isArray(hedef.altStreams) ? hedef.altStreams : [];
+    const ekle = (url, isTs, headers) => {
+      if (!url || hedef.altStreams.length >= 6) return;
+      if (hedef.altStreams.some((a) => a.url === url)) return;
+      // Aynı adres zaten ana yayın olarak proxy'lenmiş olabilir: çift sarmalama
+      // (proxy içinde proxy) yapılmasın.
+      if (hedef.streamUrl && hedef.streamUrl.includes(encodeURIComponent(url))) return;
+      hedef.altStreams.push({ url, isTs: isTs === true, headers: headers || null });
+    };
+    ekle(kaynakKanal.streamUrl, kaynakKanal.isTs, kaynakKanal.headers);
+    for (const a of (kaynakKanal.altStreams || []).slice(0, 5)) ekle(a.url, a.isTs, a.headers);
+  }
 
   // M3U kanallari: acilis aninda onbellekten basilir (medya yuklenmeden),
   // arka planda probeLiveSources() ile tazelenir.
-  const toLiveChannels = (sources) => buildChannels(sources, { resolveLogo: resolveLocalLogo })
-    .filter(c => !curatedNames.has(normalizeCanliName(c.name)))
-    .map(c => ({
+  function toLiveChannels(sources) {
+    const havuz = buildChannels(sources, { resolveLogo: resolveLocalLogo }).map((c) => kalıcıAnaUygula(c));
+    const listedeGelecekler = [];
+    for (const c of havuz) {
+      const hedef = kürasyonEşleşeni(c.name);
+      if (hedef) { yedekleriEkle(hedef, c); continue; }   // ayrı kart açılmaz
+      listedeGelecekler.push(c);
+    }
+    return listedeGelecekler.map((c) => ({
       ...c,
       logo: c.logo || getChannelBadgeSvg(c.name, c.category),
       streamUrl: toProxiedLiveUrl(c.streamUrl, c.headers)
     }));
+  }
 
   const m3uInitial = toLiveChannels(getAllCachedSources());
   const kidOk = (c) => !isKid || c.category === 'kids';
   const allChannels = [
     ...curatedBase.filter(kidOk),
     ...m3uInitial.filter(kidOk)
-  ];
+  ].filter(rotaOk);
 
   // ─── Kanal sağlık durumu ──────────────────────────────────────────────
   // M3U listeleri kirpiktir (ölü kanallar çok). Liste ekrana çıktıktan SONRA
@@ -203,10 +289,19 @@ export function renderLiveTvView() {
     });
     // "Tumu"nde Turkiye populerligine gore sirala
     const ranked = activeCategory === 'all' ? sortByPopularity(list) : list;
-    // Saglik sirasi ONCELIKLIDIR: kanitlanmis olu kanallar en sona. Array.sort
-    // kararli oldugu icin ayni saglik grubu icinde populerlik sirasi korunur.
     if (!deadUrls.size) return ranked;
-    return ranked.slice().sort((a, b) => healthRank(a) - healthRank(b));
+    /* Kullanıcı (2026-10-17): "çalıştığına emin olduklarını al". ÖLÜ gösterilen
+       kanal YALNIZCA TÜM adresleri ölüyse listeden düşer.apk45'te sadece ana
+       adresi ölü sayılan ATV, yedekleri yaşadığı halde listeden tamamen
+       kaybolmuştu → "kanal yok" şikâyeti. Ana adresi ölü ama yedeği yaşayan
+       kanal listede kalır (sona sıralanır) ve zincir zaten yedeğe geçer. */
+    const tümüÖlüMü = (c) => {
+      if (!deadUrls.has(c.streamUrl)) return false;
+      return (c.altStreams || []).every((a) => deadUrls.has(toProxiedLiveUrl(a.url, a.headers)));
+    };
+    const canlilar = ranked.filter((c) => !tümüÖlüMü(c));
+    if (canlilar.length) return canlilar.sort((a, b) => healthRank(a) - healthRank(b));
+    return ranked;
   }
 
   function getChannelIndex(ch) {
@@ -562,6 +657,16 @@ export function renderLiveTvView() {
           isTs: primaryIsTs,
           isDefault: true
         }, ...alts, ...extraSrcs];
+        /* ÖLÜ OLDUĞU BİLİNEN yayınlar zincirin sonuna atılır.
+           KANIT (cihaz, 2026-10-17): ölü ana yayında kullanıcı 11 sn boyunca
+           "Yayına bağlanılıyor…" görüyordu; zincirdekine ancak sonra geçiliyordu.
+           Sağlık denetimi hangi adresin öldüğünü biliyor → boşuna denemiyor. */
+        if (deadUrls.size > 0) {
+          srcList = srcList
+            .map((s, i) => ({ s, i }))
+            .sort((a, b) => (Number(deadUrls.has(a.s.url)) - Number(deadUrls.has(b.s.url))) || (a.i - b.i))
+            .map((x) => x.s);
+        }
         const pref = getPreferredSourceKey(channel.id);
         const pi = pref ? srcList.findIndex(s => s.key === pref) : -1;
         const hasAlts = alts.length > 0;
@@ -1112,19 +1217,43 @@ export function renderLiveTvView() {
 
         // A parsed playlist is not proof that its segments are playable.
         // Keep the loading state until the browser has actual video data.
+        // KULLANICI (2026-10-17): "ses geliyor gerisi yok, hepten 'yayına
+        // bağlanılıyor' yazıyor". KÖK NEDEN: bozuk aynalarda yalnızca SES izi
+        // çözülür; loadeddata sesi görünce tetiklenir, videoFrame hiç gelmez.
+        // Denetim eskiden yalnız readyState<2'ye baktığı için zincir bir sonraki
+        // kaynağa geçmez, "bağlanılıyor" sonsuza kadar sürerdi. Artık:
+        // 1) "hazır" sayılmak video karesi şarttır (resize: iz sonradan gelir),
+        // 2) ses 2 sn akıp kare yoksa kaynak ÖLÜ sayılıp sıradakine geçilir.
         const onVideoReady = () => {
           if (channelPlaybackToken !== myToken) return;
+          if (!videoEl.videoWidth) return; // ses geldi ama görüntü yok → hazır değil
           loadingEl.classList.add('hidden');
           errorEl.classList.add('hidden');
         };
-        videoEl.addEventListener('loadeddata', onVideoReady, { once: true });
+        videoEl.addEventListener('loadeddata', onVideoReady);
+        videoEl.addEventListener('resize', onVideoReady);
+        const sesVarGoruntuYok = () => {
+          if (channelPlaybackToken !== myToken) {
+            videoEl.removeEventListener('timeupdate', sesVarGoruntuYok); // eski kanal artığı
+            return;
+          }
+          if (videoEl.videoWidth > 0) {
+            // Görüntü 6 sn'den GEÇ geldiyse perdedeki "bağlanılıyor"u kaldır.
+            loadingEl.classList.add('hidden');
+            errorEl.classList.add('hidden');
+          } else if (!embeddedPlayback && videoEl.currentTime >= 2) {
+            advanceOrError(); // ses akıyor, kare yok → kaynak ölü
+          }
+        };
+        videoEl.addEventListener('timeupdate', sesVarGoruntuYok);
         setTimeout(() => {
           videoEl.removeEventListener('loadeddata', onVideoReady);
+          videoEl.removeEventListener('resize', onVideoReady);
           // Ön kontrol (onKontrol) kaynağın gerçekten akıtıp akıtmadığını önceden
           // soruyor; bu yüzden burada beklenecek süre uzun olmak zorunda değil.
           // 20sn yerine 11sn: kullanıcı sıradaki kanala çok daha çabuk geçer.
           if (channelPlaybackToken === myToken && videoEl.readyState < 2 && !embeddedPlayback) advanceOrError();
-        }, 11000);
+        }, 6000);
 
         let freshStreamAttempted = false;
         let officialRefreshAttempts = 0;
@@ -1218,6 +1347,12 @@ export function renderLiveTvView() {
         // (relay -> worker -> direct); bazlar da biterse hata göster.
         function advanceOrError() {
           if (channelPlaybackToken !== myToken) return;
+          /* Başarısız kaynağı NOT ET (oturum içi, kalıcı değil): aynı kanal ya da
+             başka bir kanal için bu adres boşuna baştan denenmez. Ölçüldü: ölü
+             adres her kanalda tekrar baştan denendiği için geçişler 10-20 sn
+             sürüyordu. buildSrcList ölü bilineni zincirin sonuna atıyor. */
+          const başarısız = srcList[srcIdx];
+          if (başarısız && başarısız.url && typeof başarısız.url === 'string') deadUrls.add(başarısız.url);
           const next = srcList.findIndex((_, i) => !triedSrc.has(i));
           if (next >= 0) {
             srcIdx = next;
@@ -1724,6 +1859,23 @@ export function renderLiveTvView() {
         try { renderAllViews(); } catch (_) {}
       }
 
+      /** Sağlık denetiminde YAŞADIĞI ölçülen yedeyi ana yayına çıkarır. */
+      function anaYukselt(kanal, url) {
+        if (!kanal || !Array.isArray(kanal.altStreams)) return false;
+        const i = kanal.altStreams.findIndex((a) => a.url === url);
+        if (i < 0) return false;
+        const [kazanan] = kanal.altStreams.splice(i, 1);
+        const eski = { url: kanal.streamUrl, isTs: kanal.isTs === true, headers: kanal.headers || null };
+        kanal.streamUrl = kazanan.url;
+        kanal.isTs = kazanan.isTs === true;
+        kanal.headers = kazanan.headers || null;
+        kanal.altStreams.unshift(eski);
+        deadUrls.delete(toProxiedLiveUrl(kanal.streamUrl, kanal.headers));
+        deadUrls.add(eski.url);
+        birincilKaydet(kanal.id, kazanan.url);
+        return true;
+      }
+
       function runHealthProbe() {
         // Görünüm kapanmışsa (bekleyen denetim scope.dispose ile iptal edilmezse
         // ya da dispose sonrası bir .then çalışırsa) hiçbir ag isteği atma.
@@ -1740,13 +1892,41 @@ export function renderLiveTvView() {
           limit: HEALTH_PROBE_LIMIT,
           concurrency: 4,
           timeout: 6000
-        }).then((result) => {
+        }).then(async (result) => {
           if (!document.contains(container)) return;
           const deadList = [...result.dead];
           writeHealth(deadList);
           applyHealth(deadList);
           if (result.tested) {
             showToast(`${result.tested} kanal denetlendi · ${result.alive.size} çalışıyor`, 'info');
+          }
+
+          /* 2) AŞAMA — ölü ana yayında YAŞAYAN yedek aranır ve ana yayına
+             alınır. Aşama 1 yalnız ana adresi denediği için, ana adresi ölü
+             olan kanal "ölü" sayılıp LISTEDEN GİZLENİYORDU; oysa yedeği
+             çalışıyordu (ölçüldü: TRT Spor ana 404, yedeği 200). Böylece
+             "çalışanları topla, en stabilini ana yap" isteği cihazda, o anki
+             ağa göre uygulanmış olur. */
+          const ölüAna = allChannels.filter(c => deadUrls.has(c.streamUrl) && (c.altStreams || []).length);
+          if (!ölüAna.length) return;
+          const sahte = [];
+          for (const c of ölüAna.slice(0, 24)) {
+            for (const a of (c.altStreams || []).slice(0, 2)) {
+              sahte.push({ __kanal: c, streamUrl: a.url, headers: a.headers });
+            }
+          }
+          const aşama2 = await probeChannels(sahte, (x) => toProxiedLiveUrl(x.streamUrl, x.headers), {
+            limit: sahte.length, concurrency: 4, timeout: 6000
+          });
+          if (!document.contains(container)) return;
+          let terfi = 0;
+          for (const s of sahte) {
+            if (!aşama2.alive.has(s.streamUrl)) continue;
+            if (anaYukselt(s.__kanal, s.streamUrl)) terfi++;
+          }
+          if (terfi) {
+            showToast(`${terfi} kanalda en stabil yayın ana yayına alındı`, 'success');
+            try { renderAllViews(); } catch (_) {}
           }
         }).catch(() => {}).finally(() => {
           healthProbeRunning = false;

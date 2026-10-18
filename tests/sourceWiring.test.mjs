@@ -1,16 +1,16 @@
 /* ==========================================================================
-   Kaynak BAĞLAMA denetimi — ölü kod koruması
+   Kaynak BAĞLAMA denetimi — ölü kod koruması (KISA DİZİ)
 
-   Dizi77 ve sinemacc kazıyıcıları yazıldı, kataloga eklendi, testleri de
-   doğrudan import ettikleri için GEÇTİ — ama aggregator onları hiç
-   çağırmıyordu, dolayısıyla üretilen pakette hiç yoktular.
+   Eklenti/sağlayıcı katmanı söküldü: src/providers/ (KAYIT), providerRuntime/,
+   site sürücüleri ve gömülü oynatıcı çözücülerinin hepsi kaldırıldı. Kaynak
+   keşfi yalnız iki kısa dizi kazıyıcısına indi.
 
-   Bu test iki şeyi doğrular:
-     1) Her kaynak kazıyıcısı aggregator tarafından gerçekten çağrılıyor.
-     2) Üretilen paket, o kaynağın kendine özgü imzasını İÇERİYOR
-        (yani gerçekten dağıtıma giriyor).
-
-   Yeni kaynak eklerken ikinci dosyaya (KAYNAK_IMZALARI) bir satır ekle.
+   Bu test üç şeyi doğrular:
+     1) İki kısa dizi kazıyıcısı aggregator tarafından gerçekten çağrılıyor.
+     2) Kaynak id'leri anonim kod adı defterinde (sourceLabels) kayıtlı — yani
+        arayüzde gerçek site adı değil kod adı görünür.
+     3) Sökülen kat geri gelmedi: eski dosyalar yok ve hiçbir kaynak dosya
+        onları import etmiyor.
    ========================================================================== */
 
 import fs from 'fs';
@@ -20,66 +20,101 @@ import { fileURLToPath } from 'url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let pass = 0, fail = 0;
 const ok = (c, m) => { c ? (pass++, console.log(`  ✓ ${m}`)) : (fail++, console.log(`  ✗ ${m}`)); };
+const oku = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
-// id -> { dosya, aggregator'da çağrılan fonksiyon, pakette aranacak özgün imza }
-// Yalnızca temiz sağlayıcısı OLMAYAN kaynaklar burada listelenir. Eski
-// scraper'ı silinen satırlar (sinemacc→Halcyon, dizibox→ELE) temiz kalıba
-// taşındı; onların bağlantısı 1b bölümünde doğrulanıyor.
-const KAYNAK_IMZALARI = [
-  { id: 'vodm3u',   dosya: 'vodM3uSources.js',   cagri: 'fetchVodSources',      imza: 'patr0nq/flmS' }
+console.log('\n═══ 1) Kısa dizi kazıyıcısı → aggregator bağlantısı ═══');
+const agg = oku('src/services/kaynak/providerAggregator.js');
+const KAYNAKLAR = [
+  { onek: 'dml_', dosya: 'kaynak/dramalarScraper.js', cagri: 'fetchDramalarEpisodeSources' },
+  { onek: 'ddz_', dosya: 'kaynak/dramaDizilerimScraper.js', cagri: 'fetchDramaDizilerimEpisodeSources' }
 ];
-
-console.log('\n═══ 1) Kaynak kazıyıcısı → aggregator bağlantısı ═══');
-const agg = fs.readFileSync(path.join(ROOT, 'src/services/providerAggregator.js'), 'utf8');
-
-for (const k of KAYNAK_IMZALARI) {
-  const dosyaVar = fs.existsSync(path.join(ROOT, 'src/services', k.dosya));
-  ok(dosyaVar, `${k.dosya} mevcut`);
-  const importEdildi = new RegExp(`import\\s*\\{[^}]*\\b${k.cagri}\\b[^}]*\\}\\s*from\\s*'\\./${k.dosya.replace('.', '\\.')}'`).test(agg);
-  ok(importEdildi, `  ↳ aggregator '${k.dosya}' dosyasını import ediyor`);
-  // Çağrı sadece import'ta değil, gövdede de geçmeli.
+for (const k of KAYNAKLAR) {
+  ok(fs.existsSync(path.join(ROOT, 'src/services', k.dosya)), `src/services/${k.dosya} mevcut`);
+  const yol = k.dosya.split('/').pop();
+  const importEdildi = new RegExp(`import\\s*\\{[^}]*\\b${k.cagri}\\b[^}]*\\}\\s*from\\s*'\\./${yol.replace('.', '\\.')}'`).test(agg);
+  ok(importEdildi, `  ↳ aggregator '${yol}' dosyasını import ediyor`);
   const cagriSayisi = (agg.match(new RegExp(`\\b${k.cagri}\\s*\\(`, 'g')) || []).length;
   ok(cagriSayisi > 0, `  ↳ '${k.cagri}()' aggregator gövdesinde ${cagriSayisi} kez çağrılıyor`);
 }
 
-console.log('\n═══ 1b) Temiz sağlayıcılar KAYIT + katalog bağlantısı ═══');
-const kayit = fs.readFileSync(path.join(ROOT, 'src/providers/index.js'), 'utf8');
-const TEMIZ = [
-  ['hdfc', 'orion', 'Orion'], ['anizium', 'aria', 'Aria'], ['animecix', 'tera', 'Tera'],
-  ['dzs', 'atlas', 'Atlas'], ['dizi77', 'corvus', 'Corvus'], ['jet', 'nimbus', 'Nimbus'],
-  ['sinemacc', 'halcyon', 'Halcyon'], ['hdfd', 'bellatrix', 'Bellatrix'],
-  ['d4kh', 'betelgeuse', 'Betelgeuse'], ['asy', 'aquila', 'Aquila'], ['slc', 'lyra', 'Lyra'],
-  ['dyu', 'echo', 'Echo'], ['dzp', 'muhlif', 'Muhlif'], ['czgx', 'lumen', 'Lumen'],
-  ['fhdf', 'sirius', 'Sirius'], ['fm', 'arcturus', 'Arcturus'], ['dzb', 'nero', 'Nero'],
-];
-for (const [id, dosya, kodAdi] of TEMIZ) {
-  ok(fs.existsSync(path.join(ROOT, 'src/providers', `${dosya}.js`)), `src/providers/${dosya}.js mevcut`);
-  ok(new RegExp(`${id}:\\s*\\(\\)\\s*=>\\s*import\\('\\./${dosya}\\.js'\\)`).test(kayit), `KAYIT: ${id} → ${dosya}.js`);
-  ok(fs.readFileSync(path.join(ROOT, 'src/providers', `${dosya}.js`), 'utf8').includes(`'${kodAdi}'`),
-     `  ↳ kimlik kod adı: ${kodAdi}`);
-}
-
-console.log('\n═══ 2) Katalog kaydı → kazıyıcı eşleşmesi ═══');
-const cat = fs.readFileSync(path.join(ROOT, 'src/services/pluginCatalog.js'), 'utf8');
-for (const k of KAYNAK_IMZALARI) {
-  const kayitli = new RegExp(`\\{\\s*id:\\s*'${k.id}'`).test(cat);
-  ok(kayitli, `'${k.id}' pluginCatalog'da kayıtlı`);
-  const alias = (cat.match(new RegExp(`\\b${k.id}:\\s*'([A-Za-z]+)'`)) || [])[1];
+console.log('\n═══ 2) Kaynak id → anonim kod adı eşleşmesi ═══');
+const labels = oku('src/services/kaynak/sourceLabels.js');
+for (const k of KAYNAKLAR) {
+  const aile = new RegExp(`prefixes:\\s*\\[[^\\]]*'${k.onek}'`).test(labels);
+  ok(aile, `'${k.onek}' öneki sourceLabels aile defterinde kayıtlı`);
+  const alias = aile ? (labels.match(new RegExp(`alias:\\s*'([A-Za-z]+)'[^\\n]*prefixes:\\s*\\[[^\\]]*'${k.onek}'`)) || [])[1] : null;
   ok(!!alias, `  ↳ anonim adı: ${alias || 'YOK'}`);
 }
+// Etiketlerde gerçek site adı geçmesin (agregatör jenerik "Sunucu X" üretir).
+ok(!/dramalar\.com|dramadizilerim\.com/.test(agg), '  ↳ aggregator etiketleri site adı taşımıyor');
 
-console.log('\n═══ 3) Üretilen paket gerçekten içeriyor mu ═══');
+console.log('\n═══ 3) Sökülen kat geri gelmedi ═══');
+// src/providers/ yeniden açıldı: içinde YALNIZ kahraman sağlayıcı katmanı
+// vardır (kayit.js, vekil.js, alanlar.js, cekirdekler/). ESKİ elle yazılmış
+// sağlayıcılar (KAYIT listesi, providerRuntime, site sürücüleri, gömülü
+// oynatıcı çözücüler) geri gelmemelidir.
+const GONE = [
+  'src/services/providerRuntime',
+  'src/services/pluginCatalog.js', 'src/components/PluginsModal.js',
+  'src/services/dizi77Scraper.js', 'src/services/dizisolScraper.js',
+  'src/services/siteProviders.js', 'src/services/rectvService.js',
+  'src/services/streamExtractors.js', 'src/services/sourceReliability.js',
+  'src/services/sourceIntelligence.js', 'src/services/torrentStreamService.js'
+];
+for (const p of GONE) ok(!fs.existsSync(path.join(ROOT, p)), `${p} yok`);
+
+// src/providers/ içinde yalnız izin verilen üç öğe olmalı
+const izinsiz = [];
+if (fs.existsSync(path.join(ROOT, 'src/providers'))) {
+  const IZIN = new Set(['kayit.js', 'vekil.js', 'alanlar.js', 'cekirdekler', 'README.md',
+    'ortakCekirdek.js', 'kodCozler.js']); // birinci taraf çekirdeklerin ortak yardımcıları (2026-10-18)
+  for (const e of fs.readdirSync(path.join(ROOT, 'src/providers'), { withFileTypes: true })) {
+    if (!IZIN.has(e.name)) izinsiz.push(e.name);
+  }
+}
+ok(izinsiz.length === 0, 'src/providers yalnız kahraman katmanını içeriyor',
+  izinsiz.length ? ` → ${izinsiz.join(', ')}` : '');
+// eski elle yazılmış sağlayıcı modülleri geri gelmemeli
+const ESKI_SAGLAYICI = /^(orion|aria|tera|atlas|corvus|nimbus|halcyon|bellatrix|betelgeuse|aquila|lyra|echo|muhlif|lumen|sirius|arcturus|nero|vela|perseus)\.js$/;
+const geriGelen = fs.existsSync(path.join(ROOT, 'src/providers'))
+  ? fs.readdirSync(path.join(ROOT, 'src/providers')).filter(f => ESKI_SAGLAYICI.test(f))
+  : [];
+ok(geriGelen.length === 0, 'eski KAYIT sağlayıcıları geri gelmedi',
+  geriGelen.length ? ` → ${geriGelen.join(', ')}` : '');
+
+// services/ gruplamasi: duz dosya kalmamali, her sey 8 grubun birinde olmali
+const GRUPLAR = ['platform', 'kaynak', 'canli', 'icerik', 'dogrudan', 'oynatici', 'kabuk', 'altyapi'];
+const duz = fs.readdirSync(path.join(ROOT, 'src/services')).filter(f => f.endsWith('.js'));
+ok(duz.length === 0, 'src/services altında düz .js kalmadı', duz.length ? ` → ${duz.join(', ')}` : '');
+const eksikGrup = GRUPLAR.filter(g => !fs.existsSync(path.join(ROOT, 'src/services', g)));
+ok(eksikGrup.length === 0, 'services 8 grubun tamamı yerinde', eksikGrup.length ? ` → eksik: ${eksikGrup.join(', ')}` : '');
+
+const OLU_IMPORT = /(providerRuntime|pluginCatalog|streamExtractors|embedExtractors|sourceReliability|sourceIntelligence|siteProviders|rectvService|pulsarCatalog|nativeHttp|dizi77Scraper|dizisolScraper|playerDecoders|encryptedPlayer)/;
+const sis = [];
+(function tara(dir) {
+  for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) { if (!/node_modules|dist|android|\.git/.test(p)) tara(p); continue; }
+    if (!/\.m?js$/.test(e.name) || !OLU_IMPORT.test(oku(p))) continue;
+    // Yorum satırları bağ sayılmaz: yalnız import/editif satırlarına bakılır.
+    const aktif = oku(p).split('\n').filter((l) => /^\s*(import|export)\b/.test(l)).join('\n');
+    if (OLU_IMPORT.test(aktif)) sis.push(p);
+  }
+})('src');
+ok(sis.length === 0, 'src altında sökülmüş modüle import yok', sis.length ? ` → ${sis.join(', ')}` : '');
+
+// İzlemin kendi katmanı sökülmüş listeye girmemeli
+
+console.log('\n═══ 4) Üretilen paket kısa diziyi içeriyor mu ═══');
 const distDir = path.join(ROOT, 'dist/assets');
 if (!fs.existsSync(distDir)) {
   console.log('  · dist/ yok — atlandı (vite build çalıştırılmamış)');
 } else {
-  const paket = fs.readdirSync(distDir)
-    .filter((f) => f.endsWith('.js'))
-    .map((f) => fs.readFileSync(path.join(distDir, f), 'utf8'))
-    .join('\n');
-  for (const k of KAYNAK_IMZALARI) {
-    ok(paket.includes(k.imza), `  ↳ paket "${k.imza}" imzasını içeriyor (${k.id})`);
-  }
+  const paket = fs.readdirSync(distDir).filter((f) => f.endsWith('.js'))
+    .map((f) => fs.readFileSync(path.join(distDir, f), 'utf8')).join('\n');
+  ok(paket.includes('/api/dml'), '  ↳ paket Dora kısa dizi ucunu içeriyor');
+  ok(paket.includes('/api/ddz'), '  ↳ paket Rhea kısa dizi ucunu içeriyor');
+  ok(!/\/api\/(dzs|snx|jet|rtv|kvip|czm|hfd|flz)\b/.test(paket), '  ↳ paket sökülmüş sağlayıcı uçlarını içermiyor');
 }
 
 console.log(`\n${fail === 0 ? 'TAMAM' : 'BAŞARISIZ'} — geçen: ${pass}, kalan: ${fail}`);

@@ -10,7 +10,7 @@ import {
   kanalProgramlaAsync,
   yayindakiSlot,
   mulberry32
-} from '../src/services/channelScheduler.js';
+} from '../src/services/canli/channelScheduler.js';
 
 /* --- Yardımcılar --------------------------------------------------------- */
 // 18 Dram, 35 Komedi, 28 Aksiyon, 878 Bilim Kurgu
@@ -205,8 +205,8 @@ import {
   RUH_HALLERI, ruhHaliTanimi, ruhHaliCarpani,
   kanalProgramlaV2, kanalProgramlaV2Async, kacirdiklarim, hatirlatmaAdaylari,
   kanalRehberiMetni, kanalIstatistik, dkMetni, GUN_DK
-} from '../src/services/channelScheduler.js';
-import { kanalSaatTicker, kanalAktifTimerSayisi } from '../src/services/kanalSaat.js';
+} from '../src/services/canli/channelScheduler.js';
+import { kanalSaatTicker, kanalAktifTimerSayisi } from '../src/services/canli/kanalSaat.js';
 
 /* --- v2 yardımcıları ---------------------------------------------------- */
 // Film/dizi karışık, kusaklara yayılan sabit fixture havuzu.

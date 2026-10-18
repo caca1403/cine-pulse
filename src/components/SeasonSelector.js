@@ -1,4 +1,4 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - Season & Episode Selector Component
    Renders season tabs and episode cards with REAL TMDB overviews,
@@ -6,8 +6,8 @@ import { renderIcons } from '../services/icons.js';
    bulk season watched actions, and halfway in-progress markers.
    ========================================================================== */
 
-import { fetchSeasonDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { getMediaProgress, getWatchHistory, isMediaWatched, toggleEpisodeWatched, markSeasonEpisodesWatched, isSeasonFullyWatched, setMediaHalfway } from '../services/storage.js';
+import { fetchSeasonDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/icerik/tmdbApi.js';
+import { getMediaProgress, getWatchHistory, isMediaWatched, toggleEpisodeWatched, markSeasonEpisodesWatched, isSeasonFullyWatched, setMediaHalfway } from '../services/altyapi/storage.js';
 import { openPlayerModal } from './openPlayer.js';
 import { showToast } from './Toast.js';
 

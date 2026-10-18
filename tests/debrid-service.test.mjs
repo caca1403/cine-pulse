@@ -40,7 +40,7 @@ import {
   unrestrictLink,
   checkInstantAvailability,
   addMagnetAndSelect,
-} from '../src/services/debridService.js';
+} from '../src/services/dogrudan/debridService.js';
 
 // ---- Ağsız sahte-fetch altyapısı -------------------------------------------
 function fakeFetch(routes) {

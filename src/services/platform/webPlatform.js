@@ -2,7 +2,7 @@
    CinePulse Studio - Web Platform Controller (Sadece Web / PWA'da Yüklenir)
    ========================================================================== */
 
-import { initPwa } from '../pwaManager.js';
+import { initPwa } from '../kabuk/pwaManager.js';
 
 /* ── Web taşıma katmanı (ölçülen kopuk bağlantı, 2026-10-13) ──────────────
    Tarayıcıda fetch(), Türkçe yayın sitelerinin HTML/JSON isteklerinde CORS'a

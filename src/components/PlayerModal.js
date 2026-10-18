@@ -1,4 +1,7 @@
-import { getAnonymousSourceLabel } from '../services/sourceLabels.js';
+import { getAnonymousSourceLabel } from '../services/kaynak/sourceLabels.js';
+import { nativeOynaticiVar, nativeOynat, nativeKapat, nativeModAc, nativeKonumSaniye, nativeSureSaniye, nativeOynuyorMu, nativeSarmala, nativeAtla, nativeDevam, nativeDuraklat, nativeDurumDegistir, nativeHiz, nativeSes } from '../services/platform/nativePlayer.js';
+import { nativeAltyazilariHazirla } from '../services/icerik/altyaziServisi.js';
+import { yayinSesBilgisi, sesEtiketi } from '../services/icerik/sesIzleyici.js';
 import { createPlayerScope, renderPlayerIcons } from './playerLifecycle.js';
 /* ==========================================================================
    CinePulse Studio - Ultra-Luxury Cinematic Video Player Modal Component
@@ -15,13 +18,21 @@ import { createPlayerScope, renderPlayerIcons } from './playerLifecycle.js';
    - Watched & Halfway Progress Bookmarking with Auto-Sync
    ========================================================================== */
 
-import { getStreamingServers, getStreamingServersProgressive } from '../services/providerAggregator.js';
-import { PLUGIN_DEFS, isPluginEnabled, getPluginDisplay } from '../services/pluginCatalog.js';
-import { fetchPulsarCatalogRows } from '../services/pulsarCatalog.js';
-import { getProviderDiagnostics } from '../services/providerRuntime/diagnostics.js';
-import { openPluginsModal } from './PluginsModal.js';
-import { resolveDirectStream } from '../services/streamExtractors.js';
-import { rankSourcesForDevice, rememberFailedSource, rememberWorkingSource, sourceMatchesDescriptor as sourceReliabilityMatchesDescriptor } from '../services/sourceReliability.js';
+import { getStreamingServers, getStreamingServersProgressive, sesTipiBul, sesTipiEtiketi } from '../services/kaynak/providerAggregator.js';
+
+/* ── Eklenti/sağlayıcı katmanı söküldü ──────────────────────────────────────
+   Kaynak keşfi yalnız kısa dizi sağlayıcılarına indi (providerAggregator).
+   Kaldırılan öğrenme/sıralama/cözümleme yardımcıları burada etkisiz
+   karşılıklarıyla durur: arayüz kodu değişmez, hiçbir kaynak cezalandırılmaz,
+   sıralama geldiği sıra ile kalır, "çalışıyor" kaydı tutulmaz. */
+const fetchPulsarCatalogRows = async () => [];
+const fetchDizisolEpisodeSources = async () => [];
+const resolveDirectStream = async (s) => s;
+const rankSourcesForDevice = (list) => (Array.isArray(list) ? list.slice() : []);
+const rememberWorkingSource = () => {};
+const rememberFailedSource = () => {};
+const sourceReliabilityMatchesDescriptor = () => false;
+const zekaGuven = () => 0;
 import {
   saveWatchProgress,
   getMediaProgress,
@@ -32,16 +43,17 @@ import {
   markMediaWatched,
   registerAnimeId,
   isRegisteredAnimeId,
-  isAnimeRecord
-} from '../services/storage.js';
-import { evaluateNextEpisode } from '../services/nextEpisodePolicy.js';
-import { getFlowPilotTercih, setFlowPilotTercih } from '../services/storage.js';
-import { akışOtopilotu, aileKodu, nedenMetni } from '../services/flowPilot.js';
-import { zekaGuven } from '../services/sourceIntelligence.js';
+  isAnimeRecord,
+  getUserSettings,
+  saveUserSettings
+} from '../services/altyapi/storage.js';
+import { evaluateNextEpisode } from '../services/icerik/nextEpisodePolicy.js';
+import { getFlowPilotTercih, setFlowPilotTercih } from '../services/altyapi/storage.js';
+import { akışOtopilotu, aileKodu, nedenMetni } from '../services/altyapi/flowPilot.js';
 import { showToast } from './Toast.js';
-import { translateToTurkish } from '../services/tmdbApi.js';
+import { translateToTurkish } from '../services/icerik/tmdbApi.js';
 import { returnToDecisionRoomModal } from './DecisionRoomModal.js';
-import * as traktService from '../services/traktService.js';
+import * as traktService from '../services/icerik/traktService.js';
 import Hls from 'hls.js';
 import {
   startOfflineDownload,
@@ -52,11 +64,10 @@ import {
   getDownloadedMediaList,
   formatBytes,
   triggerNativeDeviceDownload
-} from '../services/offlineManager.js';
-import { fetchDizisolEpisodeSources } from '../services/dizisolScraper.js';
-import { apiUrl } from '../services/apiOrigin.js';
-import { frameUrlFor, sandboxFor, isPageEmbed, desktopFrameUrl } from '../services/playerFrame.js';
-import { isNativeAndroidApp, isAppPlatform, isDesktopApp } from '../services/platformBridge.js';
+} from '../services/kabuk/offlineManager.js';
+import { apiUrl } from '../services/altyapi/apiOrigin.js';
+import { frameUrlFor, sandboxFor, isPageEmbed, desktopFrameUrl } from '../services/oynatici/playerFrame.js';
+import { isNativeAndroidApp, isAppPlatform, isDesktopApp } from '../services/platform/platformBridge.js';
 import { appPromoHtml, attachAppPromoEvents } from './AppPromo.js';
 
 const TMDB_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
@@ -186,7 +197,14 @@ export async function openPlayerModal({
     playbackGeneration++;
     const video = modalContainer.querySelector('#hls-video-player');
     const isVidPaused = video ? video.paused : true;
-    if (video && typeof video._persistProgress === 'function') {
+    if (nativeOynatma.aktif) {
+      // Native oynatmada WebView'in <video>'su HİÇ oynamaz; currentTime = 0.
+      // Eski yol video.currentTime'ı (0) yazıp resume noktasını siliyordu —
+      // gerçek konumu native köprüden oku (kullanıcı 2026-10-18).
+      const k = oynatmaKonum();
+      const s = oynatmaSure();
+      if (k > 0) persistCurrentProgress(k, s > 0 ? s : estimatedDuration, null, true, true);
+    } else if (video && typeof video._persistProgress === 'function') {
       video._persistProgress(true, isVidPaused);
     } else {
       persistCurrentProgress(simulatedCurrentTime, estimatedDuration, null, true, true);
@@ -390,7 +408,23 @@ export async function openPlayerModal({
 
   const existingRecord = isOfflinePlayback ? null : getMediaProgress(tmdbId, currentSeason, currentEpisode);
   let initialTime = currentTime || (existingRecord ? existingRecord.currentTime : 0);
+  // Kullanıcı isteği (2026-10-17): oynatma sessizce kaydedilen saniyeden
+  // başlıyordu; "kaldığın yerden devam" bilgisi hiç görünmüyordu.
+  if (existingRecord && existingRecord.currentTime > 30) {
+    const dk = Math.floor(existingRecord.currentTime / 60);
+    const sn = String(Math.floor(existingRecord.currentTime % 60)).padStart(2, '0');
+    setTimeout(() => {
+      if (!closed) showToast(`Kaldığın yerden devam: ${dk}:${sn}`, 'info');
+    }, 900);
+  }
   let isWatched = !isOfflinePlayback && isMediaWatched(tmdbId, currentSeason, currentEpisode);
+  /* Kullanıcı (2026-10-17): "otomatik sonraki bölüm" oynatıcıda GÖRÜNÜR bir
+     anahtar olsun; ayarlar ekranına girmeden tek dokunuşla değişsin.
+     BULUNAN HATA: sıradaki-bölüm politikası getUserSettings() çağırıyordu ama
+     bu modülde import YOKTU → dizi bölümü biterken ReferenceError fırlıyor,
+     otomatik geçiş hiç çalışmıyordu (sessiz seda). Artık import edilmiyor değil,
+     import edildi + arayüzde de görünüyor. */
+  let otoSonrakiAçık = getUserSettings().autoplayNext !== false;
   const estimatedDuration = duration > 0 ? duration : (type === 'movie' ? 6600 : 3000);
   let simulatedCurrentTime = initialTime;
   let isSwitchingEpisode = false;
@@ -446,6 +480,208 @@ export async function openPlayerModal({
   };
 
   let lastProgressSaveTimestamp = 0;
+
+  /* ── NATIVE OYNATMA ORTAK DURUMU ─────────────────────────────────────────
+     Native modda (APK) oynatmayı Media3/ExoPlayer yapar; WebView'deki
+     `<video>` hiç oynamaz. İlerleme kaydı ve "Birlikte izle" senkronu
+     tamamen `<video>` olaylarına bakıyordu → native oynatmada "İzlemeye devam
+     et" hiç dolmuyor, oda senkronu hiç çalışmıyordu (ölçülen 2026-10-17).
+     Aşağıdaki erişimciler tek kaynaktan okur: native aktifse köprüden,
+     değilse <video>'dan. */
+  const nativeOynatma = { aktif: false, sesBilgisi: null, sesEtiketi: null, bitisBildirildi: false };
+  const videoElemani = () => document.getElementById('hls-video-player');
+  const oynatmaKonum = () => {
+    if (nativeOynatma.aktif) { const s = nativeKonumSaniye(); if (s !== null) return s; }
+    const v = videoElemani();
+    return v && Number.isFinite(v.currentTime) ? v.currentTime : 0;
+  };
+  const oynatmaSure = () => {
+    if (nativeOynatma.aktif) { const s = nativeSureSaniye(); if (s > 0) return s; }
+    const v = videoElemani();
+    return v && Number.isFinite(v.duration) ? v.duration : 0;
+  };
+  const oynatmaOynuyor = () => nativeOynatma.aktif ? nativeOynuyorMu() : !(videoElemani()?.paused ?? true);
+  const oynatmaSarmala = (saniye) => {
+    if (nativeOynatma.aktif) { nativeSarmala(saniye); return; }
+    const v = videoElemani();
+    if (v) { try { v.currentTime = Math.max(0, Number(saniye) || 0); } catch (_) {} }
+  };
+  const oynatmaBaslat = () => {
+    if (nativeOynatma.aktif) { nativeDevam(); return; }
+    videoElemani()?.play?.().catch(() => {});
+  };
+  const oynatmaDurdur = () => {
+    if (nativeOynatma.aktif) { nativeDuraklat(); return; }
+    try { videoElemani()?.pause?.(); } catch (_) {}
+  };
+
+  /* ── NATIVE BEKÇİ ────────────────────────────────────────────────────────
+     Native oynatmada WebView'in `<video>` olayları (timeupdate/play/pause/
+     seeking) HİÇ çalışmaz. İlerleme kaydı, ekran saati ve oda senkronu
+     tamamen bu olaylara bağlıydı → "İzlemeye devam et" dolmuyor ve "Birlikte
+     izle" senkronu hiç akmıyordu. Bekçi, native köprüden konumu okur ve aynı
+     işleri 1 saniyelik adımlarla yapar. */
+  let nativeBekci = null;
+  function nativeBekcisiniDurdur() {
+    if (nativeBekci) { clearInterval(nativeBekci); nativeBekci = null; }
+  }
+  function nativeBekcisiniBaslat() {
+    if (nativeBekci) return;
+    let oncekiKonum = null;
+    let oncekiOynuyor = null;
+    let sonRapor = 0;
+    let sonSaglik = 0;
+    let bittiSayaci = 0;
+    let bilinenKonum = 0;
+    let bilinenSure = 0;
+    /* RESUME (kaldığın yerden devam) — EVRENSEL düzeltme (kullanıcı 2026-10-18:
+       "tüm kaynaklarda aynı sorun, süre baştan başlatıyor"). Native oynatıcı
+       0'dan açılır; HEDEFE ULAŞANA dek her tick ileri sarılır. Tek atımlık sarma
+       yetmiyordu: oynatıcı hazır değilken yapılan tek seek kaybolup bir daha
+       denenmiyordu → her kaynakta 0'dan başlıyordu. */
+    const resumeHedef = Number(initialTime) || 0;
+    let resumeTamam = !(resumeHedef > 5);   // hedef yoksa sarma gerekmez
+    let resumeDeneme = 0;
+    nativeBekci = setInterval(() => {
+      if (closed || !nativeOynatma.aktif || !nativeOynaticiVar()) { nativeBekcisiniDurdur(); return; }
+      const konum = oynatmaKonum();
+      const sure = oynatmaSure();
+      if (konum === null || !Number.isFinite(konum)) return;
+
+      // OYNATICI KAPANDI: Media3 son karedeyken kendini kapatır ve köprü 0/0
+      // döner. Bu, kullanıcı 0. saniyeye sardı sanılmamalı; ayrıca son
+      // konum yazılmadan bekçi susarsa ilerleme kaybolurdu.
+      if (!(sure > 0) && !(konum > 0)) {
+        if (bilinenSure > 0) {
+          if (bilinenKonum >= bilinenSure - 5) {
+            persistCurrentProgress(bilinenSure, bilinenSure, true, true, true);
+            if (roomSync?.roomCode && isRoomModerator() && !nativeOynatma.bitisBildirildi) {
+              try { startRoomFinishDecision(); } catch (_) {}
+              nativeOynatma.bitisBildirildi = true;
+            }
+          } else {
+            persistCurrentProgress(bilinenKonum, bilinenSure, null, true, false);
+          }
+          nativeOynatma.aktif = false;
+          nativeBekcisiniDurdur();
+        }
+        return;
+      }
+      if (sure > 0) bilinenSure = sure;
+      if (konum > 0) bilinenKonum = konum;
+
+      /* RESUME: oynatıcı CANLI olduğu sürece ve hedefe ULAŞANA dek her tick ileri
+         sar. Hedefe yaklaşınca durur; 8 denemede ulaşılamazsa vazgeçer (sonsuza
+         dek sarmaz). Hedefe ulaşılana dek ilerleme YAZILMAZ (aşağıda), yoksa 0–x
+         konumu kayıtlı resume noktasının üstüne biner. */
+      let buTickSarmalandi = false;
+      let resumeBekliyor = false;
+      if (!resumeTamam && (konum > 0 || sure > 0)) {
+        if (konum >= resumeHedef - 3) {
+          resumeTamam = true;
+        } else if (resumeDeneme < 8) {
+          resumeDeneme += 1;
+          nativeSarmala(resumeHedef);
+          simulatedCurrentTime = Math.round(resumeHedef);
+          buTickSarmalandi = true;
+          resumeBekliyor = true;
+        } else {
+          resumeTamam = true;
+        }
+      }
+
+      const oynuyor = oynatmaOynuyor();
+      const oynuyorDegisti = oncekiOynuyor !== null && oncekiOynuyor !== oynuyor;
+      const atlandi = oncekiKonum !== null && Math.abs(konum - oncekiKonum) > 2.5;
+      simulatedCurrentTime = Math.round(konum);
+
+      // 1) İLERLEME: "İzlemeye devam et" listesi bu kayıttan beslenir.
+      // 1) İLERLEME: "İzlemeye devam et" listesi bu kayıttan beslenir.
+      // Sarılan tick'te yazmayız (yoksa başlangıç konumu resume noktasını silerdi).
+      // SÜRE BİLİNMESE BİLE yaz: bazı kısa dizi HLS hatları süreyi geç bildirir;
+      // eski "sure>0" kapısı yüzünden konum hiç kaydedilmiyor ve içerik
+      // "İzlemeye devam et"e düşmüyordu (kullanıcı 2026-10-18).
+      if (konum > 0 && !buTickSarmalandi && !resumeBekliyor) {
+        persistCurrentProgress(konum, bilinenSure > 0 ? bilinenSure : sure, null, oynuyorDegisti || atlandi, !oynuyor);
+      }
+
+      // 2) GÖRÜNÜR SAAT VE ÇUBUK (uygulamanın kendi katmanı)
+      try {
+        const saat = document.querySelector('#custom-time-display');
+        if (saat) saat.textContent = `${formatSecondsToTime(konum)} / ${formatSecondsToTime(sure)}`;
+        const suresi = document.querySelector('#custom-time-duration');
+        if (suresi) suresi.textContent = sure > 0 ? formatSecondsToTime(sure) : '00:00';
+        const kalan = document.querySelector('#custom-time-remaining');
+        if (kalan) kalan.textContent = sure > 0 ? `-${formatSecondsToTime(Math.max(0, sure - konum))}` : '0:00';
+        if (sure > 0) {
+          const yuzde = Math.min(100, Math.max(0, (konum / sure) * 100));
+          const dolan = document.querySelector('#custom-timeline-played');
+          if (dolan) dolan.style.width = `${yuzde}%`;
+          const bas = document.querySelector('#custom-timeline-thumb');
+          if (bas) bas.style.left = `${yuzde}%`;
+          const tampon = document.querySelector('#custom-timeline-buffered');
+          if (tampon) tampon.style.width = `${yuzde}%`;
+        }
+      } catch (_) {}
+
+      // 3) ODA SENKRONU (Birlikte izle)
+      if (roomSync?.roomCode && !applyingRoomSync && Date.now() >= suppressRoomSyncUntil) {
+        const nabiz = oynuyorDegisti || atlandi || (Date.now() - sonRapor > 2000);
+        if (nabiz) {
+          sonRapor = Date.now();
+          window.dispatchEvent(new CustomEvent('cinepulse:player-sync', {
+            detail: {
+              roomCode: roomSync.roomCode,
+              mediaId: roomSync.mediaId,
+              type: roomSync.type,
+              season: currentSeason,
+              episode: currentEpisode,
+              action: atlandi && !oynuyorDegisti ? 'seek' : 'state',
+              source: getRoomSourceDescriptor(),
+              audioTrack: null,
+              settings: { brightness: 100, speed: 1, volume: 1, muted: false },
+              time: konum,
+              playing: oynuyor,
+              issuedAt: Date.now()
+            }
+          }));
+        }
+        // Katılımcı: akıcı modda ilerleme, katı modda sağlık bildirimi.
+        if (!isRoomModerator() && roomSyncMode === 'smooth' && Date.now() - sonSaglik > 5000) {
+          sonSaglik = Date.now();
+          window.dispatchEvent(new CustomEvent('cinepulse:room-playback-progress', {
+            detail: { roomCode: roomSync.roomCode, time: konum, playing: oynuyor, buffering: false }
+          }));
+        } else if (!isRoomModerator() && roomSyncMode === 'strict' && Date.now() - sonSaglik > 10000) {
+          sonSaglik = Date.now();
+          window.dispatchEvent(new CustomEvent('cinepulse:room-playback-health', {
+            detail: { roomCode: roomSync.roomCode, status: oynuyor ? 'playing' : 'paused', bufferedAhead: 30 }
+          }));
+        }
+        if (roomSync && isRoomModerator() && !nativeOynatma.bitisBildirildi) reportNativeRoomFinishCheck(konum, sure, oynuyor);
+      }
+
+      // 4) BİTİŞ: ilerleme "izlendi" olarak kapanır.
+      if (sure > 0 && konum >= sure - 1.5 && !oynuyor) {
+        bittiSayaci += 1;
+        if (bittiSayaci === 3) persistCurrentProgress(sure, sure, true, true, true);
+      } else {
+        bittiSayaci = 0;
+      }
+
+      oncekiKonum = konum;
+      oncekiOynuyor = oynuyor;
+    }, 1000);
+    try { playbackScope?.add?.(nativeBekcisiniDurdur); } catch (_) {}
+  }
+
+  /** Oda moderatörü için bitiş anını oda kararına taşır (native yol). */
+  function reportNativeRoomFinishCheck(konum, sure, oynuyor) {
+    if (!roomSync?.roomCode) return;
+    if (!(sure > 0) || oynuyor || konum < sure - 1.5) return;
+    try { startRoomFinishDecision(); } catch (_) {}
+    nativeOynatma.bitisBildirildi = true;
+  }
   const persistCurrentProgress = (curTime, durTime, forceCompleted = null, immediate = false, isPaused = false) => {
     if (!tmdbId || isOfflinePlayback) return;
     const cur = Math.max(0, Math.round(curTime ?? simulatedCurrentTime ?? 0));
@@ -529,6 +765,11 @@ export async function openPlayerModal({
   window.addEventListener('beforeunload', handleGlobalPageUnload);
 
   let currentCategory = 'dubbed'; // Her zaman dublaj ile başla
+  /* Kaynak listesi SES TİPİ görünümü (kullanıcı isteği 2026-10-17):
+     'all' | 'dublaj' | 'dual' | 'altyazi'. Kategori (currentCategory) ile
+     KARIŞMAZ: kategori hangi havuzun oynatıldığını, filtre ise listeyi neyin
+     gösterdiğini belirler. Sekme değişince oynatma bozulmaz. */
+  let kaynakDilFiltresi = 'all';
   let activeServers = [];
   // Boş-durum rehberi: son taramanın başlangıcı — providerRuntime olay kayıtları
   // (denendi/hata/boş) yalnız bu andan sonrakiler için geçerlidir.
@@ -606,8 +847,11 @@ export async function openPlayerModal({
     // bir saniyeye zorla sarmak, her iki saniyede yeniden buffer'a düşürür.
     const isHeartbeat = sync.action === 'state';
     const targetTime = Number(sync.time);
-    const drift = Number.isFinite(targetTime) ? targetTime - video.currentTime : 0;
+    const drift = Number.isFinite(targetTime) ? targetTime - oynatmaKonum() : 0;
     const isTargetBuffered = () => {
+      // Native modda tamponu ExoPlayer yönetir; WebView'in `buffered` listesi
+      // boştur. Katılımcıyı 0. saniyeye zorlamamak için "hazır" sayılır.
+      if (nativeOynatma.aktif) return true;
       try {
         for (let index = 0; index < video.buffered.length; index += 1) {
           if (video.buffered.start(index) <= targetTime + 0.15 && video.buffered.end(index) >= targetTime + 1) return true;
@@ -627,8 +871,8 @@ export async function openPlayerModal({
       ? ((canAlignOnJoin && Math.abs(drift) > 0.25)
         || (!isHeartbeat && sync.action === 'seek' && Number.isFinite(targetTime) && Math.abs(drift) > 0.25))
       : (!isHeartbeat && Number.isFinite(targetTime) && Math.abs(drift) > 0.25
-        || (isHeartbeat && Math.abs(drift) > 18 && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA && isTargetBuffered()));
-    const shouldPlaybackChange = typeof sync.playing === 'boolean' && sync.playing === video.paused
+        || (isHeartbeat && Math.abs(drift) > 18 && (nativeOynatma.aktif || video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) && isTargetBuffered()));
+    const shouldPlaybackChange = typeof sync.playing === 'boolean' && sync.playing === !oynatmaOynuyor()
       && ((!isHeartbeat && (!isSmoothRoom || sync.action === 'play' || sync.action === 'pause')) || isFirstSmoothHeartbeat);
     const shouldApplySettings = Boolean(sync.settings) && !isHeartbeat && !isSmoothRoom;
     const shouldApplyAudio = Boolean(sync.audioTrack && typeof video._setAudioTrack === 'function') && !isHeartbeat && !isSmoothRoom;
@@ -638,9 +882,7 @@ export async function openPlayerModal({
     }
 
     applyingRoomSync = true;
-    if (shouldSeek) {
-      try { video.currentTime = Math.max(0, targetTime); } catch (_) {}
-    }
+    if (shouldSeek) oynatmaSarmala(Math.max(0, targetTime));
     if (shouldApplySettings) {
       roomPlaybackSettings.brightness = Math.max(30, Math.min(150, Number(sync.settings.brightness) || 100));
       roomPlaybackSettings.speed = Math.max(0.5, Math.min(2, Number(sync.settings.speed) || 1));
@@ -648,11 +890,21 @@ export async function openPlayerModal({
       video.playbackRate = roomPlaybackSettings.speed;
       if (Number.isFinite(Number(sync.settings.volume))) video.volume = Math.max(0, Math.min(1, Number(sync.settings.volume)));
       if (typeof sync.settings.muted === 'boolean') video.muted = sync.settings.muted;
+      // Native oynatıcıda bu değerler <video>'ya yazınca etkisiz kalıyordu;
+      // köprüden gerçek oynatıcıya uygulanır (oda senkronu bozulmasın).
+      if (nativeOynatma.aktif) {
+        nativeHiz(roomPlaybackSettings.speed);
+        if (Number.isFinite(Number(sync.settings.volume))) {
+          nativeSes(sync.settings.muted ? 0 : roomPlaybackSettings.volume ?? Number(sync.settings.volume));
+        } else if (typeof sync.settings.muted === 'boolean') {
+          nativeSes(sync.settings.muted ? 0 : 1);
+        }
+      }
     }
     if (shouldApplyAudio) video._setAudioTrack(sync.audioTrack, true);
     if (shouldPlaybackChange) {
-      if (sync.playing) video.play().catch(() => {});
-      else video.pause();
+      if (sync.playing) oynatmaBaslat();
+      else oynatmaDurdur();
     }
     if (issuedAt) lastRoomSyncIssuedAt = Math.max(lastRoomSyncIssuedAt, issuedAt);
     window.setTimeout(() => { applyingRoomSync = false; }, 120);
@@ -1202,6 +1454,16 @@ export async function openPlayerModal({
     }));
   }
 
+  /** Tüm kaynaklar TEK listede (dublaj + altyazılı birlikte, kendi
+   *  etiketleriyle). Ölçülen hata: iki ayrı sekme/liste vardı, sayaçlar
+   *  tutmuyordu (3/11) ve listeler örtüşüyordu. Artık tek liste, tek sayaç,
+   *  kaynak başında gerçek etiket (kalite • Dublaj/Altyazılı). */
+  function birlestirilmisKaynaklar() {
+    const d = categorizedServers.dubbed || [];
+    const s = categorizedServers.subtitled || [];
+    return [...d, ...s];
+  }
+
   function applyRequiredRoomSource() {
     if (!roomSync || !requiredRoomSource) return false;
     const categories = [requiredRoomSource.category, 'dubbed', 'subtitled']
@@ -1641,49 +1903,20 @@ export async function openPlayerModal({
   }
 
   // ── Boş durum rehberi ─────────────────────────────────────────────────
-  // Kaynak araması 0 ile bittiğinde jenerik yazı yerine KOD ADI özeti gösterilir:
-  // kaç kod adı denendi, hangileri kapalı (menüden açılabilir), hangileri hata/
-  // engelli ağ nedeniyle boş döndü. Kayıt yoksa yalnız denenen/açık sayısı.
-  // METİNDE GERÇEK SİTE ADI GEÇMEZ — yalnız getAnonymousSourceLabel/ALIASES kod
-  // adları (getPluginDisplay → Orion, Luna…). Tek buton çifti: Eklentileri
-  // yönet (PluginsModal) + Tekrar dene (aynı taramayı yeniden başlatır).
+  // Kaynak taraması yalnız kısa dizi sağlayıcılarını çözer; başka türde arayüz
+  // boş kalır. METİNDE GERÇEK SİTE ADI GEÇMEZ — yalnız kod adları (Dora/Rhea).
   function getSourceEmptyGuideHtml() {
-    const enc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const aliasOf = (id) => { try { return getPluginDisplay({ id }).alias; } catch (_) { return 'Nexus'; } };
-    const enabled = PLUGIN_DEFS.filter((d) => isPluginEnabled(d.id));
-    const disabled = PLUGIN_DEFS.filter((d) => !isPluginEnabled(d.id));
-    // providerRuntime olay/öğrenme kayıtları: yalnız bu taramanın provider
-    // olayları sayılır (resolved/empty/failed). Kayıt yoksa denenen bilinemez,
-    // açık kaynak sayısı gösterilir.
-    let triedCount = 0;
-    let failedIds = [];
-    let emptyCount = 0;
-    try {
-      const olaylar = getProviderDiagnostics().filter((e) => e && e.stage === 'provider' && Number(e.at) >= lastDiscoveryStartedAt);
-      triedCount = new Set(olaylar.map((e) => e.provider)).size;
-      failedIds = [...new Set(olaylar.filter((e) => e.state === 'failed').map((e) => e.provider))];
-      emptyCount = new Set(olaylar.filter((e) => e.state === 'empty').map((e) => e.provider)).size;
-    } catch (_) {}
-    const lines = [];
-    lines.push(triedCount
-      ? `${triedCount} kod adı denendi (${enabled.length} kod adı açık).`
-      : `${enabled.length} açık kod adı denendi.`);
-    if (disabled.length) {
-      const adlar = disabled.slice(0, 6).map((d) => enc(aliasOf(d.id))).join(', ');
-      lines.push(`Kapalı: ${adlar}${disabled.length > 6 ? ', …' : ''} — menüden açılabilir.`);
-    }
-    if (failedIds.length) {
-      const adlar = failedIds.slice(0, 6).map(aliasOf).map(enc).join(', ');
-      lines.push(`Yanıt vermedi / engelli ağ: ${adlar}${failedIds.length > 6 ? ', …' : ''}.`);
-    }
-    if (emptyCount) lines.push(`${emptyCount} kod adı bu içeriği bulmadan tamamlandı.`);
+    const kisaDizi = playerVariant === 'short-drama';
+    const lines = [kisaDizi
+      ? 'Dora ve Rhea bu bölüm için oynatılabilir hat vermedi.'
+      : 'Bu içerik türü için kaynak taraması kaldırıldı; yalnız kısa diziler oynatılır.'];
+    if (kisaDizi) lines.push('Bölüm numarasını kontrol edip yeniden deneyebilirsin.');
     return `
       <div style="font-weight:700;color:#fbbf24;margin-bottom:.35rem;">Bu içerik için kaynak yanıt vermedi</div>
       <ul style="margin:0 0 .6rem;padding-left:1.1rem;color:#94a3b8;font-size:.76rem;line-height:1.5;text-align:left;">
         ${lines.map((l) => `<li>${l}</li>`).join('')}
       </ul>
       <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;">
-        <button type="button" id="btn-empty-manage-plugins" style="padding:.4rem .9rem;border-radius:.6rem;border:1px solid rgba(223,255,118,.35);background:rgba(223,255,118,.1);color:#dfff76;font-size:.76rem;font-weight:700;cursor:pointer;">Eklentileri yönet</button>
         <button type="button" id="btn-empty-retry" style="padding:.4rem .9rem;border-radius:.6rem;border:1px solid rgba(148,163,184,.35);background:rgba(148,163,184,.08);color:#cbd5e1;font-size:.76rem;font-weight:700;cursor:pointer;">Tekrar dene</button>
       </div>`;
   }
@@ -1702,8 +1935,6 @@ export async function openPlayerModal({
     }
     el.innerHTML = getSourceEmptyGuideHtml();
     el.classList.remove('hidden');
-    const manageBtn = el.querySelector('#btn-empty-manage-plugins');
-    if (manageBtn) manageBtn.onclick = () => { try { openPluginsModal(); } catch (_) {} };
     const retryBtn = el.querySelector('#btn-empty-retry');
     if (retryBtn) retryBtn.onclick = () => { try { startServerDiscovery(); } catch (_) {} };
     // TEK otomatik yenileme (A kararı): modal oturumunun taraması 0 kaynakla
@@ -1759,9 +1990,9 @@ export async function openPlayerModal({
     if (!u) return false;
     if (srv.isDirectVideo || srv.isHls || srv.isTorrent) return true;
     if (/\.(?:m3u8|mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(u)) return true;
-    if (u.includes('/api/hls_proxy') || u.includes('/api/snx') || u.includes('/api/dzs') || u.includes('/api/rtv') || u.includes('/api/czm') || u.includes('/api/jet')) return true;
-    // Many providers expose only an embed/player URL. Keep it selectable so
-    // resolveDirectStream can turn supported players into a media URL below.
+    if (u.includes('/api/hls_proxy') || u.includes('/api/proxy')) return true;
+    // Geri kalan http adresler seçilebilir kalır; gömülü oynatıcı çözümü
+    // (eski resolveDirectStream) sağlayıcı katmanıyla birlikte söküldü.
     return /^https?:\/\//i.test(u) && !/^https?:\/\/[^/]+\/?$/i.test(u);
   }
 
@@ -2340,14 +2571,16 @@ export async function openPlayerModal({
   }
 
   function updateCategoryCounts() {
+    // TEK YAPI: tek sayaç = tüm kaynaklar. Dublaj/altyazı bilgisi artık her
+    // kaynağın etiketinde (bkz. gercekKaynakEtiketi). Ayrı sekme sayaçları
+    // ölçümde yanlış çıkıyordu (3 / 11) çünkü listeler örtüşüyordu.
+    const toplam = (categorizedServers.dubbed?.length || 0) + (categorizedServers.subtitled?.length || 0);
     const dubCount = document.getElementById('tab-dubbed-count');
     const subCount = document.getElementById('tab-subtitled-count');
-    if (dubCount) dubCount.textContent = String(categorizedServers.dubbed?.length || 0);
-    if (subCount) subCount.textContent = String(categorizedServers.subtitled?.length || 0);
-    const smartDub = document.getElementById('smart-cat-dubbed-count');
-    const smartSub = document.getElementById('smart-cat-subtitled-count');
-    if (smartDub) smartDub.textContent = `(${(categorizedServers.dubbed || []).length})`;
-    if (smartSub) smartSub.textContent = `(${(categorizedServers.subtitled || []).length})`;
+    if (dubCount) dubCount.textContent = String(toplam);
+    if (subCount) subCount.textContent = String(toplam);
+    const smartAll = document.getElementById('smart-cat-all-count');
+    if (smartAll) smartAll.textContent = `(${toplam})`;
   }
 
   // TEK KAYNAK SİSTEMİ: ayrı popover yok. Tüm seçimler akıllı bar + üst chips
@@ -2489,16 +2722,6 @@ export async function openPlayerModal({
     }
     bar.style.display = 'flex';
 
-    const tabDubbed = document.getElementById('smart-tab-dubbed');
-    const tabSubtitled = document.getElementById('smart-tab-subtitled');
-    const countDubbed = document.getElementById('smart-cat-dubbed-count');
-    const countSubtitled = document.getElementById('smart-cat-subtitled-count');
-
-    const dubbedList = categorizedServers?.dubbed || [];
-    const subList = categorizedServers?.subtitled || [];
-    if (countDubbed) countDubbed.textContent = dubbedList.length ? `(${dubbedList.length})` : '(0)';
-    if (countSubtitled) countSubtitled.textContent = subList.length ? `(${subList.length})` : '(0)';
-
     const closeSmartDropdown = () => {
       const dropdown = document.getElementById('smart-sources-dropdown');
       const trigger = document.getElementById('smart-source-trigger');
@@ -2506,26 +2729,6 @@ export async function openPlayerModal({
       if (trigger) trigger.classList.remove('is-open');
       isSourcesPopoverOpen = false;
     };
-
-    if (tabDubbed) {
-      tabDubbed.classList.toggle('active', currentCategory === 'dubbed');
-      tabDubbed.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        closeSmartDropdown();
-        switchSourceCategory('dubbed');
-      };
-    }
-
-    if (tabSubtitled) {
-      tabSubtitled.classList.toggle('active', currentCategory === 'subtitled');
-      tabSubtitled.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        closeSmartDropdown();
-        switchSourceCategory('subtitled');
-      };
-    }
 
     const trigger = document.getElementById('smart-source-trigger');
     const nameEl = document.getElementById('smart-source-name');
@@ -2553,7 +2756,41 @@ export async function openPlayerModal({
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
     const totalServers = safeServers.length;
-    if (dropdownCount) dropdownCount.textContent = `${totalServers} Kaynak`;
+
+    /* ── TÜM KAYNAKLAR AYNI ANDA (kullanıcı isteği, 2026-10-17) ────────────
+       Liste artık yalnız seçili kategoriyi değil, Türkçe Dublaj + Türkçe
+       Altyazılı havuzunun TAMAMINI tek listede gösterir. Önceden kullanıcı
+       "diğer sekmede kaynak var" uyarısını bulup sekmeyi değiştirmek zorunda
+       kalıyordu; oysa hangi hattın dublaj hangisinin altyazılı olduğunu
+       görmek istiyor. Her satır kendi kategorisiyle işaretlenir. */
+    const digerKategori = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
+    const digerKaynaklar = categorizedServers?.[digerKategori] || [];
+    /* SES TİPİ GÖRÜNÜMÜ (kullanıcı isteği 2026-10-17): her satır -dublaj /
+       dual / altyazı olarak sınıflanır ve üstteki sekmeler yalnız bu görünümü
+       süzer. Dual hatlar iki kategoriye de kopyalandığı için (ciftDilKopyalari)
+       aynı hat listede İKİ KEZ görünmesin diye taban kimliğe göre tekilleştirilir;
+       oynatma indeksi kendi kategorisinde kaldığı için geçiş bozulmaz. */
+    const tabanKimlik = (srv) => String(srv?.id || '').replace(/_(?:xs|xd)$/, '');
+    const gorulenIkili = new Set();
+    const kombineListe = [];
+    for (const [kategori, liste] of [[currentCategory, safeServers], [digerKategori, digerKaynaklar]]) {
+      (liste || []).forEach((srv, idx) => {
+        const baseId = tabanKimlik(srv);
+        const hasTwin = (categorizedServers?.dubbed || []).some(s => tabanKimlik(s) === baseId)
+          && (categorizedServers?.subtitled || []).some(s => tabanKimlik(s) === baseId);
+        // Çift kopyalar (dual) tekilleştirilir — aynı hat iki kez listelenmesin.
+        if (hasTwin) {
+          const anahtar = `dual|${baseId}`;
+          if (gorulenIkili.has(anahtar)) return;
+          gorulenIkili.add(anahtar);
+        }
+        kombineListe.push({ srv, idx, kategori, tip: sesTipiBul(srv, kategori) });
+      });
+    }
+
+    if (dropdownCount) dropdownCount.textContent = `${kombineListe.length} Kaynak`;
+    const allCountEl = document.getElementById('smart-cat-all-count');
+    if (allCountEl) allCountEl.textContent = kombineListe.length ? `(${kombineListe.length})` : '';
 
     const switchToSmartSource = (idx) => {
       if (idx === currentServerIndex) return;
@@ -2569,7 +2806,25 @@ export async function openPlayerModal({
       showToast(`⚡ ${getSourceLabel(activeServers[idx], idx)} yayınına geçildi.`, 'info');
     };
 
-    const hasMultiple = totalServers > 1;
+    const hasMultiple = totalServers > 1 || digerKaynaklar.length > 0;
+    // Kombine listede BAŞKA kategoriden bir hatta dokunulursa kategori de
+    // onunla birlikte değişir; aksi halde `switchToSmartSource` eski
+    // activeServers uzayında yanlış hattı açardı.
+    const switchToSmartSourceCross = (idx, kategori) => {
+      if (kategori === currentCategory) { switchToSmartSource(idx); return; }
+      if (!requireRoomModerator()) return;
+      const hedef = categorizedServers?.[kategori] || [];
+      if (!hedef[idx]) return;
+      currentCategory = kategori;
+      try { localStorage.setItem('cp_preferred_category', kategori); } catch (_) {}
+      activeServers = hedef;
+      currentServerIndex = idx;
+      failoverCountInSession = 0;
+      hasPlayerStartedPlaying = true;
+      updateActiveSourceLabel();
+      updatePlayerContainer();
+      showToast(`${kategori === 'dubbed' ? '🎙️ Türkçe Dublaj' : '💬 Türkçe Altyazılı'} · ${getSourceLabel(hedef[idx], idx)} yayınına geçildi.`, 'info');
+    };
     if (prevBtn) {
       prevBtn.disabled = !hasMultiple;
       prevBtn.style.opacity = hasMultiple ? '1' : '0.4';
@@ -2617,7 +2872,7 @@ export async function openPlayerModal({
     if (dropdownList) {
       const prevListScroll = dropdownList.scrollTop || 0;
       let fpHedefIdx = -1; // Akış Otopilotu hedefi — activeServers uzayında indeks
-      if (safeServers.length === 0) {
+      if (kombineListe.length === 0) {
         const otherCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
         const otherCount = categorizedServers?.[otherCat]?.length || 0;
         dropdownList.innerHTML = `
@@ -2641,19 +2896,23 @@ export async function openPlayerModal({
       } else {
         let itemsHtml = '';
         try {
-          itemsHtml = safeServers.map((srv, idx) => {
+          itemsHtml = kombineListe.map(({ srv, idx, kategori, tip }) => {
             const s = (srv && typeof srv === 'object') ? srv : {};
-            const isActive = idx === currentServerIndex;
+            const ayniKategori = kategori === currentCategory;
+            const isActive = ayniKategori && idx === currentServerIndex;
             const sourceLabel = getSourceLabel(s, idx);
             const srvFailed = Boolean(s.failed);
             const dotClass = isActive ? 'dot-active' : srvFailed ? 'dot-failed' : 'dot-ready';
+            // Ses tipi: yerli kaynakta Türkçe dublaj durumu, yabancıda altyazı.
+            const kategoriEtiketi = sesTipiEtiketi(tip);
             return `
-            <button type="button" class="smart-dropdown-item ${isActive ? 'active' : ''} ${srvFailed ? 'failed' : ''}" data-server-idx="${idx}">
+            <button type="button" class="smart-dropdown-item ${isActive ? 'active' : ''} ${srvFailed ? 'failed' : ''}" data-server-idx="${idx}" data-server-cat="${kategori}">
               <div class="smart-dropdown-item-left">
                 <span class="smart-source-dot ${dotClass}"></span>
                 <span class="smart-dropdown-item-name">${escHtml(sourceLabel)}</span>
               </div>
               <div class="smart-dropdown-item-right">
+                <span class="smart-dropdown-cat ${ayniKategori ? 'is-current' : ''}">${kategoriEtiketi}</span>
                 ${isActive ? '<span class="smart-dropdown-playing">Aktif</span>' : ''}
               </div>
             </button>
@@ -2723,7 +2982,8 @@ export async function openPlayerModal({
             e.stopPropagation();
             closeSmartDropdown();
             const idx = parseInt(item.getAttribute('data-server-idx'), 10);
-            switchToSmartSource(idx);
+            const kategori = item.getAttribute('data-server-cat') || currentCategory;
+            switchToSmartSourceCross(idx, kategori);
           });
         });
         // ⚡ Akış Otopilotu bağları: "Şimdi oynat" + tercih çipleri.
@@ -2928,7 +3188,6 @@ export async function openPlayerModal({
       else if (isActive) statusDot = 'dot-green';
 
       const cleanLabel = getSourceLabel(srv, idx);
-
 
       return `
         <button class="server-btn ${isActive ? 'active' : ''} ${isFailed ? 'failed' : ''}" 
@@ -3690,7 +3949,7 @@ export async function openPlayerModal({
       </div>
 
       <!-- YouTube tarzı 2 kolon: sol ana video + bilgi, sağ sıradakiler -->
-      <div class="player-yt-layout">
+      <div class="player-yt-layout ${playerVariant === 'short-drama' ? 'short-drama-mode' : ''}">
       <div class="player-yt-main">
       <!-- Center Player Video Container -->
       <div class="player-stage-wrapper">
@@ -3754,6 +4013,7 @@ export async function openPlayerModal({
           <div class="player-utility-group">
             ${isNativeAndroidApp() && !offlinePlaybackUrl ? `<button id="btn-player-download" class="player-utility-action player-download-action" type="button" title="Bölümü indir / çevrimdışı kaydet"><i data-lucide="download"></i><span>İndir</span></button>` : ''}
             <button id="btn-player-theater" class="player-utility-action" title="Sinema Modu (Genişlet)"><i data-lucide="scan-line"></i><span>Sinema</span></button>
+            ${isSeries ? `<button id="btn-player-auto-next" class="player-utility-action player-auto-next-action${otoSonrakiAçık ? ' active' : ''}" type="button" role="switch" aria-checked="${otoSonrakiAçık ? 'true' : 'false'}" title="Bölüm bitince otomatik olarak sonrakine geç"><i data-lucide="${otoSonrakiAçık ? 'skip-forward' : 'pause-circle'}"></i><span>${otoSonrakiAçık ? 'Otomatik sonraki' : 'Otomatik kapalı'}</span></button>` : ''}
               <button id="btn-player-share" class="player-icon-action" type="button" title="Paylaş"><i data-lucide="share-2"></i></button>
             </div>
             ${isNativeAndroidApp() && !offlinePlaybackUrl ? `<div id="player-download-progress" class="player-download-progress" hidden aria-live="polite"><div class="player-download-progress-head"><span data-download-status>İndirme başlatılıyor…</span><strong data-download-amount>0 B alındı</strong></div><div class="player-download-progress-track"><span data-download-bar></span></div><div class="player-download-progress-foot"><span>CinePulse İndirilenler’e kaydediliyor</span><span data-download-speed>Hız hesaplanıyor…</span></div></div>` : ''}
@@ -3798,15 +4058,11 @@ export async function openPlayerModal({
         <section class="yt-source-panel" id="yt-source-panel" aria-label="Yayın kaynakları">
           <div class="player-smart-sources-bar" id="player-smart-sources-bar">
             <div class="smart-sources-lang-group">
-              <span class="smart-sources-label">Ses &amp; Dil:</span>
+              <span class="smart-sources-label">Yayınlar:</span>
               <div class="smart-sources-cat-tabs" id="smart-sources-cat-tabs">
-                <button type="button" class="smart-cat-tab ${currentCategory === 'dubbed' ? 'active' : ''}" data-cat="dubbed" id="smart-tab-dubbed">
-                  <span>Dublaj</span>
-                  <span class="smart-cat-count" id="smart-cat-dubbed-count"></span>
-                </button>
-                <button type="button" class="smart-cat-tab ${currentCategory === 'subtitled' ? 'active' : ''}" data-cat="subtitled" id="smart-tab-subtitled">
-                  <span>Altyazılı</span>
-                  <span class="smart-cat-count" id="smart-cat-subtitled-count"></span>
+                <button type="button" class="smart-cat-tab active" data-cat="all" id="smart-tab-all">
+                  <span>Tümü</span>
+                  <span class="smart-cat-count" id="smart-cat-all-count"></span>
                 </button>
               </div>
             </div>
@@ -4768,29 +5024,34 @@ export async function openPlayerModal({
       window.dispatchEvent(new CustomEvent('cinepulse:room-playback-progress', {
         detail: {
           roomCode: roomSync.roomCode,
-          time: videoEl.currentTime,
-          playing: !videoEl.paused,
-          buffering: !videoEl.paused && videoEl.readyState < HTMLMediaElement.HAVE_FUTURE_DATA
+          time: oynatmaKonum(),
+          playing: oynatmaOynuyor(),
+          buffering: !nativeOynatma.aktif && !videoEl.paused && videoEl.readyState < HTMLMediaElement.HAVE_FUTURE_DATA
         }
       }));
     };
     const reportRoomPlaybackHealth = status => {
       if (!roomSync?.roomCode || isRoomModerator() || roomSyncMode !== 'strict') return;
       let bufferedAhead = 0;
-      try {
-        for (let index = 0; index < videoEl.buffered.length; index += 1) {
-          if (videoEl.buffered.start(index) <= videoEl.currentTime && videoEl.buffered.end(index) >= videoEl.currentTime) {
-            bufferedAhead = Math.max(0, videoEl.buffered.end(index) - videoEl.currentTime);
-            break;
+      if (nativeOynatma.aktif) {
+        // Native tampon WebView'den okunamaz; oynatıcı sağlıklı sayılır.
+        bufferedAhead = 30;
+      } else {
+        try {
+          for (let index = 0; index < videoEl.buffered.length; index += 1) {
+            if (videoEl.buffered.start(index) <= videoEl.currentTime && videoEl.buffered.end(index) >= videoEl.currentTime) {
+              bufferedAhead = Math.max(0, videoEl.buffered.end(index) - videoEl.currentTime);
+              break;
+            }
           }
-        }
-      } catch (_) {}
+        } catch (_) {}
+      }
       window.dispatchEvent(new CustomEvent('cinepulse:room-playback-health', {
         detail: { roomCode: roomSync.roomCode, status, bufferedAhead }
       }));
     };
     const emitRoomSync = (action, overrides = {}) => {
-      if (!roomSync?.roomCode || applyingRoomSync || Date.now() < suppressRoomSyncUntil || !Number.isFinite(videoEl.currentTime)) return;
+      if (!roomSync?.roomCode || applyingRoomSync || Date.now() < suppressRoomSyncUntil || !Number.isFinite(oynatmaKonum())) return;
       window.dispatchEvent(new CustomEvent('cinepulse:player-sync', {
         detail: {
           roomCode: roomSync.roomCode,
@@ -4800,10 +5061,10 @@ export async function openPlayerModal({
           episode: currentEpisode,
           action,
           source: getRoomSourceDescriptor(),
-          audioTrack: videoEl._currentAudioTrack || null,
+          audioTrack: nativeOynatma.aktif ? null : (videoEl._currentAudioTrack || null),
           settings: { ...roomPlaybackSettings, volume: videoEl.volume, muted: videoEl.muted },
-          time: Number.isFinite(overrides.time) ? overrides.time : (videoEl.currentTime || 0),
-          playing: typeof overrides.playing === 'boolean' ? overrides.playing : !videoEl.paused,
+          time: Number.isFinite(overrides.time) ? overrides.time : oynatmaKonum(),
+          playing: typeof overrides.playing === 'boolean' ? overrides.playing : oynatmaOynuyor(),
           issuedAt: Date.now()
         }
       }));
@@ -4876,7 +5137,7 @@ export async function openPlayerModal({
         const hasNextSeason = currentSeasonsList.some(s => s.season_number === currentSeason + 1);
         const finalBolumMu = currentEpisode >= currentSeasonEpCount && !hasNextSeason;
         const policy = evaluateNextEpisode({
-          autoplayNext: getUserSettings().autoplayNext,
+          autoplayNext: otoSonrakiAçık,
           kalanSn: Math.max(0, Math.ceil((videoEl.duration || 0) - (videoEl.currentTime || 0))),
           sezonMu: true,
           finalBolumMu,
@@ -6511,10 +6772,6 @@ export async function openPlayerModal({
       });
     }
 
-
-
-
-
     const fallbackBtn = document.getElementById('btn-switch-subtitled-fallback');
     if (fallbackBtn) {
       fallbackBtn.addEventListener('click', () => {
@@ -6555,6 +6812,76 @@ export async function openPlayerModal({
       const streamUrl = getStreamSafeUrl(srv);
 
       if (videoEl && streamUrl) {
+        // OYNATMA APK İÇİNDEKİ NATIVE OYNATICIYA DEVREDİLİR (Android).
+        // ÖLÇÜLEN GERÇEK: WebView (Chromium) bu kaynakların çoğunu açmıyor;
+        // APK içindeki Media3/ExoPlayer ile GoT oynadı (video.currentTime
+        // ilerledi, ekran görüntüsüyle doğrulandı). Cihazın donanım çözücüsü
+        // kullanılır, H.264/H.265/HLS hepsi çözülür. WebView oynatıcı yalnız
+        // native oynatıcı yoksa (masaüstü/tarayıcı) devreye girer.
+        if (nativeOynaticiVar()) {
+          /* ── İÇERİK BAŞLAMADAN HEMEN ÖNCEKİ HAZIRLIK ─────────────────────
+             1) SES: yayının manifestindeki ses parçaları okunur. Türkçe ses
+                parçası VARSA yayın gerçekten DUBLAJ'dır; yoksa özgün ses +
+                altyazı gerekir. Etiket böylece sağlayıcı adına değil ÖLÇÜLEN
+                sese göre yazılır (kullanıcı bunu istedi).
+             2) ALTYAZI: OpenSubtitles v3'ten Türkçe (yoksa İngilizce/normal)
+                indirilip WebVTT'ye çevrilir ve PLAY ANINDA native oynatıcıya
+                verilir — ExoPlayer'da oynatma başladıktan sonra altyazı
+                EKLENEMEZ, bu yüzden liste oynatmayla birlikte taşınır.
+             İkisi PARALEL çalışır; toplam bekleme en fazla ~4 sn, tipik ~1 sn. */
+          const altyaziGirdisi = {
+            imdbId: currentImdbId,
+            tmdbId,
+            type: isSeries ? 'tv' : 'movie',
+            season: currentSeason,
+            episode: currentEpisode
+          };
+          const [sesBilgi, altyazilar] = await Promise.all([
+            Promise.race([
+              yayinSesBilgisi(streamUrl).catch(() => null),
+              new Promise((cozum) => setTimeout(() => cozum(null), 2500))
+            ]),
+            Promise.race([
+              nativeAltyazilariHazirla(altyaziGirdisi, { enFazla: 2 }).catch(() => []),
+              new Promise((cozum) => setTimeout(() => cozum([]), 4000))
+            ])
+          ]);
+          if (closed || playbackRun !== playbackGeneration) return;
+          nativeOynatma.sesBilgisi = sesBilgi || null;
+          nativeOynatma.sesEtiketi = sesEtiketi(sesBilgi);
+          if (nativeOynatma.sesEtiketi) {
+            const altyaziNotu = altyazilar.length
+              ? ` · ${altyazilar[0].etiket} altyazı hazır`
+              : ' · altyazı bulunamadı';
+            showToast(`Bu yayın: ${nativeOynatma.sesEtiketi}${altyaziNotu}`, 'info');
+          } else if (altyazilar.length) {
+            showToast(`${altyazilar[0].etiket} altyazı açıldı.`, 'success');
+          }
+          if (nativeOynat(streamUrl, srv?.headers || null, altyazilar, initialTime)) {
+            nativeOynatma.aktif = true;
+            nativeOynatma.bitisBildirildi = false;
+            // Native oynatıcı kaynağı çözemezse bekçi durmalı; yoksa ölü
+            // oynatıcıdan okunan konum yanlış ilerleme yazardı.
+            const hataJetonu = playbackRun;
+            window.addEventListener('cp-native-hata', (ev) => {
+              if (hataJetonu !== playbackRun) return;
+              nativeOynatma.aktif = false;
+              nativeBekcisiniDurdur();
+              // ÖLÇÜLEN HATA (2026-10-17, kullanıcı: "kısa dizilerde
+              // kaynaklarda oynatılmıyor"): native oynatıcı kaynağı
+              // çözemezse hiçbir şey olmuyordu — oynatma sessizce ölüyordu
+              // (ne hata, ne kaynak atlama). Artık sıradaki kaynağa geçilir;
+              // hepsi biterse mevcut kaynak rehberi görünür.
+              const mesaj = (ev && ev.detail) || 'Kaynak cihazda açılamadı';
+              triggerAutoFailover(mesaj);
+            }, { once: true });
+            // İlerleme + oda senkronu WebView'in <video> olaylarından değil,
+            // bu bekçiden beslenir (native modda <video> hiç oynamaz).
+            nativeBekcisiniBaslat();
+            nativeModAc();
+            return;
+          }
+        }
         const isHlsStream = streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || srv.isHls;
         const isDizisolFilmMakinesi = srv?.source === 'DS' && /filmmakinesi/i.test([
           srv?.id,
@@ -7076,7 +7403,7 @@ export async function openPlayerModal({
         document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
         hasPlayerStartedPlaying = true;
         isSearching = false;
-        activeServers = categorizedServers[currentCategory];
+        activeServers = birlestirilmisKaynaklar();
         currentServerIndex = getRoomPreferredServerIndex(activeServers);
         updateServerPillsEvents();
         updateActiveSourceLabel();
@@ -7088,6 +7415,10 @@ export async function openPlayerModal({
     getStreamingServersProgressive({
       type,
       tmdbId,
+      // IMDb numarasi kayitlari TMDB kota dugumunden kurtarir: cekirdekler
+      // kendi goumlu (kota yemis) TMDB anahtarlariyla kimlik cozmek zorunda
+      // kalmiyor. Bkz. vekil.js -> kaynakCoz KIMLIK blogu.
+      imdbId: currentImdbId || '',
       title: cleanSeriesName,
       seriesTitle: cleanSeriesName,
       originalTitle,
@@ -7144,7 +7475,7 @@ export async function openPlayerModal({
             clearTimeout(fastPlaybackTimer);
             hasPlayerStartedPlaying = true;
             isSearching = false;
-            activeServers = categorizedServers[currentCategory];
+            activeServers = birlestirilmisKaynaklar();
             currentServerIndex = getRoomPreferredServerIndex(activeServers);
             updateServerPillsEvents();
             updateActiveSourceLabel();
@@ -7187,7 +7518,7 @@ export async function openPlayerModal({
 
         // While playing or waiting: update activeServers for currentCategory
         const currentPlayingSrv = activeServers[currentServerIndex];
-        activeServers = categorizedServers[currentCategory] || [];
+        activeServers = birlestirilmisKaynaklar();
         if (currentPlayingSrv && hasPlayerStartedPlaying) {
           const reIndex = activeServers.findIndex(s => (s.id && s.id === currentPlayingSrv.id) || (s.url && s.url === currentPlayingSrv.url));
           if (reIndex !== -1) {
@@ -7456,6 +7787,31 @@ export async function openPlayerModal({
     });
   }
 
+  /* "Otomatik sonraki bölüm" anahtarı — oynatıcıda GÖRÜNÜR (kullanıcı isteği).
+     Tercih kaydırıcıyla AYNI anahtarı yazar (autoplayNext), böylece sıradaki
+     bölüm politikası ve ayarlar ekranı tek gerçeği paylaşır. */
+  const btnAutoNext = document.getElementById('btn-player-auto-next');
+  if (btnAutoNext) {
+    btnAutoNext.addEventListener('click', () => {
+      otoSonrakiAçık = !otoSonrakiAçık;
+      saveUserSettings({ autoplayNext: otoSonrakiAçık });
+      btnAutoNext.classList.toggle('active', otoSonrakiAçık);
+      btnAutoNext.setAttribute('aria-checked', otoSonrakiAçık ? 'true' : 'false');
+      btnAutoNext.title = otoSonrakiAçık
+        ? 'Otomatik geçiş AÇIK — kapatmak için dokun'
+        : 'Otomatik geçiş KAPALI — açmak için dokun';
+      const otoSpan = btnAutoNext.querySelector('span');
+      if (otoSpan) otoSpan.textContent = otoSonrakiAçık ? 'Otomatik sonraki' : 'Otomatik kapalı';
+      const otoIcon = btnAutoNext.querySelector('[data-lucide]');
+      if (otoIcon) otoIcon.setAttribute('data-lucide', otoSonrakiAçık ? 'skip-forward' : 'pause-circle');
+      renderPlayerIcons(modalContainer);
+      showToast(
+        otoSonrakiAçık ? 'Bölüm bitince sıradaki otomatik başlayacak.' : 'Otomatik geçiş kapalı — bölümü kendin seçebilirsin.',
+        'info'
+      );
+    });
+  }
+
   // Recommendations / Similar toggle
   const btnRecoToggle = document.getElementById('btn-player-reco-toggle');
   const recoPanel = document.getElementById('player-reco-panel');
@@ -7518,6 +7874,19 @@ export async function openPlayerModal({
       persistCurrentProgress(simulatedCurrentTime, estimatedDuration, null, true);
     }
     disposePlayback();
+    // Native oynatma açıksa son konum HEMEN yazılır ("İzlemeye devam et"
+    // listesinin asıl kaynağı bu kayıttır) ve bekçi durdurulur.
+    if (nativeOynatma.aktif) {
+      const sonKonum = oynatmaKonum();
+      const sonSure = oynatmaSure();
+      if (sonSure > 0) persistCurrentProgress(sonKonum, sonSure, null, true, true);
+      nativeOynatma.aktif = false;
+    }
+    nativeBekcisiniDurdur();
+    // Native oynatıcı (Android) açıksa kapat: WebView oynatıcı kapandı ama
+    // tam ekran player ekranda kalmasın.
+    nativeKapat();
+    document.documentElement.classList.remove('cp-native-video');
     modalScope.dispose();
     activeModalClose = null;
     document.title = previousDocumentTitle;

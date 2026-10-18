@@ -1,7 +1,7 @@
 {
   "name": "cinepulse-studio",
   "private": true,
-  "version": "1.1.75",
+  "version": "1.1.77",
   "description": "CinePulse Studio - yerli ve global kaynakli hibrit medya merkezi",
   "author": {
     "name": "CinePulse Studio",
@@ -24,13 +24,13 @@
     "electro:dev": "electron electron/main.cjs",
     "electro:pack": "npm run build && electron-builder --win nsis",
     "pack:deb": "npm run build && electron-builder --linux deb -c.electronDist=node_modules/electron/dist",
-    "pack:appimage": "npm run build && electron-builder --linux AppImage -c.electronDist=node_modules/electron/dist",
-    "pack:linux": "npm run build && electron-builder --linux deb AppImage -c.electronDist=node_modules/electron/dist",
+    "pack:flatpak": "npm run build && electron-builder --linux flatpak -c.electronDist=node_modules/electron/dist",
+    "pack:linux": "npm run build && electron-builder --linux deb flatpak -c.electronDist=node_modules/electron/dist",
     "pack:win": "npm run build && electron-builder --win nsis",
     "cap:sync": "cap sync android && node scripts/clean-android-apk.mjs",
     "pack:all": "node node_modules/vite/bin/vite.js build && node node_modules/electron-builder/cli.js --win nsis --linux deb AppImage",
-    "providers": "node scripts/cinepulse.mjs",
-    "test:providers": "node --test tests/provider-runtime.test.mjs tests/update-policy.test.mjs tests/android-webview-resolver.test.mjs tests/android-challenge-solver.test.mjs"
+    "test": "node --test tests/*.test.mjs tests/*.test.js tests/*.test.cjs",
+    "test:live": "node --test tests/liveClient.test.mjs tests/liveHealth.test.mjs tests/livePipeline.test.mjs tests/live-playback.test.mjs tests/canlitv-provider.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
@@ -71,7 +71,7 @@
     "linux": {
       "target": [
         "deb",
-        "AppImage"
+        "flatpak"
       ],
       "icon": "public/icon-512.png",
       "category": "AudioVideo",
@@ -83,6 +83,10 @@
     },
     "deb": {
       "compression": "gz"
+    },
+    "flatpak": {
+      "runtimeVersion": "24.08",
+      "baseVersion": "24.08"
     },
     "files": [
       "dist/**/*",
@@ -107,5 +111,5 @@
       "runAfterFinish": true
     }
   },
-  "versionCode": 185
+  "versionCode": 187
 }

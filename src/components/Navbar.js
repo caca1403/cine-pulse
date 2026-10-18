@@ -1,21 +1,102 @@
 import { renderSiteLogo } from './BrandLogo.js';
-import { renderIcons } from '../services/icons.js';
-import { searchMulti, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
+import { renderIcons } from '../services/kabuk/icons.js';
+import {
+  searchMulti,
+  getImageUrl,
+  TMDB_IMAGE_SIZES,
+  fetchPopularMovies,
+  fetchPopularSeries,
+  fetchPopularAnime,
+  fetchCartoonSeries,
+  fetchPopularDocumentaries,
+  fetchTrending
+} from '../services/icerik/tmdbApi.js';
 import { openProfileModal } from './ProfileModal.js';
 import { openRandomPickerModal } from './RandomPickerModal.js';
-import { getActiveProfile } from '../services/storage.js';
+import { getActiveProfile } from '../services/altyapi/storage.js';
 import { openNotificationCenterModal, getUnreadNotificationCount } from './NotificationCenterModal.js';
 import { openDecisionRoomModal } from './DecisionRoomModal.js';
 import { openTraktModal } from './TraktModal.js';
-import { isNativeAndroidApp, isAppPlatform } from '../services/platformBridge.js';
+import { isNativeAndroidApp, isAppPlatform } from '../services/platform/platformBridge.js';
 
 const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
 const escapeText = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const art = name => `${import.meta.env.BASE_URL}images/discovery/${name}.webp`;
 
+/* ── Keşfet kategori görselleri ────────────────────────────────────────────
+   Kullanıcı: "keşfette resimler içerikle alakasız". Kategori karoları sabit
+   .webp dosyaları gösteriyordu; dosyalar kategorinin kendisiyle ilgisizdi.
+   Artık her karo, o kategorinin GERÇEK içeriğinden seçilen bir TMDB sahnesini
+   gösterir. Panel ilk açıldığında çekilir ve BİR GÜN önbellekte kalır (her
+   açılışta yeniden istek atılmaz). Sabit .webp yalnız ilk kare yer tutucudur. */
+const KATEGORI_ONBELLEK = 'cp_kesfet_kategori_v1';
+const KATEGORI_OMUR = 24 * 60 * 60 * 1000;
+
+const KATEGORI_KAYNAKLARI = {
+  movies: () => fetchPopularMovies(1),
+  series: () => fetchPopularSeries(1),
+  anime: () => fetchPopularAnime(1),
+  cartoons: () => fetchCartoonSeries(1),
+  documentary: () => fetchPopularDocumentaries(1),
+  dramas: () => fetchTrending('tv', 'week')
+};
+
+function kategoriOnbellegi() {
+  try {
+    const ham = JSON.parse(localStorage.getItem(KATEGORI_ONBELLEK) || '{}');
+    if (!ham || typeof ham !== 'object') return {};
+    const simdi = Date.now();
+    const temiz = {};
+    for (const [k, v] of Object.entries(ham)) {
+      if (v && typeof v.url === 'string' && v.url && simdi - Number(v.at || 0) < KATEGORI_OMUR) temiz[k] = v;
+    }
+    return temiz;
+  } catch (_) { return {}; }
+}
+
+function kategoriOnbelleginiYaz(onbellek) {
+  try { localStorage.setItem(KATEGORI_ONBELLEK, JSON.stringify(onbellek)); } catch (_) {}
+}
+
+/** Kategoriye o günkü içerikten bir sahne (backdrop) bağlar. */
+export async function kesfetKategoriGorselleriniYukle(panel) {
+  if (!panel || typeof panel.querySelectorAll !== 'function') return;
+  const gorseller = [...panel.querySelectorAll('.cp-category img[data-kategori]')];
+  if (!gorseller.length) return;
+  const onbellek = kategoriOnbellegi();
+  // Önbellekte olan varsa HEMEN uygulanır: ağ beklemeden doğru görsel görünür.
+  gorseller.forEach(img => {
+    const kayit = onbellek[img.getAttribute('data-kategori') || ''];
+    if (kayit?.url) img.src = kayit.url;
+  });
+  const eksik = [...new Set(gorseller
+    .map(img => img.getAttribute('data-kategori') || '')
+    .filter(kategori => kategori && !onbellek[kategori]?.url))];
+  if (!eksik.length) return;
+  // Sırayla (eşzamanlı değil): panel açılışında TMDB anahtarı yorulmasın.
+  for (const kategori of eksik) {
+    const getir = KATEGORI_KAYNAKLARI[kategori];
+    if (!getir) continue;
+    try {
+      const liste = await getir();
+      const uygun = (Array.isArray(liste) ? liste : []).find(x => x?.backdrop_path || x?.poster_path);
+      const yol = uygun?.backdrop_path || uygun?.poster_path;
+      if (!yol) continue;
+      const url = getImageUrl(yol, TMDB_IMAGE_SIZES.BACKDROP_LARGE);
+      onbellek[kategori] = { url, at: Date.now() };
+      kategoriOnbelleginiYaz(onbellek);
+      gorseller
+        .filter(img => img.getAttribute('data-kategori') === kategori)
+        .forEach(img => { img.src = url; });
+    } catch (_) { /* görsel opsiyoneldir: yer tutucu kalır */ }
+    await new Promise(cozum => setTimeout(cozum, 120));
+  }
+}
+
 function categoryTile(view, title, subtitle = '') {
+  const kayit = kategoriOnbellegi()[view];
   return `<a href="#${view}" class="cp-category cp-category-${view}">
-    <img src="${art(view === 'documentary' ? 'documentary' : view)}" alt="" width="480" height="300" decoding="async" />
+    <img src="${kayit?.url || art(view)}" data-kategori="${view}" alt="" width="480" height="300" decoding="async" />
     <div class="cp-category-copy"><strong>${title}</strong>${subtitle ? `<span>${subtitle}</span>` : ''}</div>
     <span class="cp-tile-arrow">${icon('arrow-up-right')}</span>
   </a>`;
@@ -50,11 +131,12 @@ export function renderNavbar(currentView = 'home') {
         </div>
         <div class="cp-nav-actions">
           ${window.CinePulseDesktop?.isDesktop ? `<button type="button" id="btn-desktop-update" class="cp-icon-button" title="GitHub sürüm sayfasını aç" aria-label="GitHub sürüm sayfasını aç">${icon('refresh-cw')}</button>` : ''}
-          ${offline && isKid ? `<a href="#downloads" class="cp-nav-action cp-mobile-downloads" aria-label="İndirilenler" title="İndirilenler">${icon('download')}<span>İndirilenler</span></a>` : ''}
-          ${app && !isKid ? `<a href="#livetv" class="cp-live ${currentView === 'livetv' ? 'active' : ''}"><span></span>Canlı TV</a>` : ''}
-          <a href="#kanalim" class="cp-nav-action ${currentView === 'kanalim' ? 'active' : ''}" title="KANALIM" aria-label="KANALIM">${icon('clapperboard')}<span>KANALIM</span></a>
+          <!-- NAVBAR SADELEŞTİRİLDİ (kullanıcı isteği 2026-10-17): üst çubukta
+               gereksiz düğme yığılması vardı (Canlı TV, KANALIM, Birlikte,
+               İndirilenler). Bu yolların TAMAMI Keşfet panosunda duruyor; üst
+               çubukta yalnız günlük kullanılanlar kalır: Listem + bildirim +
+               profil. Hiçbir özellik kaybolmadı, yalnız yeri değişti. -->
           <a href="#library" class="cp-nav-action ${currentView === 'library' ? 'active' : ''}" title="Listem" aria-label="Listem">${icon('bookmark')}<span>Listem</span></a>
-          ${!isKid ? `<button type="button" data-open-decision-room class="cp-nav-action" title="Birlikte seç" aria-label="Birlikte seç">${icon('users-round')}<span>Birlikte</span></button>` : ''}
           <button type="button" id="btn-nav-notifications" class="cp-icon-button cp-bell" aria-label="Bildirimler${unread ? `, ${unread} okunmamış` : ''}" title="Bildirimler">${icon('bell')}<span id="nav-notif-badge" class="cp-notification-dot ${unread ? '' : 'hidden'}">${unread}</span></button>
           <button type="button" id="btn-nav-profile" class="cp-profile" aria-label="Profil: ${escapeText(profile.name)}" title="Profili yönet">${icon(profile.avatar || (isKid ? 'smile' : 'user'))}</button>
         </div>
@@ -69,24 +151,23 @@ export function renderNavbar(currentView = 'home') {
             ${categoryTile('anime', 'Anime')}${categoryTile('cartoons', 'Çizgi Diziler')}${categoryTile('documentary', 'Belgesel')}${categoryTile('dramas', 'Kısa Diziler', 'Kısa sürede, büyük hikâyeler.')}
           </div>
           <div class="cp-discovery-tools"><h3>Biraz ilham?</h3>
-            <div class="cp-mobile-shortcuts">${actionTile('sliders-horizontal', 'Detaylı Keşif', 'Tür, yıl ve puana göre', 'href="#discover"', '', 'a')}</div>
-            <div class="cp-personal-tools">
+            <!-- TEK IZGARA: eskiden üç ayrı grup (kısayollar / kişisel / ilham)
+                 alt alta diziliyordu; panelin altı dağınık görünüyordu. Artık
+                 hepsi aynı ölçüde, iki kolonluk tek ızgarada. -->
+            <div class="cp-tool-grid">
+              ${actionTile('sliders-horizontal', 'Detaylı Keşif', 'Tür, yıl ve puana göre', 'href="#discover"', '', 'a')}
               ${actionTile('users-round', 'Birlikte', 'Beraber karar ver', 'data-open-decision-room')}
               ${actionTile('bookmark', 'Listem', 'Kaydettiklerin burada', 'href="#library"', '', 'a')}
-            </div>
-            <div class="cp-inspiration-tools">
               ${actionTile('dices', 'Şanslı Çark', 'Seçimi şansa bırak', 'id="btn-hub-random-spin"')}
               ${actionTile('sparkles', 'SÉRA', 'Sana özel öneriler', 'href="https://caca1403.github.io/dizionerisistemi/" target="_blank" rel="noopener noreferrer"', '', 'a')}
+              ${actionTile('bar-chart-3', 'Trakt.tv', 'İzleme geçmişini eşitle', 'id="btn-hub-trakt"', 'cp-trakt')}
+              ${app ? actionTile('radio', 'Canlı TV', 'Canlı yayınları keşfet', 'href="#livetv"', '', 'a') : ''}
+              ${actionTile('clapperboard', 'KANALIM', 'Kişisel yayın akışın', 'href="#kanalim"', '', 'a')}
+              ${offline ? actionTile('download', 'İndirilenler', 'Çevrimdışı izlemeye devam et', 'href="#downloads"', '', 'a') : ''}
             </div>
-            ${actionTile('bar-chart-3', 'Trakt.tv', 'İzleme geçmişini eşitle', 'id="btn-hub-trakt"', 'cp-trakt')}
-            ${actionTile('puzzle', 'Eklentiler', 'Kaynakları gör ve yönet', 'id="btn-hub-plugins"')}
-            ${app ? actionTile('radio', 'Canlı TV', 'Canlı yayınları keşfet', 'href="#livetv"', '', 'a') : ''}
-            ${actionTile('clapperboard', 'KANALIM', 'Kişisel yayın akışın', 'href="#kanalim"', '', 'a')}
-            ${offline ? actionTile('download', 'İndirilenler', 'Çevrimdışı izlemeye devam et', 'href="#downloads"', '', 'a') : ''}
           </div>
         </div>
-        <div class="cp-discovery-footer"><a href="#discover" class="cp-desktop-discover">${icon('sliders-horizontal')}<strong>Detaylı Keşif</strong><span>Tür, yıl, puan. Tam senlik.</span>${icon('arrow-up-right')}</a>
-          <a href="https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk" target="_blank" rel="noopener noreferrer" download="cinepulse.apk">${icon('smartphone')}<span>Android uygulamasını indir</span>${icon('external-link')}</a>
+        <div class="cp-discovery-footer"><a href="https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk" target="_blank" rel="noopener noreferrer" download="cinepulse.apk">${icon('smartphone')}<span>Android uygulamasını indir</span>${icon('external-link')}</a>
         </div>
       </div>` : ''}
     </nav>
@@ -126,7 +207,12 @@ export function attachNavbarEvents() {
     panel.classList.toggle('open', open);
     trigger?.setAttribute('aria-expanded', String(open));
     backdrop.hidden = !open;
-    if (open) document.getElementById('search-overlay')?.classList.add('hidden');
+    if (open) {
+      document.getElementById('search-overlay')?.classList.add('hidden');
+      // Kategori karoları gerçek içerik görsellerini panel açılınca alır
+      // (statik .webp dosyaları kategoriyle ilgisizdi).
+      kesfetKategoriGorselleriniYukle(panel);
+    }
     if (!open && restoreFocus) openedBy?.focus();
   }
   [trigger].forEach(button => button?.addEventListener('click', () => {
@@ -162,7 +248,6 @@ export function attachNavbarEvents() {
   panel?.querySelectorAll('a').forEach(link => link.addEventListener('click', () => setOpen(false), { signal }));
   document.getElementById('btn-hub-random-spin')?.addEventListener('click', () => { setOpen(false); openRandomPickerModal(); }, { signal });
   document.getElementById('btn-hub-trakt')?.addEventListener('click', () => { setOpen(false); openTraktModal(); }, { signal });
-  document.getElementById('btn-hub-plugins')?.addEventListener('click', async () => { setOpen(false); const { openPluginsModal } = await import('./PluginsModal.js'); openPluginsModal(); }, { signal });
   document.querySelectorAll('[data-open-decision-room]').forEach(button => button.addEventListener('click', () => { setOpen(false); openDecisionRoomModal(); }, { signal }));
   document.getElementById('btn-nav-notifications')?.addEventListener('click', openNotificationCenterModal, { signal });
   document.getElementById('btn-nav-profile')?.addEventListener('click', openProfileModal, { signal });
@@ -173,6 +258,29 @@ export function attachNavbarEvents() {
   onScroll();
   setupSearchInput('nav-search-input', 'search-overlay', signal);
 }
+/* ============================================================
+   Yerel afiş yedeği (CP-QUALITY-PACK)
+   Kırık afiş eskiden via.placeholder.com'a düşüyordu: kapalı/filtreli
+   ağda çalışmaz ve gri "N/A" kutusu çıkar. Yerine baş harfli SVG veri
+   adresi kullanılır — ağ bağımlılığı yoktur.
+============================================================ */
+function basHarfAfisi(baslik) {
+  const ham = String(baslik || '').trim().charAt(0).toUpperCase() || '?';
+  const harf = ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ham] || ham;
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="45" height="68" viewBox="0 0 45 68">'
+    + '<rect width="45" height="68" rx="4" fill="#1a212b"/>'
+    + `<text x="22.5" y="43" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="700" fill="#8b93a1">${harf}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function yerelAfisYedekleriBagla(kok) {
+  kok?.querySelectorAll?.('img.search-item-img').forEach((gorsel) => {
+    gorsel.addEventListener('error', () => {
+      gorsel.src = basHarfAfisi(gorsel.alt);
+    }, { once: true });
+  });
+}
+
 /* ============================================================
    Search Input Handler
 ============================================================ */
@@ -229,7 +337,7 @@ function setupSearchInput(inputId, overlayId, signal) {
           const poster = getImageUrl(item.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL || TMDB_IMAGE_SIZES.POSTER_MEDIUM);
           return `
             <a href="#detail?type=${isTv ? 'tv' : 'movie'}&id=${item.id}" class="search-item">
-              <img src="${poster}" alt="${title}" class="search-item-img" onerror="this.src='https://via.placeholder.com/45x68/1e293b/64748b?text=N/A'" />
+              <img src="${poster}" alt="${title}" class="search-item-img" loading="lazy" />
               <div class="search-item-info">
                 <div class="search-item-title">${title}</div>
                 <div class="search-item-meta">
@@ -242,6 +350,7 @@ function setupSearchInput(inputId, overlayId, signal) {
         }).join('');
 
         overlay.innerHTML = itemsHTML + dramaRow;
+        yerelAfisYedekleriBagla(overlay);
         overlay.classList.remove('hidden');
         renderIcons(overlay);
         attachClose();

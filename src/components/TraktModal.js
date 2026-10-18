@@ -1,6 +1,6 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 import { showToast } from './Toast.js';
-import * as traktService from '../services/traktService.js';
+import * as traktService from '../services/icerik/traktService.js';
 import {
   getWatchHistory,
   saveWatchProgress,
@@ -9,7 +9,7 @@ import {
   toggleWatchlist,
   isWatchlist,
   cleanTraktImportedHistory
-} from '../services/storage.js';
+} from '../services/altyapi/storage.js';
 
 let activeEscListener = null;
 

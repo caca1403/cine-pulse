@@ -1,722 +1,875 @@
 /* ==========================================================================
-   CinePulse Studio - Kısa Diziler & Mini Series (Reels / DramaBox / ShortMax)
-   Dedicated Hub for Non-TMDB Micro Dramas, Turkish Dubbed & Subtitled Series
-   Features instant live search, category filtering, episode explorer, and direct playback.
+   CinePulse Studio — KISA DİZİ SAHNESİ (Kısa Diziler / Mini Seriler)
+   Kaynak: DramaBox / ReelShort / ShortMax / FlexTV mikro dizileri (DDZ + DML)
+
+   YENİ DENEME (2026-10-17) — kullanıcı isteği:
+     "kısa dizi sayfası ve diğer yerler gerekliyse netflix mantığı, iphone
+      estetiği olacak"
+   Bu yüzden sayfa baştan kuruldu:
+     • NETFLIX MANTIĞI → tek billboard (vitrin) + kişisel YATAY SATIRLAR
+       ("Kaldığın yerden devam et", "Bugün trend", "Türkçe dublaj", türler) +
+       kategori/arama ızgarası. Satırlar ekrana girdikçe yüklenir; açılışta
+       9 istek birden atılmaz.
+     • APPLE DİLİ → büyük yuvarlak köşe, buzlu çubuk, pil düğmeler, ince tüy
+       kenarlık, tek vurgu rengi, yaylı (spring) geçişler. Mobilde detay
+       iOS ALT ÇEKMECESİ gibi açılır.
+   Tasarım kuralları kendi dosyasında: src/styles/kisa-dizi.css (kd-* ön eki).
+   Eski ".drama-*" ekranı kaldırıldı; bölüm seçimi TEK yerde (oynatıcı rail'i).
    ========================================================================== */
 
-import { renderIcons } from '../services/icons.js';
+import '../styles/kisa-dizi.css';
+import { renderIcons } from '../services/kabuk/icons.js';
 import {
   fetchTrendingDramas,
   fetchDramaCatalog,
   fetchDramaDetails
-} from '../services/dramaDizilerimScraper.js';
-import {
-  fetchDramalarDetails
-} from '../services/dramalarScraper.js';
+} from '../services/kaynak/dramaDizilerimScraper.js';
+import { fetchDramalarDetails } from '../services/kaynak/dramalarScraper.js';
 import { openPlayerModal } from '../components/openPlayer.js';
-import { isMediaWatched, markEpisodeWatched } from '../services/storage.js';
 import { showToast } from '../components/Toast.js';
+import { getUnifiedContinueWatching, removeWatchHistoryItem } from '../services/altyapi/storage.js';
+
+/* Kısa dizi kayıtları TMDB id'si yerine ddz_/dml_ önekiyle saklanır; geçmiş
+   kayıtları da aynı öneki taşır. "Devam et" satırı bu önekle süzülür. */
+const KISA_ONEK = /^(ddz_|dml_)/;
+
+/* SATIR KATEGORİLERİ — DOĞRULANMIŞ (2026-10-17, /tmp/opencode/kd-baslik-dogrula.mjs).
+   Kaynak sitede TÜR taksonomisi YOK; menüde yalnız /dizi (katalog) ve
+   /search?q= var. Önceki başlıklar ("CEO & Patron", "Kurt & Alfa", "Yasak Aşk")
+   uydurma kelime aramalarına dayanıyordu ve kullanıcı haklı olarak "çok alakasız"
+   dedi. Bu listedeki her anahtar ÖLÇÜLDÜ: /search?q= her biri için 48 kayıt
+   döndürüyor ve dönen başlıklar konuyla tutarlı (ör. "aşk" → Aşkı Zehir Gibi,
+   "kurt" → Kurt Kral: Sıfırdan Alfaya, "vampir" → Vampir Prensin Gelini). */
+const KATEGORILER = [
+  { id: 'dublaj', label: 'Türkçe Dublaj', icon: 'audio-lines', query: 'dublaj', sub: 'Seslendirilmiş mikro diziler' },
+  { id: 'ask', label: 'Aşk & Romantik', icon: 'heart', query: 'aşk', sub: 'Duygusal hikâyeler' },
+  { id: 'intikam', label: 'İntikam', icon: 'flame', query: 'intikam', sub: 'Yüksek tempo' },
+  { id: 'patron', label: 'Patron & Ofis', icon: 'briefcase', query: 'patron', sub: 'Güç ve hırs' },
+  { id: 'milyarder', label: 'Milyarder', icon: 'crown', query: 'milyarder', sub: 'Zengin & fakir' },
+  { id: 'gizem', label: 'Gizem', icon: 'search', query: 'gizem', sub: 'Sırlar ve entrikalar' },
+  { id: 'evlilik', label: 'Düğün & Evlilik', icon: 'gift', query: 'evlilik', sub: 'Sahte evlilik, gerçek aşk' },
+  { id: 'kurt', label: 'Kurt & Fantastik', icon: 'moon', query: 'kurt', sub: 'Fantastik dünya' }
+];
+
+const SAYFA_BASLIK = {
+  katalog: 'Tüm Kısa Diziler',
+  arama: 'Arama Sonuçları'
+};
 
 export async function renderDramaView(initialSlug = null, initialQuery = '') {
-  let activeTab = initialQuery ? 'search' : 'trending';
-  let currentSearchQuery = initialQuery || '';
-  let currentPage = 0;
-  let hasMore = true;
-  let isLoading = true;
-  let dramasList = [];
-  let selectedDrama = null;
-  let activeEpisodeFilter = '';
+  let mod = 'vitrin'; // 'vitrin' (billboard + satırlar) | 'izgara' (kategori/arama)
+  let aktifSeg = initialQuery ? 'arama' : 'vitrin';
+  let aramaDizisi = initialQuery || '';
+  let ızgaraListe = [];
+  let sayfa = 0;
+  let dahaVar = true;
+  let yukleniyor = false;
+  let istekSurumu = 0;
+  let hataSayisi = 0;
+  let seciliDizi = null;
 
-  const CATEGORY_TABS = [
-    { id: 'trending', label: 'Trendler', icon: 'flame', query: '' },
-    { id: 'all', label: 'Tüm Katalog', icon: 'layers', query: '' },
-    { id: 'dubbed', label: 'Türkçe Dublaj', icon: 'sparkles', query: 'dublaj' },
-    { id: 'patron', label: 'CEO & Patron', icon: 'briefcase', query: 'patron' },
-    { id: 'kurt', label: 'Kurt & Alfa', icon: 'moon', query: 'kurt' },
-    { id: 'intikam', label: 'İntikam & Aşk', icon: 'heart-crack', query: 'intikam' },
-    { id: 'milyarder', label: 'Milyarder', icon: 'crown', query: 'milyarder' },
-    { id: 'evlilik', label: 'Yasak Aşk & Evlilik', icon: 'ring', query: 'evlilik' }
-  ];
-
-  const initialHTML = `
-    <div class="drama-view-container" id="drama-view-root">
-      <!-- Ambient Glow Elements -->
-      <div class="drama-ambient-glow glow-primary"></div>
-      <div class="drama-ambient-glow glow-secondary"></div>
-
-      <!-- Hero Header Section -->
-      <header class="drama-hero-header">
-        <div class="drama-hero-content">
-          <div class="drama-hero-badge">
-            <i data-lucide="sparkles" style="width: 14px; height: 14px; color: #c084fc;"></i>
-            <span>ÖZEL MİNİ DİZİ &amp; REELS KÜTÜPHANESİ</span>
-            <span class="drama-vip-pill">DDZ VIP</span>
-          </div>
-          <h1 class="drama-hero-title">Kısa Diziler &amp; Mini Seriler</h1>
-          <p class="drama-hero-subtitle">
-            DramaBox, ReelShort, ShortMax ve FlexTV orijinal yapımları. TMDB'de bulunmayan tüm mini bölümler, 
-            <strong style="color: #e9d5ff;">Türkçe Dublaj</strong> ve <strong style="color: #e9d5ff;">Altyazı</strong> desteğiyle burada!
-          </p>
-
-          <!-- Dedicated Specialized Search Box -->
-          <div class="drama-search-wrapper">
-            <div class="drama-search-box">
-              <i data-lucide="search" class="drama-search-icon"></i>
-              <input 
-                type="text" 
-                id="drama-search-input" 
-                class="drama-search-input" 
-                placeholder="Kısa dizi adı veya konu ara... (Örn: Patron, Kurt Kızı, Milyarder, Dublaj)" 
-                value="${currentSearchQuery.replace(/"/g, '&quot;')}"
-                autocomplete="off"
-              />
-              <button id="btn-drama-search-clear" class="btn-drama-search-clear ${currentSearchQuery ? '' : 'hidden'}" title="Temizle">
-                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
-              </button>
-            </div>
-            <div id="drama-search-feedback" class="drama-search-feedback"></div>
-          </div>
-
-          <!-- Category Quick Filter Chips -->
-          <div class="drama-category-chips" id="drama-category-chips">
-            ${CATEGORY_TABS.map(tab => `
-              <button 
-                class="drama-chip ${activeTab === tab.id ? 'active' : ''}" 
-                data-tab-id="${tab.id}"
-                data-tab-query="${tab.query}"
-              >
-                <i data-lucide="${tab.icon}" style="width: 14px; height: 14px;"></i>
-                <span>${tab.label}</span>
-              </button>
-            `).join('')}
+  const html = `
+    <div class="kd-root" id="kd-root">
+      <!-- 1) VITRIN: tek kahraman dizi, Netflix billboard'u gibi -->
+      <section class="kd-billboard" id="kd-billboard" aria-label="Öne çıkan kısa dizi">
+        <div class="kd-billboard-bg" id="kd-billboard-bg"></div>
+        <div class="kd-billboard-scrim"></div>
+        <div class="kd-billboard-body">
+          <span class="kd-eyebrow"><i data-lucide="sparkles"></i> CP ÖZEL · MİNİ DİZİ</span>
+          <h1 class="kd-billboard-title" id="kd-bb-title">Kısa Diziler</h1>
+          <p class="kd-billboard-desc" id="kd-bb-desc">DramaBox, ReelShort ve ShortMax orijinal mikro dizileri — Türkçe dublaj ve altyazıyla.</p>
+          <div class="kd-billboard-meta" id="kd-bb-meta"></div>
+          <div class="kd-billboard-actions">
+            <button class="kd-btn kd-btn-play" id="kd-bb-play">
+              <i data-lucide="play" style="width:18px;height:18px;fill:currentColor"></i><span>Oynat</span>
+            </button>
+            <button class="kd-btn kd-btn-ghost" id="kd-bb-info">
+              <i data-lucide="info" style="width:17px;height:17px"></i><span>Detaylar</span>
+            </button>
           </div>
         </div>
-      </header>
+      </section>
 
-      <!-- Main Content Area: Grid / Loader -->
-      <section class="drama-catalog-section">
-        <div class="drama-section-header">
-          <div class="drama-section-title-wrap">
-            <h2 id="drama-section-title" class="drama-section-title">
-              <i data-lucide="flame" style="width: 20px; height: 20px; color: #f43f5e;"></i>
-              <span>Trend Kısa Diziler</span>
-            </h2>
-            <span id="drama-counter-badge" class="drama-counter-badge">Yükleniyor...</span>
-          </div>
+      <!-- 2) ARAÇ ÇUBUĞU: arama + iOS segment kontrolü (yapışkan) -->
+      <div class="kd-toolbar" id="kd-toolbar">
+        <div class="kd-search">
+          <i data-lucide="search"></i>
+          <input id="kd-search" type="search" inputmode="search" autocomplete="off"
+                 placeholder="Kısa dizi ara: patron, kurt, intikam…" value="${aramaDizisi.replace(/"/g, '&quot;')}" />
+          <button class="kd-search-clear ${aramaDizisi ? '' : 'hidden'}" id="kd-search-clear" aria-label="Aramayı temizle">
+            <i data-lucide="x"></i>
+          </button>
         </div>
-
-        <div id="drama-cards-grid" class="drama-cards-grid">
-          <!-- Skeletons initially rendered -->
-          ${Array.from({ length: 12 }).map(() => `
-            <div class="drama-card-skeleton">
-              <div class="skeleton-poster"></div>
-              <div class="skeleton-title"></div>
-            </div>
-          `).join('')}
+        <div class="kd-segments" id="kd-segments" role="tablist">
+          <button class="kd-seg ${aktifSeg === 'vitrin' ? 'is-active' : ''}" role="tab" data-seg="vitrin">
+            <i data-lucide="flame"></i><span>Trendler</span>
+          </button>
+          <button class="kd-seg" role="tab" data-seg="katalog">
+            <i data-lucide="layers"></i><span>Katalog</span>
+          </button>
+          ${KATEGORILER.map(k => `
+            <button class="kd-seg" role="tab" data-seg="${k.id}">
+              <i data-lucide="${k.icon}"></i><span>${k.label}</span>
+            </button>`).join('')}
         </div>
-        <div id="drama-scroll-sentinel" class="drama-scroll-sentinel" aria-hidden="true"></div>
+      </div>
 
-        <!-- Load More / Pagination Button -->
-        <div id="drama-load-more-wrap" class="drama-load-more-wrap hidden">
-          <button id="btn-drama-load-more" class="btn-drama-load-more">
-            <i data-lucide="plus-circle" style="width: 16px; height: 16px;"></i>
-            <span>Daha Fazla Dizi Yükle</span>
+      <!-- 3) SATIRLAR (yalnız vitrin modunda) -->
+      <div class="kd-rails" id="kd-rails"></div>
+
+      <!-- 4) IZGARA (kategori / katalog / arama) -->
+      <section class="kd-section hidden" id="kd-izgara">
+        <div class="kd-section-head">
+          <h2 class="kd-section-title" id="kd-izgara-baslik">Katalog</h2>
+          <span class="kd-count" id="kd-izgara-say">—</span>
+        </div>
+        <div class="kd-grid" id="kd-grid"></div>
+        <div id="kd-sentinel" aria-hidden="true"></div>
+        <div class="kd-more-wrap hidden" id="kd-more-wrap">
+          <button class="kd-btn kd-btn-quiet" id="kd-more">
+            <i data-lucide="plus" style="width:15px;height:15px"></i><span>Daha fazla getir</span>
           </button>
         </div>
       </section>
 
-      <!-- Drama Detail Modal / Drawer -->
-      <div id="drama-detail-modal" class="drama-modal-backdrop hidden">
-        <div class="drama-modal-dialog" id="drama-modal-dialog">
-          <!-- Will be dynamically injected when a drama is opened -->
-        </div>
+      <!-- 5) DETAY PERDESİ (mobil: alt çekmece / masaüstü: merkezî kart) -->
+      <div class="kd-sheet-backdrop hidden" id="kd-sheet-backdrop">
+        <div class="kd-sheet" id="kd-sheet" role="dialog" aria-modal="true"></div>
       </div>
     </div>
   `;
 
   return {
-    html: initialHTML,
+    html,
     init: async (container) => {
-      const root = container.querySelector('#drama-view-root');
+      const root = container.querySelector('#kd-root');
       if (!root) return;
 
-      const searchInput = root.querySelector('#drama-search-input');
-      const searchClearBtn = root.querySelector('#btn-drama-search-clear');
-      const searchFeedback = root.querySelector('#drama-search-feedback');
-      const categoryChips = root.querySelectorAll('.drama-chip');
-      const sectionTitle = root.querySelector('#drama-section-title');
-      const counterBadge = root.querySelector('#drama-counter-badge');
-      const cardsGrid = root.querySelector('#drama-cards-grid');
-      const loadMoreWrap = root.querySelector('#drama-load-more-wrap');
-      const loadMoreBtn = root.querySelector('#btn-drama-load-more');
-      const scrollSentinel = root.querySelector('#drama-scroll-sentinel');
-      const detailModal = root.querySelector('#drama-detail-modal');
-      const modalDialog = root.querySelector('#drama-modal-dialog');
+      const billboard = root.querySelector('#kd-billboard');
+      const bbBg = root.querySelector('#kd-billboard-bg');
+      const bbTitle = root.querySelector('#kd-bb-title');
+      const bbDesc = root.querySelector('#kd-bb-desc');
+      const bbMeta = root.querySelector('#kd-bb-meta');
+      const bbPlay = root.querySelector('#kd-bb-play');
+      const bbInfo = root.querySelector('#kd-bb-info');
+      const rails = root.querySelector('#kd-rails');
+      const section = root.querySelector('#kd-izgara');
+      const grid = root.querySelector('#kd-grid');
+      const gridTitle = root.querySelector('#kd-izgara-baslik');
+      const gridCount = root.querySelector('#kd-izgara-say');
+      const sentinel = root.querySelector('#kd-sentinel');
+      const moreWrap = root.querySelector('#kd-more-wrap');
+      const moreBtn = root.querySelector('#kd-more');
+      const search = root.querySelector('#kd-search');
+      const searchClear = root.querySelector('#kd-search-clear');
+      const segBtns = Array.from(root.querySelectorAll('.kd-seg'));
+      const backdrop = root.querySelector('#kd-sheet-backdrop');
+      const sheet = root.querySelector('#kd-sheet');
 
-      let searchDebounceTimer = null;
-      let requestVersion = 0;
-      let loadErrorCount = 0;
-      let prefetchedPage = 0;
-      let prefetchedResult = null;
+      /* ── Yapışkan çubuk, uygulamanın sabit gezinme çubuğunun hemen altında
+             kalmalı; yükseklik cihazdan cihaza değiştiği için ölçülüyor. ── */
+      const navYuksekliginiOle = () => {
+        const nav = document.querySelector('.navbar');
+        const h = nav ? Math.round(nav.getBoundingClientRect().height) : 58;
+        root.style.setProperty('--kd-nav-h', `${h}px`);
+      };
+      navYuksekliginiOle();
+      const navResize = () => navYuksekliginiOle();
+      window.addEventListener('resize', navResize);
+      setTimeout(navYuksekliginiOle, 600);
 
-      const primeCatalogPage = page => {
-        if (prefetchedPage === page) return;
-        prefetchedPage = page;
-        prefetchedResult = fetchDramaCatalog({ page }).catch(() => null);
+      /* ── Detay istekleri tek kez yapılır (billboard + kart aynı diziyse) ── */
+      const detayHafizasi = new Map();
+      async function detayGetir(slug) {
+        if (!slug) return null;
+        if (detayHafizasi.has(slug)) return detayHafizasi.get(slug);
+        const istek = (async () => {
+          /* "Devam et" kartının data-slug'u kayıt id'sidir ve ONEK TAŞIR
+             (ddz_...). Saha ölçümü (kullanıcı 2026-10-18: "bölüm bilgisi
+             alınamadı"): onekli slug site yoluna gidince 404 dönüyordu;
+             detay istekleri her zaman ONEKSİZ slug ile yapılır. */
+          const temiz = String(slug).replace(KISA_ONEK, '');
+          if (String(slug).startsWith('dml_')) return fetchDramalarDetails(temiz);
+          const ddz = await fetchDramaDetails(temiz).catch(() => null);
+          if (ddz && (ddz.episodes || []).length) return ddz;
+          return ddz || fetchDramalarDetails(temiz).catch(() => null);
+        })().catch(() => null);
+        detayHafizasi.set(slug, istek);
+        const sonuc = await istek;
+        if (!sonuc) detayHafizasi.delete(slug);
+        return sonuc;
+      }
+
+      const temizListe = (items) => (Array.isArray(items) ? items : []).filter(Boolean);
+
+      /* ── Kart üretimi (satır ve ızgara aynı kartı kullanır) ───────────── */
+      function kartHtml(dizi, seçenekler = {}) {
+        const { sira = 0, devam = null } = seçenekler;
+        const slug = String(dizi.slug || '').replace(/"/g, '&quot;');
+        const baslik = String(dizi.title || 'İsimsiz dizi');
+        const dublaj = Boolean(dizi.isDubbed) || /dublaj/i.test(baslik);
+        const poster = dizi.poster || dizi.poster_path || '';
+        const yillik = baslik.replace(/^\(?\s*(dublajl[ıi]|altyaz[ıi])\s*\)?[\s:.-]*/i, '').replace(/[^\p{L}\p{N} ]/gu, ' ').trim().slice(0, 2) || 'CP';
+        const yuzde = devam && typeof devam.progressPercent === 'number'
+          ? Math.max(2, Math.min(100, Math.round(devam.progressPercent))) : 0;
+        return `
+          <article class="kd-card" data-slug="${slug}" tabindex="0" role="button" aria-label="${baslik}">
+            ${devam ? `<button class="kd-card-del" type="button" data-del-id="${slug}" data-del-sez="${devam.season || 1}" data-del-bol="${devam.episode || 1}" aria-label="Listeden kaldır"><span aria-hidden="true">✕</span></button>` : ''}
+            <div class="kd-card-media">
+              ${poster
+                ? `<img src="${poster}" alt="${baslik}" loading="eager" decoding="async" onload="var f=this.nextElementSibling; if(f && f.classList && f.classList.contains('kd-card-fallback')) f.style.display='none';" onerror="this.remove()" />`
+                : ''}
+              <div class="kd-card-fallback" aria-hidden="true">${yillik}</div>
+              <span class="kd-card-badge ${dublaj ? 'dub' : ''}">${dublaj ? 'Dublaj' : 'Altyazı'}</span>
+              ${sira ? `<span class="kd-card-rank" aria-hidden="true">${sira}</span>` : ''}
+              <div class="kd-card-hover">
+                <span class="kd-card-play"><i data-lucide="play"></i></span>
+              </div>
+            </div>
+            <div class="kd-card-info">
+              <h3 class="kd-card-title" title="${baslik}">${baslik}</h3>
+              <div class="kd-card-meta">
+                <span>${devam ? `Bölüm ${devam.episode || 1}` : 'Mini dizi'}</span>
+                <span class="kd-chip-dot"></span>
+                <span>1080p</span>
+              </div>
+              ${yuzde ? `<div class="kd-progress"><i style="width:${yuzde}%"></i></div>` : ''}
+            </div>
+          </article>`;
+      }
+
+      const iskelet = (n = 7) => Array.from({ length: n }).map(() => `
+        <div class="kd-skel-card">
+          <div class="kd-skel"></div>
+          <div class="kd-skel kd-skel-line"></div>
+        </div>`).join('');
+
+      /* ── SATIRLAR ─────────────────────────────────────────────────────── */
+      /* Trend havuzu BİR KEZ çekilir: vitrin (billboard) ile "Bugün trend"
+         satırı aynı veriyi paylaşır → açılışta gereksiz ikinci istek atılmaz. */
+      let trendVadi = null;
+      const trendHavuzu = () => {
+        if (!trendVadi) trendVadi = fetchTrendingDramas().then(t => temizListe(t)).catch(() => []);
+        return trendVadi;
       };
 
-      const getCatalogPage = async page => {
-        if (prefetchedPage === page && prefetchedResult) {
-          const result = await prefetchedResult;
-          if (result) return result;
-        }
-        return fetchDramaCatalog({ page });
-      };
+      const rayTanimlari = [
+        { id: 'trend', baslik: 'Bugün Trend Olanlar', alt: 'Son 24 saat', yukle: trendHavuzu, sirala: true },
+        { id: 'yeni', baslik: 'Yeni Eklenenler', alt: 'Kataloğun taze ucu', yukle: () => fetchDramaCatalog({ page: 1 }) },
+        ...KATEGORILER.map(k => ({
+          id: k.id,
+          baslik: k.label,
+          alt: k.sub,
+          yukle: () => fetchDramaCatalog({ query: k.query })
+        }))
+      ];
 
-      // Active text query: the search box wins, otherwise the selected category chip's keyword.
-      const getActiveQuery = () => {
-        const typed = currentSearchQuery.trim();
-        if (typed.length >= 2) return typed;
-        return CATEGORY_TABS.find(tab => tab.id === activeTab)?.query || '';
-      };
-
-      const fetchResultPage = async page => {
-        const query = getActiveQuery();
-        if (query) {
-          const results = await fetchDramaCatalog({ query, page });
-          const seen = new Set();
-          return (Array.isArray(results) ? results : []).filter(item => {
-            const cleanSlug = (item.slug || '').replace(/^(ddz_|dml_)/, '');
-            if (!cleanSlug || seen.has(cleanSlug)) return false;
-            seen.add(cleanSlug);
-            return true;
-          });
-        }
-        return getCatalogPage(page);
-      };
-
-      const canLoadMore = () => (activeTab === 'trending' || activeTab === 'all' || Boolean(getActiveQuery())) && hasMore;
-
-      const loadNextPage = async () => {
-        if (isLoading || !canLoadMore()) return;
-        const nextPage = currentPage + 1;
-        const version = requestVersion;
-        isLoading = true;
-        loadMoreBtn.disabled = true;
-        loadMoreWrap.classList.remove('hidden');
-        loadMoreWrap.classList.add('is-loading');
-        loadMoreWrap.classList.remove('is-error');
-        loadMoreBtn.querySelector('span').textContent = 'Diziler yükleniyor...';
-        let loaded = false;
+      /* Geçmişten gelen "devam et" satırı: senkron (localStorage) → anında görünür. */
+      function devamListesi() {
         try {
-          const results = await fetchResultPage(nextPage);
-          if (version !== requestVersion) return;
-          const known = new Set(dramasList.map(drama => drama.slug));
-          const fresh = results.filter(drama => !known.has(drama.slug) && known.add(drama.slug));
-          currentPage = nextPage;
-          hasMore = fresh.length > 0;
-          loaded = true;
-          loadErrorCount = 0;
-          if (hasMore && !getActiveQuery()) primeCatalogPage(nextPage + 1);
-          if (fresh.length) {
-            const previousCount = dramasList.length;
-            dramasList.push(...fresh);
-            renderCards(previousCount);
-          }
-        } catch (error) {
-          if (version !== requestVersion) return;
-          console.error('[DramaView] More dramas failed:', error);
-          loadErrorCount++;
-          if (loadErrorCount <= 2) setTimeout(() => {
-            if (version === requestVersion) loadNextPage();
-          }, loadErrorCount * 800);
-          return;
-        } finally {
-          if (version !== requestVersion) return;
-          isLoading = false;
-          loadMoreBtn.disabled = false;
-          loadMoreBtn.querySelector('span').textContent = 'Daha Fazla Dizi Yükle';
-          loadMoreWrap.classList.remove('is-loading');
-          loadMoreWrap.classList.toggle('is-error', loadErrorCount > 2 && canLoadMore());
-          loadMoreWrap.classList.toggle('hidden', loadErrorCount <= 2 || !canLoadMore());
-          if (loaded && canLoadMore() && scrollSentinel.getBoundingClientRect().top < window.innerHeight + 800) {
-            setTimeout(loadNextPage, 0);
-          }
+          return temizListe(getUnifiedContinueWatching() || [])
+            .filter(it => it && KISA_ONEK.test(String(it.id || '')))
+            .slice(0, 18);
+        } catch (_) {
+          return [];
         }
-      };
+      }
 
-      const scrollObserver = new IntersectionObserver(entries => {
-        if (entries.some(entry => entry.isIntersecting)) loadNextPage();
-      }, { rootMargin: '800px 0px' });
-      scrollObserver.observe(scrollSentinel);
+      /* ── SIRALI YÜKLEME KUYRUĞU ──────────────────────────────────────────
+         KANIT (cihaz, apk47): 8 satır AYNI ANDA istek atınca kaynak site
+         (Cloudflare) istekleri kısıtladı, her satır hata verdi ve hata yolu
+         satırı DOM'dan sildiği için sayfa BOMBOŞ kaldı — kullanıcı: "kısa dizi
+         sayfasında kartlar hiç gelmiyor şu an". Artık aynı anda TEK istek
+         uçar; kaydırma gözlemcisi satırı kuyruğun ÖNÜNE alır (hızlı tepki),
+         kuyruk yine seri çalışır. */
+      const kuyruk = [];
+      /* İŞÇİ SAYISI ölçümle seçildi: 8 satır birden → kaynak site istekleri
+         kısıtladı ve sayfa boş kaldı; 1 işçi → 10 satır ~25 sn'de doluyordu.
+         2 işçi + istekler arası 200 ms aralık dengeli (apk48 ölçümü). */
+      const ISCI_SAYISI = 2;
+      let calisanIsci = 0;
+      let kuyrukZaman = null;
+      function kuyrugaEkle(id) {
+        if (!id) return;
+        if (!kuyruk.includes(id)) kuyruk.push(id);
+        kuyrukIsle();
+      }
+      function kuyrukIsle() {
+        if (!document.contains(rails)) return;
+        while (calisanIsci < ISCI_SAYISI && kuyruk.length) {
+          const id = kuyruk.shift();
+          calisanIsci += 1;
+          const bitir = () => {
+            calisanIsci -= 1;
+            if (kuyrukZaman) clearTimeout(kuyrukZaman);
+            kuyrukZaman = setTimeout(() => { if (document.contains(rails)) kuyrukIsle(); }, 200);
+          };
+          rayYukle(id).then(bitir, bitir);
+        }
+      }
 
-      async function fetchDramasData() {
-        const version = ++requestVersion;
-        loadErrorCount = 0;
-        isLoading = true;
-        cardsGrid.innerHTML = Array.from({ length: 12 }).map(() => `
-          <div class="drama-card-skeleton">
-            <div class="skeleton-poster"></div>
-            <div class="skeleton-title"></div>
+      const gozlemci = new IntersectionObserver((girdiler) => {
+        for (const g of girdiler) {
+          if (!g.isIntersecting) continue;
+          gozlemci.unobserve(g.target);
+          kuyrugaEkle(g.target.getAttribute('data-ray'));
+        }
+      }, { rootMargin: '500px 0px' });
+
+      function rayKur({ id, baslik, alt }, { onizleme = '', kartlar = '', gozle = true } = {}) {
+        const el = document.createElement('section');
+        el.className = 'kd-rail';
+        el.innerHTML = `
+          <div class="kd-rail-head">
+            <h2 class="kd-rail-title">${onizleme || baslik}</h2>
+            ${alt ? `<span class="kd-rail-sub">${alt}</span>` : ''}
           </div>
-        `).join('');
-        counterBadge.textContent = 'Yükleniyor...';
+          <div class="kd-rail-viewport">
+            <button class="kd-rail-btn prev is-off" data-dir="-1" aria-label="Geri"><i data-lucide="chevron-left"></i></button>
+            <div class="kd-rail-track" data-ray="${id}" ${gozle ? '' : 'data-hazir="1"'}>${kartlar || iskelet()}</div>
+            <button class="kd-rail-btn next" data-dir="1" aria-label="İleri"><i data-lucide="chevron-right"></i></button>
+          </div>`;
+        rails.appendChild(el);
+        const track = el.querySelector('.kd-rail-track');
+        if (gozle) gozlemci.observe(track);
+        track.addEventListener('scroll', () => rayKaydirmaKontrolu(track), { passive: true });
+        renderIcons(el);
+        return el;
+      }
 
+      async function rayYukle(id) {
+        const tanim = rayTanimlari.find(r => r.id === id);
+        const track = rails.querySelector(`.kd-rail-track[data-ray="${id}"]`);
+        if (!tanim || !track) return;
+        // ÇİFT YÜKLEME KİLİDİ: kaydırma gözlemcisi ile aşağıdaki tembel-önceden
+        // yükleme kuyruğu aynı satırı yarıştırmaz.
+        if (track.dataset.yukleniyor === '1' || track.dataset.hazir === '1') return;
+        track.dataset.yukleniyor = '1';
         try {
-          let results = [];
-          if (currentSearchQuery && currentSearchQuery.trim().length >= 2) {
-            results = await fetchResultPage(1);
-            currentPage = 1;
-            sectionTitle.innerHTML = `
-              <i data-lucide="search" style="width: 20px; height: 20px; color: #a855f7;"></i>
-              <span>"${currentSearchQuery}" İçin Arama Sonuçları</span>
-            `;
-            loadMoreWrap.classList.toggle('hidden', results.length === 0);
-          } else {
-            const currentTabConfig = CATEGORY_TABS.find(t => t.id === activeTab) || CATEGORY_TABS[0];
-            if (activeTab === 'trending') {
-              primeCatalogPage(1);
-              results = await fetchTrendingDramas();
-              currentPage = 0;
-              sectionTitle.innerHTML = `
-                <i data-lucide="flame" style="width: 20px; height: 20px; color: #f43f5e;"></i>
-                <span>Trend Kısa Diziler</span>
-              `;
-              loadMoreWrap.classList.add('hidden');
-            } else if (activeTab === 'all') {
-              results = await getCatalogPage(1);
-              currentPage = 1;
-              primeCatalogPage(2);
-              sectionTitle.innerHTML = `
-                <i data-lucide="layers" style="width: 20px; height: 20px; color: #3b82f6;"></i>
-                <span>Tüm Kısa Diziler Kataloğu (Sayfa ${currentPage})</span>
-              `;
-              loadMoreWrap.classList.toggle('hidden', results.length === 0);
-            } else if (currentTabConfig.query) {
-              results = await fetchResultPage(1);
-              currentPage = 1;
-              sectionTitle.innerHTML = `
-                <i data-lucide="${currentTabConfig.icon}" style="width: 20px; height: 20px; color: #c084fc;"></i>
-                <span>${currentTabConfig.label} Serileri</span>
-              `;
-              loadMoreWrap.classList.toggle('hidden', results.length === 0);
-            }
+          let gelen = temizListe(await tanim.yukle());
+          // Kullanıcı (2026-10-17): "kaynak çok az kart gözüküyor" → ölçülen
+          // kaynak (48 kayıt/anahtar, kd-baslik-dogrula) tamamen kullanılır.
+          gelen = gelen.slice(0, 24);
+          if (!gelen.length) {
+            const bos = new Error(`Kısa dizi satırı boş döndü: ${id}`);
+            bos.bosListe = true;   // yeniden denemesi anlamlı (kısıtlama olabilir)
+            throw bos;
           }
-
-          if (version !== requestVersion) return;
-
-          dramasList = results;
-
-          // Trending is the front page only, so the catalog continues after it (page 1 next).
-          // Everything else (all / search / category keyword) continues from page 2.
-          if (activeTab !== 'trending') currentPage = 1;
-          hasMore = activeTab === 'trending' || results.length > 0;
-          loadMoreWrap.classList.add('hidden');
-
-          renderCards();
+          track.innerHTML = gelen.map((d, i) => kartHtml(d, { sira: tanim.sirala ? i + 1 : 0 })).join('');
+          track.dataset.hazir = '1';
+          renderIcons(track);
+          // Billboard kahramanını ilk trend satırından seç (görseli olan ilk kayıt).
+          if (tanim.sirala && !vitrinDizisi) vitrinSec(gelen.find(d => d.poster) || gelen[0]);
         } catch (err) {
-          if (version !== requestVersion) return;
-          console.error('[DramaView] Error fetching dramas:', err);
-          cardsGrid.innerHTML = `
-            <div class="drama-empty-state">
-              <i data-lucide="alert-circle" style="width: 44px; height: 44px; color: #ef4444;"></i>
-              <h3>Diziler yüklenirken bir sorun oluştu</h3>
-              <p>Lütfen internet bağlantınızı kontrol edip tekrar deneyin.</p>
-              <button class="btn-primary" id="btn-drama-retry">Tekrar Dene</button>
-            </div>
-          `;
-          root.querySelector('#btn-drama-retry')?.addEventListener('click', () => fetchDramasData(false));
-          renderIcons(cardsGrid);
-        } finally {
-          if (version === requestVersion) {
-            isLoading = false;
-            if (canLoadMore() && scrollSentinel.getBoundingClientRect().top < window.innerHeight + 800) {
-              setTimeout(loadNextPage, 0);
-            }
+          /* HATA SATIRI SİLMEZ (kullanıcı: "kartlar hiç gelmiyor"). Kaynak
+             site geçici olarak kısıtlarsa satır yok oluyordu; artık iskelet
+             kalır, iki kez kendiliğinden yeniden denenir, sonrasında elle
+             "Tekrar dene" düğmesi gösterilir. */
+          console.warn('[KısaDizi] satır yüklenemedi:', id, err?.message || err);
+          track.dataset.yukleniyor = '';
+          const deneme = Number(track.dataset.deneme || 0) + 1;
+          track.dataset.deneme = String(deneme);
+          if (deneme <= 2) {
+            setTimeout(() => {
+              if (document.contains(rails) && track.dataset.hazir !== '1') kuyrugaEkle(id);
+            }, 3000 * deneme);
+          } else {
+            track.innerHTML = `<button class="kd-ray-tekrar" type="button">
+              <i data-lucide="refresh-cw"></i> Satır yüklenemedi · Tekrar dene
+            </button>`;
+            renderIcons(track);
+            track.querySelector('.kd-ray-tekrar')?.addEventListener('click', () => {
+              track.dataset.deneme = '0';
+              track.dataset.yukleniyor = '';
+              track.innerHTML = iskelet();
+              renderIcons(track);
+              kuyrugaEkle(id);
+            });
           }
         }
       }
 
-      function renderCards(startIndex = 0) {
-        if (!dramasList || dramasList.length === 0) {
-          cardsGrid.innerHTML = `
-            <div class="drama-empty-state">
-              <i data-lucide="film" style="width: 48px; height: 48px; color: #94a3b8;"></i>
-              <h3>Eşleşen Kısa Dizi Bulunamadı</h3>
-              <p>Farklı bir anahtar kelime ile arama yapabilir veya Trend kategorisine göz atabilirsiniz.</p>
-            </div>
-          `;
-          counterBadge.textContent = '0 Dizi';
-          renderIcons(cardsGrid);
+      /* ── RAY SONSUZ YÜKLEME ──────────────────────────────────────────────
+         Kullanıcı (2026-10-18): "yana doğru kaydırınca içerikler gelmeye devam
+         etmiyor." Katalog/kategori rayları tek sayfayla (24 kart) sınırlıydı.
+         Rayın sağına yaklaşınca sonraki sayfa sona eklenir (ızgara sonsuz
+         kaydırmasıyla aynı mantık; ölçüldü: sayfalar 0 örtüşmeyle farklı).
+         Trend rayı ("/") ve "devam" rayı sayfalı olmadığı için katlanmaz. */
+      const rayDurum = new Map(); // id -> { sayfa, dahaVar, yukleniyor }
+      function raySayfaliMi(id) {
+        return id === 'yeni' || KATEGORILER.some(k => k.id === id);
+      }
+      async function raySonrakiGetir(id) {
+        const track = rails.querySelector(`.kd-rail-track[data-ray="${id}"]`);
+        if (!track || track.dataset.hazir !== '1') return;
+        const st = rayDurum.get(id) || { sayfa: 1, dahaVar: true };
+        rayDurum.set(id, st);
+        if (!st.dahaVar || st.yukleniyor) return;
+        st.yukleniyor = true;
+        const sonraki = st.sayfa + 1;
+        try {
+          const kategori = KATEGORILER.find(k => k.id === id);
+          const gelen = temizListe(await (kategori
+            ? fetchDramaCatalog({ query: kategori.query, page: sonraki })
+            : fetchDramaCatalog({ page: sonraki })));
+          const mevcut = new Set([...track.querySelectorAll('.kd-card')].map(c => c.getAttribute('data-slug')));
+          const taze = gelen.filter(d => d.slug && !mevcut.has(d.slug));
+          if (taze.length) {
+            track.insertAdjacentHTML('beforeend', taze.map(d => kartHtml(d)).join(''));
+            renderIcons(track);
+            st.sayfa = sonraki;
+          }
+          if (!gelen.length) st.dahaVar = false;   // kaynak sayfayı tüketti
+        } catch (_) {
+          st.dahaVar = false;                        // kalıcı hatırda sonsuz deneme yok
+        } finally {
+          st.yukleniyor = false;
+        }
+      }
+      function rayKaydirmaKontrolu(track) {
+        const id = track.getAttribute('data-ray');
+        if (!raySayfaliMi(id)) return;
+        if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 450) raySonrakiGetir(id);
+      }
+
+      /* Devam et satırı (boşsa hiç çizilmez — Netflix de boş satır göstermez). */
+      const devam = devamListesi();
+      if (devam.length) {
+        rayKur(
+          { id: 'devam', baslik: 'Kaldığın Yerden Devam Et', alt: `${devam.length} dizi` },
+          { kartlar: devam.map(it => kartHtml(
+            { slug: it.id, title: it.title || it.name || 'Kısa dizi', poster: it.poster_path || it.posterPath || it.poster, isDubbed: it.isDubbed },
+            { devam: it }
+          )).join(''), gozle: false }
+        );
+      }
+      rayTanimlari.forEach(t => rayKur(t));
+
+      /* TEMBEL YÜKLEME TEK BAŞINA YETMİYOR (kullanıcı 2026-10-17: "katalog
+         resimleri gelmiyor"). App, sayfa başına dikey kaydırma konumunu geri
+         yüklüyor; kullanıcı kısa diziyi alt taraflardan açtığında ekran iskelet
+         kutularında kalıyordu. Satırlar artık kademeli olarak kuyruğa girer —
+         KAYNAĞA AYNI ANDA TEK İSTEK gider (kısıtlanma = bomboş sayfa). */
+      const onYukleveye = rayTanimlari.map((t, i) =>
+        setTimeout(() => { if (document.contains(rails)) kuyrugaEkle(t.id); }, 900 + i * 250)
+      );
+
+      /* Ray ok düğmeleri + okunabilir kenar rozetleri */
+      rails.addEventListener('click', (e) => {
+        const btn = e.target.closest('.kd-rail-btn');
+        if (!btn) return;
+        const track = btn.closest('.kd-rail-viewport').querySelector('.kd-rail-track');
+        const adim = Math.max(240, track.clientWidth * 0.82);
+        track.scrollBy({ left: adim * Number(btn.dataset.dir), behavior: 'smooth' });
+      });
+      rails.addEventListener('scroll', (e) => {
+        const track = e.target;
+        if (!track.classList?.contains('kd-rail-track')) return;
+        const oklar = track.closest('.kd-rail-viewport').querySelectorAll('.kd-rail-btn');
+        const bas = track.scrollLeft <= 6;
+        const son = track.scrollLeft + track.clientWidth >= track.scrollWidth - 6;
+        oklar[0].classList.toggle('is-off', bas);
+        oklar[1].classList.toggle('is-off', son);
+      }, true);
+
+      /* ── VITRIN ───────────────────────────────────────────────────────── */
+      let vitrinDizisi = null;
+      function vitrinSec(dizi) {
+        if (!dizi) return;
+        vitrinDizisi = dizi;
+        const baslik = String(dizi.title || 'Kısa Dizi');
+        const dublaj = Boolean(dizi.isDubbed) || /dublaj/i.test(baslik);
+        bbBg.style.backgroundImage = dizi.poster ? `url("${dizi.poster}")` : '';
+        bbTitle.textContent = baslik;
+        bbMeta.innerHTML = `
+          <b>${dublaj ? 'Türkçe Dublaj' : 'Türkçe Altyazı'}</b>
+          <span class="kd-chip-dot"></span><span>Mini dizi</span>
+          <span class="kd-chip-dot"></span><span>1080p HLS</span>
+          <span class="kd-chip-dot"></span><span>Reels formatı</span>`;
+        renderIcons(billboard);
+        // Özet, kart verisinde yok: detay isteğiyle tamamlanır (başarısızsa suskun kalır).
+        bbDesc.textContent = dizi.description || '';
+        detayGetir(dizi.slug).then((d) => {
+          if (!d || vitrinDizisi?.slug !== dizi.slug) return;
+          bbDesc.textContent = d.description || bbDesc.textContent;
+        });
+      }
+
+      /* ── IZGARA MODU ──────────────────────────────────────────────────── */
+      function modaGec(yeniMod) {
+        mod = yeniMod;
+        const vitrin = yeniMod === 'vitrin';
+        // Vitrin, veri gelmeden de görünür kalır (başlık/özet zaten genel bir
+        // tanıtım metni taşıyor); boş bir boşluk göstermemek için saklanmaz.
+        billboard.classList.toggle('hidden', !vitrin);
+        rails.classList.toggle('hidden', !vitrin);
+        section.classList.toggle('hidden', vitrin);
+      }
+
+      function segSec(id) {
+        aktifSeg = id;
+        segBtns.forEach(b => b.classList.toggle('is-active', b.dataset.seg === id));
+      }
+
+      async function ızgaraYeniden(baslik, sayfaSayaci = 1) {
+        const surum = ++istekSurumu;
+        hataSayisi = 0;
+        yukleniyor = true;
+        ızgaraListe = [];
+        dahaVar = true;
+        sayfa = 0;
+        modaGec('izgara');
+        segSec(aktifSeg);
+        gridTitle.textContent = baslik;
+        gridCount.textContent = 'Yükleniyor…';
+        grid.innerHTML = Array.from({ length: 12 }).map(() => `
+          <div>
+            <div class="kd-skel" style="aspect-ratio:2/3"></div>
+            <div class="kd-skel kd-skel-line"></div>
+          </div>`).join('');
+        try {
+          const gelen = await ızgaraSayfa(sayfaSayaci);
+          if (surum !== istekSurumu) return;
+          sayfa = sayfaSayaci;
+          ızgaraCiz(gelen, false);
+        } catch (err) {
+          if (surum !== istekSurumu) return;
+          console.error('[KısaDizi] ızgara yüklenemedi:', err);
+          grid.innerHTML = `
+            <div class="kd-state" style="grid-column:1/-1">
+              <i data-lucide="wifi-off"></i>
+              <h3>Diziler yüklenemedi</h3>
+              <p>Bağlantını kontrol et; kaynak siteler bazen birkaç dakikalığına kapanıyor.</p>
+              <button class="kd-btn kd-btn-ghost" id="kd-yeniden">Tekrar dene</button>
+            </div>`;
+          renderIcons(grid);
+          grid.querySelector('#kd-yeniden')?.addEventListener('click', () => ızgaraYeniden(baslik, sayfaSayaci));
+        } finally {
+          if (surum === istekSurumu) {
+            yukleniyor = false;
+            if (dahaVar && sentinelGorunur()) ızgaraDevam();
+          }
+        }
+      }
+
+      function ızgaraSayfa(sorguSayfasi) {
+        if (aramaDizisi) return fetchDramaCatalog({ query: aramaDizisi, page: sorguSayfasi });
+        const kategori = KATEGORILER.find(k => k.id === aktifSeg);
+        if (kategori) return fetchDramaCatalog({ query: kategori.query, page: sorguSayfasi });
+        return fetchDramaCatalog({ page: sorguSayfasi });
+      }
+
+      function ızgaraCiz(gelen, sonaEkle) {
+        const bilinen = new Set(ızgaraListe.map(d => d.slug));
+        const taze = temizListe(gelen).filter(d => d.slug && !bilinen.has(d.slug) && bilinen.add(d.slug));
+        if (sonaEkle) ızgaraListe.push(...taze);
+        else ızgaraListe = taze;
+        dahaVar = taze.length > 0;
+
+        gridCount.textContent = `${ızgaraListe.length} dizi`;
+        if (!ızgaraListe.length) {
+          grid.innerHTML = `
+            <div class="kd-state" style="grid-column:1/-1">
+              <i data-lucide="search-x"></i>
+              <h3>Eşleşen kısa dizi yok</h3>
+              <p>Farklı bir kelime dene — örneğin “patron”, “kurt”, “intikam” ya da “dublaj”.</p>
+            </div>`;
+          renderIcons(grid);
+          moreWrap.classList.add('hidden');
           return;
         }
-
-        counterBadge.textContent = `${dramasList.length} Dizi`;
-
-        const cardsHTML = dramasList.slice(startIndex).map((drama, idx) => {
-          const isDub = drama.isDubbed || drama.title.toLowerCase().includes('dublaj');
-          const cleanPoster = drama.poster || '';
-          return `
-            <article class="drama-card" data-slug="${drama.slug}" tabindex="0" role="button" aria-label="${drama.title}">
-              <div class="drama-card-poster-wrap">
-                ${cleanPoster ? `
-                  <img 
-                    src="${cleanPoster}" 
-                    alt="${drama.title}" 
-                    class="drama-card-poster" 
-                    loading="lazy" 
-                    decoding="async"
-                    onerror="this.onerror=null;this.classList.add('broken-img');"
-                  />
-                ` : `
-                  <div class="drama-card-fallback-poster">
-                    <i data-lucide="clapperboard" style="width: 32px; height: 32px; color: #a855f7;"></i>
-                  </div>
-                `}
-
-                <div class="drama-card-gradient"></div>
-
-                <!-- Badges -->
-                <div class="drama-card-badges">
-                  <span class="drama-badge-pill ${isDub ? 'badge-dub' : 'badge-sub'}">
-                    ${isDub ? '🇹🇷 DUBLAJ' : 'TR ALTYAZI'}
-                  </span>
-                  <span class="drama-badge-pill badge-type">MİNİ DİZİ</span>
-                </div>
-
-                <!-- Hover Play Glow Icon -->
-                <div class="drama-card-play-action">
-                  <div class="drama-play-btn-circle">
-                    <i data-lucide="play" style="width: 22px; height: 22px; color: #fff; margin-left: 2px;"></i>
-                  </div>
-                </div>
-              </div>
-
-              <div class="drama-card-info">
-                <h3 class="drama-card-title" title="${drama.title}">${drama.title}</h3>
-                <div class="drama-card-meta">
-                  <span>Reels Series</span>
-                  <span>•</span>
-                  <span>1080p HD</span>
-                </div>
-              </div>
-            </article>
-          `;
-        }).join('');
-
-        if (startIndex) cardsGrid.insertAdjacentHTML('beforeend', cardsHTML);
-        else cardsGrid.innerHTML = cardsHTML;
-
-        renderIcons(cardsGrid);
-
+        const parca = taze.map(d => kartHtml(d)).join('');
+        if (sonaEkle) grid.insertAdjacentHTML('beforeend', parca);
+        else grid.innerHTML = parca;
+        renderIcons(grid);
+        moreWrap.classList.toggle('hidden', !dahaVar);
       }
 
-      cardsGrid.addEventListener('click', event => {
-        const slug = event.target.closest('.drama-card')?.getAttribute('data-slug');
-        if (slug) openDramaDetail(slug);
-      });
-      cardsGrid.addEventListener('keydown', event => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        const slug = event.target.closest('.drama-card')?.getAttribute('data-slug');
-        if (!slug) return;
-        event.preventDefault();
-        openDramaDetail(slug);
-      });
+      const sentinelGorunur = () => sentinel.getBoundingClientRect().top < window.innerHeight + 700;
 
-      async function openDramaDetail(slug) {
-        if (!slug) return;
-        selectedDrama = null;
-        detailModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-
-        modalDialog.innerHTML = `
-          <div class="drama-detail-loading">
-            <div class="spin-loader"></div>
-            <span>Dizi bilgileri ve bölümler yükleniyor...</span>
-          </div>
-        `;
-        renderIcons(modalDialog);
-
+      async function ızgaraDevam() {
+        if (yukleniyor || !dahaVar) return;
+        yukleniyor = true;
+        const surum = istekSurumu;
+        const sonraki = sayfa + 1;
         try {
-          let details = null;
-          if (slug.startsWith('dml_')) {
-            details = await fetchDramalarDetails(slug.replace('dml_', ''));
-          } else {
-            details = await fetchDramaDetails(slug);
-            if (!details) {
-              details = await fetchDramalarDetails(slug);
-            }
-          }
-
-          if (!details) {
-            modalDialog.innerHTML = `
-              <div class="drama-empty-state">
-                <i data-lucide="alert-circle" style="width: 38px; height: 38px; color: #ef4444;"></i>
-                <h3>Dizi bilgisi alınamadı</h3>
-                <button class="btn-primary" id="btn-close-drama-modal">Kapat</button>
-              </div>
-            `;
-            root.querySelector('#btn-close-drama-modal')?.addEventListener('click', closeDramaDetail);
-            renderIcons(modalDialog);
-            return;
-          }
-
-          selectedDrama = details;
-          renderDramaDetailModal();
+          const gelen = await ızgaraSayfa(sonraki);
+          if (surum !== istekSurumu) return;
+          sayfa = sonraki;
+          ızgaraCiz(gelen, true);
+          if (dahaVar && sentinelGorunur()) setTimeout(ızgaraDevam, 60);
         } catch (err) {
-          console.error('[DramaView] Error opening drama detail:', err);
-          closeDramaDetail();
-          showToast('Dizi detayları yüklenemedi.', 'error');
+          if (surum !== istekSurumu) return;
+          console.warn('[KısaDizi] sonraki sayfa alınamadı:', err?.message || err);
+          hataSayisi += 1;
+          if (hataSayisi > 2) dahaVar = false;
+          moreWrap.classList.toggle('hidden', !dahaVar);
+        } finally {
+          if (surum === istekSurumu) yukleniyor = false;
         }
       }
 
-      function renderDramaDetailModal() {
-        if (!selectedDrama) return;
+      new IntersectionObserver((g) => {
+        if (mod === 'izgara' && g.some(x => x.isIntersecting)) ızgaraDevam();
+      }, { rootMargin: '700px 0px' }).observe(sentinel);
 
-        const { slug, title, poster, description, episodes = [], isDubbed } = selectedDrama;
-        const totalEps = episodes.length;
+      moreBtn?.addEventListener('click', ızgaraDevam);
 
-        // Filter episodes based on activeEpisodeFilter
-        const filteredEpisodes = activeEpisodeFilter
-          ? episodes.filter(ep => ep.title.toLowerCase().includes(activeEpisodeFilter) || String(ep.episode).includes(activeEpisodeFilter))
-          : episodes;
-
-        modalDialog.innerHTML = `
-          <button class="drama-modal-close-btn" id="btn-close-drama-modal" title="Kapat">
-            <i data-lucide="x" style="width: 20px; height: 20px;"></i>
-          </button>
-
-          <div class="drama-detail-hero">
-            <div class="drama-detail-backdrop-blur" style="background-image: url('${poster || ''}');"></div>
-            <div class="drama-detail-hero-content">
-              <div class="drama-detail-poster-wrap">
-                <img src="${poster || ''}" alt="${title}" class="drama-detail-poster" />
-              </div>
-              <div class="drama-detail-info">
-                <div class="drama-detail-badges">
-                  <span class="drama-badge-pill ${isDubbed ? 'badge-dub' : 'badge-sub'}">
-                    ${isDubbed ? '🇹🇷 TÜRKÇE DUBLAJ' : 'TR ALTYAZI'}
-                  </span>
-                  <span class="drama-badge-pill badge-type">MİNİ DİZİ</span>
-                  <span class="drama-badge-pill badge-ep-count">${totalEps} BÖLÜM</span>
-                  <span class="drama-badge-pill badge-server">DDZ VIP HLS</span>
-                </div>
-                <h2 class="drama-detail-title">${title}</h2>
-                <p class="drama-detail-desc">${description || 'Bu kısa dizi için henüz özet girilmedi.'}</p>
-                <div class="drama-detail-actions">
-                  <button class="btn-primary drama-btn-play-all" id="btn-play-drama-start">
-                    <i data-lucide="play" style="width: 18px; height: 18px; fill: currentColor;"></i>
-                    <span>1. Bölümden Başla</span>
-                  </button>
-                  <button class="btn-secondary" id="btn-share-drama" title="Bağlantıyı Kopyala">
-                    <i data-lucide="share-2" style="width: 16px; height: 16px;"></i>
-                    <span>Paylaş</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Episode Explorer Section -->
-          <div class="drama-episodes-explorer">
-            <div class="drama-episodes-toolbar">
-              <div class="drama-episodes-title-wrap">
-                <h3>Bölümler (${totalEps})</h3>
-                <span class="drama-episodes-sub">Bölüme tıklayarak reklamsız izleyin</span>
-              </div>
-              <div class="drama-episodes-filter-box">
-                <i data-lucide="search" style="width: 15px; height: 15px; color: #94a3b8;"></i>
-                <input 
-                  type="text" 
-                  id="drama-ep-filter-input" 
-                  placeholder="Bölüm ara... (Örn: 25)" 
-                  value="${activeEpisodeFilter}"
-                />
-              </div>
-            </div>
-
-            <div class="drama-episodes-grid" id="drama-episodes-grid">
-              ${filteredEpisodes.map(ep => {
-                const watched = isMediaWatched(`ddz_${slug}`, ep.season, ep.episode);
-                return `
-                  <button 
-                    class="drama-ep-card ${watched ? 'is-watched' : ''}" 
-                    data-season="${ep.season}" 
-                    data-episode="${ep.episode}"
-                  >
-                    <div class="drama-ep-thumb-wrap">
-                      ${ep.thumb ? `
-                        <img src="${ep.thumb}" alt="${ep.title}" loading="lazy" />
-                      ` : `
-                        <div class="drama-ep-fallback-thumb">
-                          <i data-lucide="play" style="width: 16px; height: 16px; color: #c084fc;"></i>
-                        </div>
-                      `}
-                      <span class="drama-ep-num-pill">${ep.episode}</span>
-                      ${watched ? `<div class="drama-ep-watched-tag"><i data-lucide="check" style="width: 12px; height: 12px;"></i></div>` : ''}
-                    </div>
-                    <div class="drama-ep-title-wrap">
-                      <span class="drama-ep-name">${ep.title}</span>
-                      <span class="drama-ep-action-hint">İzle</span>
-                    </div>
-                  </button>
-                `;
-              }).join('')}
-            </div>
-          </div>
-        `;
-
-        renderIcons(modalDialog);
-
-        // Attach events inside modal
-        modalDialog.querySelector('#btn-close-drama-modal')?.addEventListener('click', closeDramaDetail);
-        modalDialog.querySelector('#btn-play-drama-start')?.addEventListener('click', (e) => {
-          if (episodes.length > 0) playDramaEpisode(episodes[0].season, episodes[0].episode, e.currentTarget);
-        });
-
-        modalDialog.querySelector('#btn-share-drama')?.addEventListener('click', () => {
-          const shareUrl = `${window.location.origin}${window.location.pathname}#dramas?slug=${slug}`;
-          navigator.clipboard?.writeText(shareUrl).then(() => {
-            showToast('Dizi bağlantısı panoya kopyalandı!', 'success');
-          }).catch(() => {
-            showToast(`Bağlantı: ${shareUrl}`, 'info');
-          });
-        });
-
-        const epFilterInput = modalDialog.querySelector('#drama-ep-filter-input');
-        if (epFilterInput) {
-          epFilterInput.addEventListener('input', (e) => {
-            activeEpisodeFilter = e.target.value.toLowerCase().trim();
-            renderDramaDetailModal();
-            modalDialog.querySelector('#drama-ep-filter-input')?.focus();
-          });
+      /* ── SEGMENT / ARAMA ETKİLEŞİMLERİ ───────────────────────────────── */
+      segBtns.forEach(btn => btn.addEventListener('click', () => {
+        const id = btn.dataset.seg;
+        aramaDizisi = '';
+        search.value = '';
+        searchClear.classList.add('hidden');
+        if (id === 'vitrin') {
+          segSec('vitrin');
+          modaGec('vitrin');
+          return;
         }
+        segSec(id);
+        const kategori = KATEGORILER.find(k => k.id === id);
+        ızgaraYeniden(kategori ? kategori.label : SAYFA_BASLIK.katalog);
+      }));
 
-        modalDialog.querySelectorAll('.drama-ep-card').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            const season = parseInt(btn.getAttribute('data-season'), 10) || 1;
-            const episode = parseInt(btn.getAttribute('data-episode'), 10) || 1;
-            playDramaEpisode(season, episode, e.currentTarget);
-          });
-        });
-      }
+      let aramaZamanlayici = null;
+      search?.addEventListener('input', () => {
+        const deger = search.value.trim();
+        searchClear.classList.toggle('hidden', !deger);
+        clearTimeout(aramaZamanlayici);
+        aramaZamanlayici = setTimeout(() => {
+          aramaDizisi = deger;
+          if (deger.length >= 2) {
+            segSec('arama');
+            ızgaraYeniden(`“${deger}”`);
+          } else if (deger.length === 0) {
+            segSec('vitrin');
+            modaGec('vitrin');
+          }
+        }, 320);
+      });
+      search?.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        clearTimeout(aramaZamanlayici);
+        aramaDizisi = search.value.trim();
+        if (aramaDizisi.length < 2) return;
+        segSec('arama');
+        ızgaraYeniden(`“${aramaDizisi}”`);
+      });
+      searchClear?.addEventListener('click', () => {
+        search.value = '';
+        searchClear.classList.add('hidden');
+        aramaDizisi = '';
+        segSec('vitrin');
+        modaGec('vitrin');
+      });
 
-      function closeDramaDetail() {
-        detailModal.classList.add('hidden');
+      /* ── DETAY PERDESİ ───────────────────────────────────────────────── */
+      function perdeKapat() {
+        backdrop.classList.add('hidden');
         document.body.style.overflow = '';
-        selectedDrama = null;
-        activeEpisodeFilter = '';
+        seciliDizi = null;
       }
 
-      detailModal.addEventListener('click', (e) => {
-        if (e.target === detailModal) closeDramaDetail();
-      });
+      async function perdeAc(slug) {
+        if (!slug) return;
+        backdrop.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        sheet.innerHTML = `<div class="kd-loading-row"><i data-lucide="loader-2"></i>Dizi bilgileri yükleniyor…</div>`;
+        renderIcons(sheet);
 
-      async function playDramaEpisode(season = 1, episode = 1, triggerBtn = null) {
-        if (!selectedDrama) return;
-        const { slug, title, poster, description, episodes = [] } = selectedDrama;
-        const episodeArtwork = episodes.find(ep => ep.season === season && ep.episode === episode)?.thumb || '';
-
-        const origText = triggerBtn ? triggerBtn.innerHTML : null;
-        if (triggerBtn) {
-          triggerBtn.disabled = true;
-          triggerBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:14px;height:14px"></i> <span>Yükleniyor...</span>`;
-          renderIcons(triggerBtn);
+        const detay = await detayGetir(slug);
+        if (!detay) {
+          sheet.innerHTML = `
+            <button class="kd-sheet-close" data-kapat aria-label="Kapat"><i data-lucide="x"></i></button>
+            <div class="kd-state">
+              <i data-lucide="alert-circle"></i>
+              <h3>Dizi bilgisi alınamadı</h3>
+              <p>Kaynak şu an yanıt vermiyor. Birazdan tekrar dene.</p>
+              <button class="kd-btn kd-btn-ghost" data-kapat>Kapat</button>
+            </div>`;
+          renderIcons(sheet);
+          return;
         }
+        seciliDizi = detay;
+        const { title, poster, description, episodes = [], isDubbed } = detay;
+        const dublaj = Boolean(isDubbed) || /dublaj/i.test(String(title));
+        sheet.innerHTML = `
+          <button class="kd-sheet-close" data-kapat aria-label="Kapat"><i data-lucide="x"></i></button>
+          <div class="kd-sheet-grabber" aria-hidden="true"></div>
+          <div class="kd-sheet-hero">
+            <div class="kd-sheet-hero-bg" style="background-image:url('${poster || ''}')"></div>
+            <div class="kd-sheet-hero-scrim"></div>
+            <div class="kd-sheet-hero-body">
+              <div class="kd-sheet-pills">
+                <span class="kd-pill ${dublaj ? 'accent' : ''}">${dublaj ? 'Türkçe dublaj' : 'Türkçe altyazı'}</span>
+                <span class="kd-pill">Mini dizi</span>
+                <span class="kd-pill">${episodes.length} bölüm</span>
+                <span class="kd-pill">1080p HLS</span>
+              </div>
+              <h2 class="kd-sheet-title">${title}</h2>
+            </div>
+          </div>
+          <div class="kd-sheet-body">
+            <p class="kd-sheet-desc">${description || 'Bu kısa dizi için özet girilmemiş.'}</p>
+            <div class="kd-sheet-actions">
+              <button class="kd-btn kd-btn-play" id="kd-perde-oynat">
+                <i data-lucide="play" style="width:18px;height:18px;fill:currentColor"></i>
+                <span>1. Bölümden Başla</span>
+              </button>
+              <button class="kd-btn kd-btn-ghost" id="kd-perde-paylas">
+                <i data-lucide="share-2" style="width:16px;height:16px"></i><span>Paylaş</span>
+              </button>
+            </div>
+            <p class="kd-sheet-note">
+              <i data-lucide="list-restart"></i>
+              <span>${episodes.length} bölüm var · bölüm seçimi oynatıcının içindeki “Bölümler” şeridinden yapılır</span>
+            </p>
+          </div>`;
+        renderIcons(sheet);
 
+        sheet.querySelector('[data-kapat]')?.addEventListener('click', perdeKapat);
+        sheet.querySelector('#kd-perde-oynat')?.addEventListener('click', (e) => {
+          const ilk = episodes[0] || { season: 1, episode: 1 };
+          bolumOynat(detay, ilk.season, ilk.episode, e.currentTarget);
+        });
+        sheet.querySelector('#kd-perde-paylas')?.addEventListener('click', () => {
+          const adres = `${window.location.origin}${window.location.pathname}#dramas?slug=${slug}`;
+          navigator.clipboard?.writeText(adres)
+            .then(() => showToast('Bağlantı panoya kopyalandı.', 'success'))
+            .catch(() => showToast(`Bağlantı: ${adres}`, 'info'));
+        });
+      }
+
+      backdrop.addEventListener('click', (e) => { if (e.target === backdrop) perdeKapat(); });
+      sheet.addEventListener('click', (e) => { if (e.target.closest('[data-kapat]')) perdeKapat(); });
+
+      /* ── OYNATMA ─────────────────────────────────────────────────────── */
+      async function bolumOynat(dizi, sezon = 1, bolum = 1, tetikleyen = null, devamSaniye = 0) {
+        if (!dizi) return;
+        const kayitli = tetikleyen ? tetikleyen.innerHTML : null;
+        if (tetikleyen) {
+          tetikleyen.disabled = true;
+          tetikleyen.innerHTML = '<i data-lucide="loader-2"></i><span>Açılıyor…</span>';
+          renderIcons(tetikleyen);
+        }
         try {
-          closeDramaDetail();
-          const cleanSlug = slug.replace(/^(ddz_|dml_)/, '');
-          const dramaPrefix = slug.startsWith('dml_') ? 'dml_' : 'ddz_';
+          perdeKapat();
+          const slug = String(dizi.slug || '');
+          const temiz = slug.replace(KISA_ONEK, '');
+          const onek = slug.startsWith('dml_') ? 'dml_' : 'ddz_';
+          const bolumler = dizi.episodes || [];
+          const gorsel = bolumler.find(ep => ep.season === sezon && ep.episode === bolum)?.thumb || dizi.poster;
           await openPlayerModal({
             type: 'tv',
-            tmdbId: `${dramaPrefix}${cleanSlug}`,
-            title: `${title} - B${episode}`,
-            seriesTitle: title,
-            season,
-            episode,
-            posterPath: poster,
-            backdropPath: poster,
+            tmdbId: `${onek}${temiz}`,
+            title: `${dizi.title} - B${bolum}`,
+            seriesTitle: dizi.title,
+            season: sezon,
+            episode: bolum,
+            currentTime: Number(devamSaniye) || 0,   // kaldığın saniyeden başlat
+            posterPath: dizi.poster,
+            backdropPath: dizi.poster,
             playerVariant: 'short-drama',
-            seriesOverview: description || '',
-            episodeArtworkPath: episodeArtwork || poster,
-            shortDramaEpisodes: episodes,
-            maxEpisodes: episodes.length,
-            seasonsList: [{ season_number: season, episode_count: episodes.length }]
+            seriesOverview: dizi.description || '',
+            episodeArtworkPath: gorsel || dizi.poster,
+            shortDramaEpisodes: bolumler,
+            maxEpisodes: bolumler.length,
+            seasonsList: [{ season_number: sezon, episode_count: bolumler.length }]
           });
         } catch (err) {
-          console.error('[DramaView] Kısa dizi bölümü açılamadı:', err);
-          showToast('Bölüm açılırken bir sorun oluştu, lütfen tekrar deneyin.', 'error');
+          console.error('[KısaDizi] bölüm açılamadı:', err);
+          showToast('Bölüm açılırken bir sorun oluştu, tekrar deneyin.', 'error');
         } finally {
-          if (triggerBtn && origText) {
-            triggerBtn.disabled = false;
-            triggerBtn.innerHTML = origText;
-            renderIcons(triggerBtn);
+          if (tetikleyen && kayitli) {
+            tetikleyen.disabled = false;
+            tetikleyen.innerHTML = kayitli;
+            renderIcons(tetikleyen);
           }
         }
       }
 
-      // Search Events
-      searchInput?.addEventListener('input', (e) => {
-        const val = e.target.value;
-        searchClearBtn.classList.toggle('hidden', !val);
-        clearTimeout(searchDebounceTimer);
-        searchDebounceTimer = setTimeout(() => {
-          currentSearchQuery = val.trim();
-          currentPage = 0;
-          activeTab = currentSearchQuery ? 'search' : 'trending';
-          categoryChips.forEach(chip => chip.classList.toggle('active', !currentSearchQuery && chip.getAttribute('data-tab-id') === 'trending'));
-          fetchDramasData(false);
-        }, 350);
-      });
-
-      searchInput?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          clearTimeout(searchDebounceTimer);
-          currentSearchQuery = searchInput.value.trim();
-          currentPage = 0;
-          fetchDramasData(false);
+      /* Kart tıklamaları: satırlar + ızgara ortak (delegasyon).
+         "Devam et" kartı doğrudan kaldığı bölüme gider; diğerleri perdede açılır. */
+      async function kartaTikla(kart) {
+        const slug = kart?.getAttribute('data-slug');
+        if (!slug) return;
+        const devamKaydi = devam.find(it => String(it.id) === slug);
+        if (devamKaydi) {
+          const detay = await detayGetir(slug);
+          if (!detay) { showToast('Bölüm bilgisi alınamadı.', 'error'); return; }
+          bolumOynat(detay, devamKaydi.season || 1, devamKaydi.episode || 1, kart, devamKaydi.currentTime || 0);
+          return;
         }
-      });
-
-      searchClearBtn?.addEventListener('click', () => {
-        searchInput.value = '';
-        searchClearBtn.classList.add('hidden');
-        currentSearchQuery = '';
-        activeTab = 'trending';
-        categoryChips.forEach(chip => chip.classList.toggle('active', chip.getAttribute('data-tab-id') === 'trending'));
-        fetchDramasData(false);
-      });
-
-      // Category Chips Event
-      categoryChips.forEach(chip => {
-        chip.addEventListener('click', () => {
-          const tabId = chip.getAttribute('data-tab-id');
-          if (activeTab === tabId && !currentSearchQuery) return;
-
-          activeTab = tabId;
-          currentSearchQuery = '';
-          if (searchInput) searchInput.value = '';
-          searchClearBtn?.classList.add('hidden');
-          currentPage = 0;
-
-          categoryChips.forEach(c => c.classList.toggle('active', c === chip));
-          fetchDramasData(false);
-        });
-      });
-
-      // Load More Event
-      loadMoreBtn?.addEventListener('click', loadNextPage);
-
-      // Initial Data Load
-      await fetchDramasData(false);
-      if (canLoadMore() && scrollSentinel.getBoundingClientRect().top < window.innerHeight + 800) loadNextPage();
-
-      // If initialSlug provided in hash, open it directly!
-      if (initialSlug) {
-        openDramaDetail(initialSlug);
+        perdeAc(slug);
       }
+
+      /* "Devam et" kartından bir kaydı listeye veda ettir (kullanıcı 2026-10-18:
+         "kısa dizi kısmında kaldığın yerden devam etleri silme seçeneği yok"). */
+      function devamKaydiSil(dugme) {
+        const id = dugme.getAttribute('data-del-id');
+        const sezon = Number(dugme.getAttribute('data-del-sez')) || 1;
+        const bolum = Number(dugme.getAttribute('data-del-bol')) || 1;
+        try { removeWatchHistoryItem(id, sezon, bolum); } catch (_) {}
+        const kart = dugme.closest('.kd-card');
+        const rail = kart?.closest('.kd-rail');
+        kart?.remove();
+        if (rail && !rail.querySelector('.kd-card')) rail.remove();
+        showToast('Listeden kaldırıldı.', 'info');
+      }
+
+      root.addEventListener('click', (e) => {
+        const sil = e.target.closest('.kd-card-del');
+        if (sil) { e.preventDefault(); e.stopPropagation(); devamKaydiSil(sil); return; }
+        const kart = e.target.closest('.kd-card');
+        if (kart) { kartaTikla(kart); return; }
+      });
+      root.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const kart = e.target.closest?.('.kd-card');
+        if (!kart) return;
+        e.preventDefault();
+        kartaTikla(kart);
+      });
+
+      /* Vitrin düğmeleri: doğrudan 1. bölümü oynatır (Netflix gibi). */
+      bbPlay?.addEventListener('click', async (e) => {
+        if (!vitrinDizisi) return;
+        const detay = await detayGetir(vitrinDizisi.slug);
+        if (!detay) { showToast('Bölüm bilgisi alınamadı.', 'error'); return; }
+        bolumOynat(detay, 1, 1, e.currentTarget);
+      });
+      bbInfo?.addEventListener('click', () => vitrinDizisi && perdeAc(vitrinDizisi.slug));
+
+      /* ── AÇILIŞ ───────────────────────────────────────────────────────── */
+      renderIcons(root);
+      if (aramaDizisi) {
+        segSec('arama');
+        ızgaraYeniden(`“${aramaDizisi}”`);
+      } else {
+        modaGec('vitrin');
+      }
+      if (initialSlug) perdeAc(initialSlug);
+
+      /* Vitrin kahramanı: trend havuzu gelir gelmez vitrin doldurulur. */
+      trendHavuzu().then((liste) => {
+        if (vitrinDizisi || !liste.length) return;
+        vitrinSec(liste.find(d => d?.poster) || liste[0]);
+      });
+
+      /* TEMİZLİK — gezici bu sayfadan çıkınca: gözlemciler bırakılır, perde
+         kapatılır (body kilidi kalmasın) ve kendi dinleyicileri silinir.
+         main.js'in rota temizliği yalnız ana ekranı/LiveTV'yi biliyor; bu sayfa
+         kendi kuyruğunu kendisi kapatır. */
+      const rotaDinleyici = () => {
+        if (window.location.hash.startsWith('#dramas')) return;
+        gozlemci.disconnect();
+        onYukleveye.forEach(clearTimeout);
+        window.removeEventListener('resize', navResize);
+        window.removeEventListener('hashchange', rotaDinleyici);
+        perdeKapat();
+      };
+      window.addEventListener('hashchange', rotaDinleyici);
     }
   };
 }

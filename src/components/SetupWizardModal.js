@@ -1,17 +1,18 @@
 /* ==========================================================================
    CinePulse Studio - Otomatik Kurulum & Tanılama Sihirbazı (Setup Wizard)
-   Cloudstream (Eklenti/Kaynak yönetimi & ping) + Nuvio (Native performans & donanım)
+   Nuvio (Native performans & donanım) ilkeleri: sistem tanılaması + oynatıcı
+   tercihleri. (Eski "Eklenti & Kaynak seçimi" adımı kaldırıldı: kaynak
+   aç/kapa yönetimi ve hız testi arayüzde sağlık ekranı üretiyordu.)
    ========================================================================== */
 
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 import { showToast } from './Toast.js';
-import { listPlugins, setPluginEnabled } from '../services/pluginCatalog.js';
-import { getUserSettings, saveUserSettings } from '../services/storage.js';
-import { isDesktopApp } from '../services/platformBridge.js';
-import { canUseDesktopSetup } from '../services/desktopSetupPolicy.js';
+import { getUserSettings, saveUserSettings } from '../services/altyapi/storage.js';
+import { isDesktopApp } from '../services/platform/platformBridge.js';
+import { canUseDesktopSetup } from '../services/kabuk/desktopSetupPolicy.js';
 
 let currentStep = 1;
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 3;
 
 // Sistem tanılaması önbelleği
 let diagState = {
@@ -21,9 +22,6 @@ let diagState = {
   network: { ok: false, ping: 0 },
   checking: false
 };
-
-// Kaynak ping süreleri önbelleği
-const providerLatencies = new Map();
 
 /**
  * Donanım / GPU Hızlandırma Tespiti
@@ -108,43 +106,6 @@ async function runSystemDiagnostics() {
 }
 
 /**
- * Kaynakları Canlı Test Et (Ping)
- */
-async function pingProviders() {
-  const plugins = listPlugins();
-  showToast('Kaynak hızları test ediliyor…', 'info');
-
-  // Alan adları tek kaynaktan gelir: site sürücüleri (siteProviders) + eklenti
-  // id eşlemesi (inventory). Eski köprülerdeki p.baseUrl buradan taşındı.
-  const adresler = {};
-  try {
-    const [{ SITE_PLUGIN_IDS }, { SITES }] = await Promise.all([
-      import('../services/providerRuntime/inventory.js'),
-      import('../services/siteProviders.js'),
-    ]);
-    for (const [site, id] of Object.entries(SITE_PLUGIN_IDS)) adresler[id] = (SITES[site]?.yedek || [])[0] || '';
-  } catch (_) {}
-
-  const promises = plugins.map(async (p) => {
-    const start = performance.now();
-    try {
-      // Hızlı HEAD veya lightweight arama testi
-      const testUrl = adresler[p.id] || 'https://www.google.com';
-      await fetch(`http://127.0.0.1:4000/api/proxy?url=${encodeURIComponent(testUrl)}`, {
-        signal: AbortSignal.timeout(3500)
-      }).catch(() => null);
-      const elapsed = Math.round(performance.now() - start);
-      providerLatencies.set(p.id, elapsed);
-    } catch (_) {
-      providerLatencies.set(p.id, -1);
-    }
-  });
-
-  await Promise.allSettled(promises);
-  renderStepContent();
-}
-
-/**
  * Modal Kapat
  */
 export function closeSetupWizardModal() {
@@ -225,16 +186,11 @@ function renderWizardShell() {
         <div style="flex:1; height:2px; background:rgba(255,255,255,0.1); margin:0 10px;" id="step-line-1"></div>
         <div class="wizard-step-tab" data-step="2" style="display:flex; align-items:center; gap:6px; color:#64748b; font-weight:600;">
           <span style="width:20px; height:20px; border-radius:50%; background:rgba(255,255,255,0.1); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:11px;">2</span>
-          <span>Kaynaklar</span>
+          <span>Oynatıcı</span>
         </div>
         <div style="flex:1; height:2px; background:rgba(255,255,255,0.1); margin:0 10px;" id="step-line-2"></div>
         <div class="wizard-step-tab" data-step="3" style="display:flex; align-items:center; gap:6px; color:#64748b; font-weight:600;">
           <span style="width:20px; height:20px; border-radius:50%; background:rgba(255,255,255,0.1); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:11px;">3</span>
-          <span>Oynatıcı</span>
-        </div>
-        <div style="flex:1; height:2px; background:rgba(255,255,255,0.1); margin:0 10px;" id="step-line-3"></div>
-        <div class="wizard-step-tab" data-step="4" style="display:flex; align-items:center; gap:6px; color:#64748b; font-weight:600;">
-          <span style="width:20px; height:20px; border-radius:50%; background:rgba(255,255,255,0.1); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:11px;">4</span>
           <span>Tamamla</span>
         </div>
       </div>
@@ -313,14 +269,10 @@ function renderStepContent() {
     body.innerHTML = renderStep1Requirements();
     attachStep1Events();
   } else if (currentStep === 2) {
-    body.innerHTML = renderStep2Providers();
-    attachStep2Events();
-  } else if (currentStep === 3) {
-    body.innerHTML = renderStep3Player();
-    attachStep3Events();
-  } else if (currentStep === 4) {
-    body.innerHTML = renderStep4Finish();
-    attachStep4Events();
+    body.innerHTML = renderStep2Player();
+    attachStep2PlayerEvents();
+  } else {
+    body.innerHTML = renderStep3Finish();
   }
 
   renderIcons();
@@ -430,85 +382,15 @@ function renderStep1Requirements() {
 }
 
 /**
- * Adım 2: Eklenti & Kaynak Seçimi (Cloudstream Stili)
+ * Adım 2: Oynatıcı & Performans (Nuvio Stili)
  */
-function renderStep2Providers() {
-  const plugins = listPlugins();
-
-  return `
-    <div style="display: flex; flex-direction: column; gap: 16px;">
-      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-        <div>
-          <div style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">2. Eklentiler & Yayın Kaynakları</div>
-          <div style="font-size: 0.84rem; color: #94a3b8;">Cloudstream stili kaynak yönetimi. Dilediğin kaynağı aç/kapat veya ping testi yap.</div>
-        </div>
-        <button id="btn-ping-providers" style="background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: #38bdf8; border-radius: 8px; font-size: 0.78rem; font-weight: 600; padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-          <i data-lucide="zap" style="width: 13px; height: 13px;"></i>
-          <span>Hızları Test Et</span>
-        </button>
-      </div>
-
-      <!-- Quick Preset Buttons -->
-      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button class="btn-provider-preset" data-preset="all" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; font-size: 0.78rem; padding: 5px 12px; border-radius: 6px; cursor: pointer;">
-          ✓ Tümünü Aç (Önerilen)
-        </button>
-        <button class="btn-provider-preset" data-preset="fast" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; font-size: 0.78rem; padding: 5px 12px; border-radius: 6px; cursor: pointer;">
-          ⚡ Yalnızca En Hızlılar
-        </button>
-        <button class="btn-provider-preset" data-preset="tr" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; font-size: 0.78rem; padding: 5px 12px; border-radius: 6px; cursor: pointer;">
-          🇹🇷 Yerli Film & Dizi
-        </button>
-      </div>
-
-      <!-- Provider List -->
-      <div style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 4px;">
-        ${plugins.map((p) => {
-          const lat = providerLatencies.get(p.id);
-          let latBadge = '';
-          if (lat !== undefined) {
-            if (lat > 0 && lat < 400) latBadge = `<span style="font-size:11px; color:#10b981; font-weight:600;">⚡ ${lat}ms</span>`;
-            else if (lat >= 400) latBadge = `<span style="font-size:11px; color:#dfff76; font-weight:600;">⏱️ ${lat}ms</span>`;
-            else latBadge = `<span style="font-size:11px; color:#ef4444; font-weight:600;">⚠️ Yanıt Yok</span>`;
-          }
-
-          return `
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(225,29,72,0.15); color: #f43f5e; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;">
-                  ${(p.alias || 'P')[0]}
-                </div>
-                <div>
-                  <div style="font-weight: 600; font-size: 0.88rem; color: #f1f5f9; display: flex; align-items: center; gap: 8px;">
-                    <span>${p.alias}</span>
-                    ${latBadge}
-                  </div>
-                  <div style="font-size: 0.74rem; color: #94a3b8;">${(p.kinds || []).join(' / ') || 'Film & Dizi'}${p.desc ? ` · ${p.desc}` : ''}</div>
-                </div>
-              </div>
-              <label style="position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer;">
-                <input type="checkbox" class="provider-toggle-input" data-provider-id="${p.id}" ${p.enabled !== false ? 'checked' : ''} style="opacity: 0; width: 0; height: 0;">
-                <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${p.enabled !== false ? '#f43f5e' : 'rgba(255,255,255,0.15)'}; transition: .2s; border-radius: 24px;"></span>
-                <span style="position: absolute; content: ''; height: 18px; width: 18px; left: ${p.enabled !== false ? '23px' : '3px'}; bottom: 3px; background-color: white; transition: .2s; border-radius: 50%;"></span>
-              </label>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </div>
-  `;
-}
-
-/**
- * Adım 3: Oynatıcı & Performans (Nuvio Stili)
- */
-function renderStep3Player() {
+function renderStep2Player() {
   const settings = getUserSettings();
 
   return `
     <div style="display: flex; flex-direction: column; gap: 18px;">
       <div>
-        <div style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">3. Oynatıcı & Performans Tercihleri</div>
+        <div style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">2. Oynatıcı & Performans Tercihleri</div>
         <div style="font-size: 0.84rem; color: #94a3b8;">Nuvio native oynatıcı ilkeleri: minimum gecikme, optimum bellek ve kesintisiz akış.</div>
       </div>
 
@@ -577,11 +459,9 @@ function renderStep3Player() {
 }
 
 /**
- * Adım 4: Tamamlandı & Başlat
+ * Adım 3: Tamamlandı & Başlat
  */
-function renderStep4Finish() {
-  const activeProvidersCount = listPlugins().filter((p) => p.enabled !== false).length;
-
+function renderStep3Finish() {
   return `
     <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; padding: 10px 0;">
       <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(16,185,129,0.4);">
@@ -597,11 +477,6 @@ function renderStep4Finish() {
 
       <!-- Summary Badges -->
       <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px 20px; width: 100%; max-width: 460px; display: flex; justify-content: space-around; text-align: center;">
-        <div>
-          <div style="font-size: 1.25rem; font-weight: 800; color: #f43f5e;">${activeProvidersCount}</div>
-          <div style="font-size: 0.74rem; color: #94a3b8;">Aktif Kaynak</div>
-        </div>
-        <div style="width: 1px; background: rgba(255,255,255,0.08);"></div>
         <div>
           <div style="font-size: 1.25rem; font-weight: 800; color: #10b981;">1080p VIP</div>
           <div style="font-size: 0.74rem; color: #94a3b8;">HLS Akışı</div>
@@ -663,38 +538,8 @@ function attachStep1Events() {
   });
 }
 
-function attachStep2Events() {
-  document.getElementById('btn-ping-providers')?.addEventListener('click', pingProviders);
 
-  // Toggle handlers — kalıcılık pluginCatalog'da (localStorage + EXE userData)
-  document.querySelectorAll('.provider-toggle-input').forEach((input) => {
-    input.addEventListener('change', async (e) => {
-      const id = e.target.getAttribute('data-provider-id');
-      await setPluginEnabled(id, e.target.checked);
-    });
-  });
-
-  // Presets
-  document.querySelectorAll('.btn-provider-preset').forEach((btn) => {
-    btn.addEventListener('click', async (e) => {
-      const preset = e.currentTarget.getAttribute('data-preset');
-      const all = listPlugins();
-      // Hızlı/CDN odaklı hatlar ve yerli kataloglar — eklenti id'leriyle.
-      const hizli = new Set(['dyu', 'dzs', 'dzb', 'snx', 'lookmovie', 'smashy', 'tvr', 'torrent']);
-      const yerli = new Set(['hdfc', 'slc', 'fhdf', 'fxs', 'jet', 'sinemacc', 'fm', 'dizi77', 'dzyf', 'hdfd', 'd4kh', 'dzp']);
-      for (const p of all) {
-        let on = true;
-        if (preset === 'fast') on = hizli.has(p.id);
-        else if (preset === 'tr') on = yerli.has(p.id);
-        await setPluginEnabled(p.id, on);
-      }
-      renderStepContent();
-      showToast('Kaynak şablonu uygulandı!', 'success');
-    });
-  });
-}
-
-function attachStep3Events() {
+function attachStep2PlayerEvents() {
   document.getElementById('opt_buffer_size')?.addEventListener('change', (e) => {
     localStorage.setItem('cp_buffer_size_mb', e.target.value);
   });
@@ -709,7 +554,4 @@ function attachStep3Events() {
   });
 }
 
-function attachStep4Events() {
-  // Finisher
-}
 

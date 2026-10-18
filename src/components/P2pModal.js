@@ -7,7 +7,7 @@ import {
   isP2pAvailable,
   pollTorrentStatus,
   setP2pConsent,
-} from '../services/p2pService.js';
+} from '../services/dogrudan/p2pService.js';
 import '../styles/p2p.css';
 /* ==========================================================================
    CinePulse Studio — P2P oynatıcı penceresi (F1, yalnız masaüstü)

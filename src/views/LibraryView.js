@@ -1,4 +1,4 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - Library & Watch Analytics View
    Displays in-progress continue watching, completed watch history,
@@ -25,15 +25,15 @@ import {
   clearAllWatchHistory,
   clearStorageCache,
   syncHistoryAnimeStatus
-} from '../services/storage.js';
+} from '../services/altyapi/storage.js';
 import { renderMediaCard, attachMediaCardEvents, upgradeLandscapeBackdrops, determineMediaType } from '../components/MediaCard.js';
-import { prefetchBackdrops } from '../services/fanartService.js';
+import { prefetchBackdrops } from '../services/icerik/fanartService.js';
 import { openDataManagerModal } from '../components/DataManagerModal.js';
 import { showToast } from '../components/Toast.js';
-import { getDownloadedMediaList, deleteOfflineMedia, getDownloadedPlaybackUrl, getOfflinePosterUrl, formatBytes } from '../services/offlineManager.js';
+import { getDownloadedMediaList, deleteOfflineMedia, getDownloadedPlaybackUrl, getOfflinePosterUrl, formatBytes } from '../services/kabuk/offlineManager.js';
 import { openPlayerModal } from '../components/openPlayer.js';
-import { getImageUrl, SINEFLIX_POSTER_FALLBACK } from '../services/tmdbApi.js';
-import { isNativeAndroidApp } from '../services/platformBridge.js';
+import { getImageUrl, SINEFLIX_POSTER_FALLBACK } from '../services/icerik/tmdbApi.js';
+import { isNativeAndroidApp } from '../services/platform/platformBridge.js';
 
 const escapeOfflineHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
@@ -48,6 +48,7 @@ function renderLibraryCard(item, tabType) {
          data-type="${resolvedType}"
          data-title="${encodeURIComponent(item.title || item.name || 'İçerik')}"
          data-rating="${item.vote_average || item.voteAverage || item.rating || 0}"
+      data-imdbrating="${item.imdbRating || ''}"
          data-year="${(item.release_date || item.first_air_date || item.year || '2024').substring(0, 4)}">
       ${renderMediaCard({ ...item, type: resolvedType }, { isContinueSection: tabType === 'continue' })}
       <button class="btn-delete-history btn-lib-delete" title="Listeden / Geçmişten Sil" aria-label="Sil">

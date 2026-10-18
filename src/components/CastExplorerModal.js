@@ -1,11 +1,11 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - Cast & Crew Explorer Modal
    Allows users to explore an actor's/director's full filmography, biography,
    and related movies/series with direct one-click playback and navigation.
    ========================================================================== */
 
-import { fetchPersonDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK } from '../services/tmdbApi.js';
+import { fetchPersonDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK } from '../services/icerik/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from './MediaCard.js';
 
 let activeCastModal = null;

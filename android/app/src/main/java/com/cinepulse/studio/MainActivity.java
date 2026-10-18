@@ -27,6 +27,115 @@ public class MainActivity extends BridgeActivity {
     private static final int NOTIFICATION_PERMISSION_REQUEST = 4402;
     private NativePageResolver pageResolver;
     private NativeMediaGateway mediaGateway;
+    private NativePlayerView nativePlayer;
+
+    /** Native oynatıcı, yüzeyi WebView'in arkasına yerleştirmek için
+     *  WebView'in konteynerini bulur. */
+    com.getcapacitor.Bridge bridgeForPlayer() { return this.bridge; }
+
+    /** Geri tuşu: native oynatıcı açıksa önce onu kapat. */
+    @Override
+    public void onBackPressed() {
+        try {
+            if (nativePlayer != null && nativePlayer.acikMi()) { nativePlayer.close(); return; }
+        } catch (Exception ignored) {}
+        super.onBackPressed();
+    }
+
+    /** WebView saydam olmalı: native oynatıcının görüntüsü WebView'in
+     *  ARKASINDA çizilir (ses WebView'de, görüntü native yüzeyde). Saydam
+     *  olmazsa WebView o görüntüyü örter ve ekranda ses var/görüntü yok olur. */
+    private void webViewiSaydamYap() {
+        try {
+            if (bridge != null && bridge.getWebView() != null) {
+                bridge.getWebView().setBackgroundColor(0x00000000);
+                bridge.getWebView().setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * NATIVE OYNATICI KÖPRÜSÜ.
+     * WebView (Chromium) HEVC/H.265 çözemiyor — ölçülen hata:
+     * video.error.code 4 "Format error". Cihazın donanım çözücüsü HEVC
+     * destekli; Media3/ExoPlayer o çözücüyü kullanır. APK'nın içinde
+     * olduğu için her cihazda çalışır (donanım yoksa yazılım çözümleyici).
+     */
+    public final class NativePlayerBridge {
+        @JavascriptInterface
+        public boolean isAvailable() { return true; }
+
+        @JavascriptInterface
+        public void play(String url, String title, String headersJson) {
+            play(url, title, headersJson, null);
+        }
+
+        /**
+         * Altyazılı oynatma. WebView tarafı altyazıyı (WebVTT metni) önceden
+         * çözer ve buraya verir; ExoPlayer'da oynatma başladıktan sonra altyazı
+         * eklenemediği için liste PLAY ANINDA taşınır.
+         */
+        @JavascriptInterface
+        public void play(String url, String title, String headersJson, String altyaziJson) {
+            playAt(url, title, headersJson, altyaziJson, 0);
+        }
+
+        /**
+         * Kaldığın yerden devam: başlangıç saniyesi verilirse ExoPlayer medyayı
+         * DOĞRUDAN o noktadan hazırlar (WebView'a değil). 0 → baştan. Ayrı ad
+         * (playAt) — JS köprüsünde aynı adlı aşırı yükleme güvenilir değildir.
+         */
+        @JavascriptInterface
+        public void playAt(String url, String title, String headersJson, String altyaziJson, double startSaniye) {
+            if (nativePlayer == null) nativePlayer = new NativePlayerView(MainActivity.this);
+            nativePlayer.play(url, title, headersJson, altyaziJson, startSaniye);
+        }
+
+        @JavascriptInterface
+        public void close() {
+            if (nativePlayer != null) nativePlayer.close();
+        }
+
+        /**
+         * Yüzeyi videonun ekran dikdörtgenine taşır (Nuvio mantığı: video
+         * player'ın içinde, ekrana göre ölçek). Değerler CSS pikselidir;
+         * Java tarafında cihaz pikseline çevrilir.
+         */
+        @JavascriptInterface
+        public void setBounds(double x, double y, double w, double h) {
+            try {
+                if (nativePlayer == null || bridge == null || bridge.getWebView() == null) return;
+                android.view.View wv = bridge.getWebView();
+                int[] loc = new int[2];
+                wv.getLocationInWindow(loc);
+                float d = getResources().getDisplayMetrics().density;
+                int l = loc[0] + (int) Math.round(x * d);
+                int t = loc[1] + (int) Math.round(y * d);
+                int r = l + (int) Math.round(w * d);
+                int b = t + (int) Math.round(h * d);
+                nativePlayer.setBounds(l, t, r, b);
+            } catch (Exception ignored) {}
+        }
+
+        // ── Player butonları native oynatıcıyı yönetir ──────────────────
+        @JavascriptInterface public void nativePlay() { if (nativePlayer != null) nativePlayer.oynat(); }
+        @JavascriptInterface public void nativePause() { if (nativePlayer != null) nativePlayer.durdur(); }
+        @JavascriptInterface public void nativeToggle() {
+            if (nativePlayer == null) return;
+            if (nativePlayer.oynatiliyorMu()) nativePlayer.durdur(); else nativePlayer.oynat();
+        }
+        @JavascriptInterface public void nativeSeekBy(double sn) { if (nativePlayer != null) nativePlayer.atla(sn); }
+        @JavascriptInterface public void nativeSeekTo(double sn) { if (nativePlayer != null) nativePlayer.ilerle(sn); }
+        @JavascriptInterface public boolean nativePlaying() { return nativePlayer != null && nativePlayer.oynatiliyorMu(); }
+        /** "Birlikte izle" hız/ses eşitlemesi native oynatıcıya uygulanır. */
+        @JavascriptInterface public void nativeHiz(double kat) { if (nativePlayer != null) nativePlayer.hiz(kat); }
+        @JavascriptInterface public void nativeSes(double seviye) { if (nativePlayer != null) nativePlayer.ses(seviye); }
+        /** JSON: {"konum":ms,"sure":ms} — ilerleme çubuğu ve zaman yazısı için. */
+        @JavascriptInterface public String nativeDurum() {
+            if (nativePlayer == null) return "{\"konum\":0,\"sure\":0}";
+            return "{\"konum\":" + nativePlayer.konumMs() + ",\"sure\":" + nativePlayer.sureMs() + "}";
+        }
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -42,6 +151,8 @@ public class MainActivity extends BridgeActivity {
         try {
             if (this.bridge != null && this.bridge.getWebView() != null) {
                 this.bridge.getWebView().addJavascriptInterface(new DeviceStorageBridge(), "CinePulseNative");
+                // Native medya cozucu: HEVC dahil her yayini cihaz cozucusuyle acar.
+                this.bridge.getWebView().addJavascriptInterface(new NativePlayerBridge(), "CinePulsePlayer");
                 // Gizli WebView cozumleyicisi cevabi dogrudan uygulama icine
                 // geri verir: window.__cinepulseWebViewResolve(id, json).
                 this.bridge.getWebView().addJavascriptInterface(new WebViewResolverBridge(), "CinePulseWebView");
@@ -70,11 +181,11 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
-        public void resolvePage(String requestId, String url, int timeoutMs, boolean media) {
+        public void resolvePage(String requestId, String url, int timeoutMs, boolean media, String referer) {
             final NativePageResolver resolver = pageResolver;
             if (resolver == null || url == null || url.trim().isEmpty()) return;
             final String id = requestId;
-            resolver.resolve(id, url.trim(), timeoutMs, media, "", new NativePageResolver.Callback() {
+            resolver.resolve(id, url.trim(), timeoutMs, media, "", referer == null ? "" : referer.trim(), new NativePageResolver.Callback() {
                 @Override
                 public void onResult(final String requestId, final String json) {
                     try {

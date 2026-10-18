@@ -15,7 +15,7 @@ import {
   cacheOku,
   cacheYaz,
   satirBasligi
-} from '../src/services/personalRails.js';
+} from '../src/services/icerik/personalRails.js';
 
 function sahteDepo(ilk = {}) {
   const harita = new Map(Object.entries(ilk));

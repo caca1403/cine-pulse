@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canUseDesktopSetup, needsDesktopSetup } from '../src/services/desktopSetupPolicy.js';
+import { canUseDesktopSetup, needsDesktopSetup } from '../src/services/kabuk/desktopSetupPolicy.js';
 
 test('web and APK cannot open a local desktop installation wizard', () => {
   assert.equal(canUseDesktopSetup(undefined, undefined), false);

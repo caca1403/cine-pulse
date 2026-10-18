@@ -10,7 +10,7 @@ import {
   akışOtopilotu,
   aileKodu,
   nedenMetni
-} from '../src/services/flowPilot.js';
+} from '../src/services/altyapi/flowPilot.js';
 
 // ----------------------------------------------------------------
 // 1. Boş/eksiz kaynaklar → null / atma yok

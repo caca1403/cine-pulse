@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { shouldOfferUpdate } from '../src/services/updatePolicy.js';
+import { shouldOfferUpdate } from '../src/services/kabuk/updatePolicy.js';
 
 test('installed APK 175 must not offer its own manifest when JS bundle says 171', () => {
   assert.equal(shouldOfferUpdate({ version: '1.1.65', versionCode: 175 }, { version: '1.1.65', versionCode: 175 }), false);

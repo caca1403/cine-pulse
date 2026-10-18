@@ -3,8 +3,8 @@
    APK / EXE indirme + exe:// derin baglanti. Web'de gosterilir, uygulamada gizlenir.
    ========================================================================== */
 
-import { isAppPlatform } from '../services/platformBridge.js';
-import { renderIcons } from '../services/icons.js';
+import { isAppPlatform } from '../services/platform/platformBridge.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 
 export const EXE_DOWNLOAD_URL =
   'https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse-setup.exe';

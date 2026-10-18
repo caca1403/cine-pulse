@@ -6,7 +6,7 @@
    ========================================================================== */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateNextEpisode, POLICY_TABLE } from '../src/services/nextEpisodePolicy.js';
+import { evaluateNextEpisode, POLICY_TABLE } from '../src/services/icerik/nextEpisodePolicy.js';
 
 // ----------------------------------------------------------------
 // 1. Policy carrier functions

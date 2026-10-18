@@ -1,4 +1,4 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - Cinematic Trailer Modal Component
    Ultra-responsive YouTube trailer player with glassmorphic backdrop,

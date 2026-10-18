@@ -6,7 +6,7 @@
    Authorization başlığıyla gider.
    ========================================================================== */
 
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 import { showToast } from './Toast.js';
 import {
   getDebridKey,
@@ -15,7 +15,7 @@ import {
   maskDebridKey,
   validateDebridKey,
   getAccountStatus,
-} from '../services/debridService.js';
+} from '../services/dogrudan/debridService.js';
 
 let activeRoot = null;
 let activeEsc = null;

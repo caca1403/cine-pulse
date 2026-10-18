@@ -1,5 +1,5 @@
 """CinePulse ozel resolver dagitici (Cloudstream mantigi: site basina modul).
-Vercel:  GET /api/resolve?provider=hdfc|dzs|snx|szd&...
+Vercel:  GET /api/resolve?provider=ctv[&slug=...][&playerId=...]
 Local:   python3 api/resolve.py <provider> <title> <originalTitle> <season> <episode> <type> [tmdbId] [imdbId] [isDub]
 """
 import json
@@ -10,8 +10,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from providers import dizisol, sinewix, sezonlukdizi, diziyou, canlitv, setfilm, webteizle, selcukflix, fullhdfilmizlesene, dizilla, filmekseni  # noqa: E402
-import hdfc_stream as _hdfc  # noqa: E402
+from providers import canlitv  # noqa: E402
 
 
 def _str(v, default=''):
@@ -19,69 +18,15 @@ def _str(v, default=''):
 
 
 def dispatch(provider, args):
+    """Kaynak çözücü. Eklenti/sağlayıcı katmanı söküldü: film, dizi, anime ve
+    çizgi film çözücü modüller kaldırıldı. Bu uç yalnız Canlı TV kanal listesini
+    ve seçilen kanalın yayın adresini döndürür."""
     provider = (provider or '').lower().strip()
-    title = _str(args.get('title') or args.get('query'))
-    original = _str(args.get('originalTitle'))
-    titles = args.get('titles') or []
-    season = int(args.get('season') or 1)
-    episode = int(args.get('episode') or 1)
-    rtype = _str(args.get('type'), 'movie').lower()
-    tmdb_id = args.get('tmdbId')
-    imdb_id = args.get('imdbId')
-    is_dub_raw = args.get('isDub')
-    want_dub = None if is_dub_raw in (None, '') else str(is_dub_raw).lower() in ('1', 'true', 'dub')
-
-    if provider in ('hdfc', 'hdfilmcehennemi'):
-        return _hdfc.resolve_hdfc_stream(title, original, season=season, episode=episode,
-                                         is_tv=(rtype != 'movie'), titles=titles)
-    if provider in ('dzs', 'dizisol', 'ds'):
-        if rtype == 'movie':
-            return dizisol.resolve_movie(title, original, titles, tmdb_id)
-        return dizisol.resolve_episode(title, original, titles, tmdb_id, season, episode)
-    if provider in ('snx', 'sinewix', 'swx'):
-        if rtype == 'movie':
-            return sinewix.resolve_movie(title, original, titles, args.get('year'), want_dub)
-        return sinewix.resolve_episode(title, original, titles, args.get('year'), season, episode,
-                                       imdb_id, want_dub, is_anime=(rtype == 'anime'))
-    if provider in ('szd', 'sezonlukdizi', 'sezonluk'):
-        if rtype == 'movie':
-            return {'success': False, 'error': 'SezonlukDizi is series-only'}
-        return sezonlukdizi.resolve_episode(title, original, titles, season, episode, want_dub)
-    if provider in ('dyu', 'diziyou', 'diziyouone'):
-        if rtype == 'movie':
-            return {'success': False, 'error': 'Diziyou is series-only'}
-        return diziyou.resolve_episode(title, original, titles, season, episode)
     if provider in ('ctv', 'canlitv', 'canli'):
         slug = _str(args.get('slug'))
         if slug:
             return canlitv.resolve_channel(slug, _str(args.get('playerId')))
         return {'success': True, 'channels': canlitv.list_channels()}
-    if provider in ('setf', 'setfilm', 'setfilmizle'):
-        if rtype == 'movie':
-            return setfilm.resolve_movie(title, original, titles)
-        return setfilm.resolve_episode(title, original, titles, season, episode)
-    if provider in ('slc', 'selcuk', 'selcukflix'):
-        if rtype == 'movie':
-            return selcukflix.resolve_movie(title, original, titles)
-        return selcukflix.resolve_episode(title, original, titles, season, episode)
-    if provider in ('fhdf', 'fullhd', 'fullhdfilm', 'fullhdfilmizlesene'):
-        if rtype != 'movie':
-            return {'success': False, 'error': 'FullHDFilmizlesene is movie-only'}
-        return fullhdfilmizlesene.resolve_movie(title, original, titles)
-    if provider in ('wtz', 'webteizle', 'webteizleinfo'):
-        # SezonlukDizi ile ayni mantik: film slug -> alternatif player'lar -> embed.
-        if rtype != 'movie':
-            return {'success': False, 'error': 'Webteizle is movie-only'}
-        return webteizle.resolve_movie(title, original, titles, want_dub)
-    if provider in ('dzl', 'dizilla'):
-        # Cloudstream Dizilla tvTypes = [TvSeries]: sadece dizi.
-        if rtype == 'movie':
-            return {'success': False, 'error': 'Dizilla is series-only'}
-        return dizilla.resolve_episode(title, original, titles, season, episode)
-    if provider in ('fxs', 'filmekseni', 'film ekseni'):
-        if rtype == 'movie':
-            return filmekseni.resolve_movie(title, original, titles, year=args.get('year'))
-        return filmekseni.resolve_episode(title, original, titles, season, episode, year=args.get('year'))
     return {'success': False, 'error': f'Unknown provider: {provider}'}
 
 
@@ -203,3 +148,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

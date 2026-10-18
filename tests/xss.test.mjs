@@ -1,8 +1,8 @@
 /* XSS regresyon testi: uzak M3U'den gelen kanal verisi HTML'e kaçırılmadan
    giriyor mu? Saldırgan kontrollü kanal adi/listesi kullanılır. */
 
-import { getChannelBadgeSvg } from '../src/services/liveTvChannels.js';
-import { buildChannels } from '../src/services/turkishLiveSources.js';
+import { getChannelBadgeSvg } from '../src/services/canli/liveTvChannels.js';
+import { buildChannels } from '../src/services/canli/turkishLiveSources.js';
 
 const PAYLOAD = '<img src=x onerror="alert(1)">';
 const ATTR_PAYLOAD = '" onmouseover="alert(2)';

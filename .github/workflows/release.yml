@@ -1,10 +1,10 @@
-# CinePulse public Release hatti — tag (vX.Y.Z) itilinca APK + DEB + EXE + AppImage uretir,
+# CinePulse public Release hatti — tag (vX.Y.Z) itilinca APK + DEB + EXE + Flatpak uretir,
 # hepsini ayni GitHub Release'e koyar. Uydurma secret YOK: imza adlari build-apk.yml ile
 # birebir ayni (ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS /
 # ANDROID_KEY_PASSWORD + VITE_XTREAM_RELAY_ORIGIN) ve yalnizca ${{ secrets.X }} ile okunur.
 # Ayni keystore kaniti: scripts/build-android-release.py icindeki sabit SHA-256 parmak izi.
 # Sürüm tek kaynagi package.json; etiket onunla ayni olmali (asagidaki version-gate).
-name: Release CinePulse (APK + DEB + EXE + AppImage)
+name: Release CinePulse (APK + DEB + EXE + Flatpak)
 
 on:
   push:
@@ -132,7 +132,7 @@ jobs:
           retention-days: 14
 
   desktop-linux:
-    name: Desktop Linux (DEB + AppImage)
+    name: Desktop Linux (DEB + Flatpak)
     runs-on: ubuntu-latest
     needs: version-gate
     timeout-minutes: 40
@@ -148,7 +148,14 @@ jobs:
       - name: Install Node Dependencies
         run: npm ci || npm install --legacy-peer-deps
 
-      - name: Build DEB + AppImage (package.json build config)
+      - name: Install Flatpak build tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
+
+      - name: Build DEB + Flatpak (package.json build config)
         env:
           VITE_XTREAM_RELAY_ORIGIN: ${{ secrets.VITE_XTREAM_RELAY_ORIGIN }}
         run: |
@@ -156,7 +163,7 @@ jobs:
           npm run build
           # --publish never: GITHUB_TOKEN ortamda dururken electron-builder'ın kendi
           # başına Release'e yüklemeye çalışmasını engelle (yayın yetkisi job "release").
-          npx electron-builder --linux deb AppImage --publish never -c.electronDist=node_modules/electron/dist
+          npx electron-builder --linux deb flatpak --publish never -c.electronDist=node_modules/electron/dist
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -164,7 +171,7 @@ jobs:
           name: desktop-linux
           path: |
             release/CinePulse-*.deb
-            release/CinePulse-*.AppImage
+            release/CinePulse-*.flatpak
           if-no-files-found: error
           retention-days: 14
 

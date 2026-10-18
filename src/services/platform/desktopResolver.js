@@ -4,7 +4,7 @@
  * statik sayfa + meta-refresh akislari icin yeterlidir).
  * Kullanim: fetchHtml basarisiz olursa sirayla ghost -> iframe denenir.
  */
-import { isDesktopApp } from '../platformBridge.js';
+import { isDesktopApp } from './platformBridge.js';
 
 export async function ghostResolveHtml(url, opts = {}) {
   try {

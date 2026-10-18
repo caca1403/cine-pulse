@@ -78,6 +78,46 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+/* Geçici ağ hatalarında yeniden deneyen fetch. ÖLÇÜLDÜ (2026-10-16): bu ağda
+   bir sürecin İLK dış TLS bağlantısı ~7 sn asılıp ECONNRESET verebiliyor;
+   sonrasında ~0.2 sn. Köprü isteği tek denemede düşerse kaynak kayboluyordu. */
+async function dayanikliFetch(url, secenek = {}, ayar = {}) {
+  const deneme = Math.max(1, ayar.deneme || 3);
+  const timeoutMs = ayar.timeoutMs || 12000;
+  let sonHata;
+  for (let i = 0; i < deneme; i++) {
+    try {
+      const kontrol = new AbortController();
+      const zaman = setTimeout(() => kontrol.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...secenek, signal: secenek.signal || kontrol.signal });
+      } finally {
+        clearTimeout(zaman);
+      }
+    } catch (hata) {
+      sonHata = hata;
+      const kod = hata?.cause?.code || hata?.code || '';
+      const gecici = ['ECONNRESET', 'ECONNREFUSED', 'EAI_AGAIN', 'ETIMEDOUT', 'EPIPE', 'UND_ERR_SOCKET', 'ABORT_ERR'].includes(kod)
+        || /fetch failed|socket hang up|network/i.test(String(hata?.message || ''));
+      if (!gecici || i === deneme - 1) throw hata;
+      await new Promise((r) => setTimeout(r, 120 * (i + 1)));
+    }
+  }
+  throw sonHata;
+}
+
+/** Açılışta TMDB bağlantılarını ısıtır: ilk köprü isteği 15+ sn beklemesin. */
+async function baglantilariIsit() {
+  const hedefler = [
+    'https://api.themoviedb.org/3/configuration?api_key=4e44d9029b1270a757cddc766a1bcb63',
+    'https://image.tmdb.org/t/p/w92/6pObznbCoxVpY1lPQwJxETd7Phe.png'
+  ];
+  for (const h of hedefler) {
+    try { await dayanikliFetch(h, {}, { deneme: 3, timeoutMs: 12000 }); } catch (_) {}
+  }
+  console.log('🔥 Baglanti isindi');
+}
+
 const PORT = 4000;
 
 // ---- Yazılabilir medya dizini (DEB kalıcı düzeltme) --------------------
@@ -532,6 +572,23 @@ const server = http.createServer(async (req, res) => {
       if (req.headers['x-hdf-nonce']) customHeaders['X-HDF-Nonce'] = req.headers['x-hdf-nonce'];
       if (req.headers['x-requested-with']) customHeaders['X-Requested-With'] = req.headers['x-requested-with'];
 
+      // Çekirdeğin ÖZEL başlıkları (Cf-Control/language/site/device/Cookie…)
+      // `headers` JSON parametresiyle taşınır: gerçek HTTP başlığı olarak
+      // gönderilirse tarayıcı CORS ön kontrolü tetikler ve ağ geçidi reddeder
+      // (ölçülen: tüm sınıf-2 çekirdekler 0 kaynak dönüyordu).
+      const ekHam = reqUrl.searchParams.get('headers');
+      if (ekHam) {
+        try {
+          const ek = JSON.parse(ekHam);
+          const yasak = new Set(['host', 'content-length', 'connection', 'accept-encoding']);
+          for (const [ad, deger] of Object.entries(ek || {})) {
+            if (!ad || typeof deger !== 'string' || yasak.has(ad.toLowerCase())) continue;
+            if (ad.toLowerCase() === 'cookie') customHeaders['Cookie'] = deger;
+            else customHeaders[ad] = deger;
+          }
+        } catch (_) {}
+      }
+
       // POST gövdesi iletilmeli. Bazı kaynakların AJAX uçları (orn. sinemacc
       // / FirePlayer getVideo) yalnızca POST ile JSON döner; gövde düşerse
       // HTML sayfası gelir ve çözümleme sessizce boş döner.
@@ -550,11 +607,11 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      const upstreamRes = await fetch(decodedTarget, {
+      const upstreamRes = await dayanikliFetch(decodedTarget, {
         method: req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH' ? req.method : 'GET',
         headers: customHeaders,
         body: body && body.length ? body : undefined
-      });
+      }, { deneme: 3, timeoutMs: 12000 });
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, PATCH, OPTIONS');
       const arrayBuf = await upstreamRes.arrayBuffer();
       if (!res.headersSent) {
@@ -2078,4 +2135,6 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`[MediaServer] ✅ Active on http://127.0.0.1:${PORT}`);
   console.log(`[MediaServer] 🎬 Torrent streaming: http://localhost:${PORT}/torrent/<infoHash>`);
   console.log(`[MediaServer] 📁 Local media: ${MEDIA_DIR}`);
+  // Bağlantı ısıtma: ilk köprü isteği ~15 sn asılıp düşmesin.
+  baglantilariIsit().catch(() => {});
 });

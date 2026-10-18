@@ -1,4 +1,14 @@
 {
+  "slc": {
+    "base": "https://selcukflix.app",
+    "referer": "https://selcukflix.app/",
+    "headers": { "Origin": "https://selcukflix.app" }
+  },
+  "fhdf": {
+    "base": "https://www.fullhdfilmizlesene.now",
+    "referer": "https://www.fullhdfilmizlesene.now/",
+    "headers": {}
+  },
   "hdfc": {
     "base": "https://www.hdfilmcehennemi.nl",
     "referer": "https://www.hdfilmcehennemi.nl/",
@@ -40,8 +50,8 @@
     }
   },
   "dzp": {
-    "base": "https://dizipal1229.com",
-    "referer": "https://dizipal1229.com/",
+    "base": "https://dizipal2140.com",
+    "referer": "https://dizipal2140.com/",
     "headers": {}
   },
   "flz": {
@@ -109,6 +119,13 @@
     "referer": "https://dramadizilerim.com/",
     "headers": {
       "Origin": "https://dramadizilerim.com"
+    }
+  },
+  "dml": {
+    "base": "https://dramalar.com",
+    "referer": "https://dramalar.com/",
+    "headers": {
+      "Origin": "https://dramalar.com"
     }
   },
   "dzs": {
@@ -224,5 +241,8 @@
       "X-Requested-With": "XMLHttpRequest",
       "Accept": "application/json, text/javascript, */*; q=0.01"
     }
+  },
+  "imdbRating": {
+    "base": "https://cinepulse.cinepulse.workers.dev/api/imdbRating"
   }
 }

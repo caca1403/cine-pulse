@@ -1,4 +1,4 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - Ultra-Customized Advanced Discover View
    Features multi-filters: Type (TV/Movie), Genre, Sorting, Min IMDb Rating, Year.
@@ -8,7 +8,7 @@ import {
   fetchDiscoverMedia,
   GENRE_MAP_TV,
   GENRE_MAP_MOVIE
-} from '../services/tmdbApi.js';
+} from '../services/icerik/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 
 const discoverCache = {

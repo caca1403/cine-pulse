@@ -2438,6 +2438,62 @@ html.mobile-web .navbar {
   color: #fff;
 }
 
+/* ── Özel tasarımlı içerik başlığı (TMDB / Fanart logosu) ──────────────────
+   Yalnız hero ve detayda kullanılır. Kart afişlerinde başlık/logo KULLANILMAZ
+   (kullanıcı isteği 2026-10-16); logo metnin hizasını izler diye inline-block.
+   -------------------------------------------------------------------------- */
+.hero-titleblock,
+.detail-titleblock {
+  display: block;
+  min-width: 0;
+}
+
+.hero-title-logo,
+.detail-title-logo {
+  display: none;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  vertical-align: bottom;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.85)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
+}
+
+.hero-title-logo {
+  max-width: min(76%, 420px);
+  max-height: clamp(40px, 7vw, 92px);
+  margin: 0 0 0.7rem;
+}
+
+/* Detay sayfası logosu OLAYIN KENDİSİDİR (kullanıcı isteği 2026-10-16):
+   eskiden max-height 34-68 px'ti — afişin yanında "cüce" kalıyordu. Artık
+   ekranın en baskı unsuru: telefonda ~26 vw, masaüstünde ~15 vw. Geniş
+   logolar taşmasın diye max-width de eşzamanlı büyütüldü. */
+.detail-title-logo {
+  max-width: min(88%, 720px);
+  max-height: clamp(96px, 26vw, 220px);
+  margin: 0 0 0.9rem;
+}
+
+.hero-titleblock--logo .hero-title-logo,
+.detail-titleblock--logo .detail-title-logo {
+  display: inline-block;
+}
+
+/* Logo varken düz başlık ekrandan kalkar ama erişilebilir kalır (ekran
+   okuyucusu içerik adını yitirmesin). */
+.hero-titleblock--logo .hero-title,
+.detail-titleblock--logo .detail-heading-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .hero-overview {
   font-size: 1.02rem;
   color: #cbd5e1;
@@ -2773,15 +2829,63 @@ html.mobile-web .navbar {
   width: 100%;
 }
 
+/* Mobilde kartlar küçük kalıyordu: raf kartı sabit 140 px'ti (aşağıdaki bir
+   kural yüzünden ilk deneme kazanmıyordu) ve ızgara kartları geniş kenar
+   boşluğundan kısalıyordu. Raf kartı artık ekranın ~%44'ü kadar; iki sütunlu
+   ızgara daha dar boşlukla büyür. Başlık puntosu da mobilde yükseltilir. */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+
+  /* .card-rail > .media-card (0,2,0) → dosyanın sonundaki `.media-card`
+     (0,1,0) kuralını geçer; böylece raf genişliği gerçekten uygulanır. */
+  .card-rail > .media-card {
+    width: clamp(152px, 44vw, 250px);
+  }
+
+  .media-grid {
+    gap: 1.2rem 0.6rem;
+  }
+
+  .card-title {
+    font-size: 0.9rem;
+  }
+}
+
+/* ── Kartın özel tasarımlı başlığı (logo) ────────────────────────────────
+   Afişin üstüne başlık basılmaz; logo afişin ALTINDAKİ gradyan scrime oturur.
+   Logo yoksa etiket gizli kalır → kart dün nasıl görünüyorsa öyle görünür. */
+.card-title-logo {
+  display: none;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: clamp(17px, 5vw, 27px);
+  object-fit: contain;
+  align-self: flex-start;
+  margin: 0 0 0.1rem;
+}
+
+/* Dokunmada hafif çökme: "basıldı" hissi verir, kayganlık için kritik.
+   Yalnız dokunmatikte; masaüstündeki hover yükseltmesine dokunmaz. */
+@media (hover: none) {
+  .media-card:active .card-poster-wrapper {
+    transform: scale(0.972);
+    transition-duration: 90ms;
+  }
+}
+
 .card-poster-wrapper {
   position: relative;
   width: 100%;
   aspect-ratio: 2 / 3;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
-  background: #141414;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  background: #101216;
+  /* Tek ince çizgi + yumuşak gölge: kart "kutu" gibi değil, ekrana oturur. */
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
   transition: transform 0.2s ease,
               border-color 0.2s ease,
               box-shadow 0.2s ease,
@@ -2813,24 +2917,6 @@ html.mobile-web .navbar {
 }
 
 .card-fanart-title { display: none !important; }
-.card-fanart-logo { 
-  display: none; 
-  opacity: 0;
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s ease;
-}
-.cards-landscape .card-fanart-composite .card-fanart-logo {
-  position: absolute;
-  left: 8%;
-  top: 15%;
-  display: block;
-  width: 84%;
-  height: 70%;
-  object-fit: contain;
-  opacity: 1;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, .92)) drop-shadow(0 1px 3px rgba(0, 0, 0, .8));
-  pointer-events: none;
-  z-index: 2;
-}
 
 .card-poster-img {
   width: 100%;
@@ -2928,177 +3014,119 @@ html.mobile-web .navbar {
   -webkit-backdrop-filter: blur(6px);
 }
 
-/* Watch status strip — OUTSIDE the poster, full card width, attached to poster bottom */
-.media-card:has(.card-watch-status) .card-poster-wrapper {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  border-bottom: none;
-}
+/* İzleme durumu artık afişin altındaki rozette (v3) — afişin dibine yapışan
+   tam genişlikte şerit kaldırıldı; kart kenarı kırılmıyor. */
 
-.card-watch-status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  width: 100%;
-  padding: 5px 8px;
-  font-size: 0.62rem;
-  font-weight: 750;
-  letter-spacing: 0.03em;
-  border-radius: 0 0 6px 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  box-sizing: border-box;
-  line-height: 1;
-  pointer-events: none;
-}
 
-.card-watch-status--done {
-  background: rgba(16, 185, 129, 0.18);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  border-top: none;
-  color: #34d399;
-}
 
-.card-watch-status--continue {
-  background: rgba(124, 58, 237, 0.18);
-  border: 1px solid rgba(124, 58, 237, 0.35);
-  border-top: none;
-  color: #a78bfa;
-}
-
-/* Top meta strip over poster - Floating Glass Chips (Stremio Style) */
-.card-top-strip {
-  position: absolute;
-  top: 7px;
-  left: 7px;
-  right: 7px;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0;
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: none !important;
-  box-shadow: none !important;
-  pointer-events: none;
-}
-
-.card-top-year {
-  background: rgba(10, 14, 24, 0.72);
-  backdrop-filter: blur(10px) saturate(160%);
-  -webkit-backdrop-filter: blur(10px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 6px;
-  padding: 2.5px 7px;
-  color: #e2e8f0;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-  display: inline-flex;
-  align-items: center;
-}
-
-.card-top-rating {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: rgba(10, 14, 24, 0.72);
-  backdrop-filter: blur(10px) saturate(160%);
-  -webkit-backdrop-filter: blur(10px) saturate(160%);
-  border: 1px solid rgba(223, 255, 118, 0.3);
-  border-radius: 6px;
-  padding: 2.5px 7px;
-  color: #dfff76;
-  font-weight: 800;
-  font-size: 0.7rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-}
-
-/* Bottom Cinematic Gradient Overlay with Title & Meta (Apple TV / Stremio Vurgusu) */
+/* Kart tasarımı v2 — afişin altındaki İNCE gradyan.
+   Eskiden bu şerit başlık + tür + yıl taşıyordu; metinler afişin ALTINA taşınınca
+   geriye yalnız kenar yumuşatma kaldı. Hover'da karartmaya gerek yok: üzerinde
+   okunacak bir şey yok. */
 .card-bottom-cinematic-overlay {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 4;
-  padding: 2.6rem 0.65rem 0.65rem 0.65rem;
-  background: linear-gradient(to top, rgba(8, 11, 18, 0.96) 0%, rgba(8, 11, 18, 0.68) 55%, transparent 100%);
+  height: 26%;
+  padding: 0;
+  background: linear-gradient(to top, rgba(5, 7, 13, 0.62) 0%, rgba(5, 7, 13, 0.18) 55%, transparent 100%);
+  display: block;
+  pointer-events: none;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ── Kart bilgi şeridi (tasarım v2) ──────────────────────────────────────
+   Eskiden afişin üstüne basılan tüm metinler (başlık, tür, yıl, logo)
+   birbirine biniyordu. v2'de afiş TEMİZ: tek bilgi kaynağı afişin altındaki
+   şerit. Sıra: özel başlık logosu → (logo yoksa) düz başlık → tür • yıl. */
+.card-info {
   display: flex;
   flex-direction: column;
-  gap: 0.18rem;
-  pointer-events: none;
-  transition: all 0.25s ease;
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  align-items: flex-start;
+  gap: 0.16rem;
+  padding: 0.42rem 0.1rem 0;
+  min-width: 0;
 }
 
-.media-card:hover .card-bottom-cinematic-overlay {
-  background: linear-gradient(to top, rgba(8, 11, 18, 0.98) 0%, rgba(8, 11, 18, 0.82) 65%, transparent 100%);
-  padding-bottom: 0.75rem;
-}
-
-.card-cinematic-title {
-  font-size: 0.84rem;
-  font-weight: 750;
-  color: #ffffff;
-  margin: 0;
+.card-title {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
   line-height: 1.25;
-  white-space: nowrap;
+  letter-spacing: -0.005em;
+  color: var(--text-main);
+  margin: 0;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
-  letter-spacing: -0.01em;
+  word-break: break-word;
 }
 
-.media-card:hover .card-cinematic-title {
-  color: #dfff76;
-}
-
-.card-cinematic-meta {
+.card-info .card-meta {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: #94a3b8;
-  white-space: nowrap;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: var(--text-muted, #9ca3af);
+}
+
+/* Tür/yıl etiketleri "chip" değil, tek sade satır gibi okunur. */
+.card-info .card-type-tag,
+.card-info .card-year-tag {
+  background: none !important;
+  border: none !important;
+  padding: 0;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: inherit;
+}
+
+.card-info .card-year-tag::before {
+  content: '·';
+  margin: 0 0.3rem;
+  opacity: 0.55;
+}
+
+/* Logo varsa düz başlık görselden kalkar ama erişilebilir kalır. */
+.card--title-logo .card-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
-.card-cinematic-type {
-  color: #cbd5e1;
-}
-
-.card-cinematic-dot {
-  opacity: 0.5;
-  font-size: 0.6rem;
-}
-
-.card-cinematic-year {
-  color: #94a3b8;
-}
-
-/* Landscape mode adjustments for cinema marquee look */
-.cards-landscape .card-bottom-cinematic-overlay {
-  padding: 2.8rem 0.85rem 0.75rem 0.85rem;
-}
-
-.cards-landscape .card-cinematic-title {
-  font-size: 0.92rem;
-}
-
-.card-rating-pill {
-  display: none;
-}
-
-/* External card-info hidden since text is now elegantly inside the poster */
-.card-info {
-  display: none !important;
+.card--title-logo .card-title-logo {
+  display: block;
 }
 
 /* Hover Play Overlay */
@@ -3116,8 +3144,23 @@ html.mobile-web .navbar {
   z-index: 3;
 }
 
-.media-card:hover .card-hover-overlay {
-  opacity: 1;
+/* Hover katmanı YALNIZ gerçek imleçte. Dokunmatikte `:hover` basışta kalıcı
+   oluyor ve afişin üstünde oynatma dairesi + metin "takılı" kalıyordu. */
+@media (hover: hover) and (pointer: fine) {
+  .media-card:hover .card-hover-overlay {
+    opacity: 1;
+  }
+
+  .media-card:hover .card-poster-wrapper {
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.62);
+  }
+}
+
+@media (hover: none) {
+  .card-hover-overlay {
+    display: none !important;
+  }
 }
 
 .card-play-btn-circle {
@@ -3158,30 +3201,15 @@ html.mobile-web .navbar {
 
 .card-progress-bar-fill {
   height: 100%;
-  background: #e50914;
-  box-shadow: none;
+  /* Netflix kırmızısı değil: kendi paletimiz (tek vurgu = lime). */
+  background: var(--primary, #dfff76);
+  box-shadow: 0 0 6px rgba(223, 255, 118, 0.35);
 }
 
-/* Card Typography: Hidden by default (Stremio style clean poster) */
-.card-info {
-  display: none !important;
-}
+/* (Not) Kart tipografisi artık yukarıdaki "kart bilgi şeridi (v2)" blokunda.
+   Buradaki `display:none !important` kalıntısı afişin altına taşınan bilgiyi
+   tekrar gizliyordu — kaldırıldı. */
 
-.card-hover-title {
-  font-size: 0.86rem;
-  font-weight: 750;
-  color: #ffffff;
-  text-align: center;
-  padding: 0 10px;
-  line-height: 1.3;
-  max-height: 2.6em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
-}
 
 .card-meta {
   display: flex;
@@ -3255,6 +3283,116 @@ html.mobile-web .navbar {
   color: var(--text-muted);
   font-size: 0.72rem;
 }
+
+/* ── Kart bilgi şeridi (tasarım v3) ──────────────────────────────────────
+   Kullanıcı geri bildirimi: "resim tasarımı çok güzel ama alt taraf çok
+   kötü". v2 şeridinde yıl · tür · durum · puan aynı ağırlıkta ve ayırıcısız
+   yan yana duruyordu, puan da ayrı bir satıra düşüyordu.
+   v3: TEK satır ve üç net seviye —
+     sol → yıl,  orta → izleme durumu rozeti,  sağ → puan (kendi chip'i).
+   Afişin üzerine yine hiçbir şey basılmaz. */
+.card-info {
+  gap: 0.3rem;
+  padding: 0.46rem 0.06rem 0;
+}
+
+.card-info .card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.34rem;
+  min-width: 0;
+  width: 100%;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  color: var(--text-muted, #9ca3af);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.card-info .card-meta > * { flex-shrink: 0; }
+
+/* Yıl satırın başında: `order:-1` kalıntısı kaldırıldı, ayırıcı gereksiz. */
+.card-info .card-year-tag {
+  order: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.card-info .card-year-tag::before { content: none; }
+
+/* İzleme durumu: küçük, yuvarlak, tek renkli rozet. */
+.card-info .card-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  padding: 0.06rem 0.34rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.card-info .card-status-chip--done {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.13);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.card-info .card-status-chip--continue {
+  color: var(--primary, #dfff76);
+  background: rgba(223, 255, 118, 0.12);
+  border-color: rgba(223, 255, 118, 0.28);
+}
+
+/* Puan: satırın SAĞ ucunda, kendi chip'i içinde. */
+.card-info .card-rating-inline {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  padding: 0.06rem 0.36rem;
+  border-radius: 999px;
+  color: var(--primary, #dfff76);
+  background: rgba(223, 255, 118, 0.1);
+  border: 1px solid rgba(223, 255, 118, 0.24);
+}
+
+.card-info .card-rating-inline::before {
+  content: '★';
+  margin-right: 0.2rem;
+  font-size: 0.6rem;
+  opacity: 0.85;
+}
+
+/* İSİM TABANLI LOGOTİP — başlık logosu bulunamayan kartlar için.
+   Kullanıcı "tüm kartlarda başlık logosu olsun" dedi; TMDB'de clearlogo
+   olmayan içerikte düz sistem yazısı yerine kartın kendi imzası çizilir:
+   başlığın solunda ince vurgu çubuğu. Yalnız gerçek logo YOKKEN görünür. */
+.card-info .card-title {
+  position: relative;
+  font-weight: 800;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  letter-spacing: 0.005em;
+  padding-left: 0.44rem;
+}
+
+.media-card:not(.card--title-logo) .card-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.22em;
+  bottom: 0.22em;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--primary, #dfff76), rgba(223, 255, 118, 0.2));
+}
+
+.card--title-logo .card-title::before { content: none; }
 
 /* --------------------------------------------------------------------------
    8. MUBI Weekly Spotlight (Hero + 6 Mini Cards)
@@ -6216,6 +6354,7 @@ html.mobile-web .navbar {
 .smart-sources-cat-tabs {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 3px;
   background: rgba(0, 0, 0, 0.45);
   padding: 3px;
@@ -6471,6 +6610,25 @@ html.mobile-web .navbar {
   background: rgba(16, 185, 129, 0.2);
   color: #34d399;
   font-weight: 700;
+}
+
+/* Tüm kaynaklar tek listede: her satırın dil etiketi.
+   Ölçülmüş ses bilgisi geldiğinde (dublaj gerçekten var mı) bu etiketin
+   yerini o bilgi alır; buradaki renk, "seçili kategori" satırlarını
+   diğerlerinden ayırır — kullanıcı hangi havuzun aktif olduğunu görür. */
+.smart-dropdown-cat {
+  font-size: 0.63rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.smart-dropdown-cat.is-current {
+  background: rgba(223, 255, 118, 0.14);
+  color: #dfff76;
 }
 
 /* SEZONLAR SECTION */
@@ -7780,6 +7938,69 @@ html.mobile-web .navbar {
   height: 100%;
   object-fit: contain;
   background: #000;
+}
+
+/* ── NATIVE OYNATICI (Android) ────────────────────────────────────────────
+   Görüntüyü APK içindeki Media3/ExoPlayer üretir (cihaz donanım çözücüsü →
+   HEVC dahil her şey çözülür). Yüzey WebView'in ARKASINDA olduğu için bu
+   alan saydam olmalı; `<video>` gizlenir. Böylece uygulamanın kendi player
+   kontrolleri (başlık, ilerleme çubuğu, kaynak listesi, çıkış) üstte kalır —
+   çözücü native, arayüz tamamen CinePulse'un. */
+.cp-native-video .direct-video-wrapper {
+  background: transparent !important;
+}
+.cp-native-video .direct-video-wrapper video {
+  opacity: 0 !important;
+}
+/* Native oynatıcı modunda WEBVIEW OYNATICI TAMAMEN GİZLENİR: görüntüyü ve
+   kontrolleri native (Media3) sağlıyor. Yer tutucu kalır ki native yüzey onun
+   dikdörtgenine otursun; ekranda ikinci bir oynatıcı/çift kontrol görünmez. */
+.cp-native-video #hls-video-player,
+.cp-native-video .direct-video-wrapper video,
+.cp-native-video .direct-video-wrapper .player-controls,
+.cp-native-video .direct-video-wrapper .video-controls,
+.cp-native-video .direct-video-wrapper .player-control-bar,
+.cp-native-video .direct-video-wrapper .controls-bar,
+.cp-native-video .direct-video-wrapper .dual-audio-bar {
+  display: none !important;
+}
+/* KESİN ÇÖZÜM: native modda WebView oynatıcı alanının İÇİNDEKİ HER ŞEY
+   gizlenir (eski video, eski kontrol satırı, kaplamalar). Alanın kendisi
+   yer tutucu olarak kalır; native yüzey tam oraya oturur. Sınıf adı tahmin
+   etmeye gerek kalmaz — hepsi tek kuralda kapanır. */
+.cp-native-video .direct-video-wrapper > * {
+  display: none !important;
+}
+/* Yer tutucu yüksekliği: native yüzey doğru dikdörtgene otursun. */
+.cp-native-video .direct-video-wrapper {
+  min-height: 200px;
+}
+/* ÖLÇÜLEN: siyah örtücü iki yerden geliyordu (DOM zinciri okunarak bulundu):
+   1) `<video>` kendi siyah zeminini çiziyor (opacity:0 bile yetmiyor —
+      zemin ayrı katman),
+   2) `.player-stage-wrapper` opak siyah.
+   İkisi de temizlenince WebView saydamlaşıyor, native yüzey görünüyor. */
+.cp-native-video .direct-video-wrapper video,
+.cp-native-video .player-stage-wrapper,
+.cp-native-video #player-modal,
+.cp-native-video .modal-backdrop {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+/* WebView saydam + aradaki TÜM katmanlar temizlenir; aksi halde siyah zemin
+   native yüzeyi örter ve "ses var, görüntü yok" olur. */
+.cp-native-video,
+.cp-native-video body,
+.cp-native-video .player-modal-overlay,
+.cp-native-video .player-modal-content,
+.cp-native-video .player-stage,
+.cp-native-video #hls-player-stage,
+.cp-native-video .player-iframe-container,
+.cp-native-video .player-ambient-glow,
+.cp-native-video .player-ambient-canvas {
+  background: transparent !important;
+  background-image: none !important;
 }
 
 /* Dual-Audio Hybrid Player Bar */
@@ -18964,9 +19185,6 @@ html.native-android #player-modal .player-modal-content {
   }
 
   /* Landscape Card Logo Drop Shadows */
-  .card-fanart-composite .card-fanart-logo {
-    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 16px rgba(0, 0, 0, 0.7)) !important;
-  }
 
   /* Detail View Mobile Edge-to-Edge */
   .detail-hero-backdrop {
@@ -20075,19 +20293,6 @@ html.native-android {
     aspect-ratio: 16 / 9 !important;
   }
   
-  .card-bottom-cinematic-overlay {
-    padding: 2rem 0.5rem 0.5rem 0.5rem;
-  }
-  
-  .card-cinematic-title {
-    font-size: 0.78rem;
-  }
-  
-  .card-cinematic-meta {
-    font-size: 0.62rem;
-    gap: 0.25rem;
-  }
-  
   /* Completed badge on mobile — slightly smaller */
   .card-status-badge {
     width: 22px;
@@ -20099,14 +20304,6 @@ html.native-android {
   .card-status-badge i {
     width: 10px;
     height: 10px;
-  }
-  
-  /* Year/rating chips on mobile */
-  .card-top-year,
-  .card-top-rating {
-    padding: 2px 6px;
-    font-size: 0.62rem;
-    border-radius: 4px;
   }
   
   /* Search overlay mobile */
@@ -20510,13 +20707,17 @@ html.native-android {
     width: 100% !important;
   }
 
+  /* Raf kartları eskiden 130 px'te sabitlenmişti (3'ü yan yana) — kullanıcı
+     "çok küçük" dedi. Artık ~2,2 kart görünecek şekilde akışkan: iki kart +
+     kaydırma ipucu. !important korunuyor çünkü bu blok dosyanın sonunda ve
+     başka sabitleyici kural kalmasın diye tek kaynak burada. */
   .card-rail > .media-card,
   .card-rail .media-card,
   .card-rail > .continue-card-wrapper {
-    width: 130px !important;
-    min-width: 130px !important;
-    max-width: 130px !important;
-    flex: 0 0 130px !important;
+    width: clamp(152px, 43vw, 250px) !important;
+    min-width: 152px !important;
+    max-width: 250px !important;
+    flex: 0 0 clamp(152px, 43vw, 250px) !important;
     flex-shrink: 0 !important;
   }
   
@@ -21035,6 +21236,15 @@ html.mobile-web .mobile-dynamic-dock {
 #player-modal .player-yt-main .player-stage-wrapper { border-radius: 14px; overflow: hidden; }
 #player-modal .player-yt-main .dizisol-cinema-body { max-width: none; margin: 0; padding: 1.2rem 0 2rem; border-top: 0; background: transparent; }
 
+/* Kısa dizi (mini dizi) oynatıcı sayfası — kullanıcı isteği: "kısa diziler
+   sayfa UI'ını ana ekran mantığına yaklaştır" + "alt kısım minimal olsun".
+   Boş yan panel sütunu tamamen kaldırılır: içerik tam genişlik olur, bölümler
+   TEK rail olarak kalır (yineleme yok). */
+#player-modal .player-yt-layout.short-drama-mode { grid-template-columns: minmax(0, 1fr); }
+#player-modal .player-yt-layout.short-drama-mode .player-yt-sidebar { display: none; }
+/* Tür/dizi bilgisi gelmezse boş chip şeridi yer kaplamasın. */
+#player-modal .dizisol-genre-chips:empty { display: none; }
+
 /* Sag sidebar */
 #player-modal .player-yt-sidebar {
   min-width: 0;
@@ -21268,3 +21478,106 @@ html.lowfx .onboarding-modal-card { backdrop-filter: none; }
 }
 .tv-grid-more:hover { border-color: rgba(223,255,118,.45); color: #dfff76; background: #151b13; }
 .tv-grid-more:focus-visible { outline: 2px solid #dfff76; outline-offset: 2px; }
+
+/* === CP-QUALITY-PACK (uygulama ajanı) === */
+
+/* 1) Route iskeleti — spinner yerine düzenin iskeleti (main.js renderRouteSkeleton).
+      Shimmer keyframe'i drama iskeletinden (skeletonShimmer) miras alınır. */
+.cp-shimmer {
+  background: linear-gradient(100deg, #14161c 40%, #1d212a 50%, #14161c 60%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s linear infinite;
+}
+.cp-route-skeleton { min-height: 85vh; }
+.cp-sk-hero { width: 100%; height: clamp(300px, 56vw, 620px); margin-top: var(--cp-header-height, 78px); }
+.cp-sk-rail { margin-top: 28px; }
+.cp-sk-line { height: 14px; border-radius: 6px; margin-bottom: 10px; }
+.cp-sk-line.title { width: 22%; height: 16px; margin: 0 0 14px; }
+.cp-sk-line.short { width: 60%; }
+.cp-sk-line.heading { width: 45%; height: 28px; border-radius: 8px; }
+.cp-sk-row { display: flex; gap: 12px; overflow: hidden; padding-bottom: 1.2rem; }
+.cp-sk-card { width: 175px; flex: none; }
+.cp-sk-poster { width: 100%; aspect-ratio: 2 / 3; border-radius: 10px; }
+.cp-sk-backdrop { width: 100%; height: clamp(320px, 48vh, 560px); }
+.cp-sk-pill { width: 200px; height: 48px; border-radius: 999px; }
+.cp-sk-detail-body { max-width: 900px; margin: 0 auto; padding: 22px 1.5rem 0; display: grid; gap: 12px; }
+@media (max-width: 860px) {
+  .cp-sk-hero { height: 270px; } /* mobil hero yüksekliğiyle eşleşir (navigation.css) */
+  .cp-sk-line.title { width: 34%; }
+}
+
+/* 2) Route geçiş crossfade'i — yeni <main> yumuşakça yerine oturur. */
+/* `both` yerine `backwards`: bitişte transform: matrix(...) KALMASIN. Kalınca
+   içindeki position:fixed katmanlar (kısa dizi perdesi vb.) ekrana değil sayfaya
+   bağlanıyor ve en altta görünmez kalıyordu (kullanıcı 2026-10-18). */
+.cp-view-enter { animation: cpViewEnter 0.26s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+@keyframes cpViewEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+html.lowfx .cp-view-enter { animation-duration: 0.12s; }
+
+/* 3) Detay mobil yapışkan CTA — "İzle/Devam Et" başparmak menzilinde (main.js). */
+.cp-sticky-cta-wrap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900; /* oynatıcı/modal katmanlarının (9999+) altında kalır */
+  display: none;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+}
+.cp-sticky-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--primary, #dfff76);
+  color: #121609;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transform: translateY(120%);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: auto;
+}
+.cp-sticky-cta.show { transform: none; }
+.cp-sticky-cta svg { width: 18px; height: 18px; fill: currentColor; }
+@media (max-width: 860px) {
+  .cp-sticky-cta-wrap { display: block; }
+}
+
+/* 4) Erişilebilirlik kapakları (küresel) */
+:where(a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]), [role="button"]):focus-visible {
+  outline: 2px solid var(--primary, #dfff76);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 5) Dokunma hedefleri ≥44px (yalnız dar ekran; :where seçiciliği mevcut
+      kuralları ezmez, navigation.css yüklenme sırasından bağımsız olsun diye
+      html ile bir sınıf eklenir). */
+@media (max-width: 860px) {
+  html .cp-nav-actions .cp-icon-button,
+  html .cp-nav-actions .cp-profile,
+  html .cp-nav-actions .cp-nav-action { width: 44px; height: 44px; }
+  html .cp-primary .cp-nav-link { min-height: 44px; }
+  html .cine-discovery-theme .home-view .hero-actions button { min-height: 44px; }
+  /* Silme düğmesi 32px görünür kalır; dokunma alanı görünmeden 44px'e büyür. */
+  .btn-delete-history::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
+}

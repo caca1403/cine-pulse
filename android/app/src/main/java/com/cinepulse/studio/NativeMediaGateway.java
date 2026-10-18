@@ -33,7 +33,7 @@ final class NativeMediaGateway extends NanoHTTPD {
 
     private Response reply(Response response) {
         response.addHeader("Access-Control-Allow-Origin", "https://localhost");
-        response.addHeader("Access-Control-Allow-Headers", "Content-Type,Range,Accept,X-Requested-With");
+        response.addHeader("Access-Control-Allow-Headers", "Content-Type,Range,Accept,Accept-Language,X-Requested-With,X-Hdf-Nonce,X-Proxy-Cookie,X-Proxy-Referer,Cf-Control,Language,Site,Device");
         response.addHeader("Access-Control-Allow-Methods", "GET,HEAD,POST,OPTIONS");
         response.addHeader("Access-Control-Expose-Headers", "Content-Length,Content-Range,Accept-Ranges,X-Upstream-URL");
         response.addHeader("Cache-Control", "no-store");
@@ -109,7 +109,14 @@ final class NativeMediaGateway extends NanoHTTPD {
             }
             if (!ref.isEmpty()) headers.put("Referer", ref);
             String range = session.getHeaders().get("range");
-            if (range != null) headers.put("Range", range);
+            // Olculen hata (2026-10-16): imzali HLS uclari (dizisol, streamcorecdn,
+            // zenoak) Range gordugunde 500/timeout donuyor. Oynatici ilk acilista
+            // "bytes=0-" gonderir; bu gercek bir parc istegi degildir, yukariya
+            // iletilmez - iletilince kaynak acilip video oynamiyordu. Gercek aralik
+            // istekleri (bytes=N-, N-M) aynen aktarilir, arama (seek) bozulmaz.
+            if (range != null && !range.trim().equalsIgnoreCase("bytes=0-")) {
+                headers.put("Range", range);
+            }
             headers.putIfAbsent("User-Agent", session.getHeaders().getOrDefault("user-agent", "Mozilla/5.0"));
             headers.putIfAbsent("Accept", session.getHeaders().getOrDefault("accept", "*/*"));
             byte[] body = null;

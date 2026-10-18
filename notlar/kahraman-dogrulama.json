@@ -1,0 +1,6219 @@
+{
+  "tur": "kahraman-dogrulama",
+  "tarih": "2026-10-16T09:49:13.560Z",
+  "durum": "tamamlandı",
+  "ortam": {
+    "node": "v24.22.0",
+    "platform": "linux",
+    "turFiltre": "both",
+    "tavanMs": 12000,
+    "talepTavanMs": 10000,
+    "gan": "gerçek sit adları artefakta sızmadı — kodlar + anonim kodlar kullanıldı",
+    "not": "saglayıcı tavanı ölçüm amaçlıdır; üretimde 30 sn ortak bütçe (vekil.js BUTCE_MS) geçerlidir"
+  },
+  "mod": "B",
+  "hedefler": {
+    "movie": {
+      "tmdbId": "550",
+      "ad": "Fight Club",
+      "sezon": 1,
+      "bolum": 1
+    },
+    "tv": {
+      "tmdbId": "1396",
+      "ad": "Breaking Bad",
+      "sezon": 1,
+      "bolum": 1
+    }
+  },
+  "ikinciSans": {
+    "movie": {
+      "tmdbId": "27205",
+      "ad": "Inception",
+      "sezon": 1,
+      "bolum": 1
+    },
+    "tv": {
+      "tmdbId": "1416",
+      "ad": "Grey's Anatomy",
+      "sezon": 1,
+      "bolum": 1
+    }
+  },
+  "alanKoduHaritasi": {
+    "<ana-1>": "gizli",
+    "<ana-2>": "gizli",
+    "<ana-3>": "gizli",
+    "<ana-4>": "gizli",
+    "<ana-5>": "gizli",
+    "<ana-6>": "gizli",
+    "<ana-7>": "gizli",
+    "<ana-8>": "gizli",
+    "<ana-9>": "gizli",
+    "<ana-10>": "gizli",
+    "<ana-11>": "gizli",
+    "<ana-12>": "gizli",
+    "<ana-13>": "gizli",
+    "<ana-14>": "gizli",
+    "<ana-15>": "gizli",
+    "<ana-16>": "gizli",
+    "<ana-17>": "gizli",
+    "<ana-18>": "gizli",
+    "<ana-19>": "gizli",
+    "<ana-20>": "gizli",
+    "<ana-21>": "gizli",
+    "<ana-22>": "gizli",
+    "<ana-23>": "gizli",
+    "<ana-24>": "gizli",
+    "<ana-25>": "gizli",
+    "<ana-26>": "gizli",
+    "<ana-27>": "gizli",
+    "<ana-28>": "gizli",
+    "<ana-29>": "gizli",
+    "<ana-30>": "gizli",
+    "<ana-31>": "gizli",
+    "<ana-32>": "gizli",
+    "<ana-33>": "gizli",
+    "<ana-34>": "gizli",
+    "<ana-35>": "gizli",
+    "<ana-36>": "gizli",
+    "<ana-37>": "gizli",
+    "<ana-38>": "gizli",
+    "<ana-39>": "gizli",
+    "<ana-40>": "gizli",
+    "<ana-41>": "gizli",
+    "<ana-42>": "gizli",
+    "<ana-43>": "gizli",
+    "<ana-44>": "gizli",
+    "<ana-45>": "gizli",
+    "<ana-46>": "gizli",
+    "<ana-47>": "gizli",
+    "<ana-48>": "gizli",
+    "<ana-49>": "gizli",
+    "<ana-50>": "gizli",
+    "<ana-51>": "gizli",
+    "<ana-52>": "gizli"
+  },
+  "ozet": {
+    "yayin": 42,
+    "erisim-reddi": 15,
+    "eslesme-yok": 20,
+    "zaman-asimi": 2
+  },
+  "sonuclar": [
+    {
+      "kod": "Spider-Man",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1073,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://<ana-1>/3/movie/550?language=tr-TR&append_to_response=external_ids,credits,alternative_titles,translations,images&include_image_lang",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Spider-Man/vs/tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://Spider-Man/vs/tt0137523",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/x-mpegURL",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1234
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Spider-Man",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 332,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://<ana-1>/3/tv/1396?language=tr-TR&append_to_response=external_ids,credits,alternative_titles,translations,images&include_image_langua",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Spider-Man/vs/tt0903747/s1/e01",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://Spider-Man/vs/tt0903747/s1/e01",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/x-mpegURL",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1474
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Iron-Man",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1911,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Iron-Man/?s=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Iron-Man/film/fight-club/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Iron-Man/ajax/videosrc/?id=3948&lang=tr&mr=0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://Iron-Man/ajax/master/?id=3948&lang=tr&e=.m3u8&mr=0&_=1792143823",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "text/plain",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1718
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Iron-Man",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1840,
+      "istekAdet": 4,
+      "istekler": [
+        {
+          "url": "https://Iron-Man/?s=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Iron-Man/bolum/breaking-bad-1-sezon-1-bolum/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Iron-Man/bolum/breaking-bad-1-sezon-1-bolum/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Iron-Man/ajax/videosrc/?id=8942&lang=tr&mr=0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://Iron-Man/ajax/master/?id=8942&lang=tr&e=.m3u8&mr=0&_=1792143825",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "text/plain",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 2149
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Captain-America",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 7832,
+      "istekAdet": 13,
+      "istekler": [
+        {
+          "url": "https://Captain-America/api/bg/searchContent?searchterm=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Captain-America/film/fight-club/izle",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=0d05b35b9e14e470c08b63e74ffd625b",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=0d05b35b9e14e470c08b63e74ffd625b",
+          "status": 0,
+          "hata": "The operation was aborted due to timeout",
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=0d05b35b9e14e470c08b63e74ffd625b",
+          "status": 0,
+          "hata": "The operation was aborted due to timeout",
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Captain-America",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 1451,
+      "istekAdet": 15,
+      "istekler": [
+        {
+          "url": "https://Captain-America/api/bg/searchContent?searchterm=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Captain-America/dizi/breaking-bad/sezon-1/bolum-1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Captain-America/breaking-bad-1-sezon-1-bolum",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Captain-America/bolum/breaking-bad-1x1",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Thor",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 3073,
+      "istekAdet": 17,
+      "istekler": [
+        {
+          "url": "https://Thor/api/bg/searchContent?searchterm=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Thor/dizi/breaking-bad-2/sezon-1/bolum-1",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Thor/breaking-bad-2-1-sezon-1-bolum",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Thor/bolum/breaking-bad-2-1x1",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Thor/dizi/breaking-bad-2",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Thor/breaking-bad-1-sezon-1-bolum-c02",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Hulk",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 599,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Hulk/autocomplete/q.php?q=tt0137523",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Hulk/arama/tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Hulk/film/dovus-kulubu-2/",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Black-Widow",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 220,
+      "istekAdet": 1,
+      "istekler": [
+        {
+          "url": "https://Black-Widow/arama/?s=tt0137523",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Black-Widow",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1648,
+      "istekAdet": 5,
+      "istekler": [
+        {
+          "url": "https://Black-Widow/arama/?s=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Black-Widow/dizi/breaking-bad-izle-2008-fm1/",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Black-Widow/dizi/breaking-bad-izle-2008-fm1/sezon-1/bolum-1/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-6>/video/embed/b4pTXbybLmh/?imdb_id=tt0903747",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-6>/video/embed/b4pTXbybLmh/?imdb_id=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-7>/hls/breakingbad-s01e01-dualmp4-b4pTXbybLmh.mp4/master.m3u8",
+          "basliklar": [
+            "Referer",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 360
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Hawkeye",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 2012,
+      "istekAdet": 4,
+      "istekler": [
+        {
+          "url": "https://Hawkeye/api/search?q=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Hawkeye/dovus-kulubu-izle",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-8>/player/tl2h7darb1vb78pbj8u5",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-9>/hls/tl2h7darb1vb78pbj8u5/1/1792158241/bb4c7195-ce8f-450c-b61e-774f15c9bc24/6911e986b1a93b286cb6ddaa0bf4c4b517b8e63c395cbd62e",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-9>/hls/tl2h7darb1vb78pbj8u5/1/1792158241/bb4c7195-ce8f-450c-b61e-774f15c9bc24/6911e986b1a93b286cb",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 882
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Hawkeye",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1807,
+      "istekAdet": 4,
+      "istekler": [
+        {
+          "url": "https://Hawkeye/api/search?q=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Hawkeye/dizi/hd-breaking-bad-izle/sezon-1/bolum-1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-10>/embed-7j3z9pyuw5ko.html",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-11>/hls2/04/00476/7j3z9pyuw5ko_n/master.m3u8?t=zuQBBsgPnRvke1S11gWszygXluBs_4BzcqU205afB6o=&s=1792143843&e=43200&v=&srv=box-c-o",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-11>/hls2/04/00476/7j3z9pyuw5ko_n/master.m3u8?t=zuQBBsgPnRvke1S11gWszygXluBs_4BzcqU205afB6o=&s=179",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 597
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Black-Panther",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 2946,
+      "istekAdet": 4,
+      "istekler": [
+        {
+          "url": "https://Black-Panther/wp-admin/admin-ajax.php",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Black-Panther/dovus-kulubu-izle/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Black-Panther/bemoly/bemoly.php?url=https://vidmoly.net/embed-sn2j89n5libv.html&filmadi=sn2j89n5libv",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-10>/embed-sn2j89n5libv.html",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-12>/hls2/01/01691/sn2j89n5libv_,n,l,.urlset/master.m3u8?t=us8lb_cPGoWz3vsT4sPn-aOKzmtqquVZCS-dTeq",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1818
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Doctor-Strange",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 3177,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Doctor-Strange/wp-admin/admin-ajax.php",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Strange/dovus-kulubu-izle/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-10>/embed-sn2j89n5libv.html",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-12>/hls2/01/01691/sn2j89n5libv_,n,l,.urlset/master.m3u8?t=MZFbPQZWlAh7jI6gs-x3u0GfI0ntj4NpEJ6owaw",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1818
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Ant-Man",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 6464,
+      "istekAdet": 7,
+      "istekler": [
+        {
+          "url": "https://Ant-Man/?s=D%C3%B6v%C3%BC%C5%9F%20Kul%C3%BCb%C3%BC",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Ant-Man/knuckledust-dovus-kulubu-izle/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Ant-Man/fight-club-izle/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Ant-Man/fight-club-izle/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-13>/video/c0a271bc0ecb776a094786474322cb82",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-13>/player/index.php?data=c0a271bc0ecb776a094786474322cb82&do=getVideo",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-13>/cdn/hls/9c7e8997d549c272e1fcff620c1cee0e/master.m3u8?md5=5QZJgEYdQIdRk-KimOCaYw&expires=1792151056",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-13>/cdn/hls/9c7e8997d549c272e1fcff620c1cee0e/master.m3u8?md5=5QZJgEYdQIdRk-KimOCaYw&expires=17921",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/x-mpegURL",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1097
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Ant-Man",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 3581,
+      "istekAdet": 12,
+      "istekler": [
+        {
+          "url": "https://Ant-Man/?s=Breaking%20Bad",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Ant-Man/el-camino-bir-breaking-bad-filmi-izle/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Ant-Man/i-i-a-breaking-bad-5-sezon-16-bolum-turkce-dublaj-izle-hd-full/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Ant-Man/diziler/breaking-bad-izle/",
+          "status": 301,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Ant-Man/diziler/1-breaking-bad-izle/",
+          "status": 301,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Ant-Man/diziler/2-breaking-bad-izle/",
+          "status": 301,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Ant-Man/diziler/2-breaking-bad-izle-hd/",
+          "status": 301,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Ant-Man/diziler/3-breaking-bad-izle-hd/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Ant-Man/i-a-a-a-breaking-bad-1-sezon-1-bolum-izle-hd-full/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-13>/player/index.php?data=518fc66deea9d064d0a92eb73e4ea61b",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-13>/player/index.php?data=518fc66deea9d064d0a92eb73e4ea61b&do=getVideo",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-13>/cdn/hls/757766f1efab898e9a24d804dc67941c/master.m3u8?md5=8FR1HFc_94vTPKGxIwcBIw&expires=1792151060",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-13>/cdn/hls/757766f1efab898e9a24d804dc67941c/master.m3u8?md5=8FR1HFc_94vTPKGxIwcBIw&expires=17921",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/x-mpegURL",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1588
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Scarlet-Witch",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 475,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://<ana-14>/movie/550",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://<ana-15>/movie/550",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "27205",
+        "ad": "Inception",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 605
+      }
+    },
+    {
+      "kod": "Scarlet-Witch",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 228,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://<ana-14>/1396/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://<ana-15>/1396/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "1416",
+        "ad": "Grey's Anatomy",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 320
+      }
+    },
+    {
+      "kod": "Falcon",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1362,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Falcon/ara/oneri?q=D%C3%B6v%C3%BC%C5%9F%20Kul%C3%BCb%C3%BC",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Falcon/movie/dovus-kulubu/izle",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-16>/assets/js/s.php?s=e7_YvRKVvlZJ-hndlWdJHw",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-16>/api/stream.php?v=0fa6f3ba272d46cc265f8f7068860414&token=eyJ2IjoiMGZhNmYzYmEyNzJkNDZjYzI2NWY4Z",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1175
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Falcon",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 841,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Falcon/ara/oneri?q=Breaking%20Bad",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Falcon/series/breaking-bad/season/1/episode/1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-17>/assets/js/s.php?s=yEILM0ysEtqZE5fmdNHeeg",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-17>/api/stream.php?v=88a2ac7f9bb8bbd5869496886f51abd4&token=eyJ2IjoiODhhMmFjN2Y5YmI4YmJkNTg2OTQ5N",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 749
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Winter-Soldier",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 629,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Winter-Soldier/",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Winter-Soldier/ajax-search?q=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Winter-Soldier/film/fight-club",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "27205",
+        "ad": "Inception",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 5940
+      }
+    },
+    {
+      "kod": "Winter-Soldier",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 5330,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Winter-Soldier/",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Winter-Soldier/ajax-search?q=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Winter-Soldier/dizi/breaking-bad",
+          "status": 0,
+          "hata": "The operation was aborted due to timeout",
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "1416",
+        "ad": "Grey's Anatomy",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 5340
+      }
+    },
+    {
+      "kod": "Loki",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1543,
+      "istekAdet": 4,
+      "istekler": [
+        {
+          "url": "https://Loki/api/search?q=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Loki/dovus-kulubu",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-18>/eplayer/tl2h7darb1vb78pbj8u5",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-19>/hls/tl2h7darb1vb78pbj8u5/1/1792158270/2f46b3b4-aadf-4f94-9080-900587b509ae/4fd483a7ca5af732aae795c835f6f12170c264b8c7bc8c3a",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-19>/hls/tl2h7darb1vb78pbj8u5/1/1792158270/2f46b3b4-aadf-4f94-9080-900587b509ae/4fd483a7ca5af732aa",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 882
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Loki",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 269,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://Loki/api/search?q=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Loki/api/search?q=0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "1416",
+        "ad": "Grey's Anatomy",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 593
+      }
+    },
+    {
+      "kod": "Thanos",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 2200,
+      "istekAdet": 1,
+      "istekler": [
+        {
+          "url": "https://Thanos/film/550/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://Thanos/play.m3u8?id=550&m=master&token=XM7_2EqoIJ5HPjX_Jsq7Sw&expires=1792166400",
+          "basliklar": [
+            "User-Agent",
+            "Referer",
+            "Origin"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 616
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Thanos",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 2787,
+      "istekAdet": 1,
+      "istekler": [
+        {
+          "url": "https://Thanos/dizi/1396/1/1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://Thanos/play.m3u8?id=1396&m=master&token=yygXp8m-gUggvVHn3VMWBg&expires=1792166400",
+          "basliklar": [
+            "User-Agent",
+            "Referer",
+            "Origin"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 421
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Deadpool",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1275,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Deadpool/ara/oneri?q=Breaking%20Bad",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Deadpool/dizi/breaking-bad/sezon-1/bolum-1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-17>/assets/js/s.php?s=yEILM0ysEtqZE5fmdNHeeg",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-17>/api/stream.php?v=88a2ac7f9bb8bbd5869496886f51abd4&token=eyJ2IjoiODhhMmFjN2Y5YmI4YmJkNTg2OTQ5N",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 753
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Daredevil",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 8367,
+      "istekAdet": 6,
+      "istekler": [
+        {
+          "url": "https://Daredevil/",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Daredevil/wp/wp-admin/admin-ajax.php",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Daredevil/film/monkey-man/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Daredevil/film/fight-club/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Daredevil/wp/wp-admin/admin-ajax.php?action=get_episode_player&post_id=852610",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-20>/embed/34993.mp4",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "720p",
+          "url": "https://<ana-21>/storage/media/8e2260c6982b8e999770bd484f1922c3-720.mp4/gomindex.m3u8",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 30376
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Daredevil",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 2619,
+      "istekAdet": 6,
+      "istekler": [
+        {
+          "url": "https://Daredevil/",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Daredevil/wp/wp-admin/admin-ajax.php",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Daredevil/diziler/breaking-bad/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Daredevil/breaking-bad-1-sezon-1-bolum/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Daredevil/wp/wp-admin/admin-ajax.php?action=get_episode_player&post_id=57610",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-20>/embed/68039.mp4",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "720p",
+          "url": "https://<ana-22>/storage/media/8bcb879dd6e2a144500f40fa93aea521-720.mp4/gomindex.m3u8",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 12747
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Punisher",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 1587,
+      "istekAdet": 10,
+      "istekler": [
+        {
+          "url": "https://Punisher/ajax/posts?q=D%C3%B6v%C3%BC%C5%9F%20Kul%C3%BCb%C3%BC",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=Fight%20Club",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=El%20club%20de%20la%20lucha",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=club%20lucha",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=Clube%20de%20Combate",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=Clube%20Combate",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=Harcosok%20klubja",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=%E6%90%8F%E5%87%BB%E4%BF%B1%E4%B9%90%E9%83%A8",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=Podziemny%20kr%C4%85g",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=Klub%20rv%C3%A1%C4%8D%C5%AF",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "27205",
+        "ad": "Inception",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 1533
+      }
+    },
+    {
+      "kod": "Punisher",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 1425,
+      "istekAdet": 10,
+      "istekler": [
+        {
+          "url": "https://Punisher/ajax/posts?q=Breaking%20Bad",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=Pern%C3%ADkov%C3%BD%20tatko",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=Tot%C3%A1l%20sz%C3%ADv%C3%A1s",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=%E7%BB%9D%E5%91%BD%E6%AF%92%E5%B8%88",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=%EB%B8%8C%EB%A0%88%EC%9D%B4%ED%82%B9%20%EB%B0%B0%EB%93%9C",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=Pern%C3%ADkov%C3%BD%20t%C3%A1ta",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=%E3%83%96%E3%83%AC%E3%82%A4%E3%82%AD%E3%83%B3%E3%82%B0%E3%83%BB%E3%83%90%E3%83%83%E3%83%89",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=Na%20putu%20prema%20dolje",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=putu%20prema%20dolje",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Punisher/ajax/posts?q=prema%20dolje",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "1416",
+        "ad": "Grey's Anatomy",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 2248
+      }
+    },
+    {
+      "kod": "Luke-Cage",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 1149,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://Luke-Cage/search?q=tt0137523",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Luke-Cage/search?q=0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Luke-Cage",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 929,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://Luke-Cage/search?q=tt0903747",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Luke-Cage/search?q=0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Iron-Fist",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 231,
+      "istekAdet": 1,
+      "istekler": [
+        {
+          "url": "https://Iron-Fist/",
+          "status": 403,
+          "hata": null,
+          "ref": "yok"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Iron-Fist",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 1156,
+      "istekAdet": 7,
+      "istekler": [
+        {
+          "url": "https://Iron-Fist/",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Iron-Fist/bg/searchcontent",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Iron-Fist/bg/searchcontent",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Iron-Fist/bolum/breaking-bad-1x1",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Iron-Fist/bolum/breaking-bad-1-sezon-1-bolum",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Iron-Fist/series/breaking-bad",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Iron-Fist/bolum/breaking-bad-1x1",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Spider-Woman",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "zaman-asimi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": "butce-asim",
+      "sure": 12021,
+      "istekAdet": 24,
+      "istekler": [
+        {
+          "url": "https://Spider-Woman/ara?q=D%C3%B6v%C3%BC%C5%9F%20Kul%C3%BCb%C3%BC",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Fight%20Club",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=El%20club%20de%20la%20lucha",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D0%91%D1%96%D0%B9%D1%86%D1%96%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9%20%D0%BA%D0%BB%D1%83%D0%B1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Clube%20de%20Combate",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Harcosok%20klubja",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D0%91%D0%BE%D0%B9%D1%86%D0%BE%D0%B2%D1%81%D0%BA%D0%B8%D0%B9%20%D0%BA%D0%BB%D1%83%D0%B1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E6%90%8F%E5%87%BB%E4%BF%B1%E4%B9%90%E9%83%A8",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Podziemny%20kr%C4%85g",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Klub%20rv%C3%A1%C4%8D%C5%AF",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D7%9E%D7%95%D7%A2%D7%93%D7%95%D7%9F%20%D7%A7%D7%A8%D7%91",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D9%86%D8%A7%D8%AF%D9%8A%20%D8%A7%D9%84%D9%82%D8%AA%D8%A7%D9%84",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D0%91%D0%BE%D1%80%D0%B8%D0%BB%D0%B0%D1%87%D0%BA%D0%B8%20%D0%BA%D0%BB%D1%83%D0%B1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E3%83%95%E3%82%A1%E3%82%A4%E3%83%88%E3%83%BB%E3%82%AF%E3%83%A9%E3%83%96",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D0%91%D0%BE%D0%B5%D0%BD%20%D0%BA%D0%BB%D1%83%D0%B1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%ED%8C%8C%EC%9D%B4%ED%8A%B8%20%ED%81%B4%EB%9F%BD",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=C%C4%AB%C5%86as%20klubs",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Fight%20Club%20%E2%80%93%20Sala%20de%20lupte",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D8%A8%D8%A7%D8%B4%DA%AF%D8%A7%D9%87%20%D9%85%D8%B4%D8%AA%20%D8%B2%D9%86%DB%8C",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Klub%20bitk%C3%A1rov",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Clube%20da%20Luta",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=D%C3%B6y%C3%BC%C5%9F%20Klubu",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Kaklusklubi",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Kovos%20klubas",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Spider-Woman",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 6958,
+      "istekAdet": 13,
+      "istekler": [
+        {
+          "url": "https://Spider-Woman/ara?q=Breaking%20Bad",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D0%91%D0%BE%D1%80%D0%B5%D1%87%D0%BA%D0%B8%20%D0%BA%D0%BB%D1%83%D0%B1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=El%20Club%20de%20la%20Pelea",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Klub%20boraca",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/dizi/breaking-bad/sezon/1/bolum/1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Klub%20golih%20pesti",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-23>/player/xc693vWI_kqtyXZFNvSATME0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E9%AC%A5%E9%99%A3%E4%BF%B1%E6%A8%82%E9%83%A8",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E0%B9%84%E0%B8%9F%E0%B8%97%E0%B9%8C%20%E0%B8%84%E0%B8%A5%E0%B8%B1%E0%B8%9A%20%E0%B8%94%E0%B8%B4%E0%B8%9A%E0%B8%9",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-24>/xc693vWI_kqtyXZFNvSATME0/master.m3u8?aztsdxdevfqwea",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E0%B4%AB%E0%B5%88%E0%B4%B1%E0%B5%8D%E0%B4%B1%E0%B5%8D%20%E0%B4%95%E0%B5%8D%E0%B4%B2%E0%B4%AC%E0%B5%8D%E0%B4%AC%E",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E6%90%8F%E6%93%8A%E6%9C%83",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Jang%20klubi",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-24>/xc693vWI_kqtyXZFNvSATME0/master.m3u8?aztsdxdevfqwea",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 738
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Moon-Knight",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 16822,
+      "istekAdet": 30,
+      "istekler": [
+        {
+          "url": "https://Moon-Knight/search?q=Pern%C3%ADkov%C3%BD%20tatko",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E1%83%9B%E1%83%94%E1%83%91%E1%83%A0%E1%83%AB%E1%83%9D%E1%83%9A%E1%83%97%E1%83%90%20%E1%83%99%E1%83%9A%E1%83%A3%E",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=El%20club%20de%20la%20lluita",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D0%A2%D3%A9%D0%B1%D0%B5%D0%BB%D0%B5%D1%81%20%D0%BA%D0%BB%D1%83%D0%B1%D1%8B",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Moon-Knight/search?q=Breaking%20Bad",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D0%91%D0%B0%D0%B9%D1%86%D0%BE%D1%9E%D1%81%D0%BA%D1%96%20%D0%BA%D0%BB%D1%83%D0%B1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Moon-Knight/dizi/breaking-bad-2/1-sezon/1-bolum",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Borroka%20kluba",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%DB%8C%D8%A7%D9%86%DB%95%DB%8C%20%D8%B4%DB%95%DA%95",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E0%A4%AB%E0%A4%BE%E0%A4%87%E0%A4%9F%20%E0%A4%95%E0%A5%8D%E0%A4%B2%E0%A4%AC",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Moon-Knight/embed/?token=GH2X37O-w9ASPLvwARwhW03L14r_Hc8xjFilDQL_lRi5y0tdwPCKW1APdCeMZKHRMrC8fukc3ZlhlpJECSv8KChlsAAETXeXBBae9FrGLLG",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E0%A6%AB%E0%A6%BE%E0%A6%87%E0%A6%9F%20%E0%A6%95%E0%A7%8D%E0%A6%B2%E0%A6%BE%E0%A6%AC",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-25>/a0c62e3f6baa3874b36837514667e6b1fdeab83ea667f7d9?site=dizipal2",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E0%B2%AB%E0%B3%88%E0%B2%9F%E0%B3%8D%20%E0%B2%95%E0%B3%8D%E0%B2%B2%E0%B2%AC%E0%B3%8D",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Mo%27adon%20Krav",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Borila%C4%8Dki%20klub",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Boytsovskiy%20klub",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Boen%20klub",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-26>/stream/267933?exp=1792165516&sig=7b18bfdf3989394a0be232394403cff26bffc35dc0aae441220df88297239a7d",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=Biytsivs%CA%B9kyy%20klub",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D0%91%D0%B0%D0%B9%D1%86%D0%BE%D1%9E%D1%81%D0%BA%D1%96%20%D0%BA%D0%BB%D1%8E%D0%B1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E1%83%9B%E1%83%90%E1%83%9A%E1%83%B7%E1%83%9B%E1%83%9D%E1%83%A0%E1%83%94%E1%83%A4%E1%83%98%E1%83%A8%20%E1%83%99%E",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D5%84%D5%A1%D6%80%D5%BF%D5%A1%D5%AF%D5%A1%D5%B6%20%D5%A1%D5%AF%D5%B8%D6%82%D5%B4%D5%A2",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D8%A7%D9%84%D9%86%D8%A7%D8%AF%D9%8A%20%D8%AF%20%D9%84%D9%85%D8%AF%D8%A7%D8%A8%D8%B2%D8%A9",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D9%86%D8%A7%D8%AF%D9%89%20%D8%A7%D9%84%D9%82%D8%AA%D8%A7%D9%84",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D0%9C%D1%83%D1%88%D1%82%D0%B0%D1%88%20%D0%BA%D0%BB%D1%83%D0%B1%D1%83",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D9%81%D8%A7%DB%8C%D8%AA%20%DA%A9%D9%84%D8%A7%D8%A8",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E0%A8%AB%E0%A8%BC%E0%A8%BE%E0%A8%88%E0%A8%9F%20%E0%A8%95%E0%A8%B2%E0%A9%B1%E0%A8%AC",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%E6%90%8F%E5%87%BB%E4%BC%9A",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Spider-Woman/ara?q=%D5%84%D5%A1%D6%80%D5%BF%20%D4%B1%D5%AF%D5%B8%D6%82%D5%B4%D5%A2",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-26>/stream/267933?exp=1792165516&sig=7b18bfdf3989394a0be232394403cff26bffc35dc0aae441220df8829723",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "video/mp4",
+            "hls": false,
+            "mp4": false,
+            "uzunluk": 0
+          },
+          "not": "200 döndü ama HLS/MP4 imzası okunamadı (içerik tipi: video/mp4)"
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Batman",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 2055,
+      "istekAdet": 13,
+      "istekler": [
+        {
+          "url": "https://Batman/api/bg/searchContent?searchterm=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batman/film/fight-club",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=0d05b35b9e14e470c08b63e74ffd625b",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=0d05b35b9e14e470c08b63e74ffd625b",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=0d05b35b9e14e470c08b63e74ffd625b",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Batman",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 984,
+      "istekAdet": 15,
+      "istekler": [
+        {
+          "url": "https://Batman/api/bg/searchContent?searchterm=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batman/dizi/breaking-bad/sezon-1/bolum-1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batman/breaking-bad-1-sezon-1-bolum",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batman/bolum/breaking-bad-1x1",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Superman",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 6828,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://Superman/embed/movie?tmdb=550&ds_lang=tr",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Superman/v/ZKcVfPOTK_d/stream",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-27>/hls/videos/4936/master.m3u8?t=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ2aWRlb0lkIjoiNDkzNiIsIn",
+          "basliklar": [
+            "User-Agent",
+            "Referer",
+            "Origin"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 2127
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Superman",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 3838,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://Superman/embed/tv?tmdb=1396&season=1&episode=1&ds_lang=tr",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Superman/v/HBUMcFeagbK/stream",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-28>/hls/videos/15885/master.m3u8?t=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ2aWRlb0lkIjoiMTU4ODUiL",
+          "basliklar": [
+            "User-Agent",
+            "Referer",
+            "Origin"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 2893
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Wonder-Woman",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 479,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://Wonder-Woman/api/bg/searchContent?searchterm=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Wonder-Woman/api/bg/searchContent?searchterm=0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "27205",
+        "ad": "Inception",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 614
+      }
+    },
+    {
+      "kod": "Wonder-Woman",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 338,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://Wonder-Woman/api/bg/searchContent?searchterm=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Wonder-Woman/api/bg/searchContent?searchterm=0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "1416",
+        "ad": "Grey's Anatomy",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 465
+      }
+    },
+    {
+      "kod": "Flash",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 1752,
+      "istekAdet": 13,
+      "istekler": [
+        {
+          "url": "https://Flash/api/bg/searchContent?searchterm=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Flash/film/fight-club/izle",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=0d05b35b9e14e470c08b63e74ffd625b",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=0d05b35b9e14e470c08b63e74ffd625b",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=0d05b35b9e14e470c08b63e74ffd625b",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=78d1d8fab6d85cbff2432e849741e4d8",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=7747ca794ebbd60617bd47ea461871a7",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Flash",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 1278,
+      "istekAdet": 15,
+      "istekler": [
+        {
+          "url": "https://Flash/api/bg/searchContent?searchterm=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Flash/dizi/breaking-bad/sezon-1/bolum-1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Flash/breaking-bad-1-sezon-1-bolum",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Flash/bolum/breaking-bad-1x1",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=62d045908c58ee6f481d113712733d49",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=9c7755b891998cfcf69729ad07d53d55",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-5>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-2>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-3>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-4>/iframe.php?v=53599bb094b1986e38689288d50e4b8e",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Aquaman",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 2163,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Aquaman/ara/oneri?q=D%C3%B6v%C3%BC%C5%9F%20Kul%C3%BCb%C3%BC",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Aquaman/film/dovus-kulubu/izle",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-16>/assets/js/s.php?s=e7_YvRKVvlZJ-hndlWdJHw",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-16>/api/stream.php?v=0fa6f3ba272d46cc265f8f7068860414&token=eyJ2IjoiMGZhNmYzYmEyNzJkNDZjYzI2NWY4Z",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1178
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Aquaman",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 3364,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Aquaman/ara/oneri?q=Breaking%20Bad",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Aquaman/dizi/breaking-bad/sezon-1/bolum-1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-17>/assets/js/s.php?s=yEILM0ysEtqZE5fmdNHeeg",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-17>/api/stream.php?v=88a2ac7f9bb8bbd5869496886f51abd4&token=eyJ2IjoiODhhMmFjN2Y5YmI4YmJkNTg2OTQ5N",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 751
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Green-Lantern",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "yayin (ikinci şans: Inception)",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 1846,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Green-Lantern/ajaxservice/index.php?qr=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Green-Lantern/film/dovus-kulubu-1999-izle-fhb",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-29>/player/index.php?data=b83aac23b9528732c23cc7352950e880",
+          "status": 0,
+          "hata": "ENOTFOUND fetch failed",
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-52>/me/ZKMkqmMapT13pUEid0zxq2SfpTSjMKW6YaOlojs0xi3vr1",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "hata": "ENOTFOUND fetch failed"
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "27205",
+        "ad": "Inception",
+        "sonuc": "yayin",
+        "kaynakAdet": 1,
+        "hata": null,
+        "sure": 2801
+      }
+    },
+    {
+      "kod": "Cyborg",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 13795,
+      "istekAdet": 6,
+      "istekler": [
+        {
+          "url": "https://Cyborg/api/search.php?q=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Cyborg/fight-club",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-30>/embed-zq4zrdmqkx8k.html",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-31>/embed-zq4zrdmqkx8k.html",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-31>/dl?op=gizli&view_id=60076791&hash=1792143957-8a92d37518a0ca765f11e14529328ced",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-32>/hls2/01/00018/zq4zrdmqkx8k_n/master.m3u8?t=kIe1knZ2yMltIvRWLlGZYejT4uV5kDtdtN56swk5JC8&s=1792143958&e=3600&v=60076791&srv=3",
+          "status": 0,
+          "hata": "The operation was aborted due to timeout",
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-32>/hls2/01/00018/zq4zrdmqkx8k_n/master.m3u8?t=kIe1knZ2yMltIvRWLlGZYejT4uV5kDtdtN56swk5JC8&s=1792",
+          "basliklar": [
+            "Referer",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "hata": "ECONNRESET fetch failed"
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Cyborg",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 13449,
+      "istekAdet": 6,
+      "istekler": [
+        {
+          "url": "https://Cyborg/api/search.php?q=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Cyborg/dizi/breaking-bad/sezon-1/bolum-1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-30>/embed-ng8w9g7axg39.html",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-31>/embed-ng8w9g7axg39.html",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-31>/dl?op=gizli&view_id=60076793&hash=1792143970-990611d055d59b15a1d49d0ae1982b1c",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-33>/hls2/02/00006/ng8w9g7axg39_n/master.m3u8?t=aJ63nEOT5rcRb9aroTzu5Pq2EE7dePtryzXsHiz5f_8&s=1792143971&e=3600&v=60076793&srv=3",
+          "status": 0,
+          "hata": "The operation was aborted due to timeout",
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-33>/hls2/02/00006/ng8w9g7axg39_n/master.m3u8?t=aJ63nEOT5rcRb9aroTzu5Pq2EE7dePtryzXsHiz5f_8&s=1792",
+          "basliklar": [
+            "Referer",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "hata": "ECONNRESET fetch failed"
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Shazam",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 254,
+      "istekAdet": 1,
+      "istekler": [
+        {
+          "url": "https://Shazam/api/movies/by-tmdb/550",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Shazam",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "erisim-reddi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": "çekirdek kendi alanından 403/451 aldı",
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 166,
+      "istekAdet": 1,
+      "istekler": [
+        {
+          "url": "https://Shazam/api/movies/by-tmdb/1396?season=1&episode=1",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Joker",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "zaman-asimi",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": "butce-asim",
+      "sure": 12009,
+      "istekAdet": 19,
+      "istekler": [
+        {
+          "url": "https://Joker/",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=D%C3%B6v%C3%BC%C5%9F%20Kul%C3%BCb%C3%BC",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/fight-club/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/bandirma-fuze-kulubu/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/kaybedenler-kulubu-yolda/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/kaybedenler-kulubu/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=Fight%20Club",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/metal-fight-beyblade-vs-the-sun-sol-blaze-the-scorching-hot-invader/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/day-of-the-fight/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/marvel-super-hero-adventures-frost-fight/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/winter-on-fire-ukraines-fight-for-freedom/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=El%20club%20de%20la%20lucha",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/billionaire-boys-club/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/dallas-buyers-club/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/fallen-angels-murder-club-friends-to-die-for/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%D0%91%D1%96%D0%B9%D1%86%D1%96%D0%B2%D1%81%D1%8C%D0%BA%D0%B8",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=Clube%20de%20Combate",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=Harcosok%20klubja",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%D0%91%D0%BE%D0%B9%D1%86%D0%BE%D0%B2%D1%81%D0%BA%D0%B8%D0%B9",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Joker",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 13784,
+      "istekAdet": 15,
+      "istekler": [
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=Breaking%20Bad",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%E6%90%8F%E5%87%BB%E4%BF%B1%E4%B9%90%E9%83%A8",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=Podziemny%20kr%C4%85g",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/dizi/breaking-bad/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=Klub%20rv%C3%A1%C4%8D%C5%AF",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/bolum/breaking-bad-1-sezon-1-bolum-izle/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-31>/embed-sqkw64piejuj.html",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%D7%9E%D7%95%D7%A2%D7%93%D7%95%D7%9F%20%D7%A7%D7%A8%D7%91",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%D9%86%D8%A7%D8%AF%D9%8A%20%D8%A7%D9%84%D9%82%D8%AA%D8%A7%D9",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-31>/dl?op=gizli&view_id=60076799&hash=1792143998-ec9f19fe84eec528c838bc7741695c51",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%D0%91%D0%BE%D1%80%D0%B8%D0%BB%D0%B0%D1%87%D0%BA%D0%B8%20%D0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-34>/hls2/02/00006/sqkw64piejuj_n/master.m3u8?t=tcBT2np9gXAzYMAu3MPJwY4LzmxW1Astx-qh6wysq5o&s=1792143999&e=3600&v=60076799&srv=u",
+          "status": 0,
+          "hata": "The operation was aborted due to timeout",
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%E3%83%95%E3%82%A1%E3%82%A4%E3%83%88%E3%83%BB%E3%82%AF%E3%83",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%D0%91%D0%BE%D0%B5%D0%BD%20%D0%BA%D0%BB%D1%83%D0%B1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%ED%8C%8C%EC%9D%B4%ED%8A%B8%20%ED%81%B4%EB%9F%BD",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-34>/hls2/02/00006/sqkw64piejuj_n/master.m3u8?t=tcBT2np9gXAzYMAu3MPJwY4LzmxW1Astx-qh6wysq5o&s=1792",
+          "basliklar": [
+            "User-Agent",
+            "Referer",
+            "Origin"
+          ],
+          "dogrulama": {
+            "hata": "ECONNRESET fetch failed"
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Harley-Quinn",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 4,
+      "istekAdet": 0,
+      "istekler": [],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "27205",
+        "ad": "Inception",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 2
+      }
+    },
+    {
+      "kod": "Harley-Quinn",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 0,
+      "istekAdet": 0,
+      "istekler": [],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "1416",
+        "ad": "Grey's Anatomy",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 0
+      }
+    },
+    {
+      "kod": "Poison-Ivy",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 10093,
+      "istekAdet": 66,
+      "istekler": [
+        {
+          "url": "https://Poison-Ivy/anime/dovus-kulubu/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=Klub%20golih%20pesti",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%E9%AC%A5%E9%99%A3%E4%BF%B1%E6%A8%82%E9%83%A8",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/dovus-kulubu/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%E0%B9%84%E0%B8%9F%E0%B8%97%E0%B9%8C%20%E0%B8%84%E0%B8%A5%E0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/fight-club/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%E0%B4%AB%E0%B5%88%E0%B4%B1%E0%B5%8D%E0%B4%B1%E0%B5%8D%20%E0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/fight-club/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/el-club-de-la-lucha/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/el-club-de-la-lucha/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/clube-de-combate/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/clube-de-combate/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%E6%90%8F%E6%93%8A%E6%9C%83",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/harcosok-klubja/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/harcosok-klubja/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/podziemny-krag/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/podziemny-krag/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/klub-rvacu/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=Jang%20klubi",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/klub-rvacu/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/cinas-klubs/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/cinas-klubs/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/fight-club-sala-de-lupte/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=S%C3%A0n%20%C4%90%E1%BA%A5u%20Sinh%20T%E1%BB%AD",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/fight-club-sala-de-lupte/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/klub-bitkarov/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/klub-bitkarov/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/clube-da-luta/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/dau-natasha/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/clube-da-luta/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "27205",
+        "ad": "Inception",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 6364
+      }
+    },
+    {
+      "kod": "Poison-Ivy",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 5598,
+      "istekAdet": 45,
+      "istekler": [
+        {
+          "url": "https://Poison-Ivy/anime/breaking-bad/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=Borroka%20kluba",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/breaking-bad/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/pernikovy-tatko/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/pernikovy-tatko/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/total-szivas/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/total-szivas/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%DB%8C%D8%A7%D9%86%DB%95%DB%8C%20%D8%B4%DB%95%DA%95",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/pernikovy-tata/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/pernikovy-tata/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/na-putu-prema-dolje/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/na-putu-prema-dolje/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/brestantis-blogis/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/brestantis-blogis/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%E0%A4%AB%E0%A4%BE%E0%A4%87%E0%A4%9F%20%E0%A4%95%E0%A5%8D%E0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/halvale-teele/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/halvale-teele/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/breaking-bad-le-chimiste/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/breaking-bad-le-chimiste/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/tap-lam-nguoi-xau/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%E0%A6%AB%E0%A6%BE%E0%A6%87%E0%A6%9F%20%E0%A6%95%E0%A7%8D%E0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/tap-lam-nguoi-xau/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/parkapt-robezu/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/parkapt-robezu/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/kriva-pota/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/kriva-pota/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/b-db-xt/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%E0%B2%AB%E0%B3%88%E0%B2%9F%E0%B3%8D%20%E0%B2%95%E0%B3%8D%E0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/b-db-xt/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Poison-Ivy/anime/breaking-bad-a-quimica-do-mal/1/1",
+          "status": 404,
+          "hata": null,
+          "ref": "yok"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "1416",
+        "ad": "Grey's Anatomy",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 6545
+      }
+    },
+    {
+      "kod": "Nightwing",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 10477,
+      "istekAdet": 70,
+      "istekler": [
+        {
+          "url": "https://Nightwing/page/search?value=D%C3%B6v%C3%BC%C5%9F%20Kul%C3%BCb%C3%BC&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=Boen%20klub",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Fight%20Club&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=Biytsivs%CA%B9kyy%20klub",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=El%20club%20de%20la%20lucha&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D0%91%D1%96%D0%B9%D1%86%D1%96%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9%20%D0%BA%D0%BB%D1%83%D0%B1&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Clube%20de%20Combate&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%D0%91%D0%B0%D0%B9%D1%86%D0%BE%D1%9E%D1%81%D0%BA%D1%96%20%D0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Harcosok%20klubja&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D0%91%D0%BE%D0%B9%D1%86%D0%BE%D0%B2%D1%81%D0%BA%D0%B8%D0%B9%20%D0%BA%D0%BB%D1%83%D0%B1&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%E1%83%9B%E1%83%90%E1%83%9A%E1%83%B7%E1%83%9B%E1%83%9D%E1%83",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%E6%90%8F%E5%87%BB%E4%BF%B1%E4%B9%90%E9%83%A8&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Podziemny%20kr%C4%85g&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Klub%20rv%C3%A1%C4%8D%C5%AF&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D7%9E%D7%95%D7%A2%D7%93%D7%95%D7%9F%20%D7%A7%D7%A8%D7%91&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%D5%84%D5%A1%D6%80%D5%BF%D5%A1%D5%AF%D5%A1%D5%B6%20%D5%A1%D5",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D9%86%D8%A7%D8%AF%D9%8A%20%D8%A7%D9%84%D9%82%D8%AA%D8%A7%D9%84&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D0%91%D0%BE%D1%80%D0%B8%D0%BB%D0%B0%D1%87%D0%BA%D0%B8%20%D0%BA%D0%BB%D1%83%D0%B1&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%E3%83%95%E3%82%A1%E3%82%A4%E3%83%88%E3%83%BB%E3%82%AF%E3%83%A9%E3%83%96&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%D8%A7%D9%84%D9%86%D8%A7%D8%AF%D9%8A%20%D8%AF%20%D9%84%D9%85",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D0%91%D0%BE%D0%B5%D0%BD%20%D0%BA%D0%BB%D1%83%D0%B1&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%ED%8C%8C%EC%9D%B4%ED%8A%B8%20%ED%81%B4%EB%9F%BD&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=C%C4%AB%C5%86as%20klubs&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%D9%86%D8%A7%D8%AF%D9%89%20%D8%A7%D9%84%D9%82%D8%AA%D8%A7%D9",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Fight%20Club%20%E2%80%93%20Sala%20de%20lupte&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D8%A8%D8%A7%D8%B4%DA%AF%D8%A7%D9%87%20%D9%85%D8%B4%D8%AA%20%D8%B2%D9%86%DB%8C&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Klub%20bitk%C3%A1rov&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Joker/wp-admin/admin-ajax.php?action=izlemevi_search&nonce=bcf07f6107&q=%D0%9C%D1%83%D1%88%D1%82%D0%B0%D1%88%20%D0%BA%D0%BB%D1%83%D0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Clube%20da%20Luta&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=D%C3%B6y%C3%BC%C5%9F%20Klubu&page=1",
+          "status": 400,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "27205",
+        "ad": "Inception",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 8624
+      }
+    },
+    {
+      "kod": "Nightwing",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 8727,
+      "istekAdet": 62,
+      "istekler": [
+        {
+          "url": "https://Nightwing/page/search?value=Breaking%20Bad&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Pern%C3%ADkov%C3%BD%20tatko&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D0%92%D0%BE%20%D0%B2%D1%81%D0%B5%20%D1%82%D1%8F%D0%B6%D0%BA%D0%B8%D0%B5&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Tot%C3%A1l%20sz%C3%ADv%C3%A1s&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%E7%BB%9D%E5%91%BD%E6%AF%92%E5%B8%88&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D0%92%20%D0%BE%D0%B1%D1%83%D0%B2%D0%BA%D0%B8%D1%82%D0%B5%20%D0%BD%D0%B0%20%D0%A1%D0%B0%D1%82%D0%B0%D0%B",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%EB%B8%8C%EB%A0%88%EC%9D%B4%ED%82%B9%20%EB%B0%B0%EB%93%9C&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D7%A9%D7%95%D7%91%D7%A8%20%D7%A9%D7%95%D7%A8%D7%95%D7%AA&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Pern%C3%ADkov%C3%BD%20t%C3%A1ta&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%E3%83%96%E3%83%AC%E3%82%A4%E3%82%AD%E3%83%B3%E3%82%B0%E3%83%BB%E3%83%90%E3%83%83%E3%83%89&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D0%9F%D1%83%D1%81%D1%82%D0%B8%D1%82%D0%B8%D1%81%D1%8F%20%D0%B1%D0%B5%D1%80%D0%B5%D0%B3%D0%B0&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Na%20putu%20prema%20dolje&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Br%C4%99stantis%20blogis&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Halvale%20teele&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D8%A8%D8%B1%DB%8C%DA%A9%DB%8C%D9%86%DA%AF%20%D8%A8%D8%AF&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%E0%B8%94%E0%B8%B1%E0%B8%9A%E0%B9%80%E0%B8%84%E0%B8%A3%E0%B8%B7%E0%B9%88%E0%B8%AD%E0%B8%87%E0%B8%8A%E0%B",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Breaking%20Bad%20%3A%20Le%20chimiste&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D0%A7%D0%B8%D1%81%D1%82%D0%B0%20%D1%85%D0%B5%D0%BC%D0%B8%D1%98%D0%B0&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%E7%B5%95%E5%91%BD%E6%AF%92%E5%B8%AB&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=T%E1%BA%ADp%20l%C3%A0m%20ng%C6%B0%E1%BB%9Di%20x%E1%BA%A5u&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=P%C4%81rk%C4%81pt%20robe%C5%BEu&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%E1%83%9B%E1%83%AB%E1%83%98%E1%83%9B%E1%83%94%20%E1%83%93%E1%83%90%E1%83%9C%E1%83%90%E1%83%A8%E1%83%90%E",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=Kriva%20pota&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D0%9D%D0%B0%20%D1%9E%D1%81%D0%B5%20%D0%B7%D0%B0%D1%81%D1%82%D0%B0%D1%9E%D0%BA%D1%96&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%E0%A6%AC%E0%A7%8D%E0%A6%B0%E0%A7%87%E0%A6%95%E0%A6%BF%E0%A6%82%20%E0%A6%AC%E0%A7%8D%E0%A6%AF%E0%A6%BE%E",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%DA%AF%DB%86%DA%95%D8%A7%D9%86%DB%8C%20%D8%AE%D8%B1%D8%A7%D9%BE&page=1",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D4%B1%D5%B4%D5%A2%D5%B8%D5%B2%D5%BB%20%D5%AE%D5%A1%D5%B6%D6%80%D5%B8%D6%82%D5%A9%D5%B5%D5%A1%D5%B4%D5%A",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D0%91%D2%B1%D0%B7%D1%8B%D2%9B%D1%82%D1%8B%D2%9B%D2%9B%D0%B0%20%D1%81%D0%B0%D0%BB%D1%8B%D0%BD%D1%83&page",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%E0%B2%AC%E0%B3%8D%E0%B2%B0%E0%B3%87%E0%B2%95%E0%B2%BF%E0%B2%82%E0%B2%97%E0%B3%8D%20%E0%B2%AC%E0%B3%8D%E",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Nightwing/page/search?value=%D0%91%D0%B0%D1%80%D0%B4%D1%8B%D0%BA%20%D0%B6%D0%B0%D0%BC%D0%B0%D0%BD%D0%B4%D1%8B%D0%BA%D0%BA%D0%B0%20%D",
+          "status": 429,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "1416",
+        "ad": "Grey's Anatomy",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 8030
+      }
+    },
+    {
+      "kod": "Batgirl",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 2940,
+      "istekAdet": 13,
+      "istekler": [
+        {
+          "url": "https://Batgirl/api/search?q=D%C3%B6v%C3%BC%C5%9F%20Kul%C3%BCb%C3%BC&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=Fight%20Club&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=El%20club%20de%20la%20lucha&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=%D0%91%D1%96%D0%B9%D1%86%D1%96%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9%20%D0%BA%D0%BB%D1%83%D0%B1&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=Clube%20de%20Combate&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=Harcosok%20klubja&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=%D0%91%D0%BE%D0%B9%D1%86%D0%BE%D0%B2%D1%81%D0%BA%D0%B8%D0%B9%20%D0%BA%D0%BB%D1%83%D0%B1&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=%E6%90%8F%E5%87%BB%E4%BF%B1%E4%B9%90%E9%83%A8&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=Podziemny%20kr%C4%85g&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=D%C3%B6v%C3%BC%C5%9F%20Kul%C3%BCb%C3%BC&limit=15",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=Fight%20Club&limit=15",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=El%20club%20de%20la%20lucha&limit=15",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=%D0%91%D1%96%D0%B9%D1%86%D1%96%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9%20%D0%BA%D0%BB%D1%83%D0%B1&limit=15",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "27205",
+        "ad": "Inception",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 2661
+      }
+    },
+    {
+      "kod": "Batgirl",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 3043,
+      "istekAdet": 13,
+      "istekler": [
+        {
+          "url": "https://Batgirl/api/search?q=Breaking%20Bad&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=Pern%C3%ADkov%C3%BD%20tatko&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=%D0%92%D0%BE%20%D0%B2%D1%81%D0%B5%20%D1%82%D1%8F%D0%B6%D0%BA%D0%B8%D0%B5&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=Tot%C3%A1l%20sz%C3%ADv%C3%A1s&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=%E7%BB%9D%E5%91%BD%E6%AF%92%E5%B8%88&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=%D0%92%20%D0%BE%D0%B1%D1%83%D0%B2%D0%BA%D0%B8%D1%82%D0%B5%20%D0%BD%D0%B0%20%D0%A1%D0%B0%D1%82%D0%B0%D0%BD%D0%B0",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=%EB%B8%8C%EB%A0%88%EC%9D%B4%ED%82%B9%20%EB%B0%B0%EB%93%9C&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=%D7%A9%D7%95%D7%91%D7%A8%20%D7%A9%D7%95%D7%A8%D7%95%D7%AA&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=Pern%C3%ADkov%C3%BD%20t%C3%A1ta&limit=30",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=Breaking%20Bad&limit=15",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=Pern%C3%ADkov%C3%BD%20tatko&limit=15",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=%D0%92%D0%BE%20%D0%B2%D1%81%D0%B5%20%D1%82%D1%8F%D0%B6%D0%BA%D0%B8%D0%B5&limit=15",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Batgirl/api/search?q=Tot%C3%A1l%20sz%C3%ADv%C3%A1s&limit=15",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "1416",
+        "ad": "Grey's Anatomy",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 3129
+      }
+    },
+    {
+      "kod": "Supergirl",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 1619,
+      "istekAdet": 6,
+      "istekler": [
+        {
+          "url": "https://Supergirl/api/anime/search?q=D%C3%B6v%C3%BC%C5%9F%20Kul%C3%BCb%C3%BC",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Supergirl/api/anime/search?q=Fight%20Club",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Supergirl/api/anime/search?q=El%20club%20de%20la%20lucha",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Supergirl/api/anime/search?q=%D0%91%D1%96%D0%B9%D1%86%D1%96%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9%20%D0%BA%D0%BB%D1%83%D0%B1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Supergirl/api/anime/search?q=Clube%20de%20Combate",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Supergirl/api/anime/search?q=Harcosok%20klubja",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "27205",
+        "ad": "Inception",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 973
+      }
+    },
+    {
+      "kod": "Supergirl",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "eslesme-yok",
+      "hamOge": 0,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": false,
+      "hata": null,
+      "sure": 582,
+      "istekAdet": 6,
+      "istekler": [
+        {
+          "url": "https://Supergirl/api/anime/search?q=Breaking%20Bad",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Supergirl/api/anime/search?q=Pern%C3%ADkov%C3%BD%20tatko",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Supergirl/api/anime/search?q=%D0%92%D0%BE%20%D0%B2%D1%81%D0%B5%20%D1%82%D1%8F%D0%B6%D0%BA%D0%B8%D0%B5",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Supergirl/api/anime/search?q=Tot%C3%A1l%20sz%C3%ADv%C3%A1s",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Supergirl/api/anime/search?q=%E7%BB%9D%E5%91%BD%E6%AF%92%E5%B8%88",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Supergirl/api/anime/search?q=%D0%92%20%D0%BE%D0%B1%D1%83%D0%B2%D0%BA%D0%B8%D1%82%D0%B5%20%D0%BD%D0%B0%20%D0%A1%D0%B0%D1%82%D0%B0%D0%",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null,
+      "ikinciSans": {
+        "tmdbId": "1416",
+        "ad": "Grey's Anatomy",
+        "sonuc": "eslesme-yok",
+        "kaynakAdet": 0,
+        "hata": null,
+        "sure": 589
+      }
+    },
+    {
+      "kod": "Aqualad",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1094,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Aqualad/api/movie/550",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Aqualad/embed/170060?token=e1fa3a877deb6ba5b1db480bc7aeac7f&t=RmlnaHQgQ2x1Yg%3D%3D&expires=1792144062&lang=en&skin=gizli&canPlayFHD=",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Aqualad/playlist/170060?token=00db2a314cc123eb5efd66fc41c6266b&expires=1797328052&h=1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://Aqualad/playlist/170060?token=00db2a314cc123eb5efd66fc41c6266b&expires=1797328052&h=1",
+          "basliklar": [
+            "User-Agent",
+            "Referer",
+            "Origin"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 2639
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Aqualad",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 817,
+      "istekAdet": 3,
+      "istekler": [
+        {
+          "url": "https://Aqualad/api/tv/1396/1/1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Aqualad/embed/278687?token=1b08d26cd3fcb30f65f28a9329554243&t=QnJlYWtpbmcgQmFk&expires=1792144063&lang=en&skin=gizli&canPlayFHD=1&d=",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Aqualad/playlist/278687?token=e8bc685343de01e84ff8ea03d6913cd4&expires=1797328053&h=1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://Aqualad/playlist/278687?token=e8bc685343de01e84ff8ea03d6913cd4&expires=1797328053&h=1",
+          "basliklar": [
+            "User-Agent",
+            "Referer",
+            "Origin"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 3165
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Beast-Boy",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 2583,
+      "istekAdet": 6,
+      "istekler": [
+        {
+          "url": "https://Beast-Boy/seed?mediaId=550",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Beast-Boy/phoenix/sources?mediaType=movie&tmdbId=550&enc=2&seed=59738135.bQKGmo2M18les3JS4FYhom",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Beast-Boy/miami/sources?mediaType=movie&tmdbId=550&enc=2&seed=59738135.bQKGmo2M18les3JS4FYhom",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Beast-Boy/boise/sources?mediaType=movie&tmdbId=550&enc=2&seed=59738135.bQKGmo2M18les3JS4FYhom",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Beast-Boy/dallas/sources?mediaType=movie&tmdbId=550&enc=2&seed=59738135.bQKGmo2M18les3JS4FYhom",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-35>/vd/OXN3d0w5Q1pyVGNmVFNmZFpLeERhQTo0VTdCeWtXM2Q2UEJyb2M5bm91UnhB/index-s2160p-v1-a1.m3u8",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "4K",
+          "url": "https://<ana-35>/vd/OXN3d0w5Q1pyVGNmVFNmZFpLeERhQTo0VTdCeWtXM2Q2UEJyb2M5bm91UnhB/index-s2160p-v1-a1.m3u8",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 175938
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Beast-Boy",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1462,
+      "istekAdet": 6,
+      "istekler": [
+        {
+          "url": "https://Beast-Boy/seed?mediaId=1396",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Beast-Boy/phoenix/sources?mediaType=tv&tmdbId=1396&enc=2&seed=59738135.JJdBZn8YwQkLudcPm8iIXb&seasonId=1&episodeId=1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Beast-Boy/miami/sources?mediaType=tv&tmdbId=1396&enc=2&seed=59738135.JJdBZn8YwQkLudcPm8iIXb&seasonId=1&episodeId=1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Beast-Boy/boise/sources?mediaType=tv&tmdbId=1396&enc=2&seed=59738135.JJdBZn8YwQkLudcPm8iIXb&seasonId=1&episodeId=1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Beast-Boy/dallas/sources?mediaType=tv&tmdbId=1396&enc=2&seed=59738135.JJdBZn8YwQkLudcPm8iIXb&seasonId=1&episodeId=1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-35>/vd/ZVQwNjVpX1NpaU03c19ZRmdlenN0dzpDYmRtcXVwemhTRklWZGNtS1ZuVDhCb2FfbDlWVDdGLVRnaTdYT05STlNB/index-s2160p-v1-a1.m3u8",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "4K",
+          "url": "https://<ana-35>/vd/ZVQwNjVpX1NpaU03c19ZRmdlenN0dzpDYmRtcXVwemhTRklWZGNtS1ZuVDhCb2FfbDlWVDdGLVRnaTdYT05STlNB/i",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 90117
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Constantine",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 2542,
+      "istekAdet": 5,
+      "istekler": [
+        {
+          "url": "https://Constantine/search?keyword=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Constantine/watch-movie/fight-club-1999-watch-online/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Constantine/ajax/ajax.php",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-36>/embed-x71vfy64j318.html?subget=https%3A%2F%2Fqqqcdn.cloud%2Fsubtitles%2Ffs%2Ftoken%2F1g5uee8.json",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-37>/subtitles/fs/token/1g5uee8.json",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-38>/hls2/01/02664/x71vfy64j318_,n,l,.urlset/master.m3u8?t=zjIMxXFVwhFTqmP9Bf6FbAsbEs8ibsWcVY4SMuY",
+          "basliklar": [
+            "User-Agent",
+            "Referer",
+            "Origin"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1165
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Constantine",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1296,
+      "istekAdet": 5,
+      "istekler": [
+        {
+          "url": "https://Constantine/search?keyword=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Constantine/episode/breaking-bad-2008-watch-online/s01-e01/",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Constantine/ajax/ajax.php",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-36>/embed-89jjaap0cnj0.html?subget=https%3A%2F%2Fqqqcdn.cloud%2Fsubtitles%2Ffm%2Ftoken%2F2ux51mia48cku.json",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-37>/subtitles/fm/token/2ux51mia48cku.json",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-39>/hls2/01/02735/89jjaap0cnj0_,n,l,.urlset/master.m3u8?t=TVKxBX1nUeB7VbxZn_OhMx3mkv73FWhRetN3pOz",
+          "basliklar": [
+            "User-Agent",
+            "Referer",
+            "Origin"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1167
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Zatanna",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 3258,
+      "istekAdet": 5,
+      "istekler": [
+        {
+          "url": "https://Zatanna/search?keyword=tt0137523",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Zatanna/movie/m-fight-club-1999",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Zatanna/index/share_link?id=4061&type=1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-40>/file/file_share_list?share_key=qMMRELsA&parent_id=0&page=1&size=100",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-40>/file/player",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "4K",
+          "url": "https://<ana-41>/40021750.m3u8?sign=ce913a2e9ac6968a695491a12b3e2b92e77d36a1F02&t=1792158464&client=febbox&KEY",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 3458
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Zatanna",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 2565,
+      "istekAdet": 6,
+      "istekler": [
+        {
+          "url": "https://Zatanna/search?keyword=tt0903747",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Zatanna/tv/t-breaking-bad-2008",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Zatanna/index/share_link?id=125&type=2",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-40>/file/file_share_list?share_key=fNBTg8at&parent_id=0&page=1&size=100",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-40>/file/file_share_list?share_key=fNBTg8at&parent_id=2636584&page=1&size=100",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-40>/file/player",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "4K",
+          "url": "https://<ana-41>/13470581.m3u8?sign=c190621f449910d86ae954fcc721405d2c356cadF02&t=1792158467&client=febbox&KEY",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 3447
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Black-Adam",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 1524,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://Black-Adam/v1/movies?filters[q]=D%C3%B6v%C3%BC%C5%9F%20Kul%C3%BCb%C3%BC&expand=gizli",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Black-Adam/v1/movies?filters[q]=Fight%20Club&expand=gizli",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-42>/aes/0/7cccf1440af2bf65b236516f1553df08/2ZWiOQmDS8g-xwtSrymtLQ/1792165668/storage8/movies/1782",
+          "basliklar": [
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 33448
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Black-Adam",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 641,
+      "istekAdet": 1,
+      "istekler": [
+        {
+          "url": "https://Black-Adam/v1/shows?filters[q]=tt0903747&expand=gizli",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-42>/aes/0/7cccf1440af2bf65b236516f1553df08/33B9mh44Zl4I3xm0jO5jBA/1792165669/storage7/shows/09037",
+          "basliklar": [
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 14044
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Hawkman",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 872,
+      "istekAdet": 1,
+      "istekler": [
+        {
+          "url": "https://Hawkman/api.php?imdb=tt0137523&type=movie",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-43>/Y7Q4ggbna/pl/H4sIAAAAAAAAAw3FW1uCMBgA4L_0jUNKd5VDHG7Gxjbd3Q70YBzCMkV.fb0379p_xME5jxqAJLMhWbn1",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1851
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Hawkman",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 1,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 866,
+      "istekAdet": 2,
+      "istekler": [
+        {
+          "url": "https://<ana-1>/3/tv/1396?language=tr-TR&api_key=a2f888b27315e62e471b2d587048f32e",
+          "status": 200,
+          "hata": null,
+          "ref": "yok"
+        },
+        {
+          "url": "https://Hawkman/api.php?imdb=tt0903747&type=tv&season=1&episode=1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-44>/J5aAmhrzk/pl/H4sIAAAAAAAAAwXByXKDIAAA0F8Clyo9OoJtUjCyiHBzoWUippPEpMav73txDlCGMpcMEfjO8h4514M8",
+          "basliklar": [
+            "Referer",
+            "Origin",
+            "User-Agent"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1237
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Doctor-Fate",
+      "tur": "movie",
+      "tmdbId": "550",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 3,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 11884,
+      "istekAdet": 18,
+      "istekler": [
+        {
+          "url": "https://Doctor-Fate/api/servers?q=U2FsdGVkX1-wNAxtYXMsdBC3nZqm4ozcJ3P3lH_SLjvas9GjaUK829mlxNkZq7egQWgeK-s9Gr5hR-W6sGZnlx8mKOdH3hgtwXUYlmqG9R",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX18FtCnjFTglyWUi7IxRNqeLi62yEhef926nCoEs3vRF162Vg-oIjyoPaIOEwzPpVDDCtPvz2Agj5PXaX-7OBKbWOh3cXK6LrU",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX1-uweAvFTasZ6-vihDjDsgiQ8kJm1AfNbC7q6BTSzgaC_9AAfq2udzih5s2cV0GfGX3DP7sPxoBmtBJP6gMV-FtZMc78_0X2p",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX1-9CF8lIM1DUXOt99SkhLCY-SV4jaeFemvHe2CupZTrWuy1iISInLxVnfj23i2RhUxc0rZNVDSLBf3CAt7dzof6KgyVD8Ucj2",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX1-DL_TvLQYWIrAwfIIL5COOTcdEdian2fesnTdQiEHO2t8HYPIpys_Rx6NoqW57Kzx0-qKsctrvb_qAWE9f7mQEwe9bsnyBp5",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX1-uns5FXZcz1bK7KuiaOvcemFOqiuvMAKKFNggD6yJyNJJAMfIF3ANbBK_qYJSYynPZ4PFQhvuwyeW6RzMQXWY12zEhCSLISO",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX1-U2sMb4W4vuZ1BaUwne537eUQ1AWv2STcP2juhQMlS36dG2l90xOUDP9pghGctHs1QxHMcYbCwvbQtB3Inxqx2zk4-ngSg2m",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX1_Fc_HaThtfR4IjDMddb3y62xJej6_E43mFiEOh_7pweBhdbhoxJ5Gk303N6QNWwCrXQ67Tcw6YMa-fohKcgncfUABabajIZN",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX18dGUYF0DAnHjCE8YVlqRY5KcTd9-FTzghil6O_FLLlMEIkB0rKHQGYEM0EQykeQqHXW-0nJbzFQBkl0My-pL-AzCMKvPRrPJ",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-45>/?id=1bdafab5c4641f66a3c09ba9efc6f0c905784656a2de35462e08c7b341c0035ba8fd24936aed29ee774849d379bfccb28b3083a612f76b23d0f3f39",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-45>/?id=23e2c979a37ba9375d62c985399d8bef69c4c87fbb6c3893737476846b029ccbadbfa7972e381db9b2795ceec4c547a7d0f30b5d3d1333fe4bfcf3b",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-45>/?id=df8c46901d2d1bd7c4de46cbf878201a26ec287425a3dc28f222139577073c8308baac4c3a1136fa41516e2a54f43bc8af3f1e83bca55c54624ca1f",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-46>/hls/3d6754647a306d4c39387a4d79557a4e7a45444d3052334c7a5a334c74393259756b486470783262346c6d64754547617638694f7a4248643068576",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-47>/hub/88534ab08243571e51f2c500bf9eb20e?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ce3806fdca997f65e356f3b6fc2f735d%2F2",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-47>/hub/9eab6d41539f887dff3a73818da20a78?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ce3806fdca997f65e356f3b6fc2f735d%2F2",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-48>/nitro/3d4d7a4e3067544e7849544f3345545034746d4a426c464f6d6c484e3355334d425a6e57485a4462305147547967585669317a612f6754647a306",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-48>/nitro/7a63444e3455544d796b7a4e78304465725a7964774931593652574c6e393063305531614b74575746465563326c584e397332503455334d74354",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-49>/hls/78164859/720/index_287.m3u8?Expires=1792134673&KeyName=Signature&Signature=HbPp-JPH4fHR_5IeJclp6pSVWHDSDPMrAKVEIJLgFrVI",
+          "status": 403,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-46>/hls/3d6754647a306d4c39387a4d79557a4e7a45444d3052334c7a5a334c74393259756b486470783262346c6d647",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 2528
+          },
+          "not": null
+        },
+        {
+          "quality": "1080p",
+          "url": "https://<ana-48>/nitro/3d4d7a4e3067544e7849544f3345545034746d4a426c464f6d6c484e3355334d425a6e57485a44623051475",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1499
+          },
+          "not": null
+        },
+        {
+          "quality": "1080p",
+          "url": "https://<ana-48>/nitro/7a63444e3455544d796b7a4e78304465725a7964774931593652574c6e393063305531614b7457574646556",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1587
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Fight Club",
+      "cekirdekImportHatasi": null
+    },
+    {
+      "kod": "Doctor-Fate",
+      "tur": "tv",
+      "tmdbId": "1396",
+      "sezon": 1,
+      "bolum": 1,
+      "sonuc": "yayin",
+      "hamOge": 3,
+      "hamDogrulama": null,
+      "not": null,
+      "cekirdekBuldu": true,
+      "hata": null,
+      "sure": 12366,
+      "istekAdet": 16,
+      "istekler": [
+        {
+          "url": "https://Doctor-Fate/api/servers?q=U2FsdGVkX187hgTr3WJYeUgiccc8RbyVXjySTIDN5a39YGrYz1ofDnlUrslCCA25xK1S7_M8fRQZBbC9ZuMYwO75krgG9kgOulmjwoWjDW",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX19_MkF1Gk_XCKdn6B0hk3bznbQgFVXsWgz0c9W_mjkdXS-ufN-5g9pykZhEC7UIc1DLE8Zfaa99DIDsn6oh2dOrzxGQXz_YWb",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX1-I_546COVx4bny-4CwWX3OTtQ0beRHh8fvYYQGYeZRX7anpW0mzd8e9QV5swABrvI4uxk87SlNzJJ1Xmr6G7HQvGYT-j2RUv",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX18SWc1UBJjf2L9XbWnHGe2KKASw1OjPKltTxpwPlh9uFWB5cu-BCw7GPHCrrHWWxnBRzzocI9MqILI4cWPE8K_vA30fIUE3Ge",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX1_xgVEulYOJcE9chpipUhwKemw41bh1VVD1wPKDOogWIc0rJyb10rTuDtdfF4b3UZTf1idoHYfuD9O0kTFfPxfbrRB-zV70Z7",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX1_RnsOepX9KbZd1h0vCjRqx_Q3gHSRA18vGXyZ97hqD3CadtX_RofvoingkCIiXgE98DjT4YII61_qVWP-nWXECfCqxcsSK7i",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX191Zj9qqCxiVJ5ILcxilKYk0lqzYV8kx4OGnukfAlvERkRe131GwdANj4qCbaYD-UzJnqtylbw4NJLzLmBsKcpHm7k004Ir0_",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX1_URrmHwy0JQL0UX66aAZs9XjxAqRAcnTxzzVY4_Wwy9V35aoCMvb1czAbdK5fw22Ro3N_7SJhDEVuf-NkxAw-PAbVvdl1VX1",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://Doctor-Fate/api/sources?q=U2FsdGVkX19wJdSNP-FhNP3bEBirmoUxGCYuUn-8gAcrPGncAwXJsUp1S_Ui9NTQGtZE96UVJEtppz-Uq86lM2jJ5OJS4FlIviIbU3DvrI",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-45>/?id=b805dc8e8c271b05804f056c58b3d1760bbed53981593a8c76a7638617588fb7259fd43cecc1819abf85edb09403ce5d56fd87fa7d674e2dca49964",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-45>/?id=b22ba8f4983f135cd3a5d5b0b345fc8a39875bbf1930110ebbc38f724a7779d49f7eaa48a0b74e562c1d211729dbe470cc50624303dc1a8aee77ea9",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-45>/?id=6508ec79f1d278f0941092e476a49d42da1f2c5db9f12ae297e92e54d87149a3fecb164bee407c2a938ee6220dfac7f7e8e8db3e3a022f9fa496674",
+          "status": 404,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-46>/hls/3d45444d6c39534d7a39794e30637a4d776b444d3052334c7a5a334c74393259756b486470783262346c6d64754547617638694f7a4248643068576",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-50>/8427d114814730481e715454007927a2ec12fc9a1139316676cdce60b776274d60b5ef594440add6e1bc755db68f488c::455b829cd485ebfbc9d3dbf88",
+          "status": 206,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-48>/pitro/3455334d743569636c5233636831324c3545444d79417a4e78597a4c7a4d6a4e3067544d796b7a4e7838695a6b6857616e68576470685759316c4",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        },
+        {
+          "url": "https://<ana-48>/pitro/3455334d743569636c5233636831324c35497a4d77556a4e794d7a4c7a4d6a4e3067544d796b7a4e78385364325a47616e68576131686d6372704",
+          "status": 200,
+          "hata": null,
+          "ref": "var"
+        }
+      ],
+      "kaynaklar": [
+        {
+          "quality": "1080p",
+          "url": "https://<ana-46>/hls/3d45444d6c39534d7a39794e30637a4d776b444d3052334c7a5a334c74393259756b486470783262346c6d647",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 3067
+          },
+          "not": null
+        },
+        {
+          "quality": "1080p",
+          "url": "https://<ana-50>/8427d114814730481e715454007927a2ec12fc9a1139316676cdce60b776274d60b5ef594440add6e1bc755db68f4",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 403,
+            "tip": "text/html",
+            "hls": false,
+            "mp4": false,
+            "uzunluk": 295
+          },
+          "not": null
+        },
+        {
+          "quality": "1080p",
+          "url": "https://<ana-48>/pitro/3455334d743569636c5233636831324c3545444d79417a4e78597a4c7a4d6a4e3067544d796b7a4e7838695",
+          "basliklar": [
+            "User-Agent",
+            "Referer"
+          ],
+          "dogrulama": {
+            "durum": 200,
+            "tip": "application/vnd.apple.mpegurl",
+            "hls": true,
+            "mp4": false,
+            "uzunluk": 1780
+          },
+          "not": null
+        }
+      ],
+      "hedefAd": "Breaking Bad",
+      "cekirdekImportHatasi": null
+    }
+  ]
+}

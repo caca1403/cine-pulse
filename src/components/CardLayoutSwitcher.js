@@ -1,4 +1,4 @@
-import { getUserSettings, saveUserSettings } from '../services/storage.js';
+import { getUserSettings, saveUserSettings } from '../services/altyapi/storage.js';
 import { upgradeLandscapeBackdrops } from './MediaCard.js';
 
 const readyLayoutImages = new Set();

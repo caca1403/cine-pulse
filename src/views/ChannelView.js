@@ -1,4 +1,4 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - "Kanalım" Görünümü v2 (KUŞAK MOTORU)
    --------------------------------------------------------------------------
@@ -20,8 +20,8 @@ import {
   getFavorites,
   getWatchlist,
   filterForActiveProfile
-} from '../services/storage.js';
-import { fetchDiscoverMedia } from '../services/tmdbApi.js';
+} from '../services/altyapi/storage.js';
+import { fetchDiscoverMedia } from '../services/icerik/tmdbApi.js';
 import {
   KANAL_PRESETLERI,
   RUH_HALLERI,
@@ -36,8 +36,8 @@ import {
   dkMetni,
   sezonBolumMetni,
   slotSuresiDk
-} from '../services/channelScheduler.js';
-import { kanalSaatTicker } from '../services/kanalSaat.js';
+} from '../services/canli/channelScheduler.js';
+import { kanalSaatTicker } from '../services/canli/kanalSaat.js';
 import { KANALIM_CSS } from './kanalimStil.js';
 
 /* ── Kalıcı anahtarlar (storage.js'e dokunulmaz, slug'lar İZOLE) ───────── */

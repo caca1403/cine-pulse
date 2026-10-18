@@ -17,7 +17,7 @@ import {
   pollTorrentStatus,
   setP2pConsent,
   P2P_CONSENT_KEY,
-} from '../src/services/p2pService.js';
+} from '../src/services/dogrudan/p2pService.js';
 
 const HEX = 'a'.repeat(40);
 const magnet = hash => `magnet:?xt=urn:btih:${hash}&dn=test&tr=udp%3A%2F%2Ftracker`;

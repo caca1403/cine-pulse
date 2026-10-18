@@ -7,7 +7,7 @@ globalThis.localStorage = {
 };
 globalThis.window = { location: { hostname: '', protocol: 'file:' }, CinePulseDesktop: { isDesktop: true } };
 
-const { buildChannels, refreshLiveSources, probeChannels } = await import('../src/services/turkishLiveSources.js');
+const { buildChannels, refreshLiveSources, probeChannels } = await import('../src/services/canli/turkishLiveSources.js');
 
 const sources = await refreshLiveSources();
 const curated = new Set(['TRT1','ATV','SHOWTV','NOWTV','STARV','KANALD','TV8','CANAL7','BEYAZTV','TEVE2','TV360','CNBCE','A2TV','TRTHABER','AHABER','NTV','TRTSPOR','HALKTV']);

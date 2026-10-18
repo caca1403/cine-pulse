@@ -3,7 +3,7 @@
    ========================================================================== */
 
 import { App } from '@capacitor/app';
-import { initAppUpdater } from '../appUpdater.js';
+import { initAppUpdater } from '../kabuk/appUpdater.js';
 
 export async function initAndroidPlatform() {
   console.log('[Platform] Native Android (Capacitor) ortamı etkinleştirildi.');

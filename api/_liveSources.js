@@ -486,7 +486,7 @@ export async function fetchTurhanChannels() {
 
 // ------------------------------------------------------------- genel API
 // ANONİMLİK: kullanıcıya görünen kaynak adlarında gerçek site adı YOK
-// (pluginCatalog ALIASES'teki 'Pulsar' kod adı). `id` alanları DEĞİŞMEZ —
+// (sourceLabels aile defterindeki 'Pulsar' kod adı). `id` alanları DEĞİŞMEZ —
 // istemci (turkishLiveSources/LiveTvView) id ile eşleştiriyor.
 const FETCHERS = {
   kral: { label: 'Pulsar 1 (Ulusal)', fn: fetchKralChannels },

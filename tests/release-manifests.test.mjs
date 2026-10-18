@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeManifests } from '../src/services/releaseManifests.js';
+import { mergeManifests } from '../src/services/kabuk/releaseManifests.js';
 
 const local = {
   version: '1.1.55', versionCode: 165,

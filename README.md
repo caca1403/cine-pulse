@@ -50,15 +50,15 @@ CinePulse, içerik keşfini ve kişisel izleme takibini tek bir arayüzde birle�
 
 ## Platformunu seç
 
-Paketler **[resmî GitHub Releases](https://github.com/caca1403/cine-pulse/releases/latest)** üzerinden indirilir. Güncel yayımlanmış paket sürümü: **v1.1.71**.
+Paketler **[resmî GitHub Releases](https://github.com/caca1403/cine-pulse/releases/latest)** üzerinden indirilir. Güncel yayımlanmış paket sürümü: **v1.1.77**.
 
 | Platform | Paket | Başlangıç |
 | :--- | :--- | :--- |
 | **Web** | Kurulumsuz | [Siteyi aç](https://cinepulse.cinepulse.workers.dev/) |
-| **Windows** | EXE | [Kurucuyu indir](https://github.com/caca1403/cine-pulse/releases/download/v1.1.71/CinePulse-Setup-1.1.71.exe) |
-| **Linux / Debian, Ubuntu** | DEB | [Paketi indir](https://github.com/caca1403/cine-pulse/releases/download/v1.1.71/CinePulse-1.1.71.deb) |
-| **Linux / taşınabilir** | AppImage | [AppImage indir](https://github.com/caca1403/cine-pulse/releases/download/v1.1.71/CinePulse-1.1.71.AppImage), çalıştırma izni ver |
+| **Windows** | EXE | [Kurucuyu indir](https://github.com/caca1403/cine-pulse/releases/download/v1.1.77/CinePulse-Setup-1.1.77.exe) |
 | **Android** | APK | [APK indir](https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk) |
+| **Linux / Debian, Ubuntu** | DEB | [Paketi indir](https://github.com/caca1403/cine-pulse/releases/download/v1.1.77/CinePulse-1.1.77.deb) |
+| **Linux / Flatpak** | Flatpak | [Flatpak indir](https://github.com/caca1403/cine-pulse/releases/download/v1.1.77/CinePulse-1.1.77.flatpak) |
 
 Android release paketleri mevcut kalıcı imza anahtarıyla üretilir. İmzası eşleşen yeni paket, mevcut kurulumun üzerine yüklenebilir. Geliştirme / devtest paketleri release ile aynı şey değildir.
 
@@ -138,7 +138,7 @@ npm run server
 ## Yayın ve güncellemeler
 
 - **Web:** `main` dalına push → Cloudflare dağıtım iş akışı → statik dosyalar ve Worker birlikte yayınlanır.
-- **Uygulamalar:** `v*` sürüm etiketi → Android APK, Windows EXE, Linux DEB ve AppImage üretimi.
+- **Uygulamalar:** `v*` sürüm etiketi → Android APK, Windows EXE, Linux DEB ve Flatpak üretimi.
 - **Sürüm bilgisi:** `package.json` ve üretilen güncelleme manifestleri.
 - **İndirmeler:** uygulama paketleri GitHub Releases'ten gelir; web sunucusu APK baytlarını tekrar aktarmak yerine yönlendirir.
 

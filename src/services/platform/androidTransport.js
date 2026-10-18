@@ -1,4 +1,4 @@
-import { apiUrl } from '../apiOrigin.js';
+import { apiUrl } from '../altyapi/apiOrigin.js';
 
 let installed = false;
 

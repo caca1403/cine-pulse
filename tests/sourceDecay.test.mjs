@@ -29,7 +29,7 @@ Object.defineProperty(globalThis, 'navigator', { value: { userAgent: 'node', pla
 const { webcrypto } = await import('node:crypto');
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
-const { getStreamingServersProgressive } = await import('../src/services/providerAggregator.js');
+const { getStreamingServersProgressive } = await import('../src/services/kaynak/providerAggregator.js');
 
 const t0 = Date.now();
 const izler = [];

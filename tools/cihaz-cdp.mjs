@@ -11,7 +11,7 @@
 */
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -93,7 +93,17 @@ export async function cdpAc({ port = PORT, pkg = PKG } = {}) {
 if (import.meta.url === (await import('node:url')).pathToFileURL(process.argv[1]).href) {
   const arg = process.argv[2];
   if (!arg) { console.error('kullanım: node tools/cihaz-cdp.mjs "<js>" | dosya.js'); process.exit(1); }
-  const ifade = arg.endsWith('.js') ? readFileSync(arg, 'utf8') : arg;
+  /* DOSYA MI YOKSA SATIR İÇİ İFADE Mİ? Eskiden yalnız ".js" ile biten argüman
+     dosya sayılıyordu; ".mjs" uzantılı yoklama dosyaları ifade sanılıp CDP'ye
+     gidiyor ve "Invalid regular expression flags" hatası veriyordu (/tmp/...
+     bir regex literalı gibi ayrışıyor). Var olmayan bir yolu da anlaşılır
+     biçimde reddet. */
+  const dosyaMi = /\.(js|mjs|cjs)$/.test(arg) && existsSync(arg);
+  if (/\.(js|mjs|cjs)$/.test(arg) && !existsSync(arg) && !arg.includes('(')) {
+    console.error(`kullanım: dosya bulunamadı -> ${arg}`);
+    process.exit(1);
+  }
+  const ifade = dosyaMi ? readFileSync(arg, 'utf8') : arg;
   const c = await cdpAc();
   try {
     const sonuc = await c.calistir(ifade);

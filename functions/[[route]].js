@@ -1,8 +1,6 @@
 // Cloudflare Pages Functions girisi — Vercel api/ yigini oldusu gibi sunar.
 // Routing onceligi (Vercel semantigi):
-//   1. harici rewrite'lar: /api/flz/* -> filmizlech, /api/hfd/* -> hdfilmdelisi
-//   2. dosya-eslesmesi:   ddz, epg, fanart, release (node) | jet, rtv, snx (edge)
-//   3. prefix rewrite:     snx|szd|jet|dzs|dzb|kvip alt yollari ?path=... olur
+//   1. dosya-eslesmesi:   ddz, epg, fanart, release (node) + resolve (ctv)
 //   4. geri kalan her sey: catch-all ([...all].js) — proxy/hls/live/...
 import { runNodeHandler, SECURITY_HEADERS } from '../cf/adapter.js';
 import cfall from '../api/[...all].js';
@@ -10,9 +8,7 @@ import ddz from '../api/ddz.js';
 import epg from '../api/epg.js';
 import fanart from '../api/fanart.js';
 import release from '../api/release.js';
-import jet from '../api/jet.js';
-import rtv from '../api/rtv.js';
-import snx from '../api/snx.js';
+import imdbRating from '../api/imdbRating.js';
 import resolve from '../cf/resolve.js';
 
 // yol -> mod (Vercel'de dosya adi neyse o; czm/dzs/kvip catch-all alias'idir)
@@ -21,17 +17,16 @@ const NODE_FILES = {
   '/api/epg': epg,
   '/api/fanart': fanart,
   '/api/release': release,
-  // python resolve.py'nin web portu (ctv+dzs) — Faz 2
+  '/api/imdbRating': imdbRating,
+  // python resolve.py'nin Canlı TV portu (ctv)
   '/api/resolve': resolve,
 };
-const EDGE_FILES = { '/api/jet': jet, '/api/rtv': rtv, '/api/snx': snx };
+// Eski kenar (edge) uçları jet/rtv/snx kodları silinen eklentilerdi.
+const EDGE_FILES = {};
 // rewrite: /api/x/DERLEYICI -> /api/x?path=DERLEYICI
-const PATH_REWRITE = new Set(['/api/snx', '/api/szd', '/api/jet', '/api/dzs', '/api/dzb', '/api/kvip']);
+const PATH_REWRITE = new Set([]);
 // rewrite: /api/flz/X -> https://filmizlech.com/X (Vercel harici rewrite)
-const EXTERNAL = [
-  { prefix: '/api/flz', target: 'https://filmizlech.com' },
-  { prefix: '/api/hfd', target: 'https://hdfilmdelisi.one' },
-];
+const EXTERNAL = [];
 
 function withSecurity(response) {
   const out = new Response(response.body, response);

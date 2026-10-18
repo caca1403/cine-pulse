@@ -16,7 +16,7 @@ globalThis.window = {
   CinePulseDesktop: { isDesktop: true }
 };
 
-const svc = await import('../src/services/turkishLiveSources.js');
+const svc = await import('../src/services/canli/turkishLiveSources.js');
 
 const t0 = Date.now();
 const sources = await svc.refreshLiveSources();

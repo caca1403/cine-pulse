@@ -1,13 +1,13 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    SineFlix Pro - Data Manager Modal (JSON Backup & Restore System)
    Allows users to export watch history & settings to JSON, or import from another device.
    ========================================================================== */
 
-import { exportDataAsJSON, importDataFromJSON, getStorageStats, clearAllData } from '../services/storage.js';
+import { exportDataAsJSON, importDataFromJSON, getStorageStats, clearAllData } from '../services/altyapi/storage.js';
 import { showToast } from './Toast.js';
 import { openTraktModal } from './TraktModal.js';
-import { isTraktConnected } from '../services/traktService.js';
+import { isTraktConnected } from '../services/icerik/traktService.js';
 
 export function openDataManagerModal() {
   const modalContainer = document.getElementById('data-modal');

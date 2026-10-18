@@ -1,8 +1,8 @@
-import { deleteOfflineMedia, formatBytes, getDeviceStorageInfo, getDownloadedMediaList, getDownloadedPlaybackUrl, getOfflinePosterUrl } from '../services/offlineManager.js';
+import { deleteOfflineMedia, formatBytes, getDeviceStorageInfo, getDownloadedMediaList, getDownloadedPlaybackUrl, getOfflinePosterUrl } from '../services/kabuk/offlineManager.js';
 import { openPlayerModal } from '../components/openPlayer.js';
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 import { showToast } from '../components/Toast.js';
-import { getImageUrl, SINEFLIX_POSTER_FALLBACK, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
+import { getImageUrl, SINEFLIX_POSTER_FALLBACK, TMDB_IMAGE_SIZES } from '../services/icerik/tmdbApi.js';
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const episodeOrder = (a, b) => (Number(a.season) - Number(b.season)) || (Number(a.episode) - Number(b.episode));

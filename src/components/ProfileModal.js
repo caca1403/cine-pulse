@@ -1,16 +1,16 @@
 import { renderSiteLogo, getProfileAccent } from './BrandLogo.js';
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - "Kim İzliyor?" Çoklu Profil Yönetimi Modal
    Allows switching between user profiles, kids mode, and managing
    isolated watch histories and watchlists.
    ========================================================================== */
 
-import { getProfiles, getActiveProfile, setActiveProfile, addProfile, deleteProfile, saveProfiles } from '../services/storage.js';
+import { getProfiles, getActiveProfile, setActiveProfile, addProfile, deleteProfile, saveProfiles } from '../services/altyapi/storage.js';
 import { showToast } from './Toast.js';
 import { openDataManagerModal } from './DataManagerModal.js';
 import { openTraktModal } from './TraktModal.js';
-import { isNativeAndroidApp, checkForAppUpdates, promptAppInstall } from '../services/platformBridge.js';
+import { isNativeAndroidApp, checkForAppUpdates, promptAppInstall } from '../services/platform/platformBridge.js';
 
 let activeProfileModal = null;
 let profileEvents;
@@ -119,10 +119,6 @@ export function openProfileModal() {
             <button class="btn-manage-profiles" id="btn-modal-open-debrid" title="VEGA Ayarları">
               <i data-lucide="zap" style="width: 14px; height: 14px; color: #dfff76;"></i>
               <span>VEGA</span>
-            </button>
-            <button class="btn-manage-profiles" id="btn-modal-open-plugins" title="Kaynak Eklentileri">
-              <i data-lucide="puzzle" style="width: 14px; height: 14px; color: #dfff76;"></i>
-              <span>Eklentiler</span>
             </button>
             <button class="btn-manage-profiles" id="btn-modal-open-backup" title="Yedekleme & Veri Yönetimi">
               <i data-lucide="hard-drive-download" style="width: 14px; height: 14px; color: #38bdf8;"></i>
@@ -246,15 +242,6 @@ export function openProfileModal() {
         closeProfileModal();
         const { openDebridModal } = await import('./DebridModal.js');
         openDebridModal();
-      };
-    }
-
-    const pluginsBtn = modalContainer.querySelector('#btn-modal-open-plugins');
-    if (pluginsBtn) {
-      pluginsBtn.onclick = async () => {
-        closeProfileModal();
-        const { openPluginsModal } = await import('./PluginsModal.js');
-        openPluginsModal();
       };
     }
 

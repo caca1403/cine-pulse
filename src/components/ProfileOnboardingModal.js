@@ -1,12 +1,12 @@
 import { renderSiteLogo } from './BrandLogo.js';
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - Profile Onboarding Modal
    Shown to first-time visitors so every user sets their own profile name & avatar,
    preventing hardcoded default names like 'Çağatay' across random visitors.
    ========================================================================== */
 
-import { isProfileSetupComplete, completeProfileSetup } from '../services/storage.js';
+import { isProfileSetupComplete, completeProfileSetup } from '../services/altyapi/storage.js';
 
 const AVATAR_OPTIONS = [
   { id: 'user-circle', icon: 'user', label: 'Klasik', color: '#dfff76' },

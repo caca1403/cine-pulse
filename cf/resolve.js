@@ -1,6 +1,6 @@
-// api/resolve.py + api/providers/{canlitv,dizisol}.py portu (web'in kullandığı
-// iki sağlayıcı: ctv, dzs). python/worker-relay dalları workerd'da çalışmaz;
-// buraya yalnızca web'in gerçekten çağırdak yollar taşındı.
+// api/resolve.py + api/providers/canlitv.py portu — Canlı TV kanal listesi ve
+// kanal yayın adresi. Eklenti/sağlayıcı katmanı söküldüğü için bu portta artık
+// yalnız ctv yolu vardır; python/worker-relay dalları workerd'da çalışmaz.
 const FULL_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 const proxied = (raw, ref) => `/api/hls_proxy?url=${encodeURIComponent(raw)}&ref=${encodeURIComponent(ref)}`;
@@ -135,119 +135,6 @@ async function ctvResolveChannel(slug, playerId = '') {
   };
 }
 
-// ── Dizisol ─────────────────────────────────────────────────────────────────
-const DS_API = 'https://dizisol.com/api';
-const DS_REF = 'https://dizisol.com/';
-const DS_BLOCKED = ['pichive', 'hotlinger', 'recaptcha', 'media.cm', 'cloudvideo.tv',
-  'vidoza.net', 'voe.sx', 'bysejikuar', 'filemoon', 'hdfilmdelisi', 'play.liderfilm'];
-
-const dsValid = (url) => {
-  if (!url || typeof url !== 'string') return false;
-  const u = url.toLowerCase();
-  if (!u.startsWith('http://') && !u.startsWith('https://') && !u.startsWith('/api/')) return false;
-  return !DS_BLOCKED.some((b) => u.includes(b));
-};
-const dsProxyStream = (raw) => proxied(raw.startsWith('/api/') ? `https://dizisol.com${raw}` : raw, DS_REF);
-const dsProxySub = (raw) => (raw && typeof raw === 'string' ? (raw.includes('dizisol.com') ? proxied(raw, DS_REF) : raw) : '');
-
-function dsSubs(...objs) {
-  const out = [];
-  for (const o of objs) {
-    if (!o || typeof o !== 'object') continue;
-    if (o.subtitleTr) out.push({ label: 'Türkçe (DS)', src: dsProxySub(o.subtitleTr) });
-    if (o.subtitleEn) out.push({ label: 'English (DS)', src: dsProxySub(o.subtitleEn) });
-  }
-  const seen = new Set();
-  return out.filter((s) => (s.src && !seen.has(s.src) ? (seen.add(s.src), true) : false));
-}
-
-function dsCandidates(title, originalTitle, titles) {
-  const cands = [];
-  for (const t of [title, originalTitle, ...(Array.isArray(titles) ? titles : [])]) {
-    if (t && typeof t === 'string' && t.trim() && !cands.includes(t.trim())) cands.push(t.trim());
-  }
-  return cands;
-}
-
-async function dsResolveTmdb(cands, want) {
-  for (const q of cands) {
-    const data = await fetchJson(`${DS_API}/movies/search?q=${encodeURIComponent(q)}`, DS_REF, 5000);
-    if (!Array.isArray(data)) continue;
-    for (const r of data) {
-      if (r && typeof r === 'object' && r.type === want && r.tmdbId) return parseInt(r.tmdbId, 10);
-    }
-  }
-  return null;
-}
-
-function dsBuildStreams(items, tag, season = null, episode = null) {
-  return items.map((it, i) => {
-    let label = i ? `DS ${it.provider} 1080p` : 'DS 1080p (HLS)';
-    if (season !== null) label = i ? `${label} (S${season}B${episode})` : `DS 1080p (S${season}B${episode})`;
-    return {
-      provider: `DS ${it.provider}`,
-      streamUrl: dsProxyStream(it.url),
-      rawStreamUrl: it.url.startsWith('http') ? it.url : `https://dizisol.com${it.url}`,
-      embedUrl: it.url,
-      subtitles: it.subs || [],
-      tag: `${tag}_${String(it.provider).toLowerCase().replace(/ /g, '')}_${i}`,
-    };
-  });
-}
-
-function dsFinalize(streams, pageUrl) {
-  if (!streams.length) return null;
-  const first = streams[0];
-  return {
-    success: true,
-    streams,
-    streamUrl: first.streamUrl,
-    rawStreamUrl: first.rawStreamUrl,
-    movieUrl: pageUrl,
-    embedUrl: first.embedUrl || '',
-    subtitles: first.subtitles || [],
-  };
-}
-
-async function dsResolveMovie(p) {
-  let tid = p.tmdbId ? parseInt(p.tmdbId, 10) : await dsResolveTmdb(dsCandidates(p.title, p.originalTitle, p.titles?.length ? p.titles : []), 'movie');
-  if (!tid) return { success: false, error: 'TMDB match not found' };
-  const data = await fetchJson(`${DS_API}/movies/by-tmdb/${tid}`, DS_REF, 6000);
-  if (!data) return { success: false, error: 'Detail not found' };
-  const items = []; const seen = new Set();
-  if (dsValid(data.m3u8Url)) { seen.add(data.m3u8Url); items.push({ url: data.m3u8Url, provider: 'VIP', subs: dsSubs(data) }); }
-  for (const s of data.sources || []) {
-    if (!s || typeof s !== 'object' || !dsValid(s.m3u8Url) || seen.has(s.m3u8Url)) continue;
-    seen.add(s.m3u8Url);
-    items.push({ url: s.m3u8Url, provider: (s.provider || 'VIP').toUpperCase(), subs: dsSubs(s, data) });
-  }
-  if (!items.length) return { success: false, error: 'No playable source' };
-  const fin = dsFinalize(dsBuildStreams(items, `mov_${tid}`), `dizisol:movie:${tid}`);
-  return fin ? { ...fin, provider: 'DS' } : { success: false, error: 'No playable source' };
-}
-
-async function dsResolveEpisode(p) {
-  const s = parseInt(p.season || '1', 10) || 1;
-  const e = parseInt(p.episode || '1', 10) || 1;
-  let tid = p.tmdbId ? parseInt(p.tmdbId, 10) : await dsResolveTmdb(dsCandidates(p.title, p.originalTitle, p.titles?.length ? p.titles : []), 'tv');
-  if (!tid) return { success: false, error: 'TMDB match not found' };
-  const eps = await fetchJson(`${DS_API}/movies/by-tmdb/${tid}/episodes`, DS_REF, 6000);
-  if (!Array.isArray(eps)) return { success: false, error: 'Episodes not found' };
-  const target = eps.find((x) => x && typeof x === 'object'
-    && parseInt(x.season || 0, 10) === s && parseInt(x.episode || 0, 10) === e);
-  if (!target) return { success: false, error: 'Episode not found' };
-  const items = []; const seen = new Set();
-  if (dsValid(target.m3u8Url)) { seen.add(target.m3u8Url); items.push({ url: target.m3u8Url, provider: 'VIP', subs: dsSubs(target) }); }
-  for (const so of target.sources || []) {
-    if (!so || typeof so !== 'object' || !dsValid(so.m3u8Url) || seen.has(so.m3u8Url)) continue;
-    seen.add(so.m3u8Url);
-    items.push({ url: so.m3u8Url, provider: (so.provider || 'VIP').toUpperCase(), subs: dsSubs(so, target) });
-  }
-  if (!items.length) return { success: false, error: 'No playable source' };
-  const fin = dsFinalize(dsBuildStreams(items, `tv_${tid}`, s, e), `dizisol:tv:${tid}:s${s}e${e}`);
-  return fin ? { ...fin, provider: 'DS' } : { success: false, error: 'No playable source' };
-}
-
 // ── /api/resolve node-stili giris (python dispatch'in web görümünün portu) ──
 export default async function handler(req, res) {
   const url = new URL(req.url, 'http://x');
@@ -258,10 +145,6 @@ export default async function handler(req, res) {
   try {
     if (prov === 'ctv' || prov === 'canlitv' || prov === 'canli') {
       result = p.slug ? await ctvResolveChannel(p.slug, p.playerId) : { success: true, channels: await ctvListChannels() };
-    } else if (prov === 'dzs' || prov === 'dizisol' || prov === 'ds') {
-      result = p.type === 'movie'
-        ? await dsResolveMovie(p)
-        : await dsResolveEpisode(p);
     } else {
       result = { success: false, error: `provider ${prov || '?'} web portunda yok` };
     }

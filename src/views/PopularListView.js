@@ -1,12 +1,12 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - Ultra-Fast Infinite Scrolling View
    Progressive 3-page parallel fetching with instant first-paint rendering.
    ========================================================================== */
 
-import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries, fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsDocumentaries, fetchKidsAnime, fetchCartoonSeries } from '../services/tmdbApi.js';
+import { fetchPopularSeries, fetchPopularMovies, fetchPopularAnime, fetchPopularDocumentaries, fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsDocumentaries, fetchKidsAnime, fetchCartoonSeries } from '../services/icerik/tmdbApi.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
-import { isKidProfileActive } from '../services/storage.js';
+import { isKidProfileActive } from '../services/altyapi/storage.js';
 
 // In-memory cache per category — resets on each fresh view render
 const popularListCache = {};

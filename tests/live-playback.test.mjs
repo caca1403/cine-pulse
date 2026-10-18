@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { disposeLiveMedia } from '../src/services/livePlayback.js';
+import { disposeLiveMedia } from '../src/services/canli/livePlayback.js';
 
 test('a failed stopLoad still detaches and destroys the previous player', () => {
  const calls=[];

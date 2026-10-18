@@ -1,4 +1,4 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - Bildirimler & Yeni Bölüm Alarmları Merkezi
    Displays new episode drops, season arrivals, and system news

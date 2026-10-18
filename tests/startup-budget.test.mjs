@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { collectWithin } from '../src/services/startupBudget.js';
+import { collectWithin } from '../src/services/kabuk/startupBudget.js';
 
 test('a stalled catalog request does not hide already loaded content', async () => {
   const result = await collectWithin([

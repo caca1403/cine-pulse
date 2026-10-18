@@ -12,6 +12,9 @@ cinepulse_yedek*.json
 *.backup.json
 __pycache__/
 *.pyc
+.openchamber/
+.opencode/
+Logs/
 
 # Installers are published as GitHub Release assets.
 release/

@@ -1,5 +1,5 @@
-import { renderIcons } from '../services/icons.js';
-import { hasCompletedProductTour, completeProductTour, isProfileSetupComplete } from '../services/storage.js';
+import { renderIcons } from '../services/kabuk/icons.js';
+import { hasCompletedProductTour, completeProductTour, isProfileSetupComplete } from '../services/altyapi/storage.js';
 
 const TOUR_STEPS = [
   {

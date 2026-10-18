@@ -1,17 +1,21 @@
 import { renderSiteLogo } from './components/BrandLogo.js';
-import { resolveEntryHash } from './services/entryRoute.js';
-import { applyPerfMode } from './services/performanceMode.js';
+import { resolveEntryHash } from './services/kabuk/entryRoute.js';
+import { applyPerfMode } from './services/kabuk/performanceMode.js';
+import { agHiziIzle } from './services/kabuk/agHizi.js';
 // Ilk boyamadan once agir efektleri kis (yazilimsal cizimde kasmayi onler).
 applyPerfMode();
+// Yavaş ağ modu: sağlayıcı istek zaman aşımı tabanını ölçüme göre ayarla.
+agHiziIzle();
 import './styles/navigation.css';
 import './styles/collection.css';
 import './styles/profile.css';
-import { renderIcons } from './services/icons.js';
+import { renderIcons } from './services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Pro - Main Application Router & Entry Point
    ========================================================================== */
 
 import { renderNavbar, attachNavbarEvents } from './components/Navbar.js';
+import { closeCardPreview } from './components/MediaCard.js';
 import { renderHomeView, clearHomeCache, cleanupHomeView } from './views/HomeView.js';
 // Non-home views and first-run modals are loaded on demand (code splitting).
 const loadView = {
@@ -25,13 +29,13 @@ const loadView = {
   drama: () => import('./views/DramaView.js'),
   kanalim: () => import('./views/ChannelView.js')
 };
-import { trackScrollState, flushScrollState, restoreAllScrollState } from './services/scrollManager.js';
-import { getUserSettings } from './services/storage.js';
+import { trackScrollState, flushScrollState, restoreAllScrollState } from './services/kabuk/scrollManager.js';
+import { getUserSettings } from './services/altyapi/storage.js';
 import { renderCardLayoutSwitcher, placeCardLayoutSwitcher, attachCardLayoutSwitcherEvents } from './components/CardLayoutSwitcher.js';
 import { openDecisionRoomModal } from './components/DecisionRoomModal.js';
-import { initTraktAutoSync } from './services/traktService.js';
-import { getWatchHistory, saveWatchProgress, saveBatchWatchProgress } from './services/storage.js';
-import { initPlatformBridge, isNativeAndroidApp, isNativeAndroid, isAppPlatform, isDesktopApp, isWebPlatform } from './services/platformBridge.js';
+import { initTraktAutoSync } from './services/icerik/traktService.js';
+import { getWatchHistory, saveWatchProgress, saveBatchWatchProgress } from './services/altyapi/storage.js';
+import { initPlatformBridge, isNativeAndroidApp, isNativeAndroid, isAppPlatform, isDesktopApp, isWebPlatform } from './services/platform/platformBridge.js';
 
 // Platform Köprüsünü Çalıştır:
 // Ortam tespitine göre Web, Android veya Desktop modüllerini dinamik yükler.
@@ -56,11 +60,97 @@ window.addEventListener('scroll', () => {
 }, { passive: true });
 window.addEventListener('pagehide', flushScrollState);
 
+/* ==========================================================================
+   CP-QUALITY-PACK — Route iskeleti, geçiş animasyonu ve detay yapışkan CTA
+   ========================================================================== */
+
+/* Route iskeleti: soğuk açılışta spinner yerine gerçek düzenin iskeleti basılır.
+   Saf dizedir; DOM/gözlemci maliyeti yoktur. CSS: main.css (cp-skeleton). */
+function cpSkelKart() {
+  return '<div class="cp-sk-card"><div class="cp-sk-poster cp-shimmer"></div><div class="cp-sk-line cp-shimmer"></div><div class="cp-sk-line short cp-shimmer"></div></div>';
+}
+
+function cpSkelRay() {
+  return `<section class="cp-sk-rail container"><div class="cp-sk-line title cp-shimmer"></div><div class="cp-sk-row">${cpSkelKart().repeat(6)}</div></section>`;
+}
+
+function renderRouteSkeleton(viewName) {
+  if (viewName === 'detail') {
+    return `<div aria-hidden="true">
+      <div class="cp-sk-backdrop cp-shimmer"></div>
+      <div class="cp-sk-detail-body">
+        <div class="cp-sk-line heading cp-shimmer"></div>
+        <div class="cp-sk-line cp-shimmer"></div>
+        <div class="cp-sk-line short cp-shimmer"></div>
+        <div class="cp-sk-pill cp-shimmer"></div>
+        <div class="cp-sk-line cp-shimmer"></div>
+        <div class="cp-sk-line cp-shimmer"></div>
+        <div class="cp-sk-line short cp-shimmer"></div>
+      </div>
+    </div>`;
+  }
+  return `<div aria-hidden="true">
+    <div class="cp-sk-hero cp-shimmer"></div>
+    ${cpSkelRay()}
+    ${cpSkelRay()}
+  </div>`;
+}
+
+/* Detay sayfası mobil yapışkan CTA: "İzle/Devam Et" düğmesini başparmak
+   menzilinde tutar. DetailView.js'e dokunmadan ekrandaki gerçek düğmenin
+   tıklaması yönlendirilir; düğüm göründüğünde şerit gizlenir. */
+let detayCtaGozlemcisi = null;
+
+function kapatDetayYapistirCTA() {
+  if (detayCtaGozlemcisi) {
+    detayCtaGozlemcisi.disconnect();
+    detayCtaGozlemcisi = null;
+  }
+  document.querySelectorAll('.cp-sticky-cta-wrap').forEach(el => el.remove());
+}
+
+function kurDetayYapistirCTA(container) {
+  kapatDetayYapistirCTA();
+  if (!window.matchMedia('(max-width: 860px)').matches) return;
+  const playBtn = container.querySelector('#btn-play-movie, #btn-resume-series');
+  if (!playBtn) return;
+  const span = playBtn.querySelector('span');
+  const etiket = ((span && span.firstChild && span.firstChild.textContent) || 'İzle').trim() || 'İzle';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'cp-sticky-cta-wrap';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'cp-sticky-cta';
+  btn.innerHTML = '<i data-lucide="play" aria-hidden="true"></i>';
+  const etiketEl = document.createElement('span');
+  etiketEl.textContent = etiket;
+  btn.appendChild(etiketEl);
+  wrap.appendChild(btn);
+  document.body.appendChild(wrap);
+  renderIcons(wrap);
+
+  btn.addEventListener('click', () => playBtn.click());
+
+  if ('IntersectionObserver' in window) {
+    detayCtaGozlemcisi = new IntersectionObserver(entries => {
+      // Düğüm ekran dışına çıkınca şerit belirir; geri girince çekilir.
+      btn.classList.toggle('show', !entries[0].isIntersecting);
+    }, { threshold: 0 });
+    detayCtaGozlemcisi.observe(playBtn);
+  } else {
+    btn.classList.add('show');
+  }
+}
+
 let routeGeneration = 0;
 async function renderRoute() {
   const generation = ++routeGeneration;
   cleanupHomeView();
   flushScrollState();
+  // CP-QUALITY-PACK: önceki rota'nın önizleme iframe'i ve yapışkan CTA'sı temizlenir.
+  closeCardPreview();
+  kapatDetayYapistirCTA();
   // '#/detail' gibi leading-slashli girdiler eskiden ana sayfaya düşüyordu
   // (harici paylaşımlar/tarayıcı otomasyonu '#' sonrası '/' ekleyebiliyor).
   const hash = resolveEntryHash(window.location.hash.replace(/^#\/+/, '#'), isAppPlatform(), new URLSearchParams(window.location.search).has('oda'));
@@ -154,7 +244,7 @@ async function renderRoute() {
   const cardLayoutSwitcherHTML = cardViews.has(viewName) ? renderCardLayoutSwitcher() : '';
 
   if (viewName === 'home' || viewName === 'detail') {
-    app.innerHTML = `${navbarHTML}<main class="route-loading" aria-live="polite"><div class="spin-loader"></div><span>İçerikler yükleniyor...</span></main>`;
+    app.innerHTML = `${navbarHTML}<main class="cp-route-skeleton cp-view-enter" aria-busy="true">${renderRouteSkeleton(viewName)}</main>`;
     attachNavbarEvents();
     renderIcons(app);
   }
@@ -202,7 +292,7 @@ async function renderRoute() {
   app.innerHTML = `
     ${navbarHTML}
     ${cardLayoutSwitcherHTML}
-    <main style="min-height: 85vh;">
+    <main class="cp-view-enter" style="min-height: 85vh;">
       ${viewResult ? viewResult.html : '<h2>Sayfa Bulunamadı</h2>'}
     </main>
     
@@ -229,6 +319,11 @@ async function renderRoute() {
     viewResult.init(app);
   }
 
+  // CP-QUALITY-PACK: detay sayfasında mobil yapışkan "İzle/Devam Et" şeridi
+  if (viewName === 'detail') {
+    kurDetayYapistirCTA(app);
+  }
+
   if (window.lucide) {
     renderIcons();
   }
@@ -239,6 +334,13 @@ async function renderRoute() {
 }
 
 // Router Event Listeners
+/** Bir öznitelik değerini güvenli hâle getirir (hata metni DOM'a yazılırken). */
+function escapeAttr(deger = '') {
+  return String(deger)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 async function route() {
   await platformReady;
   const generation = routeGeneration + 1;
@@ -247,7 +349,11 @@ async function route() {
   } catch (error) {
     if (generation !== routeGeneration) return;
     console.error('[Router] Sayfa yüklenemedi:', error);
-    app.innerHTML = `${renderNavbar('home')}<main class="container" role="alert" style="padding:6rem 1rem"><p>Sayfa yüklenemedi. Yeniden deneyebilirsin.</p><button class="btn btn-primary" id="btn-route-retry">Yeniden Dene</button></main>`;
+    // Sebeb ekranda gösterilmez (kullanıcı için yetersiz ve çirkin), ama hata
+    // sayfasının üstüne yazılır: telefondan/uzaktan teşhis mümkün olsun.
+    const sebep = String((error && (error.stack || error.message)) || error || '')
+      .replace(/\s+/g, ' ').slice(0, 600);
+    app.innerHTML = `${renderNavbar('home')}<main class="container" role="alert" style="padding:6rem 1rem" data-route-error="${escapeAttr(sebep)}"><p>Sayfa yüklenemedi. Yeniden deneyebilirsin.</p><button class="btn btn-primary" id="btn-route-retry">Yeniden Dene</button></main>`;
     attachNavbarEvents();
     app.querySelector('#btn-route-retry')?.addEventListener('click', route);
     renderIcons(app);
@@ -323,8 +429,11 @@ window.addEventListener('storage', (event) => {
   route();
 });
 
-/* Cihaz ölçüm kancası — yalnızca VITE_DEVICE_SWEEP=1 ile derlenirse pakete girer.
-   Üretim derlemesinde bayrak '1' olmadığı için bu blok tamamen elenir. */
-if (import.meta.env.VITE_DEVICE_SWEEP === '1') {
-  import('./devtools/deviceSweep.js').then((m) => m.kurSweep()).catch(() => {});
+/* Cihaz ölçüm kancası — yalnız VITE_DEVICE_SWEEP=1 (dev) derlemesinde yüklenir.
+   Dinamik import sayesinde ÜRETİM paketine hiç girmez.
+   window.__cpSag / __cpSweep / __cpSaglik → tools/cihaz-cdp.mjs çağırır. */
+if (import.meta.env?.VITE_DEVICE_SWEEP === '1') {
+  import('./devtools/deviceSweep.js')
+    .then(m => m.kancayiKur())
+    .catch(() => { /* ölçüm kancası yoksa uygulama yine çalışır */ });
 }

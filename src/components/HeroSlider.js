@@ -1,4 +1,4 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio – Hero Spotlight Slider
    • Touch/mouse swipe (threshold-based, no accidental taps)
@@ -9,8 +9,10 @@ import { renderIcons } from '../services/icons.js';
    • Cinematic crossfade backdrop transition
    ========================================================================== */
 
-import { getImageUrl, TMDB_IMAGE_SIZES, generateCinematicOverview, fetchMediaTrailer } from '../services/tmdbApi.js';
-import { isWatchlist, toggleWatchlist, isKidProfileActive, isItemKidSafe, getUserSettings } from '../services/storage.js';
+import { getImageUrl, TMDB_IMAGE_SIZES, generateCinematicOverview, fetchMediaTrailer } from '../services/icerik/tmdbApi.js';
+import { isWatchlist, toggleWatchlist, isKidProfileActive, isItemKidSafe, getUserSettings } from '../services/altyapi/storage.js';
+import { getBestBackdrop } from '../services/icerik/fanartService.js';
+import { puanMetni } from '../services/icerik/imdbRating.js';
 import { openTrailerModal } from './TrailerModal.js';
 import { showToast } from './Toast.js';
 
@@ -72,6 +74,8 @@ export function renderHeroSlider(items = []) {
   const overview = (featured.overview && featured.overview.trim().length > 15) ? featured.overview : generateCinematicOverview(featured, type);
   const backdropUrl = getHeroBackdropUrl(featured);
   const rating = featured.vote_average ? featured.vote_average.toFixed(1) : '8.8';
+  // IMDb puanı gelmeyebilir (uç kapalı/ağ yok) → null; .toFixed() çökmesin.
+  const imdbRating = puanMetni(featured.imdbRating);
   const year = (featured.first_air_date || featured.release_date || '').substring(0, 4);
   const inWatchlist = isWatchlist(id);
 
@@ -111,13 +115,18 @@ export function renderHeroSlider(items = []) {
         <div class="hero-content">
           <div class="hero-badge-row" id="hero-badge-row">
             <span class="badge badge-rating" id="hero-rating-badge">
-              <i data-lucide="star" style="width:12px; height:12px; fill: currentColor"></i> ${rating} IMDb
+              <i data-lucide="star" style="width:12px; height:12px; fill: currentColor"></i> ${rating} TMDB ${imdbRating ? `<span style="color: #fbbf24;">· ${imdbRating} IMDb</span>` : ''}
             </span>
             <span class="badge" id="hero-year-badge">${year}</span>
             <span class="badge badge-type" id="hero-type-badge">${type === 'tv' ? 'DİZİ' : 'FİLM'}</span>
           </div>
 
-          <h1 class="hero-title" id="hero-title-text">${title}</h1>
+          <!-- Ozel tasarimli icerik basligi: TMDB logosu varsa o, yoksa duz yaz.
+               h1 DOM'da kalir (erisilebilirlik + SEO), logoyla birlikte gorsel olarak gizlenir. -->
+          <div class="hero-titleblock" id="hero-titleblock">
+            <img class="hero-title-logo" id="hero-title-logo" alt="" aria-hidden="true" hidden />
+            <h1 class="hero-title" id="hero-title-text">${title}</h1>
+          </div>
           <p class="hero-overview" id="hero-overview-text">${overview}</p>
 
           <div class="hero-actions">
@@ -186,6 +195,8 @@ export function attachHeroSliderEvents(items = []) {
     });
   };
   revealFirstSlide();
+  // İlk slaytin ozel basligi (logo) template'ten degil, ayni yoldan yuklenir.
+  uygulaHeroBaslik(slides[0], slides[0]?.first_air_date || slides[0]?.media_type === 'tv' ? 'tv' : 'movie');
   // Güvenlik: backdrop takilirsa hero gorunmez kalmasin (Netflix davranisi).
   setTimeout(() => {
     const hs = document.getElementById('hero-slider-section');
@@ -316,6 +327,51 @@ export function attachHeroSliderEvents(items = []) {
 }
 
 /* ==========================================================================
+   Ozel tasarimli hero basligi
+   --------------------------------------------------------------------------
+   Kartlarin aksine (afiste baslik YOK) hero'da igerigin kendi tasarimli
+   TMDB logosu kullanilir; logosu yoksa duz yaziya duser. Eski slaytin gec
+   cevap veren logosu yeni slaytin ustune binmesin diye token korunur.
+   ========================================================================== */
+let heroLogoToken = 0;
+
+async function uygulaHeroBaslik(item, type = 'movie') {
+  const blok = document.getElementById('hero-titleblock');
+  const logo = document.getElementById('hero-title-logo');
+  const titleEl = document.getElementById('hero-title-text');
+
+  // Once yazı her durumda yerlestirilir → logo gelmezse ekran bos kalmaz.
+  if (titleEl) {
+    titleEl.textContent = item?.title || item?.name || '';
+    titleEl.hidden = false;
+  }
+  if (!blok || !logo || !item?.id) return;
+
+  const token = ++heroLogoToken;
+  blok.classList.remove('hero-titleblock--logo');
+
+  let artwork = null;
+  try {
+    artwork = await getBestBackdrop(item.id, type);
+  } catch (_) {
+    return; // logoya erisilemedi → yazı zaten gorunur
+  }
+  if (token !== heroLogoToken || !logo.isConnected || !artwork?.logo) return;
+
+  logo.addEventListener('load', () => {
+    if (token !== heroLogoToken || !logo.isConnected) return;
+    logo.hidden = false;
+    blok.classList.add('hero-titleblock--logo');
+  }, { once: true });
+  logo.addEventListener('error', () => {
+    if (token !== heroLogoToken) return;
+    logo.hidden = true;
+    blok.classList.remove('hero-titleblock--logo');
+  }, { once: true });
+  logo.src = artwork.logo;
+}
+
+/* ==========================================================================
    Update Slide (crossfade)
    ========================================================================== */
 async function updateHeroSlide(item, targetSlideIndex = currentSlideIndex) {
@@ -323,7 +379,6 @@ async function updateHeroSlide(item, targetSlideIndex = currentSlideIndex) {
   if (isKidProfileActive() && !isItemKidSafe(item)) return;
 
   const backdropEl  = document.getElementById('hero-backdrop-img');
-  const titleEl     = document.getElementById('hero-title-text');
   const overviewEl  = document.getElementById('hero-overview-text');
   const playBtn     = document.getElementById('hero-play-btn');
   const listBtn     = document.getElementById('hero-list-btn');
@@ -355,7 +410,7 @@ async function updateHeroSlide(item, targetSlideIndex = currentSlideIndex) {
     if (heroContent?.isConnected) heroContent.classList.add('hero-content-committing');
   });
 
-  if (titleEl) titleEl.textContent = item.title || item.name;
+  uygulaHeroBaslik(item, type);
   const slideOverview = (item.overview && item.overview.trim().length > 15)
     ? item.overview : generateCinematicOverview(item, type);
   if (overviewEl) overviewEl.textContent = slideOverview;

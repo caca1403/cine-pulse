@@ -1,4 +1,4 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - Media Detail View
    Displays full TMDB metadata, backdrop banner, season/episode list or play movie button
@@ -6,14 +6,16 @@ import { renderIcons } from '../services/icons.js';
    Includes movie runtime, bulk series mark-watched, season selectors, and halfway in-progress states.
    ========================================================================== */
 
-import { fetchMediaDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK, generateCinematicOverview } from '../services/tmdbApi.js';
-import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway, registerAnimeId, isRegisteredAnimeId } from '../services/storage.js';
+import { fetchMediaDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK, generateCinematicOverview } from '../services/icerik/tmdbApi.js';
+import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway, registerAnimeId, isRegisteredAnimeId } from '../services/altyapi/storage.js';
 import { renderSeasonSelector } from '../components/SeasonSelector.js';
 import { renderMediaCard, attachMediaCardEvents, isAnimeItem } from '../components/MediaCard.js';
 import { openPlayerModal } from '../components/openPlayer.js';
 import { openCastExplorerModal } from '../components/CastExplorerModal.js';
 import { showToast } from '../components/Toast.js';
-import { getNextEpisodeInfo } from '../services/tvmazeService.js';
+import { getNextEpisodeInfo } from '../services/icerik/tvmazeService.js';
+import { getBestBackdrop } from '../services/icerik/fanartService.js';
+import { puanMetni } from '../services/icerik/imdbRating.js';
 
 const DECISION_ROOM_AUTOPLAY_KEY = 'cinepulse.decision-room.autoplay';
 
@@ -40,6 +42,30 @@ function formatMediaRuntime(minutes) {
     return `${hrs} sa ${remMin > 0 ? remMin + ' dk' : ''} (${minutes} dk)`;
   }
   return `${minutes} dk`;
+}
+
+/**
+ * Detay ekranına özel tasarımlı içerik başlığını (logo) uygular.
+ * Zincir fanartService'te: TMDB logosu → Fanart.tv (anime dahil). Logo yoksa
+ * düz başlık görünür kalır; bu fonksiyon başarısız olursa arayüz etkilenmez.
+ */
+async function baslikLogosunuUygula(kok, tmdbId, tur) {
+  try {
+    const blok = kok?.querySelector?.('.detail-titleblock');
+    const gorsel = kok?.querySelector?.('.detail-title-logo');
+    if (!blok || !gorsel || !tmdbId) return;
+    const sanat = await getBestBackdrop(tmdbId, tur === 'tv' ? 'tv' : 'movie');
+    const adres = sanat?.logo;
+    if (!adres || !blok.isConnected) return;
+    gorsel.addEventListener('load', () => {
+      if (!gorsel.isConnected) return;
+      gorsel.hidden = false;
+      blok.classList.add('detail-titleblock--logo');
+    }, { once: true });
+    gorsel.src = adres;
+  } catch (_) {
+    /* logosuz devam: düz başlık zaten ekranda */
+  }
 }
 
 export async function renderDetailView(typeOrObj = 'tv', maybeId) {
@@ -71,6 +97,9 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
   const backdropUrl = getImageUrl(media.backdrop_path, TMDB_IMAGE_SIZES.BACKDROP_ORIGINAL);
   const posterUrl = getImageUrl(media.poster_path, TMDB_IMAGE_SIZES.POSTER_MEDIUM);
   const rating = media.vote_average ? media.vote_average.toFixed(1) : '8.5';
+  // IMDb puanı gelmeyebilir (uç kapalı/ağ yok) → null. Eskiden doğrudan
+  // .toFixed() yeniyordu ve DETAY EKRANININ TAMAMI çöküyordu.
+  const imdbRating = puanMetni(media.imdbRating);
   const year = (media.first_air_date || media.release_date || '').substring(0, 4);
   const overview = (media.overview && media.overview.trim().length > 15) ? media.overview : generateCinematicOverview(media, effectiveType);
   const genres = media.genres || [];
@@ -172,8 +201,11 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
             <!-- Left/Center Primary Info Column (Netflix Mulan Layout) -->
             <div class="detail-info-col">
               
-              <!-- Giant Cinematic Title (Image 2 Mulan style) -->
-              <h1 class="detail-heading-title">${title}</h1>
+              <!-- Özel tasarımlı başlık: logosu varsa o, yokta düz yazı -->
+              <div class="detail-titleblock">
+                <img class="detail-title-logo" alt="" aria-hidden="true" hidden />
+                <h1 class="detail-heading-title">${title}</h1>
+              </div>
 
               <!-- Editorial Subtitle (Original Title & Creator / Director) -->
               <div class="detail-editorial-sub">
@@ -419,7 +451,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                   ` : ''}
                   <div class="spec-row">
                     <span class="spec-label">IMDb Puanı</span>
-                    <span class="spec-val" style="color: #dfff76; font-weight: 750;">★ ${rating} / 10</span>
+                    <span class="spec-val" style="color: #dfff76; font-weight: 750;">${imdbRating ? "★ " + imdbRating + " / 10" : "★ " + rating + " / 10"}</span>
                   </div>
                   <div class="spec-row">
                     <span class="spec-label">Letterboxd</span>
@@ -510,6 +542,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
   return {
     html,
     init: (container) => {
+      baslikLogosunuUygula(container, id, normalizedType);
       if (!container) return;
       let decisionRoomAutoplay = consumeDecisionRoomAutoplay(effectiveType, id);
 

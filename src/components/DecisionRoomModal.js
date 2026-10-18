@@ -1,5 +1,5 @@
-import { renderIcons } from '../services/icons.js';
-import { fetchTrending, getImageUrl, searchMulti, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
+import { renderIcons } from '../services/kabuk/icons.js';
+import { fetchTrending, getImageUrl, searchMulti, TMDB_IMAGE_SIZES } from '../services/icerik/tmdbApi.js';
 import {
   AnonymousDecisionRoom,
   buildRoomUrl,
@@ -9,7 +9,7 @@ import {
   isRememberedRoomOwner,
   rememberRoomOwner,
   removeRoomCodeFromUrl
-} from '../services/anonymousDecisionRoom.js';
+} from '../services/altyapi/anonymousDecisionRoom.js';
 import { showToast } from './Toast.js';
 
 let activeRoomModal = null;

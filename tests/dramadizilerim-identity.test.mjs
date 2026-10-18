@@ -10,7 +10,7 @@ import {
   extractCaptionTracks,
   looksLikeCaption,
   fetchDramaDizilerimEpisodeSources
-} from '../src/services/dramaDizilerimScraper.js';
+} from '../src/services/kaynak/dramaDizilerimScraper.js';
 
 // ── Kimlik kapısı (saf) ─────────────────────────────────────────────────────
 test('identityKey: Türkçe duyarsız, noktalama boşluk, gürültü kelimeler atık', () => {

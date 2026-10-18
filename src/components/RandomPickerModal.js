@@ -1,11 +1,11 @@
-import { renderIcons } from '../services/icons.js';
+import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - "Ne İzlesem?" Akıllı Çark / Rastgele Öneri Modal
    Interactive smart suggestion reel with genre & rating filters,
    animated roulette shuffle, and one-click direct playback.
    ========================================================================== */
 
-import { fetchDiscoverMedia, getImageUrl, TMDB_IMAGE_SIZES } from '../services/tmdbApi.js';
+import { fetchDiscoverMedia, getImageUrl, TMDB_IMAGE_SIZES } from '../services/icerik/tmdbApi.js';
 import { openPlayerModal } from './openPlayer.js';
 
 let activeRandomModal = null;

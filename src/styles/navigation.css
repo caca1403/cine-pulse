@@ -41,9 +41,6 @@
 .cp-profile { background: #dfff7614; color: var(--cp-lime); border-color: #dfff7633; }
 .cp-bell { position: relative; }
 .cp-notification-dot { position: absolute; right: 6px; top: 3px; background: #fa5964; border: 2px solid #0a0b0d; width: 10px; height: 10px; font-size: 0; border-radius: 50%; }
-.cp-live { display: flex; align-items: center; gap: 7px; color: #dce0e6; font-size: 11px; white-space: nowrap; }
-.cp-live > span { width: 6px; height: 6px; background: #fa5964; border-radius: 50%; }
-.cp-live.active { color: var(--cp-lime); }
 .cp-menu-backdrop { position: fixed; inset: var(--cp-nav-bottom,78px) 0 0; z-index: 990; background: #0009; }
 .cp-menu-backdrop[hidden] { display: none; }
 .cp-discovery-panel { position: fixed; top: calc(var(--cp-nav-bottom,78px) + 12px); left: 50%; transform: translate(-50%,-6px); width: min(1240px,calc(100vw - 48px)); max-height: calc(100dvh - var(--cp-nav-bottom,78px) - 32px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #454b53 transparent; background: #0e1115; border: 1px solid #ffffff26; border-radius: 22px; padding: 24px; box-shadow: 0 24px 80px #0008; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .18s, transform .18s, visibility .18s; }
@@ -67,8 +64,12 @@
 .cp-tile-arrow svg { width: 15px; height: 15px; }
 .cp-discovery-tools { display: flex; flex-direction: column; gap: 8px; border: 1px solid #ffffff14; border-radius: 14px; padding: 14px; background: #12161b; }
 .cp-discovery-tools h3 { font-size: 21px; font-weight: 750; letter-spacing: -.5px; margin: 0 0 8px; }
-.cp-mobile-shortcuts, .cp-personal-tools { display: none; }
-.cp-inspiration-tools { display: flex; flex-direction: column; gap: 8px; }
+/* Keşfet araçları: tek ve düzenli ızgara (kullanıcı: "alt yığın dağınık").
+   Her araç aynı ölçüde — ikon üstte, ad ve açıklama altında. Chevron
+   kaldırıldı çünkü ızgarada satır sonu oku anlamsız. */
+.cp-tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cp-tool-grid .cp-tool { flex-direction: column; align-items: flex-start; gap: 7px; min-height: 96px; padding: 11px 10px; }
+.cp-tool-grid .cp-tool > svg { display: none; }
 .cp-tool { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 10px; border: 1px solid #ffffff13; border-radius: 11px; color: #f4f6f8; background: #1a1e24; text-align: left; }
 .cp-tool:hover { background: #242a31; border-color: #dfff7633; }
 .cp-tool-icon { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px; background: #dfff760b; color: var(--cp-lime); }
@@ -99,7 +100,6 @@
   .cp-brand > span { width: 32px; height: 32px; border-radius: 8px; }
   .cp-brand svg { width: 23px; height: 23px; }
   .cp-nav-actions { grid-row: 1; grid-column: 2; gap: 4px; }
-  .cp-nav-actions .cp-live { display: none; }
   .cp-nav-actions .cp-nav-action { display: inline-flex; justify-content: center; width: 36px; height: 40px; padding: 0; }
   .cp-nav-actions .cp-nav-action span { display: none; }
   .cp-nav-actions .cp-icon-button, .cp-nav-actions .cp-profile { width: 36px; height: 40px; }
@@ -135,16 +135,14 @@
   .cp-category-dramas img { object-position: center 35%; }
   .cp-discovery-tools { padding: 0; background: transparent; border: 0; border-radius: 0; gap: 7px; }
   .cp-discovery-tools h3 { display: none; }
-  .cp-mobile-shortcuts { display: block; }
-  .cp-personal-tools, .cp-inspiration-tools { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 7px; }
-  .cp-tool { min-height: 46px; padding: 8px; gap: 7px; border-radius: 9px; background: #171c22; }
+  .cp-tool-grid { gap: 7px; }
+  .cp-tool-grid .cp-tool { min-height: 74px; padding: 8px; gap: 6px; border-radius: 9px; background: #171c22; }
   .cp-tool-icon { width: 27px; height: 27px; border-radius: 7px; }
   .cp-tool-icon svg { width: 19px; height: 19px; }
   .cp-tool-copy strong { font-size: 11px; }
   .cp-tool-copy small { font-size: 9px; }
   .cp-tool > svg { width: 12px; height: 12px; }
   .cp-discovery-footer { margin-top: 9px; padding-top: 8px; gap: 0; }
-  .cp-discovery-footer .cp-desktop-discover { display: none; }
   .cp-discovery-footer a { width: 100%; font-size: 10px; justify-content: flex-start; gap: 8px; min-height: 30px; }
   .cp-discovery-footer a svg:last-child { margin-left: auto; }
   .cp-menu-backdrop { bottom: 0; }
@@ -164,13 +162,11 @@
 .cine-discovery-theme .home-view { padding-top: var(--cp-header-height,78px); }
 .cine-discovery-theme .home-view .rail-section { margin-top: 28px !important; margin-bottom: 24px !important; }
 .cine-discovery-theme .home-view .rail-title { color: #f3f5f7; font-weight: 750; letter-spacing: -.5px; }
-.cine-discovery-theme .home-view .card-top-rating { color: var(--cp-lime); background: #111820dc; border: 1px solid #ffffff14; border-radius: 7px; }
-.cine-discovery-theme .home-view .card-top-rating svg { stroke: var(--cp-lime) !important; fill: var(--cp-lime) !important; }
-.cine-discovery-theme .home-view .card-top-year { display: none; }
+.cine-discovery-theme .home-view .card-info .card-rating-inline { color: var(--cp-lime); background: #111820dc; border: 1px solid #ffffff14; border-radius: 7px; }
+.cine-discovery-theme .home-view .card-info .card-year-tag { display: none; }
 .cine-discovery-theme .home-view .card-poster-wrapper { border: 1px solid #ffffff1a; border-radius: 12px; }
-.cine-discovery-theme .home-view .card-watch-status { background: transparent !important; border: 0 !important; justify-content: flex-start; color: #64e58e; padding: 6px 2px; font-size: 10px; }
-.cine-discovery-theme .home-view .card-cinematic-title { font-weight: 700; }
-.cine-discovery-theme .home-view .card-cinematic-meta { color: #aab3bf; }
+.cine-discovery-theme .home-view .card-info .card-status-chip { background: transparent !important; border: 0 !important; color: #64e58e; padding: 0; font-size: 10px; }
+.cine-discovery-theme .home-view .card-info .card-title { font-weight: 800; }
 .cine-discovery-theme .card-layout-switcher { background: #14191ff0 !important; border: 1px solid #ffffff22 !important; border-radius: 12px !important; box-shadow: none !important; }
 .cine-discovery-theme .card-layout-option.active { background: #dfff761a !important; color: var(--cp-lime) !important; border-color: #dfff7660 !important; box-shadow: none !important; }
 @media (max-width: 860px) {
@@ -188,7 +184,7 @@
 }
 .cine-discovery-theme .home-view .card-rail { gap: 12px !important; }
 .cine-discovery-theme .home-view .rail-icon-pill { color: var(--cp-lime) !important; background: transparent !important; }
-.cine-discovery-theme .home-view .media-card:hover .card-cinematic-title { color: var(--cp-lime); }
+.cine-discovery-theme .home-view .media-card:hover .card-info .card-title { color: var(--cp-lime); }
 .cp-search .search-results-overlay { top: calc(100% + 10px); left: 0; right: 0; width: max(100%,320px); max-width: calc(100vw - 36px); max-height: min(60dvh,480px); overflow-y: auto; background: #12161c; border: 1px solid #ffffff26; border-radius: 14px; }
 .cp-search .search-item-drama { background: #dfff760c !important; border-color: #dfff7626 !important; }
 .cp-search .search-item-drama .search-item-title { color: #e4f7ba !important; }

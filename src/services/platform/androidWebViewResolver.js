@@ -53,7 +53,7 @@ function installHandler() {
  * Sayfayi coz ve { ok, html, text, cookies, challenge, finalUrl } dondur.
  * Cozumleyici yoksa veya basarisizsa null.
  */
-function dispatchPage(url, { timeoutMs = 22000, media = false } = {}) {
+function dispatchPage(url, { timeoutMs = 22000, media = false, referer = '' } = {}) {
   return new Promise((resolve) => {
     const b = bridge();
     if (!b || typeof b.resolvePage !== 'function') { resolve(null); return; }
@@ -64,7 +64,7 @@ function dispatchPage(url, { timeoutMs = 22000, media = false } = {}) {
     }, Math.max(6000, timeoutMs + 6000));
     pending.set(id, { resolve, timer });
     try {
-      b.resolvePage(id, String(url || ''), Math.max(6000, Math.min(45000, timeoutMs | 0)), media);
+      b.resolvePage(id, String(url || ''), Math.max(6000, Math.min(45000, timeoutMs | 0)), media, String(referer || ''));
     } catch (_) {
       clearTimeout(timer);
       pending.delete(id);
@@ -81,7 +81,7 @@ let kuyrukSayac = 0;
 export function resolverMesgulMu() { return kuyrukSayac > 0; }
 
 export function resolvePageInNativeWebView(url, options = {}) {
-  const key = `${Boolean(options.media)}:${url}`;
+  const key = `${Boolean(options.media)}:${options.referer || ''}:${url}`;
   if (inflight.has(key)) return inflight.get(key);
   const deadline = Date.now() + (options.timeoutMs || 22000);
   const task = queue.then(() => {

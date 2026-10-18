@@ -12,7 +12,7 @@
  *
  * Ciktinin adlari electron-builder artifactName kurallariyla birebir ayni olmali:
  *   win  : CinePulse-Setup-${version}.exe   (package.json > build > win.artifactName)
- *   linux: CinePulse-${version}.deb / .AppImage (build > linux.artifactName)
+ *   linux: CinePulse-${version}.deb / .flatpak (build > linux.artifactName)
  *   apk  : cinepulse.apk                    (.github/workflows adimlarinin kopyaladigi ad)
  * Isteyen CINEPULSE_REPO_SLUG ile depo adresini degistirebilir.
  */
@@ -36,7 +36,7 @@ const urls = {
   downloadUrl: `${base}/cinepulse.apk`,
   githubDownloadUrl: `${base}/cinepulse.apk`,
   windowsSetupUrl: `${base}/CinePulse-Setup-${pkg.version}.exe`,
-  linuxAppImageUrl: `${base}/CinePulse-${pkg.version}.AppImage`,
+  linuxFlatpakUrl: `${base}/CinePulse-${pkg.version}.flatpak`,
   linuxDebUrl: `${base}/CinePulse-${pkg.version}.deb`,
 };
 
@@ -49,7 +49,7 @@ for (const rel of ['public/version.json', 'public/desktop-version.json']) {
   if (manifest.desktop && typeof manifest.desktop === 'object') {
     expected['desktop.version'] = pkg.version;
     expected['desktop.versionCode'] = pkg.versionCode;
-    for (const key of ['windowsSetupUrl', 'linuxAppImageUrl', 'linuxDebUrl']) {
+    for (const key of ['windowsSetupUrl', 'linuxFlatpakUrl', 'linuxDebUrl']) {
       if (key in manifest.desktop) expected[`desktop.${key}`] = urls[key];
     }
   }

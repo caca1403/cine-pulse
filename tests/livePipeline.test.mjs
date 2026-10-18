@@ -1,5 +1,5 @@
 /* Uçtan uca: sidecar → /api/live_sources → istemci kanal üretimi → proxy URL'leri */
-import { buildChannels } from '../src/services/turkishLiveSources.js';
+import { buildChannels } from '../src/services/canli/turkishLiveSources.js';
 
 const BASE = 'http://127.0.0.1:4000';
 
