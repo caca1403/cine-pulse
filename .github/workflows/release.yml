@@ -154,6 +154,8 @@ jobs:
           sudo apt-get install -y flatpak flatpak-builder
           sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           sudo flatpak install -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
+          # flatpak-bundler build-init icin BaseApp sart (olcusuz 1sn'de duser)
+          sudo flatpak install -y flathub org.electronjs.Electron2.BaseApp//24.08
 
       - name: Build DEB + Flatpak (package.json build config)
         env:
