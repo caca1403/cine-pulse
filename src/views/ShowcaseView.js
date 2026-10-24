@@ -7,6 +7,10 @@ import '../styles/showcase.css';
 const RELEASES = 'https://github.com/caca1403/cine-pulse/releases';
 const base = import.meta.env.BASE_URL;
 const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
+// Hero scroll-parallax rAF handle'lari; route'a her donusun birikmeyi
+// onlemek icin eski scroll duyrucusu burada degisir (init yeniden kosar).
+let heroScrollFx = null;
+let heroScrollRaf = 0;
 
 const benefits = [
   ['compass', 'İzleyecek bir şey bul.', 'Film, dizi, anime ve farklı kategoriler. Arama, yapım detayları ve önerilerle bir sonraki hikâyene karar ver.'],
@@ -69,6 +73,7 @@ export function renderShowcaseView() {
             <div class="cp-landing-preview-cards">${[['series','Diziler'],['anime','Anime'],['documentary','Belgeseller']].map(([file,label],i)=>`<div><img src="${base}images/discovery/${file}.webp" alt="" loading="lazy"><span>${label}</span><i style="--progress:${[67,35,82][i]}%"></i></div>`).join('')}</div>
             <div class="cp-landing-source-chip">${icon('layers')}Birden fazla seçenek.<strong>Tek oynatıcı.</strong></div>
           </div>
+          <div class="cp-landing-hero-stack" aria-hidden="true">${['cartoons', 'dramas', 'series'].map((n, i) => `<i class="cp-landing-stack-${i + 1}" style="--z:${[-60, -30, 0][i]}px"><img src="${base}images/discovery/${n}.webp" alt=""></i>`).join('')}</div>
         </section>
         <div class="cp-landing-platforms cp-landing-shell"><span>NEREDEN İSTERSEN</span><p>${icon('monitor')}Windows</p><p>${icon('terminal')}Linux</p><p>${icon('smartphone')}Android</p></div>
         <section id="landing-downloads" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-downloads-title"><div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">PAKETLER · v${pkg.version}</span><h2 id="landing-downloads-title">CinePulse'u<br><span>ekranına taşı.</span></h2><p>İşletim sistemine uygun dosyayı seç. Kurulum paketleri resmî GitHub Releases üzerinden doğrudan indirilir; ZIP açman gerekmez.</p></div><div class="cp-landing-downloads">${packages.map(([symbol,title,detail,url,label,platform])=>`<article data-platform-download="${platform}">${icon(symbol)}<h3>${title} <small class="cp-landing-pkgver" data-pkgver></small></h3><p>${detail}</p><a class="cp-landing-button cp-landing-secondary" href="${url}" target="_blank" rel="noopener noreferrer" data-pkgurl>${label}${icon('arrow-down-to-line')}</a></article>`).join('')}</div><div class="cp-landing-download-footer"><span>Android için kalıcı release imzası · Windows 10+ · Debian/Ubuntu · Flatpak'li dağıtımlar</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-up-right')}</a></div></section>
@@ -114,6 +119,91 @@ export function renderShowcaseView() {
         set('deb', info.desktop.deb, info.desktop.version);
         set('flatpak', info.desktop.flatpak, info.desktop.version);
       }).catch(() => {});
+      // ---- TANITIM SAHNE EFEKTLERI ----
+      // Vanilla CSS + IO + rAF; npm bagimliligi yok. reduced-motion veya
+      // coarse-pointer'da hicbiri devreye girmez (icerik statik gorunur),
+      // marquee klonu da yapilmaz (ekran okuyucuya cift metin gitmez).
+      const root = container.querySelector('.cp-landing');
+      if (root && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        // D) sonsuz marquee: serit icerigi ikiye kopyala, CSS translateX(-50%) doner.
+        const strip = root.querySelector('.cp-landing-platforms');
+        if (strip) {
+          const group = document.createElement('div');
+          group.className = 'cp-landing-marquee-group';
+          while (strip.firstChild) group.append(strip.firstChild);
+          const copy = group.cloneNode(true);
+          copy.setAttribute('aria-hidden', 'true');
+          const track = document.createElement('div');
+          track.className = 'cp-landing-marquee-track';
+          track.append(group, copy);
+          strip.append(track);
+        }
+        // B) scroll-reveal: butun section cocuklari, 60ms stagger (--reveal-i).
+        if ('IntersectionObserver' in window) {
+          root.querySelectorAll('main section').forEach(section => {
+            [...section.children].forEach((el, i) => {
+              if (el.matches('.cp-landing-preview, .cp-landing-hero-stack')) return;
+              el.classList.add('cp-reveal');
+              el.style.setProperty('--reveal-i', Math.min(i, 7));
+            });
+          });
+          const io = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+              if (!entry.isIntersecting) return;
+              entry.target.classList.add('is-revealed');
+              io.unobserve(entry.target);
+            });
+          }, { threshold: 0.06, rootMargin: '0px 0px -50px 0px' });
+          root.querySelectorAll('.cp-reveal').forEach(el => io.observe(el));
+        }
+        if (matchMedia('(pointer: fine)').matches) {
+          // A) hero 3D durusu: mousemove ile max 8deg tilt + 40px one cikma;
+          // scroll-parallax tek degiskende (--sp), katmanlar faktorle cogaltir.
+          const hero = root.querySelector('.cp-landing-hero');
+          const stack = hero?.querySelector('.cp-landing-hero-stack');
+          if (hero && stack) {
+            const paint = () => {
+              root.style.setProperty('--sp', `${Math.max(0, Math.min(scrollY, 900))}px`);
+              heroScrollRaf = 0;
+            };
+            const schedule = () => {
+              if (!heroScrollRaf) heroScrollRaf = requestAnimationFrame(paint);
+            };
+            if (heroScrollFx) removeEventListener('scroll', heroScrollFx);
+            heroScrollFx = schedule;
+            addEventListener('scroll', schedule, { passive: true });
+            paint();
+            hero.addEventListener('mousemove', e => {
+              const r = hero.getBoundingClientRect();
+              const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+              stack.style.setProperty('--sx', `${(0.5 - y) * 8}deg`);
+              stack.style.setProperty('--sy', `${(x - 0.5) * 8}deg`);
+              stack.style.setProperty('--sz', '40px');
+            }, { passive: true });
+            hero.addEventListener('mouseleave', () => {
+              stack.style.setProperty('--sx', '0deg');
+              stack.style.setProperty('--sy', '0deg');
+              stack.style.setProperty('--sz', '0px');
+            });
+          }
+          // C) indirme + benefit kartlari: 6deg'e kadar tilt, 24px hover yukselt,
+          // isik lekesi --mx/--my custom property'lerini izler.
+          root.querySelectorAll('.cp-landing-downloads article, .cp-landing-benefit').forEach(card => {
+            card.addEventListener('mousemove', e => {
+              const r = card.getBoundingClientRect();
+              const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+              card.style.setProperty('--ty', `${(x - 0.5) * 12}deg`);
+              card.style.setProperty('--tx', `${(0.5 - y) * 10}deg`);
+              card.style.setProperty('--mx', `${x * 100}%`);
+              card.style.setProperty('--my', `${y * 100}%`);
+            }, { passive: true });
+            card.addEventListener('mouseleave', () => {
+              card.style.setProperty('--ty', '0deg');
+              card.style.setProperty('--tx', '0deg');
+            });
+          });
+        }
+      }
       try {
         if (sessionStorage.getItem('cp_livetv_web_block') === '1') {
           sessionStorage.removeItem('cp_livetv_web_block');

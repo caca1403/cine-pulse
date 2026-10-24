@@ -25,23 +25,23 @@
 .cp-landing-version>span { width:6px; height:6px; border-radius:50%; background:var(--landing-lime); box-shadow:0 0 13px #dfff7670; }
 .cp-landing-version b { color:var(--landing-lime); padding:3px 7px; background:#dfff7610; border:1px solid #dfff7624; border-radius:5px; letter-spacing:.2px; font-weight:550; }
 .cp-landing-version svg { width:13px; height:13px; }
-.cp-landing h1 { font-size:clamp(48px,5.6vw,76px); line-height:1.07; font-weight:800; letter-spacing:-4px; margin:0 0 25px; }
+.cp-landing h1 { font-size:clamp(2.2rem,6.2vw,5.5rem); line-height:1.05; font-weight:800; letter-spacing:-.045em; margin:0 0 25px; }
 .cp-landing h1 em { font-style:normal; color:var(--landing-lime); }
 .cp-landing-lead { font-size:15px; line-height:1.8; color:var(--landing-muted); margin-bottom:29px; max-width:470px; }
 .cp-landing-actions { display:flex; gap:12px; flex-wrap:wrap; }
 .cp-landing-hero-note { display:flex; gap:8px; align-items:center; font-size:11px; color:#8a929e; margin-top:20px; }
 .cp-landing-hero-note svg { width:14px; height:14px; }
-.cp-landing-preview { border:1px solid #ffffff20; border-radius:16px; padding:0 16px 17px; background:#11151b; position:relative; transform:perspective(1200px) rotateY(-6deg) rotateZ(1deg); box-shadow:0 32px 80px #0008; }
+.cp-landing-preview { border:1px solid #ffffff20; border-radius:16px; padding:0 16px 17px; background:#11151b; position:relative; z-index:1; transform-style:preserve-3d; transform:translate3d(0,calc(var(--sp,0px)*.06),0) perspective(1200px) rotateY(-14deg) rotateX(4deg); transition:transform .34s cubic-bezier(.22,1,.36,1),box-shadow .34s; box-shadow:0 32px 80px #0008; }
 .cp-landing-preview-top { height:46px; display:flex; align-items:center; gap:15px; font-size:9px; color:#949eab; letter-spacing:1.5px; }
 .cp-landing-preview-top>svg { margin-left:auto; width:13px; height:13px; }
 .cp-landing-window-dots { display:flex; gap:5px; }
 .cp-landing-window-dots i { width:5px; height:5px; border-radius:50%; background:#414b58; }
 .cp-landing-window-dots i:first-child { background:var(--landing-lime); }
-.cp-landing-preview-scene { position:relative; height:240px; overflow:hidden; border-radius:9px; background:#171b22; }
-.cp-landing-preview-scene>img { width:100%; height:100%; object-fit:cover; filter:brightness(.65) saturate(.6); }
-.cp-landing-preview-scene::after { content:''; position:absolute; inset:0; background:linear-gradient(transparent 35%,#080a0e 100%); }
+.cp-landing-preview-scene { position:relative; height:240px; overflow:visible; border-radius:9px; background:#171b22; transform-style:preserve-3d; }
+.cp-landing-preview-scene>img { width:100%; height:100%; object-fit:cover; border-radius:9px; filter:brightness(.65) saturate(.6); }
+.cp-landing-preview-scene::after { content:''; position:absolute; inset:0; border-radius:9px; background:linear-gradient(transparent 35%,#080a0e 100%); }
 .cp-landing-preview-tag { position:absolute; top:15px; left:15px; z-index:1; background:var(--landing-lime); color:#18210d; font-size:9px; font-weight:700; padding:5px 9px; border-radius:5px; }
-.cp-landing-preview-play { position:absolute; left:50%; top:43%; transform:translate(-50%,-50%); width:49px; height:49px; background:#080a0ec0; border:1px solid #dfff7680; border-radius:50%; z-index:1; display:grid; place-items:center; color:var(--landing-lime); }
+.cp-landing-preview-play { position:absolute; left:50%; top:43%; transform:translate(-50%,-50%) translateZ(44px); width:49px; height:49px; background:#080a0ec0; border:1px solid #dfff7680; border-radius:50%; z-index:1; display:grid; place-items:center; color:var(--landing-lime); transition:transform .34s cubic-bezier(.22,1,.36,1); }
 .cp-landing-preview-play svg { fill:var(--landing-lime); width:18px; height:18px; margin-left:3px; }
 .cp-landing-preview-caption { position:absolute; left:18px; bottom:19px; z-index:1; }
 .cp-landing-preview-caption small { display:block; color:#c3c8ce; font-size:8px; letter-spacing:1.5px; margin-bottom:7px; }
@@ -58,8 +58,12 @@
 .cp-landing-source-chip { display:flex; gap:10px; align-items:center; position:absolute; bottom:-24px; right:-16px; background:#1a2026; border:1px solid #dfff7633; border-radius:10px; box-shadow:0 10px 28px #0005; padding:14px 17px; font-size:11px; color:#a9b0bc; }
 .cp-landing-source-chip svg { color:var(--landing-lime); width:17px; height:17px; }
 .cp-landing-source-chip strong { color:#eff3e9; font-weight:600; }
-.cp-landing-platforms { display:flex; align-items:center; justify-content:space-between; padding:24px 0; border-top:1px solid #ffffff10; border-bottom:1px solid #ffffff10; }
-.cp-landing-platforms>span { color:#727d8b; font-size:10px; letter-spacing:1.7px; }
+.cp-landing-platforms { display:flex; align-items:center; justify-content:flex-start; padding:24px 0; border-top:1px solid #ffffff10; border-bottom:1px solid #ffffff10; overflow:clip; }
+.cp-landing-marquee-track { display:flex; width:max-content; animation:cp-marquee 22s linear infinite; }
+.cp-landing-platforms:hover .cp-landing-marquee-track, .cp-landing-platforms:focus-within .cp-landing-marquee-track { animation-play-state:paused; }
+.cp-landing-marquee-group { display:flex; align-items:center; gap:36px; padding-right:36px; }
+@keyframes cp-marquee { to { transform:translateX(-50%); } }
+.cp-landing-platforms span { color:#727d8b; font-size:10px; letter-spacing:1.7px; }
 .cp-landing-platforms p { display:flex; align-items:center; gap:11px; font-size:14px; color:#a1a9b5; font-weight:550; }
 .cp-landing-platforms svg { color:#798592; width:18px; height:18px; }
 .cp-landing-section { padding-block:102px 0; scroll-margin-top:30px; }
@@ -148,7 +152,7 @@
  .cp-landing-shell { width:calc(100% - 64px); }
  .cp-landing-nav { padding-inline:32px; }
  .cp-landing-hero { gap:35px; min-height:630px; }
- .cp-landing h1 { letter-spacing:-2.7px; }
+ .cp-landing h1 { letter-spacing:-.04em; }
  .cp-landing-source-chip { right:-7px; font-size:10px; padding:12px; gap:7px; }
  .cp-landing-benefits,.cp-landing-downloads { grid-template-columns:repeat(2,1fr); }
  .cp-landing-compare-intro { gap:40px; }
@@ -162,7 +166,7 @@
  .cp-landing-logo { width:31px; height:31px; }
  .cp-landing-nav-enter { font-size:11px; padding:0 13px; gap:8px; min-height:39px; }
  .cp-landing-hero { grid-template-columns:1fr; padding-block:54px 60px; gap:48px; min-height:0; }
- .cp-landing h1 { font-size:clamp(47px,10vw,70px); letter-spacing:-2.7px; }
+ .cp-landing h1 { font-size:clamp(2.1rem,9.5vw,3.5rem); letter-spacing:-.04em; }
  .cp-landing-lead { font-size:14px; max-width:420px; }
  .cp-landing-version { margin-bottom:22px; font-size:9px; }
  .cp-landing-hero-note { font-size:10px; line-height:1.6; align-items:flex-start; }
@@ -173,7 +177,7 @@
  .cp-landing-source-chip { right:9px; bottom:-20px; }
  .cp-landing-preview-cards>div { height:90px; }
  .cp-landing-platforms { gap:20px; flex-wrap:wrap; justify-content:flex-start; padding-block:25px; }
- .cp-landing-platforms>span { width:100%; font-size:9px; }
+ .cp-landing-platforms span { flex:0 0 auto; font-size:9px; }
  .cp-landing-platforms p { font-size:11px; gap:6px; }
  .cp-landing-platforms svg { width:15px; height:15px; }
  .cp-landing-section { padding-top:70px; }
@@ -213,4 +217,58 @@
 }
 @media (prefers-reduced-motion:reduce) {
  .cp-landing *, .cp-landing *::before, .cp-landing *::after { scroll-behavior:auto!important; transition:none!important; }
+}
+
+/* ==========================================================================
+   Showcase motion layer — opener-grade 3D/reveal/marquee (vanilla, compositor
+   dostu: yalniz transform/opacity). Tum hareket reduced-motion'da kapanir.
+   ========================================================================== */
+.cp-landing-hero { perspective:1200px; }
+/* A) Poster istifi: preview penceresinin arkasinda 3 katman, mousemove 8deg */
+.cp-landing-hero-stack { position:absolute; right:0; top:64px; bottom:64px; width:calc(50% - 32px); z-index:0; transform-style:preserve-3d; transform:rotateX(var(--sx,0deg)) rotateY(calc(-6deg + var(--sy,0deg))) translateZ(var(--sz,0px)); transition:transform .3s cubic-bezier(.22,1,.36,1); pointer-events:none; }
+.cp-landing-hero-stack i { position:absolute; display:block; border-radius:14px; overflow:hidden; border:1px solid #ffffff17; background:#0d1117; box-shadow:0 34px 70px #0009; transform:translate3d(0,calc(var(--sp,0px)*var(--pf,0)),var(--z,0px)); transition:transform .3s cubic-bezier(.22,1,.36,1); filter:brightness(.55) saturate(.65); }
+.cp-landing-hero-stack img { width:100%; height:100%; object-fit:cover; display:block; }
+.cp-landing-stack-1 { top:0; right:0; width:88%; height:42%; --pf:.05; }
+.cp-landing-stack-2 { top:30%; right:5%; width:64%; height:38%; --pf:.10; }
+.cp-landing-stack-3 { top:56%; right:-3%; width:46%; height:37%; --pf:.13; }
+/* Vinyet + grain: saf CSS gradient, image asset degil */
+.cp-landing-hero::after { content:''; position:absolute; inset:0; z-index:2; pointer-events:none; opacity:.55; background:radial-gradient(115% 88% at 68% 30%,transparent 52%,#05070bb3 92%),radial-gradient(rgba(255,255,255,.055) 1px,transparent 1.4px); background-size:auto,3px 3px; }
+/* G) preview hover'da 3B durustan duz panele acilir */
+.cp-landing-preview:hover { transform:translate3d(0,calc(var(--sp,0px)*.06),0) perspective(1200px); }
+/* C) kart tilt + isik lekesi */
+.cp-landing-downloads article,.cp-landing-benefit { position:relative; transform-style:preserve-3d; transform:perspective(900px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg)) translateZ(var(--tz,0px)); transition:transform .25s cubic-bezier(.22,1,.36,1); }
+.cp-landing-downloads article:hover,.cp-landing-benefit:hover { --tz:24px; }
+.cp-landing-downloads article::after,.cp-landing-benefit::after { content:''; position:absolute; inset:0; border-radius:inherit; background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),#dfff760f,transparent 65%); opacity:0; transition:opacity .25s; pointer-events:none; }
+.cp-landing-downloads article:hover::after,.cp-landing-benefit:hover::after { opacity:1; }
+/* B) scroll-reveal: 60ms stagger, rotateX acilimi */
+.cp-reveal { opacity:0; transform:perspective(900px) translateY(26px) rotateX(4deg); transform-origin:top center; transition:opacity .65s cubic-bezier(.22,1,.36,1),transform .65s cubic-bezier(.22,1,.36,1); transition-delay:calc(var(--reveal-i,0)*60ms); }
+.cp-reveal.is-revealed { opacity:1; transform:none; }
+/* F) bolum numaralari (01-08) + ince ayrac cizgileri + dev h2 */
+.cp-landing main { counter-reset:cp-sect; }
+.cp-landing main > section,.cp-landing main > .cp-landing-platforms { counter-increment:cp-sect; }
+.cp-landing main > .cp-landing-hero { counter-increment:none; }
+.cp-landing-eyebrow::before,.cp-landing-platforms span::before { content:counter(cp-sect,decimal-leading-zero) '  ·  '; font-variant-numeric:tabular-nums; opacity:.6; }
+.cp-landing h2 { font-size:clamp(2.3rem,4.6vw,3.6rem); letter-spacing:-.03em; }
+.cp-landing-section,.cp-landing-start { position:relative; }
+.cp-landing-section::before,.cp-landing-start::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,#ffffff05,#ffffff1f 28%,#ffffff1f 72%,#ffffff05); }
+/* E) Uc adim: yapiskan baslik blogu + kademeli translateZ derinligi */
+.cp-landing-start>div { position:sticky; top:110px; align-self:start; }
+.cp-landing-start ol { perspective:1100px; }
+.cp-landing-start li:nth-child(1) { transform:translateZ(48px); }
+.cp-landing-start li:nth-child(2) { transform:translateZ(24px); }
+/* Footer: koyu katman gradienti */
+.cp-landing-footer { background:radial-gradient(70% 130% at 50% 0,#dfff7608,transparent 70%),linear-gradient(180deg,#0d1017,#04060a); }
+@media (max-width:760px) {
+ .cp-landing-hero-stack { display:none; }
+ .cp-landing-start>div { position:static; }
+ .cp-landing-preview { transform:none; }
+}
+@media (pointer:coarse) {
+ .cp-landing-preview { transform:none; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .cp-landing, .cp-landing *, .cp-landing *::before, .cp-landing *::after { transition:none!important; animation:none!important; }
+ .cp-reveal { opacity:1!important; transform:none!important; }
+ .cp-landing-hero-stack,.cp-landing-preview,.cp-landing-preview-play,.cp-landing-downloads article,.cp-landing-benefit,.cp-landing-start li { transform:none!important; }
+ .cp-landing-downloads article::after,.cp-landing-benefit::after { opacity:0!important; }
 }
