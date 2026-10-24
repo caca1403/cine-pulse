@@ -2,6 +2,7 @@ import { getAnonymousSourceLabel } from '../services/kaynak/sourceLabels.js';
 import { nativeOynaticiVar, nativeOynat, nativeKapat, nativeModAc, nativeKonumSaniye, nativeSureSaniye, nativeOynuyorMu, nativeSarmala, nativeAtla, nativeDevam, nativeDuraklat, nativeDurumDegistir, nativeHiz, nativeSes } from '../services/platform/nativePlayer.js';
 import { nativeAltyazilariHazirla } from '../services/icerik/altyaziServisi.js';
 import { yayinSesBilgisi, sesEtiketi } from '../services/icerik/sesIzleyici.js';
+import { kaliteUyar, kaliteFiltrele, normalizeKaliteTercihi } from '../services/icerik/kaliteFiltre.js';
 import { createPlayerScope, renderPlayerIcons } from './playerLifecycle.js';
 /* ==========================================================================
    CinePulse Studio - Ultra-Luxury Cinematic Video Player Modal Component
@@ -45,13 +46,18 @@ import {
   isRegisteredAnimeId,
   isAnimeRecord,
   getUserSettings,
-  saveUserSettings
+  saveUserSettings,
+  pickDefaultSubIndex,
+  normalizeBufferMb,
+  normalizePreferredCategory,
+  resumeEnabled
 } from '../services/altyapi/storage.js';
 import { evaluateNextEpisode } from '../services/icerik/nextEpisodePolicy.js';
 import { getFlowPilotTercih, setFlowPilotTercih } from '../services/altyapi/storage.js';
 import { akışOtopilotu, aileKodu, nedenMetni } from '../services/altyapi/flowPilot.js';
 import { showToast } from './Toast.js';
-import { translateToTurkish } from '../services/icerik/tmdbApi.js';
+import { translateToTurkish, fetchEpisodeDetails } from '../services/icerik/tmdbApi.js';
+import { recapKararVer, recapGorulduMu, recapGorulduIsaretle } from '../services/icerik/recapKarti.js';
 import { returnToDecisionRoomModal } from './DecisionRoomModal.js';
 import * as traktService from '../services/icerik/traktService.js';
 import Hls from 'hls.js';
@@ -407,10 +413,13 @@ export async function openPlayerModal({
   }
 
   const existingRecord = isOfflinePlayback ? null : getMediaProgress(tmdbId, currentSeason, currentEpisode);
-  let initialTime = currentTime || (existingRecord ? existingRecord.currentTime : 0);
+  // Sihirbaz "Kaldığı Yerden Devam" (cp_resume_playback): kapalıysa otomatik
+  // sarma yapılmaz (kullanıcının açık seçimiyle verilen currentTime hariç).
+  const otomatikDevamAçık = resumeEnabled((() => { try { return localStorage.getItem('cp_resume_playback'); } catch (_) { return null; } })());
+  let initialTime = currentTime || (otomatikDevamAçık && existingRecord ? existingRecord.currentTime : 0);
   // Kullanıcı isteği (2026-10-17): oynatma sessizce kaydedilen saniyeden
   // başlıyordu; "kaldığın yerden devam" bilgisi hiç görünmüyordu.
-  if (existingRecord && existingRecord.currentTime > 30) {
+  if (otomatikDevamAçık && existingRecord && existingRecord.currentTime > 30) {
     const dk = Math.floor(existingRecord.currentTime / 60);
     const sn = String(Math.floor(existingRecord.currentTime % 60)).padStart(2, '0');
     setTimeout(() => {
@@ -764,12 +773,21 @@ export async function openPlayerModal({
   window.addEventListener('pagehide', handleGlobalPageUnload);
   window.addEventListener('beforeunload', handleGlobalPageUnload);
 
-  let currentCategory = 'dubbed'; // Her zaman dublaj ile başla
+  // Sihirbaz/son seçim (cp_preferred_category): kullanıcıya ait kategori tercihi
+  // açılışta varsayılan sekme/kaynak önceliği olarak uygulanır; bilinmeyen değer
+  // görülürse bugünkü davranış (dublaj) korunur.
+  let currentCategory = (() => {
+    try { return normalizePreferredCategory(localStorage.getItem('cp_preferred_category')); }
+    catch (_) { return 'dubbed'; }
+  })();
   /* Kaynak listesi SES TİPİ görünümü (kullanıcı isteği 2026-10-17):
      'all' | 'dublaj' | 'dual' | 'altyazi'. Kategori (currentCategory) ile
      KARIŞMAZ: kategori hangi havuzun oynatıldığını, filtre ise listeyi neyin
      gösterdiğini belirler. Sekme değişince oynatma bozulmaz. */
   let kaynakDilFiltresi = 'all';
+  // Kalite filtresi (parite #11): yalnız KAYNAK LİSTESİ'ni süzer; oynatma
+  // indeksi bozulmaz. preferredResolution bu değeri canlıya bağlar.
+  let kaliteFiltreDegeri = 'hepsi';
   let activeServers = [];
   // Boş-durum rehberi: son taramanın başlangıcı — providerRuntime olay kayıtları
   // (denendi/hata/boş) yalnız bu andan sonrakiler için geçerlidir.
@@ -1385,9 +1403,20 @@ export async function openPlayerModal({
 
   function getRoomPreferredServerIndex(servers) {
     if (!Array.isArray(servers) || servers.length === 0) return 0;
-    if (!roomSync) { const verified = servers.findIndex(s => s.autoPlayable !== false); return verified >= 0 ? verified : 0; }
-    const directIndex = servers.findIndex(isRoomControllableServer);
-    return directIndex >= 0 ? directIndex : 0;
+    // Kalite filtresi varsa otomatik seçim ona göre kayar (liste zaten kalite
+    // sıralı olduğundan ilk eşleşen en yüksek kalitedir); ama filtreyle uygun
+    // kaynak yoksa oynatma ASLA kırılmasın diye filtresiz geri düşülür.
+    const uygun = (s) => kaliteUyar(s, kaliteFiltreDegeri);
+    if (!roomSync) {
+      const verified = servers.findIndex(s => s.autoPlayable !== false && uygun(s));
+      if (verified >= 0) return verified;
+      const anyPlayable = servers.findIndex(s => s.autoPlayable !== false);
+      return anyPlayable >= 0 ? anyPlayable : 0;
+    }
+    const directIndex = servers.findIndex(s => isRoomControllableServer(s) && uygun(s));
+    if (directIndex >= 0) return directIndex;
+    const anyDirect = servers.findIndex(isRoomControllableServer);
+    return anyDirect >= 0 ? anyDirect : 0;
   }
 
   function isRoomModerator() {
@@ -2712,6 +2741,39 @@ export async function openPlayerModal({
       .catch(() => { if (guncelMi()) bekleme.remove(); });
   };
 
+  /* Kalite çip grubu: her çip o filtrenin göstereceği kaynak sayısını taşır.
+     Tıklama → tercihi preferredResolution'a yaz (canlı) + listeyi yeniden çiz. */
+  function renderKaliteFiltreCipleri(sayimlar, toplam) {
+    const wrap = document.getElementById('kalite-filtre-cipler');
+    if (!wrap) return;
+    const s = sayimlar || {};
+    const cum = {
+      hepsi: toplam,
+      '4k': (s['4k'] || 0),
+      '1080': (s['1080'] || 0) + (s['4k'] || 0),
+      '720': (s['720'] || 0) + (s['1080'] || 0) + (s['4k'] || 0)
+    };
+    const etiket = { hepsi: 'Tümü', '4k': '2160p+', '1080': '1080p+', '720': '720p+' };
+    const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    wrap.innerHTML = ['hepsi', '4k', '1080', '720'].map(k => {
+      const aktif = kaliteFiltreDegeri === k;
+      const n = cum[k] || 0;
+      return `<button type="button" class="smart-cat-tab ${aktif ? 'active' : ''}" data-kalite="${k}" ${n === 0 && k !== 'hepsi' ? 'disabled style="opacity:.4;"' : ''}>
+        <span>${etiket[k]}</span>
+        <span class="smart-cat-count">${n ? `(${n})` : ''}</span>
+      </button>`;
+    }).join('');
+    wrap.querySelectorAll('.smart-cat-tab[data-kalite]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const k = btn.getAttribute('data-kalite');
+        kaliteFiltreDegeri = k;
+        try { saveUserSettings({ preferredResolution: k === 'hepsi' ? 'auto' : k }); } catch (_) {}
+        renderSmartSourcesBar();
+      });
+    });
+  }
+
   function renderSmartSourcesBar() {
     const bar = document.getElementById('player-smart-sources-bar');
     if (!bar) return;
@@ -2786,6 +2848,21 @@ export async function openPlayerModal({
         }
         kombineListe.push({ srv, idx, kategori, tip: sesTipiBul(srv, kategori) });
       });
+    }
+
+    /* ── KALİTE FİLTRESİ (parite #11) ─────────────────────────────────────
+       Çipler mevcut seviye sayaçlarını gösterir; tıklama listeyi süzer ve
+       tercihi preferredResolution'a yazar. Filtre YALNIZCA görünen listeyi
+       etkiler — oynatma indeksi (activeServers) ve otomatik seçim bozulmaz. */
+    const hamBoyut = kombineListe.length;
+    const { sayimlar } = kaliteFiltrele(kombineListe.map(e => e.srv), 'hepsi');
+    renderKaliteFiltreCipleri(sayimlar, hamBoyut);
+    const filtreBos = kaliteFiltreDegeri !== 'hepsi' && hamBoyut > 0
+      && !kombineListe.some(e => kaliteUyar(e.srv, kaliteFiltreDegeri));
+    if (kaliteFiltreDegeri !== 'hepsi') {
+      for (let i = kombineListe.length - 1; i >= 0; i--) {
+        if (!kaliteUyar(kombineListe[i].srv, kaliteFiltreDegeri)) kombineListe.splice(i, 1);
+      }
     }
 
     if (dropdownCount) dropdownCount.textContent = `${kombineListe.length} Kaynak`;
@@ -2875,9 +2952,17 @@ export async function openPlayerModal({
       if (kombineListe.length === 0) {
         const otherCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
         const otherCount = categorizedServers?.[otherCat]?.length || 0;
+        const filtreMesaj = (typeof filtreBos !== 'undefined' && filtreBos)
+          ? 'Seçili kalite filtresiyle eşleşen kaynak yok.'
+          : (isSearching ? 'Yayın kaynakları taranıyor...' : 'Bu dilde kaynak bulunamadı.');
         dropdownList.innerHTML = `
           <div style="padding: 0.75rem; text-align: center; color: #94a3b8; font-size: 0.76rem;">
-            ${isSearching ? 'Yayın kaynakları taranıyor...' : 'Bu dilde kaynak bulunamadı.'}
+            ${filtreMesaj}
+            ${(typeof filtreBos !== 'undefined' && filtreBos) ? `
+              <button type="button" class="smart-dropdown-item" id="btn-kalite-temizle" style="margin-top: 0.5rem; justify-content: center; width: 100%; border: 1px solid rgba(223, 255, 118,0.3); color: #dfff76;">
+                Kalite filtresini temizle (Tümü)
+              </button>
+            ` : ''}
             ${otherCount > 0 ? `
               <button type="button" class="smart-dropdown-item" id="btn-smart-fallback-cat" style="margin-top: 0.5rem; justify-content: center; width: 100%; border: 1px solid rgba(223, 255, 118,0.3); color: #dfff76;">
                 ${otherCat === 'dubbed' ? 'Dublaj Kaynaklarını Aç' : 'Altyazılı Kaynakları Aç'} (${otherCount})
@@ -2885,6 +2970,15 @@ export async function openPlayerModal({
             ` : ''}
           </div>
         `;
+        const kTemizle = dropdownList.querySelector('#btn-kalite-temizle');
+        if (kTemizle) {
+          kTemizle.onclick = (e) => {
+            e.preventDefault();
+            kaliteFiltreDegeri = 'hepsi';
+            try { saveUserSettings({ preferredResolution: 'auto' }); } catch (_) {}
+            renderSmartSourcesBar();
+          };
+        }
         const fbBtn = dropdownList.querySelector('#btn-smart-fallback-cat');
         if (fbBtn) {
           fbBtn.onclick = (e) => {
@@ -3237,7 +3331,10 @@ export async function openPlayerModal({
     if (!videoEl) return;
 
     const subs = resolveEffectiveSubtitles(srv);
-    const defaultSubIdx = (currentCategory === 'subtitled' && subs.length > 0) ? 0 : -1;
+    // Sihirbaz "Varsayılan Altyazı Dili" (cp_default_sub_lang): kayıtlı dil varsa
+    // eşleşen iz seçilir; eşleşme/ayar yoksa bugünkü davranış aynen (subtitled→0).
+    const kayitliDil = (() => { try { return localStorage.getItem('cp_default_sub_lang'); } catch (_) { return null; } })();
+    const defaultSubIdx = pickDefaultSubIndex(kayitliDil, subs, currentCategory);
 
     const initSubtitles = () => {
       try {
@@ -3284,7 +3381,7 @@ export async function openPlayerModal({
         track.label = sub.label || 'Altyazı';
         track.src = safeSrc;
         track.srclang = (sub.label || '').toLowerCase().includes('türk') ? 'tr' : 'en';
-        if (currentCategory === 'subtitled' && idx === 0) track.default = true;
+        if (currentCategory === 'subtitled' && idx === pickDefaultSubIndex(localStorage.getItem('cp_default_sub_lang'), subs, currentCategory)) track.default = true;
         videoEl.appendChild(track);
       });
     }
@@ -3417,8 +3514,13 @@ export async function openPlayerModal({
       // Resolve effective subtitles (check current srv, then fallback to any available subtitles in active servers)
       const effectiveSubtitles = resolveEffectiveSubtitles(srv);
 
-      // Default active subtitle index: if in 'subtitled' mode, default to 0 (Turkish); if in 'dubbed', default to -1 (off)
-      const defaultSubIndex = (currentCategory === 'subtitled' && effectiveSubtitles.length > 0) ? 0 : -1;
+      // Default active subtitle index: sihirbaz dil tercihi eşleşirse o iz,
+      // eşleşme yoksa bugünkü davranış (subtitled→0 / dubbed→ -1).
+      const defaultSubIndex = pickDefaultSubIndex(
+        localStorage.getItem('cp_default_sub_lang'),
+        effectiveSubtitles,
+        currentCategory
+      );
 
       const tracksHTML = effectiveSubtitles.map((sub, idx) => {
         let safeSrc = sub.src;
@@ -3845,6 +3947,114 @@ export async function openPlayerModal({
   }
 
   // --- RENDER COMPLETE DIZISOL-STYLE CINEMA MODAL SHELL ---
+  // Recap kartı CSS'i (tek seferde enjekte et)
+  if (!document.getElementById('cinepulse-recap-style')) {
+    const recapStyle = document.createElement('style');
+    recapStyle.id = 'cinepulse-recap-style';
+    recapStyle.textContent = `
+      .recap-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(4px);
+        padding: 1rem;
+        animation: recap-fade-in 0.3s ease-out;
+      }
+      @keyframes recap-fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes recap-fade-out {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+      .recap-card {
+        width: 100%;
+        max-width: 520px;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.95));
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        border-radius: 1rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(251, 191, 36, 0.1), inset 0 1px 0 rgba(251, 191, 36, 0.05);
+        overflow: hidden;
+        transform: translateY(0);
+        animation: recap-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes recap-slide-up {
+        from { opacity: 0; transform: translateY(20px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      .recap-overlay[style*="fade-out"] .recap-card {
+        animation: recap-slide-down 0.2s ease-in forwards;
+      }
+      @keyframes recap-slide-down {
+        to { opacity: 0; transform: translateY(10px) scale(0.98); }
+      }
+      .recap-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        background: rgba(251, 191, 36, 0.08);
+      }
+      .recap-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #fbbf24;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+      .recap-close {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 0.375rem;
+        transition: color 0.15s, background 0.15s;
+      }
+      .recap-close:hover, .recap-close:focus {
+        color: #fbbf24;
+        background: rgba(251, 191, 36, 0.15);
+        outline: none;
+      }
+      .recap-close:focus-visible {
+        outline: 2px solid #fbbf24;
+        outline-offset: 2px;
+      }
+      .recap-body {
+        padding: 1.25rem;
+      }
+      .recap-text {
+        margin: 0;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: #e2e8f0;
+        word-wrap: break-word;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .recap-overlay, .recap-card {
+          animation: none !important;
+        }
+      }
+      @media (max-width: 480px) {
+        .recap-card { max-width: 100%; border-radius: 0.75rem; }
+        .recap-header { padding: 0.875rem 1rem; }
+        .recap-title { font-size: 0.875rem; }
+        .recap-body { padding: 1rem; }
+        .recap-text { font-size: 0.875rem; }
+      }
+    `;
+    document.head.appendChild(recapStyle);
+  }
+
   modalContainer.innerHTML = `
     <!-- Ambient Backdrop Aura Glow -->
     <div class="player-ambient-backdrop" ${backdropPath ? `style="background-image: url('${backdropPath}');"` : ''}></div>
@@ -4065,6 +4275,10 @@ export async function openPlayerModal({
                   <span class="smart-cat-count" id="smart-cat-all-count"></span>
                 </button>
               </div>
+            </div>
+            <div class="smart-sources-lang-group kalite-filtre-grubu">
+              <span class="smart-sources-label">Kalite:</span>
+              <div class="smart-sources-cat-tabs" id="kalite-filtre-cipler"></div>
             </div>
             <div class="smart-sources-picker-wrap">
               <span class="smart-sources-label">Yayın:</span>
@@ -6893,6 +7107,11 @@ export async function openPlayerModal({
         const isDizisolSource = srv?.source === 'DS';
 
         if (isHlsStream && Hls.isSupported()) {
+          // Sihirbaz "Önbellek & Arabellek Boyutu" (cp_buffer_size_mb) → hls.js'in
+          // kendi maxBufferSize (bayt) alanına dürüst bağlanır; ayar yoksa bugünkü 300MB.
+          const tamponMb = normalizeBufferMb(
+            (() => { try { return localStorage.getItem('cp_buffer_size_mb'); } catch (_) { return null; } })()
+          );
           const hls = new Hls({
             enableWorker: true,
             lowLatencyMode: false,
@@ -6901,7 +7120,7 @@ export async function openPlayerModal({
             backBufferLength: 30,
             maxBufferLength: 30,
             maxMaxBufferLength: 600,
-            maxBufferSize: 300 * 1024 * 1024,
+            maxBufferSize: tamponMb * 1024 * 1024,
             maxBufferHole: 0.5,
             highBufferWatchdogPeriod: 2,
             nudgeOffset: 0.2,
@@ -7375,6 +7594,8 @@ export async function openPlayerModal({
     failoverCountInSession = 0;
     categorizedServers = { dubbed: [], subtitled: [] };
     activeServers = [];
+    // Kalite tercihi modal açılışında remembered değerden başlar (canlı).
+    try { kaliteFiltreDegeri = normalizeKaliteTercihi(getUserSettings().preferredResolution); } catch (_) { kaliteFiltreDegeri = 'hepsi'; }
 
     updateServerPillsEvents();
     updatePlayerContainer();
@@ -7599,7 +7820,120 @@ export async function openPlayerModal({
     startServerDiscovery();
   }
     if (type === 'tv' && !isOfflinePlayback) renderDrawerContent();
+
+  // Initial load recap kartı (ilk açılışta)
+  if (isSeries && tmdbId && !isOfflinePlayback) {
+    gosterRecapKarti(currentSeason, currentEpisode);
+  }
+
   startWatchProgressLoop();
+
+  // Recap kartı gösterimi (önceki bölüm özeti) — OYNATMA BAŞLAMADAN ÖNCE
+  async function gosterRecapKarti(season, episode) {
+    if (!tmdbId || !isSeries || isOfflinePlayback) return;
+    // Sadece dizi + sezon>0 + bölüm>1 + önceki bölüm gerçekten varsa
+    if (season < 1 || episode < 1) return;
+
+    // Önceki bölüm numarasını hesapla (sezonlar arası geçiş dahil)
+    let oncekiSezon = season;
+    let oncekiBolum = episode - 1;
+    if (oncekiBolum < 1) {
+      // Önceki sezonun son bölümü - bu basit bir tahmin, TMDB'den çekerken doğru değeri bulacağız
+      oncekiSezon = season - 1;
+      oncekiBolum = 1; // placeholder, fetchEpisodeDetails zaten boş dönecekse recap göstermez
+    }
+
+    // Zaten gösterildiyse atla
+    const gosterildi = recapGorulduMu(tmdbId, currentSeason, currentEpisode);
+    if (gosterildi) return;
+
+    try {
+      // Önceki bölüm overview'ini çek
+      const { overview: oncekiOverview } = await fetchEpisodeDetails(tmdbId, oncekiSezon, oncekiBolum);
+
+      // Recap kararını al
+      const { goster, baslik, metin } = recapKararVer({
+        sezon: currentSeason,
+        bolum: currentEpisode,
+        oncekiOverview,
+        ad: cleanSeriesName
+      }, { gosterildiMi: gosterildi });
+
+      if (!goster || !metin) return;
+
+      // Kartı göster (modal-overlay/toast desenine uygun)
+      const overlay = document.createElement('div');
+      overlay.className = 'recap-overlay';
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'true');
+      overlay.setAttribute('aria-labelledby', 'recap-title');
+      overlay.innerHTML = `
+        <div class="recap-card">
+          <header class="recap-header">
+            <h2 id="recap-title" class="recap-title">${baslik}</h2>
+            <button type="button" class="recap-close" aria-label="Kapat">&times;</button>
+          </header>
+          <div class="recap-body">
+            <p class="recap-text">${metin}</p>
+          </div>
+        </div>
+      `;
+
+      // prefers-reduced-motion desteği
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!prefersReducedMotion) {
+        overlay.style.animation = 'recap-fade-in 0.3s ease-out';
+      }
+
+      // Kapatma fonksiyonu
+      let kapat = () => {
+        if (!prefersReducedMotion) {
+          overlay.style.animation = 'recap-fade-out 0.2s ease-in';
+          setTimeout(() => overlay.remove(), 200);
+        } else {
+          overlay.remove();
+        }
+      };
+
+      // ESC tuşu
+      const escHandler = (e) => {
+        if (e.key === 'Escape') {
+          kapat();
+          document.removeEventListener('keydown', escHandler);
+        }
+      };
+      document.addEventListener('keydown', escHandler);
+
+      // Overlay'e tıklayınca kapat (kart dışında)
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) kapat();
+      });
+
+      // Kart içindeki kapat butonu
+      const closeBtn = overlay.querySelector('.recap-close');
+      if (closeBtn) closeBtn.addEventListener('click', kapat);
+
+      // 6 sn sonra kendiliğinden kapan
+      const autoCloseTimer = setTimeout(kapat, 6000);
+
+      // Modal container'a ekle (en üstte)
+      const cinemaBox = modalContainer.querySelector('#cinema-modal-box') || modalContainer;
+      cinemaBox.appendChild(overlay);
+
+      // İşaretle
+      recapGorulduIsaretle(tmdbId, currentSeason, currentEpisode);
+
+      // Cleanup: overlay kapanınca timer'ı temizle
+      const originalKapat = kapat;
+      kapat = () => {
+        clearTimeout(autoCloseTimer);
+        document.removeEventListener('keydown', escHandler);
+        originalKapat();
+      };
+    } catch (_) {
+      // Sessizce başarısız ol - recap görünmez, oynatma etkilenmez
+    }
+  }
 
   // In-Place Episode Switching
   async function switchEpisodeInPlayer(newSeason, newEpisode) {
@@ -7610,6 +7944,8 @@ export async function openPlayerModal({
 
     try {
       disposePlayback();
+      const prevSeason = currentSeason;
+      const prevEpisode = currentEpisode;
       currentSeason = newSeason;
       currentEpisode = newEpisode;
       drawerSeason = newSeason;
@@ -7654,6 +7990,11 @@ export async function openPlayerModal({
           </div>
         `;
         renderPlayerIcons(modalContainer);
+      }
+
+      // Recap kartı: önceki bölüm özeti (OYNATMA BAŞLAMADAN ÖNCE)
+      if (isSeries && tmdbId && !isOfflinePlayback) {
+        await gosterRecapKarti(currentSeason, currentEpisode);
       }
 
       const newRecord = getMediaProgress(tmdbId, currentSeason, currentEpisode);

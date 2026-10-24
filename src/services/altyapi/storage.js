@@ -4,6 +4,8 @@
    watch analytics, remaining time, and JSON Export/Import
    ========================================================================== */
 
+import { pinGecerliMi, pinHashla, pinAktifMi, varsayilanYasKademesi, yasKademesiGecerliMi } from './profil-pin.js';
+
 const STORAGE_KEYS = {
   WATCH_HISTORY: 'sineflix_watch_history_v1',
   FAVORITES: 'sineflix_favorites_v1',
@@ -187,6 +189,8 @@ export function completeProfileSetup({ name, avatar = 'user-circle', color = '#f
     let profiles = getProfiles();
     const profIndex = profiles.findIndex(p => p.id === 'prof_1');
     const updatedProfile = {
+      // PIN/yasKademesi gibi sonradan eklenen alanları yeniden kurulumda KAYITMA
+      ...(profiles[profIndex] || {}),
       id: 'prof_1',
       name: cleanName,
       avatar,
@@ -316,8 +320,68 @@ export function setActiveProfile(profileId) {
   } catch (_) {}
 }
 
+// Yaş kademesi: 'cocuk' | 'genclik' | 'yetiskin'. Eski profillerde alan
+// yoksa varsayılan bugünkü davranışı verir (isKid → cocuk → kid-safe filtre).
+export function getProfileYasKademesi(profile) {
+  if (profile && yasKademesiGecerliMi(profile.yasKademesi)) return profile.yasKademesi;
+  return varsayilanYasKademesi(profile?.isKid);
+}
+
+export function setProfileYasKademesi(profileId, kademe) {
+  if (!yasKademesiGecerliMi(kademe)) return false;
+  const profiles = getProfiles();
+  const p = profiles.find(x => x.id === profileId);
+  if (!p) return false;
+  p.yasKademesi = kademe;
+  saveProfiles(profiles);
+  // Aktif profilde kademe değişimi içerik süzgecini anında etkiler.
+  if (typeof window !== 'undefined' && getActiveProfile()?.id === profileId) {
+    window.dispatchEvent(new CustomEvent('sineflix_profile_changed', { detail: { profileId } }));
+  }
+  return true;
+}
+
+// 'cocuk' kademesi MEVCUT isItemKidSafe süzgecini uygular; 'genclik' ve
+// 'yetiskin' bugünün normal (süzgecsiz) davranıştır — yeni süzgec uydurulmadı.
 export function isKidProfileActive() {
-  return getActiveProfile()?.isKid === true;
+  return getProfileYasKademesi(getActiveProfile()) === 'cocuk';
+}
+
+/* --- Profil PIN'i (yerel eşik; crypto.subtle yoksa pasif) --- */
+
+export function profilPinDurumu(profileId) {
+  const p = getProfiles().find(x => x.id === profileId);
+  return Boolean(p?.pinHash) && pinAktifMi();
+}
+
+export async function pinBelirle(profileId, pin) {
+  if (!pinAktifMi() || !pinGecerliMi(pin)) return false;
+  const hash = await pinHashla(pin);
+  if (!hash) return false; // crypto yoksa uydurma hash yazılmaz
+  const profiles = getProfiles();
+  const p = profiles.find(x => x.id === profileId);
+  if (!p) return false;
+  p.pinHash = hash;
+  saveProfiles(profiles);
+  return true;
+}
+
+export function pinKaldir(profileId) {
+  const profiles = getProfiles();
+  const p = profiles.find(x => x.id === profileId);
+  if (!p || !p.pinHash) return false;
+  delete p.pinHash;
+  saveProfiles(profiles);
+  return true;
+}
+
+export async function profilAc(profileId, pin) {
+  const p = getProfiles().find(x => x.id === profileId);
+  if (!p) return false;
+  if (!p.pinHash) return true; // PIN'siz profil doğrudan açılır
+  if (!pinAktifMi()) return true; // PIN özelliği pasif: eşik kalkar
+  const hash = await pinHashla(pin);
+  return Boolean(hash) && hash === p.pinHash;
 }
 
 /**
@@ -1916,6 +1980,45 @@ export function saveUserSettings(settings) {
       detail: _userSettingsCache
     }));
   }
+}
+
+/* ==========================================================================
+   Sihirbaz ayarları — saf yardımcılar (tests/ayar-durustluk.test.mjs bunları
+   test eder). Sadece anahtar eşleme/normalizasyon; hiçbir okuma/yazma.
+   ========================================================================== */
+
+// cp_buffer_size_mb değeri: hls.js maxBufferSize (bayt) doğrudan MB anahtarının
+// kendi alanına bağlanır (saniyeye çevirme YAPILMAZ). Ayar yoksa bugünkü 300MB.
+export function normalizeBufferMb(raw, fallback = 300) {
+  const mb = parseInt(raw, 10);
+  if (!Number.isFinite(mb) || mb <= 0) return fallback;
+  return Math.max(8, Math.min(512, mb));
+}
+
+// cp_resume_playback anahtarı: yalnız resmen 'false' yazılmışsa kapalı sayılır.
+export function resumeEnabled(raw) {
+  return raw !== 'false';
+}
+
+// cp_preferred_category: bilinmeyen değer görülürse bugünkü davranış (dublaj).
+export function normalizePreferredCategory(raw, fallback = 'dubbed') {
+  return (raw === 'dubbed' || raw === 'subtitled') ? raw : fallback;
+}
+
+// cp_default_sub_lang: kayıtlı dili iz listesinde eşleştirir; eşleşme yoksa
+// veya ayar yoksa bugünkü davranış aynen (subtitled → 0, dublaj → -1).
+export function pickDefaultSubIndex(savedLang, subs, category = 'subtitled') {
+  if (category !== 'subtitled' || !Array.isArray(subs) || subs.length === 0) return -1;
+  if (savedLang === 'off') return -1;
+  if (savedLang === 'tr' || savedLang === 'en') {
+    const isTrTrack = (s) => {
+      const label = String((s && (s.label || s.srclang)) || '').toLowerCase();
+      return /(^|[^a-zçğıöşü])tr([^a-zçğıöşü]|$)/.test(label) || label.includes('türk') || label.includes('turk');
+    };
+    const idx = subs.findIndex((s) => (savedLang === 'tr') === isTrTrack(s));
+    if (idx >= 0) return idx;
+  }
+  return 0;
 }
 
 /* ==========================================================================

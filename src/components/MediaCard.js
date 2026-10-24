@@ -11,6 +11,7 @@ import { openPlayerModal } from './openPlayer.js';
 import { showToast } from './Toast.js';
 import { saveAllScrollState } from '../services/kabuk/scrollManager.js';
 import { getBestBackdrop, baslikLogosu } from '../services/icerik/fanartService.js';
+import { kur as hoverOnizlemeKur, temizle as hoverOnizlemeDurdur } from '../services/kesif/hoverOnizleme.js';
 
 const KNOWN_ANIME_KEYWORDS = STORAGE_ANIME_KEYWORDS || [
   'anime', 'kimetsu', 'yaiba', 'iblis keser', 'demon slayer', 'naruto', 'boruto', 'shingeki', 'titan'
@@ -234,6 +235,7 @@ export function renderMediaCard(item, options = {}) {
       data-year="${year}"
       data-rating="${rating}"
       data-tmdbid="${id}"
+      data-tmdb-id="${id}"
       data-mediatype="${mediaType === 'tv' || isSeries ? 'tv' : 'movie'}"
       data-isseries="${isSeries ? 'true' : 'false'}"
       data-season="${season}" 
@@ -368,27 +370,17 @@ export function attachMediaCardEvents(container) {
   });
 
   /* ── CP-QUALITY-PACK: fragman önizlemesi tetikleyicileri ────────────────
-     İmleç aygıtında hover (600 ms), dokunmatikte uzun basış (500 ms).
-     Her iki tetik de kapalıyken kart tıklaması eski davranışında çalışır. */
-  if (imlecAygiti()) {
-    container.addEventListener('pointerover', (e) => {
-      const kart = e.target.closest && e.target.closest('.media-card');
-      if (!kart || hoverKart === kart) return;
-      hoverKart = kart;
-      if (hoverTimer) clearTimeout(hoverTimer);
-      hoverTimer = setTimeout(() => {
-        hoverTimer = null;
-        onizlemeGoster(kart, false);
-      }, ONIZLEME.hoverGecikmeMs);
-    });
-    container.addEventListener('pointerout', (e) => {
-      const kart = e.target.closest && e.target.closest('.media-card');
-      if (!kart) return;
-      if (e.relatedTarget && kart.contains(e.relatedTarget)) return; // kart içi gezinme
-      if (hoverKart === kart) hoverKart = null;
-      if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
-      if (aktifOnizleme && aktifOnizleme.kart === kart) ayrilmaZamanla();
-    });
+     İmleç aygıtında hover önizlemesi (yönetici: src/services/kesif/hoverOnizleme.js),
+     dokunmatikte uzun basış (500 ms). Yalnız gerçek imleçte ve kullanıcının
+     açık tercihiyle kurulur; kart tıklaması eski davranışında çalışır. */
+  if (imlecAygiti() && getUserSettings().hoverPreviewsEnabled) {
+    const getVideoUrl = async (kart) => {
+      const id = kart.getAttribute('data-tmdb-id') || kart.getAttribute('data-id');
+      const tip = kart.getAttribute('data-mediatype') === 'tv' ? 'tv' : 'movie';
+      if (!/^\d+$/.test(String(id))) return null;           // yalnız TMDB id'leri
+      try { return await fetchMediaTrailer(tip, id, ''); } catch (_) { return null; }
+    };
+    hoverOnizlemeKur(getVideoUrl);
   }
   container.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
@@ -697,40 +689,22 @@ export function upgradeLandscapeBackdrops(container = document, forceImmediate =
    .card-hover-video-preview ailesidir; DOM ona göre kurulur.
    Tek seferde tek önizleme; fragman/ağ yoksa sessizce çıkılır. */
 const ONIZLEME = {
-  hoverGecikmeMs: 600,
   uzunBasisMs: 500,
-  mobilKapanmaMs: 2500,
-  masaustuMaksMs: 12000,
-  ayrilmaGecikmeMs: 300
+  mobilKapanmaMs: 2500
 };
 
 let aktifOnizleme = null;        // { el, kart, timer }
 let onizlemeKusak = 0;           // bayat async fragman sonucu koruması
 let onizlemeGenelBaglandi = false;
 let tiklamaYutmaBitis = 0;       // uzun basış bitiminde doğan dokunmayı yut
-let hoverTimer = null;
-let hoverKart = null;
 let uzunBasisTimer = null;
 let uzunBasisNokta = null;
-let ayrilmaTimer = null;
 
 const imlecAygiti = () => Boolean(
-  window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  window.matchMedia && window.matchMedia('(pointer: fine)').matches
 );
 
-function ayrilmaIptal() {
-  if (ayrilmaTimer) { clearTimeout(ayrilmaTimer); ayrilmaTimer = null; }
-  if (aktifOnizleme && aktifOnizleme.timer) { clearTimeout(aktifOnizleme.timer); aktifOnizleme.timer = null; }
-}
-
-function ayrilmaZamanla() {
-  if (ayrilmaTimer) clearTimeout(ayrilmaTimer);
-  ayrilmaTimer = setTimeout(onizlemeKapat, ONIZLEME.ayrilmaGecikmeMs);
-}
-
 function onizlemeKapat() {
-  if (ayrilmaTimer) { clearTimeout(ayrilmaTimer); ayrilmaTimer = null; }
-  if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
   if (!aktifOnizleme) return;
   if (aktifOnizleme.timer) clearTimeout(aktifOnizleme.timer);
   aktifOnizleme.kart.classList.remove('preview-active');
@@ -741,8 +715,8 @@ function onizlemeKapat() {
 /** Rota değişiminde main.js çağırır: iframe ve kart sınıfı temizlenir. */
 export function closeCardPreview() {
   if (uzunBasisTimer) { clearTimeout(uzunBasisTimer); uzunBasisTimer = null; }
-  hoverKart = null;
   uzunBasisNokta = null;
+  hoverOnizlemeDurdur();
   onizlemeKapat();
 }
 
@@ -779,7 +753,6 @@ async function onizlemeGoster(kart, mobil) {
   }
   if (kusak !== onizlemeKusak || !kart.isConnected) return;
   if (!trailer || !trailer.key || trailer.site !== 'YouTube') return;
-  if (!mobil && hoverKart !== kart) return;     // fragman yüklenirken imleç karttan ayrıldıysa açma
 
   const baslik = decodeURIComponent(kart.getAttribute('data-title') || '');
   const ozet = decodeURIComponent(kart.getAttribute('data-overview') || '');
@@ -827,28 +800,8 @@ async function onizlemeGoster(kart, mobil) {
   aktifOnizleme = { el, kart, timer: null };
   kart.classList.add('preview-active');
 
-  if (!mobil) {
-    el.addEventListener('pointerenter', ayrilmaIptal);
-    el.addEventListener('pointerleave', ayrilmaZamanla);
-    const yerlestir = () => {
-      if (!kart.isConnected) { onizlemeKapat(); return; }
-      const r = kart.getBoundingClientRect();
-      const w = el.offsetWidth || 600;
-      const h = el.offsetHeight || 240;
-      let left = r.right + 12;
-      if (left + w > window.innerWidth - 8) left = r.left - w - 12;
-      if (left < 8) left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
-      let top = Math.round(r.top + r.height / 2 - h / 2);
-      top = Math.max(8, Math.min(top, window.innerHeight - h - 8));
-      el.style.left = `${Math.round(left)}px`;
-      el.style.top = `${top}px`;
-    };
-    yerlestir();
-    requestAnimationFrame(yerlestir);
-    aktifOnizleme.timer = setTimeout(onizlemeKapat, ONIZLEME.masaustuMaksMs);
-  } else {
-    aktifOnizleme.timer = setTimeout(onizlemeKapat, ONIZLEME.mobilKapanmaMs);
-  }
+  // Dokunmatik uzun-basış önizlemesi: 2,5 sn sonra kendisi kapanır.
+  aktifOnizleme.timer = setTimeout(onizlemeKapat, ONIZLEME.mobilKapanmaMs);
 
   el.querySelector('.card-preview-close-btn').addEventListener('click', () => onizlemeKapat());
   el.querySelector('.card-preview-detail').addEventListener('click', () => onizlemeKapat());

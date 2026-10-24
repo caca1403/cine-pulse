@@ -10,6 +10,7 @@ import { openPlayerModal } from './openPlayer.js';
 
 let activeRandomModal = null;
 let removeEscapeListener = null;
+let previousFocusElement = null;
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -36,6 +37,7 @@ export function openRandomPickerModal({ type = 'all' } = {}) {
   modalContainer.className = 'random-picker-backdrop';
   document.body.appendChild(modalContainer);
   activeRandomModal = modalContainer;
+  previousFocusElement = document.activeElement;
 
   let selectedType = type === 'tv' ? 'tv' : 'all'; // 'all' | 'movie' | 'tv'
   let selectedGenreIndex = 0; // null = random/mixed
@@ -333,6 +335,7 @@ export function openRandomPickerModal({ type = 'all' } = {}) {
 export function closeRandomPickerModal() {
   removeEscapeListener?.();
   removeEscapeListener = null;
+  try { previousFocusElement?.focus(); } catch (_) {}
   if (activeRandomModal) {
     try { activeRandomModal.remove(); } catch (_) {}
     activeRandomModal = null;

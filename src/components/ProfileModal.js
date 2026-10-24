@@ -6,7 +6,8 @@ import { renderIcons } from '../services/kabuk/icons.js';
    isolated watch histories and watchlists.
    ========================================================================== */
 
-import { getProfiles, getActiveProfile, setActiveProfile, addProfile, deleteProfile, saveProfiles } from '../services/altyapi/storage.js';
+import { getProfiles, getActiveProfile, setActiveProfile, addProfile, deleteProfile, saveProfiles, setProfileYasKademesi, getProfileYasKademesi, pinBelirle, pinKaldir, profilAc } from '../services/altyapi/storage.js';
+import { pinGecerliMi, pinNormalize, pinAktifMi, pinKilitDurumu, PIN_HATA_ESIGI, PIN_KILIT_MS, YAS_KADEMELERI } from '../services/altyapi/profil-pin.js';
 import { showToast } from './Toast.js';
 import { openDataManagerModal } from './DataManagerModal.js';
 import { openTraktModal } from './TraktModal.js';
@@ -15,6 +16,10 @@ import { isNativeAndroidApp, checkForAppUpdates, promptAppInstall } from '../ser
 let activeProfileModal = null;
 let profileEvents;
 let previousProfileFocus;
+// PIN deneme sayacı bellekte tutulur (localStorage'a YAZMAZ).
+let pinHataSayisi = 0;
+let pinKilitBitis = 0;
+let pinSayacTimer = null;
 const escapeProfileText = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 
 export function openProfileModal() {
@@ -33,7 +38,7 @@ export function openProfileModal() {
 
   let isManaging = false;
 
-  const renderModalContent = (viewState = 'select') => {
+  const renderModalContent = (viewState = 'select', ctx = {}) => {
     const profiles = getProfiles();
     const active = getActiveProfile();
 
@@ -80,13 +85,38 @@ export function openProfileModal() {
                         </div>
                       ` : ''}
                     </div>
-                    <span class="profile-name netflix-profile-name">${escapeProfileText(p.name)}</span>
+                    <span class="profile-name netflix-profile-name">${escapeProfileText(p.name)}${p.pinHash && pinAktifMi() ? ' 🔒' : ''}</span>
                   </button>
 
-                  ${isManaging && canDelete ? `
-                    <button class="btn-delete-profile netflix-delete-btn" data-delete-id="${p.id}" title="Profili Sil">
-                      <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
-                    </button>
+                  ${isManaging ? `
+                    <div class="profile-manage-row" style="display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:6px;">
+                      ${canDelete ? `
+                        <button class="btn-delete-profile netflix-delete-btn" data-delete-id="${p.id}" title="Profili Sil">
+                          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                        </button>
+                      ` : ''}
+                      ${pinAktifMi() ? `
+                        <button class="btn-manage-profiles" data-pin-ayar-id="${p.id}" title="Profil PIN'i belirle veya değiştir" style="min-height:28px;padding:2px 10px;font-size:11px;">
+                          <i data-lucide="${p.pinHash ? 'key-round' : 'lock'}" style="width: 12px; height: 12px;"></i>
+                          <span>${p.pinHash ? 'PIN Değiştir' : 'PIN Belirle'}</span>
+                        </button>
+                        ${p.pinHash ? `
+                          <button class="btn-manage-profiles" data-pin-kaldir-id="${p.id}" title="Profil PIN'ini kaldır" style="min-height:28px;padding:2px 10px;font-size:11px;">
+                            <i data-lucide="lock-open" style="width: 12px; height: 12px;"></i>
+                            <span>PIN Kaldır</span>
+                          </button>
+                        ` : ''}
+                      ` : ''}
+                      ${p.isKid ? `
+                        <div style="display:flex;gap:4px;" role="group" aria-label="Yaş kademesi">
+                          ${YAS_KADEMELERI.map(k => `
+                            <button type="button" class="btn-manage-profiles ${getProfileYasKademesi(p) === k ? 'is-active-done' : ''}" data-kademe="${k}" data-kademe-id="${p.id}" title="${k === 'cocuk' ? 'Yalnız kid-safe içerik' : k === 'genclik' ? 'Süzgeç yok (normal mod)' : 'Süzgeç yok'}" style="min-height:26px;padding:2px 7px;font-size:10px;">
+                              <span>${k === 'cocuk' ? 'Çocuk' : k === 'genclik' ? 'Gençlik' : 'Yetişkin'}</span>
+                            </button>
+                          `).join('')}
+                        </div>
+                      ` : ''}
+                    </div>
                   ` : ''}
                 </div>
               `;
@@ -171,6 +201,15 @@ export function openProfileModal() {
               </label>
             </div>
 
+            <div class="profile-color-picker-row" id="new-profile-kademe-row" style="display:none;">
+              <label>Yaş Kademesi</label>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="radio" name="new-profile-kademe" value="cocuk" checked /> Çocuk (yalnız kid-safe)</label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="radio" name="new-profile-kademe" value="genclik" /> Gençlik (süzgeç yok)</label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="radio" name="new-profile-kademe" value="yetiskin" /> Yetişkin</label>
+              </div>
+            </div>
+
             <div class="profile-color-picker-row">
               <label>Profil Rengi</label>
               <div class="profile-colors-wrap">
@@ -187,10 +226,69 @@ export function openProfileModal() {
           </form>
         </div>
       `;
+    } else if (viewState === 'pin') {
+      // PIN sorma katmanı: 4-6 hane; yanlışta toast + 3 hatada 30 sn kilit.
+      const { profile, baslik, sonraki } = ctx;
+      modalContainer.innerHTML = `
+        <div class="profile-dialog profile-dialog-small">
+          <button class="profile-close-btn" id="btn-pin-geri" title="Geri">
+            <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+          </button>
+
+          <div class="profile-top-title">
+            <h2 id="cp-profile-heading">${escapeProfileText(baslik || 'Profil PIN\'i')}</h2>
+            <p>"${escapeProfileText(profile?.name || '')}" — bu, bu cihazdaki yerel bir eşiştir; kriptografik koruma değildir.</p>
+          </div>
+
+          <form id="form-pin-gir" class="profile-add-form">
+            <div class="profile-input-group">
+              <label for="pin-gir-input">4-6 hane PIN</label>
+              <input type="password" inputmode="numeric" autocomplete="off" maxlength="6" id="pin-gir-input" placeholder="••••" />
+            </div>
+            <p id="pin-hata-metni" role="alert" style="color:#f87171;min-height:18px;font-size:13px;margin:0 0 8px;"></p>
+            <div class="profile-form-actions">
+              <button type="button" class="btn-secondary" id="btn-pin-vazgec">Vazgeç</button>
+              <button type="submit" class="btn-primary" id="btn-pin-gonder">Aç</button>
+            </div>
+          </form>
+        </div>
+      `;
+    } else if (viewState === 'pin-ayar') {
+      // İki adımlı PIN belirleme: PIN + tekrarı; eşleşmezse hata.
+      const prof = getProfiles().find(x => x.id === ctx.profileId);
+      if (!prof) { renderModalContent('select'); return; }
+      modalContainer.innerHTML = `
+        <div class="profile-dialog profile-dialog-small">
+          <button class="profile-close-btn" id="btn-pin-geri" title="Geri">
+            <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+          </button>
+
+          <div class="profile-top-title">
+            <h2 id="cp-profile-heading">${prof.pinHash ? 'PIN Değiştir' : 'Profil PIN\'i Belirle'}</h2>
+            <p>"${escapeProfileText(prof.name)}" — bu, bu cihazdaki yerel bir eşiştir; kriptografik koruma değildir.</p>
+          </div>
+
+          <form id="form-pin-ayar" class="profile-add-form">
+            <div class="profile-input-group">
+              <label for="pin-ayar-1">Yeni PIN (4-6 hane)</label>
+              <input type="password" inputmode="numeric" autocomplete="off" maxlength="6" id="pin-ayar-1" />
+            </div>
+            <div class="profile-input-group">
+              <label for="pin-ayar-2">PIN'i tekrar girin</label>
+              <input type="password" inputmode="numeric" autocomplete="off" maxlength="6" id="pin-ayar-2" />
+            </div>
+            <p id="pin-ayar-hata" role="alert" style="color:#f87171;min-height:18px;font-size:13px;margin:0 0 8px;"></p>
+            <div class="profile-form-actions">
+              <button type="button" class="btn-secondary" id="btn-pin-ayar-vazgec">İptal</button>
+              <button type="submit" class="btn-primary">Kaydet</button>
+            </div>
+          </form>
+        </div>
+      `;
     }
 
     renderIcons(modalContainer);
-    (modalContainer.querySelector('#new-profile-name') || modalContainer.querySelector('#btn-close-profile-modal'))?.focus();
+    (modalContainer.querySelector('#new-profile-name') || modalContainer.querySelector('#pin-gir-input') || modalContainer.querySelector('#pin-ayar-1') || modalContainer.querySelector('#btn-close-profile-modal'))?.focus();
 
     // --- SELECT VIEW EVENTS ---
     const closeBtn = modalContainer.querySelector('#btn-close-profile-modal');
@@ -226,6 +324,109 @@ export function openProfileModal() {
         }
       };
     });
+
+    // PIN ayar satırı (isteğe bağlı; çocuk profili şartı yok)
+    modalContainer.querySelectorAll('[data-pin-ayar-id]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        renderModalContent('pin-ayar', { profileId: btn.getAttribute('data-pin-ayar-id') });
+      };
+    });
+    modalContainer.querySelectorAll('[data-pin-kaldir-id]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        if (!confirm('Bu profilin PIN\'i kaldırılsın mı?')) return;
+        pinKaldir(btn.getAttribute('data-pin-kaldir-id'));
+        showToast('Profil PIN\'i kaldırıldı.', 'info');
+        renderModalContent('select');
+      };
+    });
+
+    // Yaş kademesi seçici (çocuk profilleri)
+    modalContainer.querySelectorAll('[data-kademe-id]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const ok = setProfileYasKademesi(btn.getAttribute('data-kademe-id'), btn.getAttribute('data-kademe'));
+        if (ok) {
+          showToast('Yaş kademesi güncellendi.', 'info');
+          renderModalContent('select');
+        } else {
+          showToast('Geçersiz yaş kademesi.', 'error');
+        }
+      };
+    });
+
+    // --- PIN GATE (sorma) VIEW EVENTS ---
+    const pinForm = modalContainer.querySelector('#form-pin-gir');
+    if (pinForm) {
+      const geriBtn = () => { pinHataSayisi = 0; pinKilitBitis = 0; renderModalContent('select'); };
+      modalContainer.querySelector('#btn-pin-geri').onclick = geriBtn;
+      modalContainer.querySelector('#btn-pin-vazgec').onclick = geriBtn;
+      const pinInput = modalContainer.querySelector('#pin-gir-input');
+      const hataEl = modalContainer.querySelector('#pin-hata-metni');
+      const gonderBtn = modalContainer.querySelector('#btn-pin-gonder');
+
+      const kilitSonlandir = () => {
+        clearInterval(pinSayacTimer); pinSayacTimer = null;
+        pinHataSayisi = 0; pinKilitBitis = 0;
+        pinInput.disabled = false; gonderBtn.disabled = false;
+        hataEl.textContent = '';
+        pinInput.focus();
+      };
+      const kilitBaslat = () => {
+        pinKilitBitis = Date.now() + PIN_KILIT_MS;
+        pinInput.disabled = true; gonderBtn.disabled = true;
+        clearInterval(pinSayacTimer);
+        const tik = () => {
+          const { kilitli, kalanMs } = pinKilitDurumu(pinHataSayisi, pinKilitBitis - PIN_KILIT_MS, Date.now());
+          if (!kilitli) { kilitSonlandir(); return; }
+          hataEl.textContent = `Çok fazla hatalı deneme. ${Math.ceil(kalanMs / 1000)} saniye sonra tekrar deneyin.`;
+        };
+        tik();
+        pinSayacTimer = setInterval(tik, 500);
+      };
+
+      pinForm.onsubmit = async (e) => {
+        e.preventDefault();
+        if (Date.now() < pinKilitBitis) return;
+        const girilen = pinNormalize(pinInput.value);
+        if (!pinGecerliMi(girilen)) { hataEl.textContent = 'PIN 4-6 hane olmalıdır.'; return; }
+        const ok = await profilAc(ctx.profile.id, girilen);
+        if (ok) {
+          pinHataSayisi = 0; pinKilitBitis = 0;
+          clearInterval(pinSayacTimer); pinSayacTimer = null;
+          const devam = ctx.sonraki;
+          ctx.sonraki = null; // tekrar tetiklenmesin
+          devam?.();
+          return;
+        }
+        pinHataSayisi += 1;
+        pinInput.value = '';
+        showToast('PIN hatalı.', 'error');
+        if (pinHataSayisi >= PIN_HATA_ESIGI) kilitBaslat();
+        else hataEl.textContent = `Hatalı PIN. ${PIN_HATA_ESIGI - pinHataSayisi} deneme hakkınız kaldı.`;
+      };
+    }
+
+    // --- PIN AYAR (belirle/değiştir) VIEW EVENTS ---
+    const pinAyarForm = modalContainer.querySelector('#form-pin-ayar');
+    if (pinAyarForm) {
+      const geri = () => renderModalContent('select');
+      modalContainer.querySelector('#btn-pin-geri').onclick = geri;
+      modalContainer.querySelector('#btn-pin-ayar-vazgec').onclick = geri;
+      const hataEl = modalContainer.querySelector('#pin-ayar-hata');
+      pinAyarForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const a = pinNormalize(pinAyarForm.querySelector('#pin-ayar-1').value);
+        const b = pinNormalize(pinAyarForm.querySelector('#pin-ayar-2').value);
+        if (!pinGecerliMi(a)) { hataEl.textContent = 'PIN 4-6 hane olmalıdır.'; return; }
+        if (a !== b) { hataEl.textContent = 'PIN\'ler eşleşmiyor.'; return; }
+        const ok = await pinBelirle(ctx.profileId, a);
+        if (!ok) { hataEl.textContent = 'PIN kaydedilemedi.'; return; }
+        showToast('Profil PIN\'i kaydedildi.', 'info');
+        renderModalContent('select');
+      };
+    }
 
     // Trakt, Backup and PWA Buttons inside modal
     const traktBtn = modalContainer.querySelector('#btn-modal-open-trakt');
@@ -288,9 +489,24 @@ export function openProfileModal() {
         }
 
         const p = getProfiles().find(x => x.id === pId);
-        setActiveProfile(pId);
-        closeProfileModal();
-        triggerProfileSwitchTransition(p);
+        if (!p) return;
+        const aktif = getActiveProfile();
+        const gec = () => {
+          setActiveProfile(pId);
+          closeProfileModal();
+          triggerProfileSwitchTransition(p);
+        };
+        // PIN'li AÇIK profilden çıkış + PIN'li HEDEFE giriş: ikisi de PIN ister.
+        const cikisPinli = pinAktifMi() && aktif && aktif.id !== pId && aktif.pinHash;
+        const hedefPinli = pinAktifMi() && p.pinHash && p.id !== aktif?.id;
+        if (!cikisPinli && !hedefPinli) { gec(); return; }
+        renderModalContent('pin', {
+          profile: cikisPinli ? aktif : p,
+          baslik: cikisPinli ? 'Profil Değiştirme PIN\'i' : 'Profil PIN\'i',
+          sonraki: cikisPinli && hedefPinli
+            ? () => renderModalContent('pin', { profile: p, baslik: 'Profil PIN\'i', sonraki: gec })
+            : gec
+        });
       };
     });
 
@@ -315,12 +531,19 @@ export function openProfileModal() {
         };
       });
 
+      // Çocuk toggle'ı açıkken yaş kademesi seçici görünür.
+      const kidCheck = form.querySelector('#new-profile-kid-check');
+      const kademeRow = form.querySelector('#new-profile-kademe-row');
+      if (kidCheck && kademeRow) {
+        kidCheck.onchange = () => { kademeRow.style.display = kidCheck.checked ? '' : 'none'; };
+      }
+
       form.onsubmit = (e) => {
         e.preventDefault();
         const nameInput = form.querySelector('#new-profile-name');
-        const kidCheck = form.querySelector('#new-profile-kid-check');
+        const kidCheckEl = form.querySelector('#new-profile-kid-check');
         const name = nameInput ? nameInput.value.trim() : '';
-        const isKid = kidCheck ? kidCheck.checked : false;
+        const isKid = kidCheckEl ? kidCheckEl.checked : false;
 
         if (name) {
           const newP = addProfile({
@@ -329,6 +552,10 @@ export function openProfileModal() {
             avatar: isKid ? 'smile' : 'user',
             color: selectedColor
           });
+          if (isKid) {
+            const kademe = form.querySelector('input[name="new-profile-kademe"]:checked')?.value;
+            if (kademe) setProfileYasKademesi(newP.id, kademe);
+          }
           setActiveProfile(newP.id);
           closeProfileModal();
           triggerProfileSwitchTransition(newP);
@@ -357,6 +584,7 @@ export function openProfileModal() {
 
 export function closeProfileModal() {
   profileEvents?.abort();
+  if (pinSayacTimer) { clearInterval(pinSayacTimer); pinSayacTimer = null; }
   if (activeProfileModal) {
     try { activeProfileModal.remove(); } catch (_) {}
     activeProfileModal = null;

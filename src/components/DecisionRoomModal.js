@@ -16,8 +16,10 @@ let activeRoomModal = null;
 let activeRoom = null;
 let unsubscribe = null;
 let removeSharedOpenListener = null;
+let previousFocusElement = null;
 
 function createLobby() {
+  previousFocusElement = document.activeElement;
   closeDecisionRoomModal(false);
   const root = document.createElement('div');
   root.className = 'decision-room-backdrop';
@@ -342,6 +344,7 @@ async function loadCandidates(room, root) {
 }
 
 export async function openDecisionRoomModal({ roomCode = getRoomCodeFromUrl(), isHost = false } = {}) {
+  previousFocusElement = document.activeElement;
   if (!roomCode) {
     createLobby();
     return;
@@ -433,6 +436,7 @@ export function closeDecisionRoomModal(removeLink = true) {
   activeRoom = null;
   activeRoomModal?.remove();
   activeRoomModal = null;
+  try { previousFocusElement?.focus(); } catch (_) {}
   if (removeLink) removeRoomCodeFromUrl();
 }
 

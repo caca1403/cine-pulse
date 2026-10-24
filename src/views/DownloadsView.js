@@ -122,12 +122,14 @@ export function renderDownloadsView() {
           </article>`;
         }).join('');
         renderIcons(list);
-        list.querySelectorAll('img[data-offline-poster-key]').forEach(async image => {
-          const cachedPoster = await getOfflinePosterUrl(image.dataset.offlinePosterKey, image.dataset.offlinePosterSource || '');
-          if (cachedPoster && image.isConnected) {
-            image.onerror = null;
-            image.src = cachedPoster;
-          }
+        list.querySelectorAll('img[data-offline-poster-key]').forEach(image => {
+          void (async () => {
+            const cachedPoster = await getOfflinePosterUrl(image.dataset.offlinePosterKey, image.dataset.offlinePosterSource || '');
+            if (cachedPoster && image.isConnected) {
+              image.onerror = null;
+              image.src = cachedPoster;
+            }
+          })().catch(() => {});
         });
         list.querySelectorAll('.download-series-card').forEach((card, index) => {
           const entry = content.filter(item => item.type === 'series')[index];

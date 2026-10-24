@@ -1323,6 +1323,27 @@ export async function fetchSeasonDetails(tvId, seasonNumber = 1) {
   return trRes;
 }
 
+/** Tek bir bölümün detayını çek (recap için önceki bölüm overview'i) */
+export async function fetchEpisodeDetails(tvId, seasonNumber, episodeNumber) {
+  // Önce TR dili dene
+  const trRes = await tmdbFetch(`/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`, { language: 'tr-TR' });
+  if (trRes && trRes.overview && trRes.overview.trim().length > 0) {
+    return { overview: trRes.overview.trim(), source: 'tr' };
+  }
+
+  // TR'de yoksa EN dili dene
+  const enRes = await tmdbFetch(`/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`, { language: 'en-US' });
+  if (enRes && enRes.overview && enRes.overview.trim().length > 0) {
+    const translated = await translateToTurkish(enRes.overview.trim());
+    if (translated && translated.trim().length > 0) {
+      return { overview: translated.trim(), source: 'en->tr' };
+    }
+    return { overview: enRes.overview.trim(), source: 'en' };
+  }
+
+  return { overview: '', source: 'none' };
+}
+
 export async function searchMulti(query, page = 1) {
   if (!query || !query.trim()) return [];
   const cleanQuery = query.trim().toLowerCase();
@@ -1457,4 +1478,34 @@ export async function fetchRecommendations(type = 'tv', tmdbId, page = 1) {
   return data.results
     .filter(item => item && (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => ({ ...item, type: t, media_type: t }));
+}
+
+/**
+ * "Yakında" rail'i için TMDB /movie/upcoming + /tv/on_the_air. Mevcut
+ * tmdbFetch anahtar rotasyonu/geri-deneme deseniyle çekilir; çıktı diğer Ana
+ * Sayfa satırlarıyla aynı normalize biçimdedir (type/media_type; anime → tv).
+ * Ağ hatasında/boş sonuçta [] döner, atmaz.
+ */
+export async function fetchUpcoming(page = 1) {
+  const [movieRes, tvRes] = await Promise.all([
+    tmdbFetch('/movie/upcoming', { page, language: 'tr-TR' }),
+    tmdbFetch('/tv/on_the_air', { page, language: 'tr-TR' })
+  ]);
+  const combined = [...(movieRes?.results || []), ...(tvRes?.results || [])];
+  const unique = new Map();
+  for (const item of combined) {
+    if (item && item.id && !unique.has(item.id)) unique.set(item.id, item);
+  }
+  return Array.from(unique.values())
+    .filter(item => (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
+    .map(item => {
+      const isTv = item.media_type === 'tv' || !!item.first_air_date;
+      const t = isTv ? 'tv' : 'movie';
+      return {
+        ...item,
+        type: t,
+        media_type: t,
+        overview: (item.overview || '').trim() || generateCinematicOverview(item, t)
+      };
+    });
 }

@@ -10,7 +10,7 @@ import {
   fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated, fetchPopularAnime, fetchPopularDocumentaries,
   fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsAdventures, fetchKidsDocumentaries, fetchKidsAnime,
   fetchKidsAnimationSeries, fetchKidsClassicCartoonSeries,
-  fetchAdultAnimationSeries, fetchCartoonSeries, fetchRecommendations
+  fetchAdultAnimationSeries, fetchCartoonSeries, fetchRecommendations, fetchUpcoming
 } from '../services/icerik/tmdbApi.js';
 import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile, isItemKidSafe, getFavorites } from '../services/altyapi/storage.js';
 import { renderHeroSlider, attachHeroSliderEvents, stopHeroSlider } from '../components/HeroSlider.js';
@@ -19,6 +19,7 @@ import { showToast } from '../components/Toast.js';
 import { collectWithin } from '../services/kabuk/startupBudget.js';
 import { railScrollMemory } from '../services/kabuk/scrollManager.js';
 import { tohumSec, onbellekAnahtari, cacheOku, cacheYaz, satirBasligi, KISISSEL_SATIR_TIPI } from '../services/icerik/personalRails.js';
+import { zamanRail } from '../services/kesif/zamanRail.js';
 import { isP2pAvailable } from '../services/dogrudan/p2pService.js';
 
 // Cache home TMDB data & rail state across navigations
@@ -286,6 +287,26 @@ function initInfiniteRails(container) {
 export async function renderHomeView() {
   const cacheGeneration = homeCacheGeneration;
   const isKid = isKidProfileActive();
+
+  // "Yakında" verisi: 6 saatlik personalRails önbellek deseniyle (localStorage),
+  // ağ hatasında rail sessizce çözülür (kullanıcıya hata gösterilmez).
+  // Trending ile eşzamanlı çalışmak için burada (await'suz) başlatılır;
+  // HTML oluşturulmadan önce await edilir.
+  const yakindaYukle = (async () => {
+    try {
+      const anahtar = `cinepulse_zaman_yakinda_${isKid ? 'kids' : 'adult'}`;
+      const depo = typeof localStorage !== 'undefined' ? localStorage : null;
+      let gelen = cacheOku(depo, anahtar);
+      if (!gelen) {
+        gelen = await fetchUpcoming(1);
+        if (gelen && gelen.length) cacheYaz(depo, anahtar, gelen);
+      }
+      return gelen || [];
+    } catch (_) {
+      return [];
+    }
+  })();
+
   let trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems, kidsAnimationItems, kidsClassicCartoonItems;
 
   if (!homeDataCache) homeDataCache = getPersistentHomeCache(isKid);
@@ -348,6 +369,19 @@ export async function renderHomeView() {
   primarySettled = true;
   if (secondarySettled && homeDataCache) persistHomeCache(homeDataCache);
   const secondaryInInitialHTML = secondarySettled;
+
+  const yakindaHam = await yakindaYukle;
+  const simdi = Date.now();
+
+  // "Bugün & Bu Hafta": trending (film+dizi karışımı) içinden bugün/bu hafta
+  // yayında olanlar; boşsa rail çizilmez. Çocuk profilinde kidSafe süzülür.
+  const gunlukHavuz = [...(trending || []), ...(popularMovies || []), ...(popularTV || [])];
+  const gunluk = zamanRail(isKid ? gunlukHavuz.filter(i => i && isItemKidSafe(i)) : gunlukHavuz, simdi);
+  const gunlukOge = [...gunluk.bugun, ...gunluk.buHafta];
+
+  // "Yakında": TMDB upcoming/on_the_air içinden gelecek tarihli olanlar;
+  // çocuk profilinde kidSafe süzülür, boşsa rail çizilmez.
+  const yakindaOge = zamanRail(isKid ? (yakindaHam || []).filter(i => i && isItemKidSafe(i)) : (yakindaHam || []), simdi).yakinda;
 
   const rawWatchHistory = getUnifiedContinueWatching();
   const watchHistory = filterForActiveProfile(rawWatchHistory);
@@ -412,6 +446,22 @@ export async function renderHomeView() {
   let railsHTML = '';
   if (isKid) {
     railsHTML = `
+      ${gunlukOge.length > 0 ? renderInfiniteRail({
+        id:    'rail-bugun-buhafta',
+        icon:  'clock',
+        title: 'Bugün & Bu Hafta',
+        accent:'#22d3ee',
+        items: gunlukOge
+      }) : ''}
+
+      ${yakindaOge.length > 0 ? renderInfiniteRail({
+        id:    'rail-yakinda',
+        icon:  'calendar',
+        title: 'Yakında',
+        accent:'#f472b6',
+        items: yakindaOge
+      }) : ''}
+
       ${renderInfiniteRail({
         id:    'rail-kids-movies',
         icon:  'sparkles',
@@ -454,6 +504,22 @@ export async function renderHomeView() {
     `;
   } else {
     railsHTML = `
+      ${gunlukOge.length > 0 ? renderInfiniteRail({
+        id:    'rail-bugun-buhafta',
+        icon:  'clock',
+        title: 'Bugün & Bu Hafta',
+        accent:'#22d3ee',
+        items: gunlukOge
+      }) : ''}
+
+      ${yakindaOge.length > 0 ? renderInfiniteRail({
+        id:    'rail-yakinda',
+        icon:  'calendar',
+        title: 'Yakında',
+        accent:'#f472b6',
+        items: yakindaOge
+      }) : ''}
+
       ${renderInfiniteRail({
         id:    'rail-popular-tv',
         icon:  'tv-2',

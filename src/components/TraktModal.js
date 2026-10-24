@@ -22,6 +22,8 @@ export function openTraktModal() {
     document.body.appendChild(modalContainer);
   }
 
+  const previousFocus = document.activeElement;
+
   const render = (viewState = 'main', stateData = {}) => {
     const isConnected = traktService.isTraktConnected();
     const user = traktService.getStoredUser();
@@ -277,6 +279,7 @@ export function openTraktModal() {
     modalContainer.classList.add('hidden');
     modalContainer.innerHTML = '';
     document.body.style.overflow = '';
+    try { previousFocus?.focus(); } catch (_) {}
     if (activeEscListener) {
       window.removeEventListener('keydown', activeEscListener);
       activeEscListener = null;

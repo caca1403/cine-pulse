@@ -9,8 +9,10 @@ import {
   fetchPopularAnime,
   fetchCartoonSeries,
   fetchPopularDocumentaries,
-  fetchTrending
+  fetchTrending,
+  fetchDiscoverMedia
 } from '../services/icerik/tmdbApi.js';
+import { parseDilArama } from '../services/kesif/dilArama.js';
 import { openProfileModal } from './ProfileModal.js';
 import { openRandomPickerModal } from './RandomPickerModal.js';
 import { getActiveProfile } from '../services/altyapi/storage.js';
@@ -282,6 +284,27 @@ function yerelAfisYedekleriBagla(kok) {
 }
 
 /* ============================================================
+   Doğal-dil arama → TMDB /discover
+   Parse başarılıysa keşif isteğiyle birleştirilir; parse null ise
+   mevcut searchMulti akışı birebir devam eder.
+============================================================ */
+async function aramaKesif(dil) {
+  return fetchDiscoverMedia({
+    type: dil.tur === 'dizi' ? 'tv' : 'movie',
+    genreId: dil.turler.length ? dil.turler.join(',') : undefined,
+    yearMin: dil.yilMin,
+    yearMax: dil.yilMaks
+  });
+}
+
+function dilAramaCip(dil) {
+  const turYazi = dil.tur === 'dizi' ? 'Dizi' : dil.tur === 'film' ? 'Film' : '';
+  const yilYazi = dil.yilMin ? `${dil.yilMin}+` : dil.yilMaks ? `${dil.yilMaks}-` : '';
+  const metin = ['🎭', ...dil.onayEtiketleri, turYazi, yilYazi].filter(Boolean).join(' · ');
+  return `<div class="search-chip" style="display:inline-block;margin:0 0 .6rem 0;padding:.3rem .7rem;border-radius:999px;font-size:.78rem;font-weight:800;border:1px solid rgba(168,85,247,.35);background:rgba(168,85,247,.1);color:#c084fc;">${escapeText(metin)}</div>`;
+}
+
+/* ============================================================
    Search Input Handler
 ============================================================ */
 function setupSearchInput(inputId, overlayId, signal) {
@@ -304,9 +327,22 @@ function setupSearchInput(inputId, overlayId, signal) {
 
     timer = setTimeout(async () => {
       try {
-        const raw = await searchMulti(query);
+        const dil = parseDilArama(query);
+        let sonuclar;
+        let dilCip = null;
+        if (dil) {
+          try {
+            sonuclar = await aramaKesif(dil);
+            dilCip = dil;
+          } catch (_) {
+            // Ağ hatasında sessizce normal aramaya düş
+            sonuclar = await searchMulti(query);
+          }
+        } else {
+          sonuclar = await searchMulti(query);
+        }
         if (generation !== searchGeneration || signal?.aborted || !input.isConnected) return;
-        const results = Array.isArray(raw) ? raw.slice(0, 8) : (raw?.results?.slice(0, 8) || []);
+        const results = Array.isArray(sonuclar) ? sonuclar.slice(0, 8) : (sonuclar?.results?.slice(0, 8) || []);
 
         const dramaRow = `
           <a href="#dramas?q=${encodeURIComponent(query)}" class="search-item search-item-drama" style="background:linear-gradient(135deg,rgba(88,28,135,.35),rgba(30,27,75,.55));border:1px solid rgba(168,85,247,.3);border-radius:10px;margin-top:6px;padding:.6rem .75rem;">
@@ -349,7 +385,7 @@ function setupSearchInput(inputId, overlayId, signal) {
             </a>`;
         }).join('');
 
-        overlay.innerHTML = itemsHTML + dramaRow;
+        overlay.innerHTML = (dilCip ? dilAramaCip(dilCip) : '') + itemsHTML + dramaRow;
         yerelAfisYedekleriBagla(overlay);
         overlay.classList.remove('hidden');
         renderIcons(overlay);

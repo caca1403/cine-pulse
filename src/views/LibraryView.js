@@ -462,16 +462,18 @@ export function renderLibraryView() {
                   <div class="offline-movie-actions"><button class="offline-play-btn" type="button"><i data-lucide="play"></i><span>Oynat</span></button><button class="btn-delete-history btn-lib-delete" title="Cihazdan sil" aria-label="Cihazdan sil"><i data-lucide="trash-2"></i></button></div>
                 </article>`).join('')}
             </div>`;
-          activeContent.querySelectorAll('.offline-series-poster img').forEach(async image => {
-            image.addEventListener('error', () => {
-              if (image.dataset.fallbackApplied === 'true') return;
-              image.dataset.fallbackApplied = 'true';
-              image.src = SINEFLIX_POSTER_FALLBACK;
-            }, { once: true });
-            const key = image.dataset.offlinePosterKey;
-            if (!key) return;
-            const cachedPoster = await getOfflinePosterUrl(key, image.dataset.offlinePosterSource || '');
-            if (cachedPoster && image.isConnected) image.src = cachedPoster;
+          activeContent.querySelectorAll('.offline-series-poster img').forEach(image => {
+            void (async () => {
+              image.addEventListener('error', () => {
+                if (image.dataset.fallbackApplied === 'true') return;
+                image.dataset.fallbackApplied = 'true';
+                image.src = SINEFLIX_POSTER_FALLBACK;
+              }, { once: true });
+              const key = image.dataset.offlinePosterKey;
+              if (!key) return;
+              const cachedPoster = await getOfflinePosterUrl(key, image.dataset.offlinePosterSource || '');
+              if (cachedPoster && image.isConnected) image.src = cachedPoster;
+            })().catch(() => {});
           });
           const playOfflineItem = async (row, item) => {
             if (!item) return;

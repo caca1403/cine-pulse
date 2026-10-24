@@ -386,6 +386,11 @@ function renderStep1Requirements() {
  */
 function renderStep2Player() {
   const settings = getUserSettings();
+  // Mevcut tercihler form durumunu da belirler (sadece yazan, hiç okumayan
+  // kör form olmasın).
+  const currentBufferSizeMb = (() => { try { return localStorage.getItem('cp_buffer_size_mb') || '100'; } catch (_) { return '100'; } })();
+  const currentSubLang = (() => { try { return localStorage.getItem('cp_default_sub_lang') || 'tr'; } catch (_) { return 'tr'; } })();
+  const currentResume = (() => { try { return localStorage.getItem('cp_resume_playback'); } catch (_) { return null; } })();
 
   return `
     <div style="display: flex; flex-direction: column; gap: 18px;">
@@ -423,9 +428,9 @@ function renderStep2Player() {
             <div style="font-size: 0.76rem; color: #94a3b8;">Takılmayı önleyen RAM akış tamponu</div>
           </div>
           <select id="opt_buffer_size" style="background: #1e293b; color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 6px 12px; font-size: 0.82rem;">
-            <option value="50">50 MB (Düşük Bellek)</option>
-            <option value="100" selected>100 MB (Dengeli - Tavsiye)</option>
-            <option value="250">250 MB (Ultra Kesintisiz)</option>
+            <option value="50" ${currentBufferSizeMb === '50' ? 'selected' : ''}>50 MB (Düşük Bellek)</option>
+            <option value="100" ${currentBufferSizeMb === '100' ? 'selected' : ''}>100 MB (Dengeli - Tavsiye)</option>
+            <option value="250" ${currentBufferSizeMb === '250' ? 'selected' : ''}>250 MB (Ultra Kesintisiz)</option>
           </select>
         </div>
 
@@ -436,9 +441,9 @@ function renderStep2Player() {
             <div style="font-size: 0.76rem; color: #94a3b8;">Otomatik yüklenen altyazı tercihi</div>
           </div>
           <select id="opt_sub_lang" style="background: #1e293b; color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 6px 12px; font-size: 0.82rem;">
-            <option value="tr" selected>🇹🇷 Türkçe</option>
-            <option value="en">🇬🇧 İngilizce</option>
-            <option value="off">Kapalı</option>
+            <option value="tr" ${currentSubLang === 'tr' ? 'selected' : ''}>🇹🇷 Türkçe</option>
+            <option value="en" ${currentSubLang === 'en' ? 'selected' : ''}>🇬🇧 İngilizce</option>
+            <option value="off" ${currentSubLang === 'off' ? 'selected' : ''}>Kapalı</option>
           </select>
         </div>
 
@@ -446,12 +451,18 @@ function renderStep2Player() {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
             <span style="font-size: 0.84rem; font-weight: 600; color: #f1f5f9;">Otomatik Sonraki Bölüm</span>
-            <input type="checkbox" id="opt_auto_next" checked style="accent-color: #f43f5e; width: 16px; height: 16px;">
+            <input type="checkbox" id="opt_auto_next" ${settings.autoplayNext !== false ? 'checked' : ''} style="accent-color: #f43f5e; width: 16px; height: 16px;">
           </div>
           <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
             <span style="font-size: 0.84rem; font-weight: 600; color: #f1f5f9;">Kaldığı Yerden Devam</span>
-            <input type="checkbox" id="opt_resume" checked style="accent-color: #f43f5e; width: 16px; height: 16px;">
+            <input type="checkbox" id="opt_resume" ${currentResume !== false ? 'checked' : ''} style="accent-color: #f43f5e; width: 16px; height: 16px;">
           </div>
+        </div>
+
+        <!-- Masaüstü hover fragman önizlemesi (varsayılan kapalı: bant/batanya zarar vermez) -->
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 0.84rem; font-weight: 600; color: #f1f5f9;">Masaüstünde kartların üzerinde fragman önizlemesi</span>
+          <input type="checkbox" id="opt_hover_previews" ${settings.hoverPreviewsEnabled === true ? 'checked' : ''} style="accent-color: #f43f5e; width: 16px; height: 16px;">
         </div>
       </div>
     </div>
@@ -547,10 +558,18 @@ function attachStep2PlayerEvents() {
     localStorage.setItem('cp_default_sub_lang', e.target.value);
   });
   document.getElementById('opt_auto_next')?.addEventListener('change', (e) => {
-    localStorage.setItem('cp_auto_next_episode', e.target.checked ? 'true' : 'false');
+    // CANLI anahtar: oynatıcı autoplayNext'i burdan okur. Eski ölü cp_ anahtarı
+    // temizlenir (eskiden yazılıyordu ama hiçbir yerde okunmuyordu).
+    try { localStorage.removeItem('cp_auto_next_episode'); } catch (_) {}
+    saveUserSettings({ autoplayNext: e.target.checked === true });
   });
   document.getElementById('opt_resume')?.addEventListener('change', (e) => {
+    // Oynatıcı açılışında cp_resume_playback'i okur (resumeEnabled).
     localStorage.setItem('cp_resume_playback', e.target.checked ? 'true' : 'false');
+  });
+  document.getElementById('opt_hover_previews')?.addEventListener('change', (e) => {
+    // CANLI anahtar: MediaCard bu değere göre hover önizleme dinleyicisini kurar.
+    saveUserSettings({ hoverPreviewsEnabled: e.target.checked === true });
   });
 }
 
