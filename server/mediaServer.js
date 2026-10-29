@@ -28,6 +28,9 @@ import { createRequire } from 'module';
 import { resolveWebteizleStreams } from './webteizleExtractor.js';
 import { isSzdEpisodePath, injectSzdPlayerFrame } from './playerFrameInject.js';
 import { fetchLiveSourceChannels, fetchAllLiveSources, listLiveSources, isLiveSourceId } from '../api/_liveSources.js';
+import { traktTokenKopru } from '../api/_traktToken.js';
+import { xtreamPanelsFromEnv } from '../api/_xtreamPanels.js';
+import { ariaKeyPayload } from '../api/_ariaKey.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -77,7 +80,6 @@ if (!_ffmpegBin) {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 /* Geçici ağ hatalarında yeniden deneyen fetch. ÖLÇÜLDÜ (2026-10-16): bu ağda
    bir sürecin İLK dış TLS bağlantısı ~7 sn asılıp ECONNRESET verebiliyor;
@@ -525,6 +527,38 @@ const server = http.createServer(async (req, res) => {
 
   const reqUrl = new URL(req.url, `http://localhost:${PORT}`);
 
+  // ============ Trakt OAuth köprüsü (client_secret env'de) ==============
+  if (reqUrl.pathname === '/trakt_token' || reqUrl.pathname === '/api/trakt_token') {
+    let govde = {};
+    try {
+      const parcalar = [];
+      for await (const c of req) parcalar.push(c);
+      govde = JSON.parse(Buffer.concat(parcalar).toString('utf-8') || '{}');
+    } catch (_) {}
+    await traktTokenKopru(req, res, govde);
+    return;
+  }
+
+  // ============ Xtream panel listesi (env'den; repoda düz metin yok) ====
+  if (reqUrl.pathname === '/xtream_panels' || reqUrl.pathname === '/api/xtream_panels') {
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600'
+    });
+    res.end(JSON.stringify(xtreamPanelsFromEnv() || { host: '', panels: [] }));
+    return;
+  }
+
+  // ============ Aria (Nightwing) Cf-Control anahtarı (env'de) ===========
+  if (reqUrl.pathname === '/aria_key' || reqUrl.pathname === '/api/aria_key') {
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600'
+    });
+    res.end(JSON.stringify(ariaKeyPayload()));
+    return;
+  }
+
   // ============ Canli TV kaynaklari (Kral M3U / Turhan TV) ==============
   // Vercel'deki /api/live_sources'in aynisi. Masaustunde cozumleme kullanici-
   // nin kendi IP'siyle yapildigi icin Turk yayinlarindaki bolge kilidi ve
@@ -692,6 +726,9 @@ const server = http.createServer(async (req, res) => {
     const season = reqUrl.searchParams.get('season');
     const episode = reqUrl.searchParams.get('episode');
     const mediaType = reqUrl.searchParams.get('type') || (season ? 'tv' : 'movie');
+    // dil=tr|en — api/[...all].js ile aynı sözleşme (etiket dürüstlüğü: EN
+    // track'i gerçek EN içeriğe bağlanır, boş Türkçe VTT'ye değil).
+    const dilKodu = String(reqUrl.searchParams.get('dil') || 'tr').toLowerCase() === 'en' ? 'eng' : 'tur';
 
     let targetUrl = subUrl ? decodeURIComponent(subUrl) : null;
     let explicitEncoding = null;
@@ -806,7 +843,7 @@ const server = http.createServer(async (req, res) => {
             const sRes = await fetch(stremioUrl, { signal: AbortSignal.timeout(4000) });
             if (sRes.ok) {
               const sData = await sRes.json();
-              const trSubs = (sData.subtitles || []).filter(s => s && s.lang === 'tur' && s.url);
+              const trSubs = (sData.subtitles || []).filter(s => s && s.lang === dilKodu && s.url);
               if (trSubs.length > 0) {
                 trSubs.sort((a, b) => {
                   const aSrt = (a.subtitleFileName || '').endsWith('.srt') ? 10 : 0;
@@ -829,7 +866,9 @@ const server = http.createServer(async (req, res) => {
             let curr = url;
             for (let attempt = 0; attempt < 3; attempt++) {
               const r = await fetch(curr, {
-                headers: { 'User-Agent': 'TemporaryUserAgent', 'Accept': 'application/json' },
+                // rest.opensubtitles.org 'TemporaryUserAgent' placeholder'ını
+                // 403 ile reddediyor (ölçüldü 2026-10-30); gerçek kimlik şart.
+                headers: { 'User-Agent': 'CinePulseStudio v1.1 (https://cinepulse.app)', 'Accept': 'application/json' },
                 redirect: 'manual',
                 signal: AbortSignal.timeout(4500)
               });
@@ -850,8 +889,8 @@ const server = http.createServer(async (req, res) => {
           // B1. Try IMDB ID search
           if (cleanImdb && !cleanImdb.match(/^[0-9]{1,4}$/)) {
             const osUrl = (season && episode)
-              ? `https://rest.opensubtitles.org/search/episode-${episode}/imdbid-${cleanImdb}/season-${season}/sublanguageid-tur`
-              : `https://rest.opensubtitles.org/search/imdbid-${cleanImdb}/sublanguageid-tur`;
+              ? `https://rest.opensubtitles.org/search/episode-${episode}/imdbid-${cleanImdb}/season-${season}/sublanguageid-${dilKodu}`
+              : `https://rest.opensubtitles.org/search/imdbid-${cleanImdb}/sublanguageid-${dilKodu}`;
             try {
               const list = await fetchOs(osUrl);
               if (Array.isArray(list) && list.length > 0) osCandidates.push(...list);
@@ -863,8 +902,8 @@ const server = http.createServer(async (req, res) => {
             const cleanQ = encodeURIComponent(resolvedTitle.replace(/[^\w\s]/gi, ' ').trim().toLowerCase()).replace(/%20/g, '+');
             if (cleanQ) {
               const qUrl = (season && episode)
-                ? `https://rest.opensubtitles.org/search/episode-${episode}/query-${cleanQ}/season-${season}/sublanguageid-tur`
-                : `https://rest.opensubtitles.org/search/query-${cleanQ}/sublanguageid-tur`;
+                ? `https://rest.opensubtitles.org/search/episode-${episode}/query-${cleanQ}/season-${season}/sublanguageid-${dilKodu}`
+                : `https://rest.opensubtitles.org/search/query-${cleanQ}/sublanguageid-${dilKodu}`;
               try {
                 const list = await fetchOs(qUrl);
                 if (Array.isArray(list) && list.length > 0) osCandidates.push(...list);
