@@ -5,8 +5,6 @@ import { fetchLiveSourceChannels, fetchAllLiveSources, listLiveSources, isLiveSo
 import { Readable } from 'stream';
 import downloadApk from './download_apk.js';
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -474,10 +472,21 @@ export default async function handler(req, res) {
     if (req.headers['x-requested-with']) customHeaders['X-Requested-With'] = req.headers['x-requested-with'];
 
   } else if (pathname.startsWith('/api/subtitles')) {
-    // WebVTT Subtitle Proxy & Multi-Source OpenSubtitles resolver for Vercel
+    // WebVTT Altyazı Vekili + OpenSubtitles Çözücüsü (çok katmanlı)
+    // ------------------------------------------------------------------
+    // Katmanlar (dil başına): 1) strem.io OpenSubtitles v3 (imdb; UTF-8
+    // hazır, en hızlı) 2) rest.opensubtitles.org (imdb veya başlık sorgusu).
+    // dil=tr|en dili seçer (varsayılan tr). mod=ara indirileni DÜŞÜRMEDEN
+    // aday listesini JSON döner: oynatıcı hangi dilin GERÇEKTEN var olduğunu
+    // bilir ve track etiketini ona göre dürüst yazar (kullanıcı kuralı:
+    // doğrulanamayan iddia yok).
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
     res.setHeader('Access-Control-Allow-Origin', '*');
+
+    const dilKodu = String(urlObj.searchParams.get('dil') || 'tr').toLowerCase() === 'en' ? 'eng' : 'tur';
+    const modAra = String(urlObj.searchParams.get('mod') || '').toLowerCase() === 'ara';
+    if (modAra) res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
     const tmdbIdParam = urlObj.searchParams.get('imdbId') || urlObj.searchParams.get('tmdbId');
     const directUrl = urlObj.searchParams.get('url');
@@ -485,8 +494,6 @@ export default async function handler(req, res) {
     const season = urlObj.searchParams.get('season');
     const episode = urlObj.searchParams.get('episode');
     const mediaType = urlObj.searchParams.get('type') || (season ? 'tv' : 'movie');
-
-    let downloadUrl = directUrl;
 
     function secToVttTime(seconds) {
       if (isNaN(seconds) || seconds < 0) seconds = 0;
@@ -552,132 +559,200 @@ export default async function handler(req, res) {
       return 'WEBVTT\n\n' + text.trim() + '\n';
     }
 
-    if (!downloadUrl && (tmdbIdParam || titleParam)) {
-      try {
-        let resolvedImdb = tmdbIdParam && String(tmdbIdParam).startsWith('tt') ? tmdbIdParam : null;
-        let resolvedTitle = titleParam ? decodeURIComponent(titleParam) : null;
+    // ── Kimlik çözümleme: imdb doğrudan gelir ya da TMDB external_ids/başlık ──
+    let resolvedImdb = tmdbIdParam && String(tmdbIdParam).startsWith('tt') ? tmdbIdParam : null;
+    let resolvedTitle = titleParam ? decodeURIComponent(titleParam) : null;
 
-        // 1. Resolve TMDB ID -> IMDB ID & Title
-        const rawTmdb = tmdbIdParam && !String(tmdbIdParam).startsWith('tt') ? tmdbIdParam : null;
-        if (rawTmdb && (!resolvedImdb || !resolvedTitle)) {
-          const TMDB_KEYS = (process.env.CP_TMDB_KEYS ? process.env.CP_TMDB_KEYS.split(',').map((k) => k.trim()).filter(Boolean) : ['4e44d9029b1270a757cddc766a1bcb63', '844dba0bfd8f3a4f3799f6130ef9e335']);
-          for (const key of TMDB_KEYS) {
-            try {
-              if (!resolvedImdb) {
-                const extRes = await fetch(
-                  `https://api.themoviedb.org/3/${mediaType}/${rawTmdb}/external_ids?api_key=${key}`,
-                  { signal: AbortSignal.timeout(3000) }
-                );
-                if (extRes.ok) {
-                  const extData = await extRes.json();
-                  if (extData.imdb_id) resolvedImdb = extData.imdb_id;
-                }
+    const rawTmdb = tmdbIdParam && !String(tmdbIdParam).startsWith('tt') ? tmdbIdParam : null;
+    if (rawTmdb && (!resolvedImdb || !resolvedTitle)) {
+      const TMDB_KEYS = (process.env.CP_TMDB_KEYS ? process.env.CP_TMDB_KEYS.split(',').map((k) => k.trim()).filter(Boolean) : ['4e44d9029b1270a757cddc766a1bcb63', '844dba0bfd8f3a4f3799f6130ef9e335']);
+      for (const key of TMDB_KEYS) {
+        try {
+          if (!resolvedImdb) {
+            const extRes = await fetch(
+              `https://api.themoviedb.org/3/${mediaType}/${rawTmdb}/external_ids?api_key=${key}`,
+              { signal: AbortSignal.timeout(3000) }
+            );
+            if (extRes.ok) {
+              const extData = await extRes.json();
+              if (extData.imdb_id) resolvedImdb = extData.imdb_id;
+            }
+          }
+          if (!resolvedTitle) {
+            const detRes = await fetch(
+              `https://api.themoviedb.org/3/${mediaType}/${rawTmdb}?api_key=${key}`,
+              { signal: AbortSignal.timeout(3000) }
+            );
+            if (detRes.ok) {
+              const detData = await detRes.json();
+              resolvedTitle = detData.name || detData.title || detData.original_name || detData.original_title;
+            }
+          }
+          if (resolvedImdb) break;
+        } catch (_) {}
+      }
+    }
+
+    // Başlık-only istek: TMDB arama ile imdb çözülmeye çalışılır — imdb'siz
+    // içerikte de OpenSubtitles'ın tamamı (strem v3) görülebilir.
+    if (!resolvedImdb && resolvedTitle) {
+      const TMDB_KEYS_ARA = (process.env.CP_TMDB_KEYS ? process.env.CP_TMDB_KEYS.split(',').map((k) => k.trim()).filter(Boolean) : ['4e44d9029b1270a757cddc766a1bcb63', '844dba0bfd8f3a4f3799f6130ef9e335']);
+      for (const key of TMDB_KEYS_ARA) {
+        try {
+          const sRes = await fetch(
+            `https://api.themoviedb.org/3/search/${mediaType}?query=${encodeURIComponent(resolvedTitle)}&api_key=${key}`,
+            { signal: AbortSignal.timeout(3000) }
+          );
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            const ilk = (sData.results || [])[0];
+            if (ilk) {
+              const extRes = await fetch(
+                `https://api.themoviedb.org/3/${mediaType}/${ilk.id}/external_ids?api_key=${key}`,
+                { signal: AbortSignal.timeout(3000) }
+              );
+              if (extRes.ok) {
+                const extData = await extRes.json();
+                if (extData.imdb_id) resolvedImdb = extData.imdb_id;
               }
-              if (!resolvedTitle) {
-                const detRes = await fetch(
-                  `https://api.themoviedb.org/3/${mediaType}/${rawTmdb}?api_key=${key}`,
-                  { signal: AbortSignal.timeout(3000) }
-                );
-                if (detRes.ok) {
-                  const detData = await detRes.json();
-                  resolvedTitle = detData.name || detData.title || detData.original_name || detData.original_title;
-                }
+            }
+          }
+          if (resolvedImdb) break;
+        } catch (_) {}
+      }
+    }
+
+    // ── Dil için indirilebilir altyazı adresi (yoksa null). v3 → rest zinciri. ──
+    async function indirilebilirAdres(langCode) {
+      let downloadUrl = null;
+
+      // 1) Stremio OpenSubtitles v3 (hızlı, UTF-8'e çevrilmiş SRT)
+      if (resolvedImdb) {
+        try {
+          const stremioUrl = (season && episode)
+            ? `https://opensubtitles-v3.strem.io/subtitles/series/${resolvedImdb}:${season}:${episode}.json`
+            : `https://opensubtitles-v3.strem.io/subtitles/movie/${resolvedImdb}.json`;
+
+          const sRes = await fetch(stremioUrl, { signal: AbortSignal.timeout(3500) });
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            const sec = (sData.subtitles || []).filter(s => s && s.lang === langCode && s.url);
+            if (sec.length > 0) {
+              sec.sort((a, b) => {
+                const aSrt = (a.subtitleFileName || '').endsWith('.srt') ? 10 : 0;
+                const bSrt = (b.subtitleFileName || '').endsWith('.srt') ? 10 : 0;
+                return bSrt - aSrt;
+              });
+              downloadUrl = sec[0].url;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 2) rest.opensubtitles.org (imdb veya başlık sorgusu; güvenli yönlendirme + sıralama)
+      if (!downloadUrl) {
+        const cleanImdb = resolvedImdb ? String(resolvedImdb).replace(/^tt/, '') : null;
+        let osCandidates = [];
+
+        async function fetchOs(url) {
+          let curr = url;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const r = await fetch(curr, {
+              // 'TemporaryUserAgent' rest API'de 403 yiyordu (ölçüldü 2026-10-30).
+              headers: { 'User-Agent': 'CinePulseStudio v1.1 (https://cinepulse.app)', 'Accept': 'application/json' },
+              redirect: 'manual',
+              signal: AbortSignal.timeout(4000)
+            });
+            if (r.status >= 300 && r.status < 400) {
+              let loc = r.headers.get('location');
+              if (loc) {
+                if (loc.startsWith('https://_/')) loc = loc.replace('https://_/', 'https://rest.opensubtitles.org/');
+                else if (loc.startsWith('/')) loc = 'https://rest.opensubtitles.org' + loc;
+                curr = loc;
+                continue;
               }
-              if (resolvedImdb) break;
-            } catch (_) {}
+            }
+            if (r.ok) {
+              // Anubis anti-bot challenge HTML'i JSON sanılıp altyazı diye
+              // servis edilmesin (ölçüldü: worker IP'lerine challenge dönüyor).
+              const metin = await r.text();
+              if (/^\s*[\[{]/.test(metin)) { try { return JSON.parse(metin); } catch (_) {} }
+              return null;
+            }
+            return null;
           }
         }
 
-        // Step A: Stremio OpenSubtitles v3 (Fastest, pre-converted UTF-8 SRT)
-        if (resolvedImdb) {
+        if (cleanImdb && !cleanImdb.match(/^[0-9]{1,4}$/)) {
+          const osUrl = (season && episode)
+            ? `https://rest.opensubtitles.org/search/episode-${episode}/imdbid-${cleanImdb}/season-${season}/sublanguageid-${langCode}`
+            : `https://rest.opensubtitles.org/search/imdbid-${cleanImdb}/sublanguageid-${langCode}`;
           try {
-            const stremioUrl = (season && episode)
-              ? `https://opensubtitles-v3.strem.io/subtitles/series/${resolvedImdb}:${season}:${episode}.json`
-              : `https://opensubtitles-v3.strem.io/subtitles/movie/${resolvedImdb}.json`;
-
-            const sRes = await fetch(stremioUrl, { signal: AbortSignal.timeout(3500) });
-            if (sRes.ok) {
-              const sData = await sRes.json();
-              const trSubs = (sData.subtitles || []).filter(s => s && s.lang === 'tur' && s.url);
-              if (trSubs.length > 0) {
-                trSubs.sort((a, b) => {
-                  const aSrt = (a.subtitleFileName || '').endsWith('.srt') ? 10 : 0;
-                  const bSrt = (b.subtitleFileName || '').endsWith('.srt') ? 10 : 0;
-                  return bSrt - aSrt;
-                });
-                downloadUrl = trSubs[0].url;
-              }
-            }
+            const list = await fetchOs(osUrl);
+            if (Array.isArray(list) && list.length > 0) osCandidates.push(...list);
           } catch (_) {}
         }
 
-        // Step B: Fallback to rest.opensubtitles.org
-        if (!downloadUrl) {
-          const cleanImdb = resolvedImdb ? String(resolvedImdb).replace(/^tt/, '') : null;
-          let osCandidates = [];
-
-          async function fetchOs(url) {
-            let curr = url;
-            for (let attempt = 0; attempt < 3; attempt++) {
-              const r = await fetch(curr, {
-                headers: { 'User-Agent': 'TemporaryUserAgent', 'Accept': 'application/json' },
-                redirect: 'manual',
-                signal: AbortSignal.timeout(4000)
-              });
-              if (r.status >= 300 && r.status < 400) {
-                let loc = r.headers.get('location');
-                if (loc) {
-                  if (loc.startsWith('https://_/')) loc = loc.replace('https://_/', 'https://rest.opensubtitles.org/');
-                  else if (loc.startsWith('/')) loc = 'https://rest.opensubtitles.org' + loc;
-                  curr = loc;
-                  continue;
-                }
-              }
-              if (r.ok) return await r.json();
-              return null;
-            }
-          }
-
-          if (cleanImdb && !cleanImdb.match(/^[0-9]{1,4}$/)) {
-            const osUrl = (season && episode)
-              ? `https://rest.opensubtitles.org/search/episode-${episode}/imdbid-${cleanImdb}/season-${season}/sublanguageid-tur`
-              : `https://rest.opensubtitles.org/search/imdbid-${cleanImdb}/sublanguageid-tur`;
+        if (osCandidates.length === 0 && resolvedTitle) {
+          const cleanQ = encodeURIComponent(resolvedTitle.replace(/[^\w\s]/gi, ' ').trim().toLowerCase()).replace(/%20/g, '+');
+          if (cleanQ) {
+            const qUrl = (season && episode)
+              ? `https://rest.opensubtitles.org/search/episode-${episode}/query-${cleanQ}/season-${season}/sublanguageid-${langCode}`
+              : `https://rest.opensubtitles.org/search/query-${cleanQ}/sublanguageid-${langCode}`;
             try {
-              const list = await fetchOs(osUrl);
+              const list = await fetchOs(qUrl);
               if (Array.isArray(list) && list.length > 0) osCandidates.push(...list);
             } catch (_) {}
           }
-
-          if (osCandidates.length === 0 && resolvedTitle) {
-            const cleanQ = encodeURIComponent(resolvedTitle.replace(/[^\w\s]/gi, ' ').trim().toLowerCase()).replace(/%20/g, '+');
-            if (cleanQ) {
-              const qUrl = (season && episode)
-                ? `https://rest.opensubtitles.org/search/episode-${episode}/query-${cleanQ}/season-${season}/sublanguageid-tur`
-                : `https://rest.opensubtitles.org/search/query-${cleanQ}/sublanguageid-tur`;
-              try {
-                const list = await fetchOs(qUrl);
-                if (Array.isArray(list) && list.length > 0) osCandidates.push(...list);
-              } catch (_) {}
-            }
-          }
-
-          const validCandidates = osCandidates.filter(c => c && c.SubDownloadLink);
-          if (validCandidates.length > 0) {
-            validCandidates.sort((a, b) => {
-              const aSrt = (a.SubFormat || '').toLowerCase() === 'srt' ? 25 : 0;
-              const bSrt = (b.SubFormat || '').toLowerCase() === 'srt' ? 25 : 0;
-              const aForced = a.SubForeignPartsOnly === '1' ? -40 : 0;
-              const bForced = b.SubForeignPartsOnly === '1' ? -40 : 0;
-              const aCD = /cd\s*[2-9]/i.test(a.SubFileName || '') ? -20 : 0;
-              const bCD = /cd\s*[2-9]/i.test(b.SubFileName || '') ? -20 : 0;
-              const aDl = parseInt(a.SubDownloadsCnt || 0, 10);
-              const bDl = parseInt(b.SubDownloadsCnt || 0, 10);
-              return (bSrt + bForced + bCD + Math.min(bDl / 500, 15)) - (aSrt + aForced + aCD + Math.min(aDl / 500, 15));
-            });
-            downloadUrl = validCandidates[0].SubDownloadLink;
-          }
         }
+
+        const validCandidates = osCandidates.filter(c => c && c.SubDownloadLink);
+        if (validCandidates.length > 0) {
+          validCandidates.sort((a, b) => {
+            const aSrt = (a.SubFormat || '').toLowerCase() === 'srt' ? 25 : 0;
+            const bSrt = (b.SubFormat || '').toLowerCase() === 'srt' ? 25 : 0;
+            const aForced = a.SubForeignPartsOnly === '1' ? -40 : 0;
+            const bForced = b.SubForeignPartsOnly === '1' ? -40 : 0;
+            const aCD = /cd\s*[2-9]/i.test(a.SubFileName || '') ? -20 : 0;
+            const bCD = /cd\s*[2-9]/i.test(b.SubFileName || '') ? -20 : 0;
+            const aDl = parseInt(a.SubDownloadsCnt || 0, 10);
+            const bDl = parseInt(b.SubDownloadsCnt || 0, 10);
+            return (bSrt + bForced + bCD + Math.min(bDl / 500, 15)) - (aSrt + aForced + aCD + Math.min(aDl / 500, 15));
+          });
+          downloadUrl = validCandidates[0].SubDownloadLink;
+        }
+      }
+
+      return downloadUrl;
+    }
+
+    // ── mod=ara: indirmeden aday listesi (etiket dürüstlüğü için) ──
+    if (modAra) {
+      if (!resolvedImdb && !resolvedTitle) return res.status(200).json({ altyazilar: [] });
+      let araSonuc = [];
+      try {
+        const [trUrl, enUrl] = await Promise.all([indirilebilirAdres('tur'), indirilebilirAdres('eng')]);
+        const temel = `${urlObj.origin}${pathname}`;
+        const vttUrl = (dil) => {
+          const p = new URLSearchParams();
+          if (resolvedImdb) p.set('imdbId', resolvedImdb);
+          else if (rawTmdb) p.set('tmdbId', rawTmdb);
+          if (resolvedTitle) p.set('title', resolvedTitle);
+          if (season && episode) { p.set('season', season); p.set('episode', episode); }
+          p.set('type', mediaType);
+          p.set('dil', dil);
+          return `${temel}?${p.toString()}`;
+        };
+        if (trUrl) araSonuc.push({ dil: 'tr', etiket: 'OpenSubtitles (Türkçe)', bulundu: true, vttUrl: vttUrl('tr') });
+        if (enUrl) araSonuc.push({ dil: 'en', etiket: 'OpenSubtitles (İngilizce)', bulundu: true, vttUrl: vttUrl('en') });
       } catch (_) {}
+      res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+      return res.status(200).json({ altyazilar: araSonuc });
+    }
+
+    let downloadUrl = directUrl;
+    if (!downloadUrl && (tmdbIdParam || titleParam)) {
+      try { downloadUrl = await indirilebilirAdres(dilKodu); } catch (_) {}
     }
 
     if (!downloadUrl) {
@@ -700,7 +775,8 @@ export default async function handler(req, res) {
         } catch (_) {}
       }
 
-      // Check encoding: If invalid UTF-8 bytes are detected (\uFFFD), decode as windows-1254 (Turkish ANSI)
+      // Kodlama denetimi: geçersiz UTF-8 baytı (\uFFFD) görülürse windows-1254
+      // (Türkçe ANSI) olarak çöz — aksi halde TR altyazılar Türkçesiz görünür.
       let text = '';
       const utf8Candidate = rawBuffer.toString('utf-8');
       if (utf8Candidate.includes('\uFFFD')) {

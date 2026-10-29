@@ -881,7 +881,13 @@ const server = http.createServer(async (req, res) => {
                   continue;
                 }
               }
-              if (r.ok) return await r.json();
+              if (r.ok) {
+                // Anubis anti-bot challenge HTML'i JSON sanılıp altyazı diye
+                // servis edilmesin (ölçüldü 2026-10-30).
+                const metin = await r.text();
+                if (/^\s*[\[{]/.test(metin)) { try { return JSON.parse(metin); } catch (_) {} }
+                return null;
+              }
               return null;
             }
           }
