@@ -36,6 +36,17 @@ CinePulse; film, dizi ve anime **keşfini**, kişisel **izleme takibini**, **oyn
 - Verilerini JSON yedeğiyle başka cihaza taşıyabilirsin; Trakt eşitlemesi isteğe bağlıdır.
 - Windows, Linux ve Android paketleri aynı sürüm kaynağından üretilir; Android APK'sı mevcut yayınlarla uyumlu **kalıcı imza anahtarıyla** imzalanır.
 
+### 📸 Arayüz Kesitleri (Galeri)
+
+<p align="center">
+  <img src="public/images/discovery/cover.svg" alt="Modern Sinema Oynatıcısı" width="48%" style="border-radius:8px;" />
+  <img src="public/images/discovery/movies.webp" alt="Film ve Dizi Keşfi" width="48%" style="border-radius:8px;" />
+</p>
+<p align="center">
+  <img src="public/images/discovery/series.webp" alt="Bölüm Takibi ve Sezonlar" width="48%" style="border-radius:8px;" />
+  <img src="public/images/discovery/anime.webp" alt="Kişisel Kütüphane" width="48%" style="border-radius:8px;" />
+</p>
+
 <p align="center">
   <img src="docs/assets/view-tour.svg" alt="Keşif turu" height="88" />
   <img src="docs/assets/open-site.svg" alt="Siteyi aç" height="88" />

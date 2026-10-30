@@ -56,20 +56,20 @@ export function renderShowcaseView() {
     html: `<div class="cp-landing">
       <header class="cp-landing-nav">
         <a class="cp-landing-brand" href="#showcase" aria-label="CinePulse tanıtım">${renderSiteLogo('cp-landing-logo')}<span>Cine<span>Pulse</span></span></a>
-        <nav aria-label="Tanıtım bölümleri"><button data-landing-section="landing-downloads">İndir</button><button data-landing-section="landing-features">Özellikler</button><button data-landing-section="landing-compare">Masaüstü mü, Android mi?</button><button data-landing-section="landing-faq">Sık Sorulanlar</button></nav>
+        <nav aria-label="Tanıtım bölümleri"><button data-landing-section="landing-downloads">İndir</button><button data-landing-section="landing-gallery">Arayüz Resimleri</button><button data-landing-section="landing-features">Özellikler</button><button data-landing-section="landing-compare">Masaüstü mü, Android mi?</button><button data-landing-section="landing-license">Lisans</button><button data-landing-section="landing-faq">SSS</button></nav>
       </header>
       <main>
         <section class="cp-landing-hero cp-landing-shell" aria-labelledby="landing-title">
           <div class="cp-landing-hero-copy">
             <a class="cp-landing-version" href="${RELEASES}" target="_blank" rel="noopener noreferrer"><span></span>CINEPULSE STUDIO <b>v${pkg.version}</b>${icon('arrow-up-right')}</a>
             <h1 id="landing-title">Uygulaman<br>hazır.<br><em>İndir, kur, izle.</em></h1>
-            <p class="cp-landing-lead">CinePulse tanıtım ve indirme merkezi.<br class="cp-landing-desktop-break"> Film, dizi ve anime keşfi, kütüphane ve oynatma — hepsi uygulamada.</p>
-            <div class="cp-landing-actions"><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button></div>
+            <p class="cp-landing-lead">CinePulse resmi tanıtım, galeri ve indirme merkezi.<br class="cp-landing-desktop-break"> Film, dizi ve anime keşfi, kütüphane, saf sinema sahnesi ve indirme — hepsi uygulamada.</p>
+            <div class="cp-landing-actions"><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button><button class="cp-landing-button cp-landing-secondary" data-landing-section="landing-gallery">${icon('image')}Arayüzü Gör</button></div>
             <div class="cp-landing-hero-note">${icon('shield-check')}Android APK her sürümde aynı kalıcı anahtarla imzalanır — üzerine güncelleme verilerini silmez.</div>
           </div>
           <div class="cp-landing-preview" aria-label="CinePulse keşif ve oynatıcı arayüzünü temsil eden tanıtım görseli">
             <div class="cp-landing-preview-top"><span class="cp-landing-window-dots"><i></i><i></i><i></i></span><span>CINEPULSE / KEŞİF</span>${icon('maximize-2')}</div>
-            <div class="cp-landing-preview-scene"><img src="${base}images/discovery/movies.webp" alt="Sinema keşfi" fetchpriority="high"><span class="cp-landing-preview-tag">Sıradaki hikâyen</span><span class="cp-landing-preview-play">${icon('play')}</span><div class="cp-landing-preview-caption"><small>KEŞFET · SEÇ · DEVAM ET</small><strong>İzlemenin kendi ritmi var.</strong></div></div>
+            <div class="cp-landing-preview-scene"><img src="${base}images/discovery/cover.svg" alt="Sinema ve dizi keşfi" fetchpriority="high"><span class="cp-landing-preview-tag">v${pkg.version} Hazır</span><span class="cp-landing-preview-play">${icon('play')}</span><div class="cp-landing-preview-caption"><small>KEŞFET · SEÇ · DEVAM ET</small><strong>İzlemenin kendi ritmi var.</strong></div></div>
             <div class="cp-landing-preview-library"><span>Kaldığın yerden</span><span>Kütüphanem ${icon('arrow-right')}</span></div>
             <div class="cp-landing-preview-cards">${[['series','Diziler'],['anime','Anime'],['documentary','Belgeseller']].map(([file,label],i)=>`<div><img src="${base}images/discovery/${file}.webp" alt="" loading="lazy"><span>${label}</span><i style="--progress:${[67,35,82][i]}%"></i></div>`).join('')}</div>
             <div class="cp-landing-source-chip">${icon('layers')}Birden fazla seçenek.<strong>Tek oynatıcı.</strong></div>
@@ -77,7 +77,56 @@ export function renderShowcaseView() {
           <div class="cp-landing-hero-stack" aria-hidden="true">${['cartoons', 'dramas', 'series'].map((n, i) => `<i class="cp-landing-stack-${i + 1}" style="--z:${[-60, -30, 0][i]}px"><img src="${base}images/discovery/${n}.webp" alt=""></i>`).join('')}</div>
         </section>
         <div class="cp-landing-platforms cp-landing-shell"><span>DESTEKLENEN PLATFORMLAR</span><p>${icon('monitor')}Windows</p><p>${icon('terminal')}Linux</p><p>${icon('smartphone')}Android</p></div>
-        <section id="landing-downloads" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-downloads-title"><div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">PAKETLER · v${pkg.version}</span><h2 id="landing-downloads-title">CinePulse'u<br><span>ekranına taşı.</span></h2><p>İşletim sistemine uygun dosyayı seç. Kurulum paketleri resmî GitHub Releases üzerinden doğrudan indirilir; ZIP açman gerekmez.</p></div><div class="cp-landing-downloads">${packages.map(([symbol,title,detail,url,label,platform])=>`<article data-platform-download="${platform}">${icon(symbol)}<h3>${title} <small class="cp-landing-pkgver" data-pkgver></small></h3><p>${detail}</p><a class="cp-landing-button cp-landing-secondary" href="${url}" target="_blank" rel="noopener noreferrer" data-pkgurl>${label}${icon('arrow-down-to-line')}</a></article>`).join('')}</div><div class="cp-landing-download-footer"><span>Android için kalıcı release imzası · Windows 10+ · Debian/Ubuntu · Flatpak'li dağıtımlar</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-up-right')}</a></div></section>
+        <section id="landing-downloads" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-downloads-title"><div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">PAKETLER · v${pkg.version} (Alpha)</span><h2 id="landing-downloads-title">CinePulse'u<br><span>ekranına taşı.</span></h2><p>İşletim sistemine uygun dosyayı seç. Kurulum paketleri resmî GitHub Releases üzerinden doğrudan indirilir; tüm platformlar v${pkg.version} senkron güncellenir.</p></div><div class="cp-landing-downloads">${packages.map(([symbol,title,detail,url,label,platform])=>`<article data-platform-download="${platform}">${icon(symbol)}<h3>${title} <small class="cp-landing-pkgver" data-pkgver>v${pkg.version}</small></h3><p>${detail}</p><a class="cp-landing-button cp-landing-secondary" href="${url}" target="_blank" rel="noopener noreferrer" data-pkgurl>${label}${icon('arrow-down-to-line')}</a></article>`).join('')}</div><div class="cp-landing-download-footer"><span>Android için kalıcı release imzası (versionCode ${pkg.versionCode}) · Windows 10+ · Debian/Ubuntu · Flatpak</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-up-right')}</a></div></section>
+        <section id="landing-gallery" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-gallery-title">
+          <div class="cp-landing-section-heading">
+            <span class="cp-landing-eyebrow">UYGULAMA ARAYÜZÜNDEN KARELER</span>
+            <h2 id="landing-gallery-title">Her ayrıntısıyla<br><span>modern sinema deneyimi.</span></h2>
+            <p>Gelişmiş keşif motorundan saf sinema oynatıcısına, bölüm takibinden kişisel kütüphaneye kadar CinePulse içerisindeki gerçek arayüz kesitleri.</p>
+          </div>
+          <div class="cp-landing-gallery-grid">
+            <article class="cp-landing-gallery-card">
+              <div class="cp-landing-gallery-screen">
+                <img src="${base}images/discovery/cover.svg" alt="Modern Sinema Oynatıcı Sahnesi" loading="lazy">
+                <span class="cp-landing-gallery-badge">${icon('play-circle')} Tam Ekran Oynatıcı</span>
+              </div>
+              <div class="cp-landing-gallery-body">
+                <h3>Saf Sinema & Sahne Modu</h3>
+                <p>Dikkat dağıtmayan minimalist tam ekran arayüzü. Dublaj ve altyazı ayrımı, hızlı kaynak değiştirme, otomatik akış pilotu ve kusursuz medya kontrolleri.</p>
+              </div>
+            </article>
+            <article class="cp-landing-gallery-card">
+              <div class="cp-landing-gallery-screen">
+                <img src="${base}images/discovery/movies.webp" alt="Akıllı Keşif ve Trendler" loading="lazy">
+                <span class="cp-landing-gallery-badge">${icon('compass')} Yapım Keşfi</span>
+              </div>
+              <div class="cp-landing-gallery-body">
+                <h3>Zengin Keşif & Filtreleme</h3>
+                <p>IMDb / TMDb puanları, trend listeleri, yıl ve tür filtreleri. Film, dizi, anime ve belgeseller arasında kaybolmadan aradığın hikâyeyi anında bul.</p>
+              </div>
+            </article>
+            <article class="cp-landing-gallery-card">
+              <div class="cp-landing-gallery-screen">
+                <img src="${base}images/discovery/series.webp" alt="Bölüm Takibi ve Sezonlar" loading="lazy">
+                <span class="cp-landing-gallery-badge">${icon('check-circle-2')} Bölüm Takibi</span>
+              </div>
+              <div class="cp-landing-gallery-body">
+                <h3>Akıllı Sezon & İzlendi İşaretleme</h3>
+                <p>Dizi takibinde nerede kaldığını hatırlama derdine son. Sezonları tek tıkla izlendi işaretle, sonraki bölüme geçişte hiçbir zaman ritmini bozma.</p>
+              </div>
+            </article>
+            <article class="cp-landing-gallery-card">
+              <div class="cp-landing-gallery-screen">
+                <img src="${base}images/discovery/anime.webp" alt="Kişisel Kütüphane" loading="lazy">
+                <span class="cp-landing-gallery-badge">${icon('bookmark')} Kişisel Kitaplık</span>
+              </div>
+              <div class="cp-landing-gallery-body">
+                <h3>Kaldığın Yerden Devam Et</h3>
+                <p>Yarım bıraktığın içerikler ilerleme çubuklarıyla saklanır. JSON yedeğiyle tüm listeni cihazlar arasında taşıyabilir veya Trakt ile eşitleyebilirsin.</p>
+              </div>
+            </article>
+          </div>
+        </section>
         <section id="landing-features" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-features-title">
           <div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">DENEYİMİN SONUCU</span><h2 id="landing-features-title">Daha az arayış.<br><span>Daha çok kendi listen.</span></h2><p>Sadece bir oynatıcı değil. Ne keşfettiğini, ne izlediğini ve sırada ne olduğunu bir arada tutan bir alan.</p></div>
           <div class="cp-landing-benefits">${benefits.map(([symbol,title,text],i)=>`<article class="cp-landing-benefit"><div>${icon(symbol)}<span>0${i+1}</span></div><h3>${title}</h3><p>${text}</p></article>`).join('')}</div>
@@ -89,10 +138,42 @@ export function renderShowcaseView() {
         </section>
         <section class="cp-landing-start cp-landing-shell" aria-labelledby="landing-start-title"><div><span class="cp-landing-eyebrow">ÜÇ ADIM, KENDİ AKIŞIN</span><h2 id="landing-start-title">Hazırlık yok.<br><span>Keşifle başla.</span></h2><button class="cp-landing-button cp-landing-secondary" data-landing-section="landing-downloads">${icon('download')}Paketi Kur</button></div><ol><li><span>01</span><div><h3>İlgini çekeni bul.</h3><p>Ana sayfadan, aramadan veya kategorilerden ilerle. Diziyse sezon ve bölümünü seç.</p></div></li><li><span>02</span><div><h3>Dilini ve yayınını seç.</h3><p>Dublaj / altyazılı seçenekleri gör. Açılmayan bir bağlantıda diğer alternatife geç.</p></div></li><li><span>03</span><div><h3>Listene ekle, geri dön.</h3><p>Beğendiklerini sakla. Ara verdiğinde kütüphanenden kaldığın yere dön.</p></div></li></ol></section>
         <section class="cp-landing-release cp-landing-shell" aria-labelledby="landing-release-title"><div><span class="cp-landing-eyebrow">v${pkg.version} · BU SÜRÜMÜN ODAĞI</span><h2 id="landing-release-title">Kaynaklar tazelendi.<br><span>Kurulum seçenekleri çoğaldı.</span></h2><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notlarını gör ${icon('arrow-up-right')}</a></div><ul><li>${icon('timer')}<div><strong>Daha zengin Türkçe dublaj hattı</strong><p>Yeni yıldız kod adlı kaynaklar eklendi; dublaj / altyazı ayrımı gerçek etiketlerle listeleniyor.</p></div></li><li>${icon('panel-right')}<div><strong>İzleme ilerlemesi anında güncelleniyor</strong><p>Sezonu izlendi işaretleme artık uygulamayı kapatmadan görünür; kütüphane ve devam listeleri taze kalıyor.</p></div></li><li>${icon('download')}<div><strong>Flatpak desteği</strong><p>Windows EXE, Android APK, Linux DEB ve yeni Flatpak paketi doğrudan Releases'te. Android sürümleri aynı kalıcı anahtarla imzalanıyor.</p></div></li></ul></section>
+        <section id="landing-license" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-license-title">
+          <div class="cp-landing-section-heading">
+            <span class="cp-landing-eyebrow">YASAL GÜVENCE VE TELİF HAKKI</span>
+            <h2 id="landing-license-title">Telif Hakkı ve<br><span>Özel Lisans Bildirimi.</span></h2>
+            <p>CinePulse Studio, özgün arayüz mimarisi, marka kimliği ve tescilli kaynak kodlarıyla yasal koruma altındadır.</p>
+          </div>
+          <div class="cp-landing-license-box">
+            <div class="cp-landing-license-icon">${icon('shield-alert')}</div>
+            <div class="cp-landing-license-content">
+              <div class="cp-landing-license-meta">
+                <span class="cp-landing-license-tag lime">PROPRIETARY</span>
+                <span class="cp-landing-license-tag">ALL RIGHTS RESERVED</span>
+                <span class="cp-landing-license-tag">v${pkg.version}</span>
+              </div>
+              <h3>Copyright (c) 2024–2026 Çağatay (caca1403)</h3>
+              <p>Bu proje ve tüm kaynak kodları özel mülkiyete tabi (Proprietary and Confidential) olup tüm yasal hakları saklıdır. Yazarın açık yazılı izni olmaksızın kaynak kodunun, arayüz bileşenlerinin veya mimarisinin herhangi bir ortamda kısmen veya tamamen kopyalanması, üçüncü şahıslara aktarılması, yetkisiz fork edilmesi, çoğaltılması veya dağıtılması kesinlikle yasaktır.</p>
+              <a class="cp-landing-license-link" href="https://github.com/caca1403/cine-pulse/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">${icon('file-text')}Resmi LICENSE Sözleşmesini İncele ${icon('arrow-up-right')}</a>
+            </div>
+          </div>
+        </section>
         <section id="landing-faq" class="cp-landing-section cp-landing-shell cp-landing-faq" aria-labelledby="landing-faq-title"><div><span class="cp-landing-eyebrow">AKLINDA KALMASIN</span><h2 id="landing-faq-title">Sık sorulan<br><span>sorular.</span></h2><p>Başlamadan önce neyin nerede çalıştığını bil.</p></div><div class="cp-landing-questions">${faqs.map(([question,answer])=>`<details><summary>${question}${icon('plus')}</summary><p>${answer}</p></details>`).join('')}</div></section>
         <section class="cp-landing-final cp-landing-shell"><span class="cp-landing-eyebrow">ŞİMDİ SIRA SENDE</span><h2>İndir, kur.<br><span>Bu akşamın hikâyesini bul.</span></h2><p>İşletim sistemine uygun paketi indir ve izlemeye başla.</p><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-right')}</a></section>
       </main>
-      <footer class="cp-landing-footer cp-landing-shell"><a class="cp-landing-brand" href="#showcase">${renderSiteLogo('cp-landing-logo')}<span>Cine<span>Pulse</span></span></a><span>Senin ekranın. Senin akışın.</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">GitHub Releases ${icon('arrow-up-right')}</a></footer>
+      <footer class="cp-landing-footer cp-landing-shell">
+        <div class="cp-landing-footer-main">
+          <a class="cp-landing-brand" href="#showcase">${renderSiteLogo('cp-landing-logo')}<span>Cine<span>Pulse</span></span></a>
+          <span class="cp-landing-footer-slogan">Senin ekranın. Senin akışın.</span>
+        </div>
+        <div class="cp-landing-footer-meta">
+          <span class="cp-landing-copyright">© 2024–2026 Çağatay (caca1403) · Tüm Hakları Saklıdır (Proprietary)</span>
+          <div class="cp-landing-footer-links">
+            <a href="https://github.com/caca1403/cine-pulse/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Lisans ${icon('file-text')}</a>
+            <a href="${RELEASES}" target="_blank" rel="noopener noreferrer">GitHub Releases (v${pkg.version}) ${icon('arrow-up-right')}</a>
+          </div>
+        </div>
+      </footer>
     </div>`,
     init(container) {
       container.querySelectorAll('[data-landing-section]').forEach(button => {
