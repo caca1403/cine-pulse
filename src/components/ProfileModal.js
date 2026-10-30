@@ -141,24 +141,28 @@ export function openProfileModal() {
             </button>
           </div>
 
-          <!-- Bottom Management Bar -->
+          <!-- Bottom Management Bar: Webde sadece calisan moduller gosterilir -->
           <div class="profile-footer-bar netflix-footer-subbar">
             <button class="btn-manage-profiles" id="btn-modal-open-trakt" title="Trakt.tv Senkronizasyonu">
               <i data-lucide="tv" style="width: 14px; height: 14px; color: #ed1c24;"></i>
               <span>Trakt.tv</span>
             </button>
-            <button class="btn-manage-profiles" id="btn-modal-open-debrid" title="VEGA Ayarları">
-              <i data-lucide="zap" style="width: 14px; height: 14px; color: #dfff76;"></i>
-              <span>VEGA</span>
-            </button>
+            ${isAppPlatform() ? `
+              <button class="btn-manage-profiles" id="btn-modal-open-debrid" title="VEGA Ayarları">
+                <i data-lucide="zap" style="width: 14px; height: 14px; color: #dfff76;"></i>
+                <span>VEGA</span>
+              </button>
+            ` : ''}
             <button class="btn-manage-profiles" id="btn-modal-open-oynatma" title="Oynatma & Ağ Ayarları">
               <i data-lucide="settings-2" style="width: 14px; height: 14px; color: #a78bfa;"></i>
               <span>Oynatma & Ağ</span>
             </button>
-            <button class="btn-manage-profiles" id="btn-modal-open-eklenti" title="Eklenti Yönetimi">
-              <i data-lucide="plug" style="width: 14px; height: 14px; color: #fbbf24;"></i>
-              <span>Eklentiler</span>
-            </button>
+            ${isAppPlatform() ? `
+              <button class="btn-manage-profiles" id="btn-modal-open-eklenti" title="Eklenti Yönetimi">
+                <i data-lucide="plug" style="width: 14px; height: 14px; color: #fbbf24;"></i>
+                <span>Eklentiler</span>
+              </button>
+            ` : ''}
             <button class="btn-manage-profiles" id="btn-modal-open-backup" title="Yedekleme & Veri Yönetimi">
               <i data-lucide="hard-drive-download" style="width: 14px; height: 14px; color: #38bdf8;"></i>
               <span>Veri & Yedek</span>
@@ -168,16 +172,7 @@ export function openProfileModal() {
                 <i data-lucide="refresh-cw" style="width: 14px; height: 14px; color: #10b981;"></i>
                 <span>Güncelleme</span>
               </button>
-            ` : `
-              <a class="btn-manage-profiles" id="btn-modal-apk-download" href="https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk" download="cinepulse.apk" target="_blank" rel="noopener noreferrer" title="Android APK İndir" style="text-decoration: none;">
-                <i data-lucide="smartphone" style="width: 14px; height: 14px; color: #10b981;"></i>
-                <span>Android APK</span>
-              </a>
-              <button class="btn-manage-profiles" id="btn-modal-pwa-install" title="CinePulse Web Uygulamasını Yükle">
-                <i data-lucide="download" style="width: 14px; height: 14px; color: #dfff76;"></i>
-                <span>Web Uygulaması</span>
-              </button>
-            `}
+            ` : ''}
           </div>
         </div>
       `;
