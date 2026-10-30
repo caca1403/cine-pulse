@@ -260,6 +260,10 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
             <i data-lucide="arrow-left" style="width:18px;height:18px;"></i>
           </button>
           <div class="dt-ust-cubuk-sag">
+            <a href="#showcase" class="dt-ikonbtn" id="btn-showcase-detail" title="Sürüm ve İndirme Merkezi" aria-label="Sürüm ve İndirme Merkezi" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">
+              <i data-lucide="sparkles" style="width:18px;height:18px;color:#dfff76;"></i>
+              <span class="cps-gizli">Sürümler</span>
+            </a>
             <button class="dt-ikonbtn ${isCurrentWatched ? 'is-active' : ''}" id="btn-toggle-watched-detail" title="${watchedBtnLabel}" aria-label="${watchedBtnLabel}">
               <i data-lucide="${isCurrentWatched ? 'check-circle-2' : 'check'}" style="width:18px;height:18px;"></i>
               <span class="cps-gizli">${watchedBtnLabel}</span>
