@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveEntryHash } from '../src/services/kabuk/entryRoute.js';
 
-test('plain web visits open the landing page and explicit content links survive', () => {
-  assert.equal(resolveEntryHash('', false), '#showcase');
+test('plain web visits open the home page and explicit content links survive', () => {
+  assert.equal(resolveEntryHash('', false), '#home');
   for (const hash of ['#home', '#library', '#detail?type=tv&id=1396', '#showcase']) {
     assert.equal(resolveEntryHash(hash, false), hash);
   }

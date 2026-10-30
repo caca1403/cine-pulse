@@ -1,5 +1,5 @@
-// Only a plain web visit opens the introduction. Explicit content links survive.
+// Web ve uygulama varsayılan olarak ana ekrana (#home) açılır. Yalnızca açıkça #showcase istendiğinde tanıtım gösterilir.
 export function resolveEntryHash(hash, isApp, hasRoom = false) {
   if (isApp && hash === '#showcase') return '#home';
-  return hash || (isApp || hasRoom ? '#home' : '#showcase');
+  return hash || '#home';
 }
