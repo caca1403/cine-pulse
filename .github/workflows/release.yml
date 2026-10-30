@@ -70,6 +70,13 @@ jobs:
         with:
           packages: 'platforms;android-36 build-tools;36.0.0'
 
+      - name: Add Android build-tools to PATH
+        run: |
+          BUILD_TOOLS_DIR="$(find "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -n 1)"
+          if [ -n "$BUILD_TOOLS_DIR" ]; then
+            echo "$BUILD_TOOLS_DIR" >> "$GITHUB_PATH"
+          fi
+
       - name: Setup Python provider runtime
         uses: actions/setup-python@v5
         with:
@@ -123,7 +130,12 @@ jobs:
         shell: bash
         run: |
           APK=android/app/build/outputs/apk/release/app-release.apk
-          CERT_INFO="$(apksigner verify --print-certs "$APK")"
+          APKSIGNER="$(command -v apksigner || find "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools" -name apksigner -type f 2>/dev/null | sort -V | tail -n 1)"
+          if [ -z "$APKSIGNER" ] || [ ! -x "$APKSIGNER" ]; then
+            echo "apksigner aracı bulunamadı!" >&2
+            exit 1
+          fi
+          CERT_INFO="$("$APKSIGNER" verify --print-certs "$APK")"
           ACTUAL_SHA256="$(printf '%s\n' "$CERT_INFO" | sed -nE 's/.*certificate SHA-256 digest: ([[:xdigit:]:]+).*/\1/p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
           EXPECTED_SHA256=429f07887bd3ff17992faa552ff32f4f6eaea5a1dc7cfe27978578905e15e3d5
           if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
@@ -132,7 +144,7 @@ jobs:
             echo "Bulunan SHA-256: ${ACTUAL_SHA256:-yok}" >&2
             exit 1
           fi
-          echo "APK imza sertifikası mevcut release anahtarıyla eşleşiyor."
+          echo "APK imza sertifikası mevcut release anahtarıyla eşleşiyor ($ACTUAL_SHA256)."
 
       - name: Stage APK (ad manifest URL'leri ile ayni olmali)
         run: |
