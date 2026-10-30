@@ -7,7 +7,7 @@ import '../styles/showcase.css';
 const RELEASES = 'https://github.com/caca1403/cine-pulse/releases';
 const base = import.meta.env.BASE_URL;
 const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
-const enter = (label = 'Siteye Gir', extra = '') => `<a class="cp-landing-button cp-landing-primary ${extra}" href="#home">${label}${icon('arrow-up-right')}</a>`;
+const enter = () => '';
 // Hero scroll-parallax rAF handle'lari; route'a her donusun birikmeyi
 // onlemek icin eski scroll duyrucusu burada degisir (init yeniden kosar).
 let heroScrollFx = null;
@@ -57,7 +57,6 @@ export function renderShowcaseView() {
       <header class="cp-landing-nav">
         <a class="cp-landing-brand" href="#showcase" aria-label="CinePulse tanıtım">${renderSiteLogo('cp-landing-logo')}<span>Cine<span>Pulse</span></span></a>
         <nav aria-label="Tanıtım bölümleri"><button data-landing-section="landing-downloads">İndir</button><button data-landing-section="landing-features">Özellikler</button><button data-landing-section="landing-compare">Masaüstü mü, Android mi?</button><button data-landing-section="landing-faq">Sık Sorulanlar</button></nav>
-        ${enter('Siteye Gir', 'cp-landing-nav-enter')}
       </header>
       <main>
         <section class="cp-landing-hero cp-landing-shell" aria-labelledby="landing-title">
@@ -65,7 +64,7 @@ export function renderShowcaseView() {
             <a class="cp-landing-version" href="${RELEASES}" target="_blank" rel="noopener noreferrer"><span></span>CINEPULSE STUDIO <b>v${pkg.version}</b>${icon('arrow-up-right')}</a>
             <h1 id="landing-title">Uygulaman<br>hazır.<br><em>İndir, kur, izle.</em></h1>
             <p class="cp-landing-lead">CinePulse tanıtım ve indirme merkezi.<br class="cp-landing-desktop-break"> Film, dizi ve anime keşfi, kütüphane ve oynatma — hepsi uygulamada.</p>
-            <div class="cp-landing-actions"><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button>${enter('Webde Keşfet', 'cp-landing-button cp-landing-secondary')}</div>
+            <div class="cp-landing-actions"><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button></div>
             <div class="cp-landing-hero-note">${icon('shield-check')}Android APK her sürümde aynı kalıcı anahtarla imzalanır — üzerine güncelleme verilerini silmez.</div>
           </div>
           <div class="cp-landing-preview" aria-label="CinePulse keşif ve oynatıcı arayüzünü temsil eden tanıtım görseli">
@@ -77,7 +76,7 @@ export function renderShowcaseView() {
           </div>
           <div class="cp-landing-hero-stack" aria-hidden="true">${['cartoons', 'dramas', 'series'].map((n, i) => `<i class="cp-landing-stack-${i + 1}" style="--z:${[-60, -30, 0][i]}px"><img src="${base}images/discovery/${n}.webp" alt=""></i>`).join('')}</div>
         </section>
-        <div class="cp-landing-platforms cp-landing-shell"><span>NEREDEN İSTERSEN</span><p>${icon('globe')}Web</p><p>${icon('monitor')}Windows</p><p>${icon('terminal')}Linux</p><p>${icon('smartphone')}Android</p></div>
+        <div class="cp-landing-platforms cp-landing-shell"><span>DESTEKLENEN PLATFORMLAR</span><p>${icon('monitor')}Windows</p><p>${icon('terminal')}Linux</p><p>${icon('smartphone')}Android</p></div>
         <section id="landing-downloads" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-downloads-title"><div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">PAKETLER · v${pkg.version}</span><h2 id="landing-downloads-title">CinePulse'u<br><span>ekranına taşı.</span></h2><p>İşletim sistemine uygun dosyayı seç. Kurulum paketleri resmî GitHub Releases üzerinden doğrudan indirilir; ZIP açman gerekmez.</p></div><div class="cp-landing-downloads">${packages.map(([symbol,title,detail,url,label,platform])=>`<article data-platform-download="${platform}">${icon(symbol)}<h3>${title} <small class="cp-landing-pkgver" data-pkgver></small></h3><p>${detail}</p><a class="cp-landing-button cp-landing-secondary" href="${url}" target="_blank" rel="noopener noreferrer" data-pkgurl>${label}${icon('arrow-down-to-line')}</a></article>`).join('')}</div><div class="cp-landing-download-footer"><span>Android için kalıcı release imzası · Windows 10+ · Debian/Ubuntu · Flatpak'li dağıtımlar</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-up-right')}</a></div></section>
         <section id="landing-features" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-features-title">
           <div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">DENEYİMİN SONUCU</span><h2 id="landing-features-title">Daha az arayış.<br><span>Daha çok kendi listen.</span></h2><p>Sadece bir oynatıcı değil. Ne keşfettiğini, ne izlediğini ve sırada ne olduğunu bir arada tutan bir alan.</p></div>
@@ -91,7 +90,7 @@ export function renderShowcaseView() {
         <section class="cp-landing-start cp-landing-shell" aria-labelledby="landing-start-title"><div><span class="cp-landing-eyebrow">ÜÇ ADIM, KENDİ AKIŞIN</span><h2 id="landing-start-title">Hazırlık yok.<br><span>Keşifle başla.</span></h2><button class="cp-landing-button cp-landing-secondary" data-landing-section="landing-downloads">${icon('download')}Paketi Kur</button></div><ol><li><span>01</span><div><h3>İlgini çekeni bul.</h3><p>Ana sayfadan, aramadan veya kategorilerden ilerle. Diziyse sezon ve bölümünü seç.</p></div></li><li><span>02</span><div><h3>Dilini ve yayınını seç.</h3><p>Dublaj / altyazılı seçenekleri gör. Açılmayan bir bağlantıda diğer alternatife geç.</p></div></li><li><span>03</span><div><h3>Listene ekle, geri dön.</h3><p>Beğendiklerini sakla. Ara verdiğinde kütüphanenden kaldığın yere dön.</p></div></li></ol></section>
         <section class="cp-landing-release cp-landing-shell" aria-labelledby="landing-release-title"><div><span class="cp-landing-eyebrow">v${pkg.version} · BU SÜRÜMÜN ODAĞI</span><h2 id="landing-release-title">Kaynaklar tazelendi.<br><span>Kurulum seçenekleri çoğaldı.</span></h2><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notlarını gör ${icon('arrow-up-right')}</a></div><ul><li>${icon('timer')}<div><strong>Daha zengin Türkçe dublaj hattı</strong><p>Yeni yıldız kod adlı kaynaklar eklendi; dublaj / altyazı ayrımı gerçek etiketlerle listeleniyor.</p></div></li><li>${icon('panel-right')}<div><strong>İzleme ilerlemesi anında güncelleniyor</strong><p>Sezonu izlendi işaretleme artık uygulamayı kapatmadan görünür; kütüphane ve devam listeleri taze kalıyor.</p></div></li><li>${icon('download')}<div><strong>Flatpak desteği</strong><p>Windows EXE, Android APK, Linux DEB ve yeni Flatpak paketi doğrudan Releases'te. Android sürümleri aynı kalıcı anahtarla imzalanıyor.</p></div></li></ul></section>
         <section id="landing-faq" class="cp-landing-section cp-landing-shell cp-landing-faq" aria-labelledby="landing-faq-title"><div><span class="cp-landing-eyebrow">AKLINDA KALMASIN</span><h2 id="landing-faq-title">Sık sorulan<br><span>sorular.</span></h2><p>Başlamadan önce neyin nerede çalıştığını bil.</p></div><div class="cp-landing-questions">${faqs.map(([question,answer])=>`<details><summary>${question}${icon('plus')}</summary><p>${answer}</p></details>`).join('')}</div></section>
-        <section class="cp-landing-final cp-landing-shell"><span class="cp-landing-eyebrow">ŞİMDİ SIRA SENDE</span><h2>İndir, kur.<br><span>Bu akşamın hikâyesini bul.</span></h2><p>İşletim sistemine uygun paketi indir veya doğrudan webde keşfe başla.</p><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button>${enter('Webde Keşfet')}<a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-right')}</a></section>
+        <section class="cp-landing-final cp-landing-shell"><span class="cp-landing-eyebrow">ŞİMDİ SIRA SENDE</span><h2>İndir, kur.<br><span>Bu akşamın hikâyesini bul.</span></h2><p>İşletim sistemine uygun paketi indir ve izlemeye başla.</p><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-right')}</a></section>
       </main>
       <footer class="cp-landing-footer cp-landing-shell"><a class="cp-landing-brand" href="#showcase">${renderSiteLogo('cp-landing-logo')}<span>Cine<span>Pulse</span></span></a><span>Senin ekranın. Senin akışın.</span><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">GitHub Releases ${icon('arrow-up-right')}</a></footer>
     </div>`,
