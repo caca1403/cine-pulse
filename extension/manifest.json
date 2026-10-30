@@ -14,6 +14,7 @@
     {
       "matches": [
         "https://*.pages.dev/*",
+        "https://*.workers.dev/*",
         "https://*.cinepulse.studio/*",
         "http://localhost:*/*",
         "http://127.0.0.1:*/*"

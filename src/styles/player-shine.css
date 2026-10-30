@@ -1,3 +1,22 @@
+/* Server button web chips */
+.server-chip-badge {
+  font-size: 0.65rem !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+}
+.server-chip-badge.web-ok {
+  background: rgba(34, 197, 94, 0.2) !important;
+  color: #4ade80 !important;
+  border: 1px solid rgba(74, 222, 128, 0.3) !important;
+}
+.server-chip-badge.bridge-req {
+  background: rgba(223, 255, 118, 0.18) !important;
+  color: #dfff76 !important;
+  border: 1px solid rgba(223, 255, 118, 0.35) !important;
+}
+
 /* ==========================================================================
    CINEPULSE — MODERN CINEMA SAHNE DÜZENİ (Stremio / Netflix Düzeni)
    --------------------------------------------------------------------------
