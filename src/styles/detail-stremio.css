@@ -453,6 +453,14 @@
 }
 
 /* ── Masaüstü ────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) {
+  /* Masaüstünde sekmeler aşağı kaydırdıkça ekranı takip etmesin, yerinde kalsın */
+  .cps-sekme-cubugu {
+    position: static;
+    top: auto;
+  }
+}
+
 @media (min-width: 900px) {
   .cps-hero {
     min-height: clamp(480px, 62vh, 740px);
