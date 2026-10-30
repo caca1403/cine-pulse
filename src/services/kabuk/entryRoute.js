@@ -1,5 +1,6 @@
-// Web ve uygulama varsayılan olarak ana ekrana (#home) açılır. Yalnızca açıkça #showcase istendiğinde tanıtım gösterilir.
+// Web girisleri dogrudan vitrin / tanitim sayfasina (#showcase) kilitlenir.
+// Mobil uygulama ve masaustu ise dogrudan ana ekrana (#home) acilir.
 export function resolveEntryHash(hash, isApp, hasRoom = false) {
   if (isApp && hash === '#showcase') return '#home';
-  return hash || '#home';
+  return hash || (isApp || hasRoom ? '#home' : '#showcase');
 }
