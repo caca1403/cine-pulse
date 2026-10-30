@@ -87,8 +87,26 @@
       "compression": "gz"
     },
     "flatpak": {
+      "runtime": "org.freedesktop.Platform",
       "runtimeVersion": "24.08",
-      "baseVersion": "24.08"
+      "sdk": "org.freedesktop.Sdk",
+      "base": "org.electronjs.Electron2.BaseApp",
+      "baseVersion": "20.08",
+      "branch": "stable",
+      "useWaylandFlags": true,
+      "finishArgs": [
+        "--socket=wayland",
+        "--socket=fallback-x11",
+        "--share=ipc",
+        "--device=dri",
+        "--socket=pulseaudio",
+        "--filesystem=home",
+        "--share=network",
+        "--talk-name=org.freedesktop.Notifications"
+      ],
+      "files": [
+        ["public/com.cinepulse.studio.metainfo.xml", "/share/metainfo/com.cinepulse.studio.metainfo.xml"]
+      ]
     },
     "files": [
       "dist/**/*",

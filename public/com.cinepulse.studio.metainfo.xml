@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.cinepulse.studio</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>CinePulse</name>
+  <summary>Modern ve akıllı hibrit medya merkezi</summary>
+  
+  <description>
+    <p>
+      CinePulse, film ve dizi dünyasını tek bir akıcı merkezde toplayan modern bir medya deneyimidir.
+      Kişiselleştirilmiş akış motoru, altyazı desteği ve çoklu kaynak mimarisiyle sinema keyfini üst seviyeye taşır.
+    </p>
+    <p>Öne çıkan özellikler:</p>
+    <ul>
+      <li>Kapsamlı içerik kataloğu ve anlık keşif motoru</li>
+      <li>Otomatik Türkçe ve çok dilli altyazı senkronizasyonu</li>
+      <li>Dahili yüksek performanslı oynatıcı ve kaldığın yerden devam etme</li>
+      <li>Trakt.tv entegrasyonu ve izleme geçmişi eşitleme</li>
+      <li>Modern Wayland ve akıcı masaüstü deneyimi</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">com.cinepulse.studio.desktop</launchable>
+
+  <url type="homepage">https://cinepulse.cinepulse.workers.dev/</url>
+  <url type="bugtracker">https://github.com/caca1403/cine-pulse/issues</url>
+  <url type="vcs-browser">https://github.com/caca1403/cine-pulse</url>
+
+  <developer id="com.cinepulse.studio">
+    <name>CinePulse Studio</name>
+  </developer>
+
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/caca1403/cine-pulse/main/public/images/screenshot.png</image>
+      <caption>CinePulse Ana Keşif ve İzleme Ekranı</caption>
+    </screenshot>
+  </screenshots>
+
+  <releases>
+    <release version="2.0.1" date="2026-10-31">
+      <description>
+        <p>CinePulse 2.0.1 sürümü: Modern oynatıcı arayüzü, gelişmiş altyazı akışı ve masaüstü kararlılık güncellemeleri.</p>
+      </description>
+    </release>
+  </releases>
+
+  <content_rating type="oars-1.1" />
+</component>
