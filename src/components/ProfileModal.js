@@ -1,4 +1,5 @@
 import { renderSiteLogo, getProfileAccent } from './BrandLogo.js';
+import { isAppPlatform } from '../services/platform/platformBridge.js';
 import { renderIcons } from '../services/kabuk/icons.js';
 /* ==========================================================================
    CinePulse Studio - "Kim İzliyor?" Çoklu Profil Yönetimi Modal
