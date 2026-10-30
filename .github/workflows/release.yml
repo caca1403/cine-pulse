@@ -180,13 +180,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder
           sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
           sudo flatpak install -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
-          # flatpak-bundler build-init icin BaseApp sart (olcusuz 1sn'de duser)
+          # flatpak-bundler build-init icin BaseApp sart
           sudo flatpak install -y flathub org.electronjs.Electron2.BaseApp//24.08
 
       - name: Build DEB + Flatpak (package.json build config)
         env:
           VITE_XTREAM_RELAY_ORIGIN: ${{ secrets.VITE_XTREAM_RELAY_ORIGIN }}
+          DEBUG: electron-builder,flatpak-bundler
         run: |
           node scripts/generate-update-manifest.mjs
           npm run build

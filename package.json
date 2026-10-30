@@ -91,7 +91,7 @@
       "runtimeVersion": "24.08",
       "sdk": "org.freedesktop.Sdk",
       "base": "org.electronjs.Electron2.BaseApp",
-      "baseVersion": "20.08",
+      "baseVersion": "24.08",
       "branch": "stable",
       "useWaylandFlags": true,
       "finishArgs": [
