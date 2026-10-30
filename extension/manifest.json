@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "CinePulse Web Bridge",
+  "version": "1.0.0",
+  "description": "CinePulse Web için kesintisiz akış ve başlık köprüsü",
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.pages.dev/*",
+        "https://*.cinepulse.studio/*",
+        "http://localhost:*/*",
+        "http://127.0.0.1:*/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "128": "icon.png"
+  }
+}

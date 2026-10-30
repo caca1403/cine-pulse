@@ -57,8 +57,22 @@ export function fetchShimKur({ yerelTaban = '' } = {}) {
   return true;
 }
 
+export function hasWebBridge() {
+  return typeof window !== 'undefined' && Boolean(window.__CINEPULSE_BRIDGE__?.active);
+}
+
 export async function initWebPlatform() {
   console.log('[Platform] Web / PWA ortamı etkinleştirildi.');
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('CinePulseBridgeReady', (e) => {
+      console.log('[Platform] CinePulse Web Bridge aktif:', e.detail);
+      document.documentElement.classList.add('has-web-bridge');
+    });
+    if (window.__CINEPULSE_BRIDGE__?.active) {
+      document.documentElement.classList.add('has-web-bridge');
+    }
+  }
 
   // 0. Çapraz-kök scraping isteklerini /api/proxy geçidine bağla (web'de
   //    kaynak üretiminin ön koşulu — CORS kırpığı).

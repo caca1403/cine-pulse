@@ -1016,13 +1016,16 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
             showToast(nowWatched ? '✓ Film izlendi olarak işaretlendi!' : 'Film izlendi işareti kaldırıldı.', nowWatched ? 'success' : 'info');
             
             if (nowWatched) {
-              watchedDetailBtn.classList.add('btn-watched-active');
+              watchedDetailBtn.classList.add('is-active', 'btn-watched-active');
             } else {
-              watchedDetailBtn.classList.remove('btn-watched-active');
+              watchedDetailBtn.classList.remove('is-active', 'btn-watched-active');
             }
+            const movieWatchedLabel = nowWatched ? 'Film İzlendi' : 'İzlendi Olarak İşaretle';
+            watchedDetailBtn.title = movieWatchedLabel;
+            watchedDetailBtn.setAttribute('aria-label', movieWatchedLabel);
             watchedDetailBtn.innerHTML = `
-              <i data-lucide="${nowWatched ? 'check-circle-2' : 'check'}"></i>
-              <span>${nowWatched ? 'Film İzlendi' : 'İzlendi Olarak İşaretle'}</span>
+              <i data-lucide="${nowWatched ? 'check-circle-2' : 'check'}" style="width:18px;height:18px;"></i>
+              <span class="cps-gizli">${movieWatchedLabel}</span>
             `;
             renderIcons();
           } else {
@@ -1041,13 +1044,16 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
             showToast(targetState ? '✓ Dizinin tüm bölümleri izlendi olarak işaretlendi!' : 'Tüm bölümler izlenmedi yapıldı.', targetState ? 'success' : 'info');
 
             if (targetState) {
-              watchedDetailBtn.classList.add('btn-watched-active');
+              watchedDetailBtn.classList.add('is-active', 'btn-watched-active');
             } else {
-              watchedDetailBtn.classList.remove('btn-watched-active');
+              watchedDetailBtn.classList.remove('is-active', 'btn-watched-active');
             }
+            const tvWatchedLabel = targetState ? 'Tüm Sezonlar İzlendi' : 'Tümünü İzlendi İşaretle';
+            watchedDetailBtn.title = tvWatchedLabel;
+            watchedDetailBtn.setAttribute('aria-label', tvWatchedLabel);
             watchedDetailBtn.innerHTML = `
-              <i data-lucide="${targetState ? 'check-circle-2' : 'check'}"></i>
-              <span>${targetState ? 'Tüm Sezonlar İzlendi' : 'Tümünü İzlendi İşaretle'}</span>
+              <i data-lucide="${targetState ? 'check-circle-2' : 'check'}" style="width:18px;height:18px;"></i>
+              <span class="cps-gizli">${tvWatchedLabel}</span>
             `;
             renderIcons();
 
@@ -1105,17 +1111,19 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
 
         if (watchedDetailBtn) {
           if (isWatched) {
-            watchedDetailBtn.classList.add('btn-watched-active');
+            watchedDetailBtn.classList.add('is-active', 'btn-watched-active');
           } else {
-            watchedDetailBtn.classList.remove('btn-watched-active');
+            watchedDetailBtn.classList.remove('is-active', 'btn-watched-active');
           }
           const label = effectiveType === 'movie'
             ? (isWatched ? 'Film İzlendi' : 'İzlendi Olarak İşaretle')
             : (isWatched ? 'Tüm Sezonlar İzlendi' : 'Tümünü İzlendi İşaretle');
 
+          watchedDetailBtn.title = label;
+          watchedDetailBtn.setAttribute('aria-label', label);
           watchedDetailBtn.innerHTML = `
-            <i data-lucide="${isWatched ? 'check-circle-2' : 'check'}"></i>
-            <span>${label}</span>
+            <i data-lucide="${isWatched ? 'check-circle-2' : 'check'}" style="width:18px;height:18px;"></i>
+            <span class="cps-gizli">${label}</span>
           `;
         }
 

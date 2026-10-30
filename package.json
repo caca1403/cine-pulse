@@ -27,6 +27,7 @@
     "pack:flatpak": "npm run build && electron-builder --linux flatpak -c.electronDist=node_modules/electron/dist",
     "pack:linux": "npm run build && electron-builder --linux deb flatpak -c.electronDist=node_modules/electron/dist",
     "pack:win": "npm run build && electron-builder --win nsis",
+    "pack:extension": "cd extension && zip -r ../public/cinepulse-web-bridge.zip ./* && cd ..",
     "cap:sync": "cap sync android && node scripts/clean-android-apk.mjs",
     "pack:all": "node node_modules/vite/bin/vite.js build && node node_modules/electron-builder/cli.js --win nsis --linux deb AppImage",
     "test": "node --test tests/*.test.mjs tests/*.test.js tests/*.test.cjs",
