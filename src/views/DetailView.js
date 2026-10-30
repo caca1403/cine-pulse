@@ -312,10 +312,6 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                 <i data-lucide="play" style="fill:currentColor;width:18px;height:18px;"></i>
                 <span>${playButtonLabel}</span>
               </button>
-              <a href="#showcase" class="dt-aksiyon-cip" id="btn-detail-showcase" title="Sürüm ve Paketler" aria-label="Sürüm ve Paketler" style="text-decoration:none;display:inline-flex;align-items:center;color:#dfff76;border-color:rgba(223,255,118,.35);background:rgba(223,255,118,.08);">
-                <i data-lucide="download" style="width:16px;height:16px;"></i>
-                <span>Sürümler / İndir</span>
-              </a>
               <button class="dt-aksiyon-cip ${inFav ? 'is-active' : ''}" id="btn-toggle-fav" title="${inFav ? 'Favorilerimde' : 'Favorilere ekle'}" aria-label="Favori">
                 <i data-lucide="heart" style="width:16px;height:16px;${inFav ? 'fill:var(--primary);color:var(--primary)' : ''}"></i>
                 <span>${inFav ? 'Favorilerimde' : 'Favoriler'}</span>

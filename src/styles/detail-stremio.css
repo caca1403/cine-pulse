@@ -265,9 +265,7 @@
 
 /* ── Sekmeler: Stremio tarzı ortalanmış yatay çubuk ──────────────────────── */
 .cps-sekme-cubugu {
-  position: sticky;
-  top: var(--cp-header-height, 78px);
-  z-index: 20;
+  position: static;
   display: flex;
   align-items: center;
   gap: 0.4rem;

@@ -137,6 +137,7 @@ export function renderNavbar(currentView = 'home') {
         </div>
         <div class="cp-nav-actions">
           ${window.CinePulseDesktop?.isDesktop ? `<button type="button" id="btn-desktop-update" class="cp-icon-button" title="GitHub sürüm sayfasını aç" aria-label="GitHub sürüm sayfasını aç">${icon('refresh-cw')}</button>` : ''}
+          ${!isAppPlatform() ? `<a href="#showcase" class="cp-nav-action" title="Uygulama İndir / Tanıtım" aria-label="Tanıtım">${icon('sparkles')}<span>Tanıtım</span></a>` : ''}
           <!-- NAVBAR SADELEŞTİRİLDİ (kullanıcı isteği 2026-10-17): üst çubukta
                gereksiz düğme yığılması vardı (Canlı TV, KANALIM, Birlikte,
                İndirilenler). Bu yolların TAMAMI Keşfet panosunda duruyor; üst
