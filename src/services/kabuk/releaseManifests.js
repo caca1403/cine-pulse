@@ -8,17 +8,33 @@
    ========================================================================== */
 
 export function mergeManifests(local, remoteApk, remoteDesktop) {
+  const pickNewer = (remoteVer, localVer, remoteCode, localCode) => {
+    if (!remoteVer) return localVer || '';
+    if (!localVer) return remoteVer;
+    if (Number(localCode) > Number(remoteCode)) return localVer;
+    const u = String(remoteVer).replace(/^v/i, '').split('.').map(Number);
+    const y = String(localVer).replace(/^v/i, '').split('.').map(Number);
+    for (let i = 0; i < 3; i++) {
+      if ((y[i] || 0) > (u[i] || 0)) return localVer;
+      if ((u[i] || 0) > (y[i] || 0)) return remoteVer;
+    }
+    return remoteVer;
+  };
+
+  const apkVer = pickNewer(remoteApk?.version, local?.version, remoteApk?.versionCode, local?.versionCode);
   const apk = {
-    version: remoteApk?.version || local?.version || '',
-    versionCode: Number(remoteApk?.versionCode || local?.versionCode || 0),
+    version: apkVer,
+    versionCode: Math.max(Number(remoteApk?.versionCode || 0), Number(local?.versionCode || 0)),
     url: remoteApk?.downloadUrl || remoteApk?.githubDownloadUrl || local?.apkUrl || '',
   };
   const d = remoteDesktop || {};
+  const desktopVer = pickNewer(d.version, local?.desktopVersion || local?.version, d.versionCode, local?.desktopVersionCode || local?.versionCode);
   const desktop = {
-    version: d.version || local?.desktopVersion || '',
-    versionCode: Number(d.versionCode || local?.desktopVersionCode || 0),
+    version: desktopVer,
+    versionCode: Math.max(Number(d.versionCode || 0), Number(local?.desktopVersionCode || local?.versionCode || 0)),
     windows: d.windowsSetupUrl || local?.windowsUrl || '',
     deb: d.linuxDebUrl || local?.debUrl || '',
+    flatpak: d.linuxFlatpakUrl || local?.flatpakUrl || '',
     appImage: d.linuxAppImageUrl || local?.appImageUrl || '',
   };
   return { apk, desktop };
