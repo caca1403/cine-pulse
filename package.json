@@ -105,7 +105,15 @@
         "--talk-name=org.freedesktop.Notifications"
       ],
       "files": [
-        ["public/com.cinepulse.studio.metainfo.xml", "/share/metainfo/com.cinepulse.studio.metainfo.xml"]
+        ["public/com.cinepulse.studio.metainfo.xml", "/share/metainfo/com.cinepulse.studio.metainfo.xml"],
+        ["public/com.cinepulse.studio.metainfo.xml", "/share/appdata/com.cinepulse.studio.appdata.xml"],
+        ["build/icons/scalable.svg", "/share/icons/hicolor/scalable/apps/com.cinepulse.studio.svg"],
+        ["build/icons/512x512.png", "/share/icons/hicolor/512x512/apps/com.cinepulse.studio.png"],
+        ["build/icons/256x256.png", "/share/icons/hicolor/256x256/apps/com.cinepulse.studio.png"],
+        ["build/icons/128x128.png", "/share/icons/hicolor/128x128/apps/com.cinepulse.studio.png"],
+        ["build/icons/64x64.png", "/share/icons/hicolor/64x64/apps/com.cinepulse.studio.png"],
+        ["build/icons/32x32.png", "/share/icons/hicolor/32x32/apps/com.cinepulse.studio.png"],
+        ["build/icons/16x16.png", "/share/icons/hicolor/16x16/apps/com.cinepulse.studio.png"]
       ]
     },
     "files": [

@@ -13,9 +13,11 @@ import traktToken from '../api/trakt_token.js';
 import xtreamPanels from '../api/xtream_panels.js';
 import ariaKey from '../api/aria_key.js';
 import resolve from '../cf/resolve.js';
+import streamProxy from '../api/stream-proxy.js';
 
 // yol -> mod (Vercel'de dosya adi neyse o; czm/dzs/kvip catch-all alias'idir)
 const NODE_FILES = {
+  '/api/stream-proxy': streamProxy,
   '/api/ddz': ddz,
   '/api/epg': epg,
   '/api/fanart': fanart,

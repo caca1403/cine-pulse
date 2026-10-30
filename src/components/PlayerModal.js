@@ -7949,7 +7949,18 @@ export async function openPlayerModal({
             return;
           }
         }
-        const isHlsStream = streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || srv.isHls;
+        let isHlsStream = streamUrl.includes('.m3u8') || streamUrl.includes('.txt') || srv.isHls;
+
+        // Web ortamında doğrudan HLS yayınlarını Cloudflare Worker Stream Proxy üzerinden tünelle
+        if (!isNativeAndroidApp() && isHlsStream && /^https?:\/\//i.test(streamUrl)) {
+          try {
+            const parsed = new URL(streamUrl);
+            if (parsed.origin !== window.location.origin && !streamUrl.includes('/api/stream-proxy')) {
+              const customRef = (srv?.headers && (srv.headers.Referer || srv.headers.referer)) || `${parsed.origin}/`;
+              streamUrl = `/api/stream-proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(customRef)}`;
+            }
+          } catch (_) {}
+        }
         const isDizisolFilmMakinesi = srv?.source === 'DS' && /filmmakinesi/i.test([
           srv?.id,
           srv?.name,
