@@ -3939,6 +3939,17 @@ export async function openPlayerModal({
       else if (isActive) statusDot = 'dot-green';
 
       const cleanLabel = getSourceLabel(srv, idx);
+      const isWebPlatform = !isNativeAndroidApp();
+      const isStream = /\.(m3u8|mp4|ts|webm)(\?|$)/i.test(srv.url || '');
+      const isEmbed = Boolean(srv.url && !isStream);
+      let webBadge = '';
+      if (isWebPlatform) {
+        if (isEmbed) {
+          webBadge = '<span class="server-chip-badge web-ok" title="Webde ve Bridge ile doğrudan açılır">WEB</span>';
+        } else {
+          webBadge = '<span class="server-chip-badge bridge-req" title="Web Bridge veya doğrudan oynatıcı gerektirebilir">HLS</span>';
+        }
+      }
 
       return `
         <button class="server-btn ${isActive ? 'active' : ''} ${isFailed ? 'failed' : ''}" 
@@ -3949,7 +3960,8 @@ export async function openPlayerModal({
                 title="${cleanLabel}">
           <span class="server-status-dot ${statusDot}"></span>
           <span class="server-name">${cleanLabel}</span>
-          ${isFailed ? '<span style="font-size:0.65rem;color:#f87171;">(Hata)</span>' : ''}
+          ${webBadge}
+          <span class="server-quality">${srv.quality || 'Auto'}</span>
         </button>
       `;
     }).join('');
