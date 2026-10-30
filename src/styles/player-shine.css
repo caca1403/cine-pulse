@@ -1,18 +1,24 @@
 /* ==========================================================================
-   CINEPULSE — NATIVE SAHNE ŞERİDİ (Stremio düzeni)
+   CINEPULSE — MODERN CINEMA SAHNE DÜZENİ (Stremio / Netflix Düzeni)
    --------------------------------------------------------------------------
-   Yalnız cihaz oynatıcısı (Media3/ExoPlayer) açıkken devreye girer:
-   `.cinema-sahne-native` PlayerModal köküne nativePlayer.js ekler.
-   Görüntü native yüzeyde; buradaki DOM şerit, ilerleme ve menüdür.
-   Web/masaüstü oynatıcı görünümü bu dosyadan ETKİLENMEZ.
+   Web, Masaüstü ve Mobil APK'da standart saf sinema deneyimi.
+   Gereksiz 2 kolonlu YouTube ızgarası, alt gövde, yan panel ve footer gizlenir.
    ========================================================================== */
 
-/* ── Sahne tam ekran: YouTube ızgarası bozulmadan yalnız sahne kalır ────── */
-/* !important: main.css'in mobil-yatay ve #player-modal kuralları
-   (aspect-ratio, max-height:48vh, height:calc(100vh-36px)) sahneyi kırpıyor. */
-.player-modal-content.cinema-sahne-native {
-  position: fixed;
-  inset: 0;
+/* ── Sahne tam ekran: Yalnız sahne kalır ────────────────────────────────── */
+#player-modal.modal-backdrop {
+  background: #000 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+.player-modal-content.cinema-sahne-native,
+#player-modal .player-modal-content {
+  position: fixed !important;
+  inset: 0 !important;
   width: 100vw !important;
   height: 100dvh !important;
   max-width: none !important;
@@ -21,13 +27,14 @@
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
-  background: #000;
-  overflow: hidden;
+  background: #000 !important;
+  overflow: hidden !important;
 }
 
+#player-modal .player-yt-layout,
 #player-modal .cinema-sahne-native .player-yt-layout {
-  position: absolute;
-  inset: 0;
+  position: absolute !important;
+  inset: 0 !important;
   display: block !important;
   width: 100% !important;
   max-width: none !important;
@@ -37,14 +44,20 @@
   gap: 0 !important;
 }
 
+#player-modal .player-yt-main,
 #player-modal .cinema-sahne-native .player-yt-main {
-  position: absolute;
-  inset: 0;
+  position: absolute !important;
+  inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  overflow: hidden;
+  overflow: hidden !important;
 }
 
+#player-modal .dizisol-cinema-body,
+#player-modal .player-yt-sidebar,
+#player-modal .player-footer-bar,
+#player-modal .short-drama-artwork,
+#player-modal .player-ambient-backdrop,
 .cinema-sahne-native .dizisol-cinema-body,
 .cinema-sahne-native .player-yt-sidebar,
 .cinema-sahne-native .player-footer-bar,
@@ -52,9 +65,10 @@
   display: none !important;
 }
 
+#player-modal .player-stage-wrapper,
 #player-modal .cinema-sahne-native .player-stage-wrapper {
   position: absolute !important;
-  inset: 0;
+  inset: 0 !important;
   width: 100% !important;
   max-width: none !important;
   height: 100% !important;
@@ -62,77 +76,97 @@
   aspect-ratio: auto !important;
   flex: none !important;
   border-radius: 0 !important;
+  background: #000 !important;
 }
 
+#player-modal .player-iframe-container,
 #player-modal .cinema-sahne-native .player-iframe-container {
-  position: absolute;
-  inset: 0;
+  position: absolute !important;
+  inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
 }
 
-/* ── Üst şerit: ‹ · içerik adı · Ekranı Döndür ─────────────────────────── */
+#player-modal .player-iframe-container iframe,
+#player-modal .player-iframe-container video,
+#player-modal .player-iframe-container .direct-video-wrapper {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+  background: #000 !important;
+  object-fit: contain !important;
+}
+
+/* ── Üst şerit: ‹ · içerik adı · Aksiyonlar ─────────────────────────── */
+#player-modal .player-cinema-bar,
 #player-modal .cinema-sahne-native .player-cinema-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 80;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 80 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
   min-height: 0 !important;
   padding: calc(env(safe-area-inset-top, 0px) + 0.45rem) max(1rem, env(safe-area-inset-right, 0px)) 0.9rem max(1rem, env(safe-area-inset-left, 0px)) !important;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.45) 55%, transparent 100%) !important;
-  border: 0;
-  pointer-events: none;
+  border: 0 !important;
+  pointer-events: none !important;
 }
 
+#player-modal .player-cinema-bar > *,
 .cinema-sahne-native .player-cinema-bar > * {
-  pointer-events: auto;
+  pointer-events: auto !important;
 }
 
+#player-modal .player-title-box,
 .cinema-sahne-native .player-title-box {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  max-width: 52%;
-  justify-content: center;
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  max-width: 52% !important;
+  justify-content: center !important;
 }
 
+#player-modal .player-header-title,
 .cinema-sahne-native .player-header-title {
-  /* main.css mobil kuralı başlığı gizliyor; Stremio şeridinde ad GÖRÜNÜR. */
   display: block !important;
   max-width: 46vw !important;
   font-size: 0.9rem !important;
-  font-weight: 700;
-  color: #f4f6fb;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+  font-weight: 700 !important;
+  color: #f4f6fb !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7) !important;
 }
 
+#player-modal .player-header-ep-badge,
+#player-modal .player-resume-badge,
 .cinema-sahne-native .player-header-ep-badge,
 .cinema-sahne-native .player-resume-badge {
-  display: none;
-}
-
-.cinema-sahne-native #btn-player-shortcuts,
-.cinema-sahne-native #btn-player-fullscreen {
   display: none !important;
 }
 
+.cp-native-video #btn-player-shortcuts,
+.cp-native-video #btn-player-fullscreen {
+  display: none !important;
+}
+
+#player-modal .btn-player-close,
 .cinema-sahne-native .btn-player-close {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: rgba(10, 13, 20, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #fff;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  background: rgba(10, 13, 20, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #fff !important;
 }
 
 .cinema-sahne-native .btn-native-dondur {
