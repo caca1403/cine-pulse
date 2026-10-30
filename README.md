@@ -73,7 +73,7 @@ CinePulse; film, dizi ve anime **keşfini**, kişisel **izleme takibini**, **oyn
 
 ## 3. Platformunu seç ve indir
 
-Bu kaynak ağacının sürümü **v2.0.0** (Android `versionCode 200`). Paketler **[resmî GitHub Releases](https://github.com/caca1403/cine-pulse/releases/latest)** üzerinden indirilir; aşağıdaki indirme düğmeleri en son yayınlanan sabit dosya adlarına gider.
+Bu kaynak ağacının sürümü **v2.0.1** (Android `versionCode 201`). Paketler **[resmî GitHub Releases](https://github.com/caca1403/cine-pulse/releases/latest)** üzerinden indirilir; aşağıdaki indirme düğmeleri en son yayınlanan sabit dosya adlarına gider.
 
 | Platform | Paket | Bağlantı |
 | :--- | :--- | :--- |

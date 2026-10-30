@@ -1,3 +1,11 @@
+## CinePulse v2.0.1 — Alpha & Quick Update Release
+
+CinePulse 2.0.1; v2.0.0 majör mimarisini temel alan, izlenme durumu senkronizasyonunu düzelten ve mevcut kullanıcılara anında güncelleme sağlayan Alpha sürümüdür.
+
+### 🚀 2.0.1 Değişiklikleri
+- **İzlenme Durumu Düzeltmesi:** Detay ekranında film/dizi izlenme butonunun tıklandıktan sonra düzeninin bozulması ve ikon-metin kayması giderildi.
+- **Güncelleme Bildirimi:** v2.0.0 yüklü cihazların otomatik olarak yeni yayını algılaması için versionCode 201'e yükseltildi.
+
 ## CinePulse v2.0.0 — Major Architecture & Multi-Platform Release
 
 CinePulse 2.0.0; Android, masaüstü (Windows & Linux) ve web ekosistemini tek bir çatı altında birleştiren, çekirdek mimarisi ve kullanıcı deneyimi baştan aşağı yenilenmiş majör dönüm noktası sürümüdür.
