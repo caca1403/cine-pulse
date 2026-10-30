@@ -1,6 +1,7 @@
 import { renderIcons } from '../services/kabuk/icons.js';
 import { showToast } from './Toast.js';
 import * as traktService from '../services/icerik/traktService.js';
+import * as anilistService from '../services/icerik/anilistService.js';
 import {
   getWatchHistory,
   saveWatchProgress,
@@ -29,6 +30,7 @@ export function openTraktModal() {
     const user = traktService.getStoredUser();
     const settings = traktService.getTraktSettings();
     const lastSyncTime = traktService.getLastSyncTime();
+    const anilist = anilistService.anilistKimligi();
 
     let lastSyncStr = 'Henüz yapılmadı';
     if (lastSyncTime) {
@@ -225,6 +227,30 @@ export function openTraktModal() {
                   <i data-lucide="eraser" style="width: 14px; height: 14px;"></i>
                   <span>Trakt'ı Sıfırla</span>
                 </button>
+              </div>
+
+              <!-- AniList (anime) satırı — Trakt deseninde bağlan/durum -->
+              <div class="backup-card" style="border: 1px solid rgba(2, 169, 255, 0.25); background: rgba(2, 169, 250, 0.05); display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; gap: 10px;">
+                <div>
+                  <div style="font-size: 0.85rem; font-weight: 600; color: #38bdf8;">
+                    AniList — Anime İzleme Senkronu
+                    ${anilist.bagli ? '<span class="trakt-connected-badge">BAĞLI</span>' : ''}
+                  </div>
+                  <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">
+                    ${anilist.bagli
+                      ? 'Anime oynatıcıda ilerleme otomatik olarak AniList liste girişine işleniyor.'
+                      : 'Anime oynatıcıda izledikçe ilerlemeyi AniList profilinize işlemek için bağlanın.'}
+                  </div>
+                </div>
+                ${anilist.bagli
+                  ? `<button id="btn-anilist-disconnect" class="btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); padding: 0.45rem 0.9rem; font-size: 0.8rem; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;">
+                      <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
+                      <span>Kes</span>
+                    </button>`
+                  : `<button id="btn-anilist-connect" class="btn-secondary" style="color: #38bdf8; border-color: rgba(2, 169, 255, 0.4); padding: 0.45rem 0.9rem; font-size: 0.8rem; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;">
+                      <i data-lucide="link" style="width: 14px; height: 14px;"></i>
+                      <span>Bağlan</span>
+                    </button>`}
               </div>
 
               <!-- Settings Controls -->
@@ -429,6 +455,32 @@ export function openTraktModal() {
         };
       }
 
+      // AniList bağlan / kes (anime izleme senkronu)
+      const anilistConnectBtn = document.getElementById('btn-anilist-connect');
+      if (anilistConnectBtn) {
+        anilistConnectBtn.onclick = () => {
+          let clientId = anilistService.anilistClientIdGetir();
+          if (!clientId) {
+            clientId = prompt('AniList istemci numarası (developer.anilist.co uygulamanız):');
+            if (!clientId) return;
+            localStorage.setItem('cp_anilist_custom_client_id', clientId);
+          }
+          const secret = prompt('İstemci secret (isteğe bağlı; girilirse code akışı kullanılır):') || '';
+          if (secret) localStorage.setItem('cp_anilist_custom_client_secret', secret);
+          window.open(anilistService.anilistAuthUrl(clientId), '_blank', 'noopener');
+          showToast('Onaydan sonra uygulamaya geri dönüşte token otomatik alınır', 'info');
+          render('main');
+        };
+      }
+      const anilistDisconnectBtn = document.getElementById('btn-anilist-disconnect');
+      if (anilistDisconnectBtn) {
+        anilistDisconnectBtn.onclick = () => {
+          anilistService.anilistBaglantiyiKes();
+          showToast('AniList bağlantısı kesildi', 'info');
+          render('main');
+        };
+      }
+
       // Auto-Sync Toggle
       const autoSyncToggle = document.getElementById('trakt-toggle-autosync');
       if (autoSyncToggle) {
@@ -460,6 +512,11 @@ export function openTraktModal() {
       }
     }
   };
+
+  // AniList redirect'i (token/kod) modal açılışında toplandığında satır güncellenir.
+  anilistService.anilistGeriDonusKontrolu().then((kimlik) => {
+    if (kimlik?.degisti) render('main');
+  }).catch(() => {});
 
   render('main');
 }

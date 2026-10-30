@@ -2747,10 +2747,13 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
     if (value6.length === 0)
       return (log("Harley-Quinn", "TMDB başlığı bulunamadı: " + trimmed, "error"), []);
     log("Harley-Quinn", "Aranacak başlıklar: [" + value6.join(",\x20") + "]", "info");
-    let Origin = await fn("Harley-Quinn");
+    // domains.json anahtarları takma ad: Harley-Quinn yerine fujitora geliyor
+    let Origin = (await fn("Harley-Quinn")) || (await fn("fujitora"));
     if (!Origin) return (log("Harley-Quinn", "Sağlayıcı adresi alınamadı.", "warn"), []);
     let Cookie = (await fn2("Harley-Quinn")) || headers.Cookie,
-      headers = {
+      // let gölgelemesi TDZ hatasında çırptı (2026-10): önce headers.Cookie
+      // okunmalı; global sabiti ezmeden genişletilmiş başlıklar ayrı değişkende.
+      headers2 = {
         ...headers,
         Cookie: Cookie,
         Referer: Origin + "/",
@@ -2761,7 +2764,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       try {
         let val6 = Origin + "/secure/titles?query=" + encodeURIComponent(value8),
           response = await fetch(val6, {
-            headers: headers
+            headers: headers2
           });
         if (response.status === 403) {
           log("Harley-Quinn", "Cloudflare koruması devrede (403 Forbidden / Challenge).", "warn");
@@ -2797,7 +2800,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
         try {
           let val6 = Origin + "/secure/search/" + encodeURIComponent(value8) + "?limit=20",
             response = await fetch(val6, {
-              headers: headers
+              headers: headers2
             });
           if (response.status === 403) break;
           if (response.ok) {
@@ -2829,7 +2832,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       try {
         let val6 = Origin + "/secure/search/" + result.numericId + "?limit=20",
           response = await fetch(val6, {
-            headers: headers
+            headers: headers2
           });
         response.ok &&
           ((value7 = ((await response.json()).results || []).find(
@@ -2859,7 +2862,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
         : Origin + "/secure/titles/" + value7.id + "?titleId=" + value7.id;
       try {
         let response = await fetch(val6, {
-          headers: headers
+          headers: headers2
         });
         if (!response.ok)
           return (log("Harley-Quinn", "Bölüm API yanıt vermedi: HTTP " + response.status, "warn"), []);
@@ -2997,3 +3000,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

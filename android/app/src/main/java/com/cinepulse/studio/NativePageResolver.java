@@ -127,7 +127,9 @@ final class NativePageResolver {
         settings.setUseWideViewPort(false);
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
-        settings.setMediaPlaybackRequiresUserGesture(false);
+        // GİZLİ ÇÖZÜCÜ OYNATICI DEĞİLDİR (kullanıcı kuralı 2026-10-25): medya
+        // kendi kendine çalamaz; yalnız sayfa okuma/çözümleme için kullanılır.
+        settings.setMediaPlaybackRequiresUserGesture(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
 
         CookieManager cookies = CookieManager.getInstance();

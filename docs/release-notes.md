@@ -1,3 +1,13 @@
+## CinePulse v2.0.0
+
+- **Yeni sürüm dalı:** Windows EXE, Android APK, Linux DEB ve Flatpak aynı `package.json` sürümünden üretilir; release etiketi `v2.0.0` ve Android sürüm kodu `200` olarak eşleştirilir.
+- **APK imza doğrulaması:** yayın hattı, imzalanan APK sertifikasının SHA-256 parmak izini mevcut resmî APK ile karşılaştırır; farklı anahtarla imzalanan paket yayımlanmaz.
+- **Platform eşitliği:** masaüstü uygulamasında desteklenen yayınları çevrimdışı indirme ve İndirilenler kitaplığı açılır; web tanıtım sitesi uygulama özellikleri, karşılaştırma, SSS ve sabit indirme düğmelerini sunar.
+- **Uygulama deneyimi:** Türkçe kaynak aileleri ve ses/altyazı kanıtı, OpenSubtitles TR yedeği, doğal dil arama, kalite etiketleri, Bugün/Yakında rafları, çocuk profili PIN'i ve masaüstü hover önizlemesi.
+- **Kurulum paketleri:** GitHub Actions Android APK, Windows EXE, Linux DEB ve Flatpak dosyalarını tek release'te üretip yayımlar.
+
+Yayın erişilebilirliği kaynak sağlayıcısına, ağ koşullarına ve platforma bağlıdır. APK release sertifikası sabit parmak izi ile doğrulanır; Windows kurulum dosyası kod imzalı değildir.
+
 ## CinePulse v1.1.71
 
 - **Oynatıcı ses düzeltmesi:** Kaynak değiştirildiğinde ya da durdurulduğunda eski yayının sesi birkaç saniye sürükleniyordu; eski akış artık anında serbest bırakılıyor (durdur → bağ kopar → yeni kaynak başlar).

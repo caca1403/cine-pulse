@@ -7255,7 +7255,7 @@ async function getStreams(tmdbId, arg2, arg3, arg4) {
     log("Hulk", "[Adım 1/4] TMDB/IMDb bilgileri alınıyor (" + replaced + ")...");
     let val4 = replaced.startsWith("tt") ? replaced : await replaceIn(replaced, "movie"),
       result = await fn3(replaced, "movie"),
-      result2 = await fn("Hulk");
+      result2 = (await fn("xebec")) || (await fn("Hulk"));
     if (!result2) return (log("Hulk", "Sağlayıcı adresi alınamadı.", "warn"), []);
     let value41 = null,
       val5 = result.titles[0] || "Film";
@@ -7481,7 +7481,8 @@ var _exp = typeof module !== "undefined" && module.exports ? module.exports : {}
         : typeof window !== "undefined"
           ? window
           : {},
-  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams,
+  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams ||
+    (typeof getStreams === "function" ? getStreams : null),
   _sub = _exp.getSubtitles || (_exp.default && _exp.default.getSubtitles) || _glob.getSubtitles;
 if (_gs) {
   if (typeof globalThis !== "undefined") globalThis.getStreams = _gs;
@@ -7495,3 +7496,5 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+export default typeof getStreams === "function" ? getStreams : undefined;

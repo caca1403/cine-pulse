@@ -1,0 +1,96 @@
+/* ==========================================================================
+   CinePulse G1 — global tasarım-hareket token'ları ve yardımcı sınıflar.
+   Mevcut main.css'in ÜZERİNE eklenir; hiçbir mevcut kural silinmez/ezilmez.
+   Bu dosya index.html'de main.css'ten SONRA yüklenir (token'lar geçer kalsın).
+   ========================================================================== */
+
+:root {
+  /* Hareket eğrileri */
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Süre rampası */
+  --dur-fast: 120ms;
+  --dur-med: 200ms;
+  --dur-slow: 320ms;
+  --dur-xl: 520ms;
+
+  /* Cam yüzey bulanıklığı (main.css'teki --glass-blur: none değerini sinematik
+     kutuda devreye alır; lowfx/reduced-motion katmanları zaten kısar). */
+  --glass-blur: blur(18px) saturate(140%);
+}
+
+/* --------------------------------------------------------------------------
+   Keyframe'ler
+   -------------------------------------------------------------------------- */
+@keyframes cp-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cp-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes cp-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+@keyframes cp-kenburns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.08); }
+}
+
+@keyframes cp-glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
+@keyframes cp-slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* --------------------------------------------------------------------------
+   Yardımcı sınıflar (utility)
+   -------------------------------------------------------------------------- */
+/* Rota/görünüm girişi: fade-up (router'dan #app'e verilir) */
+.cp-anim-in { animation: cp-fade-up 520ms var(--ease-spring) both; }
+
+/* Modal/toast girişi: hafif scale + fade */
+.cp-modal-in { animation: cp-scale-in var(--dur-slow) var(--ease-spring) both; }
+
+/* Skeleton parıltısı: gradient arka plan + kayan highlight */
+.cp-skeleton {
+  background: linear-gradient(90deg,
+    rgba(255, 255, 255, 0.06) 20%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.06) 80%);
+  background-size: 200% 100%;
+  animation: cp-shimmer 1.4s linear infinite;
+}
+
+/* Cam yüzey: yarım saydam + bulanıklık + ince üst kenar highlight */
+.cp-glass {
+  background: rgba(14, 16, 24, 0.55);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Dokunmatik geri bildirim: basılıyken hafif küçülme */
+.cp-press { transition: transform var(--dur-fast) ease-out; }
+.cp-press:active { transform: scale(0.97); }
+
+/* --------------------------------------------------------------------------
+   Hareket hassasiyeti: TÜM animasyon/geçişler kapalı
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

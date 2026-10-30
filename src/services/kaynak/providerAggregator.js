@@ -52,9 +52,9 @@ const IKI_DIL_MUSTERISI = /dual|trdual|trdub|dublaj/i;
    çıkarıldı (Türk .com.tr/.tv/.life/.vip/.now dizi-film-anime siteleri). */
 const YERLI_ONEKLER = [
   'dml_', 'ddz_', 'dramalar_', 'dramadizilerim_', // kısa dizi (Türk)
-  'sp_wolverine_', 'sp_antman_', 'sp_aquaman_', 'sp_batgirl_', 'sp_blackpanther_',
+  'sp_wolverine_', 'sp_aquaman_', 'sp_blackpanther_',
   'sp_blackwidow_', 'sp_captainamerica_', 'sp_cyborg_', 'sp_daredevil_', 'sp_deadpool_',
-  'sp_doctorstrange_', 'sp_falcon_', 'sp_flash_', 'sp_greenlantern_', 'sp_harleyquinn_',
+  'sp_doctorstrange_', 'sp_falcon_', 'sp_flash_', 'sp_harleyquinn_',
   'sp_hawkeye_', 'sp_hulk_', 'sp_ironfist_', 'sp_ironman_', 'sp_joker_', 'sp_loki_',
   'sp_lukecage_', 'sp_moonknight_', 'sp_nightwing_', 'sp_poisonivy_', 'sp_punisher_',
   'sp_shazam_', 'sp_spiderwoman_', 'sp_supergirl_', 'sp_thor_', 'sp_wintersoldier_',
@@ -160,12 +160,34 @@ function formatStreamName(s, category = '') {
   return [`Sunucu ${harf}`, kalite, dil].filter(Boolean).join(' ');
 }
 
+/** SATIR ANAHTARI (ölçüm raporu D, öneri 1): tüketici (kaynakListesi) şu an
+ *  tek gerçek anahtar `adres` kullanıyor; aynı adrese birden çok sağlayıcı
+ *  çıkınca satırlar çarpışıyor ve adresi-boş satır dedup'a girmeden tekrar
+ *  lanabiliyordu. Aggregator ürettiği her satra artık sabit, deterministik bir
+ *  `anahtar` ekler: adres + sağlayıcı kökü (id öneki/source) + görünen ad
+ *  bileşiminden iki ayrı tohumla üretilen hash (çarpışma riski düşürülmüş).
+ *  ADDITIVE — eski tüketiciler alanı yok sayar; kaynakListesi ileride
+ *  `s.anahtar || adres`a geçebilir. */
+function _satirHash(s, tohum) {
+  let h = tohum;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+function satirAnahtari(streamUrl, kaynakKoku, görünenAd) {
+  const bilesim = `${String(streamUrl || '')}|${String(kaynakKoku || '')}|${String(görünenAd || '')}`;
+  return `k1_${_satirHash(bilesim, 7)}_${_satirHash(bilesim, 131)}`;
+}
+
 function formatStreamItem(s, category, fallbackName) {
   const streamUrl = s.streamUrl || s.url || (typeof s.getUrl === 'function' ? s.getUrl() : '') || '';
   const finalDisplayName = (formatStreamName(s, category) || fallbackName)
     .replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D]/gu, '')
     .replace(/(?:Türkçe|TR)\s*(?:Dublaj|Altyazılı|Altyazı)|Dublaj|Altyazılı|Altyazı/gi, '')
     .replace(/\(\s*\)/g, '').replace(/\s+/g, ' ').trim();
+
+  // Sağlayıcı kökü: source adı varsa o, yoksa id'nin ilk iki parçası
+  // (ör. 'sp_starlord') — gerçek site adı sızmaz, anahtar kararlı kalır.
+  const kaynakKoku = s.source || (s.id ? String(s.id).split('_').slice(0, 2).join('_') : '');
 
   return {
     ...s,
@@ -176,6 +198,8 @@ function formatStreamItem(s, category, fallbackName) {
     url: streamUrl,
     badge: finalDisplayName,
     category,
+    // ADDITIVE: stabil satır anahtarı (bkz. satirAnahtari açıklaması).
+    anahtar: satirAnahtari(streamUrl, kaynakKoku, finalDisplayName),
     isHls: Boolean(s.isHls || streamUrl.includes('.m3u8')),
     isDirectVideo: Boolean(s.isDirectVideo || s.isHls || /\.(m3u8|mp4|mkv|webm|m4s)(\?|#|$)/i.test(streamUrl)),
     // Chromium HEVC/H.265 çözemiyor; bu yayınlarda oynatma cihazın native
@@ -214,6 +238,13 @@ function siralamaSkoru(s) {
    yavaş-ağ tabanına takılmayan (AbortController) kısa zaman aşımı, URL önbelleği.
    Ağ çok yavaşsa/bu biçimde iz yoksa sessizce atlanır. */
 const _izOlcum = new Map(); // streamUrl -> { ses, altyazi }
+/* BAŞARISIZ ÖLÇÜM, "İZ YOK"TAN AYRILIR (ölçüm raporu D-3): 5 sn'lik abort
+   ya da ağ hatası eskiden {ses:false, altyazi:false} olarak KALICILAŞIYORDU —
+   "ölçemedik" ile "ölçtük, Türkçe iz yok" aynı görünüyordu. Artık başarısız
+   ölçüm {ses:null, altyazi:null, bilinmiyor:true} döner ve cache'lenmez
+   (sonraki taramada yeniden denenir). Tüketici (izleriZenginlestir) yalnız
+   truthy `ses`/`altyazi` okur: null → eskisi gibi etiket değişmez, fallback
+   davranış birebir korunur. */
 async function izleriOlc(streamUrl) {
   const key = String(streamUrl || '');
   if (!/\.m3u8(?:\?|#|$)|\/api\/(?:hls_proxy|proxy)\?/i.test(key)) return null;
@@ -232,23 +263,38 @@ async function izleriOlc(streamUrl) {
       if (/TYPE=AUDIO/i.test(satir)) sonuc.ses = true;
       else if (/TYPE=SUBTITLES/i.test(satir)) sonuc.altyazi = true;
     }
-  } catch (_) { /* tespit yok → { ses:false, altyazi:false } */ }
+  } catch (_) {
+    // abort/ağ hatası → "bilinmiyor" (cache'lenmez; "tespit yok"tan farklı).
+    return { ses: null, altyazi: null, bilinmiyor: true };
+  }
   _izOlcum.set(key, sonuc);
   return sonuc;
 }
 async function izleriZenginlestir(liste) {
+  // DUBLAJ AÇLIĞI (kullanıcı 2026-10-29): eskiden ilk 12 satır taranıyordu ve
+  // dublajlı satırlar çoğu zaman 12'nin dışında kalıyordu. Artık 32 satır +
+  // 6 eşzamanlı ölçüm; TR ses bulunan satır listede üste taşınır.
   const hedefler = (liste || []).filter(s => s && !s.isDual && !s.trSes && !s.trAltyazi
-    && /\.m3u8|\/api\/(?:hls_proxy|proxy)/i.test(s.streamUrl || s.url || '')).slice(0, 12);
+    && /\.m3u8|\/api\/(?:hls_proxy|proxy)/i.test(s.streamUrl || s.url || '')).slice(0, 32);
   if (!hedefler.length) return;
   const kuyruk = [...hedefler];
   const isci = async () => {
     while (kuyruk.length) {
       const s = kuyruk.shift();
       const iz = await izleriOlc(s.streamUrl || s.url);
-      if (iz) { if (iz.ses) { s.trSes = true; s.isDual = true; } if (iz.altyazi) s.trAltyazi = true; }
+      if (iz) {
+        if (iz.ses) { s.trSes = true; s.isDual = true; s.dilDurumu = 'dublaj'; }
+        if (iz.altyazi) s.trAltyazi = true;
+        // Bayrak çipleri için dil dizisine yaz (rozetSinifi 'tr' → 🇹🇷 Dublaj).
+        if (iz.ses || iz.altyazi) {
+          if (!Array.isArray(s.diller)) s.diller = [];
+          if (iz.ses && !s.diller.includes('tr')) s.diller.push('tr');
+          if (iz.altyazi && !s.diller.includes('altyazi')) s.diller.push('altyazi');
+        }
+      }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(3, hedefler.length) }, isci));
+  await Promise.all(Array.from({ length: Math.min(6, hedefler.length) }, isci));
 }
 
 /**
@@ -284,7 +330,7 @@ export async function getStreamingServersProgressive({
   if (streamServersCache.has(cacheKey)) {
     onUpdate({ ...streamServersCache.get(cacheKey), isComplete: false, fromCache: true });
     streamServersCache.delete(cacheKey);
-    try { sessionStorage.removeItem(`cp_streams_${CACHE_VERSION}_${cacheKey}`); } catch (_) {}
+    try { sessionStorage.removeItem(`cp_streams_${CACHE_VERSION}_${cacheKey}`); } catch (h) { console.debug('[kaynak] önbellek silinemedi (gizli mod/kota?) —', String(h?.message || h).slice(0, 80)); }
   }
 
   const slug = tmdbId ? String(tmdbId).replace(/^(ddz_|dml_)/, '') : '';
@@ -293,6 +339,36 @@ export async function getStreamingServersProgressive({
   let currentDubbed = [];
   let currentSubtitled = [];
   const seenUrls = { dubbed: new Set(), subtitled: new Set() };
+  /* HATA GÖRÜNÜRLÜĞÜ (ölçüm raporu D): eskiden iki kolun da (kahraman
+     taraması + kısa dizi hatları) hatası `.catch(()=>null/[])` ile yutuluyor,
+     "hiç kaynak yok" ile "tüm sağlayıcılar ağ hatası yedi" ayırt edilemiyordu.
+     Artık her yutulan hata ADDITIVE alanlarda taşınır:
+       saglayiciHatasi: [{ad, kod}]  — parti/son payload'larda
+       cekirdekYok:     number       — yüklenemeyen çekirdek adedi
+       tamamlananSaglayici: string   — son biten sağlayıcının kahraman kodu
+     Eski tüketiciler (kaynakListesi/PlayerModal/SeasonSelector) bu alanları
+     destructuring etmez → davranışları birebir aynı. */
+  const saglayiciHatalari = [];
+  let cekirdekYokSayisi = 0;
+  let tamamlananSaglayici = '';
+  const hataKaydet = (ad, kod) => {
+    if (!ad || !kod) return;
+    if (!saglayiciHatalari.some(h => h.ad === ad && h.kod === kod)) {
+      saglayiciHatalari.push({ ad, kod });
+    }
+  };
+  const agHataKodu = (hata) => {
+    const m = String(hata?.message || hata || '');
+    if (/butce-asim/i.test(m)) return 'butce-asim';
+    if (/yukleme-asim/i.test(m)) return 'yukleme-asim';
+    if (hata?.name === 'AbortError' || /abort/i.test(m)) return 'ag-zaman-asimi';
+    return 'ag-hatasi';
+  };
+  const hataAlanlari = () => ({
+    saglayiciHatasi: [...saglayiciHatalari],
+    cekirdekYok: cekirdekYokSayisi,
+    tamamlananSaglayici,
+  });
   /* YİNELENEN AYNI-KAYNAK ELEME (kullanıcı 2026-10-18: "40 kaynağın 8'i dublaj,
      8'in 4'ü aynı kaynaktan"). Farklı sağlayıcılar çoğu zaman AYNI altyapıya
      (iframe/CDN host'una) çıkar; bunlar ayrı kaynak gibi sayılıyordu. Artık her
@@ -326,12 +402,13 @@ export async function getStreamingServersProgressive({
       // gösteriyordu. Artık etiket çekirdeğin verdiği metinden türetilir.
       const gercekEtiket = gercekKaynakEtiketi(raw, category);
       const item = formatStreamItem(raw, category, gercekEtiket);
+      // ADRESİ-BOŞ SATIR ELEME (ölçüm raporu D-6): tüketici anahtarı
+      // `streamUrl||url` olduğu için boş adresli satır dedup'a giremez ve her
+      // partide yeniden listelenebilirdi — aggregator kapısında elenir.
+      if (!(item.streamUrl || item.url)) continue;
       const key = `${(item.id || '').split('_').slice(0, 2).join('_')}||${(item.streamUrl || '').toLowerCase()}`;
       if (seenUrls[category].has(key)) continue;
       seenUrls[category].add(key);
-      const hostKey = `${kaynakHostu(item.streamUrl || item.url)}|${kaliteTokeni(item)}`;
-      if (seenHost[category].has(hostKey)) continue;   // aynı altyapı + kalite → tekrar
-      seenHost[category].add(hostKey);
       (category === 'dubbed' ? currentDubbed : currentSubtitled).push(item);
       added.push(item);
     }
@@ -348,7 +425,8 @@ export async function getStreamingServersProgressive({
         totalServers: currentDubbed.length + currentSubtitled.length,
         isComplete: false,
         newStream: added[0],
-        isDubbedStream: category === 'dubbed'
+        isDubbedStream: category === 'dubbed',
+        ...hataAlanlari(), // ADDITIVE: eski alanların hiçbiri değişmedi
       });
     }
     return added;
@@ -369,6 +447,25 @@ export async function getStreamingServersProgressive({
       imdbId: String(imdbId || '').trim(),
       season,
       episode,
+      // ADDITIVE (D): sağlayıcı-bazlı tamamlanma/hata olayı — her sağlayıcı
+      // bittiğinde (hata dahil) tüketicilere parti düşer; 'cekirdek-yok'
+      // artık sayılabilir. Eski çağrılar bu parametresi geçmez → etkilenmez.
+      saglayiciBitti: (b) => {
+        if (!b) return;
+        if (b.ad) tamamlananSaglayici = b.ad;
+        if (b.kod === 'cekirdek-yok') cekirdekYokSayisi += 1;
+        // 'kayit-yok'/'tur-desteklenmiyor' hata değil normal koşuldur → listeye yazılmaz
+        if (b.kod && b.kod !== 'kayit-yok' && b.kod !== 'tur-desteklenmiyor') {
+          hataKaydet(b.ad || b.kodAdi || '?', b.kod);
+        }
+        onUpdate({
+          dubbed: [...currentDubbed],
+          subtitled: [...currentSubtitled],
+          totalServers: currentDubbed.length + currentSubtitled.length,
+          isComplete: false,
+          ...hataAlanlari(),
+        });
+      },
       izleyici: is => {
         if (!is?.kaynaklar?.length) return;
         // Sekme seçimi yayına bakarak yapılır (Nuvio'nun API-Source sınıflandırması
@@ -384,27 +481,46 @@ export async function getStreamingServersProgressive({
       .then(tara => {
         const sure = Math.round(tara.sure / 100) / 10;
         console.info(`[kaynak] ${tara.izlener.length}/${tara.toplam ?? '?'} kayit tarandi (${sure}s)`);
+        // ADDITIVE: vektörün hata özeti sayaçlarla birleştirilir (callback'i
+        // kaçırılan sağlayıcı olursa — ör. bütçe kesintisi — sayılar eksik kalmasın).
+        const ozet = tara?.hataOzeti;
+        if (ozet) {
+          cekirdekYokSayisi = Math.max(cekirdekYokSayisi, ozet.cekirdekYok || 0);
+          for (const d of ozet.detaylar || []) hataKaydet(d.ad, d.kod);
+        }
+        if (ozet && (ozet.yuklemeAsim || ozet.butceAsim || ozet.agHatasi)) {
+          console.warn(`[kaynak] saglayici hatalari: cekirdek-yok=${cekirdekYokSayisi} yukleme-asim=${ozet.yuklemeAsim} butce-asim=${ozet.butceAsim} ag=${ozet.agHatasi}`);
+        }
         return tara;
       })
-      .catch(() => null);
+      // ÖLÇÜLEN SESSİZ ÖLÜM (D-1): .catch(()=>null) iki kolun toplam hatasını
+      // görünmez kılıyordu. Dönüş değeri AYNI (null); artık hata kodlanıp
+      // payload alanına yazılıyor.
+      .catch((hata) => {
+        hataKaydet('kahraman-taramasi', agHataKodu(hata));
+        console.warn('[kaynak] kahraman taramasi hatasi —', String(hata?.message || hata).slice(0, 160));
+        return null;
+      });
   }
 
   await Promise.allSettled([
     kahramanTaramasi,
     // Dora — kesintisiz CDN 1080p HLS
+    // (.catch(()=>[]) dönüş değeri AYNI; hata artık saglayiciHatasi'nda kodlanır — D-2)
     kisaDizi && fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+      .then(res => addStreams(res, 'dubbed')).catch((h) => { hataKaydet('dora-sesli', agHataKodu(h)); return []; }),
     kisaDizi && fetchDramalarEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => []),
+      .then(res => addStreams(res, 'subtitled')).catch((h) => { hataKaydet('dora-altyazi', agHataKodu(h)); return []; }),
     // Rhea — NetShort / FlexTV / DramaBox hatları
     kisaDizi && fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: true })
-      .then(res => addStreams(res, 'dubbed')).catch(() => []),
+      .then(res => addStreams(res, 'dubbed')).catch((h) => { hataKaydet('rhea-sesli', agHataKodu(h)); return []; }),
     kisaDizi && fetchDramaDizilerimEpisodeSources({ titles: candidateTitles, seriesTitle: targetTitle, season, episode, isDub: false })
-      .then(res => addStreams(res, 'subtitled')).catch(() => [])
+      .then(res => addStreams(res, 'subtitled')).catch((h) => { hataKaydet('rhea-altyazi', agHataKodu(h)); return []; })
   ]);
 
   // Türkçe altyazı yedeği: bizim altyazı ucumuz her hat için geçerlidir.
-  const altYol = `${apiUrl('/api/subtitles')}?tmdbId=${encodeURIComponent(tmdbId || '')}&title=${encodeURIComponent(targetTitle)}&season=${season}&episode=${episode}&type=tv`;
+  // imdbId taşınır — sunucu ucu imdb'yle doğrudan çözer, TMDB/başlık yedeğe düşer.
+  const altYol = `${apiUrl('/api/subtitles')}?imdbId=${encodeURIComponent(String(imdbId || '').trim())}&tmdbId=${encodeURIComponent(tmdbId || '')}&title=${encodeURIComponent(targetTitle)}&season=${season}&episode=${episode}&type=tv`;
   for (const s of [...currentDubbed, ...currentSubtitled]) {
     if (!Array.isArray(s.subtitles) || s.subtitles.length === 0) {
       s.subtitles = [{ label: 'OpenSubtitles (Türkçe)', src: altYol }];
@@ -413,18 +529,26 @@ export async function getStreamingServersProgressive({
 
   // TÜM kaynaklar için gerçek ses/altyazı izi tespiti (yukarıdaki izleriOlc).
   // Kaynaklar zaten ilerlemeli olarak listelendi; bu yalnız etiketleri düzeltir.
-  try { await izleriZenginlestir([...currentDubbed, ...currentSubtitled]); } catch (_) {}
+  try { await izleriZenginlestir([...currentDubbed, ...currentSubtitled]); } catch (h) {
+    // Sessizlik bozuldu (D, 2026-10-29): etiket zenginleştirme hatası listeyi
+    // etkilemez ama ses/altyazı etiketlerinin neden düz kaldı anlaşılır olsun.
+    console.warn('[kaynak] ses/altyazı iz ölçümü başarısız —', String(h?.message || h).slice(0, 120));
+  }
 
   const payload = {
     dubbed: currentDubbed,
     subtitled: currentSubtitled,
     totalServers: currentDubbed.length + currentSubtitled.length,
     isComplete: true,
-    cachedAt: Date.now()
+    cachedAt: Date.now(),
+    // ADDITIVE (D): hata görünürlüğü — tamamlayıcı özet. Eski tüketiciler
+    // bu anahtarları okumaz; cache'e de aynen yazılır ve fromCache yayınında
+    // spreads ile taşınır (zararsız).
+    ...hataAlanlari(),
   };
   if (payload.totalServers > 0) {
     streamServersCache.set(cacheKey, payload);
-    try { sessionStorage.setItem(`cp_streams_${CACHE_VERSION}_${cacheKey}`, JSON.stringify(payload)); } catch (_) {}
+    try { sessionStorage.setItem(`cp_streams_${CACHE_VERSION}_${cacheKey}`, JSON.stringify(payload)); } catch (h) { console.debug('[kaynak] önbellek yazılamadı (gizli mod/kota?) —', String(h?.message || h).slice(0, 80)); }
   }
   onUpdate(payload);
   return payload;

@@ -46,9 +46,9 @@ export function placeCardLayoutSwitcher(container = document) {
     const toolbar = document.createElement('div');
     toolbar.className = 'container cp-home-layout-toolbar';
     toolbar.append(switcher);
-    const firstRail = home.querySelector('.rail-section');
-    if (firstRail) firstRail.before(toolbar);
-    else home.append(toolbar);
+    const hero = home.querySelector('#hero-slider-section, .home-hero-spacer');
+    if (hero) hero.after(toolbar);
+    else home.prepend(toolbar);
     return;
   }
   const host = container.querySelector('.library-action-group')

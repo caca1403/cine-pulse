@@ -223,7 +223,7 @@ export function renderMediaCard(item, options = {}) {
   }
 
   return `
-    <div class="media-card" 
+    <div class="media-card cp-press" 
       data-id="${id}" 
       data-type="${type}" 
       data-isanime="${isAnime ? 'true' : 'false'}"
@@ -252,9 +252,10 @@ export function renderMediaCard(item, options = {}) {
           data-poster-src="${posterUrl}"
           data-backdrop-src="${fallbackLandscapeUrl}"
           alt="${title}" 
-          class="card-poster-img" 
+          class="card-poster-img cp-skeleton" 
           loading="lazy" 
           decoding="async"
+          onload="this.classList.remove('cp-skeleton');this.classList.add('cp-anim-in')"
           onerror="this.onerror=null;this.src='${SINEFLIX_POSTER_FALLBACK}'"
         />
         

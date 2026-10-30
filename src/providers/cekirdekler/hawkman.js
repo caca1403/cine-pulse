@@ -2814,7 +2814,7 @@ async function getStreams(tmdbId, arg2, tmdbId2, tmdbId3) {
     let result = await replaceIn(replaced, val6);
     if (!result || !result.startsWith("tt"))
       return (log("Hawkman", "IMDb kimliği bulunamadı.", "warn"), []);
-    let result2 = await fn("Hawkman");
+    let result2 = (await fn("Hawkman") || await fn("gaban"));
     if (!result2) return (log("Hawkman", "Domain not resolved", "warn"), []);
     let val7 = tmdbId2 ? Math.max(1, Number(tmdbId2)) : 1,
       val8 = tmdbId3 ? Math.max(1, Number(tmdbId3)) : 1;

@@ -25,7 +25,18 @@
    işareti görmeyen yayını dublaj sekmesine atıyordu, bu onu engeller.
    Altyazı parçaları 13 dilde geliyor (Türkçe YOK) → menüyü boğmamak için
    yalnız Türkçe/İngiliz parça taşınır, gerisi atılır.
-   ========================================================================== */
+
+   DUBLAJ VARYANTI ARAMA KAYDI (2026-10-30, tv 1396 S1E1 canlı ölçümü):
+     • /api/b/tv/… yanıtının stream anahtarları: id, type, qualities,
+       captions, flags, TTL, deliveryType — SES İZİ/SES GRUBU ALANI YOK.
+     • captions 13 dil (ar/bn/en/fil/fr/hi/id/ms/pa/pt/ru/ur/zh); Türkçe yok.
+     • flags = ["cors-allowed"] — dub/tur izi yok.
+     • /api/b/dublaj/ → 404; enc-dec.app ucuna eklenen ?type=tv parametresi
+       yok sayılıyor (aynı şifreli kimlik dönüyor).
+     Sonuç: vidlink.pro ailesinde Türkçe dublaj ucu GERÇEKTEN YOK; çekirdek
+     dürüstçe "Altyazı" etiketinde kalır, kanıtsız dublaj satırı UYDURULMAZ.
+  ========================================================================== */
+
 
 const SÜRÜM = '1.0.0';
 const ETİKET = `[Star-Lord v${SÜRÜM}]`;
@@ -149,6 +160,7 @@ async function getStreams(kimlik, tur = 'movie', season = 1, episode = 1) {
     if (!medyaMı(adres)) continue;
     const kalite = kaliteEtiketi(anahtar);
     çıktılar.push({
+      name: 'Star-Lord',
       url: adres,
       // "Altyazı" kelimesi bilerek etikette: hat yalnız altyazılı içerik
       // veriyor; işaret olmazsa derleyici yayını dublaj sekmesine atıyor.
@@ -162,6 +174,7 @@ async function getStreams(kimlik, tur = 'movie', season = 1, episode = 1) {
   // Kalite listesi boş ama master playlist varsa onu tek yayın olarak ver.
   if (!çıktılar.length && medyaMı(String(akış.playlist || ''))) {
     çıktılar.push({
+      name: 'Star-Lord',
       url: akış.playlist,
       title: 'Altyazı 1080p',
       quality: '1080p',

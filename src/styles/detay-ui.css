@@ -1,0 +1,366 @@
+/* ==========================================================================
+   CinePulse Studio — detay sayfası (yeni baştan arayüz, kullanıcı 2026-10-28)
+   Modern premium TV-uygulaması düzeni: backdrop + poster kartı hero, künye,
+   aksiyon satırı, tür çipleri, sekmeli gövde. Oyuncu artığı YOKTUR: sayfada
+   video/preview embed edilmez. Eski cps-* panel/sekme sınıfları işlev için
+   korunur; görsel sahiplik buradadır (detay-stremio.css'ten sonra import
+   edildiği için çakışmada bu dosya kazanır).
+   ========================================================================== */
+
+.dt-sayfa {
+  color: #f8fafc;
+  background:
+    radial-gradient(1100px 480px at 85% -80px, rgba(99, 102, 241, 0.14), transparent 60%),
+    linear-gradient(180deg, #070a12 0%, #0b0f19 340px, var(--bg-base, #070a12) 100%);
+  padding-bottom: 6rem;
+}
+
+/* ── Hero ────────────────────────────────────────────────────────────────── */
+.dt-hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.dt-hero-fon {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center 22%;
+  filter: saturate(1.05);
+  transform: scale(1.02);
+}
+
+.dt-hero-karartma {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(7, 10, 18, 0.55) 0%, rgba(7, 10, 18, 0.28) 34%, rgba(11, 15, 25, 0.92) 78%, #0b0f19 100%),
+    linear-gradient(90deg, rgba(7, 10, 18, 0.78) 0%, rgba(7, 10, 18, 0.25) 55%, transparent 80%);
+}
+
+.dt-ust-cubuk {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: calc(env(safe-area-inset-top, 0px) + 88px) clamp(16px, 4vw, 48px) 0;
+}
+
+.dt-ust-cubuk-sag { display: flex; align-items: center; gap: 0.45rem; }
+
+.dt-ikonbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(226, 232, 240, 0.22);
+  background: rgba(7, 10, 18, 0.55);
+  color: #e2e8f0;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.dt-ikonbtn:hover { transform: translateY(-1px); border-color: rgba(223, 255, 118, 0.6); color: #dfff76; }
+.dt-ikonbtn.is-active { border-color: #10b981; color: #34d399; }
+
+.dt-hero-ic {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(18px, 3.5vw, 40px);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(48px, 9vh, 96px) clamp(16px, 4vw, 48px) clamp(22px, 4vh, 40px);
+}
+
+/* .dt-poster-kart kaldırıldı (kullanıcı 2026-10-29): sabit dikey kart yok;
+   dikeyde poster arka planın kendisi (detay-ui.css fon katmanları). */
+
+.dt-bilgi { min-width: 0; display: flex; flex-direction: column; gap: 0.7rem; padding-bottom: 0.2rem; }
+
+.dt-sayfa .detail-titleblock { max-width: 100%; }
+.dt-sayfa .detail-heading-title {
+  margin: 0;
+  font-size: clamp(1.6rem, 4.2vw, 2.9rem);
+  font-weight: 850;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+}
+.dt-sayfa .detail-title-logo { max-width: min(420px, 70vw); }
+
+.dt-kunye {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.86rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.dt-puan-satiri { display: flex; align-items: center; flex-wrap: wrap; gap: 0.85rem; font-size: 0.82rem; color: #94a3b8; }
+.dt-puan { display: inline-flex; align-items: center; gap: 0.3rem; font-weight: 800; color: #f8fafc; }
+.dt-puan em { font-style: normal; font-size: 0.68rem; font-weight: 700; color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.4); border-radius: 5px; padding: 0 4px; margin-left: 2px; }
+.dt-puan-tmdb { color: #cbd5e1; }
+.dt-puan-tmdb em { border-color: rgba(1, 180, 228, 0.45); color: #7cc7e8; }
+.dt-letterboxd { color: #00e054; font-weight: 700; }
+.dt-orijinal { opacity: 0.75; }
+
+.dt-turler { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.dt-tur {
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.6);
+  color: #cbd5e1;
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+
+/* ── Aksiyon satırı ─────────────────────────────────────────────────────── */
+.dt-aksiyonlar { display: flex; align-items: center; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.35rem; }
+
+.dt-oynat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #dfff76, #a3e635);
+  color: #15200b;
+  font-weight: 850;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 12px 34px rgba(223, 255, 118, 0.22);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.dt-oynat:hover { transform: translateY(-1px); box-shadow: 0 16px 40px rgba(223, 255, 118, 0.3); }
+.dt-oynat .play-btn-subinfo { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.74rem; font-weight: 700; opacity: 0.8; }
+
+.dt-aksiyon-cip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(226, 232, 240, 0.25);
+  background: rgba(15, 23, 42, 0.65);
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.dt-aksiyon-cip:hover { transform: translateY(-1px); border-color: rgba(223, 255, 118, 0.55); color: #dfff76; }
+.dt-aksiyon-cip.is-active { border-color: #10b981; color: #34d399; }
+
+.dt-oynat-alt { margin: 0.15rem 0 0; color: #94a3b8; font-size: 0.78rem; }
+
+.dt-yeni-bolum {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  background: rgba(6, 78, 59, 0.45);
+  color: #6ee7b7;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.dt-ozet { max-width: 850px; }
+.dt-sayfa .detail-storyline { color: #cbd5e1; font-size: 0.92rem; line-height: 1.65; }
+.dt-spoiler { margin-top: 0.2rem; align-self: flex-start; }
+
+/* ── Gövde / sekmeler ───────────────────────────────────────────────────── */
+.dt-govde {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.1rem clamp(14px, 4vw, 48px) 0;
+}
+
+.dt-sekmeler {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  padding-bottom: 0;
+  margin-bottom: 1.1rem;
+}
+.dt-sekmeler::-webkit-scrollbar { display: none; }
+
+.dt-sayfa .cps-sekme {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  padding: 0.65rem 0.95rem;
+  border-radius: 10px 10px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.dt-sayfa .cps-sekme:hover { color: #e2e8f0; }
+.dt-sayfa .cps-sekme.active { color: #dfff76; border-bottom-color: #dfff76; }
+
+.dt-panel { min-width: 0; }
+
+/* Genel bakış: kadro çipleri özetin altına taşındı */
+.dt-kadro-chipleri { display: grid; gap: 0.8rem; margin-top: 1.1rem; }
+
+/* ── Fragmanlar: kartlar modal açar, sayfada embed YOK ───────────────────── */
+.dt-fragman-izgara {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 14px;
+}
+
+.dt-fragman-kart {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0f172a;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+.dt-fragman-kart:hover { transform: translateY(-2px); border-color: rgba(223, 255, 118, 0.5); }
+.dt-fragman-kart img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.dt-fragman-ust {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: radial-gradient(circle at 50% 45%, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.45));
+}
+.dt-fragman-ust i, .dt-fragman-ust svg {
+  width: 44px;
+  height: 44px;
+  padding: 12px;
+  border-radius: 50%;
+  background: rgba(7, 10, 18, 0.65);
+  backdrop-filter: blur(4px);
+}
+.dt-fragman-ad {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.7rem 0.7rem 0.5rem;
+  background: linear-gradient(180deg, transparent, rgba(3, 6, 12, 0.92));
+  color: #f1f5f9;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mobil: poster hero üstte ortalanır, bilgi alta iner */
+@media (max-width: 720px) {
+  .dt-ust-cubuk { padding-top: calc(env(safe-area-inset-top, 0px) + 76px); }
+  /* Dikey de yatayla aynı disiplin (kullanıcı 2026-10-29: "dikey css'i de
+     sola sabitle"): metin/logo kümesi SOLA sabit, ortalama yok. */
+  .dt-hero-ic { flex-direction: column; align-items: flex-start; text-align: left; padding-top: 20px; }
+  .dt-bilgi { align-items: flex-start; }
+  .dt-aksiyonlar { justify-content: flex-start; }
+  .dt-kunye, .dt-puan-satiri, .dt-turler { justify-content: flex-start; }
+  .dt-ozet { text-align: left; }
+}
+
+/* Yatay TELEFON hero düzeni (kullanıcı 2026-10-29 — KESİN DÜZEN: "metin ve
+   logosu sola sabitlenecek" + "dikey kart solda durmasın"): METİN (başlık
+   metni/logo/künye/tür/aksiyon) SOLA SABİT — logo eski hâlinde, hiçbir
+   ölçek/orta override yok; dikey POSTER kartı SAĞDA durur. Özet 2 satıra
+   sarkık ki hero şeride sığsın. */
+@media (orientation: landscape) and (max-height: 620px) {
+  .dt-ust-cubuk { padding-top: calc(env(safe-area-inset-top, 0px) + 52px); }
+  .dt-hero-ic {
+    flex-direction: row;
+    align-items: flex-start; /* poster üste yaslanır — satır ortalamada kart
+                                ekran altına düşüyordu (cihaz: top 323, dışarıda) */
+    gap: clamp(14px, 3vw, 28px);
+    padding: 12px clamp(16px, 5vw, 44px) 16px;
+    text-align: left;
+  }
+  .dt-bilgi {
+    order: 1;
+    flex: 1 1 auto;
+    align-items: flex-start;
+    text-align: left;
+    gap: 0.35rem;
+    padding-bottom: 0;
+  }
+  .dt-kunye, .dt-puan-satiri, .dt-turler, .dt-aksiyonlar { justify-content: flex-start; }
+  .dt-sayfa .detail-titleblock { margin: 0; text-align: left; }
+  .dt-ozet, .dt-ozet p {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0;
+  }
+  .dt-oynat-alt, .spoiler-discovery-pill { display: none; }
+}
+
+/* HERO FON KATMANLARI (kullanıcı 2026-10-29 — KARAR v4, KESİN):
+   · Yatay: tek keskin backdrop cover (eski davranış, bulut yok).
+   · Dikey: poster arkaplanın KENDİSİDİR — aynı tam ekran duruş, ortalanmaz,
+     cover ölçekle DIREKT SOLA hizalanır (üst-sol köşe sabit, sağdan kırpar).
+     Bölüm görselleri de dikeyde aynı disiplinle sola hizalı (center değil).
+     Arkada blur'lu cover yedeği var ki hiçbir boş şerit kalmasın. Logo+metin
+     sol köşede, sert sol karartma üstünde okunur. */
+.dt-hero-fon-dikey, .dt-hero-fon-dikey-bulut { display: none; }
+@media (orientation: portrait) {
+  .dt-hero-fon { display: none; }
+  .dt-hero-fon-dikey-bulut {
+    display: block;
+    position: absolute;
+    inset: -48px;
+    background-size: cover;
+    background-position: left top;
+    background-repeat: no-repeat;
+    filter: blur(30px) saturate(1.25) brightness(0.55);
+  }
+  .dt-hero-fon-dikey {
+    display: block;
+    position: absolute;
+    inset: 0;
+    /* POSTER TAM GÖRÜNÜR: genişliğe oturur (cover'ın uzun hero'da yaptığı
+       "yarım resim" kırpması bitti — kullanıcı 2026-10-29), sol-üst köşeye
+       hizalı; alta kalan boşluğu blur katman + karartma doldurur. */
+    background-size: 100% auto;
+    background-position: left top;
+    background-repeat: no-repeat;
+    filter: saturate(1.05);
+  }
+  /* Sol taraf okunur kalsın diye dikeyde sert sol karartma. */
+  .dt-hero-karartma {
+    background:
+      linear-gradient(180deg, rgba(7, 10, 18, 0.6) 0%, rgba(7, 10, 18, 0.25) 36%, rgba(11, 15, 25, 0.94) 82%, #0b0f19 100%),
+      linear-gradient(90deg, rgba(7, 10, 18, 0.88) 0%, rgba(7, 10, 18, 0.55) 52%, rgba(7, 10, 18, 0.15) 82%, transparent 100%);
+  }
+  /* Logo+metin kümesi SOL KÖŞEYE sabit; metin eskisi gibi tam genişlik akar. */
+  .dt-hero-ic { align-items: flex-start; padding-top: 14px; }
+  .dt-bilgi { max-width: 100%; }
+  /* Bölüm resmi: kutu 16:9 = görsel oranı, kırpma yok; ortalama doğal. */
+  .dt-sayfa .episode-thumb-wrap img { object-position: center center; }
+}

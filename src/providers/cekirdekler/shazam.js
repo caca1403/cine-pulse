@@ -2809,7 +2809,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       !value6)
     )
       return (log("Shazam", "Geçerli TMDB ID çözülemedi.", "warn"), []);
-    let Origin = await fn("Shazam");
+    let Origin = (await fn("Shazam")) || (await fn("dragon"));
     if (!Origin) return (log("Shazam", "Sağlayıcı adresi alınamadı.", "warn"), []);
     let val8 = isTvOrSeries
       ? Origin + "/api/movies/by-tmdb/" + value6 + "?season=" + val6 + "&episode=" + val7
@@ -3037,3 +3037,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

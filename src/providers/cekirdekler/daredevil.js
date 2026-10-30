@@ -492,8 +492,15 @@ async function now(arg1 = !1) {
       })),
     await value4.activeFetchPromise);
 }
+// ham domains.json satıcı takma adıyla anahtarlı (vekil köprüsü yoksa da çözülsün)
+var takmaAlan = {
+  Daredevil: "katakuri"
+};
 async function fn(arg1) {
-  return (await now(), value4.cachedDomains[arg1] || "");
+  return (
+    (await now()),
+    value4.cachedDomains[arg1] || value4.cachedDomains[takmaAlan[arg1]] || ""
+  );
 }
 async function fn2() {
   return (await now(), value4.cachedTmdbKeys || []);
@@ -2793,7 +2800,7 @@ async function getStreams(tmdbId2, tmdbId3, tmdbId4, tmdbId5) {
       (isTv ? " (S" + season + "E" + episode + ")" : "")
   );
   try {
-    let result = await fn("Daredevil");
+    let result = (await fn("Daredevil") || await fn("katakuri"));
     if (!result) return (log("Daredevil", "Domain not resolved", "warn"), []);
     ((result = result.replace(/\/+$/, "")),
       log("Daredevil", "[Adım 1/4] TMDB ve IMDb bilgileri çözümleniyor (" + tmdbId + ")..."));
@@ -3062,7 +3069,9 @@ var _exp = typeof module !== "undefined" && module.exports ? module.exports : {}
         : typeof window !== "undefined"
           ? window
           : {},
-  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams,
+  // self-kayit: obfuscated gövde getStreams'i dışarı vermiyordu, çekirdek ölü sayılıyordu
+  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams ||
+    (typeof getStreams === "function" ? getStreams : null),
   _sub = _exp.getSubtitles || (_exp.default && _exp.default.getSubtitles) || _glob.getSubtitles;
 if (_gs) {
   if (typeof globalThis !== "undefined") globalThis.getStreams = _gs;
@@ -3076,3 +3085,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

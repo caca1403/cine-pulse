@@ -222,5 +222,14 @@ export async function getStreams(kimlik, tur = 'movie') {
   return sonuc;
 }
 
-if (typeof globalThis !== 'undefined') globalThis.getStreams = getStreams;
+var _exp = typeof module !== 'undefined' && module.exports ? module.exports : {},
+  _glob = typeof globalThis !== 'undefined' ? globalThis : typeof global !== 'undefined' ? global : typeof window !== 'undefined' ? window : {},
+  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams || (typeof getStreams === 'function' ? getStreams : null);
+
+if (_gs) {
+  if (typeof globalThis !== 'undefined') globalThis.getStreams = _gs;
+  if (typeof global !== 'undefined') global.getStreams = _gs;
+  if (typeof window !== 'undefined') window.getStreams = _gs;
+  if (typeof module !== 'undefined' && module.exports) { try { module.exports.getStreams = _gs; } catch (_) {} }
+}
 export default getStreams;

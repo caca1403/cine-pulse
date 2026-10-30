@@ -35,6 +35,41 @@ export function setFlowPilotTercih(v) {
   return gecerli;
 }
 
+// #4 Codec/ses tercihi — Akış Otopilotu puanlamasına girer.
+// kodek: 'h264' (uyumlu) | 'hevc' (küçük dosya, native/harici oynatıcı)
+// ses: '51' (5.1+ kanal) | 'stereo' | 'farketmez'
+export function getCodecTercih() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return 'farketmez';
+    const v = localStorage.getItem('cp_codec_pref');
+    return (v === 'h264' || v === 'hevc') ? v : 'farketmez';
+  } catch { return 'farketmez'; }
+}
+
+export function setCodecTercih(v) {
+  const gecerli = (v === 'h264' || v === 'hevc') ? v : 'farketmez';
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) localStorage.setItem('cp_codec_pref', gecerli);
+  } catch { /* sessiz */ }
+  return gecerli;
+}
+
+export function getSesTercih() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return 'farketmez';
+    const v = localStorage.getItem('cp_audio_pref');
+    return (v === '51' || v === 'stereo') ? v : 'farketmez';
+  } catch { return 'farketmez'; }
+}
+
+export function setSesTercih(v) {
+  const gecerli = (v === '51' || v === 'stereo') ? v : 'farketmez';
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) localStorage.setItem('cp_audio_pref', gecerli);
+  } catch { /* sessiz */ }
+  return gecerli;
+}
+
 let _animeIdsSet = null;
 
 export function getRegisteredAnimeIds() {

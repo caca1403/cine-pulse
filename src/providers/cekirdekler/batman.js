@@ -4587,7 +4587,8 @@ async function now(arg1 = !1) {
     await value34.activeFetchPromise);
 }
 async function fn2(arg1) {
-  return (await now(), value34.cachedDomains[arg1] || "");
+  // domains.json satıcı takma adıyla anahtarlı (Batman ← oden), kayıt adıyla değil
+  return (await now(), value34.cachedDomains[arg1] || value34.cachedDomains[arg1 === "Batman" ? "oden" : arg1] || "");
 }
 async function fn3() {
   return (await now(), value34.cachedTmdbKeys || []);
@@ -7878,6 +7879,38 @@ async function defineProp4(tmdbId2) {
           );
         }
       }
+    
+    /* onarim:atanmadi-403 */
+    /* Ölçüm 2026-10-25: pichive/dplayer iframe host'ları düz HTTP'de 403 (CF
+       parmak izi) — kaynak ölü değil; cihazın VEKİLİ köprüsü bunları çözer.
+       Bölüm sayfası ve secureData geldiği için gömülü adresler ham girler ve
+       "atanmadı" etiketiyle listelenir (normalize bu öğe veya köprü sarmalar). */
+    let atanmisBirimler = list4.filter(v44 =>
+      v44 && typeof v44.iframe === "string" &&
+      (v44.iframe.includes("pichive") ||
+       v44.iframe.includes("dplayer") ||
+       v44.iframe.includes("iframe.php"))
+    );
+    if (atanmisBirimler.length > 0) {
+      log(
+        name,
+        "[Adım 4/4] " + atanmisBirimler.length + " gömülü kaynak çözülemedi (403 kapılı — köprüye atanmadı).",
+        "warn"
+      );
+      return atanmisBirimler.map(v44 => {
+        let value45 = {
+          name: name,
+          url: v44.iframe,
+          quality: "atanmadı",
+          format: "m3u8",
+          headers: {
+            Referer: url + "/",
+            "User-Agent": val4
+          }
+        };
+        return value45;
+      });
+    }
     return (log(name, "Video akışı çözümlenemedi.", "warn"), []);
   } catch (err) {
     return (log(name, "Kritik Hata: " + (err?.message || err), "error"), []);
@@ -7903,7 +7936,9 @@ var _exp = typeof module !== "undefined" && module.exports ? module.exports : {}
         : typeof window !== "undefined"
           ? window
           : {},
-  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams,
+  // self-kayit: obfuscated gövde getStreams'i dışarı vermiyordu, çekirdek ölü sayılıyordu
+  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams ||
+    (typeof getStreams === "function" ? getStreams : null),
   _sub = _exp.getSubtitles || (_exp.default && _exp.default.getSubtitles) || _glob.getSubtitles;
 if (_gs) {
   if (typeof globalThis !== "undefined") globalThis.getStreams = _gs;
@@ -7917,3 +7952,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

@@ -15,8 +15,21 @@
 
 let yavas = false;
 
-/** Yavaş ağ modu açık mı? (vekil.js tarama tavanları bunu okur.) */
+/** Kullanıcı tercihi (#8 oynatıcı/ağ ayarları): 'oto' | 'yavas' | 'normal'. */
+export function agModu() {
+  try {
+    const v = typeof localStorage !== 'undefined' ? localStorage.getItem('cp_ag_modu') : null;
+    return (v === 'yavas' || v === 'normal') ? v : 'oto';
+  } catch { return 'oto'; }
+}
+
+/** Yavaş ağ modu açık mı? (vekil.js tarama tavanları bunu okur.)
+ *  #8: elle seçilmiş mod otomatik ölçümü ezer — 'yavaş' zorla açar,
+ *  'normal' zorla kapatır, 'oto' ölçüme kalır. */
 export function yavasAgMi() {
+  const mod = agModu();
+  if (mod === 'yavas') return true;
+  if (mod === 'normal') return false;
   if (yavas) return true;
   try { return typeof window !== 'undefined' && window.__cpYavasAg === true; } catch (_) { return false; }
 }
@@ -66,14 +79,19 @@ async function rttOlc() {
 export async function agHiziniDegerlendir() {
   try {
     zamanAsiminiSarmala();
-    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (c) {
-      if (c.effectiveType === 'slow-2g' || c.effectiveType === '2g' || c.effectiveType === '3g') yavas = true;
-      if (typeof c.downlink === 'number' && c.downlink > 0 && c.downlink < 1.5) yavas = true;
+    const mod = agModu();
+    if (mod === 'yavas') { yavas = true; }
+    else if (mod === 'normal') { yavas = false; }
+    else {
+      const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (c) {
+        if (c.effectiveType === 'slow-2g' || c.effectiveType === '2g' || c.effectiveType === '3g') yavas = true;
+        if (typeof c.downlink === 'number' && c.downlink > 0 && c.downlink < 1.5) yavas = true;
+      }
+      const rtt = await rttOlc();
+      // 1.5 sn üstü RTT yavaş sayılır (mobilde normal <400 ms).
+      if (typeof rtt === 'number' && rtt > 1500) yavas = true;
     }
-    const rtt = await rttOlc();
-    // 1.5 sn üstü RTT yavaş sayılır (mobilde normal <400 ms).
-    if (typeof rtt === 'number' && rtt > 1500) yavas = true;
     if (typeof window !== 'undefined') window.__cpYavasAg = yavas;
   } catch (_) {}
   return yavas;
@@ -88,4 +106,16 @@ export function agHiziIzle() {
       window.addEventListener?.('online', () => { agHiziniDegerlendir(); });
     }
   } catch (_) {}
+}
+
+/** #8: ayar değişince çağrılır — geçersiz kılma bayrağı anında uygulanır
+ *  (vekil.js window.__cpYavasAg'ı doğrudan okur; ölçümü beklemez). */
+export function agModunuUygula() {
+  try {
+    const mod = agModu();
+    if (mod === 'yavas') yavas = true;
+    else if (mod === 'normal') yavas = false;
+    if (typeof window !== 'undefined') window.__cpYavasAg = yavas;
+  } catch (_) {}
+  return yavas;
 }

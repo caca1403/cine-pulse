@@ -1,5 +1,17 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+// GATE: bu test Playwright + ayaktaki bir dev sunucusu ister (opsiyonel E2E).
+// Ortam yoksa test ÇÖKMESİN — koşarak atladı desin ve 0 ile çıksın.
+{
+  let pwVar = false;
+  try { await import(process.env.PLAYWRIGHT_MODULE || 'playwright'); pwVar = true; } catch (_) {}
+  if (!pwVar) { console.log('SKIP mobile-performance: playwright kurulu değil (pnpm add -D playwright && npx playwright install chromium)'); process.exit(0); }
+  const port = process.env.MOBILE_PERF_PORT || process.env.VITE_PORT || '5173';
+  const probe = spawnSync(process.execPath, ['-e',
+    `fetch('http://127.0.0.1:${port}').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))`]);
+  if (probe.status !== 0) { console.log(`SKIP mobile-performance: dev sunucusu http://127.0.0.1:${port} üzerinde değil (pnpm dev ile başlat)`); process.exit(0); }
+}
 const { chromium, devices } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ ...devices['iPhone 13'], serviceWorkers: 'block' });

@@ -2859,7 +2859,7 @@ async function getStreams(tmdbId, arg2, arg3, arg4) {
     let result = await replaceIn(tmdbId, "movie"),
       val5 = (await fn3(tmdbId, "movie"))?.titles?.[0] || "Film";
     if (!result) return (_("Doctor-Strange", "IMDb ID bulunamadı: " + tmdbId, "warn"), []);
-    let Origin = await fn("Doctor-Strange");
+    let Origin = (await fn("Doctor-Strange")) || (await fn("ryuma"));
     if (!Origin) return (_("Doctor-Strange", "Sağlayıcı adresi alınamadı.", "warn"), []);
     let headers = {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -2951,7 +2951,9 @@ var _exp = typeof module !== "undefined" && module.exports ? module.exports : {}
         : typeof window !== "undefined"
           ? window
           : {},
-  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams,
+  // self-kayit: ESM'de module.exports yok, çekirdek aksi halde "getStreams yok" oluyordu
+  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams ||
+    (typeof getStreams === "function" ? getStreams : null),
   _sub = _exp.getSubtitles || (_exp.default && _exp.default.getSubtitles) || _glob.getSubtitles;
 if (_gs) {
   if (typeof globalThis !== "undefined") globalThis.getStreams = _gs;
@@ -2965,3 +2967,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

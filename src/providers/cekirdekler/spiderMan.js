@@ -805,7 +805,107 @@ function matchOf(tmdbId) {
         ? "Altyazılı"
         : "Orijinal";
 }
+/* ── dublaj kanıt katmanı (2026-10-30) ─────────────────────────────────────
+ * matchOf() master'daki EXT-X-MEDIA satırlarını zaten okuyor. Buradaki iki
+ * yardımcı "· Türkçe Dublaj" etiketinin YALNIZ kanıtla basılmasını garantiye
+ * alır:
+ *   ① trSesIziVar(): master TYPE=AUDIO satırında LANGUAGE="tr|tur" veya
+ *      NAME'de Türk/türkçe/dublaj izi → kanıt satırının kendisi döner.
+ *   ② muxedTrSesKaniti(): master'da hiç AUDIO bildirimi yoksa ses MUX'ludur;
+ *      ilk varyantın ilk segmanı indirilir (Range 0-256KB) ve MPEG-TS PAT/PMT
+ *      dil tanımlayıcısı (0x0A, ISO-639-2) okunur — dublajKestirme.js Katman 2
+ *      deseni. Dil okunamazsa kanıt YOK sayılır; etiket uydurulmaz. */
+function trSesIziVar(metin) {
+  for (const ham of String(metin || "").split(/\r?\n/)) {
+    const satir = ham.trim();
+    if (!satir.startsWith("#EXT-X-MEDIA:") || !/TYPE=AUDIO/i.test(satir)) continue;
+    const lang = ((satir.match(/LANGUAGE="?([A-Za-z-]+)"?/i) || [])[1] || "").toLowerCase();
+    const isim = ((satir.match(/NAME="([^"]*)"/i) || satir.match(/NAME=([^,]+)/i) || [])[1] || "").toLowerCase();
+    if (lang === "tr" || lang === "tur" || /türk|turk|dublaj/i.test(isim)) return satir.slice(0, 160);
+  }
+  return "";
+}
+function tsSesDilleri(baytlar) {
+  const b = baytlar instanceof Uint8Array ? baytlar : new Uint8Array(baytlar);
+  const sesTipleri = { 3: 1, 4: 1, 6: 1, 15: 1, 129: 1, 131: 1, 132: 1, 135: 1, 144: 1, 145: 1, 146: 1, 161: 1, 172: 1, 209: 1 };
+  const diller = new Set();
+  let senkron = -1;
+  for (let i = 0; i < 188 && i + 188 <= b.length; i++) if (b[i] === 0x47) { senkron = i; break; }
+  if (senkron < 0) return diller;
+  const pmtPidler = new Set();
+  const bit = (o) => (o + 1 < b.length ? (b[o] << 8) | b[o + 1] : -1);
+  for (let i = senkron; i + 188 <= b.length; i += 188) {
+    if (b[i] !== 0x47) continue;
+    const pid = ((b[i + 1] & 0x1f) << 8) | b[i + 2];
+    if (!(b[i + 1] & 0x40)) continue;
+    const afc = (b[i + 3] >> 4) & 3;
+    if (afc === 0 || afc === 2) continue;
+    let p = i + 4;
+    if (afc === 3) p += 1 + b[p];
+    if (p >= i + 188) continue;
+    p += 1 + b[p];
+    if (p >= i + 188) continue;
+    if (pid === 0 && b[p] === 0x00) {
+      const boy = bit(p + 1) & 0xfff, son = Math.min(p + 3 + boy, i + 188 - 4);
+      for (let q = p + 6; q + 4 <= son; q += 4) if (bit(q) !== 0) pmtPidler.add(bit(q + 2) & 0x1fff);
+    } else if (pmtPidler.has(pid) && b[p] === 0x02) {
+      const boy = bit(p + 1) & 0xfff, son = Math.min(p + 3 + boy, i + 188);
+      let q = p + 9 + (bit(p + 7) & 0xfff);
+      while (q + 5 <= son) {
+        const tur = b[q], eil = bit(q + 3) & 0xfff;
+        if (sesTipleri[tur]) {
+          let d = q + 5;
+          const dSon = Math.min(d + eil, son);
+          while (d + 2 <= dSon) {
+            if (b[d] === 0x0a && d + 5 <= dSon) diller.add(String.fromCharCode(b[d + 2], b[d + 3], b[d + 4]).toLowerCase());
+            d += 2 + b[d + 1];
+          }
+        }
+        q += 5 + eil;
+      }
+    }
+  }
+  return diller;
+}
+async function muxedTrSesKaniti(masterMetin, headers) {
+  const zamanAsimiMs = (ms) => (typeof AbortSignal < "u" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(ms) : void 0);
+  try {
+    const varyant = String(masterMetin || "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean).find((s) => !s.startsWith("#"));
+    if (!varyant) return "";
+    let hedef = varyant;
+    try { hedef = new URL(varyant, String(arguments[2] || varyant)).toString(); } catch {}
+    const y1 = await fetch(hedef, { headers: headers, signal: zamanAsimiMs(7000) });
+    if (!y1.ok) return "";
+    const metin = await y1.text();
+    let segAdres = hedef;
+    if (/#EXTM3U/i.test(metin)) {
+      const seg = metin.split(/\r?\n/).map((s) => s.trim()).filter((s) => s && !s.startsWith("#"))[0];
+      if (!seg) return "";
+      try { segAdres = new URL(seg, hedef).toString(); } catch { segAdres = seg; }
+    }
+    const y2 = await fetch(segAdres, {
+      headers: Object.assign({}, headers, { Range: "bytes=0-262143" }),
+      signal: zamanAsimiMs(9000),
+    });
+    if (!y2.ok) return "";
+    const baytlar = new Uint8Array(await y2.arrayBuffer());
+    let diller = tsSesDilleri(baytlar);
+    if ((!diller || diller.size === 0) && baytlar.length > 2048) {
+      for (let ofset = 0; ofset < 188 * 12; ofset++) {
+        if (baytlar[ofset] === 0x47 && baytlar[ofset + 188] === 0x47) {
+          diller = tsSesDilleri(baytlar.subarray(ofset));
+          if (diller && diller.size) break;
+        }
+      }
+    }
+    if (diller.has("tr") || diller.has("tur")) return "TS-PMT ses dili: " + Array.from(diller).join(",");
+    return "";
+  } catch {
+    return "";
+  }
+}
 async function getStreams(tmdbId2, tmdbId3, tmdbId4, tmdbId5) {
+
   let {
     tmdbId: tmdbId,
     mediaType: mediaType,
@@ -829,7 +929,7 @@ async function getStreams(tmdbId2, tmdbId3, tmdbId4, tmdbId5) {
     if (!tmdbId) return [];
     let result = await fn3(tmdbId, mediaType, "Spider-Man");
     if (!result) return [];
-    let result2 = await fn("Spider-Man");
+    let result2 = (await fn("Spider-Man") || await fn("imu"));
     if (!result2) return (log("Spider-Man", "Sağlayıcı adresi alınamadı.", "warn"), []);
     let url = "";
     if (isTv) {
@@ -862,7 +962,16 @@ async function getStreams(tmdbId2, tmdbId3, tmdbId4, tmdbId5) {
     if (!str || !str.includes("#EXTM3U"))
       return (log("Spider-Man", "Geçerli bir HLS akışı bulunamadı.", "warn"), []);
     let title = matchOf(str),
-      now2 = ((Date.now() - startTime) / 1000).toFixed(2);
+      sesKaniti = trSesIziVar(str);
+    // Master ses izi bildirmiyorsa ses mux'ludur: ilk segmanın TS PMT dil
+    // tanımlayıcısına bak (yalnız kanıt varsa "Türkçe Dublaj" etiketi basılır).
+    if (!sesKaniti && !/#EXT-X-MEDIA:[^\n]*TYPE=AUDIO/i.test(str))
+      sesKaniti = await muxedTrSesKaniti(str, headers, url);
+    if (sesKaniti && !/Dublaj/i.test(title))
+      title = (/^(Orijinal)$/i.test(title) ? "" : title + " \xb7 ") + "T\xfcrk\xe7e Dublaj";
+    let now2 = ((Date.now() - startTime) / 1000).toFixed(2);
+    if (sesKaniti) log("Spider-Man", "T\xfcrk\xe7e ses kanıtı: " + sesKaniti, "info");
+
     return (
       log("Spider-Man", "[Adım 3/3] Imu akışı hazır! (" + now2 + "s)", "success", {
         dil: title
@@ -875,7 +984,10 @@ async function getStreams(tmdbId2, tmdbId3, tmdbId4, tmdbId5) {
           url: url,
           quality: "1080p • " + title,
           format: "m3u8",
-          headers: headers
+          headers: headers,
+          ...(sesKaniti
+            ? { diller: ["tr"], trSes: !0, dilDurumu: "dublaj", dilKaniti: sesKaniti }
+            : {})
         }
       ]
     );

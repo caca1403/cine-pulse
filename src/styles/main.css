@@ -47,8 +47,10 @@
   /* Text Hierarchies */
   --text-main: #f5f5f5;
   --text-sub: #b3b3b3;
-  --text-muted: #808080;
-  --text-dim: #6d6d6e;
+  /* #808080 küçük puntoda koyu zeminde okunmuyordu; kart meta/alt metin
+     tonları #9ca3af bekliyor — token'ı beklentiyle eşitle. */
+  --text-muted: #9ca3af;
+  --text-dim: #8b9199;
 
   /* Flat borders, no glow */
   --border-color: rgba(255, 255, 255, 0.12);
@@ -4538,7 +4540,10 @@ html.mobile-web .navbar {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
-  width: 100%;
+  /* Oklar kardeş flex öğe: width:100% track'i sarmalayıcıdan taşıp
+     sağ oku ekran dışına itiyordu; kalan alanı esneyerek alsın. */
+  flex: 1 1 auto;
+  min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
   user-select: none;
@@ -7970,6 +7975,26 @@ html.mobile-web .navbar {
    etmeye gerek kalmaz — hepsi tek kuralda kapanır. */
 .cp-native-video .direct-video-wrapper > * {
   display: none !important;
+}
+/* KALICI KURAL (2026-10-25): Android'de WebView <video> ASLA oynatıcı değildir.
+   cp-native-video hata/temizlikte kaldırılabiliyordu → siyah 00:00 kutusu
+   ("eski oynatıcı") görünüyordu. cp-android-exoplayer açılışta eklenir ve bir
+   daha KALDIRILMAZ: <video> ve tarayıcı kontrolleri her koşulda görünmez kalır,
+   tüm oynatma ExoPlayer (Media3) yüzeyinde olur. Yer tutucu (wrapper) kalır ki
+   native yüzey doğru dikdörtgene otursun. */
+.cp-android-exoplayer #hls-video-player,
+.cp-android-exoplayer .direct-video-wrapper video {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+/* Wrapper yer tutucu olarak KALIR (visibility gizli, video kutusu korunur) ki
+   native yüzey doğru dikdörtgene otursun. Özel kontroller (#custom-player-controls)
+   GİZLENMEZ — onlar ExoPlayer'ı sürer; yalnız tarayıcının ham <video> siyah
+   kutusu yok olur. */
+.cp-android-exoplayer .direct-video-wrapper {
+  min-height: 220px;
+  background: transparent !important;
 }
 /* Yer tutucu yüksekliği: native yüzey doğru dikdörtgene otursun. */
 .cp-native-video .direct-video-wrapper {
@@ -14787,22 +14812,19 @@ video::cue {
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* Görünüm çubuğu yerleşimi collection.css'te (tema katmanı) tanımlı;
+   switcher'in kendisi aşağıda satır-üstü statik gruba indirildi. */
 .card-layout-switcher {
-  position: fixed;
-  top: 82px;
-  right: max(18px, env(safe-area-inset-right));
-  z-index: 950;
+  position: static;
   display: flex;
   align-items: center;
   gap: .7rem;
-  padding: .55rem .62rem .55rem .85rem;
+  padding: 0;
   border-radius: 16px;
   color: #fff;
-  background: rgba(8, 12, 20, .9);
-  border: 1px solid rgba(223, 255, 118, .42);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, .58), 0 0 22px rgba(223, 255, 118, .12);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .card-layout-switcher-label {
@@ -14857,23 +14879,7 @@ video::cue {
 
 @media (max-width: 768px) {
   .card-layout-switcher {
-    top: auto;
-    right: max(10px, env(safe-area-inset-right));
-    bottom: calc(80px + env(safe-area-inset-bottom));
     gap: .35rem;
-    padding: .35rem .45rem;
-    border-radius: 14px;
-    opacity: 0.72;
-    transform: scale(0.88);
-    transform-origin: bottom right;
-    transition: opacity 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
-  }
-  .card-layout-switcher:hover,
-  .card-layout-switcher:focus-within,
-  .card-layout-switcher:active {
-    opacity: 1;
-    transform: scale(1);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.8), 0 0 25px rgba(223, 255, 118, 0.25);
   }
   .card-layout-switcher-label {
     display: none;
@@ -19823,7 +19829,10 @@ html.native-android #player-modal .player-modal-content {
     width: clamp(112px, 34vw, 150px) !important;
     min-width: clamp(112px, 34vw, 150px) !important;
     max-width: clamp(112px, 34vw, 150px) !important;
-    aspect-ratio: 16 / 10 !important;
+    /* BÖLÜM RESMİ YARIM KALMAZ (kullanıcı 2026-10-29): TMDB still'leri 16:9;
+       kutu 16:10'a zorlanınca cover üstten/alttan kırpıyordu. Oran görselle
+       BİREBİR 16:9 — kutu = resim, kırpma sıfır. */
+    aspect-ratio: 16 / 9 !important;
     align-self: flex-start;
     margin: 0 !important;
   }
@@ -21580,4 +21589,52 @@ html.lowfx .cp-view-enter { animation-duration: 0.12s; }
   html .cine-discovery-theme .home-view .hero-actions button { min-height: 44px; }
   /* Silme düğmesi 32px görünür kalır; dokunma alanı görünmeden 44px'e büyür. */
   .btn-delete-history::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
+}
+
+/* ==========================================================================
+   G1 KABUK CILA — yalnızca EK override bloğu; yukarıdaki hiçbir blok
+   silinmedi/değiştirilmedi. Token'lar src/styles/motion.css'ten gelir.
+   ========================================================================== */
+
+/* 1) Navbar → cam yüzey + ince alt kenar ışığı
+      (html.native-android / .scrolled 'daki !important katmanları geçerli kalır,
+      yalnız varsayılan durumda cam devreye girer.) */
+.cp-navbar {
+  background: rgba(10, 12, 18, 0.55);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+/* Navbar içi dokunma geri bildirimi (cp-press deseninin kabuk dahili hâli) */
+.cp-navbar button:active,
+.cp-navbar a:active {
+  transform: scale(0.97);
+  transition: transform var(--dur-fast) ease-out;
+}
+
+/* 2) Açık modal/overlay arka planları → koyu + yumuşak blur (yalnız backdrop,
+      içerik blur'lanmaz): #000a → #000c + blur 6px.
+      #player-modal ve .cp-native-video kendi yüksek özgünlük kurallarını tutar. */
+.modal-backdrop:not(.hidden) {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* 3) Toast → cp-modal-in girişi + cam üst kenar */
+.toast {
+  animation: cp-scale-in var(--dur-slow) var(--ease-spring) both;
+  box-shadow:
+    0 15px 40px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* 4) Masaüstü scrollbar: ince/koyu (standart sözdizimi; webkit hâli
+      yukarıdaki 6px koyu tanımla zaten var, 0-spesifiklik (*) kuralı
+      kendi renk vermemiş her yeri düzelten raya oturtur). */
+@media (hover: hover) and (pointer: fine) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  }
 }

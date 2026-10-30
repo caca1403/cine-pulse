@@ -150,6 +150,14 @@ export function openProfileModal() {
               <i data-lucide="zap" style="width: 14px; height: 14px; color: #dfff76;"></i>
               <span>VEGA</span>
             </button>
+            <button class="btn-manage-profiles" id="btn-modal-open-oynatma" title="Oynatma & Ağ Ayarları">
+              <i data-lucide="settings-2" style="width: 14px; height: 14px; color: #a78bfa;"></i>
+              <span>Oynatma & Ağ</span>
+            </button>
+            <button class="btn-manage-profiles" id="btn-modal-open-eklenti" title="Eklenti Yönetimi">
+              <i data-lucide="plug" style="width: 14px; height: 14px; color: #fbbf24;"></i>
+              <span>Eklentiler</span>
+            </button>
             <button class="btn-manage-profiles" id="btn-modal-open-backup" title="Yedekleme & Veri Yönetimi">
               <i data-lucide="hard-drive-download" style="width: 14px; height: 14px; color: #38bdf8;"></i>
               <span>Veri & Yedek</span>
@@ -443,6 +451,25 @@ export function openProfileModal() {
         closeProfileModal();
         const { openDebridModal } = await import('./DebridModal.js');
         openDebridModal();
+      };
+    }
+
+    // #8: Oynatma & Ağ ayarları (agresif tampon / yavaş bağlantı modu).
+    const oynatmaBtn = modalContainer.querySelector('#btn-modal-open-oynatma');
+    if (oynatmaBtn) {
+      oynatmaBtn.onclick = async () => {
+        closeProfileModal();
+        const { openOynatmaAyarModal } = await import('./OynatmaAyarModal.js');
+        openOynatmaAyarModal();
+      };
+    }
+
+    const eklentiBtn = modalContainer.querySelector('#btn-modal-open-eklenti');
+    if (eklentiBtn) {
+      eklentiBtn.onclick = async () => {
+        closeProfileModal();
+        const { openEklentiYonetimModal } = await import('./EklentiYonetimModal.js');
+        openEklentiYonetimModal();
       };
     }
 

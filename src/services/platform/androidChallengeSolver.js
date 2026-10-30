@@ -11,7 +11,12 @@
 
 const SOLVER_CACHE = new Map(); // origin -> { cookies, savedAt, solving }
 const COOKIE_TTL_MS = 45 * 60 * 1000;
-const CF_MARKERS = ['just a moment', 'challenge-platform', 'cf-chl', 'verifying you are human'];
+/* Challenge işaretleri. DİKKAT: 'challenge-platform' BURADA YOK — Cloudflare
+   normal sayfalara da `/cdn-cgi/challenge-platform/scripts/jsd/main.js` enjekte
+   ediyor; o dizgiyi işaret saymak her gerçek sayfayı "challenge" diye
+   reddettiriyordu (filmmakinesi/dizibox okuması sessizce 0 bayt dönüyordu).
+   Yalnız gerçek ara sayfa metinleri işaret sayılır. */
+const CF_MARKERS = ['just a moment', 'cf-chl', 'verifying you are human', 'checking your browser'];
 
 function isNative() {
   try {
@@ -31,8 +36,7 @@ function deviceUA() {
 
 async function readCookies(url) {
   try {
-    const mod = await import('@capacitor/core');
-    const api = mod?.CapacitorCookies;
+    const api = window.Capacitor?.Plugins?.CapacitorCookies;
     if (!api || typeof api.getCookies !== 'function') return '';
     const res = await api.getCookies({ url });
     const pairs = [];
@@ -117,30 +121,43 @@ export async function hasChallengeSession(origin) {
 export async function fetchTextWithSession(url, { method = 'GET', body = null, headers = {}, referer = '', timeoutMs = 12000 } = {}) {
   try {
     if (!isNative()) return null;
-    const mod = await import('@capacitor/core');
-    const http = mod?.CapacitorHttp;
+    // KÖK HATA DÜZELTMESİ (2026-10-29): eskiden `await import('@capacitor/core')`
+    // vardı; üretim bundle'ında paket adı ÇÖZÜLMÜYOR ("Failed to resolve module
+    // specifier") ve fonksiyon her çağrıda null dönüyordu → Cloudflare arkası
+    // TÜM siteler (filmmakinesi, dizibox…) okunamıyordu. Plugin zaten native
+    // runtime'da kayıtlı; oradan alınır, import gerekmez.
+    const http = window.Capacitor?.Plugins?.CapacitorHttp;
     if (!http) return null;
     let origin = '';
     try { origin = new URL(url).origin; } catch (_) { return null; }
-    const cookies = await ensureChallengeCookies(origin, { timeoutMs: 20000 });
-    const finalHeaders = {
-      'User-Agent': deviceUA(),
-      Accept: 'text/html,application/json,application/xhtml+xml,*/*;q=0.8',
-      ...(referer ? { Referer: referer } : {}),
-      ...(cookies ? { Cookie: cookies } : {}),
-      ...headers,
+    const callHttp = async (cookies) => {
+      const finalHeaders = {
+        'User-Agent': deviceUA(),
+        Accept: 'text/html,application/json,application/xhtml+xml,*/*;q=0.8',
+        ...(referer ? { Referer: referer } : {}),
+        ...(cookies ? { Cookie: cookies } : {}),
+        ...headers,
+      };
+      const m = String(method || 'GET').toUpperCase();
+      const opts = { url, headers: finalHeaders, responseType: 'text', connectTimeout: 6000, readTimeout: timeoutMs };
+      if (m === 'POST') {
+        const data = body == null ? '' : (typeof body === 'string' ? body : JSON.stringify(body));
+        if (!finalHeaders['Content-Type']) finalHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+        return http.post({ ...opts, data, headers: finalHeaders });
+      }
+      return http.get(opts);
     };
-    const m = String(method || 'GET').toUpperCase();
-    const opts = { url, headers: finalHeaders, responseType: 'text', connectTimeout: 6000, readTimeout: timeoutMs };
-    let res = null;
-    if (m === 'POST') {
-      const data = body == null ? '' : (typeof body === 'string' ? body : JSON.stringify(body));
-      if (!finalHeaders['Content-Type']) finalHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
-      res = await http.post({ ...opts, data, headers: finalHeaders });
-    } else {
-      res = await http.get(opts);
+    // Hızlı yol: önce doğrudan native HTTP dene (25 sn WebView challenge beklemeden).
+    const cachedCookies = SOLVER_CACHE.get(origin)?.cookies || '';
+    let res = await callHttp(cachedCookies);
+    let text = typeof res?.data === 'string' ? res.data : '';
+    if (text && !looksLikeChallenge(text) && (res?.status || 200) < 400) {
+      return { text, status: res?.status || 0, cookies: cachedCookies };
     }
-    const text = typeof res?.data === 'string' ? res.data : '';
+    // Sadece gerçek challenge yiyen sitelerde WebView çözücüye düş.
+    const cookies = await ensureChallengeCookies(origin, { timeoutMs: 20000 });
+    res = await callHttp(cookies);
+    text = typeof res?.data === 'string' ? res.data : '';
     if (!text || looksLikeChallenge(text)) return null;
     return { text, status: res?.status || 0, cookies };
   } catch (_) {

@@ -34,6 +34,18 @@ export function mkvRelayUrl(path = '') {
   return MKV_RELAY_ORIGIN ? `${MKV_RELAY_ORIGIN}${path}` : apiUrl(path);
 }
 
+/**
+ * Alt-yol/sunucuya-özel rotalar (ör. /api/subtitles) için adres.
+ * ANDROID'de apiUrl() YEREL geçidi (NativeMediaGateway) döner ve geçit bu
+ * rotayı tanımaz → 501 `native-route-unavailable` (ölçüldü 2026-10-17).
+ * Rota CORS'a açık (Access-Control-Allow-Origin: *) olduğundan WebView bunu
+ * doğrudan herkese açık worker kökünden çeker. Masaüstü/web: apiUrl yeterli.
+ */
+export function publicApiUrl(path = '') {
+  if (isNativeCapacitor()) return `${PUBLIC_API_ORIGIN}${path}`;
+  return apiUrl(path);
+}
+
 export function isNativeCapacitor() {
   try {
     if (typeof window === 'undefined') return false;

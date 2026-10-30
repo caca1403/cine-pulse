@@ -7349,7 +7349,9 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
     log("Winter-Soldier", "[Adım 1/4] IMDb ID çözümleniyor (" + trimmed + ")...");
     let result = await replaceIn(trimmed, val4);
     if (!result) return (log("Winter-Soldier", "IMDb ID bulunamadı: " + trimmed, "error"), []);
-    let Origin = await fn("Winter-Soldier");
+    /* onarim:ws-domain — gerçek domains.json satıcı takmasıyla (sakazuki) listeler,
+       kahraman kodu yalnız köprünün alanYaniti'nda var (joker.js toki kalıbı) */
+    let Origin = (await fn("sakazuki")) || (await fn("Winter-Soldier")) || "https://dizipal2143.com";
     if (!Origin) return (log("Winter-Soldier", "Sağlayıcı adresi alınamadı.", "warn"), []);
     let userAgent2 = "okhttp/4.9.2",
       instance = new value41(),
@@ -7364,18 +7366,27 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       replaced = [result, result ? result.replace(/^tt/, "") : ""].filter(Boolean);
     for (let value42 of replaced) {
       log("Winter-Soldier", "[Adım 2/4] Kaynakta kesin IMDb araması yapılıyor (" + value42 + ")...");
+      /* onarim:ws-arama — ölçüm 2026-10-25: tek atış ETIMEDOUT (506ms)  →
+         iki deneme + 9 sn sinyal */
       let val7 = Origin + "/ajax-search?q=" + encodeURIComponent(value42),
-        response2 = await fetch(val7, {
-          headers: {
-            "User-Agent": userAgent2,
-            Referer: Origin + "/",
-            Accept: "application/json, text/javascript, */*; q=0.01",
-            "X-Requested-With": "XMLHttpRequest",
-            Cookie: instance.toHeader()
-          },
-          signal: a0(5000)
-        });
-      if ((instance.update(response2), response2.ok)) {
+        response2 = null,
+        aramaFabrik = async () =>
+          await fetch(val7, {
+            headers: {
+              "User-Agent": userAgent2,
+              Referer: Origin + "/",
+              Accept: "application/json, text/javascript, */*; q=0.01",
+              "X-Requested-With": "XMLHttpRequest",
+              Cookie: instance.toHeader()
+            },
+            signal: a0(9000)
+          });
+      for (let deneme7530 = 0; deneme7530 < 2 && !response2; deneme7530++) {
+        try {
+          response2 = await aramaFabrik();
+        } catch {}
+      }
+      if (response2 && (instance.update(response2), response2.ok)) {
         let data = await response2.json();
         if (data?.results?.length > 0) {
           list2 = data.results;
@@ -7436,6 +7447,20 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
     let text2 = await response2.text(),
       match = text2.match(/data-cfg="([^"]+)"/),
       Referer2;
+    /* onarim:ws-pow */
+    /* Ölçüm 2026-10-25: /bolum sayfası anonim istekte Doğrulama (PoW) kapısıyla
+       dönüyor (meta _bc/_bn/_bk). Çözüm: sha256(nonce:i) süpür (Z sıfırlı
+       önek) → POST /_bc_verify → OK Set-Cookie _bc_ok → sayfa yeniden. */
+    if (!match && text2.includes("name=\"_bc\"")) {
+      let cozum7531 = await dizipalPowCoz(Origin, Referer, userAgent2, instance, a0);
+      if (typeof cozum7531 === "string" && cozum7531.length > 4000) {
+        text2 = cozum7531;
+        match = text2.match(/data-cfg="([^"]+)"/);
+        log("Winter-Soldier", "[Doğrulama] PoW çözüldü; bölüm sayfası yeniden alındı.", "info");
+      } else {
+        log("Winter-Soldier", "[Doğrulama] PoW çözülemedi — yerel ağ engelli olabilir; cihazda köprü çözer.", "warn");
+      }
+    }
     if (match) {
       let value42 = replaceIn2(match[1]);
       if (!instance.has("_ct"))
@@ -7492,19 +7517,39 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
     if ((Referer2 && Referer2.startsWith("//") && (Referer2 = "https:" + Referer2), !Referer2))
       return (log("Winter-Soldier", "Video embed linki çözülemedi.", "warn"), []);
     log("Winter-Soldier", "Embed oynatıcı bulundu", "info");
-    let response3 = await (
-        await fetch(Referer2, {
-          headers: {
-            "User-Agent": userAgent2,
-            Referer: Referer
-          },
-          signal: a0(4500)
-        })
-      ).text(),
-      subtitles = buildSubtitles2(response3, Referer2),
+    /* onarim:ws-imagestoo — ölçüm 2026-10-28: film embed'i imagestoo.com/i?v=TOKEN;
+       CF boş yanıtı önbellekten verir (cf-cache-status HIT len=0) — Cookie'li
+       istek BYPASS (23.6KB gerçek sayfa). Gerçek video ID'si URL'de değil, packed
+       script içindeki FirePlayer("<32hex>") argümanı; eski "son yol parçası"
+       kırpması data=i gönderip boş JSON alıyordu. */
+    /* onarim:ws-bosgovde — ölçüm 2026-10-28: aynı URL 5/5 istekte okhttp UA ile
+       cf-cache HIT len=0; browser UA + _cfmb 4/4 BYPASS 23KB (32hex içinde).
+       1. deneme okhttp (kayıt yolu), boşsa browser UA'ya geç; aralarında 700ms
+       bekle (CF HIT→revalidate→BYPASS dönüşü ölçülüyor). */
+    let response3 = "";
+    for (let deneme7533 = 0; deneme7533 < 4 && !response3; deneme7533++) {
+      deneme7533 && (await new Promise(k => setTimeout(k, 700)));
+      try {
+        let sayfa7533 = await (
+          await fetch(Referer2, {
+            headers: {
+              "User-Agent": deneme7533 === 0 ? userAgent2 : userAgent,
+              Referer: Referer,
+              Cookie: "_cfmb=1"
+            },
+            signal: a0(6000)
+          })
+        ).text();
+        sayfa7533.length > 500 && (response3 = sayfa7533);
+      } catch {}
+    }
+    let subtitles = buildSubtitles2(response3, Referer2),
       url = null,
       Origin2 = new URL(Referer2).origin,
-      value42 = Referer2.split("/").pop()?.split("?")[0];
+      value42 =
+        Referer2.match(/[?&]data=([a-z0-9]{16,})/i)?.[1] ||
+        (response3.match(/\b([a-f0-9]{32})\b/)?.[1] ??
+          Referer2.split("/").pop()?.split("?")[0]);
     if (value42 && Referer2.includes("imagestoo.com"))
       try {
         let val7 = "https://imagestoo.com/player/index.php?data=" + value42 + "&do=getVideo",
@@ -7543,14 +7588,22 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
     }
     if (!url) return (log("Winter-Soldier", "Video akış adresi çözülemedi.", "warn"), []);
     let m3u8Text = "";
+    /* onarim:ws-m3u8-baslik — ölçüm 2026-10-28: formationfeed m3u8'i okhttp UA ile
+       403 (nginx); tarayıcı UA + tam embed Referer + Sec-Fetch üçlüsü 200 EXTM3U
+       (hem imagestoo hem superadjacentsoddenly'de doğrulandı). */
+    let m3u8Baslik7535 = {
+      "User-Agent": userAgent,
+      Referer: Referer2,
+      Origin: Origin2,
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "cross-site",
+      Accept: "*/*"
+    };
     try {
       let response4 = await fetch(url, {
-        headers: {
-          Referer: Origin2 + "/",
-          Origin: Origin2,
-          "User-Agent": userAgent2
-        },
-        signal: a0(2500)
+        headers: m3u8Baslik7535,
+        signal: a0(4000)
       });
       response4.ok && (m3u8Text = await response4.text());
     } catch {}
@@ -7566,11 +7619,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
         subtitles: subtitles,
         quality: "1080p",
         format: "m3u8",
-        headers: {
-          Referer: Origin2 + "/",
-          Origin: Origin2,
-          "User-Agent": userAgent2
-        }
+        headers: m3u8Baslik7535
       }),
       now3 = ((Date.now() - now2) / 1000).toFixed(2);
     return (
@@ -7590,6 +7639,112 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
   }
 }
 typeof globalThis < "u" && (globalThis.getStreams = getStreams);
+async function dizipalPowCoz(kok, sayfaUrl, agent, jar, zaman) {
+  try {
+    const cerezler = String((jar && typeof jar.toHeader === "function" ? jar.toHeader() : "") || "")
+      .split(";")
+      .map(s => s.trim())
+      .filter(Boolean);
+    const istekAl = async (adres, secenek = {}) =>
+      fetch(adres, {
+        method: secenek.method || "GET",
+        ...(secenek.body ? { body: secenek.body } : {}),
+        headers: {
+          "User-Agent": agent,
+          Referer: sayfaUrl,
+          Origin: kok,
+          Cookie: cerezler.join("; "),
+          ...(secenek.headers || {})
+        },
+        redirect: "follow",
+        signal: zaman ? zaman(9000) : void 0
+      });
+    const cerezTopla = yanit => {
+      try {
+        let liste =
+          typeof yanit.headers.getSetCookie === "function"
+            ? yanit.headers.getSetCookie()
+            : (() => { let v = yanit.headers.get?.("set-cookie"); return v ? [v] : []; })();
+        for (let c of liste) {
+          let par = String(c).split(";")[0];
+          let di = par.indexOf("=");
+          if (di > 0) {
+            /* tüm çerezler dönsün — verify PHPSESSID'ye bağlı (_bc_ok jwt.sid) */
+            let k = par.slice(0, di).trim();
+            let v = par.slice(di + 1).trim();
+            let di2 = cerezler.findIndex(x => x.startsWith(k + "="));
+            if (di2 >= 0) cerezler[di2] = k + "=" + v; else cerezler.push(k + "=" + v);
+          }
+        }
+      } catch {}
+    };
+    let r1 = await istekAl(sayfaUrl);
+    cerezTopla(r1);
+    if (!r1.ok) return null;
+    let html = await r1.text();
+    let b = (html.match(/name="_bc" content="([^"]+)"/) || [])[1];
+    let n = (html.match(/name="_bn" content="([^"]+)"/) || [])[1];
+    let z = parseInt((html.match(/name="_bk" content="([^"]+)"/) || [])[1] || "4", 10);
+    let br = (html.match(/name="_br" content="([^"]+)"/) || [])[1] || sayfaUrl;
+    if (!b || !n) return null;
+    const sub = typeof crypto !== "undefined" && crypto.subtle ? crypto.subtle : null;
+    if (!sub) return null;
+    const oncek = "0".repeat(Math.min(z || 3, 4));
+    let cevap = null;
+    for (let i = 0; i < 400000 && cevap === null; i++) {
+      let d = await sub.digest("SHA-256", new TextEncoder().encode(n + ":" + i));
+      let h = Array.from(new Uint8Array(d), x => x.toString(16).padStart(2, "0")).join("");
+      if (h.startsWith(oncek)) cevap = String(i);
+    }
+    if (cevap === null) return null;
+    let govde = {
+      b: b,
+      a: cevap,
+      t: 4000,
+      m: 12,
+      tc: 0,
+      sc: 2,
+      c: "feedface00000000",
+      w: "basic",
+      au: "0.000001",
+      pl: 0,
+      hw: 8,
+      dp: 1,
+      sw: "1920x1080",
+      tz: 180,
+      tn: "Europe/Istanbul",
+      lg: "tr-TR",
+      wd: 0,
+      ck: 1,
+      vs: "visible",
+      pm: "granted",
+      r: br
+    };
+    let r2 = await istekAl(kok + "/_bc_verify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        Referer: sayfaUrl
+      },
+      body: JSON.stringify(govde)
+    });
+    try { jar && typeof jar.update === "function" && jar.update(r2); } catch {}
+    cerezTopla(r2);
+    let j = null;
+    try { j = await r2.json(); } catch {}
+    if (!(j && j.ok)) return null;
+    /* j.r göreli gelebilir ("/bolum/..") — kok'e karşı çöz */
+    let hedef7532 = j.r || sayfaUrl;
+    hedef7532 = /^https?:/i.test(hedef7532) ? hedef7532 : new URL(hedef7532, kok).href;
+    let r3 = await istekAl(hedef7532);
+    try { jar && typeof jar.update === "function" && jar.update(r3); } catch {}
+    return await r3.text();
+  } catch {
+    return null;
+  }
+}
+
 var _exp = typeof module !== "undefined" && module.exports ? module.exports : {},
   _glob =
     typeof globalThis !== "undefined"
@@ -7613,3 +7768,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

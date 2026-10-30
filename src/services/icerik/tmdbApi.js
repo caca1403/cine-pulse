@@ -265,6 +265,11 @@ const BLOCKED_TITLES = [
 
 const BLOCKED_IDS = new Set([3072, 34634, 3126, 45814, 1356, 45598, 61498, 59792, 29849, 23067, 44383, 44372]);
 
+/** #1 Jenerik atlama: TMDB dış kimlikleri (anidb_id, mal_id, imdb_id). */
+export async function tmdbHariciIdleriGetir(tur, tmdbId) {
+  return tmdbFetch(`/${tur === 'movie' ? 'movie' : 'tv'}/${tmdbId}/external_ids`, {});
+}
+
 export function isBlockedContent(item) {
   if (!item) return true;
   if (item.id && BLOCKED_IDS.has(Number(item.id))) return true;
@@ -1478,6 +1483,47 @@ export async function fetchRecommendations(type = 'tv', tmdbId, page = 1) {
   return data.results
     .filter(item => item && (item.poster_path || item.backdrop_path) && !isBlockedContent(item))
     .map(item => ({ ...item, type: t, media_type: t }));
+}
+
+/**
+ * Hafif görsel/künye isteği — "Kanalım" kartları için poster + arka plan.
+ * Ağır detay çağrısından (credits+similar+videos+çeviri) farklı olarak tek
+ * uç nokta okur; sonuç modül belleğinde tutulur (aynı içerik iki kez istenmez).
+ * Ağ hatasında null döner, atmaz.
+ *
+ * @param {'tv'|'movie'} type
+ * @param {string|number} id
+ * @returns {Promise<{id:number, ad:string, poster_path:string, backdrop_path:string,
+ *   overview:string, puan:number, yil:string, turler:string[], sureDk:number|null}|null>}
+ */
+const GORSEL_CACHE = new Map();
+export async function fetchMediaArtwork(type = 'tv', id) {
+  const tur = type === 'movie' ? 'movie' : 'tv';
+  const anahtar = `${tur}:${id}`;
+  if (GORSEL_CACHE.has(anahtar)) return GORSEL_CACHE.get(anahtar);
+  if (!id) return null;
+  let res = null;
+  try {
+    res = await tmdbFetch(`/${tur}/${id}`, { language: 'tr-TR' }, { timeoutMs: 7000 });
+  } catch (_) {
+    res = null;
+  }
+  if (!res) return null;
+  const yilHam = res.release_date || res.first_air_date || '';
+  const sure = Number(res.runtime) || (Array.isArray(res.episode_run_time) ? Number(res.episode_run_time[0]) : 0) || null;
+  const cikti = {
+    id: res.id != null ? res.id : id,
+    ad: res.title || res.name || '',
+    poster_path: res.poster_path || '',
+    backdrop_path: res.backdrop_path || '',
+    overview: String(res.overview || '').trim(),
+    puan: Number(res.vote_average) || 0,
+    yil: yilHam ? String(yilHam).slice(0, 4) : '',
+    turler: Array.isArray(res.genres) ? res.genres.map((g) => g && g.name).filter(Boolean) : [],
+    sureDk: sure
+  };
+  GORSEL_CACHE.set(anahtar, cikti);
+  return cikti;
 }
 
 /**

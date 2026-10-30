@@ -7320,70 +7320,79 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       val4 = isTvOrSeries ? "tv" : "movie",
       val5 = tmdbId3 != null && tmdbId3 !== "" ? parseInt(String(tmdbId3), 10) : 1,
       val6 = tmdbId4 != null && tmdbId4 !== "" ? parseInt(String(tmdbId4), 10) : 1,
-      result = await fn("Black-Widow");
+      result = (await fn("kidd")) || (await fn("Black-Widow"));
     if (!result) return (log("Black-Widow", "Sağlayıcı adresi alınamadı.", "warn"), []);
     log("Black-Widow", "[Adım 1/4] IMDb ID çözümleniyor (" + trimmed2 + ")...");
     let str2 = "",
-      str3 = "İçerik";
+      str3 = "İçerik",
+      baslikAdaylari = [];
     if (trimmed2.startsWith("tt")) str2 = trimmed2;
     else
       try {
         str2 = (await replaceIn(trimmed2, val4)) || "";
         let result2 = await fn3(trimmed2, val4);
         result2 && result2.titles && result2.titles[0] && (str3 = result2.titles[0]);
+        result2 && Array.isArray(result2.titles) && (baslikAdaylari = result2.titles);
       } catch {}
     if (!str2) return (log("Black-Widow", "IMDb ID bulunamadı: " + trimmed2, "error"), []);
     let val7 = str2.startsWith("tt") ? str2 : "tt" + str2;
     log("Black-Widow", "[Adım 2/4] Doğrudan HTML araması yapılıyor (" + val7 + ")...");
-    let value40 = null;
-    try {
-      let val8 = result + "/arama/?s=" + encodeURIComponent(val7),
-        response = await fetch(val8, {
-          headers: {
-            "User-Agent": userAgent3,
-            Referer: result + "/"
-          },
-          signal: C0(4500)
-        });
-      if (response.ok) {
-        let text2 = await response.text(),
-          value41 = fn5(/href=["']((?:https?:\/\/[^"']*)?\/(?:film|dizi)\/[^"']+)["']/gi, text2);
-        for (let value42 of value41) {
-          let value43 = value42[1];
-          if (
-            value43.includes("/filmler-") ||
-            value43.includes("/yabanci-dizi-") ||
-            value43.includes("/tur/") ||
-            value43.includes("/ulke/")
-          )
-            continue;
-          let value44 = value43.includes("/dizi/");
-          if (isTvOrSeries && value44) {
-            value40 = value43.startsWith("/") ? result + value43 : value43;
-            break;
-          } else {
-            if (!isTvOrSeries && !value44) {
-              value40 = value43.startsWith("/") ? result + value43 : value43;
-              break;
-            }
-          }
-        }
-        if (!value40 && value41.length > 0)
+    let value40 = null,
+      // kimlik formatı: site araması tt-id'yi indekslememiş olabilir → başlık adaylarıyla tekrar dene
+      aramaAdaylari = [val7, ...baslikAdaylari.filter(Boolean).slice(0, 3)];
+    for (let aday of aramaAdaylari) {
+      if (value40) break;
+      if (aday !== val7)
+        log("Black-Widow", "IMDb araması boş; başlık ile aranıyor: " + aday, "info");
+      try {
+        let val8 = result + "/arama/?s=" + encodeURIComponent(aday),
+          response = await fetch(val8, {
+            headers: {
+              "User-Agent": userAgent3,
+              Referer: result + "/"
+            },
+            signal: C0(4500)
+          });
+        if (response.ok) {
+          let text2 = await response.text(),
+            value41 = fn5(/href=["']((?:https?:\/\/[^"']*)?\/(?:film|dizi)\/[^"']+)["']/gi, text2);
           for (let value42 of value41) {
             let value43 = value42[1];
             if (
-              !value43.includes("/filmler-") &&
-              !value43.includes("/yabanci-dizi-") &&
-              !value43.includes("/tur/") &&
-              !value43.includes("/ulke/")
-            ) {
+              value43.includes("/filmler-") ||
+              value43.includes("/yabanci-dizi-") ||
+              value43.includes("/tur/") ||
+              value43.includes("/ulke/")
+            )
+              continue;
+            let value44 = value43.includes("/dizi/");
+            if (isTvOrSeries && value44) {
               value40 = value43.startsWith("/") ? result + value43 : value43;
               break;
+            } else {
+              if (!isTvOrSeries && !value44) {
+                value40 = value43.startsWith("/") ? result + value43 : value43;
+                break;
+              }
             }
           }
+          if (!value40 && value41.length > 0)
+            for (let value42 of value41) {
+              let value43 = value42[1];
+              if (
+                !value43.includes("/filmler-") &&
+                !value43.includes("/yabanci-dizi-") &&
+                !value43.includes("/tur/") &&
+                !value43.includes("/ulke/")
+              ) {
+                value40 = value43.startsWith("/") ? result + value43 : value43;
+                break;
+              }
+            }
+        }
+      } catch (err) {
+        log("Black-Widow", "HTML Arama hatası (" + aday + "): " + err.message, "warn");
       }
-    } catch (err) {
-      log("Black-Widow", "HTML Arama hatası: " + err.message, "warn");
     }
     if (!value40) return (log("Black-Widow", "Eşleşen içerik bulunamadı.", "warn"), []);
     if ((log("Black-Widow", 'İçerik bulundu: "' + str3 + "\x22", "success"), isTvOrSeries)) {
@@ -7561,7 +7570,8 @@ var _exp = typeof module !== "undefined" && module.exports ? module.exports : {}
         : typeof window !== "undefined"
           ? window
           : {},
-  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams,
+  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams ||
+    (typeof getStreams === "function" ? getStreams : null),
   _sub = _exp.getSubtitles || (_exp.default && _exp.default.getSubtitles) || _glob.getSubtitles;
 if (_gs) {
   if (typeof globalThis !== "undefined") globalThis.getStreams = _gs;
@@ -7575,3 +7585,5 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+export default typeof getStreams === "function" ? getStreams : undefined;

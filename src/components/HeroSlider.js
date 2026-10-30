@@ -100,7 +100,7 @@ export function renderHeroSlider(items = []) {
     <section class="hero-slider is-loading" id="hero-slider-section" aria-busy="true">
       <div class="hero-ambient-glow"></div>
 
-      <img class="hero-backdrop" id="hero-backdrop-img" src="${backdropUrl}" alt="" loading="eager" fetchpriority="high" decoding="async" sizes="100vw" />
+      <img class="hero-backdrop cp-slide-swap" id="hero-backdrop-img" src="${backdropUrl}" alt="" loading="eager" fetchpriority="high" decoding="async" sizes="100vw" />
       <div class="hero-overlay-gradient"></div>
 
       <!-- Prev / Next Arrow Buttons -->
@@ -191,6 +191,8 @@ export function attachHeroSliderEvents(items = []) {
       if (heroSection?.isConnected) {
         heroSection.classList.remove('is-loading');
         heroSection.setAttribute('aria-busy', 'false');
+        // İlk görünürde başlık/özet/butonlar da cp-fade-up stagger ile açılır.
+        heroSection.querySelector('.hero-content')?.classList.add('hero-content-committing');
       }
     });
   };
@@ -403,6 +405,13 @@ async function updateHeroSlide(item, targetSlideIndex = currentSlideIndex) {
   }
 
   currentSlideIndex = targetSlideIndex;
+
+  // Backdrop animasyonlarını (kenburns + fade/scale) yeni slayt için yeniden başlat.
+  if (backdropEl) {
+    backdropEl.classList.remove('cp-slide-swap');
+    void backdropEl.offsetWidth;
+    backdropEl.classList.add('cp-slide-swap');
+  }
 
   const heroContent = document.querySelector('#hero-slider-section .hero-content');
   heroContent?.classList.remove('hero-content-committing');

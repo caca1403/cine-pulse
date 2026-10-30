@@ -1,4 +1,8 @@
 apply plugin: 'com.android.application'
+// CLOUDSTREAM3 KONAĞI (kullanıcı 2026-10-29): app/cloudstreamApi/kotlin altında
+// vendor edilen CloudStream v4.8.0 `library` kaynakları + CloudStreamHost.
+apply plugin: 'kotlin-android'
+apply plugin: 'org.jetbrains.kotlin.plugin.serialization'
 apply plugin: 'com.chaquo.python'
 
 def signingStorePath = System.getenv('ANDROID_KEYSTORE_PATH')
@@ -11,6 +15,13 @@ def releasePackage = new groovy.json.JsonSlurper().parse(file('../../package.jso
 android {
     namespace = "com.cinepulse.studio"
     compileSdk = rootProject.ext.compileSdkVersion
+    // CLOUDSTREAM3 KONAĞI: vendor edilen Kotlin API kaynakları ayrı dizinde
+    // (kullanıcı 2026-10-29 — CloudStreamHost ile birlikte derlenir).
+    sourceSets {
+        main {
+            java.srcDirs += 'cloudstreamApi/kotlin'
+        }
+    }
     defaultConfig {
         applicationId "com.cinepulse.studio"
         ndk { abiFilters "arm64-v8a", "armeabi-v7a", "x86_64" }
@@ -57,6 +68,13 @@ repositories {
 
 dependencies {
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
+    // TORRENTIO MOBİL OYNATMA: Stremio'nun "stremio-service" mantığının
+    // gömülü hali — gerçek libtorrent (UDP/DHT/PEX) cihazda koşar, yayını
+    // 127.0.0.1 yerel HTTP sunucusundan parça parça verir. Sadece arm64
+    // (cihaz SM-S931B arm64; diğer ABI'lerde Torrent yerel motoru devre dışı,
+    // WebTorrent penceresi yedek olarak çalışmaya devam eder).
+    implementation 'org.libtorrent4j:libtorrent4j:2.1.0-39'
+    implementation 'org.libtorrent4j:libtorrent4j-android-arm64:2.1.0-39'
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
@@ -68,8 +86,29 @@ dependencies {
     // (Kodi eklentileri de tarayıcı değil, native oynatıcı kullanır.)
     implementation "androidx.media3:media3-exoplayer:1.4.1"
     implementation "androidx.media3:media3-ui:1.4.1"
+    // #12 Biometrik uygulama kilidi (BiometricPrompt).
+    implementation "androidx.biometric:biometric:1.1.0"
     implementation "androidx.media3:media3-exoplayer-hls:1.4.1"
     implementation project(':capacitor-android')
+    // CLOUDSTREAM3 KONAĞI (kullanıcı 2026-10-29): vendor edilen com.lagradost.* API
+    // kaynaklarının derlenmesi/çalışması için sürümler cloudstream v4.8.0
+    // gradle/libs.versions.toml ile birebir aynı tutuldu (binary uyum kritik).
+    implementation 'androidx.annotation:annotation:1.10.0'
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1'
+    implementation 'org.jsoup:jsoup:1.22.1'
+    implementation 'org.jetbrains.kotlinx:atomicfu:0.33.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-datetime:0.8.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0'
+    implementation 'com.fleeksoft.ksoup:ksoup:0.2.6'
+    implementation 'io.ktor:ktor-http:3.5.0'
+    implementation 'com.github.Blatzar:NiceHttp:0.4.18'
+    implementation 'org.mozilla:rhino:1.8.1'
+    implementation 'com.uwetrottmann.tmdb2:tmdb-java:2.13.0'
+    implementation 'dev.whyoleg.cryptography:cryptography-core:0.6.0'
+    implementation 'dev.whyoleg.cryptography:cryptography-provider-optimal:0.6.0'
+    implementation 'me.xdrop:fuzzywuzzy:1.4.0'
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
@@ -77,6 +116,18 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+// CLOUDSTREAM3 KONAĞI (kullanıcı 2026-10-29): vendor edilen kütüphane kendi
+// InternalAPI/Prerelease opt-in bayraklarıyla derleniyordu; aynı bayraklar burada.
+kotlin {
+    compilerOptions {
+        optIn.addAll("com.lagradost.cloudstream3.InternalAPI", "com.lagradost.cloudstream3.Prerelease")
+        freeCompilerArgs.add("-Xannotation-default-target=param-property")
+        // javac görevi AGP aracılığıyla 21 hedefliyor; Kotlin de onunla aynı olmalı
+        // (kullanıcı 2026-10-29 — "Inconsistent JVM-target" hatası ölçüldü).
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+    }
+}
 
 try {
     def servicesJSON = file('google-services.json')

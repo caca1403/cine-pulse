@@ -6903,7 +6903,8 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       val5 = tmdbId3 != null ? parseInt(String(tmdbId3), 10) : 1,
       val6 = tmdbId4 != null ? parseInt(String(tmdbId4), 10) : 1;
     if (!trimmed) return [];
-    let result = await fn("Spider-Woman");
+    // domains.json anahtarı takma ad: "Spider-Woman" → "noland" (alanlar.js satır 60)
+    let result = (await fn("Spider-Woman")) || (await fn("noland"));
     if (!result) return (log("Spider-Woman", "Sağlayıcı adresi alınamadı.", "warn"), []);
     log(
       "Spider-Woman",

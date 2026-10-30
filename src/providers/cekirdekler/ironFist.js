@@ -7337,7 +7337,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
     log("Iron-Fist", "[Adım 1/4] IMDb ID çözümleniyor (" + trimmed + ")...");
     let result = await replaceIn(trimmed, val4);
     if (!result) return (log("Iron-Fist", "IMDb ID bulunamadı: " + trimmed, "error"), []);
-    let result2 = await fn("Iron-Fist");
+    let result2 = (await fn("Iron-Fist") || await fn("smoker"));
     if (!result2) return (log("Iron-Fist", "Sağlayıcı adresi alınamadı.", "warn"), []);
     let userAgent = "okhttp/4.9.2";
     log("Iron-Fist", "[Adım 2/4] Arama jetonları alınıyor...");

@@ -2755,7 +2755,7 @@ async function getStreams(tmdbId, type, tmdbId2 = 1, tmdbId3 = 1) {
     let result = await replaceIn(tmdbId, type);
     if (!result || (!result.title && !result.originalTitle))
       return (log(name, "TMDB meta verisi alınamadı.", "warn"), []);
-    let result2 = await fn("Deadpool");
+    let result2 = await fn("Deadpool") || await fn("sengoku");
     if (!result2) return (log(name, "Sağlayıcı adresi alınamadı.", "warn"), []);
     let value6 = Array.from(new Set(result.titles || [result.title, result.originalTitle])).filter(
         Boolean

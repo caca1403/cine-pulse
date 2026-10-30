@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('CinePulseDesktop', {
   // Masaüstü otomatik güncelleme (APK akışıyla aynı version.json)
   checkDesktopUpdate: (manual) => ipcRenderer.invoke('cinepulse:check-desktop-update', manual !== false),
   openReleasePage: () => ipcRenderer.invoke('cinepulse:open-release-page'),
+  openExternalPlayer: (url, opts) => ipcRenderer.invoke('cinepulse:open-external-player', url, opts || {}),
   openVerificationPlayer: (options) => ipcRenderer.invoke('cinepulse:verification-player-open', options),
   positionVerificationPlayer: (options) => ipcRenderer.invoke('cinepulse:verification-player-bounds', options),
   closeVerificationPlayer: (requestId) => ipcRenderer.invoke('cinepulse:verification-player-close', requestId),

@@ -221,6 +221,7 @@ function yayınlariÇıkar(html, bölümAdresi, taban) {
 
   const çıktılar = [];
   const ekle = (ek, dil) => çıktılar.push({
+    name: KOD,
     url: `${kök}/episodes/${kayıt}${ek}/play.m3u8`,
     // Dil işareti bilerek etikette: derleyici altyazı işaretini görmezse
     // yayını dublaj sekmesine atıyor.

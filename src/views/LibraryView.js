@@ -33,7 +33,7 @@ import { showToast } from '../components/Toast.js';
 import { getDownloadedMediaList, deleteOfflineMedia, getDownloadedPlaybackUrl, getOfflinePosterUrl, formatBytes } from '../services/kabuk/offlineManager.js';
 import { openPlayerModal } from '../components/openPlayer.js';
 import { getImageUrl, SINEFLIX_POSTER_FALLBACK } from '../services/icerik/tmdbApi.js';
-import { isNativeAndroidApp } from '../services/platform/platformBridge.js';
+import { isAppPlatform } from '../services/platform/platformBridge.js';
 
 const escapeOfflineHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
@@ -59,7 +59,7 @@ function renderLibraryCard(item, tabType) {
 }
 
 export function renderLibraryView() {
-  const showOfflineDownloads = isNativeAndroidApp();
+  const showOfflineDownloads = isAppPlatform();
   const allHistory = getWatchHistory();
   const groupedHistory = getGroupedWatchHistory();
   const favorites = getFavorites();

@@ -79,6 +79,16 @@ export async function initPlatformBridge() {
   document.documentElement.classList.toggle('desktop-app', platform === 'desktop');
   document.documentElement.classList.toggle('web-app', platform === 'web');
 
+  if (platform !== 'web') {
+    const showDownloadsWhenOffline = () => {
+      if (navigator.onLine === false && window.location.hash !== '#downloads') {
+        window.location.hash = '#downloads';
+      }
+    };
+    window.addEventListener('offline', showDownloadsWhenOffline);
+    showDownloadsWhenOffline();
+  }
+
   const mobileWebQuery = matchMedia('(max-width: 768px)');
   document.documentElement.classList.toggle('mobile-web', platform === 'web' && mobileWebQuery.matches);
   mobileWebQuery.addEventListener?.('change', (event) => {

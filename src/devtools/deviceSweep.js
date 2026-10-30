@@ -56,7 +56,11 @@ async function sagTek(ad, arg = {}) {
     imdbId: arg.imdbId || '',
     season: arg.season || 1,
     episode: arg.episode || 1,
-    butceMs: arg.butceMs,
+    // KAYIT tavanını uygula (havuz aynısını yapar, vekil.js taramaHavuzu):
+    // gizli-WebView kayıtları (Arcturus/Lyra… 26 sn) 15 sn varsayılanla
+    // haksız yere butce-asim yiyordu (cihaz 2026-10-25: Arcturus 0 kaynak/
+    // 15 sn → 3 kaynak/22 sn).
+    butceMs: arg.butceMs ?? KAYIT.get(ad)?.tavaniMs ?? undefined,
   });
   return {
     ad: sonuc.kodAdi || ad,

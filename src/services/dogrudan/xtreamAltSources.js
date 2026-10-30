@@ -5,21 +5,29 @@
    MPEG-TS formu (/{user}/{pass}/{streamId}) proxy üzerinden verilir ve
    mpegts.js (MSE transmux) ile oynatılır.
    Karışık-içerik (http) sorunu için tüm kaynaklar /api/hls_proxy ile verilir.
-   NOT: Bu dosyadaki hesap bilgileri herkese açık repoda görünür.
-   Üretimde panel bilgisini localStorage (cinepulse_xtream_panels) ile ezebilir
-   veya bu dosyayı repoya koymadan yerelde tutabilirsiniz.
+   GÜVENLİK: panel kimlikleri repoda/bundle'da YOK. Sunucudan
+   (/api/xtream_panels, dağıtım env'i XTREAM_PANELS) ya da localStorage'dan
+   (cinepulse_xtream_panels) gelir.
    ========================================================================== */
 
-const HOST = 'ccgbstreambay2.xyz:2095';
+import { apiUrl } from '../altyapi/apiOrigin.js';
 
-// Aynı hosttaki tüm hesaplarda stream ID'leri ortak doğrulandı.
-export const XTREAM_PANELS = [
-  { id: 'p1', label: 'Panel 1', user: 'alicanalican', pass: '11fc9e9910f07c24' },
-  { id: 'p2', label: 'Panel 2', user: 'alietes0001', pass: 'ali0602yy00' },
-  { id: 'p3', label: 'Panel 3', user: 'alpedo', pass: 'f740d3158777bc9b' },
-  { id: 'p4', label: 'Panel 4 (60K)', user: 'alper2857', pass: 'lpr.0510' },
-  { id: 'p5', label: 'Panel 5', user: 'altun6307', pass: 'bXzsrEChzn' }
-];
+// Sunucudan gelen panel listesi { host, panels }; açılışta doldurulur.
+// shortcut: liste gelmeden önce getAltSources boş döner; canlı TV görünümü
+// yenilendiğinde dolar. Kalıcı hale getirmek gerekirse getAltSources'i
+// async yapmak yeterli.
+let uzakPaneller = null;
+
+(function panelleriYukle() {
+  try {
+    fetch(apiUrl('/api/xtream_panels'))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && Array.isArray(d.panels) && d.panels.length) uzakPaneller = d;
+      })
+      .catch(() => {});
+  } catch (_) {}
+})();
 
 function panels() {
   try {
@@ -29,7 +37,7 @@ function panels() {
       if (Array.isArray(arr) && arr.length > 0) return arr;
     }
   } catch (_) {}
-  return XTREAM_PANELS;
+  return (uzakPaneller && uzakPaneller.panels) || [];
 }
 
 // Kanal ID -> Xtream stream ID'leri (FHD öncelikli). ID yoksa alternatif sunulmaz.
@@ -69,7 +77,8 @@ const CHANNEL_STREAM_IDS = {
 };
 
 export function buildXtreamTs(panel, streamId) {
-  return `http://${HOST}/${panel.user}/${panel.pass}/${streamId}`;
+  const host = (panel && panel.host) || (uzakPaneller && uzakPaneller.host) || '';
+  return `http://${host}/${panel.user}/${panel.pass}/${streamId}`;
 }
 
 // Ev relay (Cloudflare Tunnel) adresi: önce build-time env, sonra localStorage.

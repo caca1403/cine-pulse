@@ -728,6 +728,41 @@ test('kanalProgramlaV2Async: fallback havuzu enjekte edilir, ağ çağrısı yap
   assert.ok(p2.length > 0, 'fallback hata verse de çekirdek havuzdan program üretilmeli');
 });
 
+test('kanalProgramlaV2Async: preset dışı geçmiş yeterli havuz sayılmaz', async () => {
+  const dramaGecmisi = v2HavuzUret(20, [18]);
+  const fallback = v2HavuzUret(12, [28]).map((oge, i) => ({ ...oge, id: 100 + i }));
+  let cagrildi = false;
+  const program = await kanalProgramlaV2Async({
+    gecmis: dramaGecmisi,
+    slug: 'aksiyon',
+    simdiDk: 360,
+    tohum: 11,
+    maxSlot: 8,
+    fallbackHavuzu: async () => {
+      cagrildi = true;
+      return fallback;
+    }
+  });
+
+  assert.equal(cagrildi, true, 'seçili kanala uymayan 20 kayıt fallback eşiğini karşılamamalı');
+  assert.ok(program.length > 0);
+  assert.ok(program.every((slot) => Number(slot.tmdbId) >= 100), 'program aksiyon fallback başlıklarından kurulmalı');
+
+  let genisHavuzCagrildi = false;
+  await kanalProgramlaV2Async({
+    gecmis: v2HavuzUret(20, [28]),
+    slug: 'aksiyon',
+    simdiDk: 360,
+    maxSlot: 8,
+    minHavuz: 48,
+    fallbackHavuzu: async () => {
+      genisHavuzCagrildi = true;
+      return [];
+    }
+  });
+  assert.equal(genisHavuzCagrildi, true, '48 başlık hedefi için 20 uygun kayıt yeterli sayılmamalı');
+});
+
 /* --- 18) Sızıntı testi: timer kayıt defteri ------------------------------ */
 test('sızıntı yok: ticker kayıt defterine yazılır, durdurulunca/ayrılınca boşalır', async () => {
   const bekle = (ms) => new Promise((r) => setTimeout(r, ms));

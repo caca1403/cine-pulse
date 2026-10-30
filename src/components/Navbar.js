@@ -19,7 +19,7 @@ import { getActiveProfile } from '../services/altyapi/storage.js';
 import { openNotificationCenterModal, getUnreadNotificationCount } from './NotificationCenterModal.js';
 import { openDecisionRoomModal } from './DecisionRoomModal.js';
 import { openTraktModal } from './TraktModal.js';
-import { isNativeAndroidApp, isAppPlatform } from '../services/platform/platformBridge.js';
+import { isAppPlatform } from '../services/platform/platformBridge.js';
 
 const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
 const escapeText = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
@@ -63,7 +63,7 @@ function kategoriOnbelleginiYaz(onbellek) {
 /** Kategoriye o günkü içerikten bir sahne (backdrop) bağlar. */
 export async function kesfetKategoriGorselleriniYukle(panel) {
   if (!panel || typeof panel.querySelectorAll !== 'function') return;
-  const gorseller = [...panel.querySelectorAll('.cp-category img[data-kategori]')];
+  const gorseller = [...panel.querySelectorAll('img[data-kategori]')];
   if (!gorseller.length) return;
   const onbellek = kategoriOnbellegi();
   // Önbellekte olan varsa HEMEN uygulanır: ağ beklemeden doğru görsel görünür.
@@ -103,8 +103,12 @@ function categoryTile(view, title, subtitle = '') {
     <span class="cp-tile-arrow">${icon('arrow-up-right')}</span>
   </a>`;
 }
-function actionTile(iconName, title, subtitle, attributes, extraClass = '', tag = 'button') {
+function actionTile(iconName, title, subtitle, attributes, extraClass = '', tag = 'button', gorsel = '') {
+  // gorsel: KEŞFET araç karoları da artık RESİMLİ (kullanıcı 2026-10-29:
+  // "keşfet kartını hem yatayda hem dikeyde daha profesyonel tasarla, resimli
+  // yine") — kategori karolarıyla AYNI TMDB sahne önbelleğini paylaşır.
   return `<${tag} ${tag === 'button' ? 'type="button"' : ''} ${attributes} class="cp-tool ${extraClass}">
+    ${gorsel ? `<img class="cp-tool-bg" src="${art(gorsel)}" data-kategori="${gorsel}" alt="" width="480" height="300" loading="lazy" decoding="async" />` : ''}
     <span class="cp-tool-icon">${icon(iconName)}</span><span class="cp-tool-copy"><strong>${title}</strong><small>${subtitle}</small></span>${icon('chevron-right')}
   </${tag}>`;
 }
@@ -114,7 +118,7 @@ export function renderNavbar(currentView = 'home') {
   const isKid = profile.isKid;
   const unread = getUnreadNotificationCount();
   const app = isAppPlatform();
-  const offline = isNativeAndroidApp();
+  const offline = app;
   const discoveryActive = ['anime', 'cartoons', 'documentary', 'discover', 'dramas'].includes(currentView);
   const shortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
   const navLink = (view, label) => `<a href="#${view}" class="cp-nav-link ${currentView === view ? 'active' : ''}" ${currentView === view ? 'aria-current="page"' : ''}>${label}</a>`;
@@ -164,7 +168,7 @@ export function renderNavbar(currentView = 'home') {
               ${actionTile('sparkles', 'SÉRA', 'Sana özel öneriler', 'href="https://caca1403.github.io/dizionerisistemi/" target="_blank" rel="noopener noreferrer"', '', 'a')}
               ${actionTile('bar-chart-3', 'Trakt.tv', 'İzleme geçmişini eşitle', 'id="btn-hub-trakt"', 'cp-trakt')}
 
-              ${actionTile('clapperboard', 'KANALIM', 'Kişisel yayın akışın', 'href="#kanalim"', '', 'a')}
+              ${actionTile('sparkles', 'ÖNERİ MERKEZİ', 'Zevkine göre yeni film ve diziler', 'href="#kanalim"', '', 'a')}
               ${offline ? actionTile('download', 'İndirilenler', 'Çevrimdışı izlemeye devam et', 'href="#downloads"', '', 'a') : ''}
             </div>
           </div>

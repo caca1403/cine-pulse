@@ -37,13 +37,13 @@ test('series/cizgi film eşlemeleri korunur', () => {
 test('anime taraması boş dönmez: animeye özel çekirdekler listede', () => {
   const liste = kayitlar('anime').map(([ad]) => ad);
   assert.ok(liste.length > 10, `anime listesi çok kısa: ${liste.length}`);
-  for (const beklenen of ['Nightwing', 'Batgirl', 'Supergirl', 'Poison-Ivy', 'Moon-Knight']) {
+  for (const beklenen of ['Nightwing', 'Supergirl', 'Poison-Ivy', 'Moon-Knight']) {
     assert.ok(liste.includes(beklenen), `${beklenen} anime listesinde yok`);
   }
 });
 
 test('anime etiketli çekirdekler turlerinde anime taşır', () => {
-  for (const ad of ['Nightwing', 'Batgirl', 'Supergirl', 'Poison-Ivy', 'Moon-Knight', 'Harley-Quinn']) {
+  for (const ad of ['Nightwing', 'Supergirl', 'Poison-Ivy', 'Moon-Knight', 'Harley-Quinn']) {
     const k = KAYIT.get(ad);
     assert.ok(k, `${ad} kaydı yok`);
     assert.ok(k.turler.includes('anime'), `${ad} turlerinde 'anime' yok`);

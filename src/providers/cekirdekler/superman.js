@@ -4589,7 +4589,8 @@ async function now(arg1 = !1) {
     await value34.activeFetchPromise);
 }
 async function fn(arg1) {
-  return (await now(), value34.cachedDomains[arg1] || "");
+  // domains.json satıcı takma adıyla anahtarlı (Superman ← clover), kayıt adıyla değil
+  return (await now(), value34.cachedDomains[arg1] || value34.cachedDomains[arg1 === "Superman" ? "clover" : arg1] || "");
 }
 async function fn2() {
   return (await now(), value34.cachedTmdbKeys || []);
@@ -6968,7 +6969,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       result && result.numericId && (value36 = String(result.numericId));
     }
     if (!value36) return (log("Superman", "Geçerli bir TMDB ID bulunamadı.", "warn"), []);
-    let Origin = await fn("Superman");
+    let Origin = (await fn("Superman") || await fn("clover"));
     if (!Origin) return (log("Superman", "Sağlayıcı adresi alınamadı.", "warn"), []);
     Origin = Origin.replace(/\/+$/, "");
     let val9 = val5
@@ -7162,3 +7163,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

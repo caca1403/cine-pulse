@@ -2867,7 +2867,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
     let val7 = trimmed.startsWith("tt") ? trimmed : await replaceIn(trimmed, val4),
       val8 = (await fn4(trimmed, val4)).titles[0] || "";
     if (!val7) return (log("Zatanna", "IMDb ID bulunamadı. İsimle arama yapılmaz.", "warn"), []);
-    let result = await fn("Zatanna");
+    let result = (await fn("Zatanna")) || (await fn("hiriluk"));
     if (!result) return (log("Zatanna", "Sağlayıcı adresi alınamadı.", "warn"), []);
     let val9 = (await fn2("Zatanna"))?.trim() || "",
       match = val9.match(/(?:^|;\s*)ui=([^;]+)/),
@@ -3006,3 +3006,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

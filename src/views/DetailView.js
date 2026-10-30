@@ -6,18 +6,40 @@ import { renderIcons } from '../services/kabuk/icons.js';
    Includes movie runtime, bulk series mark-watched, season selectors, and halfway in-progress states.
    ========================================================================== */
 
-import { fetchMediaDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, SINEFLIX_POSTER_FALLBACK, generateCinematicOverview } from '../services/icerik/tmdbApi.js';
+import { fetchMediaDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, generateCinematicOverview } from '../services/icerik/tmdbApi.js';
 import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway, registerAnimeId, isRegisteredAnimeId } from '../services/altyapi/storage.js';
 import { renderSeasonSelector } from '../components/SeasonSelector.js';
+import { kaynakListesiOlustur } from '../components/kaynakListesi.js';
 import { renderMediaCard, attachMediaCardEvents, isAnimeItem } from '../components/MediaCard.js';
 import { openPlayerModal } from '../components/openPlayer.js';
 import { openCastExplorerModal } from '../components/CastExplorerModal.js';
 import { showToast } from '../components/Toast.js';
 import { getNextEpisodeInfo } from '../services/icerik/tvmazeService.js';
 import { getBestBackdrop } from '../services/icerik/fanartService.js';
-import { puanMetni } from '../services/icerik/imdbRating.js';
+import { puanMetni, imdbPuaniImdbId } from '../services/icerik/imdbRating.js';
+import '../styles/detail-stremio.css';
+import { openTrailerModal } from './TrailerModal.js';
+import '../styles/detay-ui.css';
+import '../styles/kaynak-tarama.css';
 
 const DECISION_ROOM_AUTOPLAY_KEY = 'cinepulse.decision-room.autoplay';
+
+/* ── İçerik bayrağı (kullanıcı 2026-10-28): detay aksiyon satırındaki Bayrak
+   düğmesi içeriği yerel listeye işaretler/kaldırır; sunucu yoktur. ────────── */
+const BAYRAK_ANAHTARI = 'cp_bayraklar';
+function bayraklariGetir() {
+  try {
+    const liste = JSON.parse(localStorage.getItem(BAYRAK_ANAHTARI) || '[]');
+    return Array.isArray(liste) ? liste.map(String) : [];
+  } catch (_) { return []; }
+}
+function bayrakToggle(id) {
+  const liste = bayraklariGetir();
+  const i = liste.indexOf(String(id));
+  if (i >= 0) liste.splice(i, 1); else liste.push(String(id));
+  try { localStorage.setItem(BAYRAK_ANAHTARI, JSON.stringify(liste)); } catch (_) {}
+  return i < 0; // true → bayrak şimdi açık
+}
 
 function consumeDecisionRoomAutoplay(type, id) {
   try {
@@ -96,7 +118,9 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
   const originalTitle = media.original_title || media.original_name || '';
   const backdropUrl = getImageUrl(media.backdrop_path, TMDB_IMAGE_SIZES.BACKDROP_ORIGINAL);
   const posterUrl = getImageUrl(media.poster_path, TMDB_IMAGE_SIZES.POSTER_MEDIUM);
-  const rating = media.vote_average ? media.vote_average.toFixed(1) : '8.5';
+  // TMDB puanı GERÇEK değeriyle gösterilir; uydurma varsayılan ('8.5') kalktı
+  // (kullanıcı 2026-10-29: "IMDb yazdığın puanda TMDB var — düzelt").
+  const rating = media.vote_average ? Number(media.vote_average).toFixed(1) : '';
   // IMDb puanı gelmeyebilir (uç kapalı/ağ yok) → null. Eskiden doğrudan
   // .toFixed() yeniyordu ve DETAY EKRANININ TAMAMI çöküyordu.
   const imdbRating = puanMetni(media.imdbRating);
@@ -107,6 +131,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
 
   const inFav = isFavorite(id);
   const inWatch = isWatchlist(id);
+  const isBayrakli = bayraklariGetir().includes(String(id));
 
   // Watch history progress for hero button
   const lastWatchedEp = effectiveType === 'tv' ? getLastWatchedEpisode(id) : null;
@@ -131,8 +156,8 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
   const creators = media.created_by ? media.created_by.map(c => c.name) : [];
   const directorName = directors.length > 0 ? directors.slice(0, 2).join(', ') : (creators.length > 0 ? creators.slice(0, 2).join(', ') : '');
 
-  // Letterboxd 5-Star score calculation
-  const starScore = (parseFloat(rating) / 2).toFixed(1);
+  // Letterboxd 5-Star score calculation (TMDB puanı yoksa NaN değil, boş)
+  const starScore = rating ? (parseFloat(rating) / 2).toFixed(1) : '';
   const starCount = Math.floor(starScore);
   const hasHalf = (starScore % 1) >= 0.4;
   const letterboxdStars = '★'.repeat(Math.min(5, starCount)) + (hasHalf && starCount < 5 ? '½' : '');
@@ -158,17 +183,25 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
 
   const recommendations = media.recommendations ? media.recommendations.results.slice(0, 6) : [];
 
+  // Kaynak sekmesi TV için sezon/bölüm seçicisi: varsayılan kaldığı yer.
+  const kaynakSezon = lastWatchedEp?.season || 1;
+  const kaynakBolum = lastWatchedEp?.episode || 1;
+  const kaynakSezonlari = (media.seasons || []).filter(s => s.season_number > 0);
+  if (kaynakSezonlari.length === 0 && (media.seasons || []).length > 0) kaynakSezonlari.push(media.seasons[0]);
+  const kaynakBolumSecenekleri = (adet) => Array.from({ length: adet || 10 }, (_, i) =>
+    `<option value="${i + 1}" ${i + 1 === kaynakBolum ? 'selected' : ''}>${i + 1}. Bölüm</option>`).join('');
+
+  // Sekmeler: içerik yığılmaz. Varsayılan eski davranış — dizide bölümler, filmde oyuncular.
+  const varsayilanSekme = (effectiveType === 'tv' && seasonSelectorObj) ? 'episodes' : 'cast';
+  const sekmeDugmesi = (hedef, etiket) => `
+    <button type="button" class="cps-sekme ${varsayilanSekme === hedef ? 'active' : ''}"
+      data-tab="${hedef}" aria-pressed="${varsayilanSekme === hedef ? 'true' : 'false'}">${etiket}</button>
+  `;
+  const panelGizli = (hedef) => (varsayilanSekme === hedef ? '' : ' hidden');
+
   const watchedBtnLabel = effectiveType === 'movie'
     ? (isMovieWatched ? 'Film İzlendi' : 'İzlendi Olarak İşaretle')
     : (isSeriesAllWatched ? 'Tüm Sezonlar İzlendi' : 'Tümünü İzlendi İşaretle');
-
-  const runtimeMetaHTML = media.runtime ? `
-    <span>${formatMediaRuntime(media.runtime)}</span>
-  ` : '';
-
-  const heroTypeLabel = isAnime
-    ? (isSeries ? 'ANİME DİZİSİ' : 'ANİME FİLMİ')
-    : (effectiveType === 'tv' ? 'DİZİ' : 'FİLM');
 
   // Extract YouTube trailers for the Netflix-style trailers preview strip (Image 2)
   const allVideos = (media.videos?.results || []).filter(v => v.site === 'YouTube');
@@ -184,367 +217,603 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
     { label: 'Klipleri ara', query: `${originalTitle || title} official clip` }
   ].slice(0, Math.max(0, 4 - heroTrailers.length));
 
+  // Stremio mobil düzeni: backdrop üstte, tek sayfa dikey akış.
+  const yonetmenler = (media.credits?.crew || [])
+    .filter(k => k.job === 'Director')
+    .map(k => ({ id: k.id, name: k.name }));
+  const yazarlar = (media.credits?.crew || [])
+    .filter(k => ['Writer', 'Screenplay', 'Story'].includes(k.job))
+    .map(k => ({ id: k.id, name: k.name }));
+  const oyuncular = (media.credits?.cast || []).slice(0, 12).map(k => ({ id: k.id, name: k.name }));
+  const yaraticilar = (media.created_by || []).map(k => ({ id: k.id, name: k.name }));
+
+  const essizKisiler = (liste) => {
+    const gorulen = new Set();
+    return (liste || []).filter(k => k && k.name && !gorulen.has(k.id || k.name) && gorulen.add(k.id || k.name));
+  };
+  const kisiCipleri = (liste) => essizKisiler(liste).slice(0, 16).map(k => `
+    <button type="button" class="cps-kisi" data-person-id="${k.id || ''}" data-person-name="${k.name}" title="${k.name}">${k.name}</button>
+  `).join('');
+
+  const kisiGruplari = [
+    { etiket: isSeries ? 'YARATICI' : 'YÖNETMEN', kisiler: isSeries ? yaraticilar : yonetmenler },
+    { etiket: 'YÖNETMEN', kisiler: isSeries ? yonetmenler : [] },
+    { etiket: 'SENARİST', kisiler: yazarlar },
+    { etiket: 'OYUNCULAR', kisiler: oyuncular }
+  ].map(g => ({ ...g, kisiler: essizKisiler(g.kisiler) })).filter(g => g.kisiler.length > 0);
+
+  // YENİ DETAY ARAYÜZÜ (kullanıcı 2026-10-28): sayfa baştan yazıldı — backdrop +
+  // poster kartı hero, künye, aksiyon satırı (oynat / izlendi / kaydet / favori /
+  // bayrak / yarıda / paylaş), özet, tür çipleri ve sekmeler. Oyuncu artığı yok:
+  // sayfada video/preview embed edilmez, fragman TrailerModal'da açılır. Eski
+  // davranışlar aynı ID/sınıf kancalarıyla korundu (router, storage, sekmeler).
   const html = `
-    <div class="detail-view">
-      <div class="detail-hero-banner">
-        <div class="detail-backdrop-img" style="background-image: url('${backdropUrl}')"></div>
-        <div class="detail-backdrop-gradient"></div>
+    <div class="detail-view dt-sayfa">
+      <header class="dt-hero">
+        <div class="dt-hero-fon" style="background-image: url('${backdropUrl}')"></div>
+        <div class="dt-hero-fon-dikey-bulut" style="background-image: url('${posterUrl}')" aria-hidden="true"></div>
+        <div class="dt-hero-fon-dikey" style="background-image: url('${posterUrl}')" aria-hidden="true"></div>
+        <div class="dt-hero-karartma"></div>
 
-        <div class="detail-container">
-          <!-- Top Back Action -->
-          <button class="detail-back-btn" id="btn-detail-back" title="Önceki Sayfaya Geri Dön">
-            <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
-            <span>Geri Dön</span>
+        <div class="dt-ust-cubuk">
+          <button class="dt-ikonbtn" id="btn-detail-back" title="Geri dön" aria-label="Geri dön">
+            <i data-lucide="arrow-left" style="width:18px;height:18px;"></i>
           </button>
-          
-          <div class="detail-hero-content">
-            <!-- Left/Center Primary Info Column (Netflix Mulan Layout) -->
-            <div class="detail-info-col">
-              
-              <!-- Özel tasarımlı başlık: logosu varsa o, yokta düz yazı -->
-              <div class="detail-titleblock">
-                <img class="detail-title-logo" alt="" aria-hidden="true" hidden />
-                <h1 class="detail-heading-title">${title}</h1>
-              </div>
+          <div class="dt-ust-cubuk-sag">
+            <button class="dt-ikonbtn ${isCurrentWatched ? 'is-active' : ''}" id="btn-toggle-watched-detail" title="${watchedBtnLabel}" aria-label="${watchedBtnLabel}">
+              <i data-lucide="${isCurrentWatched ? 'check-circle-2' : 'check'}" style="width:18px;height:18px;"></i>
+              <span class="cps-gizli">${watchedBtnLabel}</span>
+            </button>
+            <button class="dt-ikonbtn ${inWatch ? 'is-active' : ''}" id="btn-toggle-watchlist" title="${inWatch ? 'Listemde' : 'Koleksiyona ekle'}" aria-label="Koleksiyon">
+              <i data-lucide="${inWatch ? 'bookmark-check' : 'bookmark'}" style="width:18px;height:18px;${inWatch ? 'fill:currentColor' : ''}"></i>
+              <span class="cps-gizli">${inWatch ? 'Listemde' : 'Koleksiyona ekle'}</span>
+            </button>
+            <button class="dt-ikonbtn" id="btn-share-detail" title="Paylaş" aria-label="Paylaş">
+              <i data-lucide="share-2" style="width:18px;height:18px;"></i>
+              <span class="cps-gizli">Paylaş</span>
+            </button>
+          </div>
+        </div>
 
-              <!-- Editorial Subtitle (Original Title & Creator / Director) -->
-              <div class="detail-editorial-sub">
-                ${originalTitle && originalTitle !== title ? `<span class="detail-orig-name">${originalTitle}</span>` : ''}
+        <div class="dt-hero-ic">
+          <div class="dt-bilgi">
+            <div class="detail-titleblock">
+              <img class="detail-title-logo" alt="" aria-hidden="true" hidden />
+              <h1 class="detail-heading-title">${title}</h1>
+            </div>
+
+            <p class="dt-kunye">
+              ${effectiveType === 'movie' ? 'Film' : (isAnime ? 'Anime' : 'Dizi')}${year ? ` · ${year}` : ''}${media.runtime ? ` · ${media.runtime} dk` : ''}${effectiveType === 'tv' && media.number_of_seasons ? ` · ${media.number_of_seasons} Sezon` : ''}${effectiveType === 'tv' && media.number_of_episodes ? ` · ${media.number_of_episodes} Bölüm` : ''}
+            </p>
+
+            <div class="dt-puan-satiri">
+              <span class="dt-puan" id="dt-imdb-chip"${imdbRating ? '' : ' hidden'}>
+                <i data-lucide="star" style="width:13px;height:13px;fill:#dfff76;color:#dfff76;"></i>
+                <span id="dt-imdb-deger">${imdbRating}</span>
+                <em>IMDb</em>
+              </span>
+              ${rating ? `<span class="dt-puan dt-puan-tmdb">
+                <i data-lucide="star" style="width:13px;height:13px;fill:#01b4e4;color:#01b4e4;"></i>
+                ${rating}
+                <em>TMDB</em>
+              </span>` : ''}
+              ${starScore ? `<span class="dt-letterboxd">Letterboxd ${letterboxdStars} (${starScore})</span>` : ''}
+              ${originalTitle && originalTitle !== title ? `<span class="dt-orijinal">${originalTitle}</span>` : ''}
+            </div>
+
+            ${genres.length > 0 ? `
+              <div class="dt-turler">
+                ${genres.slice(0, 6).map(g => `<span class="dt-tur">${g.name}</span>`).join('')}
+              </div>
+            ` : ''}
+
+            <div class="dt-aksiyonlar">
+              <button class="dt-oynat" id="${effectiveType === 'movie' ? 'btn-play-movie' : 'btn-resume-series'}">
+                <i data-lucide="play" style="fill:currentColor;width:18px;height:18px;"></i>
+                <span>${playButtonLabel}</span>
+              </button>
+              <button class="dt-aksiyon-cip ${inFav ? 'is-active' : ''}" id="btn-toggle-fav" title="${inFav ? 'Favorilerimde' : 'Favorilere ekle'}" aria-label="Favori">
+                <i data-lucide="heart" style="width:16px;height:16px;${inFav ? 'fill:var(--primary);color:var(--primary)' : ''}"></i>
+                <span>${inFav ? 'Favorilerimde' : 'Favoriler'}</span>
+              </button>
+              <button class="dt-aksiyon-cip ${isBayrakli ? 'is-active' : ''}" id="btn-toggle-bayrak" title="${isBayrakli ? 'Bayrağı kaldır' : 'İçeriği bayrakla'}" aria-label="Bayrakla">
+                <i data-lucide="flag" style="width:16px;height:16px;${isBayrakli ? 'fill:currentColor' : ''}"></i>
+                <span>Bayrak</span>
+              </button>
+              <button class="dt-aksiyon-cip" id="btn-mark-halfway-detail" title="Yarıda bırak" aria-label="Yarıda bırak">
+                <i data-lucide="clock" style="width:16px;height:16px;"></i>
+                <span>Yarıda</span>
+              </button>
+            </div>
+            <p class="dt-oynat-alt">Aşağıdaki KAYNAKLAR sekmesinden yayın seçin; oynatıcı seçtiğiniz kaynakla açılır.</p>
+
+            <span id="detail-next-episode-badge" class="dt-yeni-bolum" style="display:none;"></span>
+
+            <div class="dt-ozet">
+              <p class="detail-storyline ${overview.length > 160 ? 'truncated' : ''}" id="detail-storyline-text">${overview}</p>
+              ${overview.length > 160 ? `
+                <button class="btn-storyline-expand" id="btn-expand-storyline">
+                  <span>Daha fazla</span>
+                  <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
+                </button>
+              ` : ''}
+            </div>
+
+            ${effectiveType === 'tv' ? `
+              <label class="spoiler-discovery-pill dt-spoiler">
+                <input id="detail-spoiler-free-toggle" type="checkbox" />
+                <i data-lucide="shield-check"></i>
+                <span>Spoilersız Keşfet</span>
+              </label>
+            ` : ''}
+          </div>
+        </div>
+      </header>
+
+      <div class="dt-govde">
+        <!-- Sekme çubuğu: KAYNAKLAR / BÖLÜMLER / GENEL BAKIŞ (+fragman, benzer, kadro).
+             data-tab/data-panel sözleşmesi eski sekmelerle birebir aynı. -->
+        <nav class="dt-sekmeler cps-sekme-cubugu" aria-label="Detay bölümleri">
+          ${sekmeDugmesi('sources', 'KAYNAKLAR')}
+          ${effectiveType === 'tv' && seasonSelectorObj ? sekmeDugmesi('episodes', 'BÖLÜMLER') : ''}
+          ${sekmeDugmesi('overview', 'GENEL BAKIŞ')}
+          ${sekmeDugmesi('trailers', 'FRAGMANLAR')}
+          ${recommendations.length > 0 ? sekmeDugmesi('recommendations', 'BENZERLER') : ''}
+          ${sekmeDugmesi('cast', 'OYUNCULAR')}
+        </nav>
+
+        <!-- KAYNAKLAR: kart tıklaması oynatıcıyı seçilen kaynakla açar (madde 1
+             sözleşmesi init içinde: cp-landscape-gecis + taramaKarti + cp:kaynak-sayac) -->
+        <section class="dt-panel cps-bolum cps-kaynaklar cps-sekme-panel" id="cps-kaynaklar" data-panel="sources"${panelGizli('sources')}>
+          <div class="cps-bolum-basligi">
+            <h2 class="cps-bolum-baslik">Yayın kaynakları</h2>
+            <p class="cps-bolum-alt">Bir kaynak seçin; oynatıcı seçtiğiniz kaynakla açılır.</p>
+          </div>
+
+          ${effectiveType === 'tv' ? `
+            <div class="kaynak-bolum-cubugu" id="kaynak-bolum-cubugu">
+              <label class="kaynak-bolum-alan">
+                <span>Sezon</span>
+                <select id="kaynak-sezon-secim">
+                  ${kaynakSezonlari.map(season => `
+                    <option value="${season.season_number}" ${season.season_number === kaynakSezon ? 'selected' : ''}>${season.season_number}. Sezon</option>
+                  `).join('')}
+                </select>
+              </label>
+              <label class="kaynak-bolum-alan">
+                <span>Bölüm</span>
+                <select id="kaynak-bolum-secim">
+                  ${kaynakBolumSecenekleri(kaynakSezonlari.find(s => s.season_number === kaynakSezon)?.episode_count)}
+                </select>
+              </label>
+            </div>
+          ` : ''}
+
+          <div class="kaynak-liste-kok" id="kaynak-liste-kok"></div>
+        </section>
+
+        ${effectiveType === 'tv' && seasonSelectorObj ? `
+          <section class="dt-panel cps-bolum cps-sekme-panel" id="cps-bolumler" data-panel="episodes"${panelGizli('episodes')}>
+            ${seasonSelectorObj.html}
+          </section>
+        ` : ''}
+
+        <section class="dt-panel cps-bolum cps-sekme-panel" id="cps-genel-bakis" data-panel="overview"${panelGizli('overview')}>
+          <h2 class="cps-bolum-baslik">Genel bakış</h2>
+          <div class="netflix-overview-pane-grid cps-bakis-izgara">
+            <div class="netflix-overview-main-col">
+              <h3 class="netflix-subheading">Özet & Hikaye</h3>
+              <p class="netflix-full-overview">${overview || 'Bu içerik için henüz özet eklenmedi.'}</p>
+              ${kisiGruplari.length > 0 ? `
+                <div class="dt-kadro-chipleri">
+                  ${kisiGruplari.map(g => `
+                    <div class="cps-kisi-grup">
+                      <h3 class="cps-kisi-etiket">${g.etiket}</h3>
+                      <div class="cps-kisi-serit">${kisiCipleri(g.kisiler)}</div>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="netflix-overview-specs-col">
+              <h3 class="netflix-subheading">Teknik Detaylar</h3>
+              <div class="netflix-specs-table">
+                ${originalTitle ? `
+                  <div class="spec-row">
+                    <span class="spec-label">Orijinal Başlık</span>
+                    <span class="spec-val">${originalTitle}</span>
+                  </div>
+                ` : ''}
                 ${directorName ? `
-                  <span class="detail-director-pill">
-                    <strong style="color: var(--primary);">${effectiveType === 'tv' ? 'YARATICI' : 'YÖNETMEN'}:</strong> ${directorName}
-                  </span>
+                  <div class="spec-row">
+                    <span class="spec-label">${effectiveType === 'tv' ? 'Yaratıcı' : 'Yönetmen'}</span>
+                    <span class="spec-val">${directorName}</span>
+                  </div>
                 ` : ''}
+                ${media.release_date || media.first_air_date ? `
+                  <div class="spec-row">
+                    <span class="spec-label">Yayın Tarihi</span>
+                    <span class="spec-val">${media.release_date || media.first_air_date}</span>
+                  </div>
+                ` : ''}
+                ${media.status ? `
+                  <div class="spec-row">
+                    <span class="spec-label">Yayın Durumu</span>
+                    <span class="spec-val">${media.status}</span>
+                  </div>
+                ` : ''}
+                ${media.runtime ? `
+                  <div class="spec-row">
+                    <span class="spec-label">Film Süresi</span>
+                    <span class="spec-val">${formatMediaRuntime(media.runtime)}</span>
+                  </div>
+                ` : ''}
+                ${media.number_of_seasons ? `
+                  <div class="spec-row">
+                    <span class="spec-label">Toplam Sezon</span>
+                    <span class="spec-val">${media.number_of_seasons} Sezon</span>
+                  </div>
+                ` : ''}
+                ${media.number_of_episodes ? `
+                  <div class="spec-row">
+                    <span class="spec-label">Toplam Bölüm</span>
+                    <span class="spec-val">${media.number_of_episodes} Bölüm</span>
+                  </div>
+                ` : ''}
+                <div class="spec-row"${imdbRating ? '' : ' style="display:none;"'}>
+                  <span class="spec-label">IMDb Puanı</span>
+                  <span class="spec-val" id="spec-imdb-val" style="color: #dfff76; font-weight: 750;">${imdbRating ? '★ ' + imdbRating + ' / 10' : ''}</span>
+                </div>
+                ${rating ? `
+                <div class="spec-row">
+                  <span class="spec-label">TMDB Puanı</span>
+                  <span class="spec-val" style="color: #01b4e4; font-weight: 750;">★ ${rating} / 10</span>
+                </div>` : ''}
+                ${starScore ? `
+                <div class="spec-row">
+                  <span class="spec-label">Letterboxd</span>
+                  <span class="spec-val" style="color: #00e054; font-weight: 750;">${letterboxdStars} (${starScore})</span>
+                </div>` : ''}
               </div>
+            </div>
+          </div>
+        </section>
 
-              <!-- Rich Storyline / Overview (Longer, comfortable breathing room, no premature clamp) -->
-              <div class="detail-storyline-wrapper">
-                <p class="detail-storyline ${overview.length > 550 ? 'truncated' : ''}" id="detail-storyline-text">${overview}</p>
-                ${overview.length > 550 ? '<button class="btn-storyline-expand" id="btn-expand-storyline"><span>Devamını Oku</span><i data-lucide="chevron-down" style="width:14px;height:14px"></i></button>' : ''}
+        <section class="dt-panel cps-bolum cps-sekme-panel" id="cps-oyuncular" data-panel="cast"${panelGizli('cast')}>
+          <div class="cps-bolum-basligi">
+            <h2 class="cps-bolum-baslik">Oyuncu kadrosu</h2>
+            <p class="cps-bolum-alt">Karakteri canlandıran oyuncular; filmografi için dokunun.</p>
+          </div>
+
+          ${fullCastList.length > 0 ? `
+            <div class="netflix-cast-grid">
+              ${fullCastList.map((actor, idx) => {
+                const actorPic = actor.profile_path ? getImageUrl(actor.profile_path, TMDB_IMAGE_SIZES.POSTER_MEDIUM) : SINEFLIX_ACTOR_FALLBACK;
+                const character = actor.character ? actor.character.split('/')[0].trim() : '';
+                const isExtra = idx >= 12;
+                return `
+                  <div class="netflix-cast-card ${isExtra ? 'cast-card-hidden' : ''}" data-person-id="${actor.id}" data-person-name="${actor.name}" title="${actor.name}${character ? ' (' + character + ')' : ''} • Filmografiyi Gör">
+                    <div class="netflix-cast-photo-wrap">
+                      <img src="${actorPic}" alt="${actor.name}" loading="lazy" onerror="this.onerror=null; this.src='${SINEFLIX_ACTOR_FALLBACK}';" />
+                      <div class="netflix-cast-card-hover">
+                        <i data-lucide="sparkles" style="width:20px;height:20px;color:#fff;"></i>
+                        <span>Filmografi</span>
+                      </div>
+                    </div>
+                    <div class="netflix-cast-info">
+                      <h4 class="netflix-cast-name">${actor.name}</h4>
+                      ${character ? `<p class="netflix-cast-character">${character}</p>` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            ${fullCastList.length > 12 ? `
+              <div class="cps-daha-fazla">
+                <button class="btn-netflix-show-more" id="btn-show-more-cast">
+                  <span>Tüm Oyuncuları Göster (${fullCastList.length})</span>
+                  <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
+                </button>
               </div>
+            ` : ''}
+          ` : `
+            <div class="netflix-empty-tab-state">
+              <i data-lucide="user-x" style="width:40px;height:40px;color:#666;"></i>
+              <p>Bu yapım için oyuncu bilgisi bulunamadı.</p>
+            </div>
+          `}
+        </section>
 
-              <!-- Clean Metadata Line (Directly under story, matching Netflix Mulan) -->
-              <div class="detail-meta-line">
-                <span class="detail-meta-rating">
-                  <i data-lucide="star" style="width:14px; height:14px; fill: #dfff76; color: #dfff76;"></i> ${rating}
+        <section class="dt-panel cps-bolum cps-sekme-panel" id="cps-fragmanlar" data-panel="trailers"${panelGizli('trailers')}>
+          <div class="cps-bolum-basligi">
+            <h2 class="cps-bolum-baslik">Fragmanlar</h2>
+            <p class="cps-bolum-alt">Resmi Türkçe ve orijinal tanıtımlar — kart, fragmanı ayrı pencerede açar.</p>
+          </div>
+
+          <div class="dt-fragman-izgara">
+            ${heroTrailers.map((t, idx) => `
+              <button type="button" class="dt-fragman-kart" data-video-key="${t.key}" data-video-title="${t.name || ('Fragman ' + (idx + 1))}" data-video-type="${t.type || 'Fragman'}">
+                <img src="https://img.youtube.com/vi/${t.key}/mqdefault.jpg" alt="${t.name || 'Trailer'}" loading="lazy" />
+                <span class="dt-fragman-ust">
+                  <i data-lucide="play" style="width:16px;height:16px;fill:currentColor;"></i>
                 </span>
-                <span>${year}</span>
-                ${genres.length > 0 ? `<span>${genres.slice(0, 3).map(g => g.name).join(' • ')}</span>` : ''}
-                ${runtimeMetaHTML}
-                ${media.number_of_seasons ? `<span>${media.number_of_seasons} Sezon</span>` : ''}
-                ${media.number_of_episodes ? `<span>${media.number_of_episodes} Bölüm</span>` : ''}
-                <span class="detail-meta-type">${heroTypeLabel}</span>
-              </div>
-
-              <!-- Hero Actions (Play + Secondary Options) -->
-              <div class="detail-action-deck">
-                <div class="detail-action-main-row">
-                  ${effectiveType === 'movie' ? `
-                    <button class="btn-play-primary" id="btn-play-movie">
-                      <i data-lucide="play" style="fill: currentColor; width: 20px; height: 20px;"></i>
-                      <span>${playButtonLabel}</span>
-                    </button>
-                  ` : `
-                    <button class="btn-play-primary" id="btn-resume-series">
-                      <i data-lucide="play" style="fill: currentColor; width: 20px; height: 20px;"></i>
-                      <span>${playButtonLabel}</span>
-                    </button>
-                  `}
-
-                  <button class="btn-action-tile ${inWatch ? 'active-watch' : ''}" id="btn-toggle-watchlist">
-                    <i data-lucide="${inWatch ? 'check' : 'plus'}"></i>
-                    <span>${inWatch ? 'Listemde' : 'Listem'}</span>
-                  </button>
-
-                  <button class="btn-action-tile ${inFav ? 'active-fav' : ''}" id="btn-toggle-fav">
-                    <i data-lucide="heart" style="${inFav ? 'fill: var(--primary); color: var(--primary)' : ''}"></i>
-                    <span>${inFav ? 'Favorilerimde' : 'Favori'}</span>
-                  </button>
-
-                  <button class="btn-action-tile ${isCurrentWatched ? 'active-watched' : ''}" id="btn-toggle-watched-detail">
-                    <i data-lucide="${isCurrentWatched ? 'check-circle-2' : 'check'}"></i>
-                    <span>${watchedBtnLabel}</span>
-                  </button>
-
-                  <button class="btn-action-tile" id="btn-mark-halfway-detail" title="Kaldığım Yer">
-                    <i data-lucide="clock" style="color: #dfff76;"></i>
-                    <span>Yarıda Bırak</span>
-                  </button>
-                </div>
-
-                ${effectiveType === 'tv' ? `
-                  <div class="detail-spoiler-inline-row">
-                    <label class="spoiler-discovery-pill">
-                      <input id="detail-spoiler-free-toggle" type="checkbox" />
-                      <i data-lucide="shield-check"></i>
-                      <span>Spoilersız Keşfet</span>
-                    </label>
-                  </div>
-                ` : ''}
-              </div>
-
-              ${(heroTrailers.length > 0 || trailerSearches.length > 0) ? `
-                <a class="detail-trailer-link" id="btn-watch-trailer" href="#tab-pane-trailers">
-                  <i data-lucide="play-circle" style="width: 15px; height: 15px;"></i>
-                  Fragmanlara göz at <span aria-hidden="true">↗</span>
-                </a>
-              ` : ''}
-
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Netflix Sub-Navigation Tabs Bar (Images 3 & 4) -->
-      <div class="netflix-detail-tabs-bar">
-        <div class="container">
-          <div class="netflix-tabs-track">
-            ${effectiveType === 'tv' && seasonSelectorObj ? `
-              <button class="netflix-tab-btn active" data-tab="episodes">
-                <span>BÖLÜMLER</span>
+                <span class="dt-fragman-ad">${t.name || ('Fragman ' + (idx + 1))}</span>
               </button>
-            ` : ''}
-
-            <button class="netflix-tab-btn ${effectiveType === 'movie' ? 'active' : ''}" data-tab="cast">
-              <span>OYUNCULAR</span>
-            </button>
-
-            <button class="netflix-tab-btn" data-tab="overview">
-              <span>GENEL BAKIŞ</span>
-            </button>
-
-            <button class="netflix-tab-btn" data-tab="trailers">
-              <span>FRAGMANLAR</span>
-            </button>
-
-            ${recommendations.length > 0 ? `
-              <button class="netflix-tab-btn" data-tab="recommendations">
-                <span>BENZERLERİ</span>
-              </button>
-            ` : ''}
+            `).join('')}
+            ${trailerSearches.map(search => `
+              <a class="trailer-search-card" href="https://www.youtube.com/results?search_query=${encodeURIComponent(search.query)}" target="_blank" rel="noopener noreferrer" aria-label="${search.label}: YouTube'da aç">
+                <i data-lucide="search" aria-hidden="true"></i>
+                <span>${search.label}</span>
+                <small>YouTube'da aç ↗</small>
+              </a>
+            `).join('')}
           </div>
-        </div>
-      </div>
+        </section>
 
-      <!-- Netflix Tab Content Panes -->
-      <div class="netflix-tab-content-area">
-        <div class="container">
-
-          ${effectiveType === 'tv' && seasonSelectorObj ? `
-            <!-- Tab Pane: Episodes (Image 3) -->
-            <div class="netflix-tab-pane active" id="tab-pane-episodes">
-              ${seasonSelectorObj.html}
+        ${recommendations.length > 0 ? `
+          <section class="dt-panel cps-bolum cps-sekme-panel" id="cps-benzerler" data-panel="recommendations"${panelGizli('recommendations')}>
+            <div class="cps-bolum-basligi">
+              <h2 class="cps-bolum-baslik">Benzerler</h2>
+              <p class="cps-bolum-alt">Bu yapımı sevenlerin beğendiği diğer içerikler.</p>
             </div>
-          ` : ''}
-
-          <!-- Tab Pane: Dedicated Cast Grid (Image 4) -->
-          <div class="netflix-tab-pane ${effectiveType === 'movie' ? 'active' : ''}" id="tab-pane-cast">
-            <div class="netflix-pane-header">
-              <div class="netflix-pane-title-group">
-                <h2 class="netflix-pane-title">
-                  <i data-lucide="users" style="color: #dfff76; width: 20px; height: 20px;"></i>
-                  <span>Oyuncu Kadrosu & Karakterler</span>
-                </h2>
-                <p class="netflix-pane-subtitle">Karakteri canlandıran oyuncular ve filmografileri</p>
-              </div>
-              <span class="netflix-pane-count-pill">${fullCastList.length} Oyuncu</span>
+            <div class="media-grid">
+              ${recommendations.map(item => renderMediaCard(item)).join('')}
             </div>
-
-            ${fullCastList.length > 0 ? `
-              <div class="netflix-cast-grid">
-                ${fullCastList.map((actor, idx) => {
-                  const actorPic = actor.profile_path ? getImageUrl(actor.profile_path, TMDB_IMAGE_SIZES.POSTER_MEDIUM) : SINEFLIX_ACTOR_FALLBACK;
-                  const character = actor.character ? actor.character.split('/')[0].trim() : '';
-                  const score = ((actor.popularity ? Math.min(9.9, Math.max(6.5, (actor.popularity / 3.5) + 6.0)) : 8.5)).toFixed(1);
-                  const isExtra = idx >= 12;
-                  return `
-                    <div class="netflix-cast-card ${isExtra ? 'cast-card-hidden' : ''}" data-person-id="${actor.id}" data-person-name="${actor.name}" title="${actor.name}${character ? ' (' + character + ')' : ''} • Filmografiyi Gör">
-                      <div class="netflix-cast-photo-wrap">
-                        <img src="${actorPic}" alt="${actor.name}" loading="lazy" onerror="this.onerror=null; this.src='${SINEFLIX_ACTOR_FALLBACK}';" />
-                        <div class="netflix-cast-card-hover">
-                          <i data-lucide="sparkles" style="width:20px;height:20px;color:#fff;"></i>
-                          <span>Filmografi</span>
-                        </div>
-                      </div>
-                      <div class="netflix-cast-info">
-                        <h4 class="netflix-cast-name">${actor.name}</h4>
-                        ${character ? `<p class="netflix-cast-character">As ${character}</p>` : ''}
-                        <div class="netflix-cast-rating">
-                          <i data-lucide="star" style="width:11px;height:11px;fill:#dfff76;stroke:#dfff76;"></i>
-                          <span>${score} / 10</span>
-                        </div>
-                      </div>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-
-              ${fullCastList.length > 12 ? `
-                <div style="text-align: center; margin: 2.5rem 0 1rem;">
-                  <button class="btn-netflix-show-more" id="btn-show-more-cast">
-                    <span>Tüm Oyuncuları Göster (${fullCastList.length})</span>
-                    <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
-                  </button>
-                </div>
-              ` : ''}
-            ` : `
-              <div class="netflix-empty-tab-state">
-                <i data-lucide="user-x" style="width:40px;height:40px;color:#666;"></i>
-                <p>Bu yapım için oyuncu bilgisi bulunamadı.</p>
-              </div>
-            `}
-          </div>
-
-          <!-- Tab Pane: Overview & Technical Details -->
-          <div class="netflix-tab-pane" id="tab-pane-overview">
-            <div class="netflix-overview-pane-grid">
-              <div class="netflix-overview-main-col">
-                <h3 class="netflix-subheading">Özet & Hikaye</h3>
-                <p class="netflix-full-overview">${overview || 'Bu içerik için henüz özet eklenmedi.'}</p>
-              </div>
-
-              <div class="netflix-overview-specs-col">
-                <h3 class="netflix-subheading">Teknik Detaylar</h3>
-                <div class="netflix-specs-table">
-                  ${originalTitle ? `
-                    <div class="spec-row">
-                      <span class="spec-label">Orijinal Başlık</span>
-                      <span class="spec-val">${originalTitle}</span>
-                    </div>
-                  ` : ''}
-                  ${directorName ? `
-                    <div class="spec-row">
-                      <span class="spec-label">${effectiveType === 'tv' ? 'Yaratıcı' : 'Yönetmen'}</span>
-                      <span class="spec-val">${directorName}</span>
-                    </div>
-                  ` : ''}
-                  ${media.release_date || media.first_air_date ? `
-                    <div class="spec-row">
-                      <span class="spec-label">Yayın Tarihi</span>
-                      <span class="spec-val">${media.release_date || media.first_air_date}</span>
-                    </div>
-                  ` : ''}
-                  ${media.status ? `
-                    <div class="spec-row">
-                      <span class="spec-label">Yayın Durumu</span>
-                      <span class="spec-val">${media.status}</span>
-                    </div>
-                  ` : ''}
-                  ${media.runtime ? `
-                    <div class="spec-row">
-                      <span class="spec-label">Film Süresi</span>
-                      <span class="spec-val">${formatMediaRuntime(media.runtime)}</span>
-                    </div>
-                  ` : ''}
-                  ${media.number_of_seasons ? `
-                    <div class="spec-row">
-                      <span class="spec-label">Toplam Sezon</span>
-                      <span class="spec-val">${media.number_of_seasons} Sezon</span>
-                    </div>
-                  ` : ''}
-                  ${media.number_of_episodes ? `
-                    <div class="spec-row">
-                      <span class="spec-label">Toplam Bölüm</span>
-                      <span class="spec-val">${media.number_of_episodes} Bölüm</span>
-                    </div>
-                  ` : ''}
-                  <div class="spec-row">
-                    <span class="spec-label">IMDb Puanı</span>
-                    <span class="spec-val" style="color: #dfff76; font-weight: 750;">${imdbRating ? "★ " + imdbRating + " / 10" : "★ " + rating + " / 10"}</span>
-                  </div>
-                  <div class="spec-row">
-                    <span class="spec-label">Letterboxd</span>
-                    <span class="spec-val" style="color: #00e054; font-weight: 750;">${letterboxdStars} (${starScore})</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tab Pane: Trailers & Clips -->
-          <div class="netflix-tab-pane" id="tab-pane-trailers">
-            <div class="netflix-pane-header">
-              <div class="netflix-pane-title-group">
-                <h2 class="netflix-pane-title">
-                  <i data-lucide="youtube" style="color: #dfff76; width: 20px; height: 20px;"></i>
-                  <span>Resmi Fragmanlar & Klipler</span>
-                </h2>
-                <p class="netflix-pane-subtitle">Resmi Türkçe ve orijinal tanıtım fragmanları</p>
-              </div>
-            </div>
-
-            <div class="netflix-trailers-showcase">
-              ${heroTrailers.map((t, idx) => `
-                <div class="hero-trailer-expand-card netflix-pane-trailer-card" data-video-key="${t.key}" data-video-title="${t.name || ('Fragman ' + (idx + 1))}" data-video-type="${t.type || 'Fragman'}">
-                  <div class="trailer-compact-view">
-                    <img src="https://img.youtube.com/vi/${t.key}/mqdefault.jpg" alt="${t.name || 'Trailer'}" loading="lazy" />
-                    <div class="trailer-thumb-overlay">
-                      <div class="trailer-play-chip">
-                        <i data-lucide="play" style="width: 14px; height: 14px; fill: currentColor;"></i>
-                      </div>
-                      <span class="trailer-compact-name">${t.name || ('Fragman ' + (idx + 1))}</span>
-                    </div>
-                  </div>
-                  <div class="trailer-expanded-view">
-                    <div class="trailer-expanded-player"></div>
-                    <div class="trailer-expanded-info">
-                      <div class="trailer-expanded-header">
-                        <span class="trailer-expanded-tag">${t.type || 'RESMİ FRAGMAN'}</span>
-                        <button class="trailer-expanded-close" title="Fragmanı kapat" aria-label="Fragmanı kapat" type="button">
-                          <i data-lucide="x" style="width: 14px; height: 14px;"></i>
-                        </button>
-                      </div>
-                      <h4 class="trailer-expanded-title">${t.name || `${title} Fragman`}</h4>
-                      <div class="trailer-expanded-meta">
-                        <span>HD 1080p</span>
-                        <span>•</span>
-                        <span>YouTube</span>
-                      </div>
-                      <p class="trailer-expanded-desc">${(overview || '').substring(0, 110)}...</p>
-                    </div>
-                  </div>
-                </div>
-              `).join('')}
-              ${trailerSearches.map(search => `
-                <a class="trailer-search-card" href="https://www.youtube.com/results?search_query=${encodeURIComponent(search.query)}" target="_blank" rel="noopener noreferrer" aria-label="${search.label}: YouTube'da aç">
-                  <i data-lucide="search" aria-hidden="true"></i>
-                  <span>${search.label}</span>
-                  <small>YouTube'da aç ↗</small>
-                </a>
-              `).join('')}
-            </div>
-          </div>
-
-          ${recommendations.length > 0 ? `
-            <!-- Tab Pane: More Like This (Image 3 / 4) -->
-            <div class="netflix-tab-pane" id="tab-pane-recommendations">
-              <div class="netflix-pane-header">
-                <div class="netflix-pane-title-group">
-                  <h2 class="netflix-pane-title">
-                    <i data-lucide="thumbs-up" style="color: #dfff76; width: 20px; height: 20px;"></i>
-                    <span>Benzer Önerilen Yapımlar</span>
-                  </h2>
-                  <p class="netflix-pane-subtitle">Bu yapımı seven izleyicilerin en çok beğendiği diğer içerikler</p>
-                </div>
-              </div>
-              <div class="media-grid">
-                ${recommendations.map(item => renderMediaCard(item)).join('')}
-              </div>
-            </div>
-          ` : ''}
-
-        </div>
+          </section>
+        ` : ''}
       </div>
     </div>
   `;
-
   return {
     html,
     init: (container) => {
       baslikLogosunuUygula(container, id, normalizedType);
       if (!container) return;
+
+      // IMDb puanı gerçekten gelsin: Worker ucu boş dönerse (IMDb bot duvarı)
+      // external_ids.imdb_id üzerinden okuma-proxy ile tek adımda çözülür ve
+      // çip/künye DOM'u geç de olsa doldurulur. Bulunamazsa alan BOŞ kalır —
+      // TMDB puanı IMDb diye ETİKETLENMEZ (kullanıcı 2026-10-29).
+      if (!imdbRating) {
+        const imdbId = String(media.external_ids?.imdb_id || '');
+        if (/^tt\d{6,10}$/.test(imdbId)) {
+          imdbPuaniImdbId(imdbId).then(p => {
+            if (p === null || p === undefined) return;
+            const deger = container.querySelector('#dt-imdb-deger');
+            if (deger) deger.textContent = p.toFixed(1);
+            const cip = container.querySelector('#dt-imdb-chip');
+            if (cip) cip.hidden = false;
+            const specDeger = container.querySelector('#spec-imdb-val');
+            if (specDeger) {
+              specDeger.textContent = `★ ${p.toFixed(1)} / 10`;
+              specDeger.closest('.spec-row')?.style && (specDeger.closest('.spec-row').style.display = '');
+            }
+            window.lucide?.createIcons?.({ attrs: { 'stroke-width': 2 } });
+          }).catch(() => { /* sessiz: puan yoksa alan boş kalır */ });
+        }
+      }
       let decisionRoomAutoplay = consumeDecisionRoomAutoplay(effectiveType, id);
+
+      // ── KAYNAKLAR sekmesi (2026-10-27) ───────────────────────────────────
+      // Kaynak listesi oynatıcının içinden detay sayfasına taşındı. Detay
+      // açılışında HİÇBİR tarama başlamaz: baslat() yalnız sekme ilk kez
+      // açıldığında çağrılır (55 çekirdek × 75 sn bütçe sayfayı dondurmasın).
+      let kaynakSecimi = { sezon: kaynakSezon, bolum: kaynakBolum };
+
+      // ── Madde 1 sözleşmesi (kullanıcı 2026-10-28) ──────────────────────────
+      // Kaynak kartına tıklanınca: (1) yatay kilit İZNİ (Capacitor WebView
+      // reddedebilir — asıl garanti native tarafta; yalnız iyileştirme),
+      // (2) body'e cp-landscape-gecis: CSS SADECE karartma + spinner gösterir,
+      // içerik döndürülmez (dokunmatik koordinatlar kaymasın), (3) openPlayerModal
+      // SON parametre olarak taramaKarti alır (PlayerModal/Agent C sözleşmesi).
+      // Ayrıca 500 ms'de bir kaynak sayısı 'cp:kaynak-sayac' olayıyla bildirilir;
+      // ilk kareyi belirten .native-hazir sınıfı görününce, 12 sn dolunca veya
+      // 'cp-native-hata' gelince sayaç VE geçiş sınıfı temizlenir (sızıntı yok).
+      let sayacAraligi = null;
+      let sayacUstSinir = null;
+      let sayacHataDinleyici = null;
+      const kaynakSayaciniDurdur = () => {
+        if (sayacAraligi) { clearInterval(sayacAraligi); sayacAraligi = null; }
+        if (sayacUstSinir) { clearTimeout(sayacUstSinir); sayacUstSinir = null; }
+        if (sayacHataDinleyici) {
+          window.removeEventListener('cp-native-hata', sayacHataDinleyici);
+          sayacHataDinleyici = null;
+        }
+        document.body.classList.remove('cp-landscape-gecis');
+      };
+      const kaynakSayaciniBaslat = () => {
+        kaynakSayaciniDurdur();
+        document.body.classList.add('cp-landscape-gecis');
+        const gonder = () => {
+          window.dispatchEvent(new CustomEvent('cp:kaynak-sayac', {
+            detail: { adet: kaynakListesi.kaynaklar().length, kaynakMi: true }
+          }));
+        };
+        gonder();
+        sayacAraligi = setInterval(() => {
+          // Detay sayfası yönlendirmeyle söküldüyse sızıntı bırakma.
+          if (!container.isConnected) { kaynakSayaciniDurdur(); return; }
+          gonder();
+          // native-hazir: PlayerModal sahnesine ilk kare gelince eklenen sınıf
+          // (PlayerModal.js native-hazir) — ilk kare işareti.
+          if (document.querySelector('.native-hazir')) kaynakSayaciniDurdur();
+        }, 500);
+        sayacUstSinir = setTimeout(kaynakSayaciniDurdur, 12000);
+        sayacHataDinleyici = () => kaynakSayaciniDurdur();
+        window.addEventListener('cp-native-hata', sayacHataDinleyici);
+      };
+      const kaynakListesi = kaynakListesiOlustur({
+        kok: container.querySelector('#kaynak-liste-kok'),
+        // Oynatıcının keşfiyle aynı tür: anime çekirdekleri öne alınsın
+        // (vekil.js anime sıralaması yalnız 'anime' türünde devreye girer).
+        tur: isAnime ? 'anime' : effectiveType,
+        tmdbId: id,
+        imdbId: media.external_ids?.imdb_id || '',
+        sezon: kaynakSecimi.sezon,
+        bolum: kaynakSecimi.bolum,
+        baslik: title,
+        orijinalBaslik: originalTitle,
+        onKaynakSec: (kaynak) => {
+          // Madde 1 sırası (kullanıcı 2026-10-28): 1) yatay kilit izni (yalnız
+          // iyileştirme — Capacitor WebView reject edebilir, asıl garanti native),
+          // 2) karartma+spinner geçiş sınıfı + kaynak sayacı, 3) oynatıcı çağrısı.
+          try {
+            const yonlendirme = window.screen?.orientation;
+            if (yonlendirme && typeof yonlendirme.lock === 'function') {
+              Promise.resolve(yonlendirme.lock('landscape')).catch(() => {});
+            }
+          } catch (_) { /* kilit desteklenmiyor/ reddedildi — akışı engellemez */ }
+          kaynakSayaciniBaslat();
+          const ortak = {
+            type: isAnime ? 'anime' : effectiveType,
+            isAnime,
+            tmdbId: id,
+            seriesTitle: title,
+            originalTitle,
+            posterPath: media.poster_path,
+            backdropPath: media.backdrop_path,
+            // Hazır havuz: oynatıcı YENİDEN tarama yapmaz, seçilen satırdan başlar.
+            hazirKaynaklar: kaynakListesi.kaynaklar(),
+            secilenKaynak: kaynak
+          };
+          const istek = effectiveType === 'movie'
+            ? (() => {
+              const progress = getMediaProgress(id, 1, 1);
+              return {
+                ...ortak,
+                title,
+                duration: movieDurationSec,
+                currentTime: progress ? progress.currentTime : 0
+              };
+            })()
+            : (() => {
+              const { sezon, bolum } = kaynakSecimi;
+              const progress = getMediaProgress(id, sezon, bolum);
+              return {
+                ...ortak,
+                title: `${title} - S${sezon}E${bolum}`,
+                season: sezon,
+                episode: bolum,
+                currentTime: progress ? progress.currentTime : 0,
+                seasonsList: media.seasons || []
+              };
+            })();
+          // Sözleşme: openPlayerModal'ın SON parametresi opsiyonel taramaKarti
+          // {baslik, posterUrl, altBaslik, kaynakSayisi} — PlayerModal tarafını
+          // Agent C uygulayacak; henüz yoksa fazladan argüman zararsızdır.
+          const taramaKarti = {
+            baslik: title,
+            posterUrl: media.poster_path
+              ? getImageUrl(media.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL)
+              : '',
+            altBaslik: effectiveType === 'movie'
+              ? ''
+              : `Sezon ${kaynakSecimi.sezon} · Bölüm ${kaynakSecimi.bolum}`,
+            kaynakSayisi: kaynakListesi.kaynaklar().length
+          };
+          // Hata olursa mevcut yol aynen devam eder (regresyon yok); tek fark:
+          // geçiş sınıfı ve sayaç burada temizlenir (sızıntı bırakma).
+          Promise.resolve(openPlayerModal(istek, taramaKarti)).catch((err) => {
+            console.error('[CinePulse] Kaynak açılamadı:', err);
+            showToast('Oynatıcı açılırken hata oluştu, lütfen tekrar deneyin.', 'error');
+            kaynakSayaciniDurdur();
+          });
+        }
+      });
+
+      // ── Sekmeler ─────────────────────────────────────────────────────────
+      // Jenerik data-tab mekanizması: aynı data-panel'e sahip tüm bloklar
+      // birlikte görünür (Kadro çipleri + Oyuncular aynı "cast" sekmesinde).
+      const sekmeDugmeleri = Array.from(container.querySelectorAll('.cps-sekme-cubugu [data-tab]'));
+      const sekmeCubugu = container.querySelector('.cps-sekme-cubugu');
+      // Çubuk ekranın dışındaysa getir; görünürse hiç kaydırma yapma.
+      const cubuguGoster = () => {
+        const kutu = sekmeCubugu?.getBoundingClientRect();
+        if (!kutu) return;
+        if (kutu.bottom <= 0 || kutu.top >= window.innerHeight) {
+          sekmeCubugu.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }
+      };
+      const sekmeleriGec = (hedef) => {
+        sekmeDugmeleri.forEach(dugme => {
+          const secili = dugme.dataset.tab === hedef;
+          dugme.classList.toggle('active', secili);
+          dugme.setAttribute('aria-pressed', secili ? 'true' : 'false');
+        });
+        container.querySelectorAll('.cps-sekme-panel').forEach(panel => {
+          panel.hidden = panel.dataset.panel !== hedef;
+        });
+        container.querySelectorAll('.cps-sekme-panel:not([hidden])').forEach(panel => renderIcons(panel));
+        cubuguGoster();
+      };
+
+      // Devam Et / bölüm seçimi: KAYNAKLAR sekmesi. Çubuk ekranda ise kaydırma
+      // yok — kaynak listesi sekmede hazır; yalnız hero'dan gelirken çubuk getirilir.
+      const kaynaklarSekmesineGec = () => {
+        sekmeleriGec('sources');
+        kaynakListesi.baslat();
+      };
+
+      // Kaynak taraması yalnız KAYNAKLAR sekmesi ilk kez görünür olunca başlar.
+      const kaynakBolumKok = container.querySelector('#cps-kaynaklar');
+      if (kaynakBolumKok && 'IntersectionObserver' in window) {
+        const gozcu = new IntersectionObserver((girdiler) => {
+          if (girdiler.some(g => g.isIntersecting)) {
+            kaynakListesi.baslat();
+            gozcu.disconnect();
+          }
+        }, { rootMargin: '240px' });
+        gozcu.observe(kaynakBolumKok);
+      }
+
+      sekmeDugmeleri.forEach(dugme => {
+        dugme.addEventListener('click', () => {
+          const hedef = dugme.dataset.tab;
+          sekmeleriGec(hedef);
+          if (hedef === 'sources') kaynakListesi.baslat();
+        });
+      });
+
+      // Dar ekranda varsayılan sekme (filmde OYUNCULAR) çubuğun dışında kalmasın.
+      // Yalnız çubuk içinde yatay kaydırılır; sayfa kaymaz.
+      const aktifSekme = container.querySelector('.cps-sekme-cubugu [data-tab].active');
+      if (aktifSekme) {
+        const serit = aktifSekme.parentElement;
+        serit.scrollLeft = aktifSekme.offsetLeft - (serit.clientWidth - aktifSekme.offsetWidth) / 2;
+      }
+
+      const kaynakSezonSecim = container.querySelector('#kaynak-sezon-secim');
+      const kaynakBolumSecim = container.querySelector('#kaynak-bolum-secim');
+      const bolumleriDoldur = (sezonNo, seciliBolum = 1) => {
+        if (!kaynakBolumSecim) return;
+        const adet = kaynakSezonlari.find(s => s.season_number === Number(sezonNo))?.episode_count || 10;
+        kaynakBolumSecim.innerHTML = Array.from({ length: adet }, (_, i) =>
+          `<option value="${i + 1}" ${i + 1 === Number(seciliBolum) ? 'selected' : ''}>${i + 1}. Bölüm</option>`).join('');
+      };
+      kaynakSezonSecim?.addEventListener('change', () => {
+        kaynakSecimi = { sezon: Number(kaynakSezonSecim.value) || 1, bolum: 1 };
+        bolumleriDoldur(kaynakSecimi.sezon, 1);
+        kaynakListesi.bolumAyarla(kaynakSecimi.sezon, kaynakSecimi.bolum);
+      });
+      kaynakBolumSecim?.addEventListener('change', () => {
+        kaynakSecimi.bolum = Number(kaynakBolumSecim.value) || 1;
+        kaynakListesi.bolumAyarla(kaynakSecimi.sezon, kaynakSecimi.bolum);
+      });
+
+      // Bölüm kartı tıklaması (SeasonSelector) buraya bölüm bilgisi bırakır:
+      // oynatıcı açılmaz, KAYNAKLAR sekmesi o bölümle açılır.
+      container.addEventListener('cp:kaynak-bolum', (olay) => {
+        if (!container.isConnected) return;
+        const sezonNo = Number(olay.detail?.sezon) || 1;
+        const bolumNo = Number(olay.detail?.bolum) || 1;
+        kaynakSecimi = { sezon: sezonNo, bolum: bolumNo };
+        if (kaynakSezonSecim) kaynakSezonSecim.value = String(sezonNo);
+        bolumleriDoldur(sezonNo, bolumNo);
+        kaynakListesi.bolumAyarla(sezonNo, bolumNo);
+        kaynaklarSekmesineGec();
+      });
 
       const backBtn = container.querySelector('#btn-detail-back');
       if (backBtn) {
@@ -601,7 +870,11 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           }
       };
       if (playMovieBtn) {
-        playMovieBtn.addEventListener('click', openMovie);
+        // Detay sayfası oynatıcı AÇMAZ: film İzle düğmesi KAYNAKLAR sekmesine geçer.
+        playMovieBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          kaynaklarSekmesineGec();
+        });
       }
 
       const resumeSeriesBtn = container.querySelector('#btn-resume-series');
@@ -643,9 +916,10 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           }
       };
       if (resumeSeriesBtn) {
+        // Dizide "Devam Et" de oynatıcı açmaz; KAYNAKLAR sekmesine geçer.
         resumeSeriesBtn.addEventListener('click', event => {
           event.preventDefault();
-          openSeries();
+          kaynaklarSekmesineGec();
         });
       }
 
@@ -663,56 +937,34 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
         }, 0);
       }
 
-      const trailerBtn = container.querySelector('#btn-watch-trailer');
-      if (trailerBtn) {
-        trailerBtn.addEventListener('click', event => {
-          event.preventDefault();
-          container.querySelectorAll('.netflix-tab-btn').forEach(button => button.classList.toggle('active', button.dataset.tab === 'trailers'));
-          container.querySelectorAll('.netflix-tab-pane').forEach(pane => pane.classList.toggle('active', pane.id === 'tab-pane-trailers'));
-          renderIcons(container.querySelector('#tab-pane-trailers'));
-          container.querySelector('#tab-pane-trailers')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-      }
-
-      // Inline Horizontal Expanding Trailer Cards (No Modal, expands sideways!)
-      container.querySelectorAll('.hero-trailer-expand-card').forEach(card => {
-        card.addEventListener('click', (e) => {
-          if (e.target.closest('.trailer-expanded-close')) {
-            e.stopPropagation();
-            card.classList.remove('is-expanded');
-            const playerBox = card.querySelector('.trailer-expanded-player');
-            if (playerBox) playerBox.innerHTML = '';
-            return;
-          }
-
-          if (card.classList.contains('is-expanded')) return;
-
-          // Collapse any other open trailer card first
-          container.querySelectorAll('.hero-trailer-expand-card.is-expanded').forEach(other => {
-            other.classList.remove('is-expanded');
-            const otherPlayer = other.querySelector('.trailer-expanded-player');
-            if (otherPlayer) otherPlayer.innerHTML = '';
-          });
-
-          const videoKey = card.getAttribute('data-video-key');
+      // Fragman kartları: sayfa İÇİNDE video embed kaldırıldı (oyuncu artığı
+      // hissi yasak, kullanıcı 2026-10-28); kart fragmanı TrailerModal'da açar.
+      container.querySelectorAll('.dt-fragman-kart').forEach(kart => {
+        kart.addEventListener('click', () => {
+          const videoKey = kart.getAttribute('data-video-key');
           if (!videoKey) return;
-
-          card.classList.add('is-expanded');
-          const playerBox = card.querySelector('.trailer-expanded-player');
-          if (playerBox) {
-            playerBox.innerHTML = `
-              <iframe 
-                src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoKey)}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&playsinline=1"
-                frameborder="0"
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowfullscreen
-                class="trailer-inline-iframe"
-                title="${title} Fragman">
-              </iframe>
-            `;
-          }
-          renderIcons();
+          openTrailerModal({
+            title,
+            trailerInfo: {
+              embedUrl: `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoKey)}?autoplay=1&controls=1&modestbranding=1&rel=0&playsinline=1`,
+              name: kart.getAttribute('data-video-title') || 'Resmi Fragman'
+            },
+            mediaId: id,
+            mediaType: effectiveType === 'movie' ? 'movie' : 'tv'
+          });
         });
+      });
+
+      // Bayrak düğmesi: yerel işaretleme (sunucu yok), ikon dolgusu anında döner.
+      const bayrakBtn = container.querySelector('#btn-toggle-bayrak');
+      bayrakBtn?.addEventListener('click', () => {
+        const aktif = bayrakToggle(id);
+        bayrakBtn.classList.toggle('is-active', aktif);
+        const ikon = bayrakBtn.querySelector('i');
+        if (ikon) ikon.style.cssText = aktif
+          ? 'width:16px;height:16px;fill:currentColor'
+          : 'width:16px;height:16px;';
+        showToast(aktif ? 'İçerik bayraklandı — tekrar dokununca kaldırılır.' : 'Bayrak kaldırıldı.', 'info');
       });
 
       const favBtn = container.querySelector('#btn-toggle-fav');
@@ -720,6 +972,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
         favBtn.addEventListener('click', () => {
           const added = toggleFavorite({ ...media, type: isAnime ? 'anime' : effectiveType, isAnime, media_type: effectiveType });
           showToast(added ? 'Favorilere eklendi!' : 'Favorilerden çıkarıldı.', added ? 'success' : 'info');
+          favBtn.classList.toggle('is-active', added);
           const icon = favBtn.querySelector('i');
           const text = favBtn.querySelector('span');
           if (icon && text) {
@@ -735,6 +988,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
         watchBtn.addEventListener('click', () => {
           const added = toggleWatchlist({ ...media, type: isAnime ? 'anime' : effectiveType, isAnime, media_type: effectiveType });
           showToast(added ? 'İzleme listesine eklendi!' : 'İzleme listesinden çıkarıldı.', added ? 'success' : 'info');
+          watchBtn.classList.toggle('is-active', added);
           const icon = watchBtn.querySelector('i');
           const text = watchBtn.querySelector('span');
           if (icon && text) {
@@ -890,6 +1144,12 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
 
       // Halfway in-progress button handler
       const halfwayBtn = container.querySelector('#btn-mark-halfway-detail');
+
+      // #15: paylaşım (bağlantı + QR).
+      container.querySelector('#btn-share-detail')?.addEventListener('click', async () => {
+        const { openPaylasModal } = await import('../components/PaylasModal.js');
+        openPaylasModal({ type: effectiveType, id, title });
+      });
       if (halfwayBtn) {
         halfwayBtn.addEventListener('click', (e) => {
           e.preventDefault();
@@ -934,32 +1194,17 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           storylineEl.classList.toggle('truncated');
           const span = expandBtn.querySelector('span');
           const icon = expandBtn.querySelector('i');
-          if (span) span.textContent = isExpanded ? 'Devamını Oku' : 'Daralt';
+          if (span) span.textContent = isExpanded ? 'Daha fazla' : 'Daralt';
           if (icon) icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
         });
       }
 
-      // Netflix Sub-Navigation Tabs Switching (Images 3 & 4)
-      const tabBtns = container.querySelectorAll('.netflix-tab-btn');
-      const tabPanes = container.querySelectorAll('.netflix-tab-pane');
-      tabBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
+      // Kadro çipleri -> filmografi keşfi
+      container.querySelectorAll('.cps-kisi[data-person-id]').forEach(cip => {
+        cip.addEventListener('click', (e) => {
           e.preventDefault();
-          const target = btn.getAttribute('data-tab');
-          if (target !== 'trailers') {
-            container.querySelectorAll('#tab-pane-trailers .hero-trailer-expand-card.is-expanded').forEach(card => {
-              card.classList.remove('is-expanded');
-              card.querySelector('.trailer-expanded-player').innerHTML = '';
-            });
-          }
-          tabBtns.forEach(b => b.classList.remove('active'));
-          tabPanes.forEach(p => p.classList.remove('active'));
-          btn.classList.add('active');
-          const targetPane = container.querySelector(`#tab-pane-${target}`);
-          if (targetPane) {
-            targetPane.classList.add('active');
-            renderIcons(targetPane);
-          }
+          const personId = cip.getAttribute('data-person-id');
+          if (personId) openCastExplorerModal(personId, cip.getAttribute('data-person-name'));
         });
       });
 
@@ -984,15 +1229,6 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           hiddenCards.forEach(c => c.classList.remove('cast-card-hidden'));
           showMoreCastBtn.style.display = 'none';
           renderIcons();
-        });
-      }
-
-      // Pane Trailer Card Click
-      const paneTrailerBtn = container.querySelector('#btn-pane-play-trailer');
-      if (paneTrailerBtn) {
-        paneTrailerBtn.addEventListener('click', () => {
-          const trailerBtn = container.querySelector('#btn-watch-trailer');
-          if (trailerBtn) trailerBtn.click();
         });
       }
 

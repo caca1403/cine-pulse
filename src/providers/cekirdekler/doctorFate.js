@@ -6905,7 +6905,7 @@ async function getStreams(tmdbId, arg2, tmdbId2, tmdbId3) {
       tmdbId3
   );
   try {
-    let val5 = (await fn("Doctor-Fate")) || "https://nxsha.space",
+    let val5 = (await fn("Doctor-Fate")) || (await fn("jinbe")) || "https://nxsha.space",
       Referer = val5.endsWith("/") ? val5 : val5 + "/",
       result = await replaceIn(tmdbId, type);
     log("Doctor-Fate", "[Adım 1/4] Aktif sunucu havuzu alınıyor (" + val5 + ")...");
@@ -7167,3 +7167,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

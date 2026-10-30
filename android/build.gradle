@@ -10,6 +10,10 @@ buildscript {
         classpath 'com.android.tools.build:gradle:8.13.0'
         classpath 'com.google.gms:google-services:4.4.4'
         classpath 'com.chaquo.python:gradle:17.0.0'
+        // CLOUDSTREAM3 KONAĞI: vendor edilen com.lagradost.* API kaynakları Kotlin;
+        // @Serializable sınıflar için serialization eklentisi gerekli (kullanıcı 2026-10-29).
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.20'
+        classpath 'org.jetbrains.kotlin:kotlin-serialization:2.3.20'
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
@@ -22,6 +26,9 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // CloudStream3 plugin API'sinin HTTP katmanı NiceHttp jitpack'te yayımlı
+        // (kullanıcı 2026-10-29 — CloudStream konak desteği).
+        maven { url 'https://jitpack.io' }
     }
 }
 

@@ -143,6 +143,41 @@ export async function imdbPuaniniAl(tmdbId, tur = 'movie', secenek) {
 }
 
 /**
+ * IMDb id'si bilinen içerik için puanı DOĞRUDAN çözülür (Worker boş döndüğünde
+ * son çare). IMDb doğrudan istekleri bot-duvarı nedeniyle 202 challenge sayfası
+ * döndürüyor; bu yüzden metin-okuma proxy'si (r.jina.ai) üzerinden gidilir ve
+ * başlık satırındaki "⭐ 9.2" / "9.2/10 2.7M" kalıplarından okunur. Önbelleğe
+ * 'imdb:tt...' anahtarıyla yazılır; bulunamazsa negatif kayıt düşülür.
+ */
+export async function imdbPuaniImdbId(imdbId, secenek = {}) {
+  const id = String(imdbId || '').trim();
+  if (!/^tt\d{6,10}$/.test(id)) return null;
+  yukle();
+  const anahtar = `imdb:${id}`;
+  const mevcut = oku(anahtar);
+  if (mevcut !== undefined) return mevcut;
+  const tavan = Number(secenek.timeoutMs) > 0 ? Number(secenek.timeoutMs) : 8000;
+  try {
+    const cevap = await fetch(`https://r.jina.ai/https://www.imdb.com/title/${id}/`, {
+      headers: { Accept: 'text/plain' },
+      signal: AbortSignal.timeout(tavan),
+    });
+    if (!cevap?.ok) return null;
+    const metin = await cevap.text();
+    const eslesme =
+      String(metin).match(/⭐\s*(\d+(?:\.\d+)?)/) ||
+      String(metin).match(/(\d\.\d)\s*\/\s*10\s*\d[\d.]*[KM]?\b/i) ||
+      String(metin).match(/"ratingValue"\s*:\s*"?(\d+(?:\.\d+)?)/);
+    const puan = eslesme ? puanAyikla(eslesme[1]) : null;
+    OMBELLEK.set(anahtar, { puan, zaman: Date.now() });
+    sakla();
+    return puan;
+  } catch (_) {
+    return null; // ağ hatası "puan yok" değildir; negatif kayıt yazılmıyor
+  }
+}
+
+/**
  * Kartları toplu doldurur: `[data-imdb-id]` taşıyan öğelere puanı yazar.
  * Ağ çağrısı tek seferdir; sonuçlar hem DOM'a hem önbelleğe işlenir.
  */

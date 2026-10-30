@@ -1,0 +1,331 @@
+/* ==========================================================================
+   CinePulse G2 — Ana ekran sinematik cilası (yalnız GÖRÜNÜM).
+   Veri çekme, railState, kişisel satır ve kart BOYUT/DÜZENİ değişmez.
+   Sınıf/token adları G1 motion.css ile aynı: .cp-anim-in, .cp-skeleton,
+   .cp-press, cp-kenburns, cp-fade-up, --ease-spring (motion.css'te
+   tanımlı; burada tekrar tanımlanmaz → çakışma yok).
+   ========================================================================== */
+
+/* ───────────────────────────────────────────────────────────────────────────
+   1. HERO — kenburns + çift sinema scrim + slayt fade + dot→ilerleme çubuğu
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Slayt geçişinde backdrop yeniden doğar: fade+scale(.6s) ile birlikte
+   kenburns baştan (cp-slide-swap sınıfı HeroSlider.js'te sökülüp yeniden
+   takılarak yeniden başlatılır). Listede fade SONRA geldiği için scale'ı
+   ilk .6s boyunca fade tutar; süre bitince kenburns (~1.0004'te) devralır. */
+.hero-slider .hero-backdrop.cp-slide-swap {
+  animation:
+    cp-kenburns 20s ease-in-out infinite alternate,
+    cp-hero-fade 0.6s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)) backwards;
+  transform-origin: center 32%;
+}
+
+@keyframes cp-hero-fade {
+  from { opacity: 0; transform: scale(1.02); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Çift scrim: alttan koyu %72→0 + sağa açılan sinema enlemi (okunurluk
+   metnin altında, afişin sağ üst hâlâ "nefes" alır). */
+.hero-slider .hero-overlay-gradient {
+  background:
+    linear-gradient(0deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.34) 26%, transparent 62%),
+    linear-gradient(100deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.18) 44%, transparent 70%);
+}
+
+/* Slayt başlığı/butonları: cp-fade-up stagger. Sınıf .hero-content-committing
+   her slayt değişiminde (ve ilk reveal'da) JS ile sökülüp takılır → animasyon
+   yeniden başlar (değerler main.css'teki hero-content-commit'ten farklı
+   tutularak "aynı hesaplanan değer → yeniden başlamaz" tuzağı önlenir). */
+.hero-content-committing .hero-badge-row    { animation: cp-fade-up 0.44s var(--ease-spring) both; }
+.hero-content-committing .hero-titleblock   { animation: cp-fade-up 0.44s var(--ease-spring) 0.06s both; }
+.hero-content-committing .hero-overview     { animation: cp-fade-up 0.44s var(--ease-spring) 0.12s both; }
+.hero-content-committing .hero-actions      { animation: cp-fade-up 0.44s var(--ease-spring) 0.18s both; }
+.hero-content-committing .hero-dots-wrapper { animation: cp-fade-up 0.44s var(--ease-spring) 0.24s both; }
+
+/* Dot yerine ince ilerleme çubuğu. Süre HeroSlider.js auto-rotate'ı ile
+   (7000 ms) EŞLEŞMELİ — 20 sn yapılsaydı çubuk slayt geçişleriyle çelişirdi. */
+.hero-slider { --cp-hero-rotate: 7s; }
+
+.hero-dots-wrapper { gap: 0.35rem; }
+
+.hero-slider .hero-dot,
+.hero-slider .hero-dot.active {
+  width: 26px;
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+  position: relative;
+}
+
+.hero-slider .hero-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #fff;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.hero-slider .hero-dot.active::after {
+  animation: cp-hero-progress var(--cp-hero-rotate, 7s) linear forwards;
+}
+
+@keyframes cp-hero-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* Dokunma/basılı tutma süresince ilerleme durur (sürükleme zaten JS'te
+   yutuluyor; çubuk da parmağın altında bekler). */
+.hero-slider:active .hero-dot.active::after { animation-play-state: paused; }
+
+/* Reduced-motion'da çubuk animasyonsuz dolu görünür (G1'in genel
+   `animation: none !important` kapısına karşı !important gerekli). */
+@media (prefers-reduced-motion: reduce) {
+  .hero-slider .hero-dot.active::after { transform: scaleX(1) !important; }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   2. RAİLLER — scroll-snap + kenar maskesi + "tümü ›" + ilk-görünür stagger
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Snap: dokunmatikte kart başına (mandatory), imleçte yumuşak (proximity).
+   Kart ölçüsü/değişken; snap yalnız hizalama yapar, düzeni bozmaz. */
+@media (hover: none) {
+  .home-view .card-rail {
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 0.2rem;
+  }
+}
+@media (hover: hover) {
+  .home-view .card-rail {
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 0.2rem;
+  }
+}
+
+.home-view .card-rail > .media-card,
+.home-view .card-rail > .continue-card-wrapper {
+  scroll-snap-align: start;
+}
+
+/* Kenar maskesi: mask-content'i taşan rafa JS `rail-edge-mask` sınıfını verir
+   (sığan raf soldan sağa soluklaşmasın). */
+.home-view .card-rail.rail-edge-mask {
+  --cp-rail-mask: linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  -webkit-mask-image: var(--cp-rail-mask);
+  mask-image: var(--cp-rail-mask);
+}
+
+/* ("tümü ›" ipucu, hedefi olmadığı için kaldırıldı — ölü afordans gürültü.) */
+
+.reco-row-count {
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+/* İlk görünürde rail içeriği kart kart stagger ile belirir (HomeView'daki tek
+   IntersectionObserver `data-rail-anim` → `rail-gorunur` sınıfını verir).
+   reduced-motion kapalıyken gizleme kuralı HİÇ uygulanmaz → kartlar her
+   durumda görünür kalır. */
+@media (prefers-reduced-motion: no-preference) {
+  .home-view .rail-section[data-rail-anim] .card-rail > * {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  .home-view .rail-section[data-rail-anim].rail-gorunur .card-rail > * {
+    opacity: 1;
+    transform: none;
+    animation: cp-fade-up 0.5s var(--ease-spring) backwards;
+    animation-delay: calc(var(--cp-i, 0) * 45ms);
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   3. KART — dokunmatik press, masaüstü hover (1.03 + hafif glow), blur-up
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* .home-view .media-card kuralı main.css'te bilinçli olarak
+   `transition: none` (performans); yalnız cp-press'e özgü açılır. */
+.media-card.cp-press {
+  transition: transform var(--dur-fast, 120ms) ease-out;
+}
+
+/* Aynı anda iki "basılma" olmasın: kart G1 .cp-press ile scale(.97) alır,
+   afiş sarmalayıcısının ayrı .972 çökmesi evlendirilir. */
+@media (hover: none) {
+  .home-view .media-card.cp-press:active .card-poster-wrapper { transform: none; }
+}
+
+/* Masaüstü: hafif kalkış + 1.03 ölçek + ince lime glow. Yalnız imleçli
+   cihaz; dokunmatikte main.css performans kararı korunur. */
+@media (hover: hover) {
+  .home-view .media-card,
+  .home-view .card-poster-wrapper,
+  .home-view .card-poster-img {
+    transition: transform 0.25s var(--ease-spring), box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+
+  .home-view .media-card:hover .card-poster-wrapper {
+    transform: translateY(-3px) scale(1.03);
+    border-color: rgba(255, 255, 255, 0.28);
+    box-shadow: var(--shadow, 0 12px 28px rgba(0, 0, 0, 0.6)),
+                0 0 0 1px rgba(223, 255, 118, 0.14),
+                0 0 18px rgba(223, 255, 118, 0.1);
+  }
+
+  .home-view .media-card:hover .card-poster-img {
+    transform: scale(1.04);
+  }
+}
+
+/* Blur-up iskelet: kart afişi gelene kadar .cp-skeleton (MediaCard.js'te).
+   Yüzyıllarca tembel kart shimmer animasyonu APK'da pahalı olurdu →
+   parıltısız, statik zemin. onload → cp-anim-in (G1) ile belirir. */
+.card-poster-img.cp-skeleton {
+  animation: none;
+  background: linear-gradient(180deg, #171a21, #101216);
+}
+
+/* "İzlenen" ilerleme çizgisi: accent gradyana çevrilir. */
+.card-progress-bar-fill {
+  background: linear-gradient(90deg, var(--primary, #dfff76), #86efac);
+}
+
+/* ── "Benim kanalım · şimdi" şeridi (Ana Sayfa) ──────────────────────────
+   Netflix "Play Something" karşılığı: cihazda kurulan kişisel kanalın
+   şu anki yayını + sonraki üç slot. Tek satır özet, gürültü yok. */
+.home-kanal-serit .rail-header { align-items: center; }
+.home-kanal-link {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--primary, #dfff76);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.home-kanal-link:hover { text-decoration: underline; }
+
+.home-kanal-kart {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  flex-wrap: wrap;
+  padding: 0.95rem 1.1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(223, 255, 118, 0.22);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(223, 255, 118, 0.13), transparent 60%),
+    linear-gradient(120deg, rgba(24, 27, 38, 0.95), rgba(12, 14, 20, 0.98));
+}
+.home-kanal-sol { display: flex; flex-direction: column; gap: 0.22rem; min-width: 0; flex: 1 1 240px; }
+.home-kanal-canli {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ff5a5f;
+}
+.home-kanal-nokta {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #ff5a5f;
+  animation: home-kanal-nabiz 1.8s infinite;
+}
+@keyframes home-kanal-nabiz {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.home-kanal-ad {
+  font-family: var(--font-heading, inherit);
+  font-size: 1.08rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-kanal-meta { font-size: 0.76rem; color: var(--text-muted, #94a3b8); }
+.home-kanal-sira {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
+}
+.home-kanal-sira-oge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 220px;
+  padding: 0.34rem 0.62rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  font-size: 0.72rem;
+  color: var(--text-muted, #94a3b8);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.home-kanal-sira-oge b { color: var(--text-main, #f5f5f5); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .home-kanal-kart { padding: 0.8rem 0.85rem; gap: 0.7rem; }
+  .home-kanal-ad { font-size: 0.98rem; }
+  .home-kanal-sira-oge { max-width: 150px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-kanal-nokta { animation: none; }
+}
+
+/* ── Zevk profili şeridi (Ana Sayfa) ─────────────────────────────────────
+   Kullanıcının gerçek sinyallerinden (favori/liste/bitirdikleri) türetilen
+   tek satır özet. Sıralamayı açıklayan dürüst etiket — süs değil. */
+.zevk-serit {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 0.9rem;
+  margin: 0.2rem auto 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(223, 255, 118, 0.16);
+  background: linear-gradient(120deg, rgba(223, 255, 118, 0.07), rgba(255, 255, 255, 0.02));
+}
+.zevk-serit-etiket {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary, #dfff76);
+  white-space: nowrap;
+}
+.zevk-serit-ozet { font-size: 0.78rem; color: var(--text-muted, #94a3b8); }
+.zevk-serit-turler { display: inline-flex; gap: 0.3rem; flex-wrap: wrap; margin-left: auto; }
+.zevk-serit-turler em {
+  font-style: normal;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  color: var(--text-main, #f5f5f5);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(223, 255, 118, 0.35);
+  border-color: color-mix(in srgb, var(--primary, #dfff76) var(--zevk, 50%), transparent);
+}
+@media (max-width: 640px) {
+  .zevk-serit-ozet { flex: 1 1 100%; }
+  .zevk-serit-turler { margin-left: 0; }
+}

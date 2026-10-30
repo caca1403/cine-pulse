@@ -524,7 +524,12 @@ function attachShellEvents() {
       currentStep++;
       renderStepContent();
     } else {
-      // Tamamlandı
+      // Tamamlandı — tercihler saklanır (opt_player_mode artık ÖLÜ DEĞİL:
+      // PlayerModal kaynak geçişlerinde harici oynatıcı modunu okur, #9).
+      try {
+        const secili = document.querySelector('input[name="opt_player_mode"]:checked')?.value || 'internal';
+        localStorage.setItem('cp_player_mode', secili);
+      } catch (_) {}
       localStorage.setItem('cp_setup_done_v1', 'true');
       showToast('CinePulse hazır! İyi seyirler 🍿', 'success');
       closeSetupWizardModal();

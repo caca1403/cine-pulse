@@ -1,0 +1,69 @@
+/* ==========================================================================
+   CinePulse Studio — kaynak taraması geçiş katmanı + dil bayrakları
+   (kullanıcı 2026-10-28, madde 1 & 5)
+   1) body.cp-landscape-gecis: kaynak kartına basıldıktan sonra oynatıcının ilk
+      karesine kadar SADECE karartma + spinner gösterir. İÇERİKTE 90° CSS
+      ROTASYON YOKTUR — döndürülmüş katman dokunmatik koordinatları kaydırır;
+      asıl yatay garanti native tarafta verilir.
+   2) .kaynak-kart-diller: dil bayrakları sarmalar; bayrak yazısı küçük, satır
+      yüksekliği sabit değil (Windows iki-harf regional-indicator kutusu).
+   ========================================================================== */
+
+body.cp-landscape-gecis::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000; /* her katmanın üstü: geçiş tek görsel gerçeklik */
+  pointer-events: all; /* geçiş sırasında yanlış tıklamaları kes */
+  background: rgba(4, 6, 12, 0.88);
+  backdrop-filter: blur(6px);
+  animation: cp-gecis-gir 0.18s ease-out;
+}
+
+body.cp-landscape-gecis::before {
+  content: "";
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 2147483001;
+  width: 42px;
+  height: 42px;
+  margin: -21px 0 0 -21px;
+  border-radius: 50%;
+  border: 3px solid rgba(223, 255, 118, 0.25);
+  border-top-color: #dfff76;
+  animation: cp-gecis-don 0.9s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes cp-gecis-gir {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cp-gecis-don {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.cp-landscape-gecis::before { animation-duration: 2s; }
+  body.cp-landscape-gecis::after { animation: none; }
+}
+
+/* ── Madde 5: bayrak rozetleri ──────────────────────────────────────────── */
+.kaynak-kart-diller {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
+  /* Sabit satır yüksekliği yerine min: Windows'ta iki regional-indicator
+     harfi daha kutu gibi çizilir; sabit line-height kırpardı. */
+  min-height: 1.3em;
+  line-height: 1.35;
+}
+
+.kaynak-rozet--dil {
+  font-size: 0.72rem; /* bayrak yazısı küçük kalsın (madde 5) */
+  line-height: 1.35;
+  white-space: nowrap;
+}

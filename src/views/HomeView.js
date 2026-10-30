@@ -10,17 +10,19 @@ import {
   fetchTrending, fetchPopularSeries, fetchPopularMovies, fetchTopRated, fetchPopularAnime, fetchPopularDocumentaries,
   fetchKidsPopularSeries, fetchKidsPopularMovies, fetchKidsAdventures, fetchKidsDocumentaries, fetchKidsAnime,
   fetchKidsAnimationSeries, fetchKidsClassicCartoonSeries,
-  fetchAdultAnimationSeries, fetchCartoonSeries, fetchRecommendations, fetchUpcoming
+  fetchAdultAnimationSeries, fetchCartoonSeries
 } from '../services/icerik/tmdbApi.js';
-import { getUnifiedContinueWatching, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile, isItemKidSafe, getFavorites } from '../services/altyapi/storage.js';
+import { getUnifiedContinueWatching, getGroupedWatchHistory, removeSeriesFromHistory, isKidProfileActive, filterForActiveProfile, isItemKidSafe, getFavorites, getWatchlist, getCompletedWatchList } from '../services/altyapi/storage.js';
 import { renderHeroSlider, attachHeroSliderEvents, stopHeroSlider } from '../components/HeroSlider.js';
 import { renderMediaCard, attachMediaCardEvents } from '../components/MediaCard.js';
 import { showToast } from '../components/Toast.js';
 import { collectWithin } from '../services/kabuk/startupBudget.js';
 import { railScrollMemory } from '../services/kabuk/scrollManager.js';
-import { tohumSec, onbellekAnahtari, cacheOku, cacheYaz, satirBasligi, KISISSEL_SATIR_TIPI } from '../services/icerik/personalRails.js';
-import { zamanRail } from '../services/kesif/zamanRail.js';
 import { isP2pAvailable } from '../services/dogrudan/p2pService.js';
+import { modeliHazirla2, gosterimKaydet, tiklamaKaydet } from '../services/kisisel/kisiselMotor.js';
+import { profilKur, profilSirala, ozetMetni } from '../services/kisisel/zevkProfili.js';
+import { fetchPersonalizedRows } from '../services/kisisel/recommendationEngine.js';
+import '../styles/home-polish.css';
 
 // Cache home TMDB data & rail state across navigations
 let homeDataCache = null;
@@ -29,17 +31,23 @@ let homeCacheGeneration = 0;
 const railExtraItemsCache = new Map();
 const activeRailObservers = new Set();
 const railInitialQueues = new Map();
+/* G2: rail'ler ilk görünürde kart kart stagger ile belirir (cp-fade-up).
+   Sayfa düzeyinde router animasyonuna dokununmadan, tek gözlemci yeter. */
+let railAnimObserver = null;
 const HOME_CACHE_TTL_MS = 10 * 60 * 1000;
 /* Disk önbelleği (localStorage): uygulama kapanıp açılsa da ana sayfa ANINDA
-   içerikle gelir. ÖLÇÜM (2026-10-18): yavaş ağda ilk açılış boş kalıyordu
-   (sessionStorage her açılışta sıfırlanıyor). 6 saat taze sayılır; arka planda
-   yine tazelenir (stale-while-revalidate). */
-const HOME_DISK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+   içerikle gelir; öneri ve katalog havuzu en geç 10 dakikada yenilenir. */
+const HOME_DISK_TTL_MS = HOME_CACHE_TTL_MS;
+let homeDataCacheSavedAt = 0;
 
 export function cleanupHomeView() {
   stopHeroSlider();
   for (const observer of activeRailObservers) observer.disconnect();
   activeRailObservers.clear();
+  if (railAnimObserver) {
+    railAnimObserver.disconnect();
+    railAnimObserver = null;
+  }
 }
 
 function getPersistentHomeCache(isKid) {
@@ -48,6 +56,7 @@ function getPersistentHomeCache(isKid) {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed?.savedAt || Date.now() - parsed.savedAt > HOME_DISK_TTL_MS) return null;
+    homeDataCacheSavedAt = parsed.savedAt;
     return parsed.data?.isKid === isKid ? parsed.data : null;
   } catch (_) {
     return null;
@@ -62,15 +71,18 @@ function persistHomeCache(data) {
   // Bos birincil veriyi onbellege yazma (hero/populer railler kaybolur ve 10 dk duzelmez).
   if (!hasPrimaryContent(data)) return;
   try {
+    const savedAt = Date.now();
     localStorage.setItem(`cinepulse_home_fast_v7_${data.isKid ? 'kids' : 'adult'}`, JSON.stringify({
-      savedAt: Date.now(),
+      savedAt,
       data
     }));
+    homeDataCacheSavedAt = savedAt;
   } catch (_) {}
 }
 
 export function clearHomeCache() {
   homeDataCache = null;
+  homeDataCacheSavedAt = 0;
   homeSecondaryPending = null;
   homeCacheGeneration++;
   try {
@@ -120,6 +132,30 @@ const railState = {
    ilk sayfa zaten 20 kayıt döndürüyor; hepsini göster, kaydırmada sonraki
    sayfa gelsin. */
 const RAIL_ILK_ADET = 20;
+
+/* G2: Bir kapsayıcıdaki rail bölümlerini ilk-görünür stagger animasyonuna
+   bağlar (idempotent — [data-rail-anim] işaretli bölüm yeniden işlenmez).
+   Görünür olunca `rail-gorunur` eklenir; CSS cp-fade-up'ı --cp-i gecikmesiyle
+   kartlara uygular. reduced-motion'da CSS gizleme kuralını hiç koymaz. */
+function railAnimasyonuBagla(kok) {
+  if (!kok || !('IntersectionObserver' in window)) return;
+  if (!railAnimObserver) {
+    railAnimObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        railAnimObserver.unobserve(entry.target);
+        entry.target.classList.add('rail-gorunur');
+      });
+    }, { threshold: 0.05, rootMargin: '0px 0px -6% 0px' });
+  }
+  kok.querySelectorAll('.rail-section:not([data-rail-anim])').forEach(bolum => {
+    bolum.setAttribute('data-rail-anim', '1');
+    bolum.querySelectorAll('.card-rail > *').forEach((kart, i) => {
+      kart.style.setProperty('--cp-i', String(Math.min(i, 12)));
+    });
+    railAnimObserver.observe(bolum);
+  });
+}
 
 function renderInfiniteRail({ id, icon, title, accent, items }) {
   if (!items || items.length === 0) return '';
@@ -282,30 +318,32 @@ function initInfiniteRails(container) {
 }
 
 /* --------------------------------------------------------------------------
+   "Benim kanalım · şimdi" şeridi
+   Kanal programı cihaz içi sinyallerden (geçmiş/favori/liste) SENKRON kurulur:
+   ağ yok, ilk boyamayı geciktirmez. Program boşsa şerit hiç çizilmez.
+-------------------------------------------------------------------------- */
+/** Metni HTML'e kaçırır (HomeView yerel yardımcısı). */
+function kanalEsc(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/* --------------------------------------------------------------------------
    Main render
 -------------------------------------------------------------------------- */
 export async function renderHomeView() {
-  const cacheGeneration = homeCacheGeneration;
   const isKid = isKidProfileActive();
-
-  // "Yakında" verisi: 6 saatlik personalRails önbellek deseniyle (localStorage),
-  // ağ hatasında rail sessizce çözülür (kullanıcıya hata gösterilmez).
-  // Trending ile eşzamanlı çalışmak için burada (await'suz) başlatılır;
-  // HTML oluşturulmadan önce await edilir.
-  const yakindaYukle = (async () => {
-    try {
-      const anahtar = `cinepulse_zaman_yakinda_${isKid ? 'kids' : 'adult'}`;
-      const depo = typeof localStorage !== 'undefined' ? localStorage : null;
-      let gelen = cacheOku(depo, anahtar);
-      if (!gelen) {
-        gelen = await fetchUpcoming(1);
-        if (gelen && gelen.length) cacheYaz(depo, anahtar, gelen);
-      }
-      return gelen || [];
-    } catch (_) {
-      return [];
-    }
-  })();
+  if (homeDataCache && Date.now() - homeDataCacheSavedAt > HOME_CACHE_TTL_MS) {
+    homeDataCache = null;
+    homeDataCacheSavedAt = 0;
+    homeSecondaryPending = null;
+    homeCacheGeneration++;
+  }
+  const cacheGeneration = homeCacheGeneration;
 
   let trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, kidsAdventures, adultAnimationItems, cartoonSeriesItems, kidsAnimationItems, kidsClassicCartoonItems;
 
@@ -313,6 +351,7 @@ export async function renderHomeView() {
   // Zehirlenmis (bos birincil verili) onbellegi kullanma, yeniden cek.
   if (homeDataCache && !hasPrimaryContent(homeDataCache)) {
     homeDataCache = null;
+    homeDataCacheSavedAt = 0;
     try {
       sessionStorage.removeItem(`cinepulse_home_fast_v7_${isKid ? 'kids' : 'adult'}`);
     } catch (_) {}
@@ -333,6 +372,7 @@ export async function renderHomeView() {
       if (cacheGeneration !== homeCacheGeneration) return;
       [kidsAdventures, animeItems, kidsAnimationItems, kidsClassicCartoonItems] = results;
       homeDataCache = { isKid: true, trending, popularTV, popularMovies, kidsAdventures, animeItems, kidsAnimationItems, kidsClassicCartoonItems };
+      homeDataCacheSavedAt = Date.now();
       if (primarySettled) persistHomeCache(homeDataCache);
       secondarySettled = true;
     }).catch(() => { secondarySettled = true; });
@@ -344,7 +384,10 @@ export async function renderHomeView() {
     trending = [...(popularMovies || []), ...(popularTV || [])]
       .filter(item => item.backdrop_path && isItemKidSafe(item)).slice(0, 10);
     if (cacheGeneration !== homeCacheGeneration) return null;
-    if (!secondarySettled) homeDataCache = { isKid: true, trending, popularTV, popularMovies };
+    if (!secondarySettled) {
+      homeDataCache = { isKid: true, trending, popularTV, popularMovies };
+      homeDataCacheSavedAt = Date.now();
+    }
   } else {
     secondaryReady = Promise.all([
       fetchTopRated('tv', 1), fetchTopRated('movie', 1),
@@ -354,6 +397,7 @@ export async function renderHomeView() {
       if (cacheGeneration !== homeCacheGeneration) return;
       [topRatedTV, topRatedMovies, animeItems, docItems, adultAnimationItems, cartoonSeriesItems] = results;
       homeDataCache = { isKid: false, trending, popularTV, popularMovies, topRatedTV, topRatedMovies, animeItems, docItems, adultAnimationItems, cartoonSeriesItems };
+      homeDataCacheSavedAt = Date.now();
       if (primarySettled) persistHomeCache(homeDataCache);
       secondarySettled = true;
     }).catch(() => { secondarySettled = true; });
@@ -364,28 +408,43 @@ export async function renderHomeView() {
       fetchPopularSeries(1), fetchPopularMovies(1)
     ]);
     if (cacheGeneration !== homeCacheGeneration) return null;
-    if (!secondarySettled) homeDataCache = { isKid: false, trending, popularTV, popularMovies };
+    if (!secondarySettled) {
+      homeDataCache = { isKid: false, trending, popularTV, popularMovies };
+      homeDataCacheSavedAt = Date.now();
+    }
   }
   primarySettled = true;
   if (secondarySettled && homeDataCache) persistHomeCache(homeDataCache);
   const secondaryInInitialHTML = secondarySettled;
 
-  const yakindaHam = await yakindaYukle;
-  const simdi = Date.now();
-
-  // "Bugün & Bu Hafta": trending (film+dizi karışımı) içinden bugün/bu hafta
-  // yayında olanlar; boşsa rail çizilmez. Çocuk profilinde kidSafe süzülür.
-  const gunlukHavuz = [...(trending || []), ...(popularMovies || []), ...(popularTV || [])];
-  const gunluk = zamanRail(isKid ? gunlukHavuz.filter(i => i && isItemKidSafe(i)) : gunlukHavuz, simdi);
-  const gunlukOge = [...gunluk.bugun, ...gunluk.buHafta];
-
-  // "Yakında": TMDB upcoming/on_the_air içinden gelecek tarihli olanlar;
-  // çocuk profilinde kidSafe süzülür, boşsa rail çizilmez.
-  const yakindaOge = zamanRail(isKid ? (yakindaHam || []).filter(i => i && isItemKidSafe(i)) : (yakindaHam || []), simdi).yakinda;
-
   const rawWatchHistory = getUnifiedContinueWatching();
   const watchHistory = filterForActiveProfile(rawWatchHistory);
-  
+  // TAM geçmiş (tamamlananlar dâhil, yapıt başına tek kayıt): yedekten/önbellekten
+  // dönen "bitti" işaretleri Ana Sayfa'yı BESLER (kullanıcı isteği 2026-10-30).
+  // "İzlemeye devam et" rail'i bilerek bundan DEĞİL, devam listesinden çizilir.
+  const gecmisGrupTam = filterForActiveProfile(getGroupedWatchHistory() || []);
+  const evrenselFavoriler = filterForActiveProfile(getFavorites() || []);
+  const evrenselListe = filterForActiveProfile(getWatchlist() || []);
+
+  /* ── ZEVK PROFİLİ ─────────────────────────────────────────────────────
+     Kullanıcının BİLEREK verdiği sinyaller (favoriler, izleme listesi,
+     bitirdikleri + önbellek/yedekten geri gelen "bitti" işaretleri) tek bir
+     tür ağırlığına indirgenir ve Ana Sayfa'nın TAMAMINI etkiler:
+       · hero seçimi, · her satırın iç sıralaması, · kendi verisinden 3 satır.
+     Profil boşsa hiçbir sıralama değişmez (sahte kişiselleştirme yok).      */
+  const zamanliFavoriler = evrenselFavoriler
+    .map((f) => ({ ...f, lastWatchedAt: Number(f.lastWatchedAt) || Number(f.addedAt) || 0 }));
+  const tamamlananlar = filterForActiveProfile(getCompletedWatchList() || []);
+  const zevk = isKid
+    ? profilKur({ favoriler: [], watchlist: [], tamamlanan: [], gecmis: [] })
+    : profilKur({
+      favoriler: zamanliFavoriler,
+      watchlist: evrenselListe,
+      tamamlanan: tamamlananlar,
+      gecmis: gecmisGrupTam
+    });
+  const zevkOzet = isKid ? '' : ozetMetni(zevk);
+
   // Kids mode: use kids-specific content for hero (strictly filtered for safe kids items)
   let heroItems;
   if (isKid) {
@@ -394,7 +453,44 @@ export async function renderHomeView() {
   } else {
     const trendingPool = Array.isArray(trending) ? trending : [];
     const fallbackPool = [...(popularMovies || []), ...(popularTV || [])].filter(i => i && i.backdrop_path);
-    heroItems = (trendingPool.length > 0 ? trendingPool : fallbackPool).slice(0, 10);
+    // Hero de zevk profiline göre: en sevdiğin türler öne çıkar (profil boşsa sıra aynı).
+    const heroHavuz = (trendingPool.length > 0 ? trendingPool : fallbackPool).filter(i => i && i.backdrop_path);
+    const siraliHero = zevk.bos ? heroHavuz : profilSirala(heroHavuz, zevk, { esik: 0.2 });
+    heroItems = (siraliHero.length > 0 ? siraliHero : fallbackPool).slice(0, 10);
+  }
+
+  /* Her satırın içi de zevk profiline göre sıralanır: "Popüler Diziler" bile
+     senin en çok sevdiğin türleri önce gösterir. Profil boşsa sıra korunur.
+     (Satırlar bu değişkenlerden çizildiği için sıralama burada uygulanır.) */
+  if (!isKid && !zevk.bos) {
+    const sirala = (liste) => (Array.isArray(liste) && liste.length > 4
+      ? profilSirala(liste, zevk, { esik: 0.15 })
+      : liste);
+    popularTV = sirala(popularTV);
+    popularMovies = sirala(popularMovies);
+    topRatedTV = sirala(topRatedTV);
+    topRatedMovies = sirala(topRatedMovies);
+    animeItems = sirala(animeItems);
+    docItems = sirala(docItems);
+    adultAnimationItems = sirala(adultAnimationItems);
+    cartoonSeriesItems = sirala(cartoonSeriesItems);
+  }
+
+  /* Her satırın içi de zevk profiline göre sıralanır: "Popüler Diziler" bile
+     senin en çok sevdiğin türleri önce gösterir. Profil boşsa sıra korunur.
+     (Satırlar bu değişkenlerden çizildiği için sıralama burada uygulanır.) */
+  if (!isKid && !zevk.bos) {
+    const sirala = (liste) => (Array.isArray(liste) && liste.length > 4
+      ? profilSirala(liste, zevk, { esik: 0.15 })
+      : liste);
+    popularTV = sirala(popularTV);
+    popularMovies = sirala(popularMovies);
+    topRatedTV = sirala(topRatedTV);
+    topRatedMovies = sirala(topRatedMovies);
+    animeItems = sirala(animeItems);
+    docItems = sirala(docItems);
+    adultAnimationItems = sirala(adultAnimationItems);
+    cartoonSeriesItems = sirala(cartoonSeriesItems);
   }
 
   // Keep first paint light, then append the remaining page-one results only
@@ -446,22 +542,6 @@ export async function renderHomeView() {
   let railsHTML = '';
   if (isKid) {
     railsHTML = `
-      ${gunlukOge.length > 0 ? renderInfiniteRail({
-        id:    'rail-bugun-buhafta',
-        icon:  'clock',
-        title: 'Bugün & Bu Hafta',
-        accent:'#22d3ee',
-        items: gunlukOge
-      }) : ''}
-
-      ${yakindaOge.length > 0 ? renderInfiniteRail({
-        id:    'rail-yakinda',
-        icon:  'calendar',
-        title: 'Yakında',
-        accent:'#f472b6',
-        items: yakindaOge
-      }) : ''}
-
       ${renderInfiniteRail({
         id:    'rail-kids-movies',
         icon:  'sparkles',
@@ -504,22 +584,6 @@ export async function renderHomeView() {
     `;
   } else {
     railsHTML = `
-      ${gunlukOge.length > 0 ? renderInfiniteRail({
-        id:    'rail-bugun-buhafta',
-        icon:  'clock',
-        title: 'Bugün & Bu Hafta',
-        accent:'#22d3ee',
-        items: gunlukOge
-      }) : ''}
-
-      ${yakindaOge.length > 0 ? renderInfiniteRail({
-        id:    'rail-yakinda',
-        icon:  'calendar',
-        title: 'Yakında',
-        accent:'#f472b6',
-        items: yakindaOge
-      }) : ''}
-
       ${renderInfiniteRail({
         id:    'rail-popular-tv',
         icon:  'tv-2',
@@ -588,8 +652,8 @@ export async function renderHomeView() {
 
   const viewHTML = `
     <div class="home-view ${isKid ? 'is-kids-mode' : ''}">
-      ${!hasPrimaryContent({ trending, popularTV, popularMovies }) ? '<div class="container" role="status" style="padding:5rem 1rem 2rem"><p>İçerik servisine ulaşılamadı. Bağlantını kontrol edip yeniden deneyebilirsin.</p><button class="btn btn-primary" id="btn-home-retry">Yeniden Dene</button></div>' : ''}
       ${heroHTML || '<div class="home-hero-spacer" style="height:84px;flex:none;"></div>'}
+      ${!hasPrimaryContent({ trending, popularTV, popularMovies }) ? '<div class="container" role="status" style="padding:5rem 1rem 2rem"><p>İçerik servisine ulaşılamadı. Bağlantını kontrol edip yeniden deneyebilirsin.</p><button class="btn btn-primary" id="btn-home-retry">Yeniden Dene</button></div>' : ''}
 
       ${isP2pAvailable() ? `<div class="container p2p-launch-row">
         <button id="btn-p2p-launch" class="p2p-launch-btn" type="button">🛰 P2P ile Oynat</button>
@@ -597,6 +661,16 @@ export async function renderHomeView() {
       </div>` : ''}
 
       ${renderContinueWatchingSection(watchHistory)}
+
+      ${zevkOzet ? `<div class="container zevk-serit" role="note" aria-label="Zevk profilin">
+        <span class="zevk-serit-etiket"><i data-lucide="fingerprint" style="width:14px;height:14px;"></i> Zevk profilin</span>
+        <span class="zevk-serit-ozet">${kanalEsc(zevkOzet)}</span>
+        <span class="zevk-serit-turler">
+          ${zevk.turSira.slice(0, 4).map((t) => `<em style="--zevk:${Math.round(40 + t.agirlik * 60)}%">${kanalEsc(t.ad)}</em>`).join('')}
+        </span>
+      </div>` : ''}
+
+      <div id="ml-rail-slot"></div>
 
       ${railsHTML}
     </div>
@@ -618,8 +692,12 @@ export async function renderHomeView() {
       attachMediaCardEvents(container);
 
       const attachRailScrolling = (root) => {
+      railAnimasyonuBagla(root);
       root.querySelectorAll('.card-rail').forEach(rail => {
         const railId = rail.id;
+
+        // Kenar maskesi yalnız raf taşıyorsa (sığan raf soluklaşmasın).
+        if (rail.scrollWidth > rail.clientWidth + 4) rail.classList.add('rail-edge-mask');
 
         // Restore saved horizontal scroll position
         if (railId) {
@@ -678,6 +756,130 @@ export async function renderHomeView() {
 
       // Infinite scroll
       initInfiniteRails(container);
+
+      /* ── Kişisel öneriler: çoklu tohum + görülmemiş aday üretimi ──────── */
+      (async () => {
+        try {
+          const slot = container.querySelector('#ml-rail-slot');
+          if (!slot) return;
+          const tabanHavuz = [
+            ...(trending || []), ...(popularTV || []), ...(popularMovies || []),
+            ...(topRatedTV || []), ...(topRatedMovies || []), ...(animeItems || []),
+            ...(docItems || []), ...(isKid ? [...(kidsAdventures || []), ...(kidsAnimationItems || [])] : [])
+          ].filter((x) => x && x.id != null && (!isKid || isItemKidSafe(x)));
+          const model = await modeliHazirla2({ ekKayitlar: tabanHavuz });
+          if (!container.isConnected || !(window.location.hash || '#home').startsWith('#home')) return;
+          const rows = await fetchPersonalizedRows({
+            gecmis: gecmisGrupTam,
+            tamamlanan: tamamlananlar,
+            favoriler: evrenselFavoriler,
+            watchlist: evrenselListe,
+            model,
+            fallbackAdaylar: tabanHavuz,
+            adet: 40,
+            isKid,
+            guvenliMi: isItemKidSafe
+          });
+          if (!container.isConnected || !(window.location.hash || '#home').startsWith('#home')) return;
+          const rail = (id, icon, title, accent, items) => {
+            if (!Array.isArray(items) || items.length < 10) return '';
+            const shown = items.slice(0, 40);
+            return `
+              <section class="rail-section reco-row" id="${id}">
+                <div class="container">
+                  <div class="rail-header">
+                    <h2 class="rail-title">
+                      <span class="rail-icon-pill" style="--rail-color:${accent}">
+                        <i data-lucide="${icon}" aria-hidden="true"></i>
+                      </span>
+                      ${title}
+                    </h2>
+                    <span class="reco-row-count">${shown.length} yeni başlık</span>
+                  </div>
+                  <div class="card-rail" id="${id}-cards">
+                    ${shown.map((oge) => renderMediaCard(oge)).join('')}
+                  </div>
+                </div>
+              </section>
+            `;
+          };
+          slot.innerHTML = [
+            rail('rail-ml-films', 'clapperboard', 'Sana özel filmler', '#dfff76', rows.sanaOzelFilmler),
+            rail('rail-ml-series', 'tv-2', 'Sana özel diziler', '#34d399', rows.sanaOzelDiziler),
+            gecmisGrupTam.length
+              ? rail('rail-reco-tamamladiklarindan', 'check-check', 'Bitirdiklerinden sonra', '#a78bfa', rows.tamamladiklarindanSonra)
+              : '',
+            evrenselFavoriler.length
+              ? rail('rail-reco-favoriler', 'heart', 'Favorilerine yakın', '#f472b6', rows.favorilerineGore)
+              : ''
+          ].join('');
+          if (!slot.innerHTML) {
+            slot.innerHTML = '<div class="container" role="status"><p>Şu an zevkine uygun yeni yapım bulamadık. Biraz daha içerik izledikçe öneriler gelişir.</p></div>';
+            return;
+          }
+          renderIcons(slot);
+          attachMediaCardEvents(slot);
+          attachRailScrolling(slot);
+          slot.querySelectorAll('.rail-section[id]').forEach((section) => {
+            const source = section.id === 'rail-reco-tamamladiklarindan'
+              ? 'tamamlanan'
+              : section.id === 'rail-reco-favoriler' ? 'favoriler' : 'ana';
+            const cards = [...section.querySelectorAll('.media-card[data-id]')];
+            const record = (card) => gosterimKaydet([{
+              id: card.getAttribute('data-id'),
+              type: card.getAttribute('data-type') || card.getAttribute('data-mediatype') || ''
+            }], source);
+            if (typeof IntersectionObserver !== 'function') {
+              cards.slice(0, 5).forEach(record);
+              return;
+            }
+            const timers = new Map();
+            const observer = new IntersectionObserver((entries) => {
+              for (const entry of entries) {
+                if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+                  if (timers.has(entry.target)) continue;
+                  timers.set(entry.target, setTimeout(() => {
+                    if (entry.target.isConnected) record(entry.target);
+                    timers.delete(entry.target);
+                    observer.unobserve(entry.target);
+                  }, 900));
+                } else {
+                  const timer = timers.get(entry.target);
+                  if (timer) clearTimeout(timer);
+                  timers.delete(entry.target);
+                }
+              }
+            }, { threshold: 0.5 });
+            cards.forEach((card) => observer.observe(card));
+            const disconnect = observer.disconnect.bind(observer);
+            observer.disconnect = () => {
+              timers.forEach(clearTimeout);
+              timers.clear();
+              disconnect();
+            };
+            activeRailObservers.add(observer);
+          });
+        } catch (error) {
+          console.error('[Ana sayfa önerileri] Öneriler yüklenemedi.', error);
+          const slot = container.querySelector('#ml-rail-slot');
+          if (slot) slot.innerHTML = '<div class="container" role="status"><p>Öneriler şu anda yüklenemedi. Ana sayfadaki diğer içerikler kullanılabilir.</p></div>';
+        }
+      })();
+
+      // Kart açma = pozitif sınıf: sıralayıcı hangi kartın ilgi çektiğini öğrenir.
+      container.addEventListener('click', (e) => {
+        const kart = e.target && typeof e.target.closest === 'function'
+          ? e.target.closest('#ml-rail-slot .media-card[data-id]')
+          : null;
+        if (!kart) return;
+        const source = kart.closest('#rail-reco-tamamladiklarindan')
+          ? 'tamamlanan'
+          : kart.closest('#rail-reco-favoriler') ? 'favoriler' : 'ana';
+        tiklamaKaydet({
+          id: kart.getAttribute('data-id'),
+          type: kart.getAttribute('data-type') || kart.getAttribute('data-mediatype') || ''
+        }, source);
+      }, { capture: true });
       if (secondaryReady && !secondaryInInitialHTML) {
         const homeView = container.querySelector('.home-view');
         secondaryReady.then(() => {
@@ -705,42 +907,6 @@ export async function renderHomeView() {
           initInfiniteRails(extra);
         });
       }
-
-      // Kişisel satır: "Çünkü {ad} izledin" (Netflix Öneri #1 — personalRails.js SAF çekirdeği).
-      // Tohum = en son izlenen 1 yapıt; öneriler 6 saatlik localStorage önbellekten gelir,
-      // yoksa tek TMDB recommendations isteğiyle çekilir. Ana Sayfa'yı asla kırmaz.
-      (async () => {
-        try {
-          const tohumlar = tohumSec(watchHistory, getFavorites(), { maks: 2 });
-          if (tohumlar.length === 0) return;
-          const tohum = tohumlar[0];
-          const anahtar = onbellekAnahtari(KISISSEL_SATIR_TIPI, tohum);
-          const depo = typeof localStorage !== 'undefined' ? localStorage : null;
-          let ogeler = cacheOku(depo, anahtar);
-          if (!ogeler) {
-            ogeler = await fetchRecommendations(tohum.tur, tohum.tmdbId);
-            if (ogeler && ogeler.length > 0) cacheYaz(depo, anahtar, ogeler);
-          }
-          if (!ogeler || ogeler.length === 0) return;
-          if (!container.isConnected || !(window.location.hash || '#home').startsWith('#home')) return;
-          const temiz = filterForActiveProfile(ogeler).slice(0, 18);
-          if (temiz.length < 4) return;
-          const holder = document.createElement('div');
-          holder.innerHTML = renderInfiniteRail({
-            id: 'rail-personal-cunku',
-            icon: 'sparkles',
-            title: satirBasligi(tohum.ad),
-            accent: '#f472b6',
-            items: temiz
-          });
-          const anchor = container.querySelector('#continue-watching-rail')?.closest('.rail-section');
-          if (anchor) anchor.after(holder);
-          else container.querySelector('.home-view')?.prepend(holder);
-          renderIcons(holder);
-          attachMediaCardEvents(holder);
-          attachRailScrolling(holder);
-        } catch (_) { /* kişisel satır opsiyoneldir */ }
-      })();
 
       // Delete from continue watching
       container.querySelectorAll('.btn-delete-history').forEach(btn => {

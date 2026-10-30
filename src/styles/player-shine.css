@@ -1,0 +1,672 @@
+/* ==========================================================================
+   CINEPULSE — NATIVE SAHNE ŞERİDİ (Stremio düzeni)
+   --------------------------------------------------------------------------
+   Yalnız cihaz oynatıcısı (Media3/ExoPlayer) açıkken devreye girer:
+   `.cinema-sahne-native` PlayerModal köküne nativePlayer.js ekler.
+   Görüntü native yüzeyde; buradaki DOM şerit, ilerleme ve menüdür.
+   Web/masaüstü oynatıcı görünümü bu dosyadan ETKİLENMEZ.
+   ========================================================================== */
+
+/* ── Sahne tam ekran: YouTube ızgarası bozulmadan yalnız sahne kalır ────── */
+/* !important: main.css'in mobil-yatay ve #player-modal kuralları
+   (aspect-ratio, max-height:48vh, height:calc(100vh-36px)) sahneyi kırpıyor. */
+.player-modal-content.cinema-sahne-native {
+  position: fixed;
+  inset: 0;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #000;
+  overflow: hidden;
+}
+
+#player-modal .cinema-sahne-native .player-yt-layout {
+  position: absolute;
+  inset: 0;
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+#player-modal .cinema-sahne-native .player-yt-main {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden;
+}
+
+.cinema-sahne-native .dizisol-cinema-body,
+.cinema-sahne-native .player-yt-sidebar,
+.cinema-sahne-native .player-footer-bar,
+.cinema-sahne-native .short-drama-artwork {
+  display: none !important;
+}
+
+#player-modal .cinema-sahne-native .player-stage-wrapper {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+  flex: none !important;
+  border-radius: 0 !important;
+}
+
+#player-modal .cinema-sahne-native .player-iframe-container {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Üst şerit: ‹ · içerik adı · Ekranı Döndür ─────────────────────────── */
+#player-modal .cinema-sahne-native .player-cinema-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 0 !important;
+  padding: calc(env(safe-area-inset-top, 0px) + 0.45rem) max(1rem, env(safe-area-inset-right, 0px)) 0.9rem max(1rem, env(safe-area-inset-left, 0px)) !important;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.45) 55%, transparent 100%) !important;
+  border: 0;
+  pointer-events: none;
+}
+
+.cinema-sahne-native .player-cinema-bar > * {
+  pointer-events: auto;
+}
+
+.cinema-sahne-native .player-title-box {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 52%;
+  justify-content: center;
+}
+
+.cinema-sahne-native .player-header-title {
+  /* main.css mobil kuralı başlığı gizliyor; Stremio şeridinde ad GÖRÜNÜR. */
+  display: block !important;
+  max-width: 46vw !important;
+  font-size: 0.9rem !important;
+  font-weight: 700;
+  color: #f4f6fb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+}
+
+.cinema-sahne-native .player-header-ep-badge,
+.cinema-sahne-native .player-resume-badge {
+  display: none;
+}
+
+.cinema-sahne-native #btn-player-shortcuts,
+.cinema-sahne-native #btn-player-fullscreen {
+  display: none !important;
+}
+
+.cinema-sahne-native .btn-player-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 13, 20, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.cinema-sahne-native .btn-native-dondur {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.42rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(10, 13, 20, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f4f6fb;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.btn-native-dondur-etiket {
+  white-space: nowrap;
+}
+
+/* Dikey ekran: şeritte yer yok — yalnız ikon, başlık ortada kalır. */
+@media (orientation: portrait), (max-width: 520px) {
+  .btn-native-dondur-etiket {
+    display: none;
+  }
+
+  .cinema-sahne-native .btn-native-dondur {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .cinema-sahne-native .player-title-box {
+    max-width: 46%;
+  }
+}
+
+/* ── Sahne katmanı ─────────────────────────────────────────────────────── */
+.native-sahne {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
+/* Native modda eski "her çocuğu gizle" kuralını yalnız şerit için açarız. */
+.cp-native-video .direct-video-wrapper.native-sahne > .native-chrome {
+  display: block !important;
+}
+
+.cp-native-video .direct-video-wrapper.native-sahne > .native-seek-zone {
+  display: flex !important;
+}
+
+/* Perdeyi native çizer; DOM'daki spinner yalnız medya hazır olana kadar
+   saydam zeminde durur (native perde arkasında kalmaz, üstünde döner). */
+/* NİTELİĞİ: native modda modalın siyah arka planı arkadaki native videonu
+   örter (CDP kanıtı 2026-10-28: .modal-backdrop bg=rgb(0,0,0) z=99999).
+   html.native-android kuralı daha sonra gelip #000 uyguluyor; bu kural daha
+   özgün (html.cp-native-video.native-android + #player-modal + .modal-backdrop =
+   1,3,1) ve sonrada gelir, bu yüzden kazanır. */
+html.cp-native-video.native-android #player-modal.modal-backdrop {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.cp-native-video .direct-video-wrapper.native-sahne > .player-loading-overlay {
+  display: flex !important;
+  background: transparent !important;
+  z-index: 42;
+}
+
+.cp-native-video .direct-video-wrapper.native-sahne.native-hazir > .player-loading-overlay {
+  display: none !important;
+}
+
+.native-chrome {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  color: #fff;
+  pointer-events: none;
+}
+
+/* ── Orta: büyük geri/ileri dokunma alanları ───────────────────────────── */
+.native-sahne .native-seek-zone {
+  display: flex;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 45;
+  width: clamp(64px, 14vw, 140px);
+  height: 42vh;
+  border: 0;
+  background: transparent;
+  color: #f5f7fc;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.native-sahne .native-seek-geri { left: 3%; }
+.native-sahne .native-seek-ileri { right: 3%; }
+.native-sahne .native-seek-oynat { left: 50%; transform: translateX(-50%); }
+
+.native-seek-daire--buyuk {
+  width: clamp(64px, 10vw, 88px);
+  height: clamp(64px, 10vw, 88px);
+}
+
+.native-seek-daire {
+  width: clamp(52px, 8vw, 72px);
+  height: clamp(52px, 8vw, 72px);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 11, 18, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.native-sahne .native-seek-zone:active .native-seek-daire {
+  background: rgba(223, 255, 118, 0.22);
+  transform: scale(0.94);
+}
+
+/* Sayfa açıkken dokunma alanları çekilir: seçenek listesi engellenmesin. */
+.cp-native-video .direct-video-wrapper.native-sahne.sheet-acik > .native-seek-zone {
+  display: none !important;
+}
+
+.native-seek-daire svg {
+  width: clamp(22px, 3.6vw, 30px);
+  height: clamp(22px, 3.6vw, 30px);
+}
+
+.native-seek-etiket {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  opacity: 0.85;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+
+/* ── Alt: ilerleme + beş bölümlü menü ──────────────────────────────────── */
+.native-alt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1.6rem 1rem calc(env(safe-area-inset-bottom, 0px) + 0.6rem);
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.66) 55%, transparent 100%);
+  pointer-events: auto;
+}
+
+.native-ilerleme {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.native-ilerleme > span {
+  min-width: 3.2rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #c7cedd;
+}
+
+#native-sure-toplam {
+  text-align: right;
+}
+
+#native-zaman-cubugu {
+  --dolan: 0%;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+}
+
+#native-zaman-cubugu::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--primary, #dfff76) 0%,
+    var(--primary, #dfff76) var(--dolan),
+    rgba(255, 255, 255, 0.22) var(--dolan),
+    rgba(255, 255, 255, 0.22) 100%
+  );
+}
+
+#native-zaman-cubugu::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--primary, #dfff76);
+  box-shadow: 0 0 0 4px rgba(223, 255, 118, 0.16);
+}
+
+#native-zaman-cubugu::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+#native-zaman-cubugu::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--primary, #dfff76);
+}
+
+#native-zaman-cubugu::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--primary, #dfff76);
+}
+
+.native-menu {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+
+.native-menu-seg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.4rem 0.15rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: #b7c0d1;
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.native-menu-seg span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Dar telefon: beş bölüm sığsın diye etiket iki satıra kırılır (kesilmez). */
+@media (max-width: 480px) {
+  .native-menu-seg span {
+    white-space: normal;
+    line-height: 1.1;
+  }
+
+  .native-menu-seg {
+    font-size: 0.6rem;
+  }
+}
+
+.native-menu-seg svg {
+  width: 19px;
+  height: 19px;
+}
+
+.native-menu-seg[aria-selected="true"] {
+  color: var(--primary, #dfff76);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Açılır seçenek sayfası ────────────────────────────────────────────── */
+.native-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: min(46vh, 340px);
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(11, 15, 23, 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.native-sheet.hidden {
+  display: none;
+}
+
+.native-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.native-sheet-head strong {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #f4f6fb;
+}
+
+.native-sheet-kapat {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #dfe4ee;
+}
+
+.native-sheet-kapat svg {
+  width: 15px;
+  height: 15px;
+}
+
+.native-sheet-govde {
+  overflow-y: auto;
+  padding: 0.35rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.native-sheet-satir {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.66rem 0.75rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: #e3e8f1;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+.native-sheet-satir svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.native-sheet-satir[aria-pressed="true"] {
+  background: rgba(223, 255, 118, 0.12);
+  color: var(--primary, #dfff76);
+  font-weight: 700;
+}
+
+.native-sheet-bos {
+  margin: 0;
+  padding: 1rem 0.85rem;
+  font-size: 0.82rem;
+  color: #9aa3b5;
+  text-align: center;
+}
+
+.native-cip-grup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.55rem 0.45rem;
+}
+
+.native-cip {
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e3e8f1;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.native-cip[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--primary, #dfff76);
+  color: #0b0f08;
+  font-weight: 700;
+}
+
+.native-bilgi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.7rem 0.75rem 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #c3cad9;
+}
+
+.native-bilgi strong {
+  font-size: 0.9rem;
+  color: #f4f6fb;
+}
+
+/* ── Küçük ekran / yatay telefon ince ayarı ────────────────────────────── */
+@media (max-height: 420px) {
+  .native-alt {
+    gap: 0.35rem;
+    padding-top: 1.1rem;
+  }
+
+  .native-menu-seg {
+    flex-direction: row;
+    justify-content: center;
+    gap: 0.3rem;
+    font-size: 0.62rem;
+  }
+
+  .native-seek-zone {
+    height: 52vh;
+  }
+
+  .native-sheet {
+    max-height: 52vh;
+  }
+}
+
+/* ── Tarama kartı (madde 1, kullanıcı 2026-10-28) ───────────────────────────
+   Native perde "hazır değil" durumunda sahnenin üstünde tek seferlik kart:
+   solda poster (120×180, cover), sağda başlık tek satır ellipsize + alt başlık
+   + kaynak sayacı. Sayaç yalnız textContent ile güncellenir; kart yeniden
+   çizilmez (poster titremesi yok). Dokunmatik hedef değildir (pointer-events
+   none) — perde altındaki kontrolleri kilitlemez. */
+#player-modal .tarama-karti {
+  position: absolute;
+  left: max(0.9rem, 3%);
+  bottom: max(0.9rem, 10%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  max-width: min(420px, 86%);
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+  background: rgba(10, 12, 18, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+#player-modal .tarama-karti img {
+  width: 120px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex: 0 0 auto;
+}
+
+#player-modal .tarama-karti-bilgi {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  justify-content: center;
+}
+
+#player-modal .tarama-karti-baslik {
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#player-modal .tarama-karti-altbaslik {
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+#player-modal .tarama-karti-sayac {
+  font-size: 0.78rem;
+  color: #dfff76;
+}
+
+/* ── Hazır havuz şeridi (madde 2, kullanıcı 2026-10-28) ─────────────────────
+   Detay'dan hazır kaynak havuzuyla açılan oynatıcıda megamenu çizilmez;
+   yerine tek satırlık bilgi + "Kaynakları göster" butonu gelir. */
+#player-modal .yt-hazir-havuz-paneli .yt-hazir-havuz-satiri {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+#player-modal .yt-hazir-havuz-bilgi {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#player-modal .yt-hazir-havuz-paneli #btn-kaynaklari-goster {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 560px) {
+  #player-modal .tarama-karti img {
+    width: 84px;
+    height: 126px;
+  }
+}

@@ -9,6 +9,9 @@ import epg from '../api/epg.js';
 import fanart from '../api/fanart.js';
 import release from '../api/release.js';
 import imdbRating from '../api/imdbRating.js';
+import traktToken from '../api/trakt_token.js';
+import xtreamPanels from '../api/xtream_panels.js';
+import ariaKey from '../api/aria_key.js';
 import resolve from '../cf/resolve.js';
 
 // yol -> mod (Vercel'de dosya adi neyse o; czm/dzs/kvip catch-all alias'idir)
@@ -18,6 +21,9 @@ const NODE_FILES = {
   '/api/fanart': fanart,
   '/api/release': release,
   '/api/imdbRating': imdbRating,
+  '/api/trakt_token': traktToken,
+  '/api/xtream_panels': xtreamPanels,
+  '/api/aria_key': ariaKey,
   // python resolve.py'nin Canlı TV portu (ctv)
   '/api/resolve': resolve,
 };

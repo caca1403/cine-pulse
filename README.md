@@ -6,14 +6,18 @@
 
 ### Keşfet. Listene ekle. Kaldığın yerden devam et.
 
-Film, dizi ve anime keşfi; kişisel kütüphane, çok platformlu oynatma ve tam veri taşınabilirliği.
+Film, dizi ve anime keşfi; kişisel kütüphane, çevrimdışı indirme ve Windows, Linux ile Android'de oynatma.
 
 **Web · Windows · Linux (DEB / Flatpak) · Android**
 
 [![Site](https://img.shields.io/badge/Web-CinePulse-22c55e?style=for-the-badge)](https://cinepulse.cinepulse.workers.dev/)
 [![Release](https://img.shields.io/github/v/release/caca1403/cine-pulse?style=for-the-badge&label=S%C3%BCr%C3%BCm)](https://github.com/caca1403/cine-pulse/releases/latest)
 [![Deploy](https://github.com/caca1403/cine-pulse/actions/workflows/cloudflare.yml/badge.svg)](https://github.com/caca1403/cine-pulse/actions)
-[![Tests](https://img.shields.io/badge/testler-365-22c55e?style=for-the-badge)](https://github.com/caca1403/cine-pulse/actions)
+
+[![Windows EXE indir](https://img.shields.io/badge/Windows-EXE%20indir-2563eb?style=for-the-badge&logo=windows)](https://github.com/caca1403/cine-pulse/releases/latest/download/CinePulse-Setup.exe)
+[![Android APK indir](https://img.shields.io/badge/Android-APK%20indir-3ddc84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk)
+[![Linux DEB indir](https://img.shields.io/badge/Linux-DEB%20indir-a855f7?style=for-the-badge&logo=debian)](https://github.com/caca1403/cine-pulse/releases/latest/download/CinePulse.deb)
+[![Linux Flatpak indir](https://img.shields.io/badge/Linux-Flatpak%20indir-0f766e?style=for-the-badge&logo=flathub)](https://github.com/caca1403/cine-pulse/releases/latest/download/CinePulse.flatpak)
 
 [Özellikler](#1-nedir) · [İndir](#3-platformunu-seç-ve-indir) · [Kurulum](#4-kurulum-adım-adım) · [Veri güvenliği](#6-verilerin-korunur-mu) · [Mimari](#8-mimari-a→z) · [Geliştirme](#9-geliştirme) · [SSS](#13-sıkça-sorulan-sorular)
 
@@ -23,12 +27,14 @@ Film, dizi ve anime keşfi; kişisel kütüphane, çok platformlu oynatma ve tam
 
 ## 1. Nedir?
 
-CinePulse; film, dizi ve anime **keşfini**, kişisel **izleme takibini** ve **oynatmayı** tek arayüzde birleştiren yerli bir medya merkezidir.
+CinePulse; film, dizi ve anime **keşfini**, kişisel **izleme takibini**, **oynatmayı** ve desteklenen yayınlarda **çevrimdışı izlemeyi** bir araya getiren medya uygulamasıdır.
 
-- Üyelik zorunlu değil; her şey önce cihazında saklanır.
+- **Web sitesi:** Tanıtım, platform karşılaştırması, kurulum rehberi, güncel sürüm bilgisi ve doğrudan indirme merkezi.
+- **Uygulamalar:** Keşif, arama, yapım ayrıntıları, kişisel kitaplık, oynatma ve platforma göre çevrimdışı indirme.
+- Üyelik zorunlu değil; profiller, listeler ve izleme ilerlemesi cihazında saklanır.
 - Dublaj ve altyazılı yayın seçenekleri ayrı ayrı listelenir; kaynaklar **yıldız kod adlarıyla** gösterilir.
-- Web'de başlar, Windows/Linux/Android'de kaldığın yerden devam edersin (JSON yedekleme ile).
-- Kurulum paketleri resmî GitHub Releases'ten gelir; Android paketleri **her zaman aynı kalıcı anahtarla** imzalanır.
+- Verilerini JSON yedeğiyle başka cihaza taşıyabilirsin; Trakt eşitlemesi isteğe bağlıdır.
+- Windows, Linux ve Android paketleri aynı sürüm kaynağından üretilir; Android APK'sı mevcut yayınlarla uyumlu **kalıcı imza anahtarıyla** imzalanır.
 
 <p align="center">
   <img src="docs/assets/view-tour.svg" alt="Keşif turu" height="88" />
@@ -40,33 +46,34 @@ CinePulse; film, dizi ve anime **keşfini**, kişisel **izleme takibini** ve **o
 
 | Özellik | Deneyim |
 | :--- | :--- |
-| **Keşif** | Film, dizi, anime, belgesel ve diğer kategoriler; arama, öneriler, IMDb puanı ve yapım detayları. |
-| **Kütüphane** | Favoriler, izleme listesi, tamamlanan yapımlar ve izleme ilerlemesi. |
-| **Bölüm takibi** | Sezon / bölüm seçimi, izlenen bölüm işaretleri, "bu sezonu izlendi işaretle" ve toplu işaretleme. |
-| **Yayın seçenekleri** | Mevcut dublaj ve altyazılı alternatifler; yalnız yıldız kod adlarıyla sade kaynak menüsü. |
-| **Oynatıcı** | Desteklenen akışlarda altyazı, hız, ses, ileri / geri sarma ve tam ekran. |
-| **Profiller** | Ayrı profiller ve çocuk profiline uygun içerik filtreleri (yaş türü engelleme). |
-| **Trakt** | İsteğe bağlı izleme geçmişi ve liste senkronizasyonu. |
-| **Veri taşınabilirliği** | JSON yedekleme ve başka cihazda içe aktarma; güncelleme sonrası veriler **birebir korunur**. |
-| **Canlı TV** | Canlı yayın akışı — **geçici olarak kapalı** (yeniden açılana kadar gizli). |
-| **Çevrimdışı** | Android'de desteklenen içerikleri indirme. |
+| **Keşif** | Film, dizi, anime, çizgi dizi, belgesel ve kısa diziler; arama, tür/yıl/puan filtreleri, trendler ve yapım ayrıntıları. |
+| **Kişisel kitaplık** | Favoriler, daha sonra izle listesi, tamamlanan yapımlar, izleme geçmişi ve kaldığın yerden devam et. |
+| **Bölüm takibi** | Sezon/bölüm seçimi, bölümleri ve sezonu izlendi işaretleme, sıradaki bölüme geçiş. |
+| **Yayın seçenekleri** | Bulunan dublajlı ve altyazılı alternatifleri ayrı listele; kaynakları sade kod adlarıyla gör. |
+| **Oynatıcı** | Destekleyen yayınlarda altyazı, ses ve hız ayarları, ileri/geri sarma, tam ekran ve ilerleme kaydı. |
+| **Çevrimdışı kitaplık** | Windows, Linux ve Android uygulamalarında desteklenen doğrudan/HLS yayınları cihaza kaydet; uygulama içindeki İndirilenler'den yönetip çevrimdışı aç. |
+| **Profiller ve çocuk profili** | Ayrı kullanım profilleri, çocuk PIN'i ve yaş/tür filtreleri. |
+| **Öneri ve eşitleme** | Kişisel öneriler; isteğe bağlı Trakt izleme geçmişi/liste eşitlemesi. |
+| **Yedekleme** | JSON olarak dışa aktar, başka kurulumda içe aktar; uygulama güncellemesi yerel verileri silmez. |
+| **Canlı TV** | Bu sürümde geçici olarak devre dışı. |
 
 ### Platform farkları
 
-| Özellik | Web | Windows / Linux | Android |
+| Özellik | Web sitesi | Windows / Linux uygulaması | Android uygulaması |
 | :--- | :---: | :---: | :---: |
-| Keşif, listeler, ilerleme | ✓ | ✓ | ✓ |
-| İçerik oynatma | Kaynağa bağlı | Kaynağa bağlı | Kaynağa bağlı |
-| Canlı TV / yayın akışı | — | Geçici kapalı | Geçici kapalı |
-| Çevrimdışı indirme | — | — | Desteklenen içeriklerde |
-| Uygulama içi tarayıcıyla doğrulama | — | Destekli yayınlarda | Kaynağa bağlı |
-| JSON yedekleme | ✓ | ✓ | ✓ |
+| Tanıtım, platform karşılaştırması ve indirme bağlantıları | ✓ | — | — |
+| Keşif, kitaplık, profiller ve izleme ilerlemesi | — | ✓ | ✓ |
+| İçerik oynatma | — | Kaynağa/biçime bağlı | Kaynağa/biçime bağlı |
+| Desteklenen içerikleri çevrimdışı indirme | — | ✓ | ✓ |
+| Uygulama içi kaynak doğrulama | — | Destekli yayınlarda | Kaynağa bağlı |
+| JSON yedekleme ve içe aktarma | — | ✓ | ✓ |
+| Cihaza özgü oynatıcı ve sistem kontrolleri | — | Masaüstü klavye/kabuk | Android Media3, geri tuşu |
 
-> Bir kaynağın başka platformda çalışması webde de çalışacağını garanti etmez. Tarayıcı kuralları, sağlayıcı erişimi ve medya biçimi sonucu etkiler.
+> Uygulamalar ortak keşif, kitaplık, profil, yedekleme ve çevrimdışı indirme özelliklerini paylaşır. Oynatma motoru ve bazı sistem entegrasyonları işletim sistemine göre değişir; her yayın her platformda çalışmayabilir.
 
 ## 3. Platformunu seç ve indir
 
-Paketler **[resmî GitHub Releases](https://github.com/caca1403/cine-pulse/releases/latest)** üzerinden indirilir. Güncel sürüm: **v1.1.77** (sürüm kodu 187).
+Bu kaynak ağacının sürümü **v2.0.0** (Android `versionCode 200`). Paketler **[resmî GitHub Releases](https://github.com/caca1403/cine-pulse/releases/latest)** üzerinden indirilir; aşağıdaki indirme düğmeleri en son yayınlanan sabit dosya adlarına gider.
 
 | Platform | Paket | Bağlantı |
 | :--- | :--- | :--- |
@@ -76,9 +83,10 @@ Paketler **[resmî GitHub Releases](https://github.com/caca1403/cine-pulse/relea
 | **Linux / Debian, Ubuntu** | DEB | [CinePulse.deb](https://github.com/caca1403/cine-pulse/releases/latest/download/CinePulse.deb) |
 | **Linux / Flatpak** | Flatpak | [CinePulse.flatpak](https://github.com/caca1403/cine-pulse/releases/latest/download/CinePulse.flatpak) |
 
-> Bağlantılar sürüm adı taşımaz; her zaman **en son sürüme** iner. Sürümlü dosyalar ve sürüm notları [Releases](https://github.com/caca1403/cine-pulse/releases/latest) sayfasındadır.
+> İndirme bağlantıları her zaman **en son başarılı release** dosyasına yönelir. Sürümlü dosyalar, sürüm notları ve yayın durumu [GitHub Releases](https://github.com/caca1403/cine-pulse/releases/latest) sayfasındadır.
 
-- **Android:** APK, eski sürümle **aynı kalıcı anahtarla** imzalanır — üzerine güncelleyebilirsin (verilerin silinmez).
+- **Android:** APK, release iş akışında mevcut GitHub APK'larıyla aynı sertifika parmak izine sahip olmalıdır; eşleşmiyorsa yayın adımı başarısız olur. Aynı imza, uygulama üstüne güncelleme yapmayı sağlar.
+- **Windows:** EXE, Windows kurulum sihirbazıdır. İmzalama sertifikası olmadığı için Windows SmartScreen uyarısı gösterebilir.
 - **Flatpak:** Fedora, elementaryOS, Zorin vb. Flatpak destekli dağıtımlar içindir.
 - Mac için masaüstü paketi yoktur; web sürümünü kullanabilirsin.
 
@@ -87,7 +95,7 @@ Paketler **[resmî GitHub Releases](https://github.com/caca1403/cine-pulse/relea
 <details open>
 <summary><b>Windows (EXE)</b></summary>
 
-1. `CinePulse-Setup-1.1.77.exe` dosyasını indir.
+1. Yukarıdaki **Windows EXE indir** düğmesinden `CinePulse-Setup.exe` dosyasını indir.
 2. Kurulum sihirbazını çalıştır (ZIP açmak gerekmez).
 3. Masaüstü kısayolundan aç; ilk açılışta keşif ekranı gelir.
 
@@ -96,7 +104,7 @@ Paketler **[resmî GitHub Releases](https://github.com/caca1403/cine-pulse/relea
 <details>
 <summary><b>Android (APK)</b></summary>
 
-1. `cinepulse.apk` dosyasını telefonuna indir.
+1. Yukarıdaki **Android APK indir** düğmesinden `cinepulse.apk` dosyasını telefonuna indir.
 2. "Bilinmeyen kaynaklardan yükleme" iznini yalnız bu kurulum için ver.
 3. Uygulamayı aç; mevcut kurulum varsa aynı anahtar sayesinde doğrudan güncellenir.
 
@@ -106,7 +114,7 @@ Paketler **[resmî GitHub Releases](https://github.com/caca1403/cine-pulse/relea
 <summary><b>Linux · DEB</b></summary>
 
 ```bash
-sudo dpkg -i CinePulse-1.1.77.deb   # gerekirse: sudo apt-get -f install
+sudo dpkg -i CinePulse.deb   # gerekirse: sudo apt-get -f install
 ```
 
 </details>
@@ -115,7 +123,7 @@ sudo dpkg -i CinePulse-1.1.77.deb   # gerekirse: sudo apt-get -f install
 <summary><b>Linux · Flatpak</b></summary>
 
 ```bash
-flatpak install --user CinePulse-1.1.77.flatpak
+flatpak install --user ./CinePulse.flatpak
 flatpak run com.cinepulse.studio
 ```
 
@@ -124,13 +132,13 @@ flatpak run com.cinepulse.studio
 <details>
 <summary><b>Web</b></summary>
 
-Kurulum yok: [cinepulse.cinepulse.workers.dev](https://cinepulse.cinepulse.workers.dev/) adresini aç. Web; keşif, listeler ve indirme merkezidir. Oynatma tarayıcı kurallarına bağlıdır — kesin oynatma için masaüstü/Android paketlerini öneririz.
+Kurulum yok: [CinePulse web sitesini](https://cinepulse.cinepulse.workers.dev/) aç. Site; uygulamanın görsel tanıtımını, özellik/platform karşılaştırmasını, sık sorulanları, sürüm bilgisini ve çalışan EXE/APK/DEB/Flatpak indirme düğmelerini sunar. İçerik keşfi ve oynatma web sitesinde değil, kurduğun masaüstü veya Android uygulamasında çalışır.
 
 </details>
 
 ## 5. İlk kullanım
 
-1. Siteyi veya uygulamayı aç; bir yapım ara.
+1. Windows/Linux/Android uygulamasını aç; bir yapım ara. Web sitesi uygulama tanıtımı ve indirme merkezidir.
 2. Dizilerde sezon ve bölümü seç.
 3. Mevcut dil (dublaj / altyazı) ve yayın seçeneklerinden birini aç.
 4. Yapımı listene ekle; daha sonra kütüphanenden devam et.
@@ -183,7 +191,7 @@ Oynatıcı (oynatici/) · altyazı · ilerleme · depolama (altyapi/storage.js)
 | **Web API** | `api/`, `functions/` | Cloudflare Worker yönlendirmesi ve destekli uçlar. |
 | **Masaüstü** | `electron/`, `server/` | Electron kabuğu ve yerel medya servisi. |
 | **Android** | `android/` | Capacitor uygulaması, yerel ağ köprüsü ve medya ağ geçidi. |
-| **Kalite** | `tests/`, `tools/` | 365 regresyon testi, cihaz ölçüm ve doğrulama araçları. |
+| **Kalite** | `tests/`, `tools/` | 636 test senaryosu ve cihaz doğrulama araçları. |
 
 **Web:** statik dosyalar Cloudflare Workers Assets üzerinden; `main` push'u depolama + Worker'ı birlikte yayınlar. Vercel gerekmez.
 
@@ -209,7 +217,7 @@ Yerel medya servisi gerektiğinde ayrı terminalde `npm run server`.
 | `npm run build` | Web üretim derlemesi. |
 | `npm run preview` | Derlenmiş arayüzü yerelde önizleme. |
 | `npm run manifest:sync` | `public/version.json` + `desktop-version.json`'ı `package.json`'dan üret. |
-| `node --test tests/*.test.mjs` | Tüm regresyon paketi (365 test). |
+| `node --test tests/*.test.mjs tests/*.test.js tests/*.test.cjs` | Tüm regresyon paketi (636 senaryo; Node.js 20+ gerekir). |
 | `npm run test:providers` | Seçilmiş sağlayıcı / platform testleri. |
 | `node tools/cekirdek-test.mjs` | Sağlayıcı çekirdeklerini Node üzerinde uçtan uca çalıştırma. |
 | `npm run pack:win` | Windows EXE. |
@@ -219,7 +227,7 @@ Yerel medya servisi gerektiğinde ayrı terminalde `npm run server`.
 
 ### Test paketi
 
-365 test; sağlayıcı kayıt defteri, çekirdek çözücüleri, veri uyumluluğu, köprü, oynatıcı ve dağıtım davranışını kapsar. Cihaz ölçümü için `tools/cihaz-devtest-kur.sh` + `tools/cihaz-cdp.mjs` kullanılır (ayrıntılı notlar `docs/` altında).
+636 test senaryosu; sağlayıcı kayıt defteri, çekirdek çözücüleri, veri uyumluluğu, platform köprüleri, oynatıcı ve dağıtım davranışını kapsar. Cihaz ölçümü için `tools/cihaz-devtest-kur.sh` ve `tools/cihaz-cdp.mjs` kullanılır (ayrıntılı notlar `docs/` altında).
 
 ## 10. Sürüm çıkarma (katkı için)
 
@@ -236,7 +244,7 @@ Sürüm etiketi ile `package.json` sürümü **aynı olmalıdır** (sürüm kap�
 | İş akışı | Tetik | Ürettiği |
 | :--- | :--- | :--- |
 | **Release CinePulse** | `v*` etiketi | İmzalı APK, EXE, DEB, Flatpak + Release yüklemesi |
-| **build-apk** | push / PR | Test APK üretimi |
+| **build-apk** | Manuel | Test APK üretimi |
 | **Cloudflare Deploy** | `main` push | Web (Workers Assets + API Worker) |
 | **GitHub Pages** | `main` push | Yedek statik sunum |
 
@@ -251,10 +259,13 @@ Sürüm geçmişi: **[Sürüm notları](docs/release-notes.md)** · **[Actions](
 ## 13. Sıkça sorulan sorular
 
 **Siteye girmek için uygulama indirmem gerekiyor mu?**
-Hayır. Web sürümü keşif, listeler ve indirme merkezidir. Tam oynatma için masaüstü/Android paketlerini öneririz.
+Hayır. Web sitesi tanıtım, platform karşılaştırması, SSS ve indirme merkezidir. Keşif, listeler, oynatma ve çevrimdışı indirme için Windows/Linux/Android uygulamasını kur.
 
 **Uygulamada bütün yayınlar kesin çalışıyor mu?**
 Hayır. Yayınlar kaldırılmış, erişime kapalı veya geçici bozuk olabilir; durumda başka alternatifi dene. Kaynaklar yıldız kod adlarıyla listelenir ve "canlı" rozeti yalnızca ölçülmüş kaynaklara verilir.
+
+**İndirdiğim içerikler internetsiz açılır mı?**
+Desteklenen doğrudan dosya ve HLS yayınları uygulamanın yerel depolamasına indirilir. İndirmeyi başlatmak ve oynatmak için uygulama içindeki İndirilenler ekranını kullan; her yayın biçimi indirilemez.
 
 **Verilerim güncellemelerde silinir mi?**
 Hayır. Yerel JSON biçimi sürümler arası birebir korunur (testlerle kilitli). Yine de düzenli JSON yedek almanı öneririz.

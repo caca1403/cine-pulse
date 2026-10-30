@@ -2829,7 +2829,9 @@ async function getStreams(tmdbId, arg2, tmdbId2, tmdbId3) {
   )
     return [];
   try {
-    let result = await fn("Poison-Ivy");
+    // joker.js kalıbı: kahraman kodu (cihaz: vekil sabit haritası) → satıcı
+    // takması (canlı domains.json "lili" olarak taşıyor) → sabit son çare.
+    let result = (await fn("Poison-Ivy")) || (await fn("lili")) || "https://openani.me";
     if (!result) return (log("Poison-Ivy", "Sağlayıcı adresi alınamadı.", "warn"), []);
     log(
       "Poison-Ivy",
@@ -3012,3 +3014,5 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+// ESM (package type:module): joker.js kalıbı — tezgâh/mod.default buradan okur.
+export default typeof getStreams === "function" ? getStreams : undefined;

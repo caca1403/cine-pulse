@@ -244,5 +244,14 @@
   },
   "imdbRating": {
     "base": "https://cinepulse.cinepulse.workers.dev/api/imdbRating"
+  },
+  "trakt_token": {
+    "base": "https://cinepulse.cinepulse.workers.dev/api/trakt_token"
+  },
+  "xtream_panels": {
+    "base": "https://cinepulse.cinepulse.workers.dev/api/xtream_panels"
+  },
+  "aria_key": {
+    "base": "https://cinepulse.cinepulse.workers.dev/api/aria_key"
   }
 }

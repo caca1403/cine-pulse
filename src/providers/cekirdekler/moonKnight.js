@@ -6938,6 +6938,75 @@ async function fn6(arg1, arg2) {
     return null;
   }
 }
+/* dublaj kanıt ucu (2026-10-30): "· Türkçe Dublaj" etiketi yalnız master'ın
+ * TYPE=AUDIO satırında Türkçe bildirimiyle basılır (kullanıcı kesin kuralı). */
+function trAudioKaniti(m3u8Metin) {
+  for (const ham of String(m3u8Metin || "").split(/\r?\n/)) {
+    const satir = ham.trim();
+    if (!satir.startsWith("#EXT-X-MEDIA:") || !/TYPE=AUDIO/i.test(satir)) continue;
+    const lang = ((satir.match(/LANGUAGE="?([A-Za-z-]+)"?/i) || [])[1] || "").toLowerCase();
+    const isim = ((satir.match(/NAME="([^"]*)"/i) || satir.match(/NAME=([^,]+)/i) || [])[1] || "").toLowerCase();
+    if (lang === "tr" || lang === "tur" || /türk|turk|dublaj/i.test(isim))
+      return satir.replace(/URI="[^"]*"/, "URI=…").slice(0, 160);
+  }
+  return "";
+}
+/** episodesData.alt_video_url yuvasını ana akışla AYNI zincirden çözer:
+ *  embed token sayfası → var _=[...] çöz → oynatıcı CDN → videoSrc/file m3u8
+ *  → master metni. Çözümlenemezse null; hiçbir iddia üretilmez. */
+async function altAkisCoz(altAdres, taban, referer) {
+  const zamanAsimiMs = (ms) => (typeof AbortSignal < "u" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(ms) : void 0);
+  let u = String(altAdres || "").trim();
+  if (!u) return null;
+  if (u.startsWith("/")) u = taban + u;
+  else if (!/^https?:/i.test(u)) u = taban + "/" + u;
+  if (u.includes("/embed/?token=")) {
+    try {
+      const r = await fetch(u, { headers: { "User-Agent": a0, Referer: referer || taban + "/" }, signal: zamanAsimiMs(5000) });
+      if (r.ok) {
+        const m = (await r.text()).match(/var\s*_\s*=\s*(\[[^\]]+\])/);
+        if (m) try { u = JSON.parse(m[1]).map(fn5).join(""); } catch {}
+      }
+    } catch {}
+  }
+  if (!/^https?:/i.test(u)) return null;
+  let Origin = "";
+  try { Origin = new URL(u).origin; } catch { return null; }
+  const r2 = await fetch(u, { headers: { "User-Agent": a0, Referer: taban + "/" }, signal: zamanAsimiMs(6000) });
+  if (!r2.ok) return null;
+  const t = await r2.text();
+  let url = "", altyazilar = [];
+  const m = t.match(/var\s+videoSrc\s*=\s*["']([^"']+)["']/);
+  if (m) {
+    url = m[1].startsWith("http") ? m[1] : Origin + m[1];
+    const m2 = t.match(/subtitlesData\s*=\s*(\[[^\]]*\])/);
+    if (m2)
+      try {
+        for (const parca of JSON.parse(m2[1])) {
+          const src = parca.url ? (parca.url.startsWith("http") ? parca.url : Origin + parca.url) : "";
+          if (!src) continue;
+          const etiket = String(parca.label || "").trim(),
+            trIzi = /tr|türk/i.test(etiket);
+          altyazilar.push({
+            id: String(altyazilar.length), url: src, lang: trIzi ? "tr" : "en",
+            language: trIzi ? "Turkish" : "English", name: trIzi ? "Türkçe" : etiket || "Altyazı",
+            label: trIzi ? "Türkçe" : etiket || "Altyazı", title: trIzi ? "Türkçe" : etiket || "Altyazı",
+            type: "vtt", headers: { Referer: Origin + "/", Origin: Origin, "User-Agent": a0 },
+          });
+        }
+      } catch {}
+  } else {
+    const m3 = t.match(/file\s*:\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/);
+    m3 && (url = m3[1]);
+  }
+  if (!url) return null;
+  let m3u8Text = "";
+  try {
+    const r3 = await fetch(url, { headers: { "User-Agent": a0, Referer: Origin + "/", Origin: Origin }, signal: zamanAsimiMs(4000) });
+    r3.ok && (m3u8Text = await r3.text());
+  } catch {}
+  return { url: url, m3u8Text: m3u8Text, Origin: Origin, subtitles: altyazilar };
+}
 async function getStreams(tmdbId, arg2, tmdbId2, tmdbId3) {
   let now2 = Date.now(),
     trimmed = String(arg2 || "")
@@ -6962,7 +7031,13 @@ async function getStreams(tmdbId, arg2, tmdbId2, tmdbId3) {
   try {
     let result = await fn6(tmdbId, val4);
     if (!result) return (log(name, "TMDB meta verisi alınamadı.", "warn"), []);
-    let result2 = await fn("Moon-Knight");
+    // domains.json anahtarı takma ad: "Moon-Knight" → "zunesha" (alanlar.js satır 51).
+    // 2026-10-30 ölçümü: uzaktaki domains.json "zunesha" anahtarını YAYINDAN
+    // çıkardı → tek başına sorulunca çekirdek sessizce ölüyordu. alanlar.js'te
+    // çapalanan ad (satır 51) son çare olarak denenir; güncel anahtar hep öncelikli.
+    let result2 =
+      (await fn("Moon-Knight")) || (await fn("zunesha")) || "https://dizipal12.com.tr";
+
     if (!result2) return (log(name, "Domain not resolved", "warn"), []);
     let set = new Set();
     (result.enTitle && set.add(result.enTitle), result.trTitle && set.add(result.trTitle));
@@ -7029,7 +7104,8 @@ async function getStreams(tmdbId, arg2, tmdbId2, tmdbId3) {
     if (!response.ok)
       return (log(name, "İçerik sayfası açılamadı: HTTP " + response.status, "warn"), []);
     let text2 = await response.text(),
-      str3 = "";
+      str3 = "",
+      altCesit = "";
     if (val4) {
       let match = text2.match(/window\.episodesData\s*=\s*(\{[\s\S]*?\});/);
       if (match)
@@ -7037,8 +7113,13 @@ async function getStreams(tmdbId, arg2, tmdbId2, tmdbId3) {
           let parsed = JSON.parse(match[1]),
             val7 = parsed?.[val5]?.[val6] || parsed?.[String(val5)]?.[String(val6)];
           val7 && (str3 = val7.iframe_url_encrypted || val7.iframe_url || "");
+          // Sitenin kendi şemasındaki YEDEK video yuvası (dublaj/alternatif
+          // anlatım olduğunda dolu gelir; BB/Naruto/Stranger Things S1E1'de
+          // 2026-10-30 ölçümüyle null — dürüst satır yine akışın kanıtından çıkar).
+          val7 && val7.alt_video_url && (altCesit = String(val7.alt_video_url));
         } catch {}
     }
+
     if (!str3) {
       let val7 =
         text2.match(/<iframe[^>]+id=["']player-iframe["'][^>]+src=["']([^"']+)["']/i) ||
@@ -7222,13 +7303,61 @@ async function getStreams(tmdbId, arg2, tmdbId2, tmdbId3) {
         }
       }),
       now3 = ((Date.now() - now2) / 1000).toFixed(2);
+    // Dürüst etiket (2026-10-30): ana akışın master'ı Türkçe SES bildiriyorsa
+    // satır başlığı kanıtla "· Türkçe Dublaj"a yükselir; bildirim yoksa
+    // inspection'ın dediği kalır (uydurma yok).
+    let satirListesi = [value43],
+      trKaniti = trAudioKaniti(m3u8Text);
+    if (trKaniti && !/Dublaj/i.test(String(value43.title || ""))) {
+      value43.title = String(value43.title || "1080p") + " \xb7 T\xfcrk\xe7e Dublaj";
+      value43.diller = ["tr"];
+      value43.trSes = !0;
+      value43.dilDurumu = "dublaj";
+      log(name, "T\xfcrk\xe7e ses kanıtı: " + trKaniti, "info");
+    }
+    // Site ayrı yedek/dublaj videosu (alt_video_url) yayınlıyorsa aynı zincirle
+    // çözülür ve YALNIZ kanıtla etiketlenmiş ek satır olarak yayınlanır.
+    if (altCesit && val4) {
+      try {
+        let alt = await altAkisCoz(altCesit, result2, Referer);
+        if (alt && alt.url && alt.url !== url) {
+          let altInspection = defineProp2({
+              m3u8Text: alt.m3u8Text,
+              m3u8Url: alt.url,
+              externalSubtitles: alt.subtitles
+            }),
+            altSatir = defineProp3({
+              name: name,
+              url: alt.url,
+              inspection: altInspection,
+              quality: "1080p",
+              format: "m3u8",
+              subtitles: altInspection.subtitles,
+              headers: { Referer: alt.Origin + "/", Origin: alt.Origin, "User-Agent": a0 }
+            }),
+            altKaniti = trAudioKaniti(alt.m3u8Text);
+          if (altKaniti) {
+            altSatir.title = "T\xfcrk\xe7e Dublaj";
+            altSatir.diller = ["tr"];
+            altSatir.trSes = !0;
+            altSatir.dilDurumu = "dublaj";
+            altSatir.dilKaniti = altKaniti;
+            log(name, "alt_video_url Türkçe ses kanıtı: " + altKaniti, "info");
+          }
+          satirListesi.push(altSatir);
+        }
+      } catch (err) {
+        log(name, "alt_video_url çözülemedi: " + (err?.message || err), "warn");
+      }
+    }
     return (
       log(name, "[Adım 4/4] TAMAMLANDI: 1080p HLS akışı hazırlandı (" + now3 + "s)", "success", {
         altyazılar: value43.subtitles?.length || 0,
         dil: value43.title
       }),
-      [value43]
+      satirListesi
     );
+
   } catch (err) {
     return (log(name, "Kritik Hata: " + err.message, "error"), []);
   }

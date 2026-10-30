@@ -7019,7 +7019,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
     }
     if (!value42 || isNaN(value42))
       return (log("Beast-Boy", "Geçerli bir TMDB ID bulunamadı.", "warn"), []);
-    let val7 = (await fn("Beast-Boy")) || "https://api.wecollege.net";
+    let val7 = ((await fn("Beast-Boy") || await fn("gorosei"))) || "https://api.wecollege.net";
     log("Beast-Boy", "[Adım 1/3] Seed alınıyor (TMDB: " + value42 + ")...");
     let val8 = val7 + "/seed?mediaId=" + value42,
       response = await fetch(val8, {
@@ -7217,3 +7217,4 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+export { getStreams };

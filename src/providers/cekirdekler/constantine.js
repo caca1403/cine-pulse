@@ -494,7 +494,7 @@ async function now(arg1 = !1) {
     await value4.activeFetchPromise);
 }
 async function fn(arg1) {
-  return (await now(), value4.cachedDomains[arg1] || "");
+  return (await now(), value4.cachedDomains[arg1] || (arg1 === "Constantine" ? "https://arc018.stream" : ""));
 }
 async function fn2() {
   return (await now(), value4.cachedTmdbKeys || []);
@@ -2830,7 +2830,7 @@ async function getStreams(arg1, arg2, season, episode) {
     let result = await replaceIn(trimmed, val5);
     if (!result || !result.startsWith("tt"))
       return (_("Constantine", "IMDb ID bulunamadı: " + trimmed, "warn"), []);
-    let Origin = await fn("Constantine");
+    let Origin = (await fn("Constantine") || await fn("ace"));
     if (!Origin) return (_("Constantine", "Domain not resolved", "warn"), []);
     _("Constantine", "[Adım 2/4] Kesin IMDb araması yapılıyor (" + result + ")...");
     let Referer = Origin + "/search?keyword=" + encodeURIComponent(result),
@@ -3058,3 +3058,4 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+export { getStreams };

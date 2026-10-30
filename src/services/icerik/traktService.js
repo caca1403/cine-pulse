@@ -7,9 +7,10 @@
  * - User Profile & stats management
  */
 
+import { apiUrl } from '../altyapi/apiOrigin.js';
+
 const TRAKT_API_URL = 'https://api.trakt.tv';
 const DEFAULT_CLIENT_ID = 'AsVFyJXykTMViLCXPMAvFGtk7B_npj5Y3STpzljYnwY';
-const DEFAULT_CLIENT_SECRET = '4b6l8YaAG-GzyY6cSPFR5ea66xrXYEqrrHhn3FiWa7k';
 
 const STORAGE_KEYS = {
   TOKEN: 'cinepulse_trakt_token',
@@ -29,8 +30,22 @@ export function getClientId() {
   return localStorage.getItem('cinepulse_trakt_custom_client_id') || DEFAULT_CLIENT_ID;
 }
 
-export function getClientSecret() {
-  return localStorage.getItem('cinepulse_trakt_custom_client_secret') || DEFAULT_CLIENT_SECRET;
+/* Token istekleri (cihaz kodu → token, yenileme) client_secret ister; sır
+   artık bundle'da DEĞİL. Özel uygulama secret'ı (localStorage) yoksa istek
+   sunucu köprüsüne (api/trakt_token.js) gider — sır orada env'den okunur.
+   Özel secret girilmişse (kullanıcının kendi Trakt uygulaması) doğrudan
+   Trakt'a gider; o sır zaten kullanıcıya ait, bundle'a gömülmez. */
+function traktAuthFetch(path, fields, signal) {
+  const customSecret = localStorage.getItem('cinepulse_trakt_custom_client_secret') || '';
+  const url = customSecret ? `${TRAKT_API_URL}${path}` : apiUrl('/api/trakt_token');
+  const body = { ...fields };
+  if (customSecret) body.client_secret = customSecret;
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    ...(signal ? { signal } : {})
+  });
 }
 
 /**
@@ -187,7 +202,6 @@ export function pollDeviceToken(deviceCode, interval = 5, onStatusChange = () =>
 
   return new Promise((resolve, reject) => {
     const clientId = getClientId();
-    const clientSecret = getClientSecret();
     let pollInterval = Math.max(interval, 5) * 1000;
 
     const checkToken = async () => {
@@ -197,16 +211,10 @@ export function pollDeviceToken(deviceCode, interval = 5, onStatusChange = () =>
       }
 
       try {
-        const res = await fetch(`${TRAKT_API_URL}/oauth/device/token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            code: deviceCode,
-            client_id: clientId,
-            client_secret: clientSecret
-          }),
-          signal
-        });
+        const res = await traktAuthFetch('/oauth/device/token', {
+          code: deviceCode,
+          client_id: clientId
+        }, signal);
 
         if (res.status === 200) {
           const tokenData = await res.json();
@@ -282,17 +290,11 @@ export function cancelDeviceAuth() {
  */
 export async function refreshToken(refreshTokenStr) {
   const clientId = getClientId();
-  const clientSecret = getClientSecret();
 
-  const res = await fetch(`${TRAKT_API_URL}/oauth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      refresh_token: refreshTokenStr,
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: 'refresh_token'
-    })
+  const res = await traktAuthFetch('/oauth/token', {
+    refresh_token: refreshTokenStr,
+    client_id: clientId,
+    grant_type: 'refresh_token'
   });
 
   if (!res.ok) throw new Error('Token refresh failed');

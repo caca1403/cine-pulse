@@ -20,6 +20,13 @@ const KAHRAMAN_AILER = [...TUM_KAYIT.entries()]
 export const SOURCE_FAMILIES = [
   ...ELLE_AILER,
   ...KAHRAMAN_AILER,
+  // Eklenti satırları: kullanıcı kendi eklentisini getirir; kod adı
+  // tarafsız "Eklenti"dir (harfi sonradan kardeş sırası belirler).
+  { alias: 'Eklenti', provider: '', prefixes: ['eklenti:'], sources: [] },
+  // Yerel torrent motoru hattı: kaynak etiketi 'Torrent' → anonim kod adı da
+  // 'Torrent' ('Nexus' yutucusuna düşürülmesin — kullanıcı motor satırını
+  // eklenti satırından ayırt edebilsin, 2026-10-26).
+  { alias: 'Torrent', provider: '', prefixes: [], sources: ['Torrent'] },
   // Tarafsız yutucu (SON SATIR olmalı): tanınmayan id gerçek bir sitenin
   // kod adını almaz, kullanıcıyı yanıltmaz. Boşluklar hiçbir id/esme eşleşmez.
   { alias: 'Nexus', provider: '', prefixes: [], sources: [] },
@@ -54,6 +61,10 @@ export function getAnonymousSourceLabel(source, siblings = []) {
   const peers = siblings.filter(s => getSourceFamily(s).alias === family.alias)
     .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
   const index = peers.findIndex(s => s === source || (s.id && s.id === source?.id));
+  // #5: kullanıcı eklentisinin adı anonim kod adıyla taşınır — harf sıralaması
+  // gürültü olur (ad zaten ayırt eder). Ad, kullanıcının eklediği eklenti
+  // adıdır; gerçek site adı değildir.
+  if (source?.eklentiAdi) return `${family.alias} · ${source.eklentiAdi}`;
   const label = peers.length > 1 && index >= 0 ? `${family.alias} ${letter(index)}` : family.alias;
   if (source?.requiresVerification && !source?.verificationCompleted) return `${label} · Doğrulama gerekli`;
   return label;

@@ -30,7 +30,7 @@ export function closeP2pModal() {
   }
 }
 
-export function openP2pModal() {
+export function openP2pModal({ magnet = '' } = {}) {
   closeP2pModal();
   if (!isP2pAvailable()) {
     showToast('P2P oynatma yalnızca masaüstü uygulamasında çalışır.', 'error');
@@ -79,6 +79,8 @@ export function openP2pModal() {
     consentRow.hidden = getP2pConsent() && consentCheck.checked;
   };
   syncConsentVisibility();
+  // #13: dışarıdan gelen magnet (şema yakalama) önceden doldurulur.
+  if (magnet) input.value = String(magnet).trim();
   syncStartEnabled();
 
   consentCheck.addEventListener('change', () => {

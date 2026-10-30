@@ -102,6 +102,7 @@ async function tmdbDisId(tmdbId, tur) {
 }
 
 async function imdbPuani(imdbId) {
+  // 1) Doğrudan deneme: bazı çıkış IP'lerinden sayfa düz gelir.
   try {
     const cevap = await fetch(`https://www.imdb.com/title/${imdbId}/`, {
       headers: {
@@ -111,8 +112,27 @@ async function imdbPuani(imdbId) {
       },
       signal: AbortSignal.timeout(7000),
     });
+    if (cevap.ok) {
+      const puan = puandanAyikla(await cevap.text());
+      if (puan !== null) return puan;
+    }
+  } catch (_) { /* proxy denemesine düş */ }
+  // 2) Bot duvarı (202 challenge sayfası) buradan da puanı saklıyor; metin
+  //    okuma proxy'siyle başlık satırından ("⭐ 9.2" / "9.2/10 2.7M") okunur.
+  try {
+    const cevap = await fetch(`https://r.jina.ai/https://www.imdb.com/title/${imdbId}/`, {
+      headers: { Accept: 'text/plain' },
+      signal: AbortSignal.timeout(9000),
+    });
     if (!cevap.ok) return null;
-    return puandanAyikla(await cevap.text());
+    const metin = String(await cevap.text());
+    const eslesme =
+      metin.match(/⭐\s*(\d+(?:\.\d+)?)/) ||
+      metin.match(/(\d\.\d)\s*\/\s*10\s*\d[\d.]*[KM]?\b/i) ||
+      metin.match(/"ratingValue"\s*:\s*"?(\d+(?:\.\d+)?)/);
+    if (!eslesme) return null;
+    const sayi = Number.parseFloat(eslesme[1]);
+    return Number.isFinite(sayi) && sayi >= 0 && sayi <= 10 ? Math.round(sayi * 10) / 10 : null;
   } catch (_) {
     return null;
   }

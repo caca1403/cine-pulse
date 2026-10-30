@@ -64,17 +64,6 @@ export async function initAndroidPlatform() {
     console.warn('[Platform] Android backButton dinleyicisi eklenemedi:', err);
   }
 
-  // 3. Çevrimdışı bağlantı koptuğunda indirilenler ekranına otomatik yönlendirme
-  window.addEventListener('offline', () => {
-    if (window.location.hash !== '#downloads') {
-      window.location.hash = '#downloads';
-    }
-  });
-
-  if (typeof navigator !== 'undefined' && navigator.onLine === false && window.location.hash !== '#downloads') {
-    window.location.hash = '#downloads';
-  }
-
   // 4. In-App Otomatik Güncelleyiciyi Başlat (GitHub Releases kontrolü)
   try {
     initAppUpdater();

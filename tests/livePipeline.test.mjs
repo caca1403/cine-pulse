@@ -1,7 +1,9 @@
-/* Uçtan uca: sidecar → /api/live_sources → istemci kanal üretimi → proxy URL'leri */
+/* Uçtan uca: sidecar → /api/live_sources → istemci kanal üretimi → proxy URL'leri
+   GATE: 127.0.0.1:4000 ayakta değilse bu betik ÇÖKMEZ — "atlandı" yazar ve 0
+   ile çıkar; birim test koşusu (pnpm test) dev sunucusu istemez. */
 import { buildChannels } from '../src/services/canli/turkishLiveSources.js';
 
-const BASE = 'http://127.0.0.1:4000';
+const BASE = process.env.LIVE_BASE || 'http://127.0.0.1:4000';
 
 function normalizeName(name) {
   return String(name || '')
@@ -31,8 +33,14 @@ function toProxiedLiveUrl(url, headers) {
   return `/api/hls_proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(ref)}&live=1${extra.join('')}`;
 }
 
-const res = await fetch(`${BASE}/api/live_sources`, { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/124.0.0.0' } });
-if (!res.ok) throw new Error(`live_sources HTTP ${res.status}`);
+let res;
+try {
+  res = await fetch(`${BASE}/api/live_sources`, { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/124.0.0.0' } });
+} catch (_) {
+  console.log(`SKIP livePipeline: ${BASE} erişilemedi — sidecar/dev sunucusu ayakta değil (LIVE_BASE ile taşınabilir)`);
+  process.exit(0);
+}
+if (!res.ok) { console.log(`SKIP livePipeline: live_sources HTTP ${res.status} — sunucu hazır değil`); process.exit(0); }
 const data = await res.json();
 
 const curatedNames = new Set(['TRT1','ATV','SHOWTV','NOWTV','STARV','KANALD']);

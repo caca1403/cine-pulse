@@ -7305,7 +7305,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       val5 = tmdbId3 != null ? parseInt(String(tmdbId3), 10) : 1,
       val6 = tmdbId4 != null ? parseInt(String(tmdbId4), 10) : 1;
     if (!trimmed2) return [];
-    let result = await fn("Luke-Cage");
+    let result = (await fn("Luke-Cage") || await fn("kizaru"));
     if (!result) return (log("Luke-Cage", "Domain not resolved", "warn"), []);
     log("Luke-Cage", "[Adım 1/4] IMDb ID çözümleniyor (" + trimmed2 + ")...");
     let str2 = "";

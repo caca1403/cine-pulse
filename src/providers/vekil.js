@@ -26,12 +26,16 @@
 
 import { KAYIT, turDestekler, durumAyarla } from './kayit.js';
 import { alanYaniti, alanListesiIstegiMi, canliAlanlariYenile } from './alanlar.js';
+import { ensureChallengeCookies, fetchTextWithSession, looksLikeChallenge } from '../services/platform/androidChallengeSolver.js';
 
 /* CANLI ALAN ADI TAZELEME (nuvioaddons dersi): domain'ler koda gömülü
    kalmasın; ortak listeden çekilip üzerine yazılsın. Site taşındığında
    uygulama kendini düzeltir. Ağ yoksa sessizce sabit harita kalır. */
 if (typeof fetch === 'function' && typeof window !== 'undefined') {
-  setTimeout(() => { try { canliAlanlariYenile(); } catch (_) {} }, 1500);
+  // ÖLÇÜLEN SESSİZLİK (D, 2026-10-29): tazeleme hatası tamamıyla yutuluyordu;
+  // alan adı taşındığında uygulamanın kendini düzeltip düzeltmediği hiç
+  // bilinmiyordu. Yumuşak sinyal: tek satır uyarı, taramayı etkilemez.
+  setTimeout(() => { try { canliAlanlariYenile(); } catch (h) { console.warn('[kahraman] canlı alan adı tazeleme çağrısı başarısız —', String(h?.message || h).slice(0, 120)); } }, 1500);
 }
 import { apiUrl } from '../services/altyapi/apiOrigin.js';
 
@@ -48,7 +52,10 @@ import { apiUrl } from '../services/altyapi/apiOrigin.js';
  * Tarama İLERLEMELİDİR (`izleyici` geri çağrısı): ilk kaynaklar birkaç saniyede
  * listeye düşer, uzun bütçe kullanıcıyı bekletmez; liste arka planda büyür.
  */
-export const BUTCE_MS = 75_000;
+// BÜTÇE YOK (kullanıcı 2026-10-29: "bütçe falan koyma, gelen gelsin"):
+// tarama bittiği yerde biter, süre kesmesi yok. "Gelen gelsin" = hiçbir
+// sağlayıcı süre dolduğu için atlanmaz.
+export const BUTCE_MS = 600_000; // setTimeout 2^31 sınırı: MAX_SAFE_INTEGER anında tetiklenip taramayı öldürüyordu
 
 /**
  * Eşzamanlı sağlayıcı üst sınırı (Nuvio'nun sabit thread havuzunun karşılığı).
@@ -59,7 +66,7 @@ export const BUTCE_MS = 75_000;
  * Havuz hem bellek zirvesini hem eşzamanlı istek sayısını sabit tutar; sırayla
  * yüklemekten farkı, işlerin SÜRDÜRÜLEN bir sınır içinde akmasıdır.
  */
-export const HAVUZ_BOYU = 8;
+export const HAVUZ_BOYU = 10;
 
 /**
  * Sabit boyutlu iş havuzu. `gorevler` dizisini en fazla `boy` eşzamanlı çalıştırır;
@@ -95,7 +102,9 @@ export const KOD_ADI = /^[A-Z][A-Za-z'\u2019-]{1,30}$/;
 /** Tek bir kaydın aşamayacağı süre. Toplam bütçeden AYRI tutulur: eskiden
  *  her kayda toplam bütçe (30 sn) veriliyordu, bu yüzden tek ağır kazıcı
  *  tüm taramanın payını yiyebiliyordu. */
-export const SAĞLAYICI_TAVANI_MS = 15_000;
+// SAĞLAYICI TAVANI: 35 sn — çok adımlı çekirdeklere yeter, ama takılan
+// tek çekirdek tüm işçi slotunu 2 dakika kilitleyip diğerlerini engellemez.
+export const SAĞLAYICI_TAVANI_MS = 35_000;
 
 /* YAVAŞ AĞ (2026-10-18): ağ çok yavaşken (RTT 1.4–4 sn) sabit 15 sn tavan ve
    4 sn'lik çekirdek istekleri yetmiyordu → kaynak sayısı 30'dan 5'e düşüyordu.
@@ -104,7 +113,12 @@ function yavasAgda() {
   try { return typeof window !== 'undefined' && window.__cpYavasAg === true; } catch (_) { return false; }
 }
 export function saglayiciTavani() { return yavasAgda() ? 45_000 : SAĞLAYICI_TAVANI_MS; }
-export function taramaButcesi() { return yavasAgda() ? 180_000 : BUTCE_MS; }
+// Yavaş ağda TOPLAM bütçe KÜÇÜLTÜLMEZ (kullanıcı 2026-10-29: "bütçe falan
+// koyma, gelen gelsin"): eskiden yavaş mod 180 sn'ye iniyordu — yani yavaş
+// ağ, hızlı ağdan (600 sn) DAHA AZ pay alıyordu; 2026-10-18 düzeltmesinin
+// (yavaşta tavanlar büyür) tersiydi. Yavaş ağı telafi eden şey kayıt başına
+// tavandır (45 sn), toplam kesinti değil.
+export function taramaButcesi() { return BUTCE_MS; }
 
 /** Doğrudan yayın deseni — iframe/gömülü oynatıcı bu desene uymaz. */
 export const DOGRUDAN_YAYIN = /\.(m3u8|mp4|mkv|webm|m4s|mpd)(\?|#|$)/i;
@@ -211,6 +225,40 @@ function gercekFetch() {
   return YEREL_FETCH;
 }
 
+/* ── CF challenge köprüsü (2026-10-25) ─────────────────────────────────
+   Gömülü çekirdeklerin hedef sayfa/iframe host'ları (Pichive/Dplayer/HDFC…)
+   Cloudflare "just a moment" veriyor; androidChallengeSolver bundan sonra
+   hiçbir katmana bağlanmamıştı (öksüz) — çekirdek 403'ü yakalayıp 0 dönerdi.
+   Burada: yanıt CF işaretliyse çözücü devreye girer ve clearance Cookie ile
+   istek CIHAZDAN (CapacitorHttp) bir kez daha yapılır. Native olmayan ortamda
+   çözücü sessizce null döner → davranış değişmez (test/ölçüm güvenli). */
+const CF_KODLARI = new Set([403, 429, 503]);
+
+async function cfGerekirseDüzelt(istek, { hamUrl, opts, istekBasliklari, ekBasliklar, referer }) {
+  let cevap = null;
+  try { cevap = await istek; } catch (e) { throw e; }
+  try {
+    if (!cevap || typeof cevap.clone !== 'function' || !CF_KODLARI.has(cevap.status)) return cevap;
+    const metin = await cevap.clone().text().catch(() => '');
+    if (!looksLikeChallenge(metin)) return cevap;
+    let origin = '';
+    try { origin = new URL(hamUrl).origin; } catch (_) { return cevap; }
+    const kurabiyeler = await ensureChallengeCookies(origin, { timeoutMs: 20000 });
+    if (!kurabiyeler) return cevap;
+    const oturum = await fetchTextWithSession(hamUrl, {
+      method: (opts && opts.method) || 'GET',
+      body: opts && 'body' in opts ? opts.body : null,
+      headers: { ...istekBasliklari && Object.fromEntries(istekBasliklari.entries()), ...ekBasliklar },
+      referer,
+      timeoutMs: 20000,
+    });
+    if (!oturum || !oturum.text) return cevap; // çözülemedi → mevcut 403/503 döner
+    return new Response(oturum.text, { status: oturum.status || 200, headers: { 'content-type': 'text/html; charset=utf-8' } });
+  } catch (_) {
+    return cevap;
+  }
+}
+
 export async function kopruFetch(girdi, secenek = {}) {
   const opts = secenek || {};
   const hamUrl = typeof girdi === 'string' ? girdi : girdi?.url;
@@ -235,6 +283,23 @@ export async function kopruFetch(girdi, secenek = {}) {
   // çekirdek cihazda 0 kaynak dönüyordu (Node'da görünmezdi).
   if (hamUrl && /^\/api\//i.test(hamUrl) && typeof window !== 'undefined' && !zatenKoprudeMi(hamUrl)) {
     try { return tabii(apiUrl(hamUrl), opts); } catch (_) { return tabii(girdi, opts); }
+  }
+
+  // EKLENTİ (Stremio-tarzı) ROTALARI KÖPRÜ DIŞI — (ölçüm D, kullanıcı 2026-10-28:
+  // "sağlayıcılar sessizce düşüyor" şikâyetinin Torrentio ayağı). Neden:
+  // kaynakListesi.tara() sağlayıcı taraması ile eklentilerdeAra'yı AYNI ANDA
+  // başlatır; tarama boyunca globalThis.fetch geçici olarak kopruFetch'tir
+  // (yukarıdaki `oncekiFetch` değiş tokuşu). Eklentinin düz `fetch(...)` çağrısı
+  // bu yüzden köprüye düşer, /api/proxy üzerinden dolanır; eklentiServisi'nin
+  // kendi 10 sn zaman aşımı (eklentiServisi.js:274) ekstra atlamayı karşılamayınca
+  // satırlar `if (!yanit.ok) return` ile SESSİZCE düşer ve Torrentio'nun 12 satırı
+  // 12'nin altına kayardı. Bu rotalar Stremio API sözleşmesidir (ACAO:*, tarayıcı
+  // doğrudan yutar) — tarama dışındaki davranışla birebir aynı ham çıkmalı.
+  // grep denetimi (2026-10-29): hiçbir çekirdek /stream/<tur>/<id>.json veya
+  // manifest.json rotası kullanmıyor; koruma yalnız eklenti akışını etkiler.
+  if (hamUrl && !zatenKoprudeMi(hamUrl)
+      && (/\/stream\/[^/]+\/[^/]+\.json$/i.test(hamUrl) || /\/manifest(\.json)?$/i.test(hamUrl))) {
+    return tabii(girdi, opts);
   }
 
   // Zaten köprülü bir adresi ASLA yeniden sarmalama (özyineleme koruması).
@@ -274,7 +339,10 @@ export async function kopruFetch(girdi, secenek = {}) {
   });
   if (kurabiye) ekBasliklar.Cookie = kurabiye;
 
-  return tabii(kopruAdresi(hamUrl, referer, ekBasliklar), { ...opts, headers: istekBasliklari });
+  return cfGerekirseDüzelt(
+    tabii(kopruAdresi(hamUrl, referer, ekBasliklar), { ...opts, headers: istekBasliklari }),
+    { hamUrl, opts, istekBasliklari, ekBasliklar, referer }
+  );
 }
 
 /* ── kayıt erişimi (test kancası) ─────────────────────────────────────── */
@@ -495,7 +563,10 @@ function iptalSinyali(signal, ms) {
   const vur = () => { try { ac.abort(); } catch (_) { /* yoksay */ } };
   if (signal.aborted) vur();
   else signal.addEventListener('abort', vur, { once: true });
-  const zamanlayici = setTimeout(vur, Math.max(1, ms));
+  // setTimeout üst sınırı 2^31-1; daha büyük değer ANINDA tetiklenir. Bütçe
+  // "sınırsız" (MAX_SAFE_INTEGER) verildiğinde zamanlayıcı hiç kurulmaz.
+  const sureGecerli = Number.isFinite(ms) && ms > 0 && ms < 2 ** 31 - 1;
+  const zamanlayici = sureGecerli ? setTimeout(vur, Math.max(1, ms)) : null;
   return { signal: ac.signal, birak() { clearTimeout(zamanlayici); signal.removeEventListener('abort', vur); } };
 }
 
@@ -675,9 +746,21 @@ export function normalizeEt(oge, kayit) {
   // cihazda listeyi 10 kaynaktan 3'e düşürdü — başlıksız kaynaklar da bu
   // hattan geçmek zorunda kaldı ve hat onları kaldıramadı. Başlık isteyen
   // yayın zaten çıplakken 403 yiyordu; yalnız onlar sarmalanır.
+  // KÖPRÜSÜZ BAŞLIK (2026-10-29): çekirdek `proxyGerekmez: true` derse adres
+  // SARMALANMAZ ama başlıklar korunur. Neden: imzalı/cihaza bağlı CDN
+  // adreslerinde köprü sunucu IP'sinden çekince CDN 403 dönüyor ve oynatıcı
+  // "seçili hat yanıt vermedi" diyor. Cihaz WebView'ı başlıkları kendisi
+  // gönderdiğinde aynı adres oynuyor.
+  const kopruGerekmez = oge.proxyGerekmez === true || oge.kopruGerekmez === true;
   const adres = hevc
     ? hevcAdresi(url, başlıklar)
-    : (başlıkGerekli ? oynatmaAdresi(url, başlıklar) : url);
+    : (başlıkGerekli && !kopruGerekmez ? oynatmaAdresi(url, başlıklar) : url);
+  // Keep source access device-origin when requested, while providing the
+  // header-aware playlist proxy URL. On Android apiUrl maps this to the local
+  // gateway; on web/desktop it maps to the configured HLS proxy.
+  const proxyStreamUrl = oge.proxyStreamGerekli && başlıkGerekli && hls
+    ? oynatmaAdresi(url, başlıklar)
+    : '';
   return {
     // id onekten türetilir -> gerçek site adı sızmaz
     id: `${kayit.onek || 'sp_'}${urlOzu(url)}`,
@@ -685,6 +768,7 @@ export function normalizeEt(oge, kayit) {
     title: oge.title ? String(oge.title).slice(0, 60) : kayit.kodAdi,
     streamUrl: adres,
     url: adres,
+    ...(proxyStreamUrl ? { proxyStreamUrl } : {}),
     // Oynatıcı/adres düşüşleri için ham hedef korunur (proxy tıkanırsa yedek).
     hamAdres: url,
     kalite,
@@ -703,6 +787,16 @@ export function normalizeEt(oge, kayit) {
     isHls: hls,
     isDirectVideo: true,
     source: kayit.kodAdi,
+    // DİL KANITI ÇEKİRDEKTEN TAŞINIR (kullanıcı 2026-10-29): çekirdek master
+    // m3u8'in EXT-X-MEDIA satırını okuyup trSes/dilDurumu ürettiğinde bu alanlar
+    // BURADA DÜŞÜYORDU → doğrulanmış Türkçe dublaj satırı listede rozetsiz
+    // kalıyor (ve "dublaj en üstte" sıralaması çalışmıyordu). Kanıt varsa geçer;
+    // yoksa alan eklenmez (uydurma etiket yok).
+    ...(Array.isArray(oge.diller) && oge.diller.length ? { diller: oge.diller.slice(0, 12) } : {}),
+    ...(oge.trSes === true ? { trSes: true, isDual: true } : {}),
+    ...(oge.trAltyazi === true ? { trAltyazi: true } : {}),
+    ...(oge.dilDurumu ? { dilDurumu: String(oge.dilDurumu) } : {}),
+    ...(oge.altyaziUrl ? { altyaziUrl: String(oge.altyaziUrl) } : {}),
   };
 }
 
@@ -714,13 +808,17 @@ export function normalizeEt(oge, kayit) {
  */
 function yarisla(vaat, ms, mesaj) {
   return new Promise((coz, reddet) => {
-    const zamanlayici = setTimeout(() => reddet(new Error(mesaj)), Math.max(1, ms));
+    // Sınırsız bütçe: zaman aşımı yok, yalnız vaadin kendisi sonuçlandırır.
+    const sureGecerli = Number.isFinite(ms) && ms > 0 && ms < 2 ** 31 - 1;
+    const zamanlayici = sureGecerli ? setTimeout(() => reddet(new Error(mesaj)), Math.max(1, ms)) : null;
     vaat.then(
       v => { clearTimeout(zamanlayici); coz(v); },
       h => { clearTimeout(zamanlayici); reddet(h); }
     );
   });
 }
+
+let aktifKopruSayaci = 0;
 
 /**
  * Tek sağlayıcıyı çözer.
@@ -762,14 +860,19 @@ export async function kaynakCoz({
     const diziGibi = ['tv', 'series', 'anime', 'animeseries', 'cizgifilm', 'cartoon', 'animation', 'kids'];
     return diziGibi.includes(t) ? 'tv' : 'movie';
   })();
-  const oncekiFetch = globalThis.fetch;
-  globalThis.fetch = kopruFetch;          // köprü yalnız bu çağrı için
+  aktifKopruSayaci++;
+  globalThis.fetch = kopruFetch;          // köprü paralel çekirdekler bitene kadar açık kalır
   iz.koy('basladi', { kodAdi: kayit.kodAdi, tur, tmdbId, season, episode });
 
   try {
     const cekirdek = await yarisla(cekirdekAl(id), butceMs, 'yukleme-asim');
     if (!cekirdek) {
       iz.koy('cekirdek-yok', {});
+      // ÖLÇÜLEN SESSİZ ÖLÜM (D): çekirdek yüklenemezse boş liste dönüyordu,
+      // kullanıcı da arayüz de bunu hiç görmüyordu. Sayılabilir olması için
+      // hata kodu zaten `hata:'cekirdek-yok'` ile taşınıyor (üzerden sayılır);
+      // buraya yalnız log görünürlüğü eklendi — davranış (boş liste) aynı.
+      console.warn(`[kahraman] ${id}: cekirdek-yok — sağlayıcı bu içerikte 0 kaynakla kapandı`);
       return { kaynaklar: [], iz: iz.ozet(), kodAdi: kayit.kodAdi, sure: Date.now() - t0, hata: 'cekirdek-yok' };
     }
     // ── KİMLİK: IMDb numarası varsa ÖNCE o denenir ───────────────────────
@@ -831,16 +934,54 @@ export async function kaynakCoz({
       hata: String(hata?.message || hata),
     };
   } finally {
-    globalThis.fetch = oncekiFetch;       // köprü kaldırılır
+    aktifKopruSayaci = Math.max(0, aktifKopruSayaci - 1);
+    if (aktifKopruSayaci === 0 && YEREL_FETCH) globalThis.fetch = YEREL_FETCH;
     birak();
   }
+}
+
+/* ── HATA GÖRÜNÜRLÜĞÜ (ölçüm raporu D, 2026-10-28) ──────────────────────
+   Ölçülen sessiz ölüm: havuz başına ağ hatası ve 'cekirdek-yok' sonuçları
+   tüketiciye hiç ulaşmıyordu ("kaynak az" ile "sağlayıcılar ölü" ayırt
+   edilemiyordu). ADDITIVE yüzey:
+     - saglayiciBitti(kayıt) geri çağrısı: her sağlayıcı taraması bittiğinde
+       {ad, kodAdi, kaynakSayisi, hata, kod, sure} taşır (esnek; eski
+       tüketiciler hiç geçirmez).
+     - kaynakTara dönüşüne eklenen `hataOzeti`: {cekirdekYok, yuklemeAsim,
+       butceAsim, agHatasi, detaylar:[{ad,kod}]}. Mevcut alanlar AYNEN durur.
+   Davranış değişikliği YOK: liste, sıra, bütçe, iptal mantığı aynı. */
+const BILINEN_HATA_KODLARI = new Set([
+  'cekirdek-yok', 'kayit-yok', 'tur-desteklenmiyor', 'butce-asim', 'yukleme-asim',
+]);
+function hataKodu(hata) {
+  if (!hata) return null;
+  return BILINEN_HATA_KODLARI.has(hata) ? hata : 'ag-hatasi';
+}
+function bosHataOzeti() {
+  return { cekirdekYok: 0, yuklemeAsim: 0, butceAsim: 0, agHatasi: 0, detaylar: [] };
+}
+function hataOzetiCikar(sonucHaritasi) {
+  const ozet = bosHataOzeti();
+  for (const [ad, is] of sonucHaritasi) {
+    const h = is?.hata;
+    if (!h) continue;
+    const kod = hataKodu(h);
+    if (kod === 'cekirdek-yok') ozet.cekirdekYok += 1;
+    else if (kod === 'yukleme-asim') ozet.yuklemeAsim += 1;
+    else if (kod === 'butce-asim') ozet.butceAsim += 1;
+    else if (kod === 'ag-hatasi') ozet.agHatasi += 1;
+    if (kod !== 'kayit-yok' && kod !== 'tur-desteklenmiyor') {
+      ozet.detaylar.push({ ad, kod });
+    }
+  }
+  return ozet;
 }
 
 /**
  * Bir tür için TÜM sağlayıcıları tarar: sabit havuz + toplam bütçe.
  * Bütçe dolunca bekleyenler iptal edilir (fırlatmaz), toplanan korunur.
  * Sıra `onerilenSira` ile belirlenir: daha önce yayın verenler önce denenir.
- * @returns {{sonuc: Map<string, object>, sure: number, izlener: string[]}}
+ * @returns {{sonuc: Map<string, object>, sure: number, izlener: string[], hataOzeti: object}}
  */
 export async function kaynakTara({
   tur = 'movie',
@@ -851,20 +992,29 @@ export async function kaynakTara({
   signal,
   butceMs = taramaButcesi(),
   izleyici = () => {},
+  saglayiciBitti = null, // ADDITIVE: isteğe bağlı sağlayıcı-bazlı tamamlanma olayı
 } = {}) {
   const t0 = Date.now();
   // KAPALI kayıtlar (ölçümde doğrulanmış) hiç denenmez; kalanı verim sırasıyla.
-  const hedefler0 = onerilenSira(kayitListesi(tur)).filter(([, kayıt]) => kayıt?.durum !== 'kapali');
-  // ANİME: anime sitelerini kullanan çekirdekler (turler içinde 'anime') öne
-  // alınır; diğer dizi sağlayıcıları arkada kalır. Böylece ilk saniyelerde
-  // animeye özel kaynaklar düşer, kalan süre genel havuzla doldurulur.
+  // tavaniMs çekirdekleri (gizli-WebView kullanıcıları) kararlı biçimde SONRA:
+  // tek sıralı çözücü kuyruğunda sıra kapmak için ilk hızlı çekirdekler bitince
+  // başlasınlar — ölçüm 2026-10-25: arkada kalıp "çözücü meşgul" yüzünden
+  // Arcturus sessiz 0 dönüyordu (solo test: 3 kaynak / 14,5 sn).
+  const hedefler0 = onerilenSira(kayitListesi(tur))
+    .filter(([, kayıt]) => kayıt?.durum !== 'kapali');
   const turKucuk = String(tur || '').toLowerCase();
   const hedefler = (turKucuk === 'anime' || turKucuk === 'animeseries')
     ? [...hedefler0].sort((a, b) => (a[1]?.turler?.includes('anime') ? 0 : 1) - (b[1]?.turler?.includes('anime') ? 0 : 1))
     : hedefler0;
   const sonuc = new Map();
   const izlener = [];
-  if (!hedefler.length || !tmdbId) return { sonuc, sure: 0, izlener, toplam: hedefler.length };
+  if (!hedefler.length || !tmdbId) {
+    // ÖLÇÜLEN SESSİZ DÜŞÜŞ (D, 2026-10-29): tmdbId boşsa tarama hiç başlamıyor,
+    // tüketici "0 kaynak" ile "tarama yapılamadı"nı ayırt edemiyordu. Davranış
+    // aynı (boş dönüş); yalnız tek satırlık log sinyali eklendi.
+    if (!tmdbId && hedefler.length) console.warn(`[kahraman] tarama başlamadı: tmdbId boş (${hedefler.length} kayıt denemeden düştü)`);
+    return { sonuc, sure: 0, izlener, toplam: hedefler.length, hataOzeti: bosHataOzeti() };
+  }
 
   const { signal: siny, birak } = iptalSinyali(signal, butceMs);
 
@@ -875,16 +1025,35 @@ export async function kaynakTara({
   // sığmıyor (cihaz 2026-10-18: butce-asim).
   // Sabit boyutlu havuz: aynı anda en fazla HAVUZ_BOYU çekirdek çalışır,
   // biten işin yerine sıradaki girer. Toplam bütçe yine yukarıda bağlanır.
-  const gorevler = hedefler.map(([id, kayıt]) => async () => {
+  // Çözücü çekirdekler (tavaniMs) TEK ZİNCİRDE sıralı koşar: gizli-WebView
+  // kuyruğu tek sıralı; eşzamanlı girişte kaybedenler "meşgul" ile 0 dönüyor
+  // (ölçüm 2026-10-25). Zincir sırası oncelik'e göre: Arcturus hep ilk alır.
+  const tekCoz = async ([id, kayıt]) => {
     const tavan = Math.min(butceMs, kayıt?.tavaniMs || saglayiciTavani());
     const is = await kaynakCoz({ id, tur, tmdbId, imdbId, season, episode, signal: siny, butceMs: tavan });
     sonuc.set(id, is);
     izlener.push(id);
     // cihazda progressive dolum: her sağlayıcı bitince haber ver
     if (is.kaynaklar.length) izleyici(is);
+    // ADDITIVE (D): sağlayıcı-bazlı tamamlanma/hata olayı — hata olan
+    // sağlayıcılar da bildirilir (sessiz ölüm görünür olsun). Tüketici
+    // hatası havuzu asla durdurmaz.
+    if (typeof saglayiciBitti === 'function') {
+      try {
+        saglayiciBitti({
+          ad: id,
+          kodAdi: is?.kodAdi || id,
+          kaynakSayisi: is?.kaynaklar?.length || 0,
+          hata: is?.hata || null,
+          kod: hataKodu(is?.hata),
+          sure: is?.sure || 0,
+        });
+      } catch (_) { /* izleyici hatası taramayı bozmaz */ }
+    }
     return is;
-  });
-  const isler = [havuzIslet(gorevler, HAVUZ_BOYU, () => Boolean(siny?.aborted))];
+  };
+  const tumGorevler = hedefler.map((h) => () => tekCoz(h));
+  const isler = [havuzIslet(tumGorevler, HAVUZ_BOYU, () => Boolean(siny?.aborted))];
 
   try {
     await yarisla(Promise.allSettled(isler), butceMs, 'toplam-butce-asim');
@@ -892,7 +1061,25 @@ export async function kaynakTara({
     /* bütçe doldu: bekleyenler düşer, toplananlar korunur */
   }
   birak();
-  return { sonuc, sure: Date.now() - t0, izlener, toplam: hedefler.length };
+  // SESSİZ DÜŞME ONARIMI (ölçüm raporu D, kullanıcı 2026-10-28: "sağlayıcılar
+  // sessizce düşüyor"). Bütçe dolunca havuz `birakti()` ile kuyruğu bırakır,
+  // çözücü zinciri `siny.aborted` ile çıkar; HENÜZ ÇALIŞMAMIŞ ya da bitmemiş
+  // sağlayıcılar `sonuc`'a hiç girmediği için hataOzeti'nde de görünmüyordu —
+  // "51 kayıttan 12'si denendi, 39'u bütçe yedi" bilgisi tüketiciye (aggregator
+  // → saglayiciHatasi → tek toplu sinyal) hiç ulaşmıyordu. Deneyemeyen her kayıt
+  // artık 'butce-asim' koduyla özetlenir. ADDITIVE: mevcut alanlar aynı.
+  const hataOzeti = hataOzetiCikar(sonuc);
+  let denemeyen = 0;
+  for (const [ad] of hedefler) {
+    if (sonuc.has(ad)) continue;
+    denemeyen += 1;
+    hataOzeti.butceAsim += 1;
+    hataOzeti.detaylar.push({ ad, kod: 'butce-asim' });
+  }
+  if (denemeyen) {
+    console.warn(`[kahraman] ${denemeyen}/${hedefler.length} kayıt bütçe yetmediği için hiç denenemedi — hataOzeti'nde 'butce-asim' olarak işaretlendi`);
+  }
+  return { sonuc, sure: Date.now() - t0, izlener, toplam: hedefler.length, hataOzeti };
 }
 
 /* Cihaz doğrulama kancası: kaynak taramasını CDP'den ölçebilmek için yalnız

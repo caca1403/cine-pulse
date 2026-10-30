@@ -1,0 +1,443 @@
+/* ==========================================================================
+   CinePulse Studio - Player Polish (G4: Cinematic Visual Layer)
+   Pure CSS + class toggles; NO logic changes.
+   ========================================================================== */
+
+:root {
+  /* Spring easing for cinematic transitions */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring-slow: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-circ: cubic-bezier(0.08, 0.82, 0.17, 1);
+  
+  /* Accent gradient: amber → red (from palette variables) */
+  --accent-gradient: linear-gradient(90deg, var(--accent-amber, #dfff76) 0%, #ef4444 100%);
+  --accent-gradient-soft: linear-gradient(90deg, rgba(223, 255, 118, 0.85) 0%, rgba(239, 68, 68, 0.85) 100%);
+  
+  /* Glassmorphism blur token */
+  --glass-blur: blur(20px) saturate(180%);
+  --glass-blur-strong: blur(32px) saturate(200%);
+}
+
+/* ==========================================================================
+   1. CONTROL LAYER — dark deep gradient + glass blur + spring animation
+   ========================================================================== */
+
+/* Bottom control bar — gradient base + glass */
+.custom-player-controls {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 50%, rgba(0, 0, 0, 0) 100%) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Top cinema bar (title, tabs) — same treatment */
+.player-cinema-bar {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 50%, rgba(0, 0, 0, 0) 100%) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Smart sources bar */
+.player-smart-sources-bar {
+  background: rgba(8, 12, 20, 0.85) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Server toolbar */
+.server-toolbar {
+  background: rgba(8, 11, 18, 0.92) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Animation classes for show/hide — attach to existing .hide-controls toggle */
+.custom-player-controls,
+.player-cinema-bar,
+.player-smart-sources-bar,
+.server-toolbar,
+.custom-center-transport-overlay {
+  transition: opacity 0.32s var(--ease-spring), transform 0.32s var(--ease-spring), pointer-events 0.32s var(--ease-spring) !important;
+}
+
+/* Enter animation */
+.cp-anim-in {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  pointer-events: auto !important;
+}
+
+/* Exit animation (handled by .hide-controls) */
+.custom-player-controls,
+.player-cinema-bar,
+.player-smart-sources-bar,
+.server-toolbar {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.direct-video-wrapper.hide-controls .custom-player-controls,
+.direct-video-wrapper.hide-controls .player-cinema-bar,
+.direct-video-wrapper.hide-controls .player-smart-sources-bar,
+.direct-video-wrapper.hide-controls .server-toolbar,
+.player-modal-content.hide-controls .custom-player-controls,
+.player-modal-content.hide-controls .player-cinema-bar,
+.player-modal-content.hide-controls .player-smart-sources-bar,
+.player-modal-content.hide-controls .server-toolbar {
+  opacity: 0 !important;
+  transform: translateY(12px) !important;
+  pointer-events: none !important;
+}
+
+/* Center transport overlay — fade + scale */
+.custom-center-transport-overlay {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  transition: opacity 0.28s var(--ease-spring), transform 0.28s var(--ease-spring) !important;
+}
+
+.direct-video-wrapper.hide-controls .custom-center-transport-overlay,
+.player-modal-content.hide-controls .custom-center-transport-overlay {
+  opacity: 0 !important;
+  transform: translate(-50%, -50%) scale(0.92) !important;
+  pointer-events: none !important;
+}
+
+/* Safe-area padding for control layer (notch/home indicator) */
+.custom-player-controls {
+  padding-left: max(16px, env(safe-area-inset-left, 16px));
+  padding-right: max(16px, env(safe-area-inset-right, 16px));
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 14px));
+}
+
+.player-cinema-bar {
+  padding-left: max(1.25rem, env(safe-area-inset-left, 1.25rem));
+  padding-right: max(1.25rem, env(safe-area-inset-right, 1.25rem));
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0.75rem));
+}
+
+/* Fullscreen top bar fade-in */
+.player-modal-content:fullscreen .player-cinema-bar,
+.player-modal-content:-webkit-full-screen .player-cinema-bar {
+  animation: cp-fade-in-top 0.5s var(--ease-spring) forwards;
+}
+
+@keyframes cp-fade-in-top {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   2. PROGRESS BAR — thicker on hover/active, accent gradient, thumb glow, buffered, tooltip
+   ========================================================================== */
+
+/* Base track: 3px → 7px on hover/active */
+.custom-timeline-bg {
+  height: 3px !important;
+  border-radius: 3px !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  transition: height 0.15s var(--ease-spring), background 0.15s ease !important;
+}
+
+.custom-timeline-container:hover .custom-timeline-bg,
+.custom-timeline-container:active .custom-timeline-bg,
+.custom-timeline-container.dragging .custom-timeline-bg {
+  height: 7px !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Played portion — accent gradient */
+.custom-timeline-played {
+  background: var(--accent-gradient) !important;
+  border-radius: 3px !important;
+  box-shadow: 0 0 12px rgba(223, 255, 118, 0.5), 0 0 20px rgba(239, 68, 68, 0.3) !important;
+  height: 100% !important;
+}
+
+/* Buffered portion — thin visible */
+.custom-timeline-buffered {
+  background: rgba(255, 255, 255, 0.35) !important;
+  border-radius: 3px !important;
+  height: 100% !important;
+}
+
+/* Thumb — glow, scale on hover/active/dragging */
+.custom-timeline-thumb {
+  width: 14px !important;
+  height: 14px !important;
+  background: #ffffff !important;
+  border-radius: 50% !important;
+  transform: translate(-50%, -50%) scale(0) !important;
+  transition: transform 0.15s var(--ease-spring), box-shadow 0.15s ease !important;
+  box-shadow: 
+    0 0 8px rgba(0, 0, 0, 0.9),
+    0 0 12px rgba(255, 255, 255, 0.8),
+    0 0 20px rgba(223, 255, 118, 0.6) !important;
+  pointer-events: none;
+}
+
+.custom-timeline-container:hover .custom-timeline-thumb,
+.custom-timeline-container:active .custom-timeline-thumb,
+.custom-timeline-container.dragging .custom-timeline-thumb {
+  transform: translate(-50%, -50%) scale(1.15) !important;
+  box-shadow: 
+    0 0 12px rgba(0, 0, 0, 0.9),
+    0 0 16px rgba(255, 255, 255, 0.9),
+    0 0 28px rgba(223, 255, 118, 0.8),
+    0 0 40px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Tooltip (time balloon) — polish existing markup */
+.custom-timeline-tooltip {
+  background: rgba(10, 14, 26, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  transition: opacity 0.12s ease, transform 0.12s ease !important;
+  transform: translateX(-50%) translateY(4px) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7) !important;
+}
+
+.custom-timeline-container:hover .custom-timeline-tooltip,
+.custom-timeline-container.dragging .custom-timeline-tooltip {
+  opacity: 1 !important;
+  transform: translateX(-50%) translateY(0) !important;
+}
+
+/* ==========================================================================
+   3. BUTTONS — .cp-press press state + focus ring + play/pause icon transition
+   ========================================================================== */
+
+/* Universal press micro-animation */
+.cp-press {
+  transition: transform 0.08s ease, background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease !important;
+}
+
+.cp-press:active {
+  transform: scale(0.94) !important;
+}
+
+/* Focus ring for accessibility */
+.cp-press:focus-visible {
+  outline: none !important;
+  box-shadow: 
+    0 0 0 3px rgba(223, 255, 118, 0.45),
+    0 0 0 6px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Apply to all control buttons */
+.compact-transport-btn,
+.custom-ctrl-btn,
+.pill-bar-btn,
+.center-transport-btn,
+.center-play-pause-btn,
+.cinema-tab-btn,
+.server-btn,
+.smart-cat-tab,
+.audio-sub-tab-btn,
+.custom-menu-transport-btn,
+.btn-player-tool,
+.btn-player-close,
+.btn-dizisol-action,
+.custom-menu-item {
+  /* cp-press will be added via JS classList.add */
+}
+
+/* Play/Pause icon transition — two-layer opacity swap */
+.compact-play-btn,
+.center-play-pause-btn,
+#custom-btn-play {
+  position: relative;
+  overflow: hidden;
+}
+
+.compact-play-btn i,
+.center-play-pause-btn i,
+#custom-btn-play i {
+  transition: opacity 0.2s var(--ease-spring), transform 0.2s var(--ease-spring) !important;
+}
+
+.compact-play-btn[data-paused="true"] i[data-lucide="play"],
+.center-play-pause-btn[data-paused="true"] i[data-lucide="play"],
+#custom-btn-play[data-paused="true"] i[data-lucide="play"] {
+  opacity: 1 !important;
+  transform: scale(1) !important;
+}
+
+.compact-play-btn[data-paused="true"] i[data-lucide="pause"],
+.center-play-pause-btn[data-paused="true"] i[data-lucide="pause"],
+#custom-btn-play[data-paused="true"] i[data-lucide="pause"] {
+  opacity: 0 !important;
+  transform: scale(0.7) !important;
+}
+
+.compact-play-btn:not([data-paused="true"]) i[data-lucide="pause"],
+.center-play-pause-btn:not([data-paused="true"]) i[data-lucide="pause"],
+#custom-btn-play:not([data-paused="true"]) i[data-lucide="pause"] {
+  opacity: 1 !important;
+  transform: scale(1) !important;
+}
+
+.compact-play-btn:not([data-paused="true"]) i[data-lucide="play"],
+.center-play-pause-btn:not([data-paused="true"]) i[data-lucide="play"],
+#custom-btn-play:not([data-paused="true"]) i[data-lucide="play"] {
+  opacity: 0 !important;
+  transform: scale(0.7) !important;
+}
+
+/* ==========================================================================
+   4. HAPTIC — no CSS needed, JS helper only (cpDokun)
+   ========================================================================== */
+
+/* ==========================================================================
+   5. LOADING OVERLAY — cp-scale-in + low opacity gradient bg
+   ========================================================================== */
+
+.player-loading-overlay {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.25) 50%, rgba(0, 0, 0, 0.45) 100%) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.player-loader-core {
+  animation: cp-scale-in 0.6s var(--ease-spring) forwards !important;
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+@keyframes cp-scale-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.player-loader-spinner {
+  border-color: rgba(223, 255, 118, 0.18) !important;
+  border-top-color: var(--primary) !important;
+  opacity: 0.85;
+}
+
+/* Player not found container — same subtle bg */
+.player-not-found-container {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.25) 50%, rgba(0, 0, 0, 0.45) 100%) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.not-found-icon-wrap {
+  animation: cp-scale-in 0.5s var(--ease-spring) forwards !important;
+}
+
+/* ==========================================================================
+   6. REDUCED MOTION — respect user preference
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .custom-player-controls,
+  .player-cinema-bar,
+  .player-smart-sources-bar,
+  .server-toolbar,
+  .custom-center-transport-overlay,
+  .custom-timeline-bg,
+  .custom-timeline-thumb,
+  .custom-timeline-tooltip,
+  .cp-press,
+  .compact-play-btn i,
+  .center-play-pause-btn i,
+  #custom-btn-play i,
+  .player-loader-core,
+  .not-found-icon-wrap {
+    animation: none !important;
+    transition: none !important;
+  }
+  
+  .custom-timeline-container:hover .custom-timeline-thumb,
+  .custom-timeline-container:active .custom-timeline-thumb,
+  .custom-timeline-container.dragging .custom-timeline-thumb {
+    transform: translate(-50%, -50%) scale(1) !important;
+  }
+}
+
+/* ==========================================================================
+   7. QUALITY CHIPS (kalite-filtre-cipleri) — subtle polish
+   ========================================================================== */
+
+#kalite-filtre-cipleri .smart-cat-tab,
+.smart-sources-cat-tabs .smart-cat-tab {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  transition: all 0.18s var(--ease-spring) !important;
+}
+
+#kalite-filtre-cipleri .smart-cat-tab:hover,
+.smart-sources-cat-tabs .smart-cat-tab:hover {
+  background: rgba(223, 255, 118, 0.12) !important;
+  border-color: rgba(223, 255, 118, 0.3) !important;
+  color: #dfff76 !important;
+  transform: translateY(-1px) !important;
+}
+
+#kalite-filtre-cipleri .smart-cat-tab.active,
+.smart-sources-cat-tabs .smart-cat-tab.active {
+  background: var(--accent-gradient) !important;
+  color: #000 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 10px rgba(223, 255, 118, 0.35), 0 0 15px rgba(239, 68, 68, 0.2) !important;
+  border-color: transparent !important;
+}
+
+/* ==========================================================================
+   8. SUBTITLE TABS (audio-sub-tab-btn) — consistent with quality chips
+   ========================================================================== */
+
+.audio-sub-tab-btn {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  transition: all 0.18s var(--ease-spring) !important;
+}
+
+.audio-sub-tab-btn:hover {
+  background: rgba(223, 255, 118, 0.12) !important;
+  border-color: rgba(223, 255, 118, 0.3) !important;
+  color: #dfff76 !important;
+}
+
+.audio-sub-tab-btn.active {
+  background: var(--accent-gradient) !important;
+  color: #000 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 10px rgba(223, 255, 118, 0.35), 0 0 15px rgba(239, 68, 68, 0.2) !important;
+  border-color: transparent !important;
+}
+
+/* ==========================================================================
+   9. POST-PLAY CARD — subtle entrance
+   ========================================================================== */
+
+.post-play-card {
+  animation: cp-scale-in 0.4s var(--ease-spring) forwards !important;
+  backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  background: rgba(8, 12, 20, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ==========================================================================
+   10. BINGE CARD — consistent
+   ========================================================================== */
+
+.custom-binge-card {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  background: rgba(8, 12, 20, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}

@@ -2460,7 +2460,7 @@ async function getStreams(tmdbId, arg2, season, episode) {
         log("JoyBoy", "Geçerli bir IMDb ID (tt...) bulunamadı. İsimle arama yapılmaz.", "warn"),
         []
       );
-    let Origin = await fn("Iron-Man");
+    let Origin = (await fn("Iron-Man") || await fn("joyboy"));
     if (!Origin) return (log("JoyBoy", "Sağlayıcı adresi alınamadı.", "warn"), []);
     log("JoyBoy", "[Adım 2/4] Kaynak üzerinde saf IMDb ID ile aranıyor (" + val8 + ")...");
     let val9 = Origin + "/?s=" + encodeURIComponent(val8),

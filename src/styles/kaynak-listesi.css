@@ -1,0 +1,288 @@
+/* ==========================================================================
+   CinePulse Studio — detay sayfası kaynak listesi (kaynak-*)
+   Stremio düzeni: sekmeler, kalite çipleri, tam sayfa kart listesi.
+   Kart yüksekliği sabit, liste dikey kaydırılır. Tema değişkenleri kullanılır.
+   NOT: main.css'teki .player-smart-sources-bar kuralında transform:
+   rotate(180deg) hatası var; oynatıcı içi bar başka dosyanın alanı — buraya
+   kopyalanmadı.
+   ========================================================================== */
+
+.kaynak-liste-kok {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 2rem;
+}
+
+.kaynak-arac {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.kaynak-sekmeler {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: thin;
+}
+
+.kaynak-sekme {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.kaynak-sekme:hover {
+  color: var(--text-main);
+  border-color: var(--primary);
+}
+
+.kaynak-sekme.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #000;
+}
+
+.kaynak-kalite-cipleri {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.kaynak-cip {
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kaynak-cip.is-active {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.kaynak-durum {
+  min-height: 1.1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.kaynak-tarama {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.kaynak-tarama .spin-loader {
+  width: 13px;
+  height: 13px;
+}
+
+.kaynak-bos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.kaynak-bos p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.kaynak-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+/* TV: sezon/bölüm şeridi */
+.kaynak-bolum-cubugu {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.kaynak-bolum-alan {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.kaynak-bolum-alan select {
+  padding: 0.3rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kaynak-bolum-alan select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.kaynak-satir {
+  margin: 0;
+}
+
+/* Kartın tamamı tıklanabilir buton: 4 satır, sabit yükseklik. */
+.kaynak-kart {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.18rem;
+  width: 100%;
+  min-height: 5.1rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.kaynak-kart:hover,
+.kaynak-kart:focus-visible {
+  border-color: var(--primary);
+  background: var(--bg-card-hover);
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.kaynak-kart-baslik {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.kaynak-kart-ad {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kaynak-rozet {
+  flex: 0 0 auto;
+  padding: 0.08rem 0.42rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.kaynak-rozet--kalite {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ── DİL / KÖKEN ROZETLERİ — HER KAYNAKTA AYNI TASARIM ────────────────────
+   Kullanıcı 2026-10-29: "Türkçe altyazı ve orijinal etiketi de onlarda özel
+   tasarımda, onu da hepsine yap" — yerli PopWatch/VidBolt satırlarındaki
+   renkli rozet dili artık TÜM kaynak satırlarında geçerli. Sınıflar tek
+   yerden (kaynakListesi.js → rozetSinifi) atanır; çelişen etiket olmaz. */
+.kaynak-rozet--dublaj {
+  border-color: rgba(52, 211, 153, 0.65);
+  background: rgba(16, 185, 129, 0.16);
+  color: #6ee7b7;
+}
+
+.kaynak-rozet--altyazi {
+  border-color: rgba(56, 189, 248, 0.6);
+  background: rgba(14, 165, 233, 0.14);
+  color: #7dd3fc;
+}
+
+.kaynak-rozet--orijinal {
+  border-color: rgba(148, 163, 184, 0.5);
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
+}
+
+.kaynak-rozet--dil-fazla {
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
+.kaynak-kart-dosya {
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kaynak-kart-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kaynak-kart-diller {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .kaynak-liste {
+    max-height: 70vh;
+  }
+
+  .kaynak-kart {
+    min-height: 4.8rem;
+    padding: 0.6rem 0.7rem;
+  }
+
+  .kaynak-kart-ad {
+    font-size: 0.84rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .kaynak-liste {
+    max-height: 58vh;
+  }
+}

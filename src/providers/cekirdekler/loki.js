@@ -7101,7 +7101,9 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       val5 = tmdbId3 != null ? parseInt(String(tmdbId3), 10) : 1,
       val6 = tmdbId4 != null ? parseInt(String(tmdbId4), 10) : 1;
     if (!trimmed) return [];
-    let result = await fn("Loki");
+    /* onarim:lk-domain — gerçek domains.json satıcı takmasıyla (shanks) listeler,
+       kahraman kodu yalnız köprünün alanYaniti'nda var (joker.js toki kalıbı) */
+    let result = (await fn("shanks")) || (await fn("Loki")) || "https://filmekseni.vip";
     if (!result) return (log("Loki", "Domain not resolved", "warn"), []);
     log("Loki", "[Adım 1/4] IMDb ID çözümleniyor (" + trimmed + ")...");
     let str2 = "";
@@ -7129,6 +7131,30 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
           }
         }
       } catch {}
+        /* onarim:loki-baslik */
+    /* Ölçüm 2026-10-25: filmekseni meilisearch, /api/search?q=tt... IMDb-id
+       ile boş {data:[]} dönüyor; başlık araması yedeği eklendi. */
+    if (list2.length === 0) {
+      try {
+        let meta7534 = await splitOf2(trimmed, val4),
+          basliklari = (meta7534?.titles || []).slice(0, 3);
+        for (let baslik of basliklari)
+          try {
+            let yanit7534 = await fetch(result + "/api/search?q=" + encodeURIComponent(baslik), {
+              headers: { "User-Agent": userAgent2, Referer: result + "/" },
+              signal: AbortSignal.timeout ? AbortSignal.timeout(6000) : void 0
+            });
+            if (yanit7534.ok) {
+              let veri7534 = (await yanit7534.json())?.data || [];
+              if (veri7534.length > 0) {
+                list2 = veri7534;
+                log("Loki", "[Doğrulama] Başlık aramasında içerik bulundu: " + baslik, "info");
+                break;
+              }
+            }
+          } catch {}
+      } catch {}
+    }
     if (list2.length === 0) return (log("Loki", "Eşleşen içerik bulunamadı.", "warn"), []);
     let val7 = isTvOrSeries
       ? list2.find(
@@ -7137,7 +7163,10 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       : list2.find(
           (arg1) => !arg1.contentableType?.includes("TVSeries") && !arg1.slug?.includes("dizi/")
         );
-    val7 || (val7 = list2[0]);
+    /* tv sorgusunda film sonucuna düşme (El Camino→dizi slug yanlış içerik) */
+    if (!val7 && !isTvOrSeries) val7 = list2[0];
+    if (!val7)
+      return (log("Loki", "İçerik türü eşleşmedi (tv sorgusuna film sonucu verilmedi).", "warn"), []);
     let value42 = val7.slug;
     if (!value42) return (log("Loki", "İçerik bağlantısı (slug) bulunamadı.", "warn"), []);
     log("Loki", "[Doğrulama] İçerik bulundu: " + (val7.title || value42), "info");
@@ -7147,12 +7176,14 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       Referer = result + "/" + val8 + "/sezon-" + val5 + "/bolum-" + val6;
     } else Referer = result + "/" + value42;
     log("Loki", "[Adım 3/4] Oynatıcı sayfası yükleniyor...");
+    /* onarim:lk-timeout — ölçüm 2026-10-28: filmekseni bölüm sayfası ~112KB,
+       yavaş hattın ölçümü 5.3sn; 4000ms sinyal sayfa inmeden abort ediyordu */
     let response = await fetch(Referer, {
       headers: {
         "User-Agent": userAgent2,
         Referer: result + "/"
       },
-      signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : void 0
+      signal: AbortSignal.timeout ? AbortSignal.timeout(12000) : void 0
     });
     if (!response.ok)
       return (log("Loki", "Sayfa yüklenemedi: HTTP " + response.status, "warn"), []);
@@ -7296,3 +7327,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

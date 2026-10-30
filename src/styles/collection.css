@@ -16,8 +16,12 @@
 .cp-layout-toolbar { display: flex; justify-content: flex-end; padding-top: calc(var(--cp-header-height,78px) + 20px); }
 .cp-home-layout-toolbar { display: flex; justify-content: flex-end; padding-block: 18px 0; }
 .cine-discovery-theme .cp-home-layout-toolbar .card-layout-switcher { gap: 12px; }
-.cine-discovery-theme .cp-home-layout-toolbar .card-layout-switcher-label { display: inline !important; }
-.cine-discovery-theme .card-layout-option span { display: inline !important; }
+/* Etiket + metin yalnız masaüstünde; mobilde ikon-çekirdeği sade grup
+   (aşağıdaki 860 bloğu display:none der — buradaki !important onu eziyordu). */
+@media (min-width: 861px) {
+  .cine-discovery-theme .cp-home-layout-toolbar .card-layout-switcher-label { display: inline !important; }
+  .cine-discovery-theme .card-layout-option span { display: inline !important; }
+}
 .cine-discovery-theme .card-layout-switcher .card-layout-option { min-height: 40px; padding-inline: 10px !important; }
 .cine-discovery-theme .card-layout-option:focus-visible { outline: 2px solid var(--cp-lime); outline-offset: 2px; }
 /* Native filter selects remain native, including touch and keyboard navigation. */

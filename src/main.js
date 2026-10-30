@@ -50,7 +50,7 @@ const app = document.getElementById('app');
 document.body.classList.add('cine-discovery-theme');
 document.documentElement.classList.toggle('cards-landscape', getUserSettings().cardLayout === 'landscape');
 
-if (isNativeAndroidApp() && typeof navigator !== 'undefined' && navigator.onLine === false && window.location.hash !== '#downloads') {
+if (isAppPlatform() && typeof navigator !== 'undefined' && navigator.onLine === false && window.location.hash !== '#downloads') {
   window.location.hash = '#downloads';
 }
 
@@ -204,7 +204,7 @@ async function renderRoute() {
   } else if (hash === '#showcase') {
     viewName = 'showcase';
   } else if (hash === '#downloads') {
-    if (!isNativeAndroidApp()) {
+    if (!isAppPlatform()) {
       window.location.replace('#library');
       return;
     }
@@ -358,7 +358,28 @@ async function route() {
   }
 }
 
-window.addEventListener('hashchange', route);
+// G1: hash değişiminde kabuğa sinematik fade-up (reduced-motion'da sınıf eklenmez).
+let cpRouteAnimHandle = null;
+function cpRouteAnim() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (cpRouteAnimHandle) cancelAnimationFrame(cpRouteAnimHandle);
+  app.classList.remove('cp-anim-in');
+  void app.offsetWidth; // animasyonu yeniden başlatmak için reflow
+  cpRouteAnimHandle = requestAnimationFrame(() => app.classList.add('cp-anim-in'));
+}
+
+// G1: SAFE haptik yardımcı — coarse-pointer + kullanıcı ayarıyla kapatılabilir.
+// ŞİMDİLİK başakta: G4 oynatıcı kullanacak (window.cpDokun).
+function cpDokun(us = 'light') {
+  try {
+    if (!window.matchMedia('(pointer: coarse)').matches) return;
+    if (getUserSettings().hapticsEnabled === false) return;
+    navigator.vibrate?.(us === 'heavy' ? 16 : 8);
+  } catch (_) {}
+}
+window.cpDokun = cpDokun;
+
+window.addEventListener('hashchange', () => { cpRouteAnim(); route(); });
 
 // Keep saved videos one tap away when connectivity drops. `navigator.onLine`
 // is used as a signal; downloaded playback itself remains available locally.
@@ -413,6 +434,31 @@ const onExternalDataImport = (e) => {
 };
 window.addEventListener('sineflix_data_changed', onExternalDataImport);
 window.addEventListener('cinepulse_data_changed', onExternalDataImport);
+
+// #13 magnet: şema yakalama — dışarıdan (tarayıcı/dosya yöneticisi) gelen
+// magnet: bağlantısı P2P penceresine beslenir. Android: MainActivity
+// onNewIntent → __cpMagnetGeldi; masaüstü: Electron ikinci-örnek olayı.
+window.__cpMagnetGeldi = (magnet) => {
+  const m = String(magnet || '').trim();
+  if (!m.startsWith('magnet:')) return false;
+  import('./components/P2pModal.js').then(({ openP2pModal }) => {
+    openP2pModal({ magnet: m });
+  });
+  return true;
+};
+
+// #15 derin bağlantı: cinepulse://… veya paylaşılan web adresi → rota.
+// Android MainActivity semaliVeriYonlendir + Electron protokol/argv buraya verir.
+window.__cpDerinBaglanti = (adres) => {
+  import('./services/kabuk/derinBaglanti.js').then(({ derinBaglantiUygula }) => {
+    derinBaglantiUygula(adres);
+  });
+  return true;
+};
+
+// #12 uygulama kilidi kapanı: kilit açıksa açılışta overlay; Java arka plan
+// dönüşünde __cpKilitGoster ile hatırlatır. Web/masaüstünde köprü yok → sessiz.
+import('./services/kabuk/uygulamaKilidi.js').then((m) => m.kilidiKur()).catch(() => {});
 
 // Seamless Profile Switch Handler (Zero full page reload)
 window.addEventListener('sineflix_profile_changed', async () => {

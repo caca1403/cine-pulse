@@ -1,7 +1,7 @@
 {
   "name": "cinepulse-studio",
   "private": true,
-  "version": "1.1.78",
+  "version": "2.0.0",
   "description": "CinePulse Studio - yerli ve global kaynakli hibrit medya merkezi",
   "author": {
     "name": "CinePulse Studio",
@@ -43,6 +43,7 @@
     "hls.js": "1.6.15",
     "lucide": "^0.344.0",
     "process": "^0.11.10",
+    "qrcode-generator": "^2.0.4",
     "webtorrent": "^1.9.7"
   },
   "devDependencies": {
@@ -111,5 +112,5 @@
       "runAfterFinish": true
     }
   },
-  "versionCode": 188
+  "versionCode": 200
 }

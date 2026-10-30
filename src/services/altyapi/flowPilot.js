@@ -10,7 +10,7 @@
  * Saf karar çekirdeği — UI/depolama/şehir sinyalleri parametreyle girer;
  * test edilebilirlik için hiçbir global durum okumaz.
  */
-export function akışOtopilotu({ kaynaklar, cihazSkorlari, aileGuveni, tercih, geceKoveti } = {}) {
+export function akışOtopilotu({ kaynaklar, cihazSkorlari, aileGuveni, tercih, geceKoveti, kodekTercih, sesTercih } = {}) {
   // Kaynaklar boşsa/null → null döndür (atma yok)
   if (!Array.isArray(kaynaklar) || kaynaklar.length === 0) return null;
 
@@ -57,8 +57,24 @@ export function akışOtopilotu({ kaynaklar, cihazSkorlari, aileGuveni, tercih, 
       tercihPuan = 0;
     }
 
+    // #4 Codec/ses tercihi puanlaması: kaynak başlığından/kalitesinden
+    // okunur (normalize katmanı cozunemezHecv bayrağını taşır).
+    let kodekPuan = 0;
+    if (kodekTercih === 'h264') {
+      if (!src.cozunemezHecv && !/hevc|h\.?265/i.test(`${src.title || ''} ${src.quality || ''}`)) kodekPuan = 10;
+    } else if (kodekTercih === 'hevc') {
+      if (src.cozunemezHecv || /hevc|h\.?265/i.test(`${src.title || ''} ${src.quality || ''}`)) kodekPuan = 10;
+    }
+    let sesPuan = 0;
+    const sesMetni = `${src.title || ''} ${src.quality || ''}`;
+    if (sesTercih === '51') {
+      if (/(?:^|[^\d])(?:5\.1|6[ .]?ch|7\.1)(?:[^\d]|$)/i.test(sesMetni)) sesPuan = 8;
+    } else if (sesTercih === 'stereo') {
+      if (/(?:^|[^\d])(?:2\.0|stereo|aac[ .]?2)(?:[^\d]|$)/i.test(sesMetni)) sesPuan = 8;
+    }
+
     // Toplam puan
-    const toplam = cihazSkor * 1.0 + guven * 25 + tercihPuan + cihazSkor * geceKovetiBonusu;
+    const toplam = cihazSkor * 1.0 + guven * 25 + tercihPuan + kodekPuan + sesPuan + cihazSkor * geceKovetiBonusu;
 
     kayitlar.push({ idx: i, puan: toplam, source: src });
   }

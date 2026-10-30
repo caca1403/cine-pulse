@@ -63,7 +63,18 @@ function gomuluAdaylar(html) {
 }
 
 export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
-  if (!hasNativeWebViewResolver() || resolverMesgulMu()) return []; // site yalnız gerçek Chromium'a açılır
+  // Çözücü kuyruğu meşgulse ANINDA vazgeçmek ardışık taramalarda (bölüm
+  // geçişi!) Arcturus'u 0'a düşürüyordu: önceki taramanın butce-aşım
+  // etmiş öksüz görevi kuyruğu tutmaya devam ediyor (ölçüm 2026-10-25).
+  // Zincir başı biziz: kendi kuyruğumuzdayız, boşalmasını tavana sığacak
+  // kadar bekle (38 sn bekleme + ~20 sn iş ≤ 65 sn tavaniMs); sığmazsa vazgeç.
+  if (resolverMesgulMu()) {
+    const t0 = Date.now();
+    while (resolverMesgulMu() && Date.now() - t0 < 38000) {
+      await new Promise((r) => setTimeout(r, 800));
+    }
+    if (resolverMesgulMu()) return [];
+  }
 
   const bilgi = await tmdbBilgi(kimlik, tur);
   const adaylar = bilgi ? adayBasliklar(bilgi) : [];
@@ -130,5 +141,14 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
   return sonuc;
 }
 
-if (typeof globalThis !== 'undefined') globalThis.getStreams = getStreams;
+var _exp = typeof module !== 'undefined' && module.exports ? module.exports : {},
+  _glob = typeof globalThis !== 'undefined' ? globalThis : typeof global !== 'undefined' ? global : typeof window !== 'undefined' ? window : {},
+  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams || (typeof getStreams === 'function' ? getStreams : null);
+
+if (_gs) {
+  if (typeof globalThis !== 'undefined') globalThis.getStreams = _gs;
+  if (typeof global !== 'undefined') global.getStreams = _gs;
+  if (typeof window !== 'undefined') window.getStreams = _gs;
+  if (typeof module !== 'undefined' && module.exports) { try { module.exports.getStreams = _gs; } catch (_) {} }
+}
 export default getStreams;

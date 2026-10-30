@@ -8,8 +8,79 @@ import { renderIcons } from '../services/kabuk/icons.js';
 
 import { fetchSeasonDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_POSTER_FALLBACK } from '../services/icerik/tmdbApi.js';
 import { getMediaProgress, getWatchHistory, isMediaWatched, toggleEpisodeWatched, markSeasonEpisodesWatched, isSeasonFullyWatched, setMediaHalfway } from '../services/altyapi/storage.js';
-import { openPlayerModal } from './openPlayer.js';
 import { showToast } from './Toast.js';
+// Madde 3 (kullanıcı 2026-10-28): bölüm kartından indirme. Yeni servis YOK —
+// mevcut çevrimdışı indirme servisinin TEK giriş fonksiyonuna bağlanılır:
+// startOfflineDownload(mediaData, onProgress, signal) (offlineManager.js).
+import { startOfflineDownload, isMediaDownloaded } from '../services/kabuk/offlineManager.js';
+import { getStreamingServersProgressive } from '../services/kaynak/providerAggregator.js';
+
+// Oturum içi indirme durum tablosu: "tvId:sX:eY" → { durum, yuzde }.
+// Yeniden çizimde butonların durumu kaybolmasın diye modül düzeyinde tutulur;
+// servisin 'cinepulse_offline_changed' olayı bitti işaretini tamamlar.
+const indirmeDurumu = new Map();
+const indirmeAnahtari = (tvId, s, e) => `${tvId}:s${s}:e${e}`;
+try {
+  window.addEventListener('cinepulse_offline_changed', (olay) => {
+    if (olay?.detail?.action !== 'delete') return;
+    for (const [anahtar, deger] of indirmeDurumu) {
+      if (deger.durum === 'bitti' && String(olay.detail.key || '').startsWith(String(anahtar.split(':s')[0]) + '_')) {
+        indirmeDurumu.delete(anahtar);
+      }
+    }
+  });
+} catch (_) { /* olay kancası opsiyoneldir */ }
+
+/** Bölüm için indirilebilir bir yayın hattı bul: sağlayıcı havuzunu tek sefer
+ *  tara, oynatılabilir ilk doğrudan/HLS adresi dön. Magnet → elenir (tarayıcı
+ *  ve çevrimdışı önbek yerel torrent motoru gerektirir). */
+async function indirilebilirAkisBul({ tvId, seriesTitle, originalTitle, sezon, bolum, isAnime }) {
+  const toplanan = [];
+  await getStreamingServersProgressive({
+    type: isAnime ? 'anime' : 'tv',
+    tmdbId: tvId,
+    title: seriesTitle,
+    seriesTitle,
+    originalTitle: originalTitle || '',
+    season: sezon,
+    episode: bolum,
+    onUpdate: ({ dubbed = [], subtitled = [] } = {}) => {
+      for (const s of [...dubbed, ...subtitled]) {
+        const adres = s?.streamUrl || s?.url || '';
+        if (adres && !adres.startsWith('magnet:') && /^https?:\/\//i.test(adres)) toplanan.push(s);
+      }
+    }
+  }).catch(() => null);
+  const direkt = toplanan.find(s => (s.isDirectVideo || /\.(?:mp4|m4v|webm|mkv)(?:[?#]|$)/i.test(s.streamUrl || s.url || '')) && !s.isHls);
+  return direkt || toplanan[0] || null;
+}
+
+/** Buton görsel durumunu (boşta / kuyrukta / sürüyor / bitti) yeniden çizer.
+ *  İkon daima <i data-lucide> olarak yazılır; renderIcons svg'ye çevirir. */
+function indirmeButonunuCiz(btn) {
+  if (!btn) return;
+  const tvId = btn.getAttribute('data-tv-id');
+  const s = parseInt(btn.getAttribute('data-season'), 10);
+  const e = parseInt(btn.getAttribute('data-episode'), 10);
+  const kayit = indirmeDurumu.get(indirmeAnahtari(tvId, s, e));
+  let ad = 'download';
+  let spin = false;
+  if (kayit?.durum === 'bitti') ad = 'check-circle-2';
+  else if (kayit) { ad = 'loader-2'; spin = true; }
+  btn.innerHTML = `<i data-lucide="${ad}"${spin ? ' class="spin-loader"' : ''} style="width:13px;height:13px;"></i>`;
+  if (kayit) {
+    btn.classList.add('is-inde');
+    btn.title = kayit.durum === 'bitti'
+      ? 'Bu bölüm cihazda indirili'
+      : kayit.durum === 'indiriliyor'
+        ? `İndiriliyor${kayit.yuzde ? ` · %${kayit.yuzde}` : '…'}`
+        : 'İndirme kuyrukta — kaynak aranıyor';
+  } else {
+    btn.classList.remove('is-inde');
+    btn.title = 'Bölümü cihaza indir';
+  }
+  renderIcons(btn);
+}
 
 export async function renderSeasonSelector({ tvId, seriesTitle, originalTitle = '', seriesOverview = '', seasons = [], posterPath = '', backdropPath = '', isAnime = false, spoilerFree = false }) {
   const validSeasons = seasons.filter(s => s.season_number > 0);
@@ -471,6 +542,9 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
           <div class="episode-footer" style="font-size: 0.76rem; color: var(--text-muted); margin-top: auto; padding-top: 0.45rem; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.06);">
             <span class="episode-airdate">${airDate}</span>
           <div class="episode-status-actions">
+            <button class="btn-ep-download" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" title="Bölümü cihaza indir" aria-label="Bölüm ${epNum}'yi indir" style="width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.3); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
+              <i data-lucide="download" style="width: 13px; height: 13px;"></i>
+            </button>
             <button class="btn-mark-ep-halfway ${isHalfway ? 'is-halfway' : ''}" data-tv-id="${tvId}" data-season="${seasonNum}" data-episode="${epNum}" title="Yarıda Bırakıldı (20. dk)" aria-label="Bu bölümü yarıda bırakıldı olarak işaretle" style="width: 28px; height: 28px; border-radius: 50%; background: ${isHalfway ? '#dfff76' : 'rgba(0,0,0,0.65)'}; border: 1px solid ${isHalfway ? '#dfff76' : 'rgba(255,255,255,0.3)'}; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
               <i data-lucide="clock" style="width: 13px; height: 13px;"></i>
             </button>
@@ -609,75 +683,96 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
     });
   });
 
-  // Attach Episode Card Click & Play Triggers
-  gridContainer.querySelectorAll('.episode-card').forEach(card => {
-    let isOpening = false;
-    const playEpisode = async (e) => {
-      // Don't trigger if clicked on the action buttons
-      if (e && e.target && (e.target.closest('.btn-mark-ep-watched') || e.target.closest('.btn-mark-ep-halfway') || e.target.closest('.btn-toggle-overview'))) {
+  // Indirme butonları (madde 3b, kullanıcı 2026-10-28): kart tıklaması KAYNAKLAR
+  // sekmesine geçtiği için stopPropagation ŞART. Durumlar butonda görünür:
+  // kuyrukta → sürüyor (%servis yüzdesiyle) → bitti. Yeni servis yok; tek giriş
+  // startOfflineDownload. Sezon toplu indirme: offlineManager bunu desteklemiyor,
+  // o yüzden buton yok. Ağ türü kontrolü: serviste yok, eklemedik.
+  gridContainer.querySelectorAll('.btn-ep-download').forEach(btn => {
+    indirmeButonunuCiz(btn);
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const epSeason = parseInt(btn.getAttribute('data-season'), 10);
+      const epNumber = parseInt(btn.getAttribute('data-episode'), 10);
+      const anahtar = indirmeAnahtari(tvId, epSeason, epNumber);
+      const mevcut = indirmeDurumu.get(anahtar);
+      if (mevcut?.durum === 'kuyrukta' || mevcut?.durum === 'indiriliyor') {
+        showToast(`S${epSeason} B${epNumber} indiriliyor${mevcut.yuzde ? ` · %${mevcut.yuzde}` : ''}.`, 'info');
         return;
       }
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
+      if (mevcut?.durum === 'bitti') {
+        showToast(`S${epSeason} B${epNumber} zaten cihazda indirili.`, 'info');
+        return;
       }
-      if (isOpening) return;
-      isOpening = true;
+      indirmeDurumu.set(anahtar, { durum: 'kuyrukta', yuzde: 0 });
+      indirmeButonunuCiz(btn);
+      showToast('İndirme kuyruğa alındı — kaynak aranıyor…', 'info');
+      try {
+        const akis = await indirilebilirAkisBul({ tvId, seriesTitle, originalTitle, sezon: epSeason, bolum: epNumber, isAnime });
+        if (!akis) throw new Error('bu bölüm için indirilebilir yayın bulunamadı.');
+        indirmeDurumu.set(anahtar, { durum: 'indiriliyor', yuzde: 0 });
+        if (btn.isConnected) indirmeButonunuCiz(btn);
+        await startOfflineDownload({
+          tmdbId: tvId,
+          type: isAnime ? 'anime' : 'tv',
+          title: `${seriesTitle} - S${epSeason}E${epNumber}`,
+          seriesTitle,
+          poster: posterPath ? getImageUrl(posterPath, TMDB_IMAGE_SIZES.POSTER_SMALL) : '',
+          backdrop: backdropPath ? getImageUrl(backdropPath, TMDB_IMAGE_SIZES.BACKDROP_LARGE) : '',
+          season: epSeason,
+          episode: epNumber,
+          streamUrl: akis.streamUrl || akis.url
+        }, (ilerleme) => {
+          const kayit = indirmeDurumu.get(anahtar);
+          if (kayit) kayit.yuzde = Math.floor(Number(ilerleme?.percent) || 0);
+          if (btn.isConnected) indirmeButonunuCiz(btn);
+        }, null);
+        indirmeDurumu.set(anahtar, { durum: 'bitti', yuzde: 100 });
+        if (btn.isConnected) indirmeButonunuCiz(btn);
+        showToast(`S${epSeason} B${epNumber} indirildi — İndirilenler'den internetsiz izleyebilirsin.`, 'success');
+      } catch (err) {
+        indirmeDurumu.delete(anahtar);
+        if (btn.isConnected) indirmeButonunuCiz(btn);
+        showToast(err?.message ? `İndirme başarısız: ${err.message}` : 'İndirme başarısız.', 'error');
+      }
+    });
+    // Zaten indirilmiş bölümler ✓ ile başlasın (IndexedDB — asenkron, bloklamaz).
+    isMediaDownloaded(tvId, parseInt(btn.getAttribute('data-season'), 10), parseInt(btn.getAttribute('data-episode'), 10))
+      .then(indirili => {
+        if (!indirili || !btn.isConnected) return;
+        const anahtar = indirmeAnahtari(tvId, parseInt(btn.getAttribute('data-season'), 10), parseInt(btn.getAttribute('data-episode'), 10));
+        if (indirmeDurumu.has(anahtar)) return;
+        indirmeDurumu.set(anahtar, { durum: 'bitti', yuzde: 100 });
+        indirmeButonunuCiz(btn);
+      })
+      .catch(() => { /* durum çizimi opsiyoneldir */ });
+  });
+
+  // Attach Episode Card Click — bölüm seçimi (oynatıcı açmaz)
+  gridContainer.querySelectorAll('.episode-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      // Don't trigger if clicked on the action buttons
+      if (e && e.target && (e.target.closest('.btn-mark-ep-watched') || e.target.closest('.btn-mark-ep-halfway') || e.target.closest('.btn-toggle-overview') || e.target.closest('.btn-ep-download'))) {
+        return;
+      }
+      e?.preventDefault();
+      e?.stopPropagation();
 
       const season = parseInt(card.getAttribute('data-season'), 10);
       const episode = parseInt(card.getAttribute('data-episode'), 10);
-      const epTitle = card.getAttribute('data-title') || `${episode}. Bölüm`;
 
-      card.classList.add('is-loading-episode');
-      const playTrigger = card.querySelector('.btn-play-episode-trigger');
-      const origTriggerHTML = playTrigger ? playTrigger.innerHTML : '';
-      if (playTrigger) {
-        playTrigger.innerHTML = `<span>Yükleniyor...</span><i data-lucide="loader-2" class="spin-loader" style="width: 12px; height: 12px;"></i>`;
-        renderIcons();
-      }
-      const playOverlayIcon = card.querySelector('.episode-play-overlay i');
-      if (playOverlayIcon) {
-        playOverlayIcon.setAttribute('data-lucide', 'loader-2');
-        playOverlayIcon.classList.add('spin-loader');
-        renderIcons();
-      }
+      // Seçilen bölüm görünür kalsın: aynı ızgaradaki diğer işaretleri temizle.
+      gridContainer.querySelectorAll('.episode-card.is-secili').forEach(diger => diger.classList.remove('is-secili'));
+      card.classList.add('is-secili');
+      card.setAttribute('aria-current', 'true');
 
-      try {
-        const historyRecord = getMediaProgress(tvId, season, episode);
-        const startTime = historyRecord ? historyRecord.currentTime : 0;
-
-        await openPlayerModal({
-          type: isAnime ? 'anime' : 'tv',
-          isAnime,
-          tmdbId: tvId,
-          title: `${seriesTitle} - S${season}E${episode}: ${epTitle}`,
-          seriesTitle,
-          originalTitle: originalTitle || seriesTitle,
-          season,
-          episode,
-          posterPath,
-          backdropPath,
-          currentTime: startTime,
-          seasonsList: validSeasons,
-          maxEpisodes: seasonData.episodes ? seasonData.episodes.length : 0
-        });
-      } catch (err) {
-        console.error('[SeasonSelector] Bölüm açılırken hata oluştu:', err);
-        showToast('Bölüm açılırken bir sorun oluştu, lütfen tekrar deneyin.', 'error');
-      } finally {
-        isOpening = false;
-        card.classList.remove('is-loading-episode');
-        if (playTrigger && origTriggerHTML) {
-          playTrigger.innerHTML = origTriggerHTML;
-        }
-        if (playOverlayIcon) {
-          playOverlayIcon.setAttribute('data-lucide', 'play');
-          playOverlayIcon.classList.remove('spin-loader');
-        }
-        renderIcons();
-      }
-    };
-
-    card.addEventListener('click', playEpisode);
+      // Bölüm kartı artık oynatıcı AÇMAZ: aktif bölümü detay sayfasına
+      // bildirir, detay KAYNAKLAR bölümünü o bölümle açar ve oraya kaydırır.
+      card.closest('.detail-view')?.dispatchEvent(new CustomEvent('cp:kaynak-bolum', {
+        bubbles: true,
+        detail: { sezon: season, bolum: episode }
+      }));
+    });
   });
 }

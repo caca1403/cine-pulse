@@ -9,7 +9,7 @@ import { havuzIslet, HAVUZ_BOYU } from '../src/providers/vekil.js';
 
 test('havuz boyu tanımlı ve makul', () => {
   assert.equal(typeof HAVUZ_BOYU, 'number');
-  assert.ok(HAVUZ_BOYU >= 1 && HAVUZ_BOYU <= 8, 'telefon için 1..8 aralığı');
+  assert.ok(HAVUZ_BOYU >= 1 && HAVUZ_BOYU <= 10, 'telefon için 1..10 aralığı (ölçüm: 10 eşzamanlı çekirdek bellek tepesini korur)');
 });
 
 test('eşzamanlı çalışan görev sayısı sınırı aşmaz', async () => {

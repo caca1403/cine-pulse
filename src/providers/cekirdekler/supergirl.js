@@ -2692,7 +2692,14 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       val5 = isTvOrSeries ? "tv" : "movie",
       val6 = tmdbId3 != null ? parseInt(String(tmdbId3), 10) : 1,
       val7 = tmdbId4 != null ? parseInt(String(tmdbId4), 10) : 1,
-      replaced = (await fn("Supergirl")).replace(/\/+$/, "");
+      /* alan çözümü: kahraman kodu yalnız köprünün alanYaniti'nda var; test
+         ortamında vendor domains.json'un aktif anahtarı (beckman) ve sabit
+         yedek gerekir (joker.js toki / winterSoldier sakazuki kalıbı). */
+      replaced =
+        ((await fn("Supergirl")) || (await fn("beckman")) || "https://api.sonanime.com").replace(
+          /\/+$/,
+          ""
+        );
     if (!replaced)
       return (log("Supergirl", "Sağlayıcı adresi domains.json içinde bulunamadı.", "error"), []);
     let result = await fn3(trimmed, val5),

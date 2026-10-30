@@ -70,6 +70,8 @@ test('kısa dizi garantisi: kahraman taraması beklenmeden aynı anda koşar', (
 
 test('kahraman yayınları başlık taşıyan proxy hattından verilir', () => {
   const vekil = oku('src', 'providers', 'vekil.js');
-  assert.match(vekil, /başlıkGerekli \? oynatmaAdresi\(url, başlıklar\) : url/, 'sarmalama yalnız başlık istenince yapılmalı');
+  // KÖPRÜSÜZ BAŞLIK istisnası (2026-10-29, dizisol imzalı CDN): çekirdek
+  // `proxyGerekmez/kopruGerekmez` bildirirse adres SARMALENMAZ, istek cihazdan gider.
+  assert.match(vekil, /başlıkGerekli && !kopruGerekmez \? oynatmaAdresi\(url, başlıklar\) : url/, 'sarmalama yalnız başlık istenince ve çekirdek köprü istemeyince yapılmalı');
   assert.match(vekil, /\/api\/hls_proxy\?/, 'başlık taşıyabilen proxy yolu kullanılmalı');
 });

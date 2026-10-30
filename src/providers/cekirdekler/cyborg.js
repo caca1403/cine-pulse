@@ -2970,8 +2970,12 @@ async function getStreams(arg1, type, num = 1, url = 1) {
   try {
     let result = await replaceIn(arg1, type);
     if (!result) return (log(name, "IMDb ID bulunamadı, arama iptal edildi.", "warn"), []);
-    let result2 = await fn("Cyborg");
-    if (!result2) return (log(name, "Alan adı dinamik olarak çözülemedi.", "error"), []);
+    // domains.json anahtarları takma ad: Cyborg yerine garling geliyor.
+    // shortcut: garling 2026-10'da domains.json "disabled" listesine düştü ama site canlı
+    // (HTTP 200, /api/search.php eşleşiyor); alanlar.js'deki sabit garling adresi yedek.
+    // garling config'de tekrar domains'e girince son yedek silinebilir.
+    let result2 =
+      (await fn("Cyborg")) || (await fn("garling")) || "https://liderfilmizle.vip";
     let val5 = result2 + "/api/search.php?q=" + encodeURIComponent(result);
     log(name, "[Adım 2/4] IMDb ile aranıyor: " + result, "info");
     let response = await fetch(val5, {
@@ -3122,3 +3126,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

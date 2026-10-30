@@ -2752,7 +2752,7 @@ async function getStreams(tmdbId, type, tmdbId2 = 1, tmdbId3 = 1) {
     let result = await replaceIn(tmdbId, type);
     if (!result || (!result.title && !result.originalTitle))
       return (log("Aquaman", "TMDB meta verisi alınamadı.", "warn"), []);
-    let result2 = await fn("Aquaman");
+    let result2 = (await fn("Aquaman")) || (await fn("teach"));
     if (!result2) return (log("Aquaman", "Sağlayıcı adresi alınamadı.", "warn"), []);
     let value6 = Array.from(new Set(result.titles || [result.title, result.originalTitle])).filter(
         Boolean
@@ -2913,3 +2913,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

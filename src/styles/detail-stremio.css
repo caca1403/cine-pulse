@@ -1,0 +1,476 @@
+/* ==========================================================================
+   CinePulse — Detay sayfası, Stremio mobil düzeni
+   Tam genişlik backdrop + üstte yüzen eylemler; altında ortalanmış sekme
+   çubuğu (KAYNAKLAR / BÖLÜMLER / GENEL BAKIŞ / FRAGMANLAR / BENZERLER /
+   OYUNCULAR) ve her blok yalnız kendi sekmesinde görünür.
+   Renkler yalnız main.css token'larından.
+   ========================================================================== */
+
+.cps-detail {
+  background: var(--bg-dark);
+}
+
+/* ── Hero: backdrop + dikey karartma ─────────────────────────────────────── */
+.cps-hero {
+  position: relative;
+  width: 100%;
+  min-height: clamp(440px, 64vh, 700px);
+  /* Sabit üst menünün altından başla; topbar hero'nun ilk satırıdır. */
+  padding: 5.5rem 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.cps-hero .detail-backdrop-img {
+  background-position: center 20%;
+  filter: brightness(0.9) contrast(1.05) saturate(1.1);
+  transform: none;
+}
+
+/* Soldan karartma YOK: sadece üst/alt dikey gradyan */
+.cps-hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.18) 24%,
+    rgba(0, 0, 0, 0.12) 46%,
+    rgba(0, 0, 0, 0.82) 84%,
+    var(--bg-dark) 100%
+  );
+}
+
+/* ── Üst bar: geri (sol), paylaş / izlendi / koleksiyon (sağ) ────────────── */
+.cps-topbar {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: auto;
+  flex: 0 0 auto;
+}
+
+.cps-topbar-sag {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.cps-iconbtn {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border-light);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.cps-iconbtn:hover,
+.cps-iconbtn:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.cps-iconbtn.is-active,
+.cps-iconbtn.btn-watched-active {
+  color: var(--primary);
+  border-color: rgba(223, 255, 118, 0.5);
+}
+
+/* JS etiketi span ile yazıyor; ikon düğmesinde metin gizli kalır */
+.cps-iconbtn > span {
+  display: none;
+}
+
+.cps-gizli {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Hero içeriği ────────────────────────────────────────────────────────── */
+.cps-hero-govde {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.cps-hero .detail-titleblock {
+  width: 100%;
+}
+
+/* Stremio: büyük ama normal yazım düzeninde içerik adı */
+.cps-hero .detail-heading-title {
+  text-transform: none;
+  font-size: clamp(1.9rem, 7vw, 3.4rem);
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  margin: 0 0 0.55rem;
+  text-align: left;
+}
+
+.cps-meta-satiri {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.cps-meta-satiri .detail-meta-line {
+  margin-bottom: 0;
+  font-size: 0.84rem;
+  gap: 0.45rem;
+}
+
+.cps-meta-eylem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+
+/* Meta satırındaki iki ikon dar ekranda yer kazansın diye küçültülür */
+.cps-meta-eylem .cps-iconbtn {
+  width: 34px;
+  height: 34px;
+}
+
+@media (min-width: 900px) {
+  .cps-meta-eylem .cps-iconbtn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+.cps-imdb {
+  font-style: normal;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #f5c518;
+  background: rgba(245, 197, 24, 0.16);
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+}
+
+.cps-orijinal {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.cps-yeni-bolum {
+  display: none;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.cps-ozet {
+  width: 100%;
+  max-width: 780px;
+  margin: 0.85rem 0 0.7rem;
+}
+
+.cps-ozet .detail-storyline {
+  font-size: 0.94rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: left;
+}
+
+/* Stremio: iki satır + "daha fazla" */
+.cps-ozet .detail-storyline.truncated {
+  -webkit-line-clamp: 2;
+}
+
+.cps-turler {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.cps-tur {
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-sub);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+/* Ana eylem: geniş ama pill DEĞİL; oynatıcı yerine kaynaklara götürür */
+.cps-oynat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 420px;
+  min-height: 48px;
+  padding: 0.7rem 1.6rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: #15200b;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.cps-oynat:hover,
+.cps-oynat:focus-visible {
+  background: var(--primary-dark);
+}
+
+.cps-oynat-alt {
+  margin: 0.45rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.cps-spoiler {
+  margin-top: 0.7rem;
+}
+
+/* ── Sekmeler: Stremio tarzı ortalanmış yatay çubuk ──────────────────────── */
+.cps-sekme-cubugu {
+  position: sticky;
+  top: var(--cp-header-height, 78px);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.7rem 0;
+  margin-bottom: 0.25rem;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--border-color);
+  scroll-margin-top: calc(var(--cp-header-height, 78px) + 8px);
+}
+
+.cps-sekme-cubugu::-webkit-scrollbar {
+  display: none;
+}
+
+/* İçerik sığdığında ortala; taştığında kaydırma baştan başlasın */
+.cps-sekme:first-child {
+  margin-left: auto;
+}
+
+.cps-sekme:last-child {
+  margin-right: auto;
+}
+
+.cps-sekme {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.cps-sekme:hover,
+.cps-sekme:focus-visible {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.cps-sekme.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #15200b;
+}
+
+/* Sekme panelleri: hidden olan blok hiç yer kaplamaz */
+.cps-bolum.cps-sekme-panel {
+  border-top: none;
+}
+
+.cps-sekme-panel[hidden] {
+  display: none;
+}
+
+/* Aynı sekmede iki görünür blok (Kadro + Oyuncular) yine ayraçla ayrılır */
+.cps-sekme-panel:not([hidden]) ~ .cps-sekme-panel:not([hidden]) {
+  border-top: 1px solid var(--border-color);
+}
+
+/* ── Gövde: sekmeli bölümler ─────────────────────────────────────────────── */
+.cps-govde {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1rem 2.5rem;
+  box-sizing: border-box;
+}
+
+.cps-bolum {
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--border-color);
+  /* Sabit üst menü bölüm başlığını örtmesin */
+  scroll-margin-top: calc(var(--cp-header-height, 78px) + 12px);
+}
+
+.cps-bolum:first-child {
+  border-top: none;
+}
+
+.cps-bolum-baslik {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.cps-bolum-alt {
+  margin: 0.25rem 0 1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.cps-bolum-basligi + .kaynak-bolum-cubugu {
+  margin-top: 1rem;
+}
+
+.cps-bolum .season-selector-wrapper {
+  margin: 0;
+}
+
+/* Seçili bölüm kartı (SeasonSelector cp:kaynak-bolum gönderince işaretlenir) */
+.episode-card.is-secili {
+  border-color: rgba(223, 255, 118, 0.65);
+  box-shadow: 0 0 0 1px rgba(223, 255, 118, 0.35);
+}
+
+/* ── Kadro: küçük UPPERCASE etiket + yatay kayan isim çipleri ────────────── */
+.cps-kisi-grup + .cps-kisi-grup {
+  margin-top: 1rem;
+}
+
+.cps-kisi-etiket {
+  margin: 0 0 0.45rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cps-kisi-serit {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  padding-bottom: 0.15rem;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cps-kisi-serit::-webkit-scrollbar {
+  display: none;
+}
+
+.cps-kisi {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.cps-kisi:hover,
+.cps-kisi:focus-visible {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.cps-kaynaklar .kaynak-liste {
+  max-height: none;
+}
+
+/* ── Bölüm içi ekler ─────────────────────────────────────────────────────── */
+.cps-bakis-izgara {
+  margin-top: 1rem;
+}
+
+.cps-daha-fazla {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+/* ── Masaüstü ────────────────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+  .cps-hero {
+    min-height: clamp(480px, 62vh, 740px);
+    padding: 6rem 2rem 2rem;
+  }
+
+  .cps-hero .detail-heading-title {
+    font-size: clamp(2.4rem, 4vw, 3.6rem);
+  }
+
+  .cps-oynat {
+    width: auto;
+    min-width: 280px;
+  }
+
+  /* Yatay kaydırma yerine sar: masaüstünde tüm isimler görünür */
+  .cps-kisi-serit {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}

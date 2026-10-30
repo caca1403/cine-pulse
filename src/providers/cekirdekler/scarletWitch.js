@@ -593,14 +593,15 @@ async function getStreams(tmdbId, type, season, episode) {
   if (isMovie) {
     log("Scarlet-Witch", "Film İsteği: tmdbId=" + replaced);
     try {
-      let result = await fetchJson("/movie/" + replaced);
-      if (result && result.found && result.videoId)
+      // worker'ın güncel şeması: /api/public/detail/<tür>/<tmdbId>
+      let result = await fetchJson("/api/public/detail/movie/" + replaced);
+      if (result && result.videoId)
         return (
           log(
             "Scarlet-Witch",
-            "Film eşleşmesi bulundu: " + result.title + "\x20(" + result.videoId + ")"
+            "Film eşleşmesi bulundu: " + result.name + "\x20(" + result.videoId + ")"
           ),
-          await fetchStreamFormats(result.videoId, result.title)
+          await fetchStreamFormats(result.videoId, result.name)
         );
     } catch (err) {
       log("Scarlet-Witch", "Film mapping worker kontrol hatası: " + (err?.message || err));
@@ -611,11 +612,14 @@ async function getStreams(tmdbId, type, season, episode) {
     numValue2 = Number(episode) || 1;
   log("Scarlet-Witch", "İstek: tmdbId=" + replaced + ", S=" + numValue + ", E=" + numValue2);
   try {
-    let result = await fetchJson("/" + replaced + "/" + numValue + "/" + numValue2);
-    if (result && result.found && result.videoId)
+    let result = await fetchJson("/api/public/detail/tv/" + replaced),
+      value = result && (result.episodes || []).find(
+        (arg1) => Number(arg1.season) === numValue && Number(arg1.episode) === numValue2
+      );
+    if (value && value.videoId)
       return (
-        log("Scarlet-Witch", "Eşleşme bulundu: " + result.title + "\x20(" + result.videoId + ")"),
-        await fetchStreamFormats(result.videoId, result.title)
+        log("Scarlet-Witch", "Eşleşme bulundu: " + result.name + "\x20(" + value.videoId + ")"),
+        await fetchStreamFormats(value.videoId, result.name)
       );
   } catch (err) {
     log("Scarlet-Witch", "Mapping worker kontrol hatası: " + (err?.message || err));
@@ -645,3 +649,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

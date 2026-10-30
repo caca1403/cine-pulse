@@ -74,7 +74,9 @@ function iliskileriTara(metin) {
   const adlar = ['getEpisodeSources', 'getSerieEpisodeSources', 'getMoviePartsById'];
   // Film kaynak anahtarları parça numarasıyla dinamik (ölçüldü 2026-10-18:
   // "getMoviePartSourcesById_6992") — metinde geçenler toplanmazsa film 0 dönerdi.
-  for (const m of String(metin).matchAll(/"getMoviePartSourcesById_(\d+)"/g)) adlar.push(m[1]);
+  // Tam anahtar toplanır: adaylariTopla "getMoviePartSourcesById_<id>" ile okur;
+  // yalnız sayı push edilirse (ölçüldü 2026-10-28) bul() hiç bulamaz, film 0 dönerdi.
+  for (const m of String(metin).matchAll(/"getMoviePartSourcesById_(\d+)"/g)) adlar.push(`getMoviePartSourcesById_${m[1]}`);
   for (const ad of [...new Set(adlar)]) {
     const r = bul(ad);
     if (Array.isArray(r) && r.length) { RelatedResults[ad] = { result: r }; bulundu = true; }

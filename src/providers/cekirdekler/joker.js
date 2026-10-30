@@ -2964,7 +2964,23 @@ async function userAgentOf2(Referer2, Referer) {
     return null;
   }
 }
+/* dublaj kanıt ucu (2026-10-30): "· Türkçe Dublaj" satırı YALNIZ master
+ * m3u8'in TYPE=AUDIO satırında Türkçe ses bildirimi varsa basılır — site
+ * sekmesi "Dublaj" dese bile kanıtsız etiket uydurulmaz (kullanıcı kesin
+ * kuralı). Ölçülen gerçek (BB S1E1): izlemevi oynatıcısının master'ı
+ * NAME="Türkçe",LANGUAGE="tr" (index-a2) + İngilizce (index-a1) bildiriyor. */
+function trAudioKaniti(m3u8Metin) {
+  for (const ham of String(m3u8Metin || "").split(/\r?\n/)) {
+    const satir = ham.trim();
+    if (!satir.startsWith("#EXT-X-MEDIA:") || !/TYPE=AUDIO/i.test(satir)) continue;
+    const lang = ((satir.match(/LANGUAGE="?([A-Za-z-]+)"?/i) || [])[1] || "").toLowerCase();
+    const isim = ((satir.match(/NAME="([^"]*)"/i) || satir.match(/NAME=([^,]+)/i) || [])[1] || "").toLowerCase();
+    if (lang === "tr" || lang === "tur" || /türk|turk|dublaj/i.test(isim)) return satir.replace(/URI="[^"]*"/, "URI=…").slice(0, 160);
+  }
+  return "";
+}
 async function getStreams(tmdbId, type, tmdbId2, tmdbId3) {
+
   let now2 = Date.now(),
     replaced = String(tmdbId || "")
       .replace(/^tmdb:/i, "")
@@ -2982,7 +2998,9 @@ async function getStreams(tmdbId, type, tmdbId2, tmdbId3) {
       tmdbId3
   );
   try {
-    let result = await fn("Joker");
+    // domains.json bu çekirdeği "toki" takma adıyla yayınlıyor (bkz. alanlar.js);
+    // "Joker" anahtarı haritada yok → tek başına sorulursa her zaman 0 kaynak dönerdi.
+    let result = (await fn("Joker")) || (await fn("toki"));
     if (!result) return (log("Joker", "Alan adı dinamik olarak çözülemedi.", "error"), []);
     let [result2, result3] = await Promise.all([replaceIn(replaced, type), fn3(replaced, type)]),
       val6 = result3.titles && result3.titles.length > 0 ? result3.titles : [];
@@ -3112,10 +3130,30 @@ async function getStreams(tmdbId, type, tmdbId2, tmdbId3) {
                 }
               }),
               now3 = ((Date.now() - now2) / 1000).toFixed(2);
+            // ÇİFT SATIR (2026-10-30): master Türkçe ses izi BİLDİRİYORSA aynı
+            // akışa ek "· Türkçe Dublaj" satırı yayınlanır (oynatıcı dil grubunu
+            // kendisi seçer); bildirim yoksa tek dürüst satır kalır.
+            let satirListesi = [value10],
+              trKaniti = trAudioKaniti(m3u8Text);
+            if (trKaniti) {
+              let kalite = String(value10.quality || "1080p").split("\u2022")[0].trim();
+              let dublajSatir = Object.assign({}, value10, {
+                title: kalite + " \xb7 T\xfcrk\xe7e Dublaj",
+                description: "T\xfcrk\xe7e Dublaj\n" + kalite + " \u2022 HLS",
+                quality: kalite + " \xb7 T\xfcrk\xe7e Dublaj",
+                diller: ["tr"],
+                trSes: !0,
+                dilDurumu: "dublaj",
+                dilKaniti: trKaniti,
+              });
+              satirListesi.push(dublajSatir);
+              log("Joker", "T\xfcrk\xe7e ses kanıtı: " + trKaniti, "info");
+            }
             return (
               log("Joker", "TAMAMLANDI: HLS akışı hazırlandı (" + now3 + "s) -> " + value7.title),
-              [value10]
+              satirListesi
             );
+
           }
         } catch (err) {
           log("Joker", "Arama hatası (" + value6 + "): " + (err?.message || err));
@@ -3135,7 +3173,9 @@ var value6 = getStreams,
         : typeof window !== "undefined"
           ? window
           : {},
-  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams,
+  // self-kayit: obfuscated gövde getStreams'i dışarı vermiyordu, çekirdek ölü sayılıyordu
+  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams ||
+    (typeof getStreams === "function" ? getStreams : null),
   _sub = _exp.getSubtitles || (_exp.default && _exp.default.getSubtitles) || _glob.getSubtitles;
 if (_gs) {
   if (typeof globalThis !== "undefined") globalThis.getStreams = _gs;
@@ -3149,3 +3189,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

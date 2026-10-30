@@ -33,6 +33,20 @@ function buildRequest(cfRequest) {
   };
 }
 
+/* Vercel semantiği: gövdeli isteklerde req.body doldurulur (JSON ya da ham
+   metin). workerd'de gövde yalnız bir kez okunur — clone ile yakala. */
+async function withBody(req, cfRequest) {
+  if (!['POST', 'PUT', 'PATCH'].includes(req.method)) return req;
+  try {
+    const uzunluk = Number(req.headers['content-length'] || 0);
+    if (uzunluk > 262144) return req; // 256 KB üstü gövde okunmaz (medya akışı değil)
+    const raw = await cfRequest.clone().text();
+    if (!raw) return req;
+    try { req.body = JSON.parse(raw); } catch { req.body = raw; }
+  } catch { /* gövde yok/okunamadı */ }
+  return req;
+}
+
 /**
  * Node-stili handler -> Cloudflare Request/Response.
  * commit(): ilk içerik olayında Response kurulur; o ana kadarki
@@ -41,7 +55,7 @@ function buildRequest(cfRequest) {
  * olayına kadar açık kalır.
  */
 export async function runNodeHandler(handler, cfRequest) {
-  const req = buildRequest(cfRequest);
+  const req = await withBody(buildRequest(cfRequest), cfRequest);
 
   let controller = null;
   let streamClosed = false;

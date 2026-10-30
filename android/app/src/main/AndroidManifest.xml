@@ -6,6 +6,11 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="magnet" />
         </intent>
+        <!-- Harici oynatıcı görünürlüğü (#9): VLC/mpv/JustPlayer/MX vb. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="video/*" />
+        </intent>
     </queries>
 
     <application
@@ -25,12 +30,95 @@
             android:launchMode="singleTask"
             android:exported="true">
 
+            <!-- Ana/Launcher süzgeci #7 sonrası .TemaKlasik alias'ındadır
+                 (tema simgesi değişimi tek launcher süzgeci gerektirir). -->
+
+            <!-- #13 magnet: şema yakalama — tarayıcıdan magnet bağlantısı
+                 CinePulse'u açar, P2P penceresine beslenir. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="magnet" />
+            </intent-filter>
+
+            <!-- #15 derin bağlantı: cinepulse://detail/tv/1396 vb. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="cinepulse" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- #7 Tema simgeleri: MainActivity'nin takma adları. Klasik varsayılan
+             açık; diğerleri kapalı. MainActivity açılışta seçimi onarır. -->
+        <activity-alias
+            android:name=".TemaKlasik"
+            android:targetActivity=".MainActivity"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
-        </activity>
+        </activity-alias>
+        <activity-alias
+            android:name=".TemaKizil"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_kizil"
+            android:roundIcon="@mipmap/ic_launcher_kizil_round"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".TemaOkyanus"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_okyanus"
+            android:roundIcon="@mipmap/ic_launcher_okyanus_round"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".TemaOrman"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_orman"
+            android:roundIcon="@mipmap/ic_launcher_orman_round"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".TemaMor"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_mor"
+            android:roundIcon="@mipmap/ic_launcher_mor_round"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <service
             android:name=".DownloadProgressService"
@@ -54,6 +142,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- #12 Biometrik uygulama kilidi -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 </manifest>

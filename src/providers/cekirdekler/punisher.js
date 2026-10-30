@@ -493,8 +493,15 @@ async function now(arg1 = !1) {
       })),
     await value4.activeFetchPromise);
 }
+// ham domains.json satıcı takma adıyla anahtarlı (vekil köprüsü yoksa da çözülsün)
+var takmaAlan = {
+  Punisher: "mihawk"
+};
 async function fn(arg1) {
-  return (await now(), value4.cachedDomains[arg1] || "");
+  return (
+    (await now()),
+    value4.cachedDomains[arg1] || value4.cachedDomains[takmaAlan[arg1]] || ""
+  );
 }
 async function fn2() {
   return (await now(), value4.cachedTmdbKeys || []);
@@ -3214,7 +3221,7 @@ async function getStreams(tmdbId, type, tmdbId2, tmdbId3) {
       (isTvOrSeries ? " (S" + val5 + "E" + val6 + ")" : "")
   );
   try {
-    let result = await fn("Punisher");
+    let result = (await fn("Punisher") || await fn("mihawk"));
     if (!result) return (log("Punisher", "Domain not resolved", "warn"), []);
     ((result = result.replace(/\/+$/, "")),
       log("Punisher", "[Adım 1/4] TMDB ve Oyuncu bilgileri çözümleniyor (" + replaced + ")..."));
@@ -3469,7 +3476,9 @@ var obj3 = {
         : typeof window !== "undefined"
           ? window
           : {},
-  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams,
+  // self-kayit: obfuscated gövde getStreams'i dışarı vermiyordu, çekirdek ölü sayılıyordu
+  _gs = _exp.getStreams || (_exp.default && _exp.default.getStreams) || _glob.getStreams ||
+    (typeof getStreams === "function" ? getStreams : null),
   _sub = _exp.getSubtitles || (_exp.default && _exp.default.getSubtitles) || _glob.getSubtitles;
 if (_gs) {
   if (typeof globalThis !== "undefined") globalThis.getStreams = _gs;
@@ -3483,3 +3492,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

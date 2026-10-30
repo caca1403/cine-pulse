@@ -2711,7 +2711,9 @@ function cfToken() {
           () => (Math.random() + 1).toString(36)[2]
         ).join("")]: Date.now()
       }),
-      "hlxjl1c2w281ax473rt1ofgrvhyjvi_" + gun
+      // Anahtar bundle'dan çıkarıldı: kayit.js açılışta sunucudan
+      // (/api/aria_key, env ARIA_CF_KEY) globalThis.__cpAriaAnahtar'a koyar.
+      ((typeof globalThis < "u" && globalThis.__cpAriaAnahtar) || "") + "_" + gun
     );
   } catch {
     return _e;
@@ -2725,6 +2727,20 @@ function xorToken(input, key) {
   return Array.from(out)
     .map((num2) => num2.toString(16).padStart(2, "0"))
     .join("");
+}
+// kayit.js açılışta anahtarı henüz yetiştiremediyse (yarış, kayit.js
+// shortcut'u) ilk arama 401 yemesin: göreli /api/aria_key cihazda vekil,
+// Node tezgâhında native-routes üzerinden gerçek uç noktaya çözülür.
+async function ariaAnahtarAl() {
+  if (typeof globalThis < "u" && globalThis.__cpAriaAnahtar) return;
+  try {
+    let response = await fetch(
+        "/api/aria_key",
+        typeof AbortSignal < "u" && AbortSignal.timeout ? { signal: AbortSignal.timeout(8000) } : void 0
+      ),
+      data = response && response.ok ? await response.json() : null;
+    data && data.key && (globalThis.__cpAriaAnahtar = String(data.key));
+  } catch {}
 }
 var obj3 = {
     tr: {
@@ -2804,8 +2820,11 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
       val6 = result.numericId ? String(result.numericId) : trimmed,
       trimmed3 = (result.titles || []).filter((arg1) => arg1 && arg1.trim().length > 0);
     if (trimmed3.length === 0) return (log("Nightwing", "TMDB başlığı çözülemedi: " + trimmed), []);
-    let result2 = await fn("Nightwing");
+    // joker.js kalıbı: kahraman kodu (cihaz: vekil sabit haritası) → satıcı
+    // takması (canlı domains.json "sabo" olarak taşıyor) → sabit son çare.
+    let result2 = (await fn("Nightwing")) || (await fn("sabo")) || "https://api.anizium.co";
     if (!result2) return (log("Nightwing", "Sağlayıcı adresi alınamadı.", "warn"), []);
+    await ariaAnahtarAl();
     let Origin = result2.replace(/^(https?:\/\/)(?:api\.)?/i, "$1").replace(/\/+$/, ""),
       headers = {
         "User-Agent": obj2.DEFAULT_USER_AGENT,
@@ -3098,3 +3117,5 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+// ESM (package type:module): joker.js kalıbı — tezgâh/mod.default buradan okur.
+export default typeof getStreams === "function" ? getStreams : undefined;

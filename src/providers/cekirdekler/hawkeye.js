@@ -4587,7 +4587,12 @@ async function now(arg1 = !1) {
     await value34.activeFetchPromise);
 }
 async function fn(arg1) {
-  return (await now(), value34.cachedDomains[arg1] || "");
+  await now();
+  // Kahraman adı ↔ domains.json kod adı köprüsü (alanlar.js: Hawkeye → shiki)
+  const esle = { Hawkeye: "shiki" };
+  let str = value34.cachedDomains[arg1] || value34.cachedDomains[esle[arg1]] || "";
+  if (!str) return "";
+  return str.startsWith("http") ? str : "https://" + str.replace(/^\/+|\/+$/g, "");
 }
 async function fn2() {
   return (await now(), value34.cachedTmdbKeys || []);
@@ -7070,7 +7075,7 @@ async function getStreams(tmdbId, arg2, tmdbId2, tmdbId3) {
     log("Hawkeye", "[Adım 1/4] IMDb ID çözümleniyor (" + tmdbId + ")...");
     let result = await replaceIn(tmdbId, val5);
     if (!result) return (log("Hawkeye", "IMDb ID bulunamadı: " + tmdbId, "warn"), []);
-    let result2 = await fn("Hawkeye");
+    let result2 = (await fn("Hawkeye") || await fn("shiki"));
     if (!result2) return (log("Hawkeye", "Sağlayıcı adresi alınamadı.", "warn"), []);
     log("Hawkeye", "[Adım 2/4] Kesin IMDb araması yapılıyor (" + result + ")...");
     let val6 = result2 + "/api/search?q=" + encodeURIComponent(result),
@@ -7227,3 +7232,5 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+export default getStreams;

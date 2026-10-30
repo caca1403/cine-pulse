@@ -82,6 +82,7 @@ async function cfgCoz(base, cfgDuz, sayfaRef) {
     'User-Agent': UA, 'X-Requested-With': 'XMLHttpRequest',
     'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
     Referer: sayfaRef,
+    ...cerezBaslik(base),
   };
   const dene = async yol => {
     const j = await jsonBayt(`${base}${yol}`, { ms: 6000, govde, basliklar });
@@ -99,15 +100,35 @@ async function cfgCoz(base, cfgDuz, sayfaRef) {
 
 /* imagestoo gömülüsünü kısayoldan çöz. */
 async function imagestooCoz(embed, icerikRef) {
-  const hash = embed.match(/imagestoo\.[a-z]+\/(?:video|embed)\/([a-z0-9]+)/i)?.[1]
+  let hash = embed.match(/imagestoo\.[a-z]+\/(?:video|embed)\/([a-z0-9]+)/i)?.[1]
     || embed.match(/[?&]data=([a-z0-9]{16,})/)?.[1];
+  if (!hash && /imagestoo\./i.test(embed)) {
+    /* onarim:rv-imgs — ölçüm 2026-10-28: film embed'i /i?v=TOKEN; video kimliği
+       URL'de değil packed script'teki FirePlayer("<32hex>") argümanı. CF /i yolunu
+       önbellekliyor ve bayat BOŞ gövdeyi (200, cf-cache-status HIT) veriyor;
+       ölçüldü: giriş ~10 s içinde kendiliğinden düşüyor (BYPASS 23.6 KB) →
+       artan aralıkla 4 deneme. */
+    const aralik = [0, 2000, 4000, 7000, 10000, 14000];
+    for (let i = 0; i < aralik.length && !hash; i++) {
+      if (aralik[i]) await new Promise(r => setTimeout(r, aralik[i]));
+      const oynatici = await metinAl(embed, {
+        ms: 7000, ref: icerikRef,
+        basliklar: { 'User-Agent': UA, Referer: icerikRef, Cookie: '_cfmb=1' },
+      });
+      hash = oynatici.match(/FirePlayer\(\s*["']([a-f0-9]{32})["']/i)?.[1]
+        || oynatici.match(/\b([a-f0-9]{32})\b/)?.[1] || '';
+    }
+  }
   if (!hash) return '';
   const j = await jsonAl(`https://imagestoo.com/player/index.php?data=${hash}&do=getVideo`, {
     ms: 5000, ref: embed,
     govde: `hash=${hash}&r=${encodeURIComponent(icerikRef)}`,
-    basliklar: { 'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded', Origin: new URL(embed).origin },
+    basliklar: {
+      'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded',
+      'X-Requested-With': 'XMLHttpRequest', Origin: new URL(embed).origin,
+    },
   });
-  const ham = String(j?.securedLink || j?.videoSource || '');
+  const ham = String(j?.securedLink || j?.videoSource || '').replace(/\/master\.txt(?=$|\?)/i, '/master.m3u8');
   if (!ham) return '';
   const url = m3u8eCevir(ham);
   return /\.(m3u8|mp4)(\?|#|$)/i.test(url) ? url : '';
@@ -119,6 +140,135 @@ async function yayinKabul(url, ref) {
   if (/\.mp4(\?|#|$)/i.test(url)) return { kalite: '' };
   const metin = await metinAl(url, { ms: 7000, ref, basliklar: { ...YAYIN_BASLIK, Referer: `${oynaticiKoku}/` } });
   return /#EXTM3U/.test(metin.slice(0, 200)) ? { kalite: '' } : null;
+}
+
+/* onarim:rv-pow çerez havuzu — sayfa/verify'da biriken _bc_ok+PHPSESSID'yi
+   tüm isteklere taşı (verify sid'e bağlı; config POST'u çerezsiz bos döndü). */
+const cerezHavuzu = new Map();
+const cerezToplaKok = (kok, yanit) => {
+  try {
+    let liste =
+      typeof yanit.headers.getSetCookie === "function"
+        ? yanit.headers.getSetCookie()
+        : [].concat(yanit.headers.get?.("set-cookie") || []).filter(Boolean);
+    let onceki = cerezHavuzu.get(kok) || new Map();
+    for (let c of liste) {
+      const parc = String(c).split(";")[0];
+      const di = parc.indexOf("=");
+      if (di > 0) onceki.set(parc.slice(0, di).trim(), parc.slice(di + 1).trim());
+    }
+    cerezHavuzu.set(kok, onceki);
+  } catch {}
+};
+const cerezBaslik = kok =>
+  cerezHavuzu.has(kok)
+    ? { Cookie: [...cerezHavuzu.get(kok)].map(([k, v]) => k + "=" + v).join("; ") }
+    : {};
+
+async function dizipalPowCoz(kok, sayfaUrl, agent, jar, zaman) {
+  try {
+    const cerezler = String((jar && typeof jar.toHeader === "function" ? jar.toHeader() : "") || "")
+      .split(";")
+      .map(s => s.trim())
+      .filter(Boolean);
+    const istekAl = async (adres, secenek = {}) =>
+      fetch(adres, {
+        method: secenek.method || "GET",
+        ...(secenek.body ? { body: secenek.body } : {}),
+        headers: {
+          "User-Agent": agent,
+          Referer: sayfaUrl,
+          Origin: kok,
+          Cookie: cerezler.join("; "),
+          ...(secenek.headers || {})
+        },
+        redirect: "follow",
+        signal: zaman ? zaman(9000) : void 0
+      }).then(y => { cerezToplaKok(kok, y); return y; });
+    const cerezTopla = yanit => {
+      try {
+        let liste =
+          typeof yanit.headers.getSetCookie === "function"
+            ? yanit.headers.getSetCookie()
+            : (() => { let v = yanit.headers.get?.("set-cookie"); return v ? [v] : []; })();
+        for (let c of liste) {
+          const par = String(c).split(";")[0];
+          const di = par.indexOf("=");
+          if (di > 0) {
+            /* tüm çerezler dönsün — verify PHPSESSID'ye bağlı (_bc_ok jwt.sid) */
+            const k = par.slice(0, di).trim();
+            const v = par.slice(di + 1).trim();
+            const di2 = cerezler.findIndex(x => x.startsWith(k + "="));
+            if (di2 >= 0) cerezler[di2] = k + "=" + v; else cerezler.push(k + "=" + v);
+          }
+        }
+      } catch {}
+    };
+    let r1 = await istekAl(sayfaUrl);
+    cerezTopla(r1);
+    if (!r1.ok) return null;
+    let html = await r1.text();
+    let b = (html.match(/name="_bc" content="([^"]+)"/) || [])[1];
+    let n = (html.match(/name="_bn" content="([^"]+)"/) || [])[1];
+    let z = parseInt((html.match(/name="_bk" content="([^"]+)"/) || [])[1] || "4", 10);
+    let br = (html.match(/name="_br" content="([^"]+)"/) || [])[1] || sayfaUrl;
+    if (!b || !n) return null;
+    const sub = typeof crypto !== "undefined" && crypto.subtle ? crypto.subtle : null;
+    if (!sub) return null;
+    const oncek = "0".repeat(Math.min(z || 3, 4));
+    let cevap = null;
+    for (let i = 0; i < 400000 && cevap === null; i++) {
+      let d = await sub.digest("SHA-256", new TextEncoder().encode(n + ":" + i));
+      let h = Array.from(new Uint8Array(d), x => x.toString(16).padStart(2, "0")).join("");
+      if (h.startsWith(oncek)) cevap = String(i);
+    }
+    if (cevap === null) return null;
+    let govde = {
+      b: b,
+      a: cevap,
+      t: 4000,
+      m: 12,
+      tc: 0,
+      sc: 2,
+      c: "feedface00000000",
+      w: "basic",
+      au: "0.000001",
+      pl: 0,
+      hw: 8,
+      dp: 1,
+      sw: "1920x1080",
+      tz: 180,
+      tn: "Europe/Istanbul",
+      lg: "tr-TR",
+      wd: 0,
+      ck: 1,
+      vs: "visible",
+      pm: "granted",
+      r: br
+    };
+    let r2 = await istekAl(kok + "/_bc_verify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        Referer: sayfaUrl
+      },
+      body: JSON.stringify(govde)
+    });
+    try { jar && typeof jar.update === "function" && jar.update(r2); } catch {}
+    cerezTopla(r2);
+    let j = null;
+    try { j = await r2.json(); } catch {}
+    if (!(j && j.ok)) return null;
+    /* j.r göreli gelebilir ("/bolum/..") — kok'e karşı çöz */
+    let hedef7533 = j.r || sayfaUrl;
+    hedef7533 = /^https?:/i.test(hedef7533) ? hedef7533 : new URL(hedef7533, kok).href;
+    let r3 = await istekAl(hedef7533);
+    try { jar && typeof jar.update === "function" && jar.update(r3); } catch {}
+    return await r3.text();
+  } catch {
+    return null;
+  }
 }
 
 /* Bölüm bağlantısını dizi sayfasında bul (üç URL kalıbı + metin). */
@@ -161,7 +311,19 @@ async function sayfaAc(adres) {
       }
     } catch (_) { /* düz HTTP'ye düş */ }
   }
-  return { ham: await metinAl(adres, { ms: 6000, basliklar: { 'User-Agent': UA } }), akislar: [] };
+  /* onarim:rv-pow — Ölçüm 2026-10-25: /bolum anonim HTTP'de _bc PoW kapısı
+     dönüyor; WebView yokken ham 0'a düşmesin: çözüm + sayfa yeniden metnAl. */
+  let ravenSalvar = '';
+  try {
+    const kok7535 = new URL(adres).origin;
+    ravenSalvar = await metinAl(adres, { ms: 6000, basliklar: { 'User-Agent': UA, ...cerezBaslik(kok7535) } });
+  } catch (_) {}
+  if (ravenSalvar && ravenSalvar.includes('name="_bc"')) {
+    let kok7533 = '';
+    try { kok7533 = new URL(adres).origin; } catch (_) {}
+    ravenSalvar = (await dizipalPowCoz(kok7533, adres, UA, null, zamanAsimi)) || ravenSalvar;
+  }
+  return { ham: ravenSalvar, akislar: [] };
 }
 
 export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
@@ -226,10 +388,19 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
       if (/^https?:/i.test(v)) {
         const donusen = m3u8eCevir(v);
         if (/\.(m3u8|mp4|mpd)(\?|#|$)/i.test(donusen)) url = donusen;
-        else if (/imagestoo\.[a-z]+\/(?:video|embed)\//i.test(v) || /[?&]data=[a-z0-9]{16,}/.test(v)) url = await imagestooCoz(v, sayfaAdres);
+        else if (/imagestoo\./i.test(v) || /[?&]data=[a-z0-9]{16,}/.test(v)) url = await imagestooCoz(v, sayfaAdres);
         else {
           const iframeici = v.match(/<iframe[^>]*src=["']([^"']+)["']/i)?.[1] || '';
           if (/imagestoo/i.test(iframeici)) url = await imagestooCoz(iframeici, sayfaAdres);
+          else {
+            /* onarim:rv-pow-embed — v tek-geçişlik gömülü oynatıcı (formationfeed
+               /i?v=; kaçırılırsa 410) — dizipal sayfasını Referer yaparak hemen
+               çek, master.m3u8'i sayfadan çıkar. */
+            const gomulu = await metinAl(v, { ms: 7000, ref: sayfaAdres, basliklar: { 'User-Agent': UA, Referer: sayfaAdres } });
+            const hit = (gomulu.match(/file\s*[:=]\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']/i)
+                      || gomulu.match(/["'](https?:\/\/[^"'\s<>]+\.(?:m3u8|mp4)[^"'\s<>]*)["']/i))?.[1] || '';
+            url = hit ? (hit.startsWith('//') ? `https:${hit}` : hit) : '';
+          }
         }
       }
       if (url && !gorulen.has(url)) {

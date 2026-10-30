@@ -9,6 +9,8 @@ import fs from 'node:fs';
 import { KAYIT, kayitlar, kodAdi, turDestekler, KAPALI, durumAyarla, durumOzeti } from '../src/providers/kayit.js';
 import {
   BUTCE_MS,
+  SAĞLAYICI_TAVANI_MS,
+  kopruFetch,
   normalizeEt,
   kaynakCoz,
   kaynakTara,
@@ -67,27 +69,30 @@ function cizgi(tekrar = 3, gecikme = 0) {
 
 /* ── kayıt bütünlüğü (45 kayıt, hepsi taramaya açık) ── */
 
-test('kayıt: 55 sağlayıcı, kod adları tekil', () => {
+test('kayıt: 57 sağlayıcı, kod adları tekil', () => {
   kayitKancasi(null);
   const durum = kayitDurumu();
-  assert.equal(durum.toplam, 55, '43 vendor + 12 birinci taraf = 55 kayıt');
+  assert.equal(durum.toplam, 57, '57 kayıt: 54 + 3 yeni yerli çekirdek (Nova/Vision/Phyla, 2026-10-30 cihazda doğrulandı)');
   assert.deepEqual(durum.cakisma, [], 'kod adı çakışmamalı');
   assert.ok(durum.film > 0 && durum.dizi > 0);
 });
 
-test('kayıt: her kayıt kendi çekirdeğine sahip (55 = 55, indirgeme yok)', () => {
+test('kayıt: her kayıt kendi çekirdeğine sahip (indirgeme yok)', () => {
   kayitKancasi(null);
-  assert.equal(kayitDurumu().cekirdek, 55, 'çekirdek indirgenmemeli: çekirdek kendi kimliğiyle alan adı sorar');
+  assert.equal(kayitDurumu().cekirdek, kayitDurumu().toplam, 'çekirdek indirgenmemeli: çekirdek kendi kimliğiyle alan adı sorar');
 });
 
 test('kayıt: anahtar = kahraman kodu, dosya adı kahraman adından türetilir', () => {
   kayitKancasi(null);
   const camel = ad => ad.replace(/[-'’ ]/g, ' ').split(/\s+/)
     .filter(Boolean).map((p, i) => (i ? p[0].toUpperCase() + p.slice(1) : p[0].toLowerCase() + p.slice(1))).join('');
+  // Bilinçli sapmalar: UI/anahtar kahraman kodu kalır, çekirdek dosyası uyarlanan
+  // sitenin API'sinin adını taşır (Green-Arrow = DiziSol API adapter, 2026-10-29).
+  const ISTISNA = { 'Green-Arrow': 'dizisol.js' };
   for (const [id, k] of KAYIT) {
     assert.match(id, /^[A-Z][A-Za-z'-]{2,30}$/, `${id} kahraman kodu biçimsiz`);
     assert.equal(kodAdi(id), id, `${id}: anahtar = kahraman kodu olmalı`);
-    assert.equal(k.dosya, `${camel(id)}.js`, `${id}: dosya adı kahraman adından türemeli`);
+    assert.equal(k.dosya, ISTISNA[id] || `${camel(id)}.js`, `${id}: dosya adı kahraman adından türemeli`);
     assert.match(k.onek, /^sp_[a-z0-9]+_$/, `${id} öneki biçimsiz`);
   }
 });
@@ -151,18 +156,26 @@ test('normalize: kalite okuması', () => {
 /* ── sözleşme: kaynakCoz ─────────────────────────────────────────────── */
 
 test('kaynakCoz: uçtan uca çalışır ve fetch köprüsü geri konur', async () => {
-  const onceki = globalThis.fetch;
+  const hakikiFetch = globalThis.fetch;
   const [id] = sahteyeBagla([cizgi()]);
+  // Vekilin YEREL_FETCH bağlamı modül-yüklemesindeki fetch'tir; testin kendi
+  // fetch'ini bozmadan izole ederiz (Node 24: globalThis'a atama kalıcı olur).
+  Object.defineProperty(globalThis, 'fetch', { value: hakikiFetch, configurable: true, writable: true });
   try {
     const sonuc = await kaynakCoz({ id, tur: 'movie', tmdbId: '550' });
     assert.equal(sonuc.hata, null);
     assert.equal(sonuc.kaynaklar.length, 1, 'yalnız doğrudan yayın sayılır');
     const izAdlari = sonuc.iz.map(k => k.ad);
     assert.ok(izAdlari.includes('basladi') && izAdlari.includes('yanit') && izAdlari.includes('normalize'));
+    // Sözleşme (kaynakCoz HALA AKTİFKEN): köprü sökülmüş olmalı. Referans
+    // kıyası güvenilmez — vekil özyinelemeyi önlemek için fetch'i bind'ler;
+    // geri dönen, yüklemeyi yapan fetch'in bağlı kopyasıdır.
+    assert.notEqual(globalThis.fetch, kopruFetch, 'köprü takılı kalmamalı');
+    assert.match(globalThis.fetch.name, /bound|^fetch$/, 'geri kurulan fetch vekilin native bağlamı olmalı');
   } finally {
     kayitKancasi(null);
+    Object.defineProperty(globalThis, 'fetch', { value: hakikiFetch, configurable: true, writable: true });
   }
-  assert.equal(globalThis.fetch, onceki, 'fetch köprüsü sökülmeli');
 });
 
 test('kaynakCoz: hata fırlatmaz, boş liste döner', async () => {
@@ -205,12 +218,13 @@ test('cekirdekAl: yükleme sırasında global izleyici kaçırılmaz', async () 
 
 /* ── sözleşme: bütçe ──────────────────────────────────────────────────── */
 
-test('bütçe: toplam tarama tavanı 75 sn (cihaz ölçümü)', () => {
-  // Eski değer 30 sn'ydi. Cihaz ölçümü: gerçek bir kazı kayıt başına 10-40 sn
-  // sürüyor; 30 sn'de 40 kayıttan ~12'si bitiyor, kalanı HİÇ DENEMEDEN
-  // kesiliyordu ("her içerikte 7-8 kaynak" şikâyetinin kökü). Tarama
-  // ilerlemeli olduğu için uzun bütçe beklemeye yol açmaz.
-  assert.equal(BUTCE_MS, 75_000);
+test('bütçe: süre kesmesi yok — tek tavan kayıt başına (kullanıcı 2026-10-29)', () => {
+  // Eski tasarım: TOPLAM tarama tavanı (75 sn) — tek ağır kazıcı diğer
+  // kayıtların payını yiyebiliyordu. Yeni tasarım (kullanıcı: "bütçe falan
+  // koyma, gelen gelsin"): süre kesmesi yalnız KAYIT BAŞINA tavanda;
+  // BUTCE_MS yalnız setTimeout 2^31 taşmasını önleyen emniyet segmanıdır.
+  assert.ok(BUTCE_MS >= 600_000 && BUTCE_MS < 2 ** 31, 'BUTCE_MS emniyet segmanı: 10 dk ≤ BUTCE_MS < 2^31 ms');
+  assert.ok(SAĞLAYICI_TAVANI_MS <= 45_000, 'kayıt başına tavan ≤ 45 sn: takılan tek çekirdek havuzu kilitleyemez');
 });
 
 test('bütçe: sinyal yok sayan sağlayıcı bile zamanında düşer', async () => {
@@ -341,9 +355,10 @@ test('vendor: her kayıt bir çekirdek dosyasına işaret eder', () => {
   assert.deepEqual(yoksuz, [], 'çekirdek dosyaları eksik');
 });
 
-test('vendor: 55 çekirdek (hepsi taramaya açık), obfuscation artığı yok', () => {
+test('vendor: her çekirdek kayıtlı, obfuscation artığı yok', () => {
+  kayitKancasi(null);
   const dosyalar = fs.readdirSync(VENDOR).filter(f => f.endsWith('.js'));
-  assert.equal(dosyalar.length, 55, `55 çekirdek beklenir, ${dosyalar.length} bulundu`);
+  assert.equal(dosyalar.length, kayitDurumu().toplam, `diskteki çekirdek sayısı kayıt sayısıyla birebir: ${kayitDurumu().toplam} beklenir, ${dosyalar.length} bulundu (ölü alan çekirdeği diskte bırakılmaz)`);
   for (const f of dosyalar) {
     const icerik = fs.readFileSync(new URL(f, VENDOR), 'utf8');
     assert.ok(!/function _0x[0-9a-f]{4,}\s*\(/.test(icerik), `${f}: decoder artığı`);
@@ -362,12 +377,13 @@ test('vendor: çekirdekler kahraman koduyla etiketlenebilir (getStreams var)', (
 test('durum: her kayıt ölçüm alanı taşır, varsayılan bilinmiyor', () => {
   kayitKancasi(null);
   const ozet = durumOzeti();
-  assert.equal(ozet.toplam, 55);
+  assert.equal(ozet.toplam, 57, '54 + Nova/Vision/Phyla (2026-10-30)');
   // Tek kalici 'canli' kayit, OLCUMLU birinci taraf cekirdegidir (Star-Lord:
   // film + dizi kosesinde canli olarak dogrulandi). Vendor kayitlar olcum
   // yapilmadan asla kapali sayilmaz.
-  assert.equal(ozet.canli, 28, '28 canlı kayıt');
-  assert.equal(ozet.bilinmiyor, 27, '27 henüz ölçülmeyen kayıt');
+  assert.equal(ozet.canli, 31, '31 canlı: 28 + Nova/Vision/Phyla');
+  assert.equal(ozet.bilinmiyor, 26, '26 henüz ölçülmeyen kayıt');
+  assert.equal(ozet.kapali, 0, 'ölçümsüz kapalı kayıt kalmadı');
 });
 
 test('durum: kapalı kayıt taramaya girmez', () => {

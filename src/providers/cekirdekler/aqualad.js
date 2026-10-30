@@ -2514,7 +2514,7 @@ async function getStreams(tmdbId2, tmdbId3, tmdbId4, tmdbId5) {
   );
   try {
     if (!tmdbId) return [];
-    let Origin = await fn("Aqualad");
+    let Origin = (await fn("Aqualad")) || (await fn("rayleigh"));
     if (!Origin) return (log("Aqualad", "Domain not resolved", "warn"), []);
     let str = "";
     (isTv
@@ -2571,6 +2571,7 @@ async function getStreams(tmdbId2, tmdbId3, tmdbId4, tmdbId5) {
       url = "" + val7 + val8 + "token=" + val5 + "&expires=" + val6;
     value8 && (url += "&h=1");
     let flag = !1;
+    let trSes = false;
     try {
       let response3 = await fetch(url, {
         headers: {
@@ -2581,7 +2582,8 @@ async function getStreams(tmdbId2, tmdbId3, tmdbId4, tmdbId5) {
         signal: AbortSignal.timeout ? AbortSignal.timeout(2500) : void 0
       });
       if (response3.ok) {
-        let value9 = (await response3.text()).toLowerCase();
+        let ham9 = await response3.text();
+        let value9 = ham9.toLowerCase();
         flag =
           value9.includes("type=subtitles") &&
           (value9.includes('name="turkish"') ||
@@ -2590,13 +2592,24 @@ async function getStreams(tmdbId2, tmdbId3, tmdbId4, tmdbId5) {
             value9.includes('language="tur"') ||
             value9.includes('rendition="tr') ||
             value9.includes('rendition="tur'));
+        /* dublaj-kolu (2026-10-30 kazıması): aynı playlist metninde ses
+           rendition'ları da bildiriliyor (ölçüm Inception: TYPE=AUDIO
+           NAME="Italian" LANGUAGE="ita" + NAME="English" LANGUAGE="eng");
+           eski kod yalnız altyazı arıyordu, tr SES hiç okunmuyordu.
+           Rozet yalnız LANGUAGE="tr|tur"/NAME Türkçe kanıtıyla konur. */
+        trSes = (ham9.match(/#EXT-X-MEDIA:[^\n]*TYPE=AUDIO[^\n]*/gi) || []).some(
+          (s) => /LANGUAGE="?(?:tr|tur)"?/i.test(s) || /NAME="[^"]*(?:turk|dublaj)[^"]*"/i.test(s)
+        );
       }
     } catch {}
     let list = [
         defineProp2({
           name: "Aqualad",
           url: url,
-          languageTitle: flag ? "Altyazılı" : "Yabancı",
+          languageTitle: trSes ? (flag ? "Dublaj / Altyazılı" : "Dublaj") : flag ? "Altyazılı" : "Yabancı",
+          diller: trSes ? ["tr"] : [],
+          trSes: trSes,
+          ...(trSes ? { dilDurumu: "dublaj" } : {}),
           quality: "1080p",
           format: "m3u8",
           headers: {
@@ -2648,3 +2661,6 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+/* vekil tezgâhı ESM import ile okuyor: export da ver */
+export default typeof getStreams === "function" ? getStreams : undefined;

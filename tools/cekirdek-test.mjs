@@ -35,7 +35,12 @@ const [dosya, kimlik, tur = 'movie', sezon = '1', bolum = '1'] = process.argv.sl
 if (!dosya || !kimlik) { console.error('kullanım: cekirdek-test.mjs <dosya> <kimlik> <tur> [sez] [bol]'); process.exit(2); }
 
 const mod = await import(path.join(KOK, 'src/providers/cekirdekler', dosya));
-const fn = mod.getStreams || mod.default;
+/* Vekille aynı sırayı izle: çekirdekler kendini CJS içine gömülü ya da
+   globalThis.getStreams olarak kaydediyor; ikisini de tanı. */
+const fn =
+  mod.getStreams ||
+  (typeof mod.default === 'function' ? mod.default : mod.default?.getStreams) ||
+  (typeof globalThis.getStreams === 'function' ? globalThis.getStreams : null);
 if (typeof fn !== 'function') { console.error('getStreams yok'); process.exit(2); }
 
 const t0 = Date.now();

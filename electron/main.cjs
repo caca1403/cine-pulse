@@ -23,6 +23,7 @@ const fs = require('fs');
 const http = require('http');
 const https = require('https');
 const os = require('os');
+const crypto = require('crypto');
 const { spawn, execFile } = require('child_process');
 const { createStore } = require('./store.cjs');
 
@@ -356,7 +357,7 @@ async function checkRequirements() {
   return { python: py, crypto, ffmpeg: ff };
 }
 
-function downloadFile(url, dest, timeout = 300000) {
+function downloadFile(url, dest, timeout = 300000, expectedSha256 = '') {
   return new Promise((resolve) => {
     try {
       const out = fs.createWriteStream(dest);
@@ -364,7 +365,7 @@ function downloadFile(url, dest, timeout = 300000) {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           out.close();
           try { fs.unlinkSync(dest); } catch (_) {}
-          downloadFile(res.headers.location, dest, timeout).then(resolve);
+          downloadFile(res.headers.location, dest, timeout, expectedSha256).then(resolve);
           return;
         }
         if (res.statusCode !== 200) {
@@ -373,7 +374,19 @@ function downloadFile(url, dest, timeout = 300000) {
           return;
         }
         res.pipe(out);
-        out.on('finish', () => resolve({ ok: true }));
+        out.on('finish', () => {
+          // Güvenlik: kurulmadan önce indirilen dosyanın bütünlüğü,
+          // manifestteki sha256 ile karşılaştırılır. Uyuşmazsa dosya silinir.
+          if (!expectedSha256) return resolve({ ok: true });
+          try {
+            const digest = crypto.createHash('sha256').update(fs.readFileSync(dest)).digest('hex');
+            if (digest === String(expectedSha256).toLowerCase()) return resolve({ ok: true });
+            try { fs.unlinkSync(dest); } catch (_) {}
+            resolve({ ok: false, err: 'hash-mismatch' });
+          } catch (e) {
+            resolve({ ok: false, err: String((e && e.message) || e) });
+          }
+        });
       });
       req.on('error', (e) => resolve({ ok: false, err: String((e && e.message) || e) }));
       req.on('timeout', () => { try { req.destroy(); } catch (_) {} resolve({ ok: false, err: 'timeout' }); });
@@ -863,7 +876,60 @@ ipcMain.handle('cinepulse:get-system-info', async () => {
 
 /* ---- Masaüstü otomatik güncelleme (kendi manifestini okur, APK'nınkiyle ezilmez) ---- */
 const DESKTOP_UPDATE_URL = 'https://github.com/caca1403/cine-pulse/releases/latest/download/desktop-version.json';
+// Güvenlik: kurulum dosyası yalnız bu deponun Release varlıklarından inebilir.
+// Manifest ele geçse bile keyfî bir EXE adresi verilmesini engeller.
+const DESKTOP_RELEASES_BASE = 'https://github.com/caca1403/cine-pulse/releases/';
 let desktopUpdateBusy = false;
+
+/* ---- Harici oynatıcıda OYNATMA (#9): mpv/VLC bul, URL ile spawn ---------
+   Güvenlik: yalnız http(s) URL; spawn dizi-args (kabuk yok); oynatıcılar
+   sabit beyaz listeden. Başlangıç konumu/referer oynatıcı bayraklarıyla. */
+function hariciOynaticiBul() {
+  const adaylar = process.platform === 'win32'
+    ? [
+        { ad: 'mpv', yol: 'C:\\Program Files\\mpv\\mpv.exe' },
+        { ad: 'mpv', yol: 'C:\\Program Files (x86)\\mpv\\mpv.exe' },
+        { ad: 'vlc', yol: 'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe' },
+        { ad: 'vlc', yol: 'C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe' }
+      ]
+    : [
+        { ad: 'mpv', yol: '/usr/bin/mpv' },
+        { ad: 'mpv', yol: '/usr/local/bin/mpv' },
+        { ad: 'vlc', yol: '/usr/bin/vlc' },
+        { ad: 'vlc', yol: '/snap/bin/vlc' }
+      ];
+  for (const a of adaylar) {
+    try { if (fs.existsSync(a.yol)) return a; } catch (_) {}
+  }
+  // PATH'te de olabilir (win32'de spawn ad ile çalışır).
+  return { ad: 'mpv', yol: 'mpv', pathli: true };
+}
+
+function hariciOynaticiAc(url, opts = {}) {
+  try {
+    const u = String(url || '');
+    if (!u.startsWith('http://') && !u.startsWith('https://')) return { ok: false, err: 'gecersiz-url' };
+    const sn = Math.max(0, Number(opts.baslangicSn) || 0);
+    const oynatici = hariciOynaticiBul();
+    const args = [u];
+    if (oynatici.ad === 'mpv') {
+      args.push('--force-window', '--no-terminal');
+      if (sn > 0) args.push(`--start=+${Math.floor(sn)}`);
+      if (opts.referer) args.push('--referrer', String(opts.referer));
+      if (opts.ua) args.push('--user-agent', String(opts.ua));
+    } else {
+      if (sn > 0) args.push(`--start-time=${Math.floor(sn)}`);
+      if (opts.referer) args.push(`--http-referrer=${String(opts.referer)}`);
+    }
+    const child = spawn(oynatici.yol, args, { detached: true, stdio: 'ignore', shell: false });
+    child.unref();
+    return { ok: true, oynatici: oynatici.ad };
+  } catch (e) {
+    return { ok: false, err: String((e && e.message) || e) };
+  }
+}
+
+ipcMain.handle('cinepulse:open-external-player', (_e, url, opts) => hariciOynaticiAc(url, opts || {}));
 
 function localVersionCode() {
   try {
@@ -1039,6 +1105,25 @@ async function checkDesktopUpdate({ manual = false } = {}) {
       }
       return { ok: false, state: 'no-asset' };
     }
+    // Güvenlik: (1) indirme adresi bu deponun Release önekine sabitlenir,
+    // (2) manifestte sha256 özeti ZORUNLUDUR — özet yoksa hiçbir şey kurulmaz.
+    if (!String(platformUrl).startsWith(DESKTOP_RELEASES_BASE)) {
+      logSidecar(`update blocked: non-release URL ${String(platformUrl).slice(0, 120)}`);
+      if (manual && mainWin && !mainWin.isDestroyed()) {
+        dialog.showMessageBox(mainWin, { type: 'error', title: 'Güncelleme Reddedildi', message: 'Güncelleme adresi bu uygulamanın resmî deposuna ait değil. Kurulum iptal edildi.' });
+      }
+      return { ok: false, state: 'blocked-url' };
+    }
+    const shaField = process.platform === 'win32'
+      ? 'windowsSetupSha256'
+      : (process.env.APPIMAGE ? 'linuxAppImageSha256' : 'linuxDebSha256');
+    const expectedSha = String(manifest[shaField] || '').toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(expectedSha)) {
+      if (manual && mainWin && !mainWin.isDestroyed()) {
+        dialog.showMessageBox(mainWin, { type: 'error', title: 'Güncelleme Doğrulanamadı', message: 'Yeni sürümün bütünlük özeti (sha256) eksik. Güvenlik nedeniyle kurulum iptal edildi.\n\nEl ile indirme: github.com/caca1403/cine-pulse/releases' });
+      }
+      return { ok: false, state: 'no-hash' };
+    }
     // Otomatik kontroller (acilis + 20sn sonra) MODAL SORMAZ. Kullanici
     // uygulamayi ilk kez aciyor, kurulum sihirbazinda ya da izlemedeyken
     // karsisina "Yeni Surum Mevcut" penceresi hic cikmamali (onceki surumde
@@ -1066,12 +1151,18 @@ async function checkDesktopUpdate({ manual = false } = {}) {
     const fname = platformUrl.split('/').pop().split('?')[0] || (process.platform === 'win32' ? 'CinePulse-Setup.exe' : 'CinePulse-update.bin');
     const dest = path.join(os.tmpdir(), fname);
     try { fs.unlinkSync(dest); } catch (_) {}
-    const dl = await downloadFile(platformUrl, dest, 900000);
+    const dl = await downloadFile(platformUrl, dest, 900000, expectedSha);
     if (!dl.ok) {
       if (mainWin && !mainWin.isDestroyed()) {
-        dialog.showMessageBox(mainWin, { type: 'error', title: 'İndirme Başarısız', message: `Kurulum dosyası indirilemedi (${dl.err || 'ağ hatası'}).` });
+        dialog.showMessageBox(mainWin, {
+          type: 'error',
+          title: dl.err === 'hash-mismatch' ? 'Bütünlük Doğrulaması Başarısız' : 'İndirme Başarısız',
+          message: dl.err === 'hash-mismatch'
+            ? 'İndirilen kurulum dosyasının sha256 özeti manifestle uyuşmadı. Dosya silindi, kurulum iptal edildi.'
+            : `Kurulum dosyası indirilemedi (${dl.err || 'ağ hatası'}).`
+        });
       }
-      return { ok: false, state: 'download-failed' };
+      return { ok: false, state: dl.err === 'hash-mismatch' ? 'hash-mismatch' : 'download-failed' };
     }
     if (process.platform === 'win32') {
       // Geleneksel kurulum: uygulamayi kapat, kurucuyu one cikar.
@@ -1291,16 +1382,27 @@ app.whenReady().then(async () => {
   }
   // APK'daki gibi otomatik guncelleme denetimi (sessiz; varsa sorar).
   scheduleDesktopUpdateCheck();
+  // #13/#15 şema kaydı: magnet (P2P) ve cinepulse (derin bağlantı).
+  // Yalnız tek-örnek kilidi bizdeyse kaydediyoruz — aksi halde yarış olur.
+  try { if (gotLock) { app.setAsDefaultProtocolClient('magnet'); app.setAsDefaultProtocolClient('cinepulse'); } } catch (_) {}
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
   });
 });
 
-app.on('second-instance', () => {
+app.on('second-instance', (_e, argv) => {
   try {
     if (mainWin && !mainWin.isDestroyed()) {
       if (mainWin.isMinimized()) mainWin.restore();
       mainWin.focus();
+    }
+    // #13/#15 şema yakalama — ikinci örnek magnet:/cinepulse: bağlantısıyla
+    // açıldıysa (Windows protokol kaydı) ana pencereye yönlendir.
+    const hedef = Array.isArray(argv) ? argv.find((a) => /^(magnet|cinepulse):/.test(String(a))) : '';
+    if (hedef && mainWin && !mainWin.isDestroyed()) {
+      const kanca = String(hedef).startsWith('magnet:') ? '__cpMagnetGeldi' : '__cpDerinBaglanti';
+      const kacak = String(hedef).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      mainWin.webContents.executeJavaScript(`window.${kanca} && window.${kanca}('${kacak}')`).catch(() => {});
     }
   } catch (_) {}
 });

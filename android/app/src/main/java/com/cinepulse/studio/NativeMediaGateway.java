@@ -48,6 +48,16 @@ final class NativeMediaGateway extends NanoHTTPD {
             return reply(newFixedLengthResponse(Response.Status.METHOD_NOT_ALLOWED, "text/plain", "Unsupported method"));
         try {
             String path = session.getUri().substring(prefix.length());
+            // ALT YAZI DOSYALARI: oynatıcı fabrikası http şeması bekler; WebView
+            // tarafının yazdığı WebVTT dosyaları yalnız bu ada kalıbıyla (cache
+            // dışı okunmaz) sunulur. (2026-10-25)
+            if (path.startsWith("altyazi/")) {
+                String ad = path.substring("altyazi/".length());
+                if (!ad.matches("cp_altyazi_\\d+\\.vtt")) return reply(newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Bad name"));
+                java.io.File f = new java.io.File(activity.getCacheDir(), ad);
+                if (!f.isFile() || f.length() > 4 * 1024 * 1024) return reply(newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "Not found"));
+                return reply(newFixedLengthResponse(Response.Status.OK, "text/vtt; charset=utf-8", new String(java.nio.file.Files.readAllBytes(f.toPath()), java.nio.charset.StandardCharsets.UTF_8)));
+            }
             String route = path.split("/", 2)[0];
             Map<String, String> params = session.getParms();
             if (route.equals("resolve")) {

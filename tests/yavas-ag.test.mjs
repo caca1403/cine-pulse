@@ -13,12 +13,13 @@ test('normal ağda tavanlar sabit değerlerinde kalır', () => {
   assert.equal(taramaButcesi(), BUTCE_MS);
 });
 
-test('yavaş ağda sağlayıcı ve toplam tavan büyür', () => {
+test('yavaş ağda sağlayıcı tavanı büyür, toplam bütçe KISILMAZ', () => {
+  // 2026-10-29 tasarımı: yavaş ağı telafi eden kayıt başına tavandır (45 sn);
+  // toplam bütçe yavaşta küçülmez (hızlı modla aynı emniyet segmanı).
   globalThis.window = { __cpYavasAg: true };
   assert.equal(saglayiciTavani(), 45_000);
-  assert.equal(taramaButcesi(), 180_000);
+  assert.equal(taramaButcesi(), BUTCE_MS);
   assert.ok(saglayiciTavani() > SAĞLAYICI_TAVANI_MS);
-  assert.ok(taramaButcesi() > BUTCE_MS);
   delete globalThis.window;
 });
 

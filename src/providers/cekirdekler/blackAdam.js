@@ -2743,7 +2743,7 @@ async function getStreams(tmdbId2, tmdbId3, tmdbId4, tmdbId5) {
       result2 = await fn3(tmdbId, mediaType),
       val5 = result2?.numericId || (tmdbId.startsWith("tt") ? void 0 : parseInt(tmdbId, 10)),
       val6 = result2?.titles || [],
-      result3 = await fn("Black-Adam");
+      result3 = (await fn("Black-Adam") || await fn("urouge"));
     if (!result3) return (log("Black-Adam", "Domain not resolved", "warn"), []);
     let replaced = result3.replace(/\/+$/, ""),
       obj3 = {};

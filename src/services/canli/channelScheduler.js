@@ -669,12 +669,11 @@ export function presetTurCarpani(preset, turler) {
  * @param {object[]} havuz ham kayıtlar (genre_ids / genres taşıyan)
  * @returns {object[]}
  */
-export function presetHavuz(preset, havuz) {
+function presetUygunKayitlar(preset, liste) {
   const p = (preset && typeof preset === 'object') ? preset : kanalTanima(preset);
-  const liste = Array.isArray(havuz) ? havuz : [];
   if (!p || !Array.isArray(p.turIdler) || p.turIdler.length === 0) return liste.slice();
   const izin = new Set(p.turIdler.map(Number));
-  const uyan = liste.filter((it) => {
+  return liste.filter((it) => {
     if (!it) return false;
     const idler = new Set();
     if (Array.isArray(it.genre_ids)) for (const g of it.genre_ids) idler.add(Number(g));
@@ -683,6 +682,11 @@ export function presetHavuz(preset, havuz) {
     for (const id of idler) if (izin.has(id)) return true;
     return false;
   });
+}
+
+export function presetHavuz(preset, havuz) {
+  const liste = Array.isArray(havuz) ? havuz : [];
+  const uyan = presetUygunKayitlar(preset, liste);
   return uyan.length > 0 ? uyan : liste.slice();
 }
 
@@ -848,7 +852,8 @@ export function kanalProgramlaV2({
   uzunlukDk = null,
   baslangicDk = null,
   bingeMaks = 3,
-  donguSayisi = 2
+  donguSayisi = 2,
+  agirlikFonksiyonu = null
 } = {}) {
   const g = Array.isArray(gecmis) ? gecmis : [];
   const f = Array.isArray(favoriler) ? favoriler : [];
@@ -981,11 +986,17 @@ export function kanalProgramlaV2({
       const farkliTur = adaylar.filter(a => a.anaTur !== sonTur);
       if (farkliTur.length > 0) adaylar = farkliTur;
       for (const a of adaylar) {
+        // ML katmanı (opsiyonel): çağıran taraf tmdbId → çarpan verirse
+        // ağırlığa girer. Verilmezse davranış v2 ile birebir aynıdır.
+        const mlCarpani = typeof agirlikFonksiyonu === 'function'
+          ? Math.max(0.1, Math.min(5, Number(agirlikFonksiyonu(a)) || 1))
+          : 1;
         a.agirlik = a.temelAgirlik
           * kusakTurCarpani(kusak, a.turler)
           * presetTurCarpani(preset, a.turler)
           * ruhHaliCarpani(mood, a.turler)
-          * saatCarpaniHesapla(a, saatKovasi);
+          * saatCarpaniHesapla(a, saatKovasi)
+          * mlCarpani;
       }
       secim = agirlikliSec(adaylar, rastgele);
       kullanilan.add(secim.tmdbId);
@@ -1092,7 +1103,8 @@ export async function kanalProgramlaV2Async({
   bingeMaks = 3,
   donguSayisi = 2,
   minHavuz = 12,
-  fallbackHavuzu = null
+  fallbackHavuzu = null,
+  agirlikFonksiyonu = null
 } = {}) {
   const g = Array.isArray(gecmis) ? gecmis : [];
   const f = Array.isArray(favoriler) ? favoriler : [];
@@ -1104,8 +1116,13 @@ export async function kanalProgramlaV2Async({
   for (const it of [...g, ...f, ...w]) {
     if (it && it.id != null && Number.isFinite(Number(it.id))) mevcutIdler.add(String(it.id));
   }
+  const uygunIdler = new Set(
+    presetUygunKayitlar(preset, [...g, ...f, ...w])
+      .filter((it) => it && it.id != null && Number.isFinite(Number(it.id)))
+      .map((it) => String(it.id))
+  );
 
-  if (typeof fallbackHavuzu === 'function' && mevcutIdler.size < minHavuz) {
+  if (typeof fallbackHavuzu === 'function' && uygunIdler.size < minHavuz) {
     try {
       const ek = await fallbackHavuzu({ saatKovasi: Math.floor(gunDk(simdiDk) / 60), mevcutIdler, slug: preset.slug, preset });
       if (Array.isArray(ek)) cekirdek = cekirdek.concat(ek);
@@ -1115,7 +1132,7 @@ export async function kanalProgramlaV2Async({
   }
 
   return kanalProgramlaV2({
-    gecmis: cekirdek, favoriler: f, watchlist: w, slug, ruhHali, simdiDk, tohum, maxSlot, uzunlukDk, baslangicDk, bingeMaks, donguSayisi
+    gecmis: cekirdek, favoriler: f, watchlist: w, slug, ruhHali, simdiDk, tohum, maxSlot, uzunlukDk, baslangicDk, bingeMaks, donguSayisi, agirlikFonksiyonu
   });
 }
 

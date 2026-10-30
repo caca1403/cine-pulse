@@ -493,7 +493,12 @@ async function now(arg1 = !1) {
     await value4.activeFetchPromise);
 }
 async function fn(arg1) {
-  return (await now(), value4.cachedDomains[arg1] || "");
+  await now();
+  // Kahraman adı ↔ domains.json kod adı köprüsü (alanlar.js: Black-Panther → garp)
+  const esle = { "Black-Panther": "garp" };
+  let str = value4.cachedDomains[arg1] || value4.cachedDomains[esle[arg1]] || "";
+  if (!str) return "";
+  return str.startsWith("http") ? str : "https://" + str.replace(/^\/+|\/+$/g, "");
 }
 async function fn2() {
   return (await now(), value4.cachedTmdbKeys || []);
@@ -2833,7 +2838,7 @@ async function getStreams(tmdbId, tmdbId2, arg3, arg4) {
     let result = await replaceIn(trimmed, "movie"),
       val5 = (await fn3(trimmed, "movie"))?.titles?.[0] || "Film";
     if (!result) return (log("Black-Panther", "IMDb ID bulunamadı: " + trimmed, "error"), []);
-    let Origin = await fn("Black-Panther");
+    let Origin = (await fn("Black-Panther") || await fn("garp"));
     if (!Origin) return (log("Black-Panther", "Sağlayıcı adresi alınamadı.", "warn"), []);
     let headers = {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -2961,3 +2966,5 @@ if (_sub) {
   if (typeof window !== "undefined") window.getSubtitles = _sub;
   if (typeof module !== "undefined" && module.exports) { try { module.exports.getSubtitles = _sub; } catch (_) {} }
 }
+
+export default getStreams;

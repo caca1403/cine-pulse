@@ -75,3 +75,40 @@ export function sesEtiketi(bilgi) {
   if (!bilgi) return null;
   return bilgi.turkceDublaj ? '🎙️ Türkçe Dublaj' : '💬 Türkçe Altyazılı';
 }
+
+/* =========================== DİL ALGILAMA KASKADI ==========================
+   Manifest çoğu yayında SUSKUN: ses mux'lu, LANGUAGE/NAME attribute yok
+   (ölçüldü 2026-10-28: Breaking Bad S1E1 — playlistSesBilgisi null döndü).
+   Kullanıcı kuralı: "dublaj bilgisi verilmediyse bile sen algılatsın".
+   O yüzden bilinen HER sinyal sırayla yoklanır; hiçbir kanıt yoksa '' döner
+   (uydurma etiket yok — native taraf "Ses N · Stereo" yazmaya devam eder).
+   Güven sırası: kaynak kartı başlığı > manifest > URL yolu > altyazı çıkarımı.
+   ========================================================================== */
+const dilNormalize = (s) => String(s || '').toLowerCase()
+  .replace(/[ıİ]/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
+  .replace(/ç/g, 'c').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/â/g, 'a');
+// Dublaj işaretleri: TR sitesinin kendi kart etiketleri + genel jenerik.
+const DUB_ISARET = /dublaj|dublaja|seslendir|\bdyf\b|\bdub\b|\bdubl\b|dubbed|voiceover|voice over|trke seslendirme/;
+// Altyazılı/orijinal işaretleri: "vosfat/voskat" TR korsan jargonu = altyazılı.
+const AZ_ISARET = /altyaz|vosfat|voskat|vostfr|\bvost\b|\bsub\b|\bsubbed\b|subtitl|orijinal|orij|\borj\b|original|ingilizce|english|ozgun/;
+
+/**
+ * Yayının ses dilini kaynaklardan algılar.
+ * @returns {'dublaj'|'altyazili'|''}
+ */
+export function dilAlgila({ kaynakAdi = '', url = '', bilgi = null, altyaziVar = false } = {}) {
+  const ad = dilNormalize(kaynakAdi);
+  const yol = dilNormalize(url);
+  // 1) Kart başlığı: kaynak site çoğu zaman kendisi yazar ("2 · Dublaj",
+  //    "ORJ", "Altyazılı"). Dublaj ÖNCE kazanır: "Altyazılı Dublaj" = TR ses.
+  if (DUB_ISARET.test(ad)) return 'dublaj';
+  if (AZ_ISARET.test(ad)) return 'altyazili';
+  // 2) Manifest bildirimi (EXT-X-MEDIA LANGUAGE / DASH lang).
+  if (bilgi && typeof bilgi.turkceDublaj === 'boolean') return bilgi.turkceDublaj ? 'dublaj' : 'altyazili';
+  // 3) URL yolu: çekirdekler klasör/sorgu ayırır (…/dublaj/…, ?tip=altyazili).
+  if (DUB_ISARET.test(yol)) return 'dublaj';
+  if (AZ_ISARET.test(yol)) return 'altyazili';
+  // 4) Son çıkarım: Türkçe altyazı hazırsa ses büyük olasılıkla özgün dildir
+  //    (altyazı gereksiz olsaydı dublaj olurdu). Kanıt yoksa '' — uydurma yok.
+  return altyaziVar ? 'altyazili' : '';
+}
