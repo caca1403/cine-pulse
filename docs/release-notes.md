@@ -1,12 +1,38 @@
-## CinePulse v2.0.0
+## CinePulse v2.0.0 — Major Architecture & Multi-Platform Release
 
-- **Yeni sürüm dalı:** Windows EXE, Android APK, Linux DEB ve Flatpak aynı `package.json` sürümünden üretilir; release etiketi `v2.0.0` ve Android sürüm kodu `200` olarak eşleştirilir.
-- **APK imza doğrulaması:** yayın hattı, imzalanan APK sertifikasının SHA-256 parmak izini mevcut resmî APK ile karşılaştırır; farklı anahtarla imzalanan paket yayımlanmaz.
-- **Platform eşitliği:** masaüstü uygulamasında desteklenen yayınları çevrimdışı indirme ve İndirilenler kitaplığı açılır; web tanıtım sitesi uygulama özellikleri, karşılaştırma, SSS ve sabit indirme düğmelerini sunar.
-- **Uygulama deneyimi:** Türkçe kaynak aileleri ve ses/altyazı kanıtı, OpenSubtitles TR yedeği, doğal dil arama, kalite etiketleri, Bugün/Yakında rafları, çocuk profili PIN'i ve masaüstü hover önizlemesi.
-- **Kurulum paketleri:** GitHub Actions Android APK, Windows EXE, Linux DEB ve Flatpak dosyalarını tek release'te üretip yayımlar.
+CinePulse 2.0.0; Android, masaüstü (Windows & Linux) ve web ekosistemini tek bir çatı altında birleştiren, çekirdek mimarisi ve kullanıcı deneyimi baştan aşağı yenilenmiş majör dönüm noktası sürümüdür.
 
-Yayın erişilebilirliği kaynak sağlayıcısına, ağ koşullarına ve platforma bağlıdır. APK release sertifikası sabit parmak izi ile doğrulanır; Windows kurulum dosyası kod imzalı değildir.
+### 🚀 Öne Çıkan Başlıklar
+
+- **Evrensel Sürüm & Çapraz Platform Eşitliği:**
+  - Tüm dağıtımlar (`Android APK`, `Windows EXE`, `Linux DEB`, `Linux Flatpak`) senkronize sürüm döngüsüne (`v2.0.0` / versionCode `200`) kavuşturuldu.
+  - Masaüstü sürümlerinde çevrimdışı yerel indirme motoru ve entegre **İndirilenler Kitaplığı** devreye alındı.
+
+- **Güvenlik & Bütünlük (Kalıcı İmza Garantisi):**
+  - Android APK yayın hattı, resmî imza sertifikasının SHA-256 parmak izi (`429f0788...`) ile CI/CD seviyesinde kilitlendi.
+  - Mevcut kullanıcılar için kesintisiz yerinde güncelleme desteği korunurken, yetkisiz veya yabancı anahtarla derlenen paketlerin dağıtımı engellendi.
+
+- **Akıllı Akış & Medya Motoru:**
+  - **Çoklu Kaynak Çözümleme:** Yerli ve küresel sağlayıcılar için gelişmiş akış yakalama, şifreli HLS/DASH işleme ve anında parça düşürme mekanizması.
+  - **Ses & Altyazı Bütünlüğü:** Doğrudan doğrulanmış Türkçe ses/altyazı tespiti, otomatik OpenSubtitles TR fallback zinciri ve Anubis korumalı istek köprüsü.
+  - **Kalite Rozetleri:** Gerçek akış çözünürlüğüne dayalı kesin kalite etiketlemesi (4K, 2K, 1080p, 720p).
+
+- **Modern Arayüz & Kullanılabilirlik:**
+  - Doğal dil ve anlamsal içerik arama motoru.
+  - Dinamik "Bugün / Yakında" yayın rafları ve gelişmiş recap kartları.
+  - Aile ve ebeveyn denetimi için bağımsız PIN korumalı Çocuk Profili mimarisi.
+  - Masaüstünde kaynak seçmeden doğrudan video/ses akışını koklayan hızlı hover önizlemesi.
+
+### 📦 Dağıtım Paketleri
+
+| Platform | Paket Türü | Not |
+| :--- | :--- | :--- |
+| **Android** | `CinePulse-v2.0.0.apk` | Resmî release anahtarıyla imzalı (armeabi-v7a / arm64-v8a / x86_64 evrensel) |
+| **Windows** | `CinePulse-Setup-2.0.0.exe` | NSIS tabanlı 64-bit bağımsız kurulum |
+| **Linux (Debian/Ubuntu)** | `CinePulse-2.0.0-amd64.deb` | Native deb paketi |
+| **Linux (Universal)** | `CinePulse-2.0.0.flatpak` | Sandbox uyumlu bağımsız Flatpak paketi |
+
+> **Not:** Yayın erişilebilirliği kaynak sağlayıcılarına ve anlık ağ koşullarına bağlıdır. Android sürümü önceki resmî kurulumların üzerine doğrudan güncellenebilir.
 
 ## CinePulse v1.1.71
 
