@@ -27,29 +27,21 @@ export function exeDeepLink() {
   }
 }
 
-export const EXTENSION_DOWNLOAD_URL = '/cinepulse-web-bridge.zip';
-
-export function appPromoHtml(title = 'Kesintisiz izlemek ister misin?') {
+export function appPromoHtml(title = 'CinePulse Deneyimi') {
   if (!shouldShowAppPromo()) return '';
   return `
     <div class="app-promo-box" style="margin-top:1.1rem;padding:1.1rem;border-radius:12px;background:rgba(223, 255, 118,.06);border:1px solid rgba(223, 255, 118,.25);text-align:center;">
       <div style="color:#dfff76;font-weight:800;font-size:.92rem;margin-bottom:.35rem;">${title}</div>
       <div style="color:#94a3b8;font-size:.78rem;margin-bottom:.9rem;line-height:1.4;">
-        Tarayıcılarda korumalı yayınlar CORS engeline takılabilir. Webde kalıp izlemek için Web Bridge eklentisini kurabilir veya yerel uygulamayı indirebilirsiniz.
+        Yayın alternatifleri sunucu üzerinden otomatik köprülenir. Doğrudan cihaz donanım hızlandırması ve çevrimdışı izleme için yerel uygulamayı indirebilirsiniz.
       </div>
       <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:.6rem;">
-        <a href="${EXTENSION_DOWNLOAD_URL}" download style="display:inline-flex;align-items:center;gap:.4rem;background:#dfff76;color:#000;font-weight:800;font-size:.8rem;padding:.55rem 1rem;border-radius:9px;text-decoration:none;box-shadow:0 0 15px rgba(223,255,118,.2);">
-          <i data-lucide="puzzle" style="width:15px;height:15px;"></i> Web Bridge Eklentisi (ZIP)
-        </a>
-        <a href="${APK_DOWNLOAD_URL}" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.08);color:#fff;font-weight:700;font-size:.8rem;padding:.55rem 1rem;border-radius:9px;text-decoration:none;border:1px solid rgba(255,255,255,.16);">
+        <a href="${APK_DOWNLOAD_URL}" style="display:inline-flex;align-items:center;gap:.4rem;background:#10b981;color:#fff;font-weight:700;font-size:.8rem;padding:.55rem 1rem;border-radius:9px;text-decoration:none;">
           <i data-lucide="smartphone" style="width:14px;height:14px;"></i> APK İndir
         </a>
         <a href="${EXE_DOWNLOAD_URL}" style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.08);color:#fff;font-weight:700;font-size:.8rem;padding:.55rem 1rem;border-radius:9px;text-decoration:none;border:1px solid rgba(255,255,255,.16);">
-          <i data-lucide="monitor" style="width:14px;height:14px;"></i> EXE İndir
+          <i data-lucide="monitor" style="width:14px;height:14px;"></i> Masaüstü (EXE)
         </a>
-      </div>
-      <div style="font-size:.72rem;color:var(--cp-text-muted, #94a3b8);">
-        💡 Eklenti kurulumu: ZIP'i aç → chrome://extensions → Geliştirici Modu → "Paketlenmemiş öğe yükle" ile seç.
       </div>
     </div>
   `;
