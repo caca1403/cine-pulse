@@ -4832,11 +4832,8 @@ export async function openPlayerModal({
           </button>
         </div>
 
-        <!-- Right: Action Icons (Shortcuts, Fullscreen, Version/Showcase) -->
+        <!-- Right: Action Icons (Shortcuts, Fullscreen) -->
         <div class="player-header-right">
-          <a href="#showcase" class="btn-player-tool cp-press" title="Sürüm ve İndirme Merkezi (Showcase)" aria-label="Sürüm Merkezi" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;color:var(--cp-text-muted,#94a3b8);">
-            <i data-lucide="sparkles" style="width: 16px; height: 16px; color:#dfff76;"></i>
-          </a>
           ${nativeOynaticiVar() ? `
           <button id="btn-native-dondur" class="btn-player-tool cp-press btn-native-dondur" title="Ekranı Döndür" aria-label="Ekranı Döndür">
             <i data-lucide="rotate-cw" style="width: 16px; height: 16px;"></i>

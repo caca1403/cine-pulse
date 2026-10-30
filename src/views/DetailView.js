@@ -260,10 +260,6 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
             <i data-lucide="arrow-left" style="width:18px;height:18px;"></i>
           </button>
           <div class="dt-ust-cubuk-sag">
-            <a href="#showcase" class="dt-ikonbtn" id="btn-showcase-detail" title="Sürüm ve İndirme Merkezi" aria-label="Sürüm ve İndirme Merkezi" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">
-              <i data-lucide="sparkles" style="width:18px;height:18px;color:#dfff76;"></i>
-              <span class="cps-gizli">Sürümler</span>
-            </a>
             <button class="dt-ikonbtn ${isCurrentWatched ? 'is-active' : ''}" id="btn-toggle-watched-detail" title="${watchedBtnLabel}" aria-label="${watchedBtnLabel}">
               <i data-lucide="${isCurrentWatched ? 'check-circle-2' : 'check'}" style="width:18px;height:18px;"></i>
               <span class="cps-gizli">${watchedBtnLabel}</span>
@@ -316,6 +312,10 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                 <i data-lucide="play" style="fill:currentColor;width:18px;height:18px;"></i>
                 <span>${playButtonLabel}</span>
               </button>
+              <a href="#showcase" class="dt-aksiyon-cip" id="btn-detail-showcase" title="Sürüm ve Paketler" aria-label="Sürüm ve Paketler" style="text-decoration:none;display:inline-flex;align-items:center;color:#dfff76;border-color:rgba(223,255,118,.35);background:rgba(223,255,118,.08);">
+                <i data-lucide="download" style="width:16px;height:16px;"></i>
+                <span>Sürümler / İndir</span>
+              </a>
               <button class="dt-aksiyon-cip ${inFav ? 'is-active' : ''}" id="btn-toggle-fav" title="${inFav ? 'Favorilerimde' : 'Favorilere ekle'}" aria-label="Favori">
                 <i data-lucide="heart" style="width:16px;height:16px;${inFav ? 'fill:var(--primary);color:var(--primary)' : ''}"></i>
                 <span>${inFav ? 'Favorilerimde' : 'Favoriler'}</span>
