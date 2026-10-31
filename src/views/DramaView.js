@@ -12,7 +12,7 @@
        9 istek birden atılmaz.
      • APPLE DİLİ → büyük yuvarlak köşe, buzlu çubuk, pil düğmeler, ince tüy
        kenarlık, tek vurgu rengi, yaylı (spring) geçişler. Mobilde detay
-       iOS ALT ÇEKMECESİ gibi açılır.
+       özeti ve bölümleri ayrı bir detay sayfasında açılır.
    Tasarım kuralları kendi dosyasında: src/styles/kisa-dizi.css (kd-* ön eki).
    Eski ".drama-*" ekranı kaldırıldı; bölüm seçimi TEK yerde (oynatıcı rail'i).
    ========================================================================== */
@@ -28,6 +28,7 @@ import { fetchDramalarDetails } from '../services/kaynak/dramalarScraper.js';
 import { openPlayerModal } from '../components/openPlayer.js';
 import { showToast } from '../components/Toast.js';
 import { getUnifiedContinueWatching, removeWatchHistoryItem } from '../services/altyapi/storage.js';
+import { isDesktopApp } from '../services/platform/platformBridge.js';
 
 /* Kısa dizi kayıtları TMDB id'si yerine ddz_/dml_ önekiyle saklanır; geçmiş
    kayıtları da aynı öneki taşır. "Devam et" satırı bu önekle süzülür. */
@@ -56,7 +57,8 @@ const SAYFA_BASLIK = {
   arama: 'Arama Sonuçları'
 };
 
-export async function renderDramaView(initialSlug = null, initialQuery = '') {
+export async function renderDramaView(initialSlug = null, initialQuery = '', initialPlayback = null) {
+  const desktopPlaybackUnavailable = isDesktopApp();
   let mod = 'vitrin'; // 'vitrin' (billboard + satırlar) | 'izgara' (kategori/arama)
   let aktifSeg = initialQuery ? 'arama' : 'vitrin';
   let aramaDizisi = initialQuery || '';
@@ -70,6 +72,11 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
 
   const html = `
     <div class="kd-root" id="kd-root">
+      ${desktopPlaybackUnavailable ? `
+        <div class="kd-desktop-playback-notice" role="alert">
+          <i data-lucide="lock-keyhole" aria-hidden="true"></i>
+          <span><strong>Masaüstünde kısa dizi oynatma kullanılamıyor.</strong> Bu sürümde dizilerin detaylarını ve bölüm listesini görüntüleyebilirsin; bölümler oynatılamaz.</span>
+        </div>` : ''}
       <!-- 1) VITRIN: tek kahraman dizi, Netflix billboard'u gibi -->
       <section class="kd-billboard" id="kd-billboard" aria-label="Öne çıkan kısa dizi">
         <div class="kd-billboard-bg" id="kd-billboard-bg"></div>
@@ -80,8 +87,8 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
           <p class="kd-billboard-desc" id="kd-bb-desc">DramaBox, ReelShort ve ShortMax orijinal mikro dizileri — Türkçe dublaj ve altyazıyla.</p>
           <div class="kd-billboard-meta" id="kd-bb-meta"></div>
           <div class="kd-billboard-actions">
-            <button class="kd-btn kd-btn-play" id="kd-bb-play">
-              <i data-lucide="play" style="width:18px;height:18px;fill:currentColor"></i><span>Oynat</span>
+            <button class="kd-btn kd-btn-play" id="kd-bb-play" ${desktopPlaybackUnavailable ? 'disabled aria-label="Masaüstünde kısa dizi oynatma kullanılamıyor"' : ''}>
+              <i data-lucide="${desktopPlaybackUnavailable ? 'lock-keyhole' : 'play'}" style="width:18px;height:18px"></i><span>${desktopPlaybackUnavailable ? 'Oynatma kapalı' : 'Oynat'}</span>
             </button>
             <button class="kd-btn kd-btn-ghost" id="kd-bb-info">
               <i data-lucide="info" style="width:17px;height:17px"></i><span>Detaylar</span>
@@ -213,7 +220,7 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         const yuzde = devam && typeof devam.progressPercent === 'number'
           ? Math.max(2, Math.min(100, Math.round(devam.progressPercent))) : 0;
         return `
-          <article class="kd-card" data-slug="${slug}" tabindex="0" role="button" aria-label="${baslik}">
+          <article class="kd-card" data-slug="${slug}" tabindex="0" role="group" aria-label="${baslik}">
             ${devam ? `<button class="kd-card-del" type="button" data-del-id="${slug}" data-del-sez="${devam.season || 1}" data-del-bol="${devam.episode || 1}" aria-label="Listeden kaldır"><span aria-hidden="true">✕</span></button>` : ''}
             <div class="kd-card-media">
               ${poster
@@ -223,7 +230,14 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
               <span class="kd-card-badge ${dublaj ? 'dub' : ''}">${dublaj ? 'Dublaj' : 'Altyazı'}</span>
               ${sira ? `<span class="kd-card-rank" aria-hidden="true">${sira}</span>` : ''}
               <div class="kd-card-hover">
-                <span class="kd-card-play"><i data-lucide="play"></i></span>
+                <button class="kd-card-action kd-card-action-watch" type="button" data-card-action="watch" ${desktopPlaybackUnavailable ? 'disabled' : ''}
+                  aria-label="${desktopPlaybackUnavailable ? 'Masaüstünde oynatma kullanılamıyor' : `${devam ? 'Bölüme devam et' : 'Bölümü izle'}: ${baslik}`}">
+                  <i data-lucide="${desktopPlaybackUnavailable ? 'lock-keyhole' : 'play'}" aria-hidden="true"></i><span>${desktopPlaybackUnavailable ? 'Oynatma kapalı' : (devam ? 'Bölüme devam et' : 'Bölümü izle')}</span>
+                </button>
+                <button class="kd-card-action kd-card-action-detail" type="button" data-card-action="detail"
+                  aria-label="İçerik sayfasına git: ${baslik}">
+                  <i data-lucide="info" aria-hidden="true"></i><span>İçerik sayfasına git</span>
+                </button>
               </div>
             </div>
             <div class="kd-card-info">
@@ -726,10 +740,29 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
               <i data-lucide="list-restart"></i>
               <span>${bolumSayisi} bölüm var · bölüm seçimi oynatıcının içindeki “Bölümler” şeridinden yapılır</span>
             </p>
-          </div>`;
+            <div class="kd-sheet-episodes" id="kd-sheet-episodes">
+              ${episodes.length ? `
+                <h4 class="kd-sheet-ep-title">Bölümler</h4>
+                <div class="kd-sheet-ep-grid">
+                  ${episodes.slice(0, 30).map(ep => `
+                    <button class="kd-ep-chip" data-sez="${ep.season || 1}" data-bol="${ep.episode}" type="button">
+                      B${ep.episode}
+                    </button>
+                  `).join('')}
+                  ${episodes.length > 30 ? `<span class="kd-ep-more">+${episodes.length - 30} bölüm</span>` : ''}
+                </div>
+              ` : ''}
+            </div>`;
         renderIcons(sheet);
 
         sheet.querySelector('[data-kapat]')?.addEventListener('click', perdeKapat);
+        /* Bölüm çipleri: doğrudan o bölümden başlat (bölümler arası geçiş
+           perdeden de yapılır — kullanıcı 2026-10-31). */
+        sheet.querySelectorAll('.kd-ep-chip').forEach(chip => {
+          chip.addEventListener('click', (e) => {
+            bolumOynat(detay, Number(chip.dataset.sez) || 1, Number(chip.dataset.bol) || 1, e.currentTarget);
+          });
+        });
         sheet.querySelector('#kd-perde-oynat')?.addEventListener('click', (e) => {
           const ilk = episodes[0] || { season: 1, episode: 1 };
           bolumOynat(detay, ilk.season, ilk.episode, e.currentTarget);
@@ -742,12 +775,117 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         });
       }
 
+      async function detaySayfasiGoster(slug, playback = null) {
+        root.innerHTML = `
+          <section class="kd-detail-page" aria-live="polite">
+            <button class="kd-detail-back" type="button" data-detail-back>
+              <i data-lucide="arrow-left" aria-hidden="true"></i><span>Kısa dizilere dön</span>
+            </button>
+            <div class="kd-detail-loading"><i data-lucide="loader-2" aria-hidden="true"></i><span>Dizi bilgileri yükleniyor…</span></div>
+          </section>`;
+        renderIcons(root);
+
+        const detay = await detayGetir(slug);
+        if (!document.contains(root)) return;
+
+        const esc = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[char]);
+        const geriDugmesi = '<button class="kd-detail-back" type="button" data-detail-back><i data-lucide="arrow-left" aria-hidden="true"></i><span>Kısa dizilere dön</span></button>';
+
+        if (!detay) {
+          root.innerHTML = `
+            <section class="kd-detail-page">
+              ${geriDugmesi}
+              <div class="kd-detail-state" role="alert">
+                <i data-lucide="alert-circle" aria-hidden="true"></i>
+                <h1>Dizi bilgisi alınamadı</h1>
+                <p>Kaynak şu an yanıt vermiyor. Yeniden deneyebilir veya kısa dizilere dönebilirsin.</p>
+                <button class="kd-btn kd-btn-ghost" type="button" data-detail-retry>Yeniden dene</button>
+              </div>
+            </section>`;
+          root.querySelector('[data-detail-back]')?.addEventListener('click', () => {
+            window.location.hash = '#dramas';
+          });
+          root.querySelector('[data-detail-retry]')?.addEventListener('click', () => {
+            detayHafizasi.delete(slug);
+            detaySayfasiGoster(slug, playback);
+          });
+          renderIcons(root);
+          return;
+        }
+
+        if (playback?.play) {
+          await bolumOynat(
+            detay,
+            Number(playback.season) || 1,
+            Number(playback.episode) || 1,
+            null,
+            Number(playback.currentTime) || 0
+          );
+          return;
+        }
+
+        const baslik = esc(detay.title || 'Kısa dizi');
+        const aciklama = esc(detay.description || 'Bu kısa dizi için özet girilmemiş.');
+        const poster = esc(detay.poster || '');
+        const bolumler = Array.isArray(detay.episodes) ? detay.episodes : [];
+        const bolumSayisi = Number(detay.totalEpisodes) || bolumler.length;
+
+        root.innerHTML = `
+          <section class="kd-detail-page">
+            ${geriDugmesi}
+            <header class="kd-detail-hero">
+              ${poster ? `<img class="kd-detail-poster" src="${poster}" alt="" />` : '<div class="kd-detail-poster kd-detail-poster-fallback" aria-hidden="true"><i data-lucide="clapperboard"></i></div>'}
+              <div class="kd-detail-info">
+                <div class="kd-detail-meta">
+                  <span class="kd-pill">${detay.isDubbed ? 'Türkçe dublaj' : 'Türkçe altyazı'}</span>
+                  <span class="kd-pill">${bolumSayisi || bolumler.length} bölüm</span>
+                  <span class="kd-pill">Mini dizi</span>
+                </div>
+                <h1 class="kd-detail-title">${baslik}</h1>
+                <p class="kd-detail-overview">${aciklama}</p>
+              </div>
+            </header>
+            <section class="kd-detail-episodes" aria-labelledby="kd-detail-episodes-title">
+              <div class="kd-detail-episodes-heading">
+                <h2 id="kd-detail-episodes-title">Bölümler</h2>
+                <span>${bolumler.length} bölüm</span>
+              </div>
+              ${bolumler.length ? `
+                <div class="kd-detail-episode-list">
+                  ${bolumler.map((ep) => `
+                    <button class="kd-detail-episode" type="button" data-sez="${Number(ep.season) || 1}" data-bol="${Number(ep.episode) || 1}" ${desktopPlaybackUnavailable ? 'disabled aria-label="Masaüstünde oynatma kullanılamıyor"' : ''}>
+                      ${ep.thumb ? `<img src="${esc(ep.thumb)}" alt="" loading="lazy" />` : '<span class="kd-detail-episode-number" aria-hidden="true"><i data-lucide="play"></i></span>'}
+                      <span class="kd-detail-episode-label">${esc(ep.title || `Bölüm ${ep.episode}`)}</span>
+                      <i data-lucide="${desktopPlaybackUnavailable ? 'lock-keyhole' : 'play'}" aria-hidden="true"></i>
+                    </button>`).join('')}
+                </div>
+              ` : '<p class="kd-detail-no-episodes">Bu dizi için bölüm bilgisi bulunamadı.</p>'}
+            </section>
+          </section>`;
+
+        root.querySelector('[data-detail-back]')?.addEventListener('click', () => {
+          window.location.hash = '#dramas';
+        });
+        root.querySelectorAll('.kd-detail-episode').forEach((button) => {
+          button.addEventListener('click', () => {
+            bolumOynat(detay, Number(button.dataset.sez) || 1, Number(button.dataset.bol) || 1, button);
+          });
+        });
+        renderIcons(root);
+      }
+
       backdrop.addEventListener('click', (e) => { if (e.target === backdrop) perdeKapat(); });
       sheet.addEventListener('click', (e) => { if (e.target.closest('[data-kapat]')) perdeKapat(); });
 
       /* ── OYNATMA ─────────────────────────────────────────────────────── */
       async function bolumOynat(dizi, sezon = 1, bolum = 1, tetikleyen = null, devamSaniye = 0) {
         if (!dizi) return;
+        if (desktopPlaybackUnavailable) {
+          showToast('Masaüstü sürümünde kısa dizi oynatma kullanılamıyor.', 'info');
+          return;
+        }
         const kayitli = tetikleyen ? tetikleyen.innerHTML : null;
         if (tetikleyen) {
           tetikleyen.disabled = true;
@@ -802,7 +940,23 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
           bolumOynat(detay, devamKaydi.season || 1, devamKaydi.episode || 1, kart, devamKaydi.currentTime || 0);
           return;
         }
-        perdeAc(slug);
+        window.location.hash = `#dramas?slug=${encodeURIComponent(slug)}`;
+      }
+
+      async function karttanBolumOynat(kart, dugme) {
+        const slug = kart?.getAttribute('data-slug');
+        if (!slug) return;
+        const devamKaydi = devam.find(it => String(it.id) === slug);
+        const detay = await detayGetir(slug);
+        if (!detay) { showToast('Bölüm bilgisi alınamadı.', 'error'); return; }
+        const ilkBolum = (detay.episodes || [])[0];
+        const sezon = devamKaydi
+          ? Number(devamKaydi.season) || 1
+          : Number(ilkBolum?.season) || 1;
+        const bolum = devamKaydi
+          ? Number(devamKaydi.episode) || 1
+          : Number(ilkBolum?.episode) || 1;
+        bolumOynat(detay, sezon, bolum, dugme, devamKaydi?.currentTime || 0);
       }
 
       /* "Devam et" kartından bir kaydı listeye veda ettir (kullanıcı 2026-10-18:
@@ -822,13 +976,26 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
       root.addEventListener('click', (e) => {
         const sil = e.target.closest('.kd-card-del');
         if (sil) { e.preventDefault(); e.stopPropagation(); devamKaydiSil(sil); return; }
+        const action = e.target.closest('[data-card-action]');
+        if (action) {
+          e.preventDefault();
+          e.stopPropagation();
+          const kart = action.closest('.kd-card');
+          if (action.dataset.cardAction === 'detail') {
+            const slug = kart?.getAttribute('data-slug');
+            if (slug) window.location.hash = `#dramas?slug=${encodeURIComponent(slug)}`;
+          } else if (action.dataset.cardAction === 'watch') {
+            karttanBolumOynat(kart, action);
+          }
+          return;
+        }
         const kart = e.target.closest('.kd-card');
         if (kart) { kartaTikla(kart); return; }
       });
       root.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
         const kart = e.target.closest?.('.kd-card');
-        if (!kart) return;
+        if (!kart || e.target !== kart) return;
         e.preventDefault();
         kartaTikla(kart);
       });
@@ -840,30 +1007,16 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         if (!detay) { showToast('Bölüm bilgisi alınamadı.', 'error'); return; }
         bolumOynat(detay, 1, 1, e.currentTarget);
       });
-      bbInfo?.addEventListener('click', () => vitrinDizisi && perdeAc(vitrinDizisi.slug));
-
-      /* ── AÇILIŞ ───────────────────────────────────────────────────────── */
-      renderIcons(root);
-      if (aramaDizisi) {
-        segSec('arama');
-        ızgaraYeniden(`“${aramaDizisi}”`);
-      } else {
-        modaGec('vitrin');
-      }
-      if (initialSlug) perdeAc(initialSlug);
-
-      /* Vitrin kahramanı: trend havuzu gelir gelmez vitrin doldurulur. */
-      trendHavuzu().then((liste) => {
-        if (vitrinDizisi || !liste.length) return;
-        vitrinSec(liste.find(d => d?.poster) || liste[0]);
+      bbInfo?.addEventListener('click', () => {
+        if (vitrinDizisi?.slug) {
+          window.location.hash = `#dramas?slug=${encodeURIComponent(vitrinDizisi.slug)}`;
+        }
       });
 
-      /* TEMİZLİK — gezici bu sayfadan çıkınca: gözlemciler bırakılır, perde
-         kapatılır (body kilidi kalmasın) ve kendi dinleyicileri silinir.
-         main.js'in rota temizliği yalnız ana ekranı/LiveTV'yi biliyor; bu sayfa
-         kendi kuyruğunu kendisi kapatır. */
+      /* TEMİZLİK — route değişimini detay isteği sürerken de yakala. */
+      const acilisHash = window.location.hash;
       const rotaDinleyici = () => {
-        if (window.location.hash.startsWith('#dramas')) return;
+        if (window.location.hash === acilisHash) return;
         gozlemci.disconnect();
         onYukleveye.forEach(clearTimeout);
         window.removeEventListener('resize', navResize);
@@ -871,6 +1024,25 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
         perdeKapat();
       };
       window.addEventListener('hashchange', rotaDinleyici);
+
+      /* ── AÇILIŞ ───────────────────────────────────────────────────────── */
+      if (initialSlug) {
+        await detaySayfasiGoster(initialSlug, initialPlayback?.play ? initialPlayback : null);
+      } else {
+        renderIcons(root);
+        if (aramaDizisi) {
+          segSec('arama');
+          ızgaraYeniden(`“${aramaDizisi}”`);
+        } else {
+          modaGec('vitrin');
+        }
+
+        /* Vitrin kahramanı: trend havuzu gelir gelmez vitrin doldurulur. */
+        trendHavuzu().then((liste) => {
+          if (vitrinDizisi || !liste.length) return;
+          vitrinSec(liste.find(d => d?.poster) || liste[0]);
+        });
+      }
     }
   };
 }
