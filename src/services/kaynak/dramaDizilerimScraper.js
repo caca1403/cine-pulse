@@ -160,15 +160,27 @@ export async function fetchDramaCatalog(opts = {}) {
 }
 
 export function extractCleanImageUrl(raw) {
-  if (!raw) return '';  try {
-    if (raw.includes('image_proxy.php?url=')) {
-      const match = raw.match(/url=([^&]+)/);
-      if (match) {
-        return decodeURIComponent(match[1]);
-      }
+  if (!raw) return '';
+  let url = String(raw).trim();
+  try {
+    if (url.includes('image_proxy.php?url=')) {
+      const match = url.match(/url=([^&]+)/);
+      if (match) url = decodeURIComponent(match[1]);
     }
   } catch (_) {}
-  return raw;
+  // Next.js /_next/image?url=...&w=...&q=... → orijinal CDN adresini al
+  if (url.includes('/_next/image?')) {
+    try {
+      const m = url.match(/[?&]url=([^&]+)/);
+      if (m && m[1]) {
+        const decoded = decodeURIComponent(m[1]);
+        if (/^https?:\/\//.test(decoded)) return decoded;
+      }
+    } catch (_) {}
+  }
+  if (url.startsWith('//')) return 'https:' + url;
+  if (url.startsWith('/')) return `${BASE_URL}${url}`;
+  return url;
 }
 
 function cleanDramaTitle(rawTitle, fallback = '') {
@@ -375,22 +387,44 @@ export async function fetchDramaDetails(slug) {
                       html.match(/<img[^>]+class=["'][^"']*spotlight[^"']*["'][^>]+src=["']([^"']+)["']/i);
   const poster = posterMatch ? extractCleanImageUrl(posterMatch[1].replace(/&amp;/g, '&')) : '';
 
-  const epRegex = /<a[^>]+href=["'](?:\/izle\/|https:\/\/dramadizilerim\.com\/izle\/)([a-zA-Z0-9_-]+)\?s=(\d+)&e=(\d+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  // Bölümler: yeni HTML yapısı → /izle/slug?s=N&e=M VEYA /izle/slug (1. bölüm)
   const episodes = [];
+  const epLinkRegex = /<a[^>]+href=["'](?:\/izle\/|https:\/\/dramadizilerim\.com\/izle\/)([a-zA-Z0-9_-]+)(?:\?s=(\d+)&e=(\d+))?["'][^>]*>([\s\S]*?)<\/a>/gi;
   let epMatch;
-
-  while ((epMatch = epRegex.exec(html)) !== null) {
+  while ((epMatch = epLinkRegex.exec(html)) !== null) {
     const s = parseInt(epMatch[2], 10) || 1;
     const e = parseInt(epMatch[3], 10) || 1;
     const inner = epMatch[4];
-    const epTitleMatch = inner.match(/class=["']wp-enum["']>([^<]+)</i) || inner.match(/alt=["']([^"']+)["']/i);
-    const epTitle = epTitleMatch ? epTitleMatch[1].trim() : `Bölüm ${e}`;
+    // "1. bölüm", "Bölüm 5" gibi metinlerden bölüm numarasını çek
+    const numMatch = inner.match(/(\d+)\.\s*bölüm/i) || inner.match(/Bölüm\s*(\d+)/i);
+    const epNum = numMatch ? parseInt(numMatch[1], 10) : e;
+    const epTitle = `Bölüm ${epNum}`;
     const thumbMatch = inner.match(/src=["']([^"']+)["']/i);
     const thumb = thumbMatch ? extractCleanImageUrl(thumbMatch[1].replace(/&amp;/g, '&')) : '';
-
-    if (!episodes.some(ep => ep.season === s && ep.episode === e)) {
-      episodes.push({ season: s, episode: e, title: epTitle, thumb });
+    if (!episodes.some(ep => ep.season === s && ep.episode === epNum)) {
+      episodes.push({ season: s, episode: epNum, title: epTitle, thumb });
     }
+  }
+
+  // JSON-LD yedeği: schema.org TVSeries → containsSeason → episode[]
+  if (episodes.length === 0) {
+    try {
+      const ldBlocks = [...html.matchAll(/<script type=["']application\/ld\+json["']>([\s\S]*?)<\/script>/gi)];
+      for (const block of ldBlocks) {
+        const data = JSON.parse(block[1].replace(/<\/?script[^>]*>/gi, ''));
+        const items = Array.isArray(data) ? data : [data];
+        for (const item of items) {
+          if (!item.containsSeason) continue;
+          for (const season of item.containsSeason) {
+            if (!Array.isArray(season.episode)) continue;
+            for (const ep of season.episode) {
+              const num = Number(ep.episodeNumber) || 1;
+              episodes.push({ season: 1, episode: num, title: ep.name || `Bölüm ${num}`, thumb: '' });
+            }
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   // Sort episodes by season and episode number
@@ -409,47 +443,47 @@ export async function fetchDramaDetails(slug) {
 
 /**
  * Directly extracts direct HLS stream for a drama episode
+ * Yeni site yapısı: watch sayfasından episodeId → /api/playback → HLS manifest
  */
 export async function fetchDramaEpisodeStream(slug, season = 1, episode = 1) {
-  const watchPath = `/izle/${slug}?s=${season}&e=${episode}`;
+  const watchPath = episode <= 1 && season <= 1
+    ? `/izle/${slug}`
+    : `/izle/${slug}?s=${season}&e=${episode}`;
   const watchRes = await fetchSafe(watchPath);
   if (!watchRes) return null;
 
   const watchHtml = await watchRes.text().catch(() => '');
   if (!watchHtml) return null;
 
-  const embedMatch = watchHtml.match(/(?:data-src|src)=["']([^"']*embed\.php[^"']*)["']/i);
-  if (!embedMatch) return null;
-
-  let embedUrl = embedMatch[1].replace(/&amp;/g, '&');
-  if (!embedUrl.startsWith('http')) {
-    embedUrl = `${BASE_URL}${embedUrl.startsWith('/') ? '' : '/'}${embedUrl}`;
+  // 1) episodeId çıkar (data-episode-id="legacy-..." veya RSC payload'ından)
+  let episodeId = '';
+  const idMatch = watchHtml.match(/data-episode-id="([^"]+)"/i);
+  if (idMatch) {
+    episodeId = idMatch[1];
+  } else {
+    // RSC stream chunk'ında "episodeId":"legacy-..." ara
+    const rscMatch = watchHtml.match(/"episodeId":"(legacy-[^"]+)"/i);
+    if (rscMatch) episodeId = rscMatch[1];
   }
+  if (!episodeId) return null;
 
-  const embedRes = await fetchSafe(embedUrl, {
+  // 2) /api/playback?episodeId=... → { kind: "hls", url: "/api/media?ticket=..." }
+  const playbackRes = await fetchSafe(`/api/playback?episodeId=${encodeURIComponent(episodeId)}`, {
     headers: { 'Referer': `${BASE_URL}${watchPath}` }
   });
-  if (!embedRes) return null;
+  if (!playbackRes) return null;
 
-  const embedHtml = await embedRes.text().catch(() => '');
-  if (!embedHtml) return null;
+  const playback = await playbackRes.json().catch(() => null);
+  if (!playback || !playback.url) return null;
 
-  const sourceMatch = embedHtml.match(/let\s+source\s*=\s*["']([^"']+)["']/);
-  let rawUrl = (sourceMatch && sourceMatch[1].startsWith('http')) ? sourceMatch[1] : null;
+  // Göreli URL'yi mutlaklaştır
+  let streamUrl = playback.url;
+  if (streamUrl.startsWith('/')) streamUrl = `${BASE_URL}${streamUrl}`;
 
-  if (!rawUrl) {
-    const directMedia = embedHtml.match(/https?:\/\/[^"'\s\\]+\.(?:m3u8|mp4)[^"'\s\\]*/);
-    if (directMedia) rawUrl = directMedia[0];
-  }
-
-  if (rawUrl) {
-    return {
-      streamUrl: rawUrl,
-      isHls: rawUrl.includes('.m3u8') || rawUrl.includes('mpegurl')
-    };
-  }
-
-  return null;
+  return {
+    streamUrl,
+    isHls: playback.kind === 'hls' || streamUrl.includes('.m3u8') || streamUrl.includes('mpegurl')
+  };
 }
 
 /* ── Altyazı (kit.js "5. Altyazı" sözleşmesiyle birebir aynı şekil) ─────────
@@ -583,76 +617,167 @@ export async function fetchDramaDizilerimEpisodeSources({
     .trim();
   if (watchTitle && !shortDramaIdentityMatch(watchTitle, allTitles, targetYear)) return [];
 
-  // 4. Extract embed.php URL from data-src or src
-  const embedMatch = watchHtml.match(/(?:data-src|src)=["']([^"']*embed\.php[^"']*)["']/i);
-  if (!embedMatch) return [];
-
-  let embedUrl = embedMatch[1].replace(/&amp;/g, '&');
-  if (!embedUrl.startsWith('http')) {
-    embedUrl = `${BASE_URL}${embedUrl.startsWith('/') ? '' : '/'}${embedUrl}`;
+  // 4. Extract episodeId from watch page (yeni site yapısı: /api/playback)
+  let episodeId = '';
+  const idMatch = watchHtml.match(/data-episode-id="([^"]+)"/i);
+  if (idMatch) {
+    episodeId = idMatch[1];
+  } else {
+    const rscMatch = watchHtml.match(/"episodeId":"(legacy-[^"]+)"/i);
+    if (rscMatch) episodeId = rscMatch[1];
   }
-
-  // 5. Fetch embed player HTML
-  const embedRes = await fetchSafe(embedUrl, {
-    headers: { 'Referer': `${BASE_URL}${watchPath}` }
-  });
-  if (!embedRes) return [];
-
-  const embedHtml = await embedRes.text().catch(() => '');
-  if (!embedHtml) return [];
 
   const streams = [];
 
-  // 6. Direct let source = "..." stream extraction
-  const sourceMatch = embedHtml.match(/let\s+source\s*=\s*["']([^"']+)["']/);
-  let rawUrl = (sourceMatch && sourceMatch[1].startsWith('http')) ? sourceMatch[1] : null;
-
-  if (!rawUrl) {
-    const directMedia = embedHtml.match(/https?:\/\/[^"'\s\\]+\.(?:m3u8|mp4)[^"'\s\\]*/);
-    if (directMedia) rawUrl = directMedia[0];
-  }
-
-  if (rawUrl) {
-    const isM3U8 = rawUrl.includes('.m3u8') || rawUrl.includes('mpegurl');
-    const titleText = (matchedItem?.title || matchedSlug).toLowerCase();
-    const sourceIsDub = titleText.includes('dublaj') || isDub === true;
-
-    const label = sourceIsDub
-      ? `🇹🇷 DDZ VIP S${seasonNum}E${episodeNum} (TR Dublaj)`
-      : `⚡ DDZ VIP S${seasonNum}E${episodeNum} (TR Altyazı)`;
-
-    // Yalnız canlı doğrulanmış (gerçek VTT/SRT dönen) altyazılar listelenir;
-    // HTML/erişilemez uç hiçbir koşulda altyazı olarak gösterilmez.
-    const subtitles = await verifyCaptionTracks(extractCaptionTracks(embedHtml));
-
-    // ÖLÇÜLEN HATA (2026-10-17): bu kaynak başlıksız dönüyordu ve native
-    // oynatıcıya başlıksız gidip sessizce ölüyordu ("kısa dizilerde
-    // kaynaklarda oynatılmıyor"). Yayın, embed sayfasından çıkarıldığı için
-    // hotlink denetimi embed adresini Referer olarak bekler.
-    const headers = {
-      Referer: embedUrl,
-      Origin: BASE_URL,
-      'User-Agent': PLAYER_UA
-    };
-
-    streams.push({
-      id: `ddz_ep_${matchedSlug}_${seasonNum}_${episodeNum}`,
-      name: label,
-      displayName: label,
-      badge: '🎭 DDZ VIP',
-      source: 'DDZ VIP',
-      url: rawUrl,
-      streamUrl: rawUrl,
-      rawStreamUrl: rawUrl,
-      headers,
-      quality: '1080p HD',
-      isHls: isM3U8,
-      isDirectVideo: true,
-      priority: 2,
-      subtitles,
-      getUrl: () => rawUrl
+  // 5. /api/playback?episodeId=... → HLS stream
+  if (episodeId) {
+    const playbackRes = await fetchSafe(`/api/playback?episodeId=${encodeURIComponent(episodeId)}`, {
+      headers: { 'Referer': `${BASE_URL}${watchPath}` }
     });
+    if (playbackRes) {
+      const playback = await playbackRes.json().catch(() => null);
+      if (playback && playback.url) {
+        let streamUrl = playback.url;
+        if (streamUrl.startsWith('/')) streamUrl = `${BASE_URL}${streamUrl}`;
+        const isM3U8 = playback.kind === 'hls' || streamUrl.includes('.m3u8');
+        const titleText = (matchedItem?.title || matchedSlug).toLowerCase();
+        const sourceIsDub = titleText.includes('dublaj') || isDub === true;
+
+        const label = sourceIsDub
+          ? `🇹🇷 DDZ VIP S${seasonNum}E${episodeNum} (TR Dublaj)`
+          : `⚡ DDZ VIP S${seasonNum}E${episodeNum} (TR Altyazı)`;
+
+        const headers = {
+          Referer: `${BASE_URL}${watchPath}`,
+          Origin: BASE_URL,
+          'User-Agent': PLAYER_UA
+        };
+
+        streams.push({
+          id: `ddz_ep_${matchedSlug}_${seasonNum}_${episodeNum}`,
+          name: label,
+          displayName: label,
+          badge: '🎭 DDZ VIP',
+          source: 'DDZ VIP',
+          url: streamUrl,
+          streamUrl,
+          rawStreamUrl: streamUrl,
+          headers,
+          quality: '1080p HD',
+          isHls: isM3U8,
+          isDirectVideo: true,
+          priority: 2,
+          subtitles: [],
+          getUrl: () => streamUrl
+        });
+      }
+    }
   }
+
+  // 6. Kısa Eski: embed.php yedeği (eski bölümler için)
+  if (streams.length === 0) {
+    const embedMatch = watchHtml.match(/(?:data-src|src)=["']([^"']*embed\.php[^"']*)["']/i);
+    if (embedMatch) {
+      let embedUrl = embedMatch[1].replace(/&amp;/g, '&');
+      if (!embedUrl.startsWith('http')) {
+        embedUrl = `${BASE_URL}${embedUrl.startsWith('/') ? '' : '/'}${embedUrl}`;
+      }
+      const embedRes = await fetchSafe(embedUrl, {
+        headers: { 'Referer': `${BASE_URL}${watchPath}` }
+      });
+      if (embedRes) {
+        const embedHtml = await embedRes.text().catch(() => '');
+        const sourceMatch = embedHtml.match(/let\s+source\s*=\s*["']([^"']+)["']/);
+        let rawUrl = (sourceMatch && sourceMatch[1].startsWith('http')) ? sourceMatch[1] : null;
+        if (!rawUrl) {
+          const directMedia = embedHtml.match(/https?:\/\/[^"'\s\\]+\.(?:m3u8|mp4)[^"'\s\\]*/);
+          if (directMedia) rawUrl = directMedia[0];
+        }
+        if (rawUrl) {
+          const isM3U8 = rawUrl.includes('.m3u8') || rawUrl.includes('mpegurl');
+          const titleText = (matchedItem?.title || matchedSlug).toLowerCase();
+          const sourceIsDub = titleText.includes('dublaj') || isDub === true;
+          const label = sourceIsDub
+            ? `🇹🇷 DDZ VIP S${seasonNum}E${episodeNum} (TR Dublaj)`
+            : `⚡ DDZ VIP S${seasonNum}E${episodeNum} (TR Altyazı)`;
+          const subtitles = await verifyCaptionTracks(extractCaptionTracks(embedHtml));
+          const headers = {
+            Referer: embedUrl,
+            Origin: BASE_URL,
+            'User-Agent': PLAYER_UA
+          };
+          streams.push({
+            id: `ddz_ep_${matchedSlug}_${seasonNum}_${episodeNum}`,
+            name: label,
+            displayName: label,
+            badge: '🎭 DDZ VIP',
+            source: 'DDZ VIP',
+            url: rawUrl,
+            streamUrl: rawUrl,
+            rawStreamUrl: rawUrl,
+            headers,
+            quality: '1080p HD',
+            isHls: isM3U8,
+            isDirectVideo: true,
+            priority: 2,
+            subtitles,
+            getUrl: () => rawUrl
+          });
+        }
+      }
+    }
+  }
+
+  // 7. Shortizle alternatif kaynak (kullanıcı 2026-10-31: "alternatif olarak ekle")
+  try {
+    const { searchShortizle: szSearch, fetchShortizleStream: szStream } = await import('./shortizleScraper.js');
+    // Shortizle slug'ı dramadizilerim ile aynı formatta → doğrudan dene
+    let szSlug = null;
+    for (const t of allTitles) {
+      const s = toTurkishSlug(t);
+      if (!s) continue;
+      const testRes = await fetchSafe(`https://shortizle.com/watch/${s}`, { method: 'HEAD', timeout: 3500 });
+      if (testRes && testRes.ok) { szSlug = s; break; }
+    }
+    if (!szSlug) {
+      for (const t of allTitles) {
+        const results = await szSearch(t);
+        const best = results.find(r =>
+          shortDramaIdentityMatch(r.title, allTitles, targetYear) ||
+          (!!identityKey(r.slug) && allTitles.some(x => identityKey(x) === identityKey(r.slug)))
+        );
+        if (best) { szSlug = best.slug; break; }
+      }
+    }
+    if (szSlug) {
+      const szResult = await szStream(szSlug, seasonNum, episodeNum);
+      if (szResult && szResult.streamUrl) {
+        const label = isDub
+          ? `🎬 Shortizle S${seasonNum}E${episodeNum} (TR Dublaj)`
+          : `🎬 Shortizle S${seasonNum}E${episodeNum} (TR Altyazı)`;
+        streams.push({
+          id: `sz_ep_${szSlug}_${seasonNum}_${episodeNum}`,
+          name: label,
+          displayName: label,
+          badge: '🎬 Shortizle',
+          source: 'Shortizle',
+          url: szResult.streamUrl,
+          streamUrl: szResult.streamUrl,
+          rawStreamUrl: szResult.streamUrl,
+          headers: {
+            Referer: 'https://shortizle.com/',
+            'User-Agent': PLAYER_UA
+          },
+          quality: '1080p HD',
+          isHls: szResult.isHls,
+          isDirectVideo: true,
+          priority: 3,
+          subtitles: [],
+          getUrl: () => szResult.streamUrl
+        });
+      }
+    }
+  } catch (_) { /* shortizle yedeği sessizce düşer */ }
 
   return streams;
 }
