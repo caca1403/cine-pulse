@@ -692,7 +692,8 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
           return;
         }
         seciliDizi = detay;
-        const { title, poster, description, episodes = [], isDubbed } = detay;
+        const { title, poster, description, episodes = [], isDubbed, totalEpisodes } = detay;
+        const bolumSayisi = totalEpisodes || episodes.length || 1;
         const dublaj = Boolean(isDubbed) || /dublaj/i.test(String(title));
         sheet.innerHTML = `
           <button class="kd-sheet-close" data-kapat aria-label="Kapat"><i data-lucide="x"></i></button>
@@ -704,7 +705,7 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
               <div class="kd-sheet-pills">
                 <span class="kd-pill ${dublaj ? 'accent' : ''}">${dublaj ? 'Türkçe dublaj' : 'Türkçe altyazı'}</span>
                 <span class="kd-pill">Mini dizi</span>
-                <span class="kd-pill">${episodes.length} bölüm</span>
+                <span class="kd-pill">${bolumSayisi} bölüm</span>
                 <span class="kd-pill">1080p HLS</span>
               </div>
               <h2 class="kd-sheet-title">${title}</h2>
@@ -723,7 +724,7 @@ export async function renderDramaView(initialSlug = null, initialQuery = '') {
             </div>
             <p class="kd-sheet-note">
               <i data-lucide="list-restart"></i>
-              <span>${episodes.length} bölüm var · bölüm seçimi oynatıcının içindeki “Bölümler” şeridinden yapılır</span>
+              <span>${bolumSayisi} bölüm var · bölüm seçimi oynatıcının içindeki “Bölümler” şeridinden yapılır</span>
             </p>
           </div>`;
         renderIcons(sheet);

@@ -178,6 +178,16 @@ export function extractCleanImageUrl(raw) {
       }
     } catch (_) {}
   }
+  // Site proxy: /api/images?src=<encoded> → orijinal CDN adresini al
+  if (url.includes('/api/images?')) {
+    try {
+      const m = url.match(/[?&]src=([^&]+)/);
+      if (m && m[1]) {
+        const decoded = decodeURIComponent(m[1]);
+        if (/^https?:\/\//.test(decoded)) return decoded;
+      }
+    } catch (_) {}
+  }
   if (url.startsWith('//')) return 'https:' + url;
   if (url.startsWith('/')) return `${BASE_URL}${url}`;
   return url;
@@ -191,6 +201,8 @@ function cleanDramaTitle(rawTitle, fallback = '') {
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/\s+poster$/i, '')
+    .replace(/\s*dizi afişi$/i, '')
+    .replace(/\s*dizi afi[şs]i$/i, '')
     .trim();
 }
 
@@ -355,7 +367,22 @@ export async function fetchDramaDetails(slug) {
         lower.includes('bildirim') ||
         lower.includes('yapay zeka') ||
         lower.includes('bize bildirin') ||
-        lower.includes('aradığınız dizi')
+        lower.includes('aradığınız dizi') ||
+        lower.includes('popüler platform') ||
+        lower.includes('dramabox') ||
+        lower.includes('netshort') ||
+        lower.includes('reelshort') ||
+        lower.includes('telegram') ||
+        lower.includes('iletişim') ||
+        lower.includes('gizlilik') ||
+        lower.includes('kullanım koşul') ||
+        lower.includes('izleme listem') ||
+        lower.includes('dizi iste') ||
+        lower.includes('popüler kategori') ||
+        lower.includes('çok dilli') ||
+        lower.includes('dramas en') ||
+        lower.includes('drama indonesia') ||
+        lower.includes('mini dizisinin tüm bölümlerini')
       ) {
         return false;
       }
@@ -368,12 +395,31 @@ export async function fetchDramaDetails(slug) {
     description = candidateParagraphs[0];
   }
 
+  // JSON-LD description (gerçek konu özeti) — meta SEO fallback'inden ÖNCE
+  if (!description || description.length < 25) {
+    try {
+      const ldBlocks = [...html.matchAll(/<script type=["']application\/ld\+json["']>([\s\S]*?)<\/script>/gi)];
+      for (const block of ldBlocks) {
+        const data = JSON.parse(block[1].replace(/<\/?script[^>]*>/gi, ''));
+        const items = Array.isArray(data) ? data : [data];
+        for (const item of items) {
+          if (item['@type'] === 'TVSeries' && item.description) {
+            const clean = item.description.replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim();
+            if (clean.length > 15 && !clean.toLowerCase().includes('mini dizisinin tüm bölümlerini')) {
+              description = clean;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   if (!description || description.length < 25) {
     const metaDesc = html.match(/<meta\s+(?:property=["']og:description["']|name=["']description["'])\s+content=["']([^"']+)["']/i) ||
                      html.match(/<meta\s+content=["']([^"']+)["']\s+(?:property=["']og:description["']|name=["']description["'])/i);
     if (metaDesc && metaDesc[1] && metaDesc[1].trim().length > 15) {
       const cleanMeta = metaDesc[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim();
-      if (!cleanMeta.toLowerCase().includes('aradığınız dizi')) {
+      if (!cleanMeta.toLowerCase().includes('aradığınız dizi') && !cleanMeta.toLowerCase().includes('mini dizisinin tüm bölümlerini')) {
         description = cleanMeta;
       }
     }
@@ -430,13 +476,35 @@ export async function fetchDramaDetails(slug) {
   // Sort episodes by season and episode number
   episodes.sort((a, b) => (a.season - b.season) || (a.episode - b.episode));
 
+  // JSON-LD numberOfEpisodes fallback: regex 1 bölüm bulduysa ama JSON-LD
+  // daha fazla diyorsa, eksik bölümleri tamamla (kullanıcı: "1 bölüm var" ≠ 45)
+  let totalEpisodes = episodes.length;
+  if (totalEpisodes < 2) {
+    try {
+      const ldBlocks = [...html.matchAll(/<script type=["']application\/ld\+json["']>([\s\S]*?)<\/script>/gi)];
+      for (const block of ldBlocks) {
+        const data = JSON.parse(block[1].replace(/<\/?script[^>]*>/gi, ''));
+        const items = Array.isArray(data) ? data : [data];
+        for (const item of items) {
+          if (item['@type'] === 'TVSeries' && item.numberOfEpisodes > totalEpisodes) {
+            totalEpisodes = Number(item.numberOfEpisodes) || totalEpisodes;
+            // Eksik bölümleri tamamla
+            for (let i = episodes.length + 1; i <= totalEpisodes; i++) {
+              episodes.push({ season: 1, episode: i, title: `Bölüm ${i}`, thumb: '' });
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   return {
     slug,
     title,
     poster,
     description,
     isDubbed: title.toLowerCase().includes('dublaj'),
-    totalEpisodes: episodes.length,
+    totalEpisodes,
     episodes
   };
 }
