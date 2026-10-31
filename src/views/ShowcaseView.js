@@ -14,19 +14,43 @@ let heroScrollFx = null;
 let heroScrollRaf = 0;
 
 const benefits = [
-  ['compass', 'İzleyecek bir şey bul.', 'Film, dizi, anime ve farklı kategoriler. Arama, yapım detayları ve önerilerle bir sonraki hikâyene karar ver.'],
+  ['compass', 'İzleyecek bir şey bul.', 'Film, dizi, anime ve kısa diziler. Doğal dil arama ("2020 sonrası aksiyon"), tür/oyuncu/yönetmen filtreleme ve yapım detaylarıyla bir sonraki hikâyene karar ver.'],
+  ['sparkles', 'Kişisel öneri motoru.', 'BPR + lojistik sıralayıcı + birlikte izlenme analizi. Zevk profiline göre sıralanan öneriler; favori, liste ve bitirme sinyallerinden öğrenir.'],
+  ['users', 'Birlikte izleme kararı ver.', 'Karar Odası ile arkadaşlarınla P2P oylama yap. Sessiz oylama modu, ortak sonuç listesi ve "Herkes izlemek istiyor!" eşleşmesi.'],
   ['bookmark', 'Kendi arşivini oluştur.', 'Favorilerini ve izleme listeni tek yerde tut. Bitirdiğin yapımları, sıradaki bölümleri ve yarım kalanları takip et.'],
   ['history', 'Yarım kalan yerden devam et.', 'İzleme ilerlemen bu cihazda saklanır. Geri geldiğinde hangi bölümde veya dakikada kaldığını yeniden arama.'],
-  ['sliders-horizontal', 'Deneyimini kendin seç.', 'Dublaj ve altyazılı seçenekleri ayrı gör. Mevcut alternatifler arasında geçiş yap; destekleyen yayınlarda ses, hız ve altyazıyı ayarla.']
+  ['shield-check', 'Spoilersız keşfet.', 'İlerleme sınırının ötesindeki bölüm başlıkları, görselleri ve özetleri otomatik gizlenir. Recap kartı sadece gerçekten izlediğin bölümler için açılır.'],
+  ['monitor-play', 'Sahne modu & saf sinema.', 'Tam ekran sinema sahnesi, hover önizleme, kalite çipleri ve oyuncu kadrosu keşfi. Masaüstünde imleçle kart üzerinde önizleme.'],
+  ['sliders-horizontal', 'Deneyimini kendin seç.', 'Dublaj ve altyazılı seçenekleri ayrı gör. Çoklu kaynak alternatifleri arasında geçiş yap; destekleyen yayınlarda ses, hız ve altyazıyı ayarla.'],
+  ['baby', 'Çocuk modu.', 'PIN korumalı çocuk profili, yaş kademesi filtreleri ve güvenli içerik seçimi. Aile için ayrı bir deneyim.'],
+  ['download', 'İndir & çevrimdışı izle.', 'Desteklenen içerikleri cihazına indir, internet olmadan izle. Çevrimdışı kütüphane ile her yerde erişim.'],
+  ['plug', 'Eklenti ekosistemi.', 'Stremio, Nuvio ve CloudStream eklenti depolarını CinePulse\'a bağla. Yerel kahraman motorla birlikte çoklu kaynak desteği.'],
+  ['zap', 'P2P torrent & debrid.', 'Yerel libtorrent motoru (Android) ve Real-Debrid entegrasyonu ile doğrudan magnet bağlantısı oynatma.']
 ];
 const comparison = [
   ['Keşif, arama ve yapım detayları', 'Var', 'Var'],
+  ['Doğal dil arama ("2020 sonrası aksiyon")', 'Var', 'Var'],
+  ['Kişisel ML öneri motoru (BPR + CF)', 'Var', 'Var'],
   ['Listeler ve izleme ilerlemesi', 'Var', 'Var'],
-  ['Film / dizi oynatma', 'Kaynağa bağlı', 'Kaynağa bağlı'],
-  ['Canlı TV ve yayın akışı', 'Geçici olarak kapalı', 'Geçici olarak kapalı'],
+  ['Film / dizi / anime / kısa dizi oynatma', 'Kaynağa bağlı', 'Kaynağa bağlı'],
+  ['Kısa dizi kaynağı (DramaDizilerim + Shortizle)', 'Var', 'Var'],
+  ['Karar Odası — birlikte izleme oylaması', 'Var', 'Var'],
+  ['Trakt.tv senkronizasyonu', 'Var', 'Var'],
+  ['AniList senkronizasyonu', 'Var', 'Var'],
+  ['Spoilersız keşfet & recap kartı', 'Var', 'Var'],
+  ['Hover önizleme (masaüstü imleç)', 'Var', '—'],
+  ['Çocuk modu (PIN + yaş kademesi)', 'Var', 'Var'],
+  ['Sahne modu & saf sinema oynatıcı', 'Var', 'Var'],
+  ['Çoklu kaynak alternatifleri (dublaj/altyazı)', 'Var', 'Var'],
+  ['Kalite çipleri (1080p / 4K / HDR)', 'Var', 'Var'],
+  ['P2P torrent oynatma (yerel libtorrent)', '—', 'Var'],
+  ['Real-Debrid entegrasyonu', 'Var', 'Var'],
+  ['Eklenti sistemi (Stremio / Nuvio / CloudStream)', 'Var', 'Var'],
   ['İndirme ve çevrimdışı kütüphane', 'Desteklenen içeriklerde', 'Desteklenen içeriklerde'],
+  ['Canlı TV ve yayın akışı (EPG)', 'Geçici olarak kapalı', 'Geçici olarak kapalı'],
   ['Uygulama içi gerçek tarayıcıyla doğrulama', 'Destekli yayınlarda', 'Kaynağa bağlı'],
-  ['JSON yedekleme ve aktarım', 'Var', 'Var']
+  ['JSON yedekleme ve aktarım', 'Var', 'Var'],
+  ['Otomatik güncelleme kontrolü', 'Var', 'Var']
 ];
 const faqs = [
   ['Siteye girmek için uygulama indirmem gerekiyor mu?', 'Bu site tanıtım ve indirme merkezidir; oynatma ve keşif uygulamada çalışır. Windows, Linux veya Android paketlerinden birini kurman yeterli.'],
@@ -63,7 +87,7 @@ export function renderShowcaseView() {
           <div class="cp-landing-hero-copy">
             <a class="cp-landing-version" href="${RELEASES}" target="_blank" rel="noopener noreferrer"><span></span>CINEPULSE STUDIO <b>v${pkg.version}</b>${icon('arrow-up-right')}</a>
             <h1 id="landing-title">Uygulaman<br>hazır.<br><em>İndir, kur, izle.</em></h1>
-            <p class="cp-landing-lead">CinePulse resmi tanıtım, galeri ve indirme merkezi.<br class="cp-landing-desktop-break"> Film, dizi ve anime keşfi, kütüphane, saf sinema sahnesi ve indirme — hepsi uygulamada.</p>
+            <p class="cp-landing-lead">CinePulse resmi tanıtım, galeri ve indirme merkezi.<br class="cp-landing-desktop-break"> Film, dizi, anime ve kısa dizi keşfi, kişisel öneri motoru, birlikte izleme, saf sinema sahnesi ve indirme — hepsi uygulamada.</p>
             <div class="cp-landing-actions"><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button><button class="cp-landing-button cp-landing-secondary" data-landing-section="landing-gallery">${icon('image')}Arayüzü Gör</button></div>
             <div class="cp-landing-hero-note">${icon('shield-check')}Android APK her sürümde aynı kalıcı anahtarla imzalanır — üzerine güncelleme verilerini silmez.</div>
           </div>
@@ -128,8 +152,8 @@ export function renderShowcaseView() {
           </div>
         </section>
         <section id="landing-features" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-features-title">
-          <div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">DENEYİMİN SONUCU</span><h2 id="landing-features-title">Daha az arayış.<br><span>Daha çok kendi listen.</span></h2><p>Sadece bir oynatıcı değil. Ne keşfettiğini, ne izlediğini ve sırada ne olduğunu bir arada tutan bir alan.</p></div>
-          <div class="cp-landing-benefits">${benefits.map(([symbol,title,text],i)=>`<article class="cp-landing-benefit"><div>${icon(symbol)}<span>0${i+1}</span></div><h3>${title}</h3><p>${text}</p></article>`).join('')}</div>
+          <div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">TÜM ÖZELLİKLER</span><h2 id="landing-features-title">Daha az arayış.<br><span>Daha çok kendi listen.</span></h2><p>Sadece bir oynatıcı değil. Keşiften öneriden birlikte izlemeye, çocuk modundan eklenti ekosistemine kadar her şey tek uygulamada.</p></div>
+          <div class="cp-landing-benefits">${benefits.map(([symbol,title,text],i)=>`<article class="cp-landing-benefit"><div>${icon(symbol)}<span>${String(i+1).padStart(2,'0')}</span></div><h3>${title}</h3><p>${text}</p></article>`).join('')}</div>
         </section>
         <section id="landing-compare" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-compare-title">
           <div class="cp-landing-compare-intro"><div><span class="cp-landing-eyebrow">AYNI CINEPULSE, FARKLI İMKÂNLAR</span><h2 id="landing-compare-title">Masaüstünde ne var?<br><span>Android'de ne açılıyor?</span></h2></div><p>Bu site tanıtım ve indirme merkezidir — oynatma uygulamada çalışır. İhtiyacına göre paketi seç.</p></div>
