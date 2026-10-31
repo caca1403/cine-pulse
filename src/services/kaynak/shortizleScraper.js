@@ -1,7 +1,7 @@
 /**
- * Shortizle.com — Kısa dizi alternatif kaynak scraper
+ * Starfire — Kısa dizi alternatif kaynak scraper (kahraman hat)
  * Kullanıcı 2026-10-31: "drama dizilerimden sonra alternatif olarak bunu ekle"
- * URL deseni: https://shortizle.com/watch/{slug} → /watch/{slug}/{sezon}/{bölüm}
+ * URL deseni: /watch/{slug} → /watch/{slug}/{sezon}/{bölüm}
  */
 const BASE_URL = 'https://shortizle.com';
 

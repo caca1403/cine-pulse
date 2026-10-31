@@ -644,8 +644,8 @@ export async function fetchDramaDizilerimEpisodeSources({
         const sourceIsDub = titleText.includes('dublaj') || isDub === true;
 
         const label = sourceIsDub
-          ? `🇹🇷 DDZ VIP S${seasonNum}E${episodeNum} (TR Dublaj)`
-          : `⚡ DDZ VIP S${seasonNum}E${episodeNum} (TR Altyazı)`;
+          ? `🇹🇷 Rhea S${seasonNum}E${episodeNum} (TR Dublaj)`
+          : `⚡ Rhea S${seasonNum}E${episodeNum} (TR Altyazı)`;
 
         const headers = {
           Referer: `${BASE_URL}${watchPath}`,
@@ -657,8 +657,8 @@ export async function fetchDramaDizilerimEpisodeSources({
           id: `ddz_ep_${matchedSlug}_${seasonNum}_${episodeNum}`,
           name: label,
           displayName: label,
-          badge: '🎭 DDZ VIP',
-          source: 'DDZ VIP',
+          badge: '🎭 Rhea',
+          source: 'Rhea',
           url: streamUrl,
           streamUrl,
           rawStreamUrl: streamUrl,
@@ -698,8 +698,8 @@ export async function fetchDramaDizilerimEpisodeSources({
           const titleText = (matchedItem?.title || matchedSlug).toLowerCase();
           const sourceIsDub = titleText.includes('dublaj') || isDub === true;
           const label = sourceIsDub
-            ? `🇹🇷 DDZ VIP S${seasonNum}E${episodeNum} (TR Dublaj)`
-            : `⚡ DDZ VIP S${seasonNum}E${episodeNum} (TR Altyazı)`;
+            ? `🇹🇷 Rhea S${seasonNum}E${episodeNum} (TR Dublaj)`
+            : `⚡ Rhea S${seasonNum}E${episodeNum} (TR Altyazı)`;
           const subtitles = await verifyCaptionTracks(extractCaptionTracks(embedHtml));
           const headers = {
             Referer: embedUrl,
@@ -710,8 +710,8 @@ export async function fetchDramaDizilerimEpisodeSources({
             id: `ddz_ep_${matchedSlug}_${seasonNum}_${episodeNum}`,
             name: label,
             displayName: label,
-            badge: '🎭 DDZ VIP',
-            source: 'DDZ VIP',
+            badge: '🎭 Rhea',
+            source: 'Rhea',
             url: rawUrl,
             streamUrl: rawUrl,
             rawStreamUrl: rawUrl,
@@ -728,10 +728,9 @@ export async function fetchDramaDizilerimEpisodeSources({
     }
   }
 
-  // 7. Shortizle alternatif kaynak (kullanıcı 2026-10-31: "alternatif olarak ekle")
+  // 7. Starfire alternatif kaynak (kahraman — kısa dizi hattı)
   try {
     const { searchShortizle: szSearch, fetchShortizleStream: szStream } = await import('./shortizleScraper.js');
-    // Shortizle slug'ı dramadizilerim ile aynı formatta → doğrudan dene
     let szSlug = null;
     for (const t of allTitles) {
       const s = toTurkishSlug(t);
@@ -753,14 +752,14 @@ export async function fetchDramaDizilerimEpisodeSources({
       const szResult = await szStream(szSlug, seasonNum, episodeNum);
       if (szResult && szResult.streamUrl) {
         const label = isDub
-          ? `🎬 Shortizle S${seasonNum}E${episodeNum} (TR Dublaj)`
-          : `🎬 Shortizle S${seasonNum}E${episodeNum} (TR Altyazı)`;
+          ? `⚡ Starfire S${seasonNum}E${episodeNum} (TR Dublaj)`
+          : `⚡ Starfire S${seasonNum}E${episodeNum} (TR Altyazı)`;
         streams.push({
           id: `sz_ep_${szSlug}_${seasonNum}_${episodeNum}`,
           name: label,
           displayName: label,
-          badge: '🎬 Shortizle',
-          source: 'Shortizle',
+          badge: '⚡ Starfire',
+          source: 'Starfire',
           url: szResult.streamUrl,
           streamUrl: szResult.streamUrl,
           rawStreamUrl: szResult.streamUrl,
@@ -777,7 +776,7 @@ export async function fetchDramaDizilerimEpisodeSources({
         });
       }
     }
-  } catch (_) { /* shortizle yedeği sessizce düşer */ }
+  } catch (_) { /* Starfire yedeği sessizce düşer */ }
 
   return streams;
 }

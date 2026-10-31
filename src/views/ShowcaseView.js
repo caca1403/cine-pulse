@@ -33,7 +33,7 @@ const comparison = [
   ['Kişisel ML öneri motoru (BPR + CF)', 'Var', 'Var'],
   ['Listeler ve izleme ilerlemesi', 'Var', 'Var'],
   ['Film / dizi / anime / kısa dizi oynatma', 'Kaynağa bağlı', 'Kaynağa bağlı'],
-  ['Kısa dizi kaynağı (DramaDizilerim + Shortizle)', 'Var', 'Var'],
+  ['Kısa dizi kaynağı (çoklu kahraman hat)', 'Var', 'Var'],
   ['Karar Odası — birlikte izleme oylaması', 'Var', 'Var'],
   ['Trakt.tv senkronizasyonu', 'Var', 'Var'],
   ['AniList senkronizasyonu', 'Var', 'Var'],

@@ -9,6 +9,7 @@ import { KAYIT as TUM_KAYIT } from '../../providers/kayit.js';
 const ELLE_AILER = [
   { alias: 'Dora', provider: 'Dramalar', prefixes: ['dml_', 'dramalar_'], sources: ['Dramalar'] },
   { alias: 'Rhea', provider: 'DramaDizilerim', prefixes: ['ddz_', 'dramadizilerim_'], sources: ['DramaDizilerim'] },
+  { alias: 'Starfire', provider: '', prefixes: ['sz_', 'shortizle_'], sources: ['Shortizle'] },
 ];
 
 // Kahraman sağlayıcıları — tek doğruluk kaynağı KAYIT'tir, kod adları oradan gelir.

@@ -1,8 +1,8 @@
 {
-  "version": "2.0.1",
-  "versionCode": 201,
-  "releaseDate": "2026-10-30",
-  "title": "CinePulse v2.0.1",
+  "version": "2.0.2",
+  "versionCode": 202,
+  "releaseDate": "2026-10-31",
+  "title": "CinePulse v2.0.2",
   "releaseNotes": "CinePulse 2.0.0 — Yeni kaynak çekirdekleri + gerçek dublaj/altyazı kanıtı\n\n- Yeni TR kaynak aileleri (CinePulse sekmesinde): DiziBal ve SezonlukDizi kökleri uçtan uca çözüldü — dublaj rozeti YALNIZ akışın kendi kanıtıyla (master LANGUAGE=\"tr\") basılıyor; kanıtsız etiket yok.\n- SezonlukDizi: Byse AES-256-GCM çözümü sağlamlaştırıldı (sunucu sürüm alfabesi değişse de anahtar bulunuyor), tüm sunucular deneniyor.\n- Altyazı: OpenSubtitles TR zinciri canlıya alındı; başlık→TMDB→IMDb çözümleme + yedek kaynak.\n- Ayar dürüstlüğü, gerçek bildirimler, doğal dil arama, kalite çipleri, Bugün/Yakında rafları, recap kartı, çocuk PIN + kademe, masaüstü hover önizleme.\n- Dublajlı içerikler listede öne alınır; 🇹🇷 Dublaj / TR Altyazı / ORİJİNAL rozetleri her kaynakta tek tasarım.\n- APK hep AYNI kalıcı anahtarla imzalanır — üzerine kurulum yapılır, veri kaybı olmaz.\n\n635 test geçti, 0 kırık.",
   "downloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
   "githubDownloadUrl": "https://github.com/caca1403/cine-pulse/releases/latest/download/cinepulse.apk",
