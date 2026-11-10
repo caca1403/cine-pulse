@@ -3135,21 +3135,61 @@ html.mobile-web .navbar {
 .card-hover-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(5, 7, 13, 0.85) 100%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.08) 18%, rgba(5, 7, 13, 0.9) 100%);
   opacity: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  padding: 12px;
   transition: opacity 0.25s ease;
   z-index: 3;
 }
 
-/* Hover katmanı YALNIZ gerçek imleçte. Dokunmatikte `:hover` basışta kalıcı
-   oluyor ve afişin üstünde oynatma dairesi + metin "takılı" kalıyordu. */
+.card-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  width: 100%;
+  min-height: 38px;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #08090c;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.15;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.card-action-btn svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.card-action-detail {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(7, 10, 17, 0.82);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.card-action-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Desktop hover and keyboard focus; touch screens keep the choices visible. */
 @media (hover: hover) and (pointer: fine) {
-  .media-card:hover .card-hover-overlay {
+  .media-card:hover .card-hover-overlay,
+  .media-card:focus-within .card-hover-overlay {
     opacity: 1;
   }
 
@@ -3161,33 +3201,25 @@ html.mobile-web .navbar {
 
 @media (hover: none) {
   .card-hover-overlay {
-    display: none !important;
+    inset: auto 0 0;
+    opacity: 1;
+    padding: 7px;
+    gap: 5px;
+    background: linear-gradient(180deg, transparent 0%, rgba(5, 7, 13, 0.94) 40%);
   }
-}
 
-.card-play-btn-circle {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #fff;
-  color: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: none;
-  transform: scale(1);
-  transition: transform 0.15s ease;
-}
+  .card-action-btn {
+    min-height: 32px;
+    padding: 0.32rem 0.28rem;
+    gap: 0.25rem;
+    border-radius: 7px;
+    font-size: 0.62rem;
+  }
 
-.media-card:hover .card-play-btn-circle {
-  transform: scale(1);
-}
-
-.card-hover-action-text {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+  .card-action-btn svg {
+    width: 13px;
+    height: 13px;
+  }
 }
 
 /* Card Progress Bar */
@@ -21250,7 +21282,12 @@ html.mobile-web .mobile-dynamic-dock {
    Boş yan panel sütunu tamamen kaldırılır: içerik tam genişlik olur, bölümler
    TEK rail olarak kalır (yineleme yok). */
 #player-modal .player-yt-layout.short-drama-mode { grid-template-columns: minmax(0, 1fr); }
-#player-modal .player-yt-layout.short-drama-mode .player-yt-sidebar { display: none; }
+/* Kısa dizide sidebar eskiden tam gizliydi → alternatif kaynak paneli de
+   kayboluyordu (kullanıcı 2026-10-31: "alternatif kaynak ekranı neden
+   yapılmadı"). Artık kısa dizide sidebar ÇİZİLİR; içeriği yalnız kaynak
+   panelidir (Sıradaki Bölümler short-drama'da zaten çizilmiyor), tek
+   kolonlu düzenin altında stacked durur. */
+#player-modal .player-yt-layout.short-drama-mode .player-yt-sidebar { display: block; border-left: none; border-top: 1px solid rgba(255,255,255,.08); padding-top: 18px; }
 /* Tür/dizi bilgisi gelmezse boş chip şeridi yer kaplamasın. */
 #player-modal .dizisol-genre-chips:empty { display: none; }
 
@@ -21637,4 +21674,108 @@ html.lowfx .cp-view-enter { animation-duration: 0.12s; }
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
   }
+}
+
+/* ==========================================================================
+   Bölüm Geçiş Navigasyonu (PlayerModal) — kullanıcı şikâyeti: "bir bölümden
+   diğerine gitme seçeneği yok". Alt çubuk geçiş + Bölümler düğmesinin
+   dokunmatik hedefleri >=40px; seçici vurgusu (acBolumSecici) sınıfı.
+   ========================================================================== */
+.btn-nav-episode {
+  min-height: 40px;
+  min-width: 40px;
+}
+
+#player-modal .quick-ep-card {
+  min-height: 40px;
+}
+
+.player-yt-sidebar.bolum-liste-odak {
+  animation: bolum-liste-vurgusu 0.8s ease-out 3;
+}
+
+/* Oynatıcı içi Bölüm seçici ızgarası (kaynak modu — sidebar gizliyken). */
+.bolum-secici-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 8, 14, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.bolum-secici-kutu {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(72vh, 640px);
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: #10151f;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.bolum-secici-baslik {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.bolum-secici-kapat {
+  min-width: 40px;
+  min-height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  cursor: pointer;
+}
+
+.bolum-secici-sezonlar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.bolum-secici-sezon {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.bolum-secici-sezon.aktif,
+.bolum-secici-kart.aktif {
+  border-color: rgba(223, 255, 118, 0.7);
+  background: rgba(223, 255, 118, 0.14);
+  color: #dfff76;
+}
+
+.bolum-secici-izgara {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+}
+
+.bolum-secici-kart {
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  cursor: pointer;
+}
+
+@keyframes bolum-liste-vurgusu {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: inset 0 0 0 2px rgba(223, 255, 118, 0.55), 0 0 24px rgba(223, 255, 118, 0.25); }
 }

@@ -234,7 +234,7 @@ function gercekFetch() {
    çözücü sessizce null döner → davranış değişmez (test/ölçüm güvenli). */
 const CF_KODLARI = new Set([403, 429, 503]);
 
-async function cfGerekirseDüzelt(istek, { hamUrl, opts, istekBasliklari, ekBasliklar, referer }) {
+async function cfGerekirseDüzelt(istek, { hamUrl, opts, istekBasliklari, ekBasliklar, referer, fetchImpl }) {
   let cevap = null;
   try { cevap = await istek; } catch (e) { throw e; }
   try {
@@ -243,6 +243,48 @@ async function cfGerekirseDüzelt(istek, { hamUrl, opts, istekBasliklari, ekBasl
     if (!looksLikeChallenge(metin)) return cevap;
     let origin = '';
     try { origin = new URL(hamUrl).origin; } catch (_) { return cevap; }
+    if (typeof window !== 'undefined' && window.CinePulseDesktop?.isDesktop === true) {
+      try {
+        const { resolvePageInNativeWebView, looksBlocked: desktopLooksBlocked } =
+          await import('../services/platform/androidWebViewResolver.js');
+        const resolved = await resolvePageInNativeWebView(hamUrl, {
+          timeoutMs: 18000,
+          media: false,
+          referer: referer || `${origin}/`
+        });
+        if (!resolved || desktopLooksBlocked(resolved)) return cevap;
+
+        const host = new URL(hamUrl).hostname.toLowerCase();
+        const cookies = (Array.isArray(resolved.cookies) ? resolved.cookies : [])
+          .filter((cookie) => {
+            const domain = String(cookie.domain || '').replace(/^\./, '').toLowerCase();
+            return cookie.name && domain && (host === domain || host.endsWith(`.${domain}`));
+          })
+          .map((cookie) => `${cookie.name}=${cookie.value}`);
+        const forwardedHeaders = {
+          ...Object.fromEntries(istekBasliklari.entries()),
+          ...ekBasliklar
+        };
+        if (cookies.length) {
+          const existingCookie = forwardedHeaders.Cookie || forwardedHeaders.cookie || '';
+          forwardedHeaders.Cookie = [existingCookie, ...cookies].filter(Boolean).join('; ');
+          delete forwardedHeaders.cookie;
+        }
+
+        const retryUrl = kopruAdresi(hamUrl, referer, forwardedHeaders);
+        const retry = await (fetchImpl || gercekFetch())(retryUrl, {
+          ...opts,
+          headers: istekBasliklari,
+          method: opts.method || 'GET'
+        });
+        if (retry.ok) return retry;
+        console.warn(`[ProviderBridge] Desktop challenge retry returned HTTP ${retry.status}: ${new URL(hamUrl).origin}`);
+        return cevap;
+      } catch (error) {
+        console.warn('[ProviderBridge] Desktop challenge retry failed:', error);
+        return cevap;
+      }
+    }
     const kurabiyeler = await ensureChallengeCookies(origin, { timeoutMs: 20000 });
     if (!kurabiyeler) return cevap;
     const oturum = await fetchTextWithSession(hamUrl, {
@@ -341,7 +383,7 @@ export async function kopruFetch(girdi, secenek = {}) {
 
   return cfGerekirseDüzelt(
     tabii(kopruAdresi(hamUrl, referer, ekBasliklar), { ...opts, headers: istekBasliklari }),
-    { hamUrl, opts, istekBasliklari, ekBasliklar, referer }
+    { hamUrl, opts, istekBasliklari, ekBasliklar, referer, fetchImpl: tabii }
   );
 }
 

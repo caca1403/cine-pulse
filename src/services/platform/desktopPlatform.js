@@ -5,6 +5,7 @@
 
 import { showToast } from '../../components/Toast.js';
 import { canUseDesktopSetup, needsDesktopSetup } from '../kabuk/desktopSetupPolicy.js';
+import { apiUrl } from '../altyapi/apiOrigin.js';
 
 export async function initDesktopPlatform() {
   console.log('[Platform] Desktop (Electron DEB/EXE) ortamı etkinleştirildi.');
@@ -16,7 +17,7 @@ export async function initDesktopPlatform() {
   // 2. Klavye Kısayolları (Masaüstü Standartları - Space, F, Ok Tuşları, ESC)
   attachDesktopKeyboardShortcuts();
 
-  // 3. Yerel Medya Servisi (Sidecar: 4000 portu) Bağlantı Kontrolü
+  // 3. Uygulama-içi yerel medya ağ geçidinin bağlantı kontrolü
   checkDesktopSidecarHealth();
 
   // 4. Kaynak listesi tek yerden gelir: src/providers/index.js (KAYIT) +
@@ -125,18 +126,22 @@ function attachDesktopKeyboardShortcuts() {
 }
 
 /**
- * Yerel sidecar servisi (port 4000) canlılığını arka planda kontrol eder.
+ * Uygulama-içi yerel medya ağ geçidinin canlılığını kontrol eder.
  */
 async function checkDesktopSidecarHealth() {
   try {
-    const res = await fetch('http://127.0.0.1:4000/health', { signal: AbortSignal.timeout(3000) }).catch(() => null);
+    const res = await fetch(apiUrl('/health'), { signal: AbortSignal.timeout(3000) }).catch(() => null);
     if (!res || !res.ok) {
-      console.warn('[DesktopPlatform] Yerel medya servisi (port 4000) yanıt vermedi. Yeniden bağlanılıyor...');
+      console.warn('[DesktopPlatform] Yerel medya ağ geçidi yanıt vermedi. Yeniden başlatılıyor...');
       if (window.CinePulseDesktop?.restartSidecar) {
-        await window.CinePulseDesktop.restartSidecar();
+        const result = await window.CinePulseDesktop.restartSidecar();
+        if (!result?.ok) showToast('Yerel medya ağ geçidi yeniden başlatılamadı.', 'error');
       }
     } else {
-      console.log('[DesktopPlatform] Yerel medya servisi (port 4000) aktif ve hazır.');
+      console.log('[DesktopPlatform] Yerel medya ağ geçidi aktif ve hazır.');
     }
-  } catch (_) {}
+  } catch (error) {
+    console.error('[DesktopPlatform] Yerel medya ağ geçidi kontrol edilemedi:', error);
+    showToast('Yerel medya ağ geçidine bağlanılamadı.', 'error');
+  }
 }

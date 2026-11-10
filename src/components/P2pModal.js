@@ -11,7 +11,7 @@ import {
 import '../styles/p2p.css';
 /* ==========================================================================
    CinePulse Studio — P2P oynatıcı penceresi (F1, yalnız masaüstü)
-   Motor sunucuda (:4000 WebTorrent); bu pencere üretici tarafıdır:
+   Motor uygulama-içi yerel ağ geçidinde (WebTorrent); bu pencere üretici tarafıdır:
    magnet al → onay al → eş durumunu yokla → hazır olunca PlayerModal'a
    doğrudan satır olarak ver. Katalog içermez; kullanıcı kendi adresini getirir.
    ========================================================================== */

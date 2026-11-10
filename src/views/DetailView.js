@@ -20,6 +20,7 @@ import { puanMetni, imdbPuaniImdbId } from '../services/icerik/imdbRating.js';
 import '../styles/detail-stremio.css';
 import { openTrailerModal } from './TrailerModal.js';
 import '../styles/detay-ui.css';
+import '../styles/detay-netflix.css';
 import '../styles/kaynak-tarama.css';
 
 const DECISION_ROOM_AUTOPLAY_KEY = 'cinepulse.decision-room.autoplay';
@@ -75,6 +76,7 @@ async function baslikLogosunuUygula(kok, tmdbId, tur) {
   try {
     const blok = kok?.querySelector?.('.detail-titleblock');
     const gorsel = kok?.querySelector?.('.detail-title-logo');
+    const orijinalBaslik = kok?.querySelector?.('.dt-orijinal');
     if (!blok || !gorsel || !tmdbId) return;
     const sanat = await getBestBackdrop(tmdbId, tur === 'tv' ? 'tv' : 'movie');
     const adres = sanat?.logo;
@@ -83,6 +85,7 @@ async function baslikLogosunuUygula(kok, tmdbId, tur) {
       if (!gorsel.isConnected) return;
       gorsel.hidden = false;
       blok.classList.add('detail-titleblock--logo');
+      if (orijinalBaslik) orijinalBaslik.hidden = true;
     }, { once: true });
     gorsel.src = adres;
   } catch (_) {
@@ -569,6 +572,25 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
   return {
     html,
     init: (container) => {
+      // Üst çubuk bütçesi gezinme çubuğunun GERÇEK yüksekliğine bağlanır
+      // (kullanıcı 2026-11-10: "üst kısım herhangi orana uyumlu olsun").
+      // Gözlemci tek sefer kurulur; --cp-nav-h her kırılımda/durumda güncel kalır.
+      const gozleNavYuksekligi = () => {
+        const nav = document.querySelector('.cp-navbar');
+        if (!nav) return;
+        const uygula = () => document.documentElement.style.setProperty('--cp-nav-h', `${Math.round(nav.getBoundingClientRect().height)}px`);
+        uygula();
+        if (!window.__cpNavHGozetmen) {
+          try {
+            const ro = new ResizeObserver(uygula);
+            ro.observe(nav);
+            window.__cpNavHGozetmen = ro;
+          } catch {
+            window.addEventListener('resize', uygula, { passive: true });
+          }
+        }
+      };
+      gozleNavYuksekligi();
       baslikLogosunuUygula(container, id, normalizedType);
       if (!container) return;
 
@@ -597,9 +619,12 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
       let decisionRoomAutoplay = consumeDecisionRoomAutoplay(effectiveType, id);
 
       // ── KAYNAKLAR sekmesi (2026-10-27) ───────────────────────────────────
-      // Kaynak listesi oynatıcının içinden detay sayfasına taşındı. Detay
-      // açılışında HİÇBİR tarama başlamaz: baslat() yalnız sekme ilk kez
-      // açıldığında çağrılır (55 çekirdek × 75 sn bütçe sayfayı dondurmasın).
+      // Kaynak listesi oynatıcının içinden detay sayfasına taşındı. Tarama
+      // detay açılışında koşulsuz başlar (ilk çizimden hemen sonra; aşağıdaki
+      // kaynakListesi.baslat() çağrısı). baslat()'ın durum.baslatildi koruması
+      // sayesinde çift tarama olmaz: sekme tıklaması ve IntersectionObserver
+      // çağırmaları aynı taramayı tekrar başlatmaz (55 çekirdek × 75 sn
+      // bütçe sayfayı dondurmasın).
       let kaynakSecimi = { sezon: kaynakSezon, bolum: kaynakBolum };
 
       // ── Madde 1 sözleşmesi (kullanıcı 2026-10-28) ──────────────────────────
@@ -722,6 +747,12 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           });
         }
       });
+
+      // Detay sayfası açılışında kaynak taraması koşulsuz başlar —
+      // KAYNAKLAR sekmesini açmayı beklenmez. baslat() idempotenttur
+      // (durum.baslatildi): sekme tıklaması, IntersectionObserver ve bölüm
+      // değişikliği aynı taramayı ikinci kez başlatmaz.
+      kaynakListesi.baslat();
 
       // ── Sekmeler ─────────────────────────────────────────────────────────
       // Jenerik data-tab mekanizması: aynı data-panel'e sahip tüm bloklar

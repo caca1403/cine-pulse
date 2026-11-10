@@ -30,6 +30,18 @@
   transform: none;
 }
 
+/* Netflix-stili detay UI desteği — mevcut kuralları silmeden ekleme */
+.cps-iconbtn:focus-visible,
+.cps-iconbtn.btn-watched-active:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Mobilde eylem butonlarının tam-genişlik davranışı */
+@media (max-width: 720px) {
+  .cps-oynat { width: 100%; min-width: initial; }
+}
+
 /* Soldan karartma YOK: sadece üst/alt dikey gradyan */
 .cps-hero-scrim {
   position: absolute;

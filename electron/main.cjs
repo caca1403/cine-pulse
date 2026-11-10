@@ -1,5 +1,5 @@
 /* CinePulse Desktop (EXE) — Electron main process.
- * Hibrit model: Chromium UI (dist/) + local sidecar (server/mediaServer.js:4000)
+ * Hibrit model: Chromium UI (dist/) + private local media gateway
  * + gizli WebView (ghost window) Cloudflare/403 cozumu icin.
  *
  * Nuvio'dan alinanlar (native his): splash, pencere hafizasi, tek ornek,
@@ -28,8 +28,6 @@ const { spawn, execFile } = require('child_process');
 const { createStore } = require('./store.cjs');
 
 const ROOT = path.join(__dirname, '..');
-const SIDECAR_PORT = 4000;
-const SIDECAR_URL = `http://127.0.0.1:${SIDECAR_PORT}`;
 ipcMain.handle('cinepulse:open-release-page', () =>
   shell.openExternal('https://github.com/caca1403/cine-pulse/releases')
 );
@@ -77,14 +75,28 @@ let splashWin = null;
 let ghostWin = null;
 let sidecarProc = null;
 let sidecarLogFd = null;
+let sidecarPort = 0;
+let sidecarAuthToken = '';
 let store = null;
 let isQuitting = false;
 let sidecarRestarts = 0;
 const verificationPlayer = registerVerificationPlayer({ ipcMain, WebContentsView, webFrameMain, getWindow: () => mainWin });
 
+ipcMain.on('cinepulse:get-api-config', (event) => {
+  if (!mainWin || event.sender !== mainWin.webContents || !sidecarPort || !sidecarAuthToken) {
+    event.returnValue = null;
+    return;
+  }
+  event.returnValue = {
+    origin: `http://127.0.0.1:${sidecarPort}`,
+    token: sidecarAuthToken
+  };
+});
+
 function sidecarAlive() {
+  if (!sidecarPort) return Promise.resolve(false);
   return new Promise((resolve) => {
-    const req = http.get(`${SIDECAR_URL}/health`, { timeout: 2000 }, (res) => {
+    const req = http.get(`http://127.0.0.1:${sidecarPort}/health`, { timeout: 2000 }, (res) => {
       res.resume();
       resolve(res.statusCode === 200);
     });
@@ -130,51 +142,6 @@ function logSidecar(msg) {
   } catch (_) {}
 }
 
-const { execFile: execFileCb } = require('child_process');
-const { promisify } = require('util');
-
-// Kullanici portla ugrasmasin: 4000 dolu ama /health cevap vermiyorsa,
-// eski CinePulse sidecar zombie'sidir. Sadece kendi mediaServer sureclerimizi
-// oldurup tek seferlik otomatik retry dener. Baska uygulamalarin
-// portlarina dokunulmaz.
-async function tryFreeStalePort() {
-  try {
-    if (await sidecarAlive()) return true; // saglikli ornek var, dokunma
-    const entry = path.join(appRoot(), 'server', 'mediaServer.js');
-    const run = promisify(execFileCb);
-    let pids = [];
-    try {
-      const { stdout } = await run('pgrep', ['-f', entry]);
-      pids = String(stdout || '').split(/\s+/).map(s => s.trim()).filter(Boolean);
-    } catch (_) { pids = []; }
-    // pgrep yoksa (Windows) ya da eslesme yoksa: portu sorgula, CinePulse degilse birak
-    if (pids.length === 0) {
-      try {
-        if (process.platform === 'win32') {
-          const { stdout } = await run('netstat', ['-ano']);
-          logSidecar(`port-probe netstat: ${(stdout || '').split('\n').filter(l => l.includes(':4000')).join(' | ').slice(0, 300)}`);
-        } else {
-          const { stdout } = await run('sh', ['-c', '(ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null) | grep 4000 || true']);
-          logSidecar(`port-probe: ${(stdout || '').trim().slice(0, 300)}`);
-        }
-      } catch (_) {}
-      return false;
-    }
-    const selfPid = String(process.pid);
-    for (const pid of pids.filter(p => p && p !== selfPid)) {
-      try {
-        process.kill(Number(pid), 'SIGTERM');
-        logSidecar(`stale sidecar SIGTERM pid=${pid}`);
-      } catch (_) {}
-    }
-    await new Promise((r) => setTimeout(r, 1500));
-    return await sidecarAlive();
-  } catch (err) {
-    logSidecar(`tryFreeStalePort: ${(err && err.message) || err}`);
-    return false;
-  }
-}
-
 function mediaDirPath() {
   // DEB (/opt/CinePulse) root'a ait, AppImage squashfs'e RO bagliyor:
   // sidecar'in yanina medya yazmak EACCES veriyordu. Her zaman kullanici
@@ -215,7 +182,10 @@ function migrateLegacyMedia(target) {
   } catch (_) {}
 }
 
-function startSidecar() {  const entry = path.join(appRoot(), 'server', 'mediaServer.js');
+function startSidecar() {
+  const entry = path.join(appRoot(), 'server', 'mediaServer.js');
+  sidecarPort = 0;
+  sidecarAuthToken = crypto.randomBytes(32).toString('hex');
   logSidecar(`starting: ${entry}`);
   try {
     const dir = path.dirname(sidecarLogPath());
@@ -230,23 +200,58 @@ function startSidecar() {  const entry = path.join(appRoot(), 'server', 'mediaSe
   const mediaDir = mediaDirPath();
   migrateLegacyMedia(mediaDir);
   // Electron binary'sini duz Node gibi calistir (ayri node kurulumu gerekmez).
-  sidecarProc = spawn(process.execPath, [entry], {
+  const proc = spawn(process.execPath, [entry], {
     cwd: appRoot(),
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
+      CINEPULSE_PORT: '0',
+      CINEPULSE_GATEWAY_TOKEN: sidecarAuthToken,
       PYTHON_BIN: resolvePythonBin(),
       CINEPULSE_MEDIA_DIR: mediaDir
     },
-    stdio: ['ignore', 'ignore', sidecarLogFd || 'ignore'],
+    stdio: ['ignore', 'pipe', sidecarLogFd || 'ignore'],
     windowsHide: true
   });
-  sidecarProc.on('error', (err) => {
+  sidecarProc = proc;
+  let stdoutBuffer = '';
+  proc.stdout.on('data', (chunk) => {
+    stdoutBuffer += chunk.toString('utf8');
+    const lines = stdoutBuffer.split(/\r?\n/);
+    stdoutBuffer = lines.pop() || '';
+    for (const line of lines) {
+      const ready = line.match(/^CINEPULSE_READY:(\{.*\})$/);
+      if (ready) {
+        try {
+          const payload = JSON.parse(ready[1]);
+          const port = Number(payload.port);
+          if (Number.isInteger(port) && port > 0 && port <= 65535) {
+            sidecarPort = port;
+            logSidecar(`gateway ready on 127.0.0.1:${port}`);
+          }
+        } catch (err) {
+          logSidecar(`invalid gateway ready message: ${err.message}`);
+        }
+      } else if (line) {
+        logSidecar(`[stdout] ${line}`);
+      }
+    }
+    if (stdoutBuffer.length > 8192) {
+      logSidecar(`[stdout] ${stdoutBuffer.slice(-8192)}`);
+      stdoutBuffer = '';
+    }
+  });
+  proc.on('error', (err) => {
     logSidecar(`spawn error: ${(err && err.message) || err}`);
   });
-  sidecarProc.on('exit', async (code, signal) => {
+  proc.on('exit', async (code, signal) => {
     logSidecar(`exit code=${code} signal=${signal}`);
-    sidecarProc = null;
+    if (sidecarProc === proc) {
+      sidecarProc = null;
+      sidecarPort = 0;
+      sidecarAuthToken = '';
+    }
+    if (sidecarProc && sidecarProc !== proc) return;
     if (isQuitting) return; // Kapanista bilerek olduruldu: uyari gosterme.
     if (!mainWin || mainWin.isDestroyed()) return;
     // Beklenmedik olum: bir kez otomatik yeniden baslat (Cloudstream'in
@@ -783,9 +788,16 @@ function isChallengeHtml(title, html) {
   );
 }
 
-async function ghostResolve(targetUrl, { timeout = 30000, waitAfterLoad = 2500 } = {}) {
+async function ghostResolve(targetUrl, { timeout = 30000, waitAfterLoad = 2500, referer = '' } = {}) {
   const win = ensureGhost();
-  await win.webContents.loadURL(targetUrl, { userAgent: REAL_UA });
+  const loadOptions = { userAgent: REAL_UA };
+  try {
+    const refererUrl = new URL(String(referer || ''));
+    if (refererUrl.protocol === 'http:' || refererUrl.protocol === 'https:') {
+      loadOptions.extraHeaders = `Referer: ${refererUrl.href}\r\n`;
+    }
+  } catch (_) {}
+  await win.webContents.loadURL(targetUrl, loadOptions);
   const deadline = Date.now() + timeout;
   let html = '';
   // Challenge cozumu icin bekle: sayfa basligi normallesene kadar yokla.
@@ -809,12 +821,21 @@ async function ghostResolve(targetUrl, { timeout = 30000, waitAfterLoad = 2500 }
       true
     );
   } catch (_) {}
-  const cookies = await win.webContents.session.cookies
-    .get({ url: targetUrl })
-    .catch(() => []);
+  const finalUrl = win.webContents.getURL();
+  const cookieUrls = new Set([targetUrl, finalUrl].filter(Boolean));
+  const cookieRows = await Promise.all([...cookieUrls].map((url) =>
+    win.webContents.session.cookies.get({ url }).catch((error) => {
+      logSidecar(`ghost cookie read failed for ${new URL(url).origin}: ${error.message}`);
+      return [];
+    })
+  ));
+  const cookies = [...new Map(cookieRows.flat().map((cookie) => [
+    `${cookie.domain}:${cookie.name}`,
+    cookie
+  ])).values()];
   return {
     ok: true,
-    url: win.webContents.getURL(),
+    url: finalUrl,
     html: html || '',
     cookies: cookies.map((c) => ({ name: c.name, value: c.value, domain: c.domain }))
   };
@@ -868,7 +889,11 @@ ipcMain.handle('cinepulse:get-system-info', async () => {
     platform: process.platform,
     arch: process.arch,
     python: { available: pyOk, bin, version: pyVersion },
-    sidecar: { alive: sidecarOk, url: SIDECAR_URL, port: SIDECAR_PORT },
+    sidecar: {
+      alive: sidecarOk,
+      url: sidecarPort ? `http://127.0.0.1:${sidecarPort}` : '',
+      port: sidecarPort || null
+    },
     electronVersion: process.versions.electron,
     chromeVersion: process.versions.chrome
   };
@@ -906,27 +931,46 @@ function hariciOynaticiBul() {
 }
 
 function hariciOynaticiAc(url, opts = {}) {
-  try {
-    const u = String(url || '');
-    if (!u.startsWith('http://') && !u.startsWith('https://')) return { ok: false, err: 'gecersiz-url' };
-    const sn = Math.max(0, Number(opts.baslangicSn) || 0);
-    const oynatici = hariciOynaticiBul();
-    const args = [u];
-    if (oynatici.ad === 'mpv') {
-      args.push('--force-window', '--no-terminal');
-      if (sn > 0) args.push(`--start=+${Math.floor(sn)}`);
-      if (opts.referer) args.push('--referrer', String(opts.referer));
-      if (opts.ua) args.push('--user-agent', String(opts.ua));
-    } else {
-      if (sn > 0) args.push(`--start-time=${Math.floor(sn)}`);
-      if (opts.referer) args.push(`--http-referrer=${String(opts.referer)}`);
-    }
-    const child = spawn(oynatici.yol, args, { detached: true, stdio: 'ignore', shell: false });
-    child.unref();
-    return { ok: true, oynatici: oynatici.ad };
-  } catch (e) {
-    return { ok: false, err: String((e && e.message) || e) };
+  const u = String(url || '');
+  if (!u.startsWith('http://') && !u.startsWith('https://')) return Promise.resolve({ ok: false, err: 'gecersiz-url' });
+  const sn = Math.max(0, Number(opts.baslangicSn) || 0);
+  const oynatici = hariciOynaticiBul();
+  const args = [u];
+  if (oynatici.ad === 'mpv') {
+    args.push('--force-window', '--no-terminal');
+    if (opts.tamEkran === true) args.push('--fullscreen');
+    if (sn > 0) args.push(`--start=+${Math.floor(sn)}`);
+    if (opts.referer) args.push('--referrer', String(opts.referer));
+    if (opts.ua) args.push('--user-agent', String(opts.ua));
+    const disBasliklar = new Set(['host', 'connection', 'content-length', 'accept-encoding', 'referer', 'user-agent']);
+    const alanlar = Object.entries(opts.headers && typeof opts.headers === 'object' ? opts.headers : {})
+      .filter(([name, value]) => /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name)
+        && !disBasliklar.has(name.toLowerCase())
+        && typeof value === 'string'
+        && !/[\r\n]/.test(value));
+    if (alanlar.length) args.push(`--http-header-fields=${alanlar.map(([name, value]) => `${name}: ${value}`).join(',')}`);
+  } else {
+    if (sn > 0) args.push(`--start-time=${Math.floor(sn)}`);
+    if (opts.referer) args.push(`--http-referrer=${String(opts.referer)}`);
   }
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    try {
+      const child = spawn(oynatici.yol, args, { detached: true, stdio: 'ignore', shell: false });
+      child.once('spawn', () => {
+        child.unref();
+        finish({ ok: true, oynatici: oynatici.ad });
+      });
+      child.once('error', (error) => finish({ ok: false, err: String(error?.message || error) }));
+    } catch (error) {
+      finish({ ok: false, err: String((error && error.message) || error) });
+    }
+  });
 }
 
 ipcMain.handle('cinepulse:open-external-player', (_e, url, opts) => hariciOynaticiAc(url, opts || {}));
@@ -1354,11 +1398,8 @@ app.whenReady().then(async () => {
   if (!up) {
     // Otomatik onarim: zombie temizle + bir kez daha dene, kullaniciya sorma.
     logSidecar('sidecar ilk denemede ayaga kalkmadi, otomatik temizlik deneniyor');
-    try { await tryFreeStalePort(); } catch (_) {}
-    if (!(await sidecarAlive())) {
-      try { if (sidecarProc) { sidecarProc.kill(); sidecarProc = null; } } catch (_) {}
-      startSidecar();
-    }
+    try { if (sidecarProc) { sidecarProc.kill(); sidecarProc = null; } } catch (_) {}
+    startSidecar();
     up = await waitForSidecar(20);
   }
   if (!up) {
@@ -1368,7 +1409,7 @@ app.whenReady().then(async () => {
     splashWin = null;
     dialog.showErrorBox(
       'CinePulse Servis Baslatilamadi',
-      `Yerel medya servisi (127.0.0.1:4000) acilamadi. Otomatik onarim denendi ama port hala kapali.\n\nCozum: uygulamayi kapatip tek kopya acin. Detay: ${sidecarLogPath()}`
+      `Uygulama içi yerel medya ağ geçidi başlatılamadı. Otomatik yeniden denendi.\n\nDetay: ${sidecarLogPath()}`
     );
   }
   createMainWindow();

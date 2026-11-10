@@ -26,24 +26,39 @@ test('Android köprüsü: OK dönerse açılır, m3u8 MIME seçilir', async () =
   assert.equal(cagrilar[0].url, 'https://x.example/v.m3u8');
 });
 
-test('masaüstü köprüsü: /api/ görece URL tam adrese çözülür, başlangıç/referer taşınır', async () => {
+test('masaüstü köprüsü: /api/ URL, başlangıç, referer ve istek başlıkları taşınır', async () => {
   const cagrilar = [];
-  sahtePencere({ CinePulseDesktop: { isDesktop: true, openExternalPlayer: async (url, opts) => { cagrilar.push({ url, opts }); return { ok: true }; } } });
-  // Masaüstünde apiUrl sidecar'a (127.0.0.1:4000) gider — mutlak http URL.
+  sahtePencere({ CinePulseDesktop: {
+    isDesktop: true,
+    getApiConfig: () => ({ origin: 'http://127.0.0.1:49123', token: 'test-token' }),
+    openExternalPlayer: async (url, opts) => { cagrilar.push({ url, opts }); return { ok: true }; }
+  } });
   const ok = await hizmet.hariciOynaticidaAc(
-    { streamUrl: '/api/hls_proxy?url=x', headers: { Referer: 'https://ref.example/' } },
+    { streamUrl: '/api/hls_proxy?url=x', headers: { Referer: 'https://ref.example/', Cookie: 'sid=abc' } },
     { baslangicSn: 42 }
   );
   assert.equal(ok, true);
-  assert.ok(cagrilar[0].url.startsWith('http://127.0.0.1:4000/api/hls_proxy'));
+  assert.ok(cagrilar[0].url.startsWith('http://127.0.0.1:49123/api/hls_proxy'));
+  assert.equal(new URL(cagrilar[0].url).searchParams.get('__cp_token'), 'test-token');
   assert.equal(cagrilar[0].opts.referer, 'https://ref.example/');
   assert.equal(cagrilar[0].opts.baslangicSn, 42);
+  assert.equal(cagrilar[0].opts.tamEkran, false);
+  assert.equal(cagrilar[0].opts.headers.Cookie, 'sid=abc');
+  await hizmet.hariciOynaticidaAc(
+    { streamUrl: 'https://x.example/v.mp4' },
+    { tamEkran: true }
+  );
+  assert.equal(cagrilar[1].opts.tamEkran, true);
 });
 
 test('harici mod: cp_player_mode=external + köprü gerekir', async () => {
   sahtePencere({});
   globalThis.localStorage.setItem('cp_player_mode', 'external');
   assert.equal(hizmet.hariciOynaticiModuAcik(), false); // köprü yok → mod da kapalı
+  sahtePencere({ CinePulseDesktop: { isDesktop: true, openExternalPlayer() {} } });
+  assert.equal(hizmet.hariciOynaticiModuAcik(), false); // açık kullanıcı tercihi gerekir
+  globalThis.localStorage.setItem('cp_player_mode', 'external');
+  assert.equal(hizmet.hariciOynaticiModuAcik(), true);
   sahtePencere({ CinePulseNative: { openExternalPlayer: () => 'YOK' } });
   globalThis.localStorage.setItem('cp_player_mode', 'external');
   assert.equal(hizmet.hariciOynaticiModuAcik(), true);

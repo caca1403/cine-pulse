@@ -74,20 +74,49 @@ test('bilgi şeridi (v2): logo + başlık + tür • yıl afişin ALTINDA', () =
   assert.match(kaynak, /baslikLogosu\(/, 'logo TMDB/Fanart servisten alınmalı');
 });
 
-test('dokunmatikte hover katmanı yok (basışta takılıp afişi basıyordu)', () => {
+test('kartta izleme ve içerik sayfası seçenekleri vardır', () => {
+  const dizi = renderMediaCard({
+    ...KART('Dune Dizisi'),
+    type: 'tv',
+    first_air_date: '2024-05-01'
+  }, { skipProgressLookup: true });
+
+  assert.match(dizi, /data-card-action="watch"[\s\S]*?Bölümü izle/);
+  assert.match(dizi, /data-card-action="detail"[\s\S]*?İçerik sayfasına git/);
+  assert.match(dizi, /role="group"/, 'aksiyon düğmeleri grup rolündeki karta iç içe girmeli');
+
+  const devam = renderMediaCard({
+    ...KART('Dune Dizisi'),
+    type: 'tv',
+    currentTime: 90
+  }, { skipProgressLookup: true });
+  assert.match(devam, /data-card-action="watch"[\s\S]*?Bölüme devam et/);
+});
+
+test('dokunmatikte iki kart aksiyonu görünür, masaüstünde hover ve klavye odağıyla açılır', () => {
   const css = oku('src', 'styles', 'main.css');
   assert.match(
     css,
-    /@media \(hover: none\)\s*\{[\s\S]{0,160}\.card-hover-overlay/,
-    'dokunmatik aygıtlarda hover katmanı kapatılmalı'
+    /@media \(hover: none\)\s*\{[\s\S]*?\.card-hover-overlay\s*\{[^}]*opacity:\s*1/,
+    'dokunmatik aygıtlarda iki aksiyon görünür olmalı'
   );
   assert.match(
     css,
-    /@media \(hover: hover\)[\s\S]{0,240}\.media-card:hover \.card-hover-overlay/,
-    'hover yalnız gerçek imleçte açılmalı'
+    /\.media-card:hover \.card-hover-overlay,\s*\.media-card:focus-within \.card-hover-overlay/,
+    'masaüstünde hover veya klavye odağı aksiyonları açmalı'
   );
   const html = renderMediaCard(KART('Dune'), { skipProgressLookup: true });
   assert.ok(!html.includes('card-hover-title'), 'hover katmanı başlığı tekrarlamamalı');
+});
+
+test('kısa dizi kartı iki aksiyonu da tanımlar ve dokunmatikte gösterir', () => {
+  const view = oku('src', 'views', 'DramaView.js');
+  const css = oku('src', 'styles', 'kisa-dizi.css');
+  assert.match(view, /data-card-action="watch"[\s\S]*?Bölümü izle/);
+  assert.match(view, /data-card-action="detail"[\s\S]*?İçerik sayfasına git/);
+  assert.match(view, /karttanBolumOynat\(kart, action\)/, 'izleme aksiyonu bölüm oynatımına gitmeli');
+  assert.match(view, /action\.dataset\.cardAction === 'detail'[\s\S]*?#dramas\?slug=/, 'detay aksiyonu kısa dizi detayına gitmeli');
+  assert.match(css, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*?\.kd-card-hover\s*\{[^}]*opacity:\s*1/);
 });
 
 test('afişin üstünde içerik LOGOSU da YOK (logo bilgi şeridinde)', () => {

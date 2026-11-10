@@ -99,7 +99,7 @@ async function kanitla(master, ref) {
 const SAGLAYICI_ETIKET = { vip: 'VIP', moly: 'Moly', eksen: 'Eksen', rapid: 'Rapid', okru: 'OK.ru' };
 
 const ONBELLEK = new Map();
-const ONBELLEK_MS = 15 * 60 * 1000;
+const ONBELLEK_MS = 30 * 1000;
 const UCAN = new Map();
 
 export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {

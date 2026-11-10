@@ -4,6 +4,7 @@
    ========================================================================== */
 
 import { isStrictMediaTitleMatch } from '../icerik/mediaMatcher.js';
+import { apiUrl } from '../altyapi/apiOrigin.js';
 
 const BASE_URL = 'https://dramalar.com';
 
@@ -51,6 +52,7 @@ async function fetchSafe(pathUrl, options = {}) {
     } else {
       targetUrl = `/api/dml${pathUrl.startsWith('/') ? '' : '/'}${pathUrl}`;
     }
+    if (window.CinePulseDesktop?.isDesktop === true) targetUrl = apiUrl(targetUrl);
   } else {
     if (!targetUrl.startsWith('http')) {
       targetUrl = `${BASE_URL}${targetUrl.startsWith('/') ? '' : '/'}${targetUrl}`;

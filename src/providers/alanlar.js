@@ -20,9 +20,9 @@ export const ALANLAR = Object.freeze({
   // Vendor çekirdekler — çekirdek başlığındaki takma ad → satıcı alan haritası
   "Ant-Man": "https://www.dizidad.com",          // rouge
   "Aqualad": "https://vixsrc.to",                // rayleigh
-  "Aquaman": "https://ddizibox.com",             // teach
+  "Aquaman": "https://ddizibox.net",             // teach
   "Batgirl": "https://animezer.com",             // shamrock
-  "Batman": "https://yabanci-dizi.now",          // oden
+  "Batman": "https://yabancidizi.watch",          // oden
   "Beast-Boy": "https://api.wecollege.net",      // gorosei
   "Black-Adam": "https://lmscript.xyz",          // urouge
   "Black-Panther": "https://siyahfilmizle.vip",  // garp
@@ -31,7 +31,7 @@ export const ALANLAR = Object.freeze({
   "Constantine": "https://arc018.stream",        // ace
   "Cyborg": "https://liderfilmizle.vip",         // garling
   "Daredevil": "https://dizipod.com",            // katakuri
-  "Deadpool": "https://diziizle.wiki",           // sengoku
+  "Deadpool": "https://diziizle.cafe",           // sengoku
   "Doctor-Fate": "https://nxsha.space",          // jinbe
   "Doctor-Strange": "https://lovefilmizle.net",  // ryuma
   "Falcon": "https://dizibal.org",               // kalgara
@@ -62,7 +62,7 @@ export const ALANLAR = Object.freeze({
   "Superman": "https://japierdolevid.com",       // clover
   "Thanos": "https://streamcorecdn.com",         // bogard
   "Thor": "https://dizilla.now",                 // crocodile
-  "Winter-Soldier": "https://dizipal2143.com",   // sakazuki
+  "Winter-Soldier": "https://dizipal2145.com",   // sakazuki
   "Wonder-Woman": "https://asyawatch.com",       // doflamingo
   "Zatanna": "https://www.showbox.media",        // hiriluk
 
@@ -71,7 +71,7 @@ export const ALANLAR = Object.freeze({
   "Robin": "https://sezonlukdizi.cc",
   "Bane": "https://jetfilmizle.now",
   "Cat-Woman": "https://dizibal.org",
-  "Raven": "https://dizipal2143.com",
+  "Raven": "https://dizipal2145.com",
   "Darkseid": "https://www.hdfilmcehennemi.nl",
 });
 

@@ -4,6 +4,9 @@
    Features 100% CORS-Free Direct 1080p HLS Streams & Multi-audio support.
    ========================================================================== */
 
+import { apiUrl } from '../altyapi/apiOrigin.js';
+import { resolvePageInNativeWebView, looksBlocked } from '../platform/androidWebViewResolver.js';
+
 const BASE_URL = 'https://dramadizilerim.com';
 const PLAYER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
@@ -97,6 +100,7 @@ async function fetchSafe(pathUrl, options = {}) {
     } else {
       targetUrl = `/api/ddz${pathUrl.startsWith('/') ? '' : '/'}${pathUrl}`;
     }
+    if (window.CinePulseDesktop?.isDesktop === true) targetUrl = apiUrl(targetUrl);
   } else {
     if (!targetUrl.startsWith('http')) {
       targetUrl = `${BASE_URL}${targetUrl.startsWith('/') ? '' : '/'}${targetUrl}`;
@@ -104,7 +108,7 @@ async function fetchSafe(pathUrl, options = {}) {
   }
 
   try {
-    const res = await fetch(targetUrl, {
+    let res = await fetch(targetUrl, {
       ...options,
       headers: {
         'User-Agent': PLAYER_UA,
@@ -113,6 +117,24 @@ async function fetchSafe(pathUrl, options = {}) {
       },
       signal: AbortSignal.timeout(options.timeout || 6000)
     }).catch(() => null);
+
+    if (res && typeof window !== 'undefined' && window.CinePulseDesktop?.isDesktop === true) {
+      const body = await res.clone().text().catch(() => '');
+      if (/just a moment|cf-challenge|challenge-platform|attention required|checking your browser/i.test(body)) {
+        const sourceUrl = /^https?:\/\//i.test(pathUrl) ? pathUrl : new URL(pathUrl, BASE_URL).href;
+        const resolved = await resolvePageInNativeWebView(sourceUrl, {
+          timeoutMs: 18000,
+          referer: BASE_URL
+        });
+        if (resolved && !looksBlocked(resolved)) {
+          return new Response(resolved.html, {
+            status: 200,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' }
+          });
+        }
+        console.warn('[Drama scraper] Masaüstü gizli tarayıcı doğrulaması başarısız:', sourceUrl);
+      }
+    }
 
     if (res && res.ok) return res;
   } catch (_) {}
@@ -194,8 +216,8 @@ export function extractCleanImageUrl(raw) {
 }
 
 function cleanDramaTitle(rawTitle, fallback = '') {
-  if (!rawTitle) return fallback;
-  return rawTitle
+  if (!rawTitle) return humanizeSlug(fallback);
+  const cleaned = rawTitle
     .replace(/<[^>]+>/g, '')
     .replace(/&#039;/g, "'")
     .replace(/&amp;/g, '&')
@@ -204,6 +226,18 @@ function cleanDramaTitle(rawTitle, fallback = '') {
     .replace(/\s*dizi afişi$/i, '')
     .replace(/\s*dizi afi[şs]i$/i, '')
     .trim();
+  // Sonuç hâlâ slug görünümündeyse (küçük harf + tire yığını) insanlaştır
+  if (cleaned && /^[a-z0-9çğıöşü_-]+$/i.test(cleaned) && cleaned.includes('-') && !cleaned.includes(' ')) {
+    return humanizeSlug(cleaned);
+  }
+  return cleaned || humanizeSlug(fallback);
+}
+
+/** "ölümcül-hapishane-kadin-basgardiyanin" → "Ölümcül Hapishane Kadin Basgardiyanin" */
+function humanizeSlug(slug) {
+  const s = String(slug || '').replace(/[-_]+/g, ' ').trim();
+  if (!s) return '';
+  return s.replace(/\b\p{L}/gu, c => c.toUpperCase());
 }
 
 /**
@@ -233,26 +267,26 @@ export async function searchDramaDizilerim(query, page = 1) {
   let match;
 
   while ((match = cardRegex.exec(html)) !== null) {
-    const slug = match[1];
-    const inner = match[2];
-    const titleMatch = inner.match(/alt=["']([^"']+)["']/i) || inner.match(/<h[2-6][^>]*>(.*?)<\/h[2-6]>/i);
-    const title = cleanDramaTitle(titleMatch ? titleMatch[1] : null, slug);
-    const imgMatch = inner.match(/src=["']([^"']+)["']/i);
-    const poster = imgMatch ? extractCleanImageUrl(imgMatch[1].replace(/&amp;/g, '&')) : '';
-    const isDubbed = title.toLowerCase().includes('dublaj');
-
-    if (!results.some(r => r.slug === slug)) {
-      results.push({
-        title,
-        slug,
-        poster,
-        isDubbed,
-        url: `${BASE_URL}/dizi/${slug}`
-      });
-    }
+    const card = dramaKartindanCikar(match[2], match[1]);
+    if (card && !results.some(r => r.slug === card.slug)) results.push(card);
   }
 
   return results;
+}
+
+/** Kart linkinden poster+başlık çıkarır; görselsiz (SEO/nav) linkleri atlar. */
+function dramaKartindanCikar(inner, slug, { badge = false } = {}) {
+  const imgMatch = inner.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i) ||
+                   inner.match(/style=["'][^"']*url\(['"]?([^"')]+)['"]?/i);
+  if (!imgMatch) return null;   // görselsiz link kart değil (SEO ItemList/nav)
+  const poster = extractCleanImageUrl(imgMatch[1].replace(/&amp;/g, '&'));
+  if (!poster) return null;
+  const titleMatch = inner.match(/alt=["']([^"']+)["']/i) || inner.match(/<h[2-6][^>]*>(.*?)<\/h[2-6]>/i);
+  const title = cleanDramaTitle(titleMatch ? titleMatch[1] : null, slug);
+  const isDubbed = title.toLowerCase().includes('dublaj');
+  const card = { slug, title, poster, isDubbed, url: `${BASE_URL}/dizi/${slug}` };
+  if (badge) card.badge = isDubbed ? '🇹🇷 DUBLAJ' : 'TR ALTYAZI';
+  return card;
 }
 
 /**
@@ -270,24 +304,8 @@ async function fetchTrendingDramasCanli() {
   let match;
 
   while ((match = cardRegex.exec(html)) !== null) {
-    const slug = match[1];
-    const inner = match[2];
-    const imgMatch = inner.match(/src=["']([^"']+)["']/i);
-    const titleMatch = inner.match(/alt=["']([^"']+)["']/i) || inner.match(/<h[2-6][^>]*>(.*?)<\/h[2-6]>/i);
-    const title = cleanDramaTitle(titleMatch ? titleMatch[1] : null, slug);
-    const poster = imgMatch ? extractCleanImageUrl(imgMatch[1].replace(/&amp;/g, '&')) : '';
-    const isDubbed = title.toLowerCase().includes('dublaj');
-
-    if (!cards.some(c => c.slug === slug)) {
-      cards.push({
-        slug,
-        title,
-        poster,
-        isDubbed,
-        badge: isDubbed ? '🇹🇷 DUBLAJ' : 'TR ALTYAZI',
-        url: `${BASE_URL}/dizi/${slug}`
-      });
-    }
+    const card = dramaKartindanCikar(match[2], match[1], { badge: true });
+    if (card && !cards.some(c => c.slug === card.slug)) cards.push(card);
   }
 
   return cards;
@@ -313,24 +331,8 @@ async function fetchDramaCatalogCanli({ page = 1, query = '' } = {}) {
   let match;
 
   while ((match = cardRegex.exec(html)) !== null) {
-    const slug = match[1];
-    const inner = match[2];
-    const imgMatch = inner.match(/src=["']([^"']+)["']/i);
-    const titleMatch = inner.match(/alt=["']([^"']+)["']/i) || inner.match(/<h[2-6][^>]*>(.*?)<\/h[2-6]>/i);
-    const title = cleanDramaTitle(titleMatch ? titleMatch[1] : null, slug);
-    const poster = imgMatch ? extractCleanImageUrl(imgMatch[1].replace(/&amp;/g, '&')) : '';
-    const isDubbed = title.toLowerCase().includes('dublaj');
-
-    if (!cards.some(c => c.slug === slug)) {
-      cards.push({
-        slug,
-        title,
-        poster,
-        isDubbed,
-        badge: isDubbed ? '🇹🇷 DUBLAJ' : 'TR ALTYAZI',
-        url: `${BASE_URL}/dizi/${slug}`
-      });
-    }
+    const card = dramaKartindanCikar(match[2], match[1], { badge: true });
+    if (card && !cards.some(c => c.slug === card.slug)) cards.push(card);
   }
 
   return cards;
@@ -359,6 +361,8 @@ export async function fetchDramaDetails(slug) {
     .filter(text => {
       if (text.length < 25) return false;
       const lower = text.toLowerCase();
+      // Bölüm ızgara metni ("1. bölüm2. bölüm3. bölüm...") asla özet olamaz
+      if ((lower.match(/bölüm/g) || []).length >= 3) return false;
       if (
         lower.includes('çerez') ||
         lower.includes('cookie') ||
@@ -797,27 +801,26 @@ export async function fetchDramaDizilerimEpisodeSources({
   }
 
   // 7. Starfire alternatif kaynak (kahraman — kısa dizi hattı)
+  // CANLI ANALİZ: shortizle slug'ları rastgele sonek taşır ("son-ak-buyucu-ev0p")
+  // → başlıktan slug tahmini/HEAD denemesi anlamsız; TEK doğru yol site araması.
   try {
     const { searchShortizle: szSearch, fetchShortizleStream: szStream } = await import('./shortizleScraper.js');
+    // candidateTitles ham slug/tmdbId çöpü taşır ("ddz_olumcul-hapishane..." gibi
+    // önekli slug'lar) — site aramasına yalnız insan başlıkları gider.
+    const szBasliklar = allTitles
+      .map(t => String(t).replace(/^(?:ddz_|dml_|sz_)\w*/, ' ').replace(/_/g, ' ').trim())
+      .filter((t, i, arr) => t.length >= 3 && arr.indexOf(t) === i);
     let szSlug = null;
-    for (const t of allTitles) {
-      const s = toTurkishSlug(t);
-      if (!s) continue;
-      const testRes = await fetchSafe(`https://shortizle.com/watch/${s}`, { method: 'HEAD', timeout: 3500 });
-      if (testRes && testRes.ok) { szSlug = s; break; }
-    }
-    if (!szSlug) {
-      for (const t of allTitles) {
-        const results = await szSearch(t);
-        const best = results.find(r =>
-          shortDramaIdentityMatch(r.title, allTitles, targetYear) ||
-          (!!identityKey(r.slug) && allTitles.some(x => identityKey(x) === identityKey(r.slug)))
-        );
-        if (best) { szSlug = best.slug; break; }
-      }
+    for (const t of szBasliklar) {
+      const results = await szSearch(t);
+      const best = results.find(r =>
+        shortDramaIdentityMatch(r.title, allTitles, targetYear) ||
+        (!!identityKey(r.slug) && allTitles.some(x => identityKey(x) === identityKey(r.slug)))
+      );
+      if (best) { szSlug = best.slug; break; }
     }
     if (szSlug) {
-      const szResult = await szStream(szSlug, seasonNum, episodeNum);
+      const szResult = await szStream(szSlug, seasonNum, episodeNum, { isDub });
       if (szResult && szResult.streamUrl) {
         const label = isDub
           ? `⚡ Starfire S${seasonNum}E${episodeNum} (TR Dublaj)`
@@ -827,11 +830,11 @@ export async function fetchDramaDizilerimEpisodeSources({
           name: label,
           displayName: label,
           badge: '⚡ Starfire',
-          source: 'Starfire',
+          source: 'Shortizle',   // sourceLabels: 'Shortizle' → kahraman alias 'Starfire'
           url: szResult.streamUrl,
           streamUrl: szResult.streamUrl,
           rawStreamUrl: szResult.streamUrl,
-          headers: {
+          headers: szResult.headers || {
             Referer: 'https://shortizle.com/',
             'User-Agent': PLAYER_UA
           },
@@ -839,7 +842,7 @@ export async function fetchDramaDizilerimEpisodeSources({
           isHls: szResult.isHls,
           isDirectVideo: true,
           priority: 3,
-          subtitles: [],
+          subtitles: szResult.subtitles || [],
           getUrl: () => szResult.streamUrl
         });
       }

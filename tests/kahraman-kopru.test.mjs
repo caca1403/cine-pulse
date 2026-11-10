@@ -72,6 +72,55 @@ test('alan listesi isteği yerelden yanıtlanır (ağ gitmez)', async () => {
   }
 });
 
+test('Electron CF cevabını gizli Chromium çerezleriyle yerel proxy üzerinden tekrar dener', async () => {
+  const previousWindow = globalThis.window;
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.window = {
+    CinePulseDesktop: {
+      isDesktop: true,
+      getApiConfig: () => ({ origin: 'http://127.0.0.1:49123', token: 'test-token' }),
+      ghostResolve: async (url, options) => {
+        assert.equal(url, 'https://x.example/api/catalog');
+        assert.equal(options.referer, 'https://x.example/');
+        return {
+          ok: true,
+          url,
+          html: `<html>${'resolved'.repeat(250)}</html>`,
+          cookies: [{ name: 'cf_clearance', value: 'desktop-session', domain: '.x.example' }]
+        };
+      }
+    }
+  };
+  globalThis.fetch = async (input, options = {}) => {
+    const url = String(input);
+    calls.push({ url, options });
+    if (calls.length === 1) {
+      return new Response('<html><title>Just a moment...</title><body>challenge-platform</body></html>', {
+        status: 403,
+        headers: { 'content-type': 'text/html' }
+      });
+    }
+    return new Response('{"ok":true}', { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    const response = await kopruFetch('https://x.example/api/catalog', {
+      headers: { Referer: 'https://x.example/' }
+    });
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 2);
+    const retryUrl = new URL(calls[1].url);
+    assert.equal(retryUrl.origin, 'http://127.0.0.1:49123');
+    assert.equal(retryUrl.searchParams.get('__cp_token'), 'test-token');
+    const forwarded = JSON.parse(retryUrl.searchParams.get('headers'));
+    assert.match(forwarded.Cookie, /cf_clearance=desktop-session/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
 /* ── süzgeç: yalnız doğrudan yayın, ama uzantısız HLS de geçerli ─────────── */
 
 test('başlıksız yayın ÇIPLAK verilir (sarmalama listeyi kırpamaz)', () => {

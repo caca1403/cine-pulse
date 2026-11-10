@@ -171,6 +171,11 @@ export function kaynakListesiOlustur({
     araniyor: false,
     saglayiciBitti: false,
     eklentiBitti: false,
+    // Additive toplayıcı geri bildirimi (providerAggregator D): bu alanlar
+    // yalnız durum sayacı için tutulur, EKRANA sağlayıcı/kahraman adı yazılmaz.
+    saglayiciHatalari: [],      // yanıt vermesi geç/dürülen farklı sağlayıcı adları
+    tamamlananSaglayicilar: [], // tamamlanması bildirilen farklı sağlayıcı adları
+    cekirdekYok: 0,             // yüklenemeyen çekirdek adedi
     sezon: Number(sezon) || 1,
     bolum: Number(bolum) || 1,
     nesil: 0
@@ -259,24 +264,32 @@ export function kaynakListesiOlustur({
   }
 
   function cizDurum(satirSayisi) {
-    if (durum.araniyor && durum.satirlar.length === 0) {
-      durumKok.innerHTML = `<span class="kaynak-tarama"><i data-lucide="loader-2" class="spin-loader"></i> Kaynaklar taranıyor…</span>`;
-      return;
-    }
+    const toplamBulunan = durum.satirlar.length;
+
     if (durum.araniyor) {
-      durumKok.innerHTML = `<span class="kaynak-tarama"><i data-lucide="loader-2" class="spin-loader"></i> Taranıyor… ${satirSayisi} kaynak listelendi</span>`;
+      durumKok.innerHTML = `<span class="kaynak-tarama"><i data-lucide="loader-2" class="spin-loader"></i> ${toplamBulunan} kaynak bulundu · ${durum.tamamlananSaglayicilar.length} sağlayıcı tamamlandı · taranıyor…</span>`;
       return;
     }
+    const denenmis = durum.tamamlananSaglayicilar.length + durum.saglayiciHatalari.length;
     if (satirSayisi === 0) {
-      const filtreli = durum.satirlar.length > 0;
+      let neden = 'Bu içerik için oynatılabilir kaynak bulunamadı.';
+      let rehber = 'Farklı bir sezon/bölüm deneyin veya daha sonra tekrar deneyin.';
+      if (durum.cekirdekYok > 0) {
+        neden = 'Kaynak çekirdeği yüklenemedi, içerik taranamadı.';
+        rehber = 'İnternet bağlantınızı kontrol edin ve tekrar deneyin.';
+      } else if (durum.saglayiciHatalari.length > 0) {
+        neden = `${durum.saglayiciHatalari.length} sağlayıcı yanıt vermedi, kaynak bulunamadı.`;
+        rehber = 'Farklı bir bölüm deneyin veya daha sonra tekrar deneyin.';
+      }
       durumKok.innerHTML = `
         <div class="kaynak-bos">
           <i data-lucide="server-off"></i>
-          <p>${filtreli ? 'Bu filtreye uyan kaynak yok.' : 'Bu içerik için oynatılabilir kaynak bulunamadı.'}</p>
+          <p>${kacis(neden)}</p>
+          <p class="kaynak-bos-rehber">${kacis(rehber)}</p>
         </div>`;
       return;
     }
-    durumKok.innerHTML = `<span class="kaynak-sayi">${satirSayisi} kaynak</span>`;
+    durumKok.innerHTML = `<span class="kaynak-sayi"><i data-lucide="check" style="width:13px;height:13px"></i> ${satirSayisi} kaynak · ${denenmis} sağlayıcı denendi (tamamlandı)</span>`;
   }
 
   function ciz() {
@@ -329,6 +342,9 @@ export function kaynakListesiOlustur({
     durum.araniyor = true;
     durum.saglayiciBitti = false;
     durum.eklentiBitti = false;
+    durum.saglayiciHatalari = [];
+    durum.tamamlananSaglayicilar = [];
+    durum.cekirdekYok = 0;
 
     // Oturum ömürlü ortak önbellek (kaynakOnbellek; kullanıcı 2026-10-29):
     // tohumla → tarama her durumda devam eder → birleşim yazımı. Liste SADECE
@@ -352,13 +368,25 @@ export function kaynakListesiOlustur({
     const satirEkle = (kaynak, tip, ek = null, kategori = '') => {
       if (nesil !== durum.nesil || !kaynak) return;
       const satir = satirYap(kaynak, tip);
-      // Kimlik her satırda dolu: KARARLI satır kimliği (imzalı URL'nin sorgu
-      // parçası soyulur — dönen `?tok=` aynı kaynağı ikinci satır yapmaz;
-      // kullanıcı 2026-10-29) ya da deterministik imza — adresi boş kaynaklar
-      // bile önbellek+tarama arasında ASLA yığılmaz.
+      // Kimlik kararlı kalır; yenilenen imzalı URL aynı satırı günceller, yeni
+      // kaynaklar eklenir ve önbellek/tarama arasında satır çoğalmaz.
       const adres = satirKimligi(kaynak) || `imzasiz:${tip}:${satir.grup}|${satir.dosya}`;
-      if (durum.satirlar.some(x => x.adres === adres)) return;
-      durum.satirlar.push({ ...satir, adres, ekKaynak: ek?.url ? eklentiTabani(ek.url) : '', kategori, tip });
+      const mevcutIndex = durum.satirlar.findIndex(x => x.adres === adres);
+      const mevcut = mevcutIndex >= 0 ? durum.satirlar[mevcutIndex] : null;
+      const oncekiUrl = String(mevcut?.ham?.streamUrl || mevcut?.ham?.url || mevcut?.ham?.embedUrl || '');
+      const yeniUrl = String(kaynak.streamUrl || kaynak.url || kaynak.embedUrl || '');
+      const oncekiHeaderlar = JSON.stringify(mevcut?.ham?.headers || {});
+      const yeniHeaderlar = JSON.stringify(kaynak.headers || {});
+      if (mevcut && oncekiUrl === yeniUrl && oncekiHeaderlar === yeniHeaderlar) return;
+      const yeniSatir = {
+        ...satir,
+        adres,
+        ekKaynak: ek?.url ? eklentiTabani(ek.url) : (mevcut?.ekKaynak || ''),
+        kategori: kategori || mevcut?.kategori || '',
+        tip
+      };
+      if (mevcutIndex >= 0) durum.satirlar[mevcutIndex] = yeniSatir;
+      else durum.satirlar.push(yeniSatir);
       kaydetVeCiz();
       // DİL DOĞRULAMA (kullanıcı 2026-10-29): satırın master playlist'i
       // arka planda dinlenir; 🇹🇷 Dublaj / TR Altyazı / ORİJİNAL rozetleri
@@ -373,6 +401,8 @@ export function kaynakListesiOlustur({
         const i = durum.satirlar.findIndex(x => x.adres === adres);
         if (i < 0) return;
         const e = durum.satirlar[i];
+        const guncelUrl = String(e.ham?.streamUrl || e.ham?.url || e.ham?.embedUrl || '');
+        if (guncelUrl !== yeniUrl) return;
         durum.satirlar[i] = { ...satirYap(kaynak, tip), adres, ekKaynak: e.ekKaynak, kategori: e.kategori, tip };
         ciz();
       }).catch(() => { /* doğrulanamayan satır etiketsiz kalır — doğru bu */ });
@@ -395,10 +425,20 @@ export function kaynakListesiOlustur({
       originalTitle: orijinalBaslik,
       season: s,
       episode: b,
-      onUpdate: ({ dubbed = [], subtitled = [] } = {}) => {
+      onUpdate: ({ dubbed = [], subtitled = [], saglayiciHatasi = [], cekirdekYok = 0, tamamlananSaglayici = '' } = {}) => {
         if (nesil !== durum.nesil) return;
         dubbed.forEach(kaynak => satirEkle(kaynak, 'saglayici', null, 'dubbed'));
         subtitled.forEach(kaynak => satirEkle(kaynak, 'saglayici', null, 'subtitled'));
+        // Additive alanlar: ekrana SADECE sayı düşer, sağlayıcı/kahraman isim asla yazılmaz.
+        for (const hata of saglayiciHatasi) {
+          if (hata && hata.ad && !durum.saglayiciHatalari.includes(hata.ad)) durum.saglayiciHatalari.push(hata.ad);
+        }
+        if (tamamlananSaglayici && !durum.tamamlananSaglayicilar.includes(tamamlananSaglayici)) {
+          durum.tamamlananSaglayicilar.push(tamamlananSaglayici);
+        }
+        const cekirdek = Number(cekirdekYok) || 0;
+        if (cekirdek > durum.cekirdekYok) durum.cekirdekYok = cekirdek;
+        ciz();
       }
     }).catch(() => null).finally(() => {
       if (nesil !== durum.nesil) return;

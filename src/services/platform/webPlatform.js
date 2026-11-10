@@ -79,7 +79,21 @@ export async function initWebPlatform() {
   try { fetchShimKur(); } catch (err) { console.warn('[Platform] fetch shim kurulamadı:', err); }
 
   // 1. Service Worker Kaydı ve Güncelleme Takibi
-  if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+  // DEV'de SW ASLA kaydedilmez: bayat precache, canlı CSS/JS düzenlemelerini
+  // görünmez kılar ("düzelttik ama kullanıcı hâlâ eskisini görüyor" döngüsü).
+  // Zaten kayıtlıysa silinir ve önbellekler temizlenir (kendiliğinden iyileşme).
+  if ('serviceWorker' in navigator && window.location.protocol.startsWith('http') && import.meta.env.DEV) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.getRegistrations()
+        .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+        .catch(() => {});
+      if (window.caches) {
+        caches.keys()
+          .then((keys) => Promise.all(keys.filter((k) => k.startsWith('cinepulse-')).map((k) => caches.delete(k))))
+          .catch(() => {});
+      }
+    });
+  } else if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
     window.addEventListener('load', () => {
       const workerBuild = '20260920-mobile-preview-2';
       const reloadMarker = `cinepulse-sw-reloaded-${workerBuild}`;

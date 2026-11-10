@@ -413,7 +413,7 @@ async function ara(adaylar) {
 }
 
 const ONBELLEK = new Map();
-const ONBELLEK_MS = 15 * 60 * 1000;
+const ONBELLEK_MS = 30 * 1000;
 const UCAN = new Map();
 
 export async function getStreams(kimlik, tur = 'tv', sezon = 1, bolum = 1) {

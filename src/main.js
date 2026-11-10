@@ -216,7 +216,18 @@ async function renderRoute() {
       const urlParams = new URLSearchParams(queryStr);
       params.slug = urlParams.get('slug');
       params.q = urlParams.get('q');
+      params.season = Number(urlParams.get('season')) || 1;
+      params.episode = Number(urlParams.get('episode')) || 1;
+      params.currentTime = Number(urlParams.get('time')) || 0;
+      params.play = urlParams.get('play') === '1';
     }
+  }
+
+  // Kısa dizi kimlikleri TMDB id'si değildir; eski/doğrudan detay bağlantıları
+  // da normal TMDB ekranında "İçerik bulunamadı" göstermemeli.
+  if (viewName === 'detail' && /^(ddz_|dml_)/.test(String(params.id || ''))) {
+    viewName = 'dramas';
+    params.slug = params.id;
   }
 
   window.__popularListCleanup?.();
@@ -277,7 +288,7 @@ async function renderRoute() {
     viewResult = renderDownloadsView();
   } else if (viewName === 'dramas') {
     const { renderDramaView } = await loadView.drama();
-    viewResult = await renderDramaView(params.slug, params.q);
+    viewResult = await renderDramaView(params.slug, params.q, params);
   }
 
   if (generation !== routeGeneration) return;

@@ -1,5 +1,6 @@
 import dns from 'dns';
 import https from 'https';
+import crypto from 'crypto';
 try { dns.setDefaultResultOrder('ipv4first'); } catch (_) {}
 import { resolveCanliChannel } from '../api/_canlitv.js';
 /**
@@ -25,12 +26,33 @@ import { fileURLToPath } from 'url';
 import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
 import { createRequire } from 'module';
-import { resolveWebteizleStreams } from './webteizleExtractor.js';
-import { isSzdEpisodePath, injectSzdPlayerFrame } from './playerFrameInject.js';
 import { fetchLiveSourceChannels, fetchAllLiveSources, listLiveSources, isLiveSourceId } from '../api/_liveSources.js';
 import { traktTokenKopru } from '../api/_traktToken.js';
 import { xtreamPanelsFromEnv } from '../api/_xtreamPanels.js';
 import { ariaKeyPayload } from '../api/_ariaKey.js';
+
+let resolveWebteizleStreams = async () => {
+  throw new Error('Webteizle resolver is not included in this desktop build');
+};
+let isSzdEpisodePath = () => false;
+let injectSzdPlayerFrame = (html) => html;
+try {
+  const [webteizle, playerFrame] = await Promise.all([
+    import('./webteizleExtractor.js'),
+    import('./playerFrameInject.js')
+  ]);
+  resolveWebteizleStreams = webteizle.resolveWebteizleStreams;
+  isSzdEpisodePath = playerFrame.isSzdEpisodePath;
+  injectSzdPlayerFrame = playerFrame.injectSzdPlayerFrame;
+} catch (error) {
+  if (
+    error?.code !== 'ERR_MODULE_NOT_FOUND' ||
+    !/webteizleExtractor\.js|playerFrameInject\.js/.test(error.message || '')
+  ) {
+    throw error;
+  }
+  console.error(`[MediaServer] optional resolver modules unavailable: ${error.message}`);
+}
 
 const execFileAsync = promisify(execFile);
 
@@ -121,7 +143,27 @@ async function baglantilariIsit() {
   console.log('🔥 Baglanti isindi');
 }
 
-const PORT = 4000;
+const configuredPort = Number(process.env.CINEPULSE_PORT);
+const PORT = Number.isInteger(configuredPort) && configuredPort >= 0 && configuredPort <= 65535
+  ? configuredPort
+  : 4000;
+const GATEWAY_TOKEN = String(process.env.CINEPULSE_GATEWAY_TOKEN || '');
+const dramaPageCache = new Map();
+const dramalarPageCache = new Map();
+const dramalarPageRequests = new Map();
+
+function isAuthorizedGatewayRequest(reqUrl, req) {
+  if (!GATEWAY_TOKEN) return true;
+  const provided = String(reqUrl.searchParams.get('__cp_token') || req.headers['x-cinepulse-token'] || '');
+  const expectedBuffer = Buffer.from(GATEWAY_TOKEN);
+  const providedBuffer = Buffer.from(provided);
+  return expectedBuffer.length === providedBuffer.length &&
+    crypto.timingSafeEqual(expectedBuffer, providedBuffer);
+}
+
+function gatewayTokenQuery() {
+  return GATEWAY_TOKEN ? `&__cp_token=${encodeURIComponent(GATEWAY_TOKEN)}` : '';
+}
 
 // ---- Yazılabilir medya dizini (DEB kalıcı düzeltme) --------------------
 // Paketlenmiş sürümde yanındaki media_storage/ düz `path.join(__dirname,..)`
@@ -526,6 +568,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   const reqUrl = new URL(req.url, `http://localhost:${PORT}`);
+  if (reqUrl.pathname !== '/health' && !isAuthorizedGatewayRequest(reqUrl, req)) {
+    res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: 'Unauthorized local gateway request' }));
+    return;
+  }
 
   // ============ Trakt OAuth köprüsü (client_secret env'de) ==============
   if (reqUrl.pathname === '/trakt_token' || reqUrl.pathname === '/api/trakt_token') {
@@ -605,6 +652,112 @@ const server = http.createServer(async (req, res) => {
       webtorrent: !!wtClient,
       activeTorrents: torrentCache.size 
     }));
+    return;
+  }
+
+  // Packaged desktop counterpart to the Vite-only DramaDizilerim proxy.
+  if (reqUrl.pathname === '/api/ddz' || reqUrl.pathname.startsWith('/api/ddz/')) {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      res.writeHead(405, { Allow: 'GET, HEAD' });
+      res.end();
+      return;
+    }
+    const sourcePath = reqUrl.pathname.replace(/^\/api\/ddz/, '') || '/';
+    const sourceQuery = new URLSearchParams(reqUrl.searchParams);
+    sourceQuery.delete('__cp_token');
+    const sourceQueryText = sourceQuery.toString();
+    const sourceUrl = new URL('https://dramadizilerim.com');
+    sourceUrl.pathname = sourcePath.startsWith('/') ? sourcePath : `/${sourcePath}`;
+    sourceUrl.search = sourceQueryText;
+    const cached = dramaPageCache.get(sourceUrl.href);
+    try {
+      let result = cached && Date.now() - cached.savedAt < 120_000 ? cached : null;
+      if (!result) {
+        const upstream = await fetch(sourceUrl, {
+          headers: {
+            'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://dramadizilerim.com/',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+          },
+          redirect: 'follow',
+          signal: AbortSignal.timeout(12_000)
+        });
+        const body = Buffer.from(await upstream.arrayBuffer());
+        result = {
+          status: upstream.status,
+          type: upstream.headers.get('content-type') || 'text/html; charset=utf-8',
+          body,
+          savedAt: Date.now()
+        };
+        if (upstream.ok) {
+          dramaPageCache.set(sourceUrl.href, result);
+          if (dramaPageCache.size > 120) dramaPageCache.delete(dramaPageCache.keys().next().value);
+        }
+      }
+      res.writeHead(result.status, {
+        'Content-Type': result.type,
+        'Cache-Control': result.status >= 400 ? 'no-store' : 'private, max-age=60'
+      });
+      res.end(req.method === 'HEAD' ? undefined : result.body);
+    } catch (error) {
+      console.error('[Drama desktop proxy]', error.message);
+      res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ error: 'Drama source temporarily unavailable' }));
+    }
+    return;
+  }
+
+  // Packaged desktop counterpart to the Vite-only Dramalar (Dora) proxy.
+  if (reqUrl.pathname === '/api/dml' || reqUrl.pathname.startsWith('/api/dml/')) {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      res.writeHead(405, { Allow: 'GET, HEAD' });
+      res.end();
+      return;
+    }
+    const sourcePath = reqUrl.pathname.replace(/^\/api\/dml/, '') || '/';
+    const sourceQuery = new URLSearchParams(reqUrl.searchParams);
+    sourceQuery.delete('__cp_token');
+    const sourceUrl = new URL(`https://dramalar.com${sourcePath.startsWith('/') ? sourcePath : `/${sourcePath}`}`);
+    sourceUrl.search = sourceQuery.toString();
+    const cached = dramalarPageCache.get(sourceUrl.href);
+    try {
+      let result = cached && Date.now() - cached.savedAt < 120_000 ? cached : null;
+      if (!result) {
+        let pending = dramalarPageRequests.get(sourceUrl.href);
+        if (!pending) {
+          pending = fetch(sourceUrl, {
+            headers: {
+              'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              Referer: 'https://dramalar.com/',
+              Origin: 'https://dramalar.com',
+              Accept: 'text/html,application/xhtml+xml,application/json,*/*'
+            },
+            redirect: 'follow',
+            signal: AbortSignal.timeout(12_000)
+          }).then(async (upstream) => ({
+            status: upstream.status,
+            type: upstream.headers.get('content-type') || 'text/html; charset=utf-8',
+            body: Buffer.from(await upstream.arrayBuffer()),
+            savedAt: Date.now()
+          })).finally(() => dramalarPageRequests.delete(sourceUrl.href));
+          dramalarPageRequests.set(sourceUrl.href, pending);
+        }
+        result = await pending;
+        if (result.status >= 200 && result.status < 300) {
+          dramalarPageCache.set(sourceUrl.href, result);
+          if (dramalarPageCache.size > 120) dramalarPageCache.delete(dramalarPageCache.keys().next().value);
+        }
+      }
+      res.writeHead(result.status, {
+        'Content-Type': result.type,
+        'Cache-Control': result.status >= 400 ? 'no-store' : 'private, max-age=60'
+      });
+      res.end(req.method === 'HEAD' ? undefined : result.body);
+    } catch (error) {
+      console.error('[Dramalar desktop proxy]', error.message);
+      res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ error: 'Dramalar source temporarily unavailable' }));
+    }
     return;
   }
 
@@ -1409,7 +1562,7 @@ const server = http.createServer(async (req, res) => {
       let m3u8Url = dlJson.url;
       if (m3u8Url.startsWith('//')) m3u8Url = `https:${m3u8Url}`;
 
-      const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(m3u8Url)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}`;
+      const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(m3u8Url)}&ref=${encodeURIComponent('https://x.ag2m4.cfd/')}${gatewayTokenQuery()}`;
 
       // Extract subtitles if present
       const subtitles = [];
@@ -1592,7 +1745,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const daionUrl = m[1];
-      const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(daionUrl)}&ref=${encodeURIComponent(refUrl)}`;
+      const proxiedUrl = `/api/hls_proxy?url=${encodeURIComponent(daionUrl)}&ref=${encodeURIComponent(refUrl)}${gatewayTokenQuery()}`;
 
       if (!globalThis._liveTvCache) globalThis._liveTvCache = {};
       globalThis._liveTvCache[channel] = {
@@ -1665,9 +1818,8 @@ const server = http.createServer(async (req, res) => {
                       (ref && ref.includes('prectv'));
       // M3U listelerindeki #EXTVLCOPT:http-user-agent degerleri kanalla gelir
       // (?ua=). Tarayici hls.js/mpegts.js User-Agent i degistiremez (forbidden
-      // header) -> proxy tarafinda uygulanmasi gerekir. Liste gercekten Origin
-      // istiyorsa (http-origin) o da gonderilir; normalde Origin BILEREK atilir
-      // (fastplay/pich gibi CDN ler Origin gorunce 403 doner).
+      // header) -> proxy tarafinda uygulanmasi gerekir. Origin yalnizca kaynak
+      // bunu acikca verdiyse iletilir; bazi CDN'ler Origin ile 403 dondurur.
       const forcedUa = String(reqUrl.searchParams.get('ua') || '').slice(0, 400);
       const forcedOrigin = String(reqUrl.searchParams.get('origin') || '').slice(0, 400);
 
@@ -1690,9 +1842,6 @@ const server = http.createServer(async (req, res) => {
 
       if (ref) {
         upstreamHeaders['Referer'] = ref;
-        // Origin BILEREK gonderilmiyor: fastplay/pichive gibi CDN'ler
-        // Origin basligi gorunce 403 bos doner (olcutuldu). Tarayicilar
-        // da medya GET'lerinde Origin gondermez; Referer yeterlidir.
       }
 
       let fetchUrl = decodedTarget;
@@ -1721,11 +1870,21 @@ const server = http.createServer(async (req, res) => {
           const curlArgs = ['-s', '-L', '-4', '--connect-timeout', '3', '--max-time', '6', '--tlsv1.2'];
           if (ua) curlArgs.push('-A', ua);
           if (ref) curlArgs.push('-e', ref);
+          if (forcedOrigin) curlArgs.push('-H', `Origin: ${forcedOrigin}`);
           if (rawXSp) curlArgs.push('-H', `X-Sp: ${rawXSp}`);
+          const effectiveUrlMarker = '__CINEPULSE_EFFECTIVE_URL__:';
+          curlArgs.push('-w', `\n${effectiveUrlMarker}%{url_effective}\n`);
           curlArgs.push(fetchUrl);
           const { stdout } = await execFileAsync('curl', curlArgs, { timeout: 8000, maxBuffer: 10 * 1024 * 1024 });
-          if (stdout && stdout.includes('#EXTM3U')) {
-            text = stdout;
+          const marker = `\n${effectiveUrlMarker}`;
+          const markerIndex = stdout.lastIndexOf(marker);
+          const playlistText = markerIndex >= 0 ? stdout.slice(0, markerIndex) : stdout;
+          if (markerIndex >= 0) {
+            const effectiveUrl = stdout.slice(markerIndex + marker.length).trim();
+            if (/^https?:\/\//i.test(effectiveUrl)) finalUpstreamUrl = effectiveUrl;
+          }
+          if (playlistText && playlistText.includes('#EXTM3U')) {
+            text = playlistText;
             isHls = true;
             upstreamStatus = 200;
             contentType = 'application/vnd.apple.mpegurl';
@@ -1762,7 +1921,6 @@ const server = http.createServer(async (req, res) => {
 
       // 3. Handle HLS playlist rewriting
       if (isHls) {
-        const baseOrigin = new URL(finalUpstreamUrl).origin;
         const forceProxyAll = reqUrl.searchParams.get('live') === '1';
         const rewritten = text.split('\n').map(line => {
           let currentLine = line;
@@ -1772,37 +1930,23 @@ const server = http.createServer(async (req, res) => {
           if (trimmed.includes('URI="')) {
             currentLine = currentLine.replace(/URI="([^"]+)"/g, (m, u) => {
               let fullU;
-              if (u.startsWith('http')) fullU = u;
-              else if (u.startsWith('/')) fullU = `${baseOrigin}${u}`;
-              else {
-                const urlPath = new URL(finalUpstreamUrl).pathname;
-                const lastSlash = urlPath.lastIndexOf('/');
-                const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
-                fullU = `${baseOrigin}${dir}${u}`;
-              }
+              try { fullU = new URL(u, finalUpstreamUrl).href; } catch (_) { return m; }
               const childRef = fullU.includes('dizisol.com') ? 'https://dizisol.com/' : (fullU.includes('ag2m4') || fullU.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : (fullU.includes('fastplay.mom') ? 'https://fastplay.mom/' : ref));
               const xspParam = rawXSp ? `&xsp=${encodeURIComponent(rawXSp)}` : '';
-              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(childRef)}${forceProxyAll ? '&live=1' : ''}${xspParam}"`;
+              const originParam = forcedOrigin ? `&origin=${encodeURIComponent(forcedOrigin)}` : '';
+              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(childRef)}${forceProxyAll ? '&live=1' : ''}${xspParam}${originParam}${gatewayTokenQuery()}"`;
             });
           }
 
           if (trimmed.startsWith('#')) return currentLine;
 
           let fullLineUrl;
-          if (trimmed.startsWith('http')) {
-            fullLineUrl = trimmed;
-          } else if (trimmed.startsWith('/')) {
-            fullLineUrl = `${baseOrigin}${trimmed}`;
-          } else {
-            const urlPath = new URL(finalUpstreamUrl).pathname;
-            const lastSlash = urlPath.lastIndexOf('/');
-            const dir = lastSlash !== -1 ? urlPath.substring(0, lastSlash + 1) : '/';
-            fullLineUrl = `${baseOrigin}${dir}${trimmed}`;
-          }
+          try { fullLineUrl = new URL(trimmed, finalUpstreamUrl).href; } catch (_) { return line; }
 
           const isDizisolPlaylist = fullLineUrl.includes('dizisol.com') &&
             !fullLineUrl.includes('/ts?') && !fullLineUrl.includes('/ts/');
-          const needsProxy = forceProxyAll || isDizisolPlaylist || /(?:prectv|hdfilmcehennemi|rapidrame|daioncdn|ercdn|fastplay\.mom)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi|rapidrame|mariuannastluisborg|moveonjoy|daioncdn|ercdn)/i.test(fullLineUrl);
+          const isDramalarCdn = /^https?:\/\/cdn\.dramalar\.com(?:[/:?#]|$)/i.test(fullLineUrl);
+          const needsProxy = forceProxyAll || Boolean(forcedOrigin) || isDizisolPlaylist || isDramalarCdn || /(?:prectv|hdfilmcehennemi|rapidrame|daioncdn|ercdn|fastplay\.mom)/i.test(ref) || /(?:uk-traffic-076|ag2m4|playmix|hdfilmcehennemi|rapidrame|mariuannastluisborg|moveonjoy|daioncdn|ercdn)/i.test(fullLineUrl);
           if (
             !needsProxy &&
             (
@@ -1832,7 +1976,8 @@ const server = http.createServer(async (req, res) => {
 
           const childRef = fullLineUrl.includes('dizisol.com') ? 'https://dizisol.com/' : (fullLineUrl.includes('ag2m4') || fullLineUrl.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : (fullLineUrl.includes('fastplay.mom') ? 'https://fastplay.mom/' : ref));
           const xspParam = rawXSp ? `&xsp=${encodeURIComponent(rawXSp)}` : '';
-          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(childRef)}${forceProxyAll ? '&live=1' : ''}${xspParam}`;
+          const originParam = forcedOrigin ? `&origin=${encodeURIComponent(forcedOrigin)}` : '';
+          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(childRef)}${forceProxyAll ? '&live=1' : ''}${xspParam}${originParam}${gatewayTokenQuery()}`;
         }).join('\n');
 
         res.writeHead(upstreamStatus || 200, {
@@ -1887,6 +2032,8 @@ const server = http.createServer(async (req, res) => {
       const curlArgs = ['-s', '--fail', '-L', '-4', '--connect-timeout', '4', '--max-time', '20', '--tlsv1.2'];
       if (ua) curlArgs.push('-A', ua);
       if (ref) curlArgs.push('-e', ref);
+      if (forcedOrigin) curlArgs.push('-H', `Origin: ${forcedOrigin}`);
+      if (req.headers.range) curlArgs.push('-H', `Range: ${req.headers.range}`);
       curlArgs.push(fetchUrl);
 
       // Wait for output before claiming success: Wine may have no curl.exe.
@@ -2237,8 +2384,10 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`[MediaServer] ✅ Active on http://127.0.0.1:${PORT}`);
-  console.log(`[MediaServer] 🎬 Torrent streaming: http://localhost:${PORT}/torrent/<infoHash>`);
+  const activePort = server.address().port;
+  console.log(`CINEPULSE_READY:${JSON.stringify({ port: activePort })}`);
+  console.log(`[MediaServer] ✅ Active on http://127.0.0.1:${activePort}`);
+  console.log(`[MediaServer] 🎬 Torrent streaming: http://127.0.0.1:${activePort}/torrent/<infoHash>`);
   console.log(`[MediaServer] 📁 Local media: ${MEDIA_DIR}`);
   // Bağlantı ısıtma: ilk köprü isteği ~15 sn asılıp düşmesin.
   baglantilariIsit().catch(() => {});

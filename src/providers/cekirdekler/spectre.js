@@ -74,7 +74,7 @@ async function oku(url, { ref = SITE + '/', ms = 12000 } = {}) {
    imza taşıdığı için satır kimliği değişip liste şişiyordu (aynı kaynak 2 kez).
    15 dk'lık bellek önbelleği tek satırı ve tekrar kullanımı garanti eder. */
 const ONBELLEK = new Map();
-const ONBELLEK_MS = 15 * 60 * 1000;
+const ONBELLEK_MS = 30 * 1000;
 /* Uçan istek birleştirme: vekil dublaj/altyazı kategorilerini PARALEL çağırıyor;
    ikisi de önbellek boşken aynı zinciri başlatıp iki satır üretiyordu. Aynı
    anahtar için tek Promise paylaşılır. */

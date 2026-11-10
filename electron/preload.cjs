@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('CinePulseDesktop', {
     electron: process.versions.electron || '',
     node: process.versions.node || ''
   },
+  getApiConfig: () => ipcRenderer.sendSync('cinepulse:get-api-config'),
   // Gizli WebView cozumu: Cloudflare'li sayfayi ghost window'da acar,
   // cozulmus HTML + cookie'leri dondurur.
   ghostResolve: (url, opts) =>

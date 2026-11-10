@@ -15,7 +15,9 @@ import {
   altyaziBirlestir,
   kaynakAltyaziAdaylari,
   restAramaUrl,
-  restSirala
+  restSirala,
+  nativeAltyazilariHazirla,
+  altyaziOnbelleginiTemizle
 } from '../src/services/icerik/altyaziServisi.js';
 
 test('srtToVtt: SRT zaman damgaları VTT biçimine çevrilir, VTT olduğu gibi geçer', () => {
@@ -140,6 +142,104 @@ test('restSirala: SRT + çok-indirilen kazanır; forced ve cd2 elenir; EN etiket
   assert.match(aday[0].etiket, /İngilizce/);
   assert.equal(aday[0].ikili, true);
   assert.deepEqual(restSirala(null, 'tr'), []);
+});
+
+test('Desktop OpenSubtitles loads a WebVTT track without calling the unsupported subtitles route', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  const requested = [];
+  globalThis.window = { CinePulseDesktop: { isDesktop: true } };
+  altyaziOnbelleginiTemizle();
+  globalThis.fetch = async (url) => {
+    const address = String(url);
+    requested.push(address);
+    if (address.includes('opensubtitles-v3.strem.io/subtitles/movie/tt1234567.json')) {
+      return { ok: true, json: async () => ({
+        subtitles: [{ lang: 'tur', url: 'https://subs.example.test/tr.srt', g: 100 }]
+      }) };
+    }
+    if (address.startsWith('https://subs.example.test/')) {
+      return { ok: true, text: async () => '1\n00:00:01,000 --> 00:00:02,000\nMerhaba\n' };
+    }
+    return { ok: false, json: async () => [], text: async () => '' };
+  };
+
+  try {
+    const tracks = await nativeAltyazilariHazirla({
+      imdbId: 'tt1234567',
+      title: 'Test',
+      type: 'movie'
+    }, { timeoutMs: 3500 });
+
+    assert.equal(tracks.length, 1);
+    assert.equal(tracks[0].dil, 'tr');
+    assert.match(tracks[0].vtt, /^WEBVTT/);
+    assert.match(tracks[0].vtt, /00:00:01\.000 --> 00:00:02\.000/);
+    assert.ok(!requested.some((url) => url.includes('/api/subtitles')));
+  } finally {
+    altyaziOnbelleginiTemizle();
+    globalThis.fetch = originalFetch;
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
+  }
+});
+
+test('Desktop OpenSubtitles fallback uses the authenticated local proxy for search and download', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  const requested = [];
+  globalThis.window = {
+    CinePulseDesktop: {
+      isDesktop: true,
+      getApiConfig: () => ({ origin: 'http://127.0.0.1:44111', token: 'test-token' })
+    }
+  };
+  altyaziOnbelleginiTemizle();
+  globalThis.fetch = async (url) => {
+    const address = String(url);
+    requested.push(address);
+    if (address.includes('opensubtitles-v3.strem.io/')) {
+      return { ok: true, json: async () => ({ subtitles: [] }) };
+    }
+    if (address.startsWith('http://127.0.0.1:44111/api/proxy')) {
+      const target = new URL(address).searchParams.get('url') || '';
+      if (target.includes('sublanguageid-tur')) {
+        return { ok: true, json: async () => [{
+          SubDownloadLink: 'https://download.example.test/subtitle.srt',
+          SubFormat: 'srt',
+          SubDownloadsCnt: '500'
+        }] };
+      }
+      if (target.includes('download.example.test/subtitle.srt')) {
+        const subtitle = new TextEncoder().encode('1\n00:00:01,000 --> 00:00:02,000\nMerhaba\n');
+        return {
+          ok: true,
+          arrayBuffer: async () => subtitle.buffer.slice(subtitle.byteOffset, subtitle.byteOffset + subtitle.byteLength)
+        };
+      }
+      return { ok: true, json: async () => [] };
+    }
+    return { ok: false, json: async () => [], text: async () => '' };
+  };
+
+  try {
+    const tracks = await nativeAltyazilariHazirla({
+      imdbId: 'tt1234567',
+      title: 'Test',
+      type: 'movie'
+    }, { timeoutMs: 3500 });
+
+    assert.equal(tracks.length, 1);
+    assert.equal(tracks[0].dil, 'tr');
+    assert.match(tracks[0].vtt, /^WEBVTT/);
+    assert.ok(requested.some((url) => url.startsWith('http://127.0.0.1:44111/api/proxy?__cp_token=test-token')));
+    assert.ok(requested.every((url) => !url.includes('/api/subtitles')));
+  } finally {
+    altyaziOnbelleginiTemizle();
+    globalThis.fetch = originalFetch;
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
+  }
 });
 
 /* ── Sunucu ucu: ara JSON sözleşmesi ve dil modu (yerel handler, sahte req/res) ── */

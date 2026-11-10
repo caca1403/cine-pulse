@@ -83,9 +83,9 @@ export function isPageEmbed(source) {
  * yuklenir (oynatici-alan HTML gomulu, bizim kaynak). Masaustu disi
  * platformda ham URL doner (capraz-origin enjeksiyon mumkun degil).
  */
-export function desktopFrameUrl(source, sidecarBase = 'http://127.0.0.1:4000') {
+export function desktopFrameUrl(source) {
   // Eski sağlayıcı cerçeve enjeksiyonu (sunucudan frame=1) o katmanla birlikte
-  // söküldü; masaüstü de ham adresi kullanır. sidecarBase imza uyumu için durur.
+  // söküldü; masaüstü de ham adresi kullanır.
   const raw = (typeof source === 'string' ? source : (source?.streamUrl || source?.url || '')) || '';
   return raw;
 }

@@ -1,0 +1,383 @@
+/* ==========================================================================
+   CinePulse — Detay sayfası Netflix-stili (kullanıcı 2026-11-10)
+   Premium his: zemin derinliği, zemin tonları, lime vurgulama, katmanlı degrade,
+   tutu rozetler ve mobil disiplini. :root değişkenleri main.css'ten alındı.
+   ========================================================================== */
+
+/* ── Root geçersiz kılarak yeni renk tanımı YASAK. sadece mevcut token'lar kullan. */
+@media (prefers-reduced-motion: reduce) {
+  .dt-hero-ic *,
+  .dt-aksiyonlar .dt-oynat,
+  .dt-aksiyon-cip,
+  .dt-yeni-bolum,
+  .dt-sekme,
+  .dt-panel * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ── Başlık bloğu: afiş/başlık/logo hizalı, meta nefes alan aralıklı, rozetler küçük ── */
+.dt-hero-ic {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: clamp(12px, 2vw, 20px);
+  padding-top: 12px;
+}
+
+.detail-titleblock {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(12px, 2vw, 24px);
+  width: 100%;
+  flex: 1 1 100%;
+}
+
+.detail-heading-title {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 850;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+  flex: 1 1 auto;
+}
+
+.detail-title-logo {
+  max-width: min(420px, 70vw);
+  align-self: flex-end;
+  /* Logo sol üst köşe, metin saga akar — Netflix tarzı denge */
+}
+
+.dt-kunye {
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 0.81rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+  /* Metin sola dagilip genişlik akar */
+}
+
+/* Meta satırı: yıl·süre·IMDb aralıklı breathe */
+.dt-puan-satiri {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(0.6rem, 1.5vw, 1rem);
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  margin-top: 0.1rem;
+  /* Netflix meta aralığı */
+}
+
+.dt-puan,
+.dt-puan-tmdb,
+.dt-letterboxd {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.dt-puan em,
+.dt-puan-tmdb em {
+  font-style: normal;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 4px;
+  padding: 0 3px;
+  margin-left: 1px;
+}
+
+.dt-puan-tmdb { color: #01b4e4; }
+.dt-puan-tmdb em { border-color: rgba(1, 180, 228, 0.45); color: #7cc7e8; }
+.dt-letterboxd { color: #00e054; font-weight: 700; }
+
+.dt-orijinal {
+  opacity: 0.7;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-left: 0.5rem;
+}
+
+/* Tür rozetleri: küçük ve tutucu */
+.dt-turler {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+
+.dt-tur {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(15, 23, 42, 0.5);
+  color: var(--text-sub);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* ── Aksiyon satırı: birincil vurgulu lime, ikinciler ghost; hover/focus tutarlı ── */
+.dt-aksiyonlar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+  width: 100%;
+}
+
+.dt-oynat {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.7rem 1.2rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #15200b;
+  font-weight: 850;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  min-width: 140px;
+  /* Mobilde tam genişlik */
+}
+
+.dt-oynat:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(223, 255, 118, 0.3);
+}
+
+.dt-oynat:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.dt-oynat .play-btn-subinfo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+/* İkinci düğmeler: ghost */
+.dt-aksiyon-cip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--text-sub);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  flex: 0 0 auto;
+}
+
+.dt-aksiyon-cip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.dt-aksiyon-cip:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.dt-aksiyon-cip.is-active {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Yarıda bırak – aksiyon satırı etiketi */
+.dt-yeni-bolum {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(223, 255, 118, 0.4);
+  background: rgba(6, 78, 59, 0.4);
+  color: #6ee7b7;
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+/* ── Backdrop degrade: üst içerik okunurluğu (siyah %60→şeffaf) ── */
+.dt-hero-karartma {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 35%, transparent 70%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.15) 50%, transparent 80%);
+  pointer-events: none;
+}
+
+/* Afiş köşe radius'u kart sistemiyle aynı değişken */
+.dt-bilgi,
+.dt-panel,
+.cps-sekme,
+.cps-bolum-baslik {
+  border-radius: var(--radius-lg, 12px) !important;
+}
+
+/* ── Bölüm/Sezon seçici (dizi): sezon çipleri + bölüm listesi ── */
+@media (min-width: 720px) {
+  .dt-sekmeler {
+    display: flex;
+    gap: 0.3rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0;
+    margin-bottom: 1rem;
+  }
+  .dt-sekmeler::-webkit-scrollbar { display: none; }
+
+  .dt-sayfa .cps-sekme {
+    border: none;
+    background: transparent;
+    color: var(--text-sub);
+    font-weight: 800;
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+    padding: 0.5rem 0.8rem;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .dt-sayfa .cps-sekme:hover { color: var(--primary); }
+  .dt-sayfa .cps-sekme.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+}
+
+/* Sezon çipleri (dizi sayfalarında) */
+.bolum-secici-sezon {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 600;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.bolum-secici-sezon.aktif,
+.bolum-secici-kart.aktif {
+  border-color: rgba(223, 255, 118, 0.7);
+  background: rgba(223, 255, 118, 0.14);
+  color: var(--primary);
+}
+
+.bolum-secici-sezon:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Bölüm kartı >=40px yükseklik */
+.quick-ep-card,
+.bolum-secici-kart {
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  cursor: pointer;
+}
+
+.bolum-secici-kart:hover {
+  border-color: var(--primary);
+  background: rgba(223, 255, 118, 0.08);
+}
+
+/* Aktif bölüm vurgusu */
+.bolum-secici-sezon.aktif {
+  color: var(--primary);
+  background: rgba(223, 255, 118, 0.14);
+}
+
+/* ── Gövde paddingı ve max-width ── */
+.dt-govde {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem clamp(16px, 4vw, 48px) 0;
+}
+
+/* Mobil disipleni: metin ve logosu sola sabitle */
+@media (max-width: 720px) {
+  .dt-hero-ic {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding-top: 16px;
+  }
+
+  .dt-bilgi { align-items: flex-start; }
+
+  .dt-kunye,
+  .dt-puan-satiri,
+  .dt-turler,
+  .dt-aksiyonlar { justify-content: flex-start; }
+
+  .dt-ozet { text-align: left; }
+
+  .dt-oynat-alt,
+  .dt-yeni-bolum { display: none; } /* Mobilde gizle, özet altına */
+
+  .dt-sekmeler { overflow-x: visible; }
+}
+/* ── ÜST ÇUBUK ASLA KESİLMESİN (kullanıcı 2026-11-10: "üst buton kısmı
+   gözükmüyor, tam %5-10") ──────────────────────────────────────────────────
+   Masaüstünde (≥769px) geri/ikon çubuğu akıştan çıkıp sabitlenir: sayfa
+   kaydırılsa veya hero yukarı taşsa bile düğmeler ekranın üstünde kalır,
+   hiçbir zaman üst kenara kırpılmaz. Sabit uygulama başlığı (cp-navbar,
+   ~79px, z:1000) varsa onun hemen altına oturur; scrim okunurluğu korur. */
+/* ── ÜST ÇUBUK ASLA KESİLMESİN / HER ORANA UYUMLU (kullanıcı 2026-11-10:
+   "üst kısım herhangi orana uyumlu olsun, CSS'i de bozma") ────────────────
+   Geri/ikon çubuğu akıştan çıkıp sabitlenir; ofset gezinme çubuğunun GERÇEK
+   yüksekliğine (--cp-nav-h, ResizeObserver) bağlıdır — açık/küçülmüş nav,
+   her kırılım, her en-boy oranında düğmeler nav'ın hemen altında kalır. */
+.dt-ust-cubuk {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 950;
+  /* --cp-nav-h: DetailView init'indeki ResizeObserver gezinme çubuğunun anlık
+     yüksekliğini yazar. Fallback 79px. */
+  padding: calc(env(safe-area-inset-top, 0px) + var(--cp-nav-h, 79px) + 10px) clamp(12px, 3vw, 32px) 10px;
+  background: linear-gradient(180deg, rgba(7, 10, 18, 0.82) 0%, rgba(7, 10, 18, 0.38) 58%, transparent 100%);
+  pointer-events: none;
+}
+.dt-ust-cubuk > * { pointer-events: auto; }
+/* Çubuk akıştan çıktığı için boşluğunu hero üst dolgusu üstlenir:
+   çubuk alt sınırı = navH + 10 + ~40 (düğme) → +12 nefes. */
+.dt-hero { padding-top: calc(var(--cp-nav-h, 79px) + 62px); }
+/* Yapışkan sekmeler sabit çubuğun ALTINA kilitlenir (üstü hiç kesilmez). */
+.dt-sekmeler { top: calc(var(--cp-nav-h, 79px) + 52px); }

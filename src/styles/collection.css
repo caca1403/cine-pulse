@@ -138,6 +138,42 @@
 .cine-discovery-theme .episode-card .badge-watched-status { top: auto !important; bottom: 8px !important; left: 8px !important; right: auto !important; color: #15200b !important; max-width: calc(100% - 16px) !important; z-index: 4; }
 .cine-discovery-theme .episode-status-actions { display: flex; align-items: center; gap: 6px; position: static; }
 .cine-discovery-theme .episode-status-actions button.is-halfway, .cine-discovery-theme .episode-status-actions button.watched { color: #15200b !important; }
+
+/* Card polish: collection/discovery grid rhythm (8px) */
+.cine-discovery-theme .library-view .media-grid,
+.cine-discovery-theme .discover-view .media-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (min-width: 640px) {
+  .cine-discovery-theme .library-view .media-grid,
+  .cine-discovery-theme .discover-view .media-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .cine-discovery-theme .library-view .media-grid,
+  .cine-discovery-theme .discover-view .media-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .cine-discovery-theme .library-view .media-grid,
+  .cine-discovery-theme .discover-view .media-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1536px) {
+  .cine-discovery-theme .library-view .media-grid,
+  .cine-discovery-theme .discover-view .media-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
 .cine-discovery-theme .episode-footer { display: grid !important; grid-template-columns: minmax(0,1fr) auto auto; gap: 14px; align-items: center; }
 .cine-discovery-theme .episode-info { min-width: 0; }
 .cine-discovery-theme .episode-header-row { align-items: flex-start; gap: 8px; }

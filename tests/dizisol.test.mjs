@@ -62,6 +62,57 @@ test('DiziSol keeps unverified mirrors as fallbacks when one mirror validates', 
   }
 });
 
+test('DiziSol resolves relative proxy streams from the provider API', async () => {
+  const originalFetch = globalThis.fetch;
+  const streamUrl = 'https://dizisol.com/api/proxy/hdfilmizle/play/6676';
+
+  globalThis.fetch = async (url) => {
+    const address = String(url);
+    if (address.includes('/api/movies/by-tmdb/')) {
+      return { ok: true, json: async () => ({ sources: [{ provider: 'hdfilmizle', m3u8Url: '/api/proxy/hdfilmizle/play/6676' }] }) };
+    }
+    return address === streamUrl
+      ? { ok: true, text: async () => '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=4000000,RESOLUTION=1920x1080\nvariant.m3u8' }
+      : { ok: false, text: async () => '' };
+  };
+
+  try {
+    const streams = await getStreams(987654323, 'movie');
+    assert.equal(streams.length, 1);
+    assert.equal(streams[0].url, streamUrl);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('DiziSol refreshes cached stream URLs after 30 seconds', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalNow = Date.now;
+  let now = 1_800_000_000_000;
+  let apiRequests = 0;
+  Date.now = () => now;
+  const streamUrl = 'https://cache.example.test/master.m3u8';
+
+  globalThis.fetch = async (url) => {
+    if (String(url).includes('/api/movies/by-tmdb/')) {
+      apiRequests++;
+      return { ok: true, json: async () => ({ sources: [{ provider: 'cache-test', m3u8Url: streamUrl }] }) };
+    }
+    return { ok: true, text: async () => '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=4000000,RESOLUTION=1920x1080\nvariant.m3u8' };
+  };
+
+  try {
+    await getStreams(987654324, 'movie');
+    assert.equal(apiRequests, 1);
+    now += 30_001;
+    await getStreams(987654324, 'movie');
+    assert.equal(apiRequests, 2);
+  } finally {
+    Date.now = originalNow;
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('DiziSol normalization keeps direct native URL and adds header-aware browser URL', () => {
   const normalized = normalizeEt({
     name: 'Green-Arrow',

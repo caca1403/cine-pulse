@@ -1,4 +1,8 @@
 import { renderIcons } from '../services/kabuk/icons.js';
+// Tarayıcıda kart cilası CSS'ini yükle; Node test ortamında .css ESM çözümlenemez.
+if (typeof window !== 'undefined') {
+  await import('../styles/card-polish.css');
+}
 /* ==========================================================================
    CinePulse Studio - Media Card Component
    Ultra-sleek, borderless luxury cards with floating gold star rating badge,
@@ -209,6 +213,9 @@ export function renderMediaCard(item, options = {}) {
   const encodedPoster = encodeURIComponent(posterPath || '');
   const encodedBackdrop = encodeURIComponent(backdropPath || '');
   const type = effectivePlayerType;
+  const cardPlayLabel = isContinue
+    ? (isSeries ? 'Bölüme devam et' : 'Devam et')
+    : (isSeries ? 'Bölümü izle' : 'İzle');
 
   // İzleme durumu (izlendi / devam ediyor) artık ayrı bir tam-genişlik şeritte
   // değil; meta satırında tek bir kompakt rozet. Kart bu yüzden daha kısa ve
@@ -243,7 +250,7 @@ export function renderMediaCard(item, options = {}) {
       data-currenttime="${currentTime}"
       data-iscontinue="${isContinue ? 'true' : 'false'}"
       tabindex="0"
-      role="button"
+      role="group"
       aria-label="${title}">
       
       <div class="card-poster-wrapper ${!backdropPath ? 'card-fanart-portrait-fallback' : ''}">
@@ -261,12 +268,15 @@ export function renderMediaCard(item, options = {}) {
         
         <div class="card-glass-glow"></div>
 
-        <!-- Hover Quick Play Overlay (yalnız masaüstünde görünür — CSS'te kapı) -->
-        <div class="card-hover-overlay">
-          <div class="card-play-btn-circle">
-            <i data-lucide="play" style="width:20px;height:20px;fill:currentColor;margin-left:2px;"></i>
-          </div>
-          <span class="card-hover-action-text">${isContinue ? 'Devam Et' : 'İzle'}</span>
+        <div class="card-hover-overlay" aria-label="${title} seçenekleri">
+          <button type="button" class="card-action-btn card-action-watch" data-card-action="watch"
+            aria-label="${cardPlayLabel}: ${title}">
+            <i data-lucide="play" aria-hidden="true"></i><span>${cardPlayLabel}</span>
+          </button>
+          <button type="button" class="card-action-btn card-action-detail" data-card-action="detail"
+            aria-label="İçerik sayfasına git: ${title}">
+            <i data-lucide="info" aria-hidden="true"></i><span>İçerik sayfasına git</span>
+          </button>
         </div>
 
         <!-- Alt gradyan: AFİŞ TEMİZ KALIR, üzerine hiçbir metin/logo basılmaz.
@@ -324,6 +334,7 @@ export function attachMediaCardEvents(container) {
     if (!card) return;
 
     e.preventDefault();
+    const actionButton = e.target.closest('[data-card-action]');
     const id = card.getAttribute('data-id');
     const type = card.getAttribute('data-type');
     const isAnime = card.getAttribute('data-isanime') === 'true' || type === 'anime' || isRegisteredAnimeId(id);
@@ -341,33 +352,60 @@ export function attachMediaCardEvents(container) {
     const isSeriesCard = isSeriesAttr !== null
       ? isSeriesAttr === 'true'
       : (mediaTypeAttr === 'tv' || type === 'tv');
+    const action = actionButton?.getAttribute('data-card-action')
+      || (isContinue ? 'watch' : 'detail');
 
-  if (isContinue) {
-      (async () => {
-        try {
-          await openPlayerModal({
-            type: isAnime ? 'anime' : (isSeriesCard ? 'tv' : 'movie'),
-            isAnime,
-            isSeries: isSeriesCard,
-            tmdbId: id,
-            title: isSeriesCard ? `${title} - S${season}E${episode}` : title,
-            seriesTitle: title,
-            originalTitle: originalTitle || title,
-            season: isSeriesCard ? season : undefined,
-            episode: isSeriesCard ? episode : undefined,
-            posterPath,
-            backdropPath,
-            currentTime
-          });
-        } catch (err) {
-          console.error('[MediaCard] Devam et oynatılamadı:', err);
-          showToast('İçerik açılırken bir sorun oluştu, lütfen tekrar deneyin.', 'error');
-        }
-      })();
-    } else {
+    if (action === 'detail') {
       saveAllScrollState();
-      window.location.hash = `#detail?type=${isAnime ? 'anime' : type}&id=${id}`;
+      if (/^(ddz_|dml_)/.test(String(id || ''))) {
+        window.location.hash = `#dramas?${new URLSearchParams({ slug: id }).toString()}`;
+      } else {
+        window.location.hash = `#detail?type=${isAnime ? 'anime' : type}&id=${id}`;
+      }
+      return;
     }
+
+    if (/^(ddz_|dml_)/.test(String(id || ''))) {
+      saveAllScrollState();
+      const dramaParams = new URLSearchParams({
+        slug: id,
+        season: String(season),
+        episode: String(episode),
+        play: '1'
+      });
+      if (isContinue) dramaParams.set('time', String(Math.max(0, currentTime)));
+      window.location.hash = `#dramas?${dramaParams.toString()}`;
+      return;
+    }
+
+    (async () => {
+      try {
+        await openPlayerModal({
+          type: isAnime ? 'anime' : (isSeriesCard ? 'tv' : 'movie'),
+          isAnime,
+          isSeries: isSeriesCard,
+          tmdbId: id,
+          title: isSeriesCard ? `${title} - S${season}E${episode}` : title,
+          seriesTitle: title,
+          originalTitle: originalTitle || title,
+          season: isSeriesCard ? season : undefined,
+          episode: isSeriesCard ? episode : undefined,
+          posterPath,
+          backdropPath,
+          currentTime: isContinue ? currentTime : 0
+        });
+      } catch (err) {
+        console.error('[MediaCard] Karttan oynatma açılamadı:', err);
+        showToast('İçerik açılırken bir sorun oluştu, lütfen tekrar deneyin.', 'error');
+      }
+    })();
+  });
+  container.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const card = e.target.closest?.('.media-card');
+    if (!card || e.target !== card) return;
+    e.preventDefault();
+    card.click();
   });
 
   /* ── CP-QUALITY-PACK: fragman önizlemesi tetikleyicileri ────────────────

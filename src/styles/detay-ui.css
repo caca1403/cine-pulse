@@ -20,6 +20,11 @@
   position: relative;
   overflow: hidden;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  /* DÜZELTME (kullanıcı şikâyeti 2026-11-10: "butonlar yarımlıyor"):
+     max-height + overflow:hidden hero İÇERİĞİNİ kırpıyordu (dizi düzeninde
+     içerik 598px > kap 558px → aksiyon satırı ortadan kesik). Bütçe artık
+     alt sınır: arka plan sinematik yüksekliğini korur, içerik ASLA kırpılmaz. */
+  min-height: min(58vh, 520px);
 }
 
 .dt-hero-fon {
@@ -45,8 +50,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
-  padding: calc(env(safe-area-inset-top, 0px) + 88px) clamp(16px, 4vw, 48px) 0;
+  gap: 0.4rem;
+  padding: calc(env(safe-area-inset-top, 0px) + 64px) clamp(12px, 3vw, 32px) 0;
 }
 
 .dt-ust-cubuk-sag { display: flex; align-items: center; gap: 0.45rem; }
@@ -74,10 +79,10 @@
   z-index: 2;
   display: flex;
   align-items: flex-end;
-  gap: clamp(18px, 3.5vw, 40px);
+  gap: clamp(12px, 2vw, 24px);
   max-width: 1200px;
   margin: 0 auto;
-  padding: clamp(48px, 9vh, 96px) clamp(16px, 4vw, 48px) clamp(22px, 4vh, 40px);
+  padding: clamp(36px, 7vh, 48px) clamp(12px, 3vw, 32px) clamp(16px, 3vh, 24px);
 }
 
 /* .dt-poster-kart kaldırıldı (kullanıcı 2026-10-29): sabit dikey kart yok;
@@ -160,7 +165,20 @@
   transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 .dt-aksiyon-cip:hover { transform: translateY(-1px); border-color: rgba(223, 255, 118, 0.55); color: #dfff76; }
-.dt-aksiyon-cip.is-active { border-color: #10b981; color: #34d399; }
+.dt-aksiyon-cip.is-active { border-color: var(--primary); color: var(--primary); }
+
+/* Netflix-stili detay UI desteği — mevcut kuralları silmeden ekleme */
+.dt-hero-ic *:focus-visible,
+.dt-aksiyon-cip:focus-visible,
+.dt-oynat:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Tasarım destek: aksiyon satırı mobilde düzgün dağılımı */
+@media (max-width: 720px) {
+  .dt-aksiyonlar { justify-content: flex-start; }
+}
 
 .dt-oynat-alt { margin: 0.15rem 0 0; color: #94a3b8; font-size: 0.78rem; }
 
@@ -179,7 +197,7 @@
 }
 
 .dt-ozet { max-width: 850px; }
-.dt-sayfa .detail-storyline { color: #cbd5e1; font-size: 0.92rem; line-height: 1.65; }
+.dt-sayfa .detail-storyline { color: #cbd5e1; font-size: 0.92rem; line-height: 1.65; -webkit-line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
 .dt-spoiler { margin-top: 0.2rem; align-self: flex-start; }
 
 /* ── Gövde / sekmeler ───────────────────────────────────────────────────── */
@@ -190,13 +208,17 @@
 }
 
 .dt-sekmeler {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   gap: 0.35rem;
   overflow-x: auto;
   scrollbar-width: none;
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
   padding-bottom: 0;
-  margin-bottom: 1.1rem;
+  margin-bottom: 0;
+  background: rgba(7, 10, 18, 0.8);
 }
 .dt-sekmeler::-webkit-scrollbar { display: none; }
 
@@ -319,6 +341,21 @@
     margin: 0;
   }
   .dt-oynat-alt, .spoiler-discovery-pill { display: none; }
+}
+
+/* Kısa ekran kuralı: max-height 800px'den küçük cihazlarda hero daha alçal */
+@media (orientation: landscape) and (max-height: 800px) {
+  .dt-hero { min-height: min(48vh, 400px); }
+  .dt-hero-ic { padding: 8px clamp(12px, 3vw, 20px) 8px; }
+  .dt-ust-cubuk { padding: calc(env(safe-area-inset-top, 0px) + 44px) clamp(8px, 3vw, 20px) 0; }
+  .dt-ozet, .dt-ozet p { font-size: 0.7rem; }
+  .dt-turler { flex-direction: column; align-items: flex-start; gap: 0.2rem; }
+  .dt-tur { padding: 0.15rem 0.4rem; font-size: 0.62rem; }
+  .dt-aksiyonlar { gap: 0.2rem; }
+  .dt-oynat { padding: 0.4rem 0.8rem; font-size: 0.72rem; }
+  .dt-aksiyon-cip { padding: 0.3rem 0.5rem; font-size: 0.62rem; }
+  .dt-yeni-bolum { display: none; }
+  .dt-sekmeler { padding: 0.2rem 0; }
 }
 
 /* HERO FON KATMANLARI (kullanıcı 2026-10-29 — KARAR v4, KESİN):

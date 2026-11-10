@@ -82,7 +82,14 @@ final class NativeMediaGateway extends NanoHTTPD {
             Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
             for (Map.Entry<String, String> e : session.getHeaders().entrySet()) {
                 String key = e.getKey();
-                if (!Arrays.asList("host", "connection", "content-length", "accept-encoding", "origin").contains(key.toLowerCase(Locale.ROOT)))
+                String lower = key.toLowerCase(Locale.ROOT);
+                // 2026-10-31: WebView'den gelen tum "sec-*" istek basliklari
+                // (Sec-Fetch-Site: same-origin vb.) Java baglantisina tasininca
+                // dramadizilerim /api/playback "Istek kaynagi dogrulanamadi"
+                // (403) donuyor; CapacitorHttp (sec-* yok) 200 veriyor.
+                // Tarayici-ici parmak izleri upstream'e tasinmaz.
+                if (lower.startsWith("sec-") || lower.startsWith("x-proxy-")) continue;
+                if (!Arrays.asList("host", "connection", "content-length", "accept-encoding", "origin").contains(lower))
                     headers.put(key, e.getValue());
             }
             if (ref.isEmpty()) ref = session.getHeaders().getOrDefault("referer", "");
@@ -118,6 +125,19 @@ final class NativeMediaGateway extends NanoHTTPD {
                 }
             }
             if (!ref.isEmpty()) headers.put("Referer", ref);
+            /* Olculen hata (2026-10-31): dramadizilerim /api/playback → 403 "Istek
+               kaynagi dogrulanamadi". Ayni istek CapacitorHttp'ten 200 donuyor;
+               fark: CapacitorHttp WebView cookie kutusunu (CookieManager) kullanir,
+               bu gateway HttpURLConnection'u ciplak gonderiyordu. Site, izleme
+               sayfasiyla kurulan oturum cereziyle playback istegini eslestiriyor.
+               Cozum: hedef URL icin WebView cerezlerini aynen esle (yukaridan
+               baslik olarak verildiyse ona dokunma). */
+            if (headers.get("Cookie") == null) {
+                try {
+                    String jar = android.webkit.CookieManager.getInstance().getCookie(target);
+                    if (jar != null && !jar.isEmpty()) headers.put("Cookie", jar);
+                } catch (Throwable ignored) { }
+            }
             String range = session.getHeaders().get("range");
             // Olculen hata (2026-10-16): imzali HLS uclari (dizisol, streamcorecdn,
             // zenoak) Range gordugunde 500/timeout donuyor. Oynatici ilk acilista

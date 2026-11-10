@@ -23,6 +23,7 @@ import { modeliHazirla2, gosterimKaydet, tiklamaKaydet } from '../services/kisis
 import { profilKur, profilSirala, ozetMetni } from '../services/kisisel/zevkProfili.js';
 import { fetchPersonalizedRows } from '../services/kisisel/recommendationEngine.js';
 import '../styles/home-polish.css';
+import '../styles/home-netflix.css';
 
 // Cache home TMDB data & rail state across navigations
 let homeDataCache = null;
@@ -157,7 +158,7 @@ function railAnimasyonuBagla(kok) {
   });
 }
 
-function renderInfiniteRail({ id, icon, title, accent, items }) {
+function renderInfiniteRail({ id, icon, title, accent, items, eyebrow }) {
   if (!items || items.length === 0) return '';
   const extraItems = railExtraItemsCache.get(id) || [];
   const primaryItems = items.slice(0, RAIL_ILK_ADET);
@@ -167,12 +168,15 @@ function renderInfiniteRail({ id, icon, title, accent, items }) {
     <section class="rail-section">
       <div class="container">
         <div class="rail-header">
-          <h2 class="rail-title">
-            <span class="rail-icon-pill" style="--rail-color: ${accent};">
-              <i data-lucide="${icon}" style="width:15px;height:15px;"></i>
-            </span>
-            ${title}
-          </h2>
+          <div class="rail-heading-wrap">
+            ${eyebrow ? `<span class="rail-eyebrow">${eyebrow}</span>` : ''}
+            <h2 class="rail-title">
+              <span class="rail-icon-pill" style="--rail-color: ${accent};">
+                <i data-lucide="${icon}" style="width:15px;height:15px;"></i>
+              </span>
+              ${title}
+            </h2>
+          </div>
         </div>
         <div class="card-rail" id="${id}">
           ${cards}
@@ -203,12 +207,15 @@ function renderContinueWatchingSection(watchHistory) {
     <section class="rail-section">
       <div class="container">
         <div class="rail-header">
-          <h2 class="rail-title">
-            <span class="rail-icon-pill" style="--rail-color: var(--primary);">
-              <i data-lucide="history" style="width:15px;height:15px;"></i>
-            </span>
-            İzlemeye Devam Et
-          </h2>
+          <div class="rail-heading-wrap">
+            <span class="rail-eyebrow">PROFİLİN</span>
+            <h2 class="rail-title">
+              <span class="rail-icon-pill" style="--rail-color: var(--primary);">
+                <i data-lucide="history" style="width:15px;height:15px;"></i>
+              </span>
+              İzlemeye Devam Et
+            </h2>
+          </div>
         </div>
         <div class="card-rail continue-rail" id="continue-watching-rail">
           ${cards}
@@ -289,6 +296,11 @@ function initInfiniteRails(container) {
             card.addEventListener('click', () => {
               const id   = card.getAttribute('data-id');
               const type = card.getAttribute('data-type');
+              // Kısa dizi (ddz_/dml_ öneki) → DramaView perde sayfası
+              if (id && /^(ddz_|dml_)/.test(id)) {
+                window.location.hash = `#dramas?slug=${encodeURIComponent(id)}`;
+                return;
+              }
               window.location.hash = `#detail?type=${type}&id=${id}`;
             });
           }
@@ -547,6 +559,7 @@ export async function renderHomeView() {
         icon:  'sparkles',
         title: 'Animasyon ve Çocuk Filmleri',
         accent:'#ec4899',
+        eyebrow:'ÇOCUK MODU',
         items: popularMovies
       })}
 
@@ -555,6 +568,7 @@ export async function renderHomeView() {
         icon:  'sparkles',
         title: 'Çocuk Animasyonları',
         accent:'#fb7185',
+        eyebrow:'ÇOCUK MODU',
         items: kidsAnimationItems
       }) : ''}
 
@@ -563,6 +577,7 @@ export async function renderHomeView() {
         icon:  'palette',
         title: 'Klasik Çizgi Diziler',
         accent:'#38bdf8',
+        eyebrow:'ÇOCUK MODU',
         items: kidsClassicCartoonItems
       }) : ''}
 
@@ -571,6 +586,7 @@ export async function renderHomeView() {
         icon:  'compass',
         title: 'Aile ve Fantastik Filmler',
         accent:'#38bdf8',
+        eyebrow:'ÇOCUK MODU',
         items: kidsAdventures
       }) : ''}
 
@@ -579,6 +595,7 @@ export async function renderHomeView() {
         icon:  'smile',
         title: 'Çocuk ve Genç Animeleri',
         accent:'#a855f7',
+        eyebrow:'ÇOCUK MODU',
         items: animeItems
       }) : ''}
     `;
@@ -589,6 +606,7 @@ export async function renderHomeView() {
         icon:  'tv-2',
         title: 'Popüler Diziler',
         accent:'#14b8a6',
+        eyebrow:'GÜNDEMDE',
         items: popularTV
       })}
 
@@ -597,6 +615,7 @@ export async function renderHomeView() {
         icon:  'sparkles',
         title: 'Yetişkin Animasyon',
         accent:'#fb7185',
+        eyebrow:'SEÇKİ',
         items: adultAnimationItems
       }) : ''}
 
@@ -605,6 +624,7 @@ export async function renderHomeView() {
         icon:  'wand-2',
         title: 'Klasik Çizgi Diziler',
         accent:'#38bdf8',
+        eyebrow:'SEÇKİ',
         items: cartoonSeriesItems
       }) : ''}
 
@@ -613,6 +633,7 @@ export async function renderHomeView() {
         icon:  'clapperboard',
         title: 'Popüler Filmler',
         accent:'#a78bfa',
+        eyebrow:'GÜNDEMDE',
         items: popularMovies
       })}
 
@@ -621,6 +642,7 @@ export async function renderHomeView() {
         icon:  'award',
         title: 'En Yüksek Puanlı Filmler',
         accent:'#dfff76',
+        eyebrow:'SEÇKİ',
         items: topRatedMovies
       })}
 
@@ -629,6 +651,7 @@ export async function renderHomeView() {
         icon:  'star',
         title: 'En Yüksek Puanlı Diziler',
         accent:'#34d399',
+        eyebrow:'SEÇKİ',
         items: topRatedTV
       })}
 
@@ -637,6 +660,7 @@ export async function renderHomeView() {
         icon:  'sparkles',
         title: 'Popüler Anime',
         accent:'#ec4899',
+        eyebrow:'SEÇKİ',
         items: animeItems
       }) : ''}
 
@@ -645,6 +669,7 @@ export async function renderHomeView() {
         icon:  'globe',
         title: 'Popüler Belgeseller',
         accent:'#38bdf8',
+        eyebrow:'SEÇKİ',
         items: docItems
       }) : ''}
     `;
@@ -730,6 +755,45 @@ export async function renderHomeView() {
             e.preventDefault();
             rail.scrollLeft += e.deltaY;
           }, { passive: false });
+
+        /* Netflix usulü ray okları: başlık satırında ≥40px dokunma hedefli
+           geri/ileri düğmeleri. Kenara gelince kendiliğinden söner; sonsuz
+           yükleme kart eklediğinde (childList) kenar durumu tazelenir;
+           smooth kaydırma yalnız hareket tercihi kapalıysa devreye girer. */
+        const railHeader = rail.closest('.rail-section')?.querySelector('.rail-header');
+        if (railHeader && !railHeader.querySelector('.rail-nav')) {
+          const nav = document.createElement('div');
+          nav.className = 'rail-nav';
+          nav.innerHTML = `
+            <button class="rail-nav-btn rail-nav-prev" type="button" aria-label="Rayda geri kaydır">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <button class="rail-nav-btn rail-nav-next" type="button" aria-label="Rayda ileri kaydır">
+              <i data-lucide="chevron-right"></i>
+            </button>
+          `;
+          railHeader.appendChild(nav);
+          renderIcons(nav);
+
+          const prevBtn = nav.querySelector('.rail-nav-prev');
+          const nextBtn = nav.querySelector('.rail-nav-next');
+          const azHareketTercihi = window.matchMedia('(prefers-reduced-motion: reduce)');
+          const kaydir = (yol) => rail.scrollBy({
+            left: yol * Math.max(rail.clientWidth * 0.8, 240),
+            behavior: azHareketTercihi.matches ? 'auto' : 'smooth'
+          });
+          prevBtn.addEventListener('click', () => kaydir(-1));
+          nextBtn.addEventListener('click', () => kaydir(1));
+
+          const kenarlariGuncelle = () => {
+            prevBtn.disabled = rail.scrollLeft <= 4;
+            nextBtn.disabled = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 4
+              || rail.scrollWidth <= rail.clientWidth + 4;
+          };
+          kenarlariGuncelle();
+          rail.addEventListener('scroll', kenarlariGuncelle, { passive: true });
+          new MutationObserver(kenarlariGuncelle).observe(rail, { childList: true });
+        }
       });
       };
       attachRailScrolling(container);
@@ -739,7 +803,14 @@ export async function renderHomeView() {
         el.addEventListener('click', () => {
           const id   = el.getAttribute('data-id');
           const type = el.getAttribute('data-type');
-          if (id && type) window.location.hash = `#detail?type=${type}&id=${id}`;
+          if (id && type) {
+            // Kısa dizi kartı (devam et listesi)
+            if (/^(ddz_|dml_)/.test(id)) {
+              window.location.hash = `#dramas?slug=${encodeURIComponent(id)}`;
+            } else {
+              window.location.hash = `#detail?type=${type}&id=${id}`;
+            }
+          }
         });
       });
 
@@ -781,20 +852,23 @@ export async function renderHomeView() {
             guvenliMi: isItemKidSafe
           });
           if (!container.isConnected || !(window.location.hash || '#home').startsWith('#home')) return;
-          const rail = (id, icon, title, accent, items) => {
+          const rail = (id, icon, title, accent, items, eyebrow) => {
             if (!Array.isArray(items) || items.length < 10) return '';
             const shown = items.slice(0, 40);
             return `
               <section class="rail-section reco-row" id="${id}">
                 <div class="container">
                   <div class="rail-header">
-                    <h2 class="rail-title">
-                      <span class="rail-icon-pill" style="--rail-color:${accent}">
-                        <i data-lucide="${icon}" aria-hidden="true"></i>
-                      </span>
-                      ${title}
-                    </h2>
-                    <span class="reco-row-count">${shown.length} yeni başlık</span>
+                    <div class="rail-heading-wrap">
+                      <span class="rail-eyebrow">${eyebrow}</span>
+                      <h2 class="rail-title">
+                        <span class="rail-icon-pill" style="--rail-color:${accent}">
+                          <i data-lucide="${icon}" aria-hidden="true"></i>
+                        </span>
+                        ${title}
+                        <span class="reco-row-count">${shown.length} yeni başlık</span>
+                      </h2>
+                    </div>
                   </div>
                   <div class="card-rail" id="${id}-cards">
                     ${shown.map((oge) => renderMediaCard(oge)).join('')}
@@ -804,13 +878,13 @@ export async function renderHomeView() {
             `;
           };
           slot.innerHTML = [
-            rail('rail-ml-films', 'clapperboard', 'Sana özel filmler', '#dfff76', rows.sanaOzelFilmler),
-            rail('rail-ml-series', 'tv-2', 'Sana özel diziler', '#34d399', rows.sanaOzelDiziler),
+            rail('rail-ml-films', 'clapperboard', 'Sana özel filmler', '#dfff76', rows.sanaOzelFilmler, 'ZEVK PROFİLİN'),
+            rail('rail-ml-series', 'tv-2', 'Sana özel diziler', '#34d399', rows.sanaOzelDiziler, 'ZEVK PROFİLİN'),
             gecmisGrupTam.length
-              ? rail('rail-reco-tamamladiklarindan', 'check-check', 'Bitirdiklerinden sonra', '#a78bfa', rows.tamamladiklarindanSonra)
+              ? rail('rail-reco-tamamladiklarindan', 'check-check', 'Bitirdiklerinden sonra', '#a78bfa', rows.tamamladiklarindanSonra, 'ZEVK PROFİLİN')
               : '',
             evrenselFavoriler.length
-              ? rail('rail-reco-favoriler', 'heart', 'Favorilerine yakın', '#f472b6', rows.favorilerineGore)
+              ? rail('rail-reco-favoriler', 'heart', 'Favorilerine yakın', '#f472b6', rows.favorilerineGore, 'ZEVK PROFİLİN')
               : ''
           ].join('');
           if (!slot.innerHTML) {
@@ -888,17 +962,17 @@ export async function renderHomeView() {
           const extra = document.createElement('div');
           extra.className = 'home-more-rails';
           extra.innerHTML = isKid ? `
-            ${renderInfiniteRail({ id: 'rail-kids-animation', icon: 'sparkles', title: 'Çocuk Animasyonları', accent: '#fb7185', items: kidsAnimationItems })}
-            ${renderInfiniteRail({ id: 'rail-kids-classics', icon: 'palette', title: 'Klasik Çizgi Diziler', accent: '#38bdf8', items: kidsClassicCartoonItems })}
-            ${renderInfiniteRail({ id: 'rail-kids-adventures', icon: 'compass', title: 'Aile ve Fantastik Filmler', accent: '#38bdf8', items: kidsAdventures })}
-            ${renderInfiniteRail({ id: 'rail-anime', icon: 'smile', title: 'Çocuk ve Genç Animeleri', accent: '#a855f7', items: animeItems })}
+            ${renderInfiniteRail({ id: 'rail-kids-animation', icon: 'sparkles', title: 'Çocuk Animasyonları', accent: '#fb7185', eyebrow: 'ÇOCUK MODU', items: kidsAnimationItems })}
+            ${renderInfiniteRail({ id: 'rail-kids-classics', icon: 'palette', title: 'Klasik Çizgi Diziler', accent: '#38bdf8', eyebrow: 'ÇOCUK MODU', items: kidsClassicCartoonItems })}
+            ${renderInfiniteRail({ id: 'rail-kids-adventures', icon: 'compass', title: 'Aile ve Fantastik Filmler', accent: '#38bdf8', eyebrow: 'ÇOCUK MODU', items: kidsAdventures })}
+            ${renderInfiniteRail({ id: 'rail-anime', icon: 'smile', title: 'Çocuk ve Genç Animeleri', accent: '#a855f7', eyebrow: 'ÇOCUK MODU', items: animeItems })}
           ` : `
-            ${renderInfiniteRail({ id: 'rail-adult-animation', icon: 'sparkles', title: 'Yetişkin Animasyon', accent: '#fb7185', items: adultAnimationItems })}
-            ${renderInfiniteRail({ id: 'rail-cartoon-series', icon: 'wand-2', title: 'Klasik Çizgi Diziler', accent: '#38bdf8', items: cartoonSeriesItems })}
-            ${renderInfiniteRail({ id: 'rail-top-movies', icon: 'award', title: 'En Yüksek Puanlı Filmler', accent: '#dfff76', items: topRatedMovies })}
-            ${renderInfiniteRail({ id: 'rail-top-tv', icon: 'star', title: 'En Yüksek Puanlı Diziler', accent: '#34d399', items: topRatedTV })}
-            ${renderInfiniteRail({ id: 'rail-anime', icon: 'sparkles', title: 'Popüler Anime', accent: '#ec4899', items: animeItems })}
-            ${renderInfiniteRail({ id: 'rail-documentary', icon: 'globe', title: 'Popüler Belgeseller', accent: '#38bdf8', items: docItems })}
+            ${renderInfiniteRail({ id: 'rail-adult-animation', icon: 'sparkles', title: 'Yetişkin Animasyon', accent: '#fb7185', eyebrow: 'SEÇKİ', items: adultAnimationItems })}
+            ${renderInfiniteRail({ id: 'rail-cartoon-series', icon: 'wand-2', title: 'Klasik Çizgi Diziler', accent: '#38bdf8', eyebrow: 'SEÇKİ', items: cartoonSeriesItems })}
+            ${renderInfiniteRail({ id: 'rail-top-movies', icon: 'award', title: 'En Yüksek Puanlı Filmler', accent: '#dfff76', eyebrow: 'SEÇKİ', items: topRatedMovies })}
+            ${renderInfiniteRail({ id: 'rail-top-tv', icon: 'star', title: 'En Yüksek Puanlı Diziler', accent: '#34d399', eyebrow: 'SEÇKİ', items: topRatedTV })}
+            ${renderInfiniteRail({ id: 'rail-anime', icon: 'sparkles', title: 'Popüler Anime', accent: '#ec4899', eyebrow: 'SEÇKİ', items: animeItems })}
+            ${renderInfiniteRail({ id: 'rail-documentary', icon: 'globe', title: 'Popüler Belgeseller', accent: '#38bdf8', eyebrow: 'SEÇKİ', items: docItems })}
           `;
           homeView.append(extra);
           renderIcons(extra);
@@ -961,12 +1035,15 @@ export async function renderHomeView() {
               <section class="rail-section">
                 <div class="container">
                   <div class="rail-header">
-                    <h2 class="rail-title">
-                      <span class="rail-icon-pill" style="--rail-color: var(--primary);">
-                        <i data-lucide="history" style="width:15px;height:15px;"></i>
-                      </span>
-                      İzlemeye Devam Et
-                    </h2>
+                    <div class="rail-heading-wrap">
+                      <span class="rail-eyebrow">PROFİLİN</span>
+                      <h2 class="rail-title">
+                        <span class="rail-icon-pill" style="--rail-color: var(--primary);">
+                          <i data-lucide="history" style="width:15px;height:15px;"></i>
+                        </span>
+                        İzlemeye Devam Et
+                      </h2>
+                    </div>
                   </div>
                   <div class="card-rail continue-rail" id="continue-watching-rail">
                     ${cards}
@@ -985,6 +1062,9 @@ export async function renderHomeView() {
           // Re-attach events on updated cards
           renderIcons(container);
           attachMediaCardEvents(container);
+          // Yeni eklenen devam şeridine de ray okları/kenar maskesi bağlanır
+          // (rail-nav guard'ı sayesinde mevcut raylara çift eklenmez).
+          attachRailScrolling(container);
           container.querySelectorAll('.btn-delete-history').forEach(btn => {
             btn.addEventListener('click', (e) => {
               e.stopPropagation();

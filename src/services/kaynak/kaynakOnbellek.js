@@ -61,8 +61,9 @@ export function onbellekYaz(anahtar, girisler, tamam = false) {
   for (const g of (Array.isArray(girisler) ? girisler : [])) {
     if (!g || !g.ham) continue;
     const k = String(g.kimlik || '');
-    if (k && birlesik.some(x => x.kimlik === k)) continue; // yığılma yasak
-    birlesik.push(g);
+    const mevcut = k ? birlesik.findIndex(x => x.kimlik === k) : -1;
+    if (mevcut !== -1) birlesik[mevcut] = { ...birlesik[mevcut], ...g };
+    else birlesik.push(g);
   }
   const kayit = {
     zaman: Date.now(),

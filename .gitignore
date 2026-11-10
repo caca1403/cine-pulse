@@ -33,6 +33,9 @@ androguard.db
 
 # Derleme urunleri / cihaz kabuklari — commit edilmez, release asset olarak yayinlanir.
 android/app/src/main/assets/public/
+# Dublaj arşivi kollektörünün ÜRETTİĞİ veri (tools/dublaj-arsiv-derle.mjs):
+# depo geçmişini/dağıtımı şişirmesin; depoya ASLA commit edilmez.
+public/dublaj-arsivi/
 *.apk
 *.aab
 *.deb

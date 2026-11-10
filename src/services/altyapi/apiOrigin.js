@@ -1,18 +1,35 @@
 const PUBLIC_API_ORIGIN = 'https://cinepulse.cinepulse.workers.dev';
 const MKV_RELAY_ORIGIN = (import.meta.env?.VITE_MKV_RELAY_ORIGIN || '').replace(/\/$/, '');
-// EXE (Electron): tum /api trafigi yerel sidecar'a gider — kullanicinin kendi IP'si
-// + Python cozuculer + gizli WebView cookie'leri burada devreye girer (403 avantaji).
-const DESKTOP_SIDECAR = 'http://127.0.0.1:4000';
-
 export function apiUrl(path = '') {
-  if (!path || /^https?:\/\//i.test(path)) return path;
-  if (typeof window === 'undefined') return `http://127.0.0.1:4000${path}`;
-  try {
-    if (window.CinePulseDesktop?.isDesktop === true) return `${DESKTOP_SIDECAR}${path}`;
-    if (typeof navigator !== 'undefined' && (navigator.userAgent || '').includes('CinePulseDesktop')) {
-      return `${DESKTOP_SIDECAR}${path}`;
+  if (typeof window === 'undefined') return `${PUBLIC_API_ORIGIN}${path}`;
+  const isDesktop = window.CinePulseDesktop?.isDesktop === true;
+  if (/^https?:\/\//i.test(path)) {
+    if (isDesktop) {
+      const config = window.CinePulseDesktop.getApiConfig?.();
+      if (!config?.origin || !config?.token) {
+        throw new Error('Masaüstü yerel medya ağ geçidi hazır değil');
+      }
+      const url = new URL(path);
+      if (url.origin === config.origin) url.searchParams.set('__cp_token', config.token);
+      return url.href;
     }
+    return path;
+  }
+  if (isDesktop) {
+    const config = window.CinePulseDesktop.getApiConfig?.();
+    if (!config?.origin || !config?.token) {
+      throw new Error('Masaüstü yerel medya ağ geçidi hazır değil');
+    }
+    if (!path) return config.origin;
+    const url = new URL(path, config.origin);
+    url.searchParams.set('__cp_token', config.token);
+    return url.href;
+  }
+  let desktopUserAgent = false;
+  try {
+    desktopUserAgent = typeof navigator !== 'undefined' && (navigator.userAgent || '').includes('CinePulseDesktop');
   } catch (_) {}
+  if (desktopUserAgent) throw new Error('Masaüstü API köprüsü başlatılamadı');
   if (isNativeCapacitor()) {
     const origin = window.CinePulseNative?.getApiOrigin?.();
     if (!origin) throw new Error('Android yerel API başlatılamadı');
@@ -27,6 +44,15 @@ export function apiUrl(path = '') {
     host.endsWith('github.io')
   );
   return isCapacitorOrStatic ? `${PUBLIC_API_ORIGIN}${path}` : path;
+}
+
+export function mediaPlaybackProxyUrl(streamUrl, referer, origin = '') {
+  const query = `url=${encodeURIComponent(streamUrl)}&ref=${encodeURIComponent(referer)}`;
+  if (typeof window !== 'undefined' && window.CinePulseDesktop?.isDesktop === true) {
+    const originQuery = origin ? `&origin=${encodeURIComponent(origin)}` : '';
+    return apiUrl(`/api/hls_proxy?${query}${originQuery}`);
+  }
+  return `/api/stream-proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(referer)}`;
 }
 
 export function mkvRelayUrl(path = '') {

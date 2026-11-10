@@ -1,3 +1,5 @@
+import { apiUrl } from '../altyapi/apiOrigin.js';
+
 /* ==========================================================================
    CinePulse Live TV - Electronic Program Guide (EPG) Engine
    Real-Time Turkish Broadcast Schedule Service
@@ -156,7 +158,7 @@ export async function fetchLiveEpg(force = false) {
     // tohum dosyasına düşülmeli.
     let liveSchedulesFromApi = null;
     try {
-      const res = await fetch('/api/epg');
+      const res = await fetch(apiUrl('/api/epg'));
       if (res && res.ok) {
         const data = await res.json().catch(() => null);
         if (data && data.channels && Object.keys(data.channels).length > 0) {

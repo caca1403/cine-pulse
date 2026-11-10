@@ -15,6 +15,15 @@ function bridge() {
   try { return window.CinePulseWebView || null; } catch (_) { return null; }
 }
 
+function desktopBridge() {
+  try {
+    const candidate = window.CinePulseDesktop;
+    return candidate?.isDesktop && typeof candidate.ghostResolve === 'function' ? candidate : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function isNative() {
   try {
     return Boolean(window.Capacitor?.isNativePlatform?.());
@@ -27,6 +36,7 @@ function isNative() {
 export function hasNativeWebViewResolver() {
   try {
     const b = bridge();
+    if (desktopBridge()) return true;
     return Boolean(isNative() && b && typeof b.resolvePage === 'function');
   } catch (_) {
     return false;
@@ -54,6 +64,29 @@ function installHandler() {
  * Cozumleyici yoksa veya basarisizsa null.
  */
 function dispatchPage(url, { timeoutMs = 22000, media = false, referer = '' } = {}) {
+  const desktop = desktopBridge();
+  if (desktop) {
+    return Promise.resolve().then(() => desktop.ghostResolve(url, {
+      timeout: Math.max(6000, Math.min(45000, timeoutMs | 0)),
+      waitAfterLoad: media ? 1000 : 1800,
+      referer: String(referer || '')
+    })).then((result) => {
+      if (!result?.ok || !result.html) {
+        if (result?.error) console.warn('[DesktopWebViewResolver] Resolution failed:', result.error);
+        return null;
+      }
+      return {
+        ...result,
+        html: result.html,
+        text: result.html,
+        finalUrl: result.url || url,
+        cookies: Array.isArray(result.cookies) ? result.cookies : []
+      };
+    }).catch((error) => {
+      console.warn('[DesktopWebViewResolver] Resolution failed:', error);
+      return null;
+    });
+  }
   return new Promise((resolve) => {
     const b = bridge();
     if (!b || typeof b.resolvePage !== 'function') { resolve(null); return; }

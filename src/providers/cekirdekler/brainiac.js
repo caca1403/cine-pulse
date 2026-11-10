@@ -34,7 +34,7 @@ const norm = (s) => sadeles(String(s || '')).replace(/[^a-z0-9 ]/g, ' ').replace
 const slugla = (s) => sadeles(String(s || '')).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 const ONBELLEK = new Map();
-const ONBELLEK_MS = 15 * 60 * 1000;
+const ONBELLEK_MS = 30 * 1000;
 
 export async function getStreams(kimlik, tur = 'tv', sezon = 1, bolum = 1) {
   // Bu çekirdek YALNIZ dizi verir (film kataloğu yok).

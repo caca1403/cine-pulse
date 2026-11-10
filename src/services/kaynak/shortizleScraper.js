@@ -1,27 +1,69 @@
 /**
  * Starfire — Kısa dizi alternatif kaynak scraper (kahraman hat)
  * Kullanıcı 2026-10-31: "drama dizilerimden sonra alternatif olarak bunu ekle"
- * URL deseni: /watch/{slug} → /watch/{slug}/{sezon}/{bölüm}
+ *
+ * CANLI ANALİZ (2026-10-31, node probe'ları ile doğrulanmış yapı):
+ *   - Watch: /watch/{slug}/{sezon}/{bolum}  (/watch/{slug} = 1/1)
+ *   - Sayfa, içine gömülü kaçışlı JSON taşır: externalSources{"dublaj":[...],"altyazi":[...]}
+ *     her kaynak: { "type":"hls", "url":"https://...m3u8" (doğrudan) VEYA
+ *     "resolve_url":"/media/...?expires&viewer&signature" (oturum çerezli çözümleme),
+ *     "subtitle_url":"/hk/{id}/s?expires&signature", "primary":bool }
+ *   - Doğrudan CDN URL'leri (b-cdn.net vb.) Referer: shortizle.com ile 200 verir.
+ *   - resolve_url uçları XSRF-TOKEN çerezi ile {type:'hls',url} JSON'u döner; çerezsiz 403.
+ *   - Bölüm bağlantıları: /watch/{slug}/{s}/{e} (tüm HTML'e dağılmış, <a> şart değil).
+ *   - Poster: kaçışlı JSON "thumbnailUrl":["https://.../storage/posters/....jpg"]
+ *   - Arama: /search?q= (kart bağlantıları /icerik/{slug})
+ *
+ * KURAL (kullanıcı 2026-10-31): arayüzde gerçek site adı asla görünmez — kaynak
+ * satırları 'Starfire' kahraman kod adıyla üretilir (sourceLabels: source
+ * 'Shortizle' → alias 'Starfire').
  */
+import { apiUrl } from '../altyapi/apiOrigin.js';
+
 const BASE_URL = 'https://shortizle.com';
 
-const PLAYER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const PLAYER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
-async function fetchSafe(path, opts = {}) {
-  const url = path.startsWith('http') ? path : `${BASE_URL}${path}`;
+/** Kaçışlı JSON-HTML metninde alan okuma regex'i ("key\":\"...\/...\" ve "key":"..."). */
+function escapedField(name) {
+  return new RegExp(`${name}\\\\*":\\\\*"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)\\\\*"`);
+}
+function unescapeJsonPiece(raw) {
+  try { return JSON.parse(`"${raw}"`); } catch (_) { return String(raw).replace(/\\\//g, '/'); }
+}
+
+/* Node/test ortamında oturum çerezlerini elle taşı (WebView'de tarayıcı
+   çerez kovası /api/proxy üzerinden aynı kökene bağlanır). */
+let oturumCerezi = '';
+
+async function fetchSafe(pathOrUrl, opts = {}) {
+  const url = pathOrUrl.startsWith('http') ? pathOrUrl : `${BASE_URL}${pathOrUrl.startsWith('/') ? '' : '/'}${pathOrUrl}`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), opts.timeout || 14000);
+  const headers = {
+    'User-Agent': PLAYER_UA,
+    'Accept': 'text/html,application/xhtml+xml,application/json,*/*',
+    'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+    ...(opts.headers || {})
+  };
+  if (oturumCerezi && !headers.Cookie) headers.Cookie = oturumCerezi;
   try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': PLAYER_UA,
-        'Accept': 'text/html,application/xhtml+xml,application/json,*/*',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
-        ...(opts.headers || {})
-      },
-      ...opts
-    });
+    const isDesktop = typeof window !== 'undefined' && window.CinePulseDesktop?.isDesktop === true;
+    const requestUrl = isDesktop
+      ? apiUrl(`/api/proxy?url=${encodeURIComponent(url)}&ref=${encodeURIComponent(headers.Referer || `${BASE_URL}/`)}`)
+      : url;
+    const res = await fetch(requestUrl, { signal: controller.signal, ...opts, headers });
+    // Set-Cookie'yi yakala (yalnız Node tarafında görünür; tarayıcıda şeffaf)
+    try {
+      const sc = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [];
+      for (const c of sc) {
+        const pair = String(c).split(';')[0];
+        if (pair.includes('=')) {
+          const k = pair.split('=')[0];
+          oturumCerezi = oturumCerezi ? oturumCerezi.split('; ').filter(p => p.split('=')[0] !== k).concat(pair).join('; ') : pair;
+        }
+      }
+    } catch (_) {}
     clearTimeout(timeout);
     return res.ok ? res : null;
   } catch (_) {
@@ -41,6 +83,13 @@ function cleanText(raw) {
     .trim();
 }
 
+function mutlaklastir(p) {
+  if (!p) return '';
+  if (/^https?:/i.test(p)) return p;
+  if (p.startsWith('//')) return 'https:' + p;
+  return `${BASE_URL}${p.startsWith('/') ? '' : '/'}${p}`;
+}
+
 /** Poster URL'ini temizle (Next.js /_next/image?url=... → orijinal) */
 export function cleanImageUrl(raw) {
   if (!raw) return '';
@@ -54,107 +103,166 @@ export function cleanImageUrl(raw) {
       }
     } catch (_) {}
   }
-  if (url.startsWith('//')) return 'https:' + url;
-  if (url.startsWith('/')) return `${BASE_URL}${url}`;
-  return url;
+  return mutlaklastir(url);
 }
 
 /* ── Arama ──────────────────────────────────────────────────────────────── */
 export async function searchShortizle(query, page = 1) {
   if (!query || query.trim().length < 2) return [];
   const q = encodeURIComponent(query.trim());
-  const path = page > 1 ? `/search?q=${q}&page=${page}` : `/search?q=${q}`;
-  const res = await fetchSafe(path);
+  const res = await fetchSafe(`/search?q=${q}${page > 1 ? `&page=${page}` : ''}`);
   if (!res) return [];
-
   const html = await res.text().catch(() => '');
   if (!html) return [];
 
   const results = [];
-  // Kart deseni: <a href="/watch/{slug}"> ... <img src="..."> ... <h3>başlık</h3>
-  const cardRegex = /<a[^>]+href="\/watch\/([a-zA-Z0-9_-]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  // Kart: <a href="/icerik/{slug}"> ... <img alt> ... başlık
+  const cardRegex = /<a[^>]+href=["'](?:https?:\/\/shortizle\.com)?\/icerik\/([a-zA-Z0-9_-]+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m;
   while ((m = cardRegex.exec(html)) !== null) {
     const slug = m[1];
     const inner = m[2];
-    const imgMatch = inner.match(/src="([^"]+)"/i);
-    const titleMatch = inner.match(/alt="([^"]+)"/i) || inner.match(/<h[2-6][^>]*>(.*?)<\/h[2-6]>/i);
-    const title = cleanText(titleMatch ? titleMatch[1] : slug);
-    const poster = imgMatch ? cleanImageUrl(imgMatch[1].replace(/&amp;/g, '&')) : '';
-    const isDubbed = title.toLowerCase().includes('dublaj');
-
+    const img = inner.match(/<img[^>]+(?:data-src|src)=["']([^"']+)["']/i);
+    const titleM = inner.match(/alt=["']([^"']+)["']/i) || inner.match(/<h[2-6][^>]*>([\s\S]*?)<\/h[2-6]>/i);
+    const title = cleanText(titleM ? titleM[1] : '') || slug;
+    const poster = img ? cleanImageUrl(img[1].replace(/&amp;/g, '&')) : '';
     if (!results.some(r => r.slug === slug)) {
-      results.push({ slug, title, poster, isDubbed, url: `${BASE_URL}/watch/${slug}` });
+      results.push({ slug, title, poster, isDubbed: /dublaj/i.test(title), url: `${BASE_URL}/icerik/${slug}` });
     }
   }
   return results;
 }
 
+/* ── Watch sayfası + kaynak ayrıştırma ──────────────────────────────────── */
+async function watchSayfaGetir(slug, season = 1, episode = 1) {
+  const res = await fetchSafe(`/watch/${encodeURIComponent(slug)}/${season}/${episode}`);
+  if (!res) return null;
+  const html = await res.text().catch(() => '');
+  return html || null;
+}
+
+/** externalSources bloklarından {dublaj:[], altyazi:[]} kaynak setini çıkarır. */
+function kaynaklariAyikla(html) {
+  const out = { dublaj: [], altyazi: [] };
+  const blokRe = /\\?"(dublaj|altyazi|altyazili|subtitles?)\\?":\s*\[([\s\S]*?)\]\s*(?=,|})/g;
+  let b;
+  while ((b = blokRe.exec(html)) !== null) {
+    const key = /dublaj/i.test(b[1]) ? 'dublaj' : 'altyazi';
+    const items = b[2].split(/\},\s*\{/);
+    for (const raw of items) {
+      const it = /^\{/.test(raw) ? raw : `{${raw}}`;
+      if (!/hls/i.test(it)) continue;
+      const urlM = it.match(escapedField('url'));
+      const resM = it.match(escapedField('resolve_url'));
+      const subM = it.match(escapedField('subtitle_url'));
+      const direct = urlM ? unescapeJsonPiece(urlM[1]) : '';
+      const resolvePath = resM ? unescapeJsonPiece(resM[1]) : '';
+      if (!/^https?:/.test(direct) && !resolvePath.startsWith('/')) continue;
+      out[key].push({
+        directUrl: /^https?:/.test(direct) ? direct : '',
+        resolvePath: resolvePath.startsWith('/') ? resolvePath : '',
+        subtitlePath: subM ? unescapeJsonPiece(subM[1]) : '',
+        primary: /primary\\*":\s*\\*?true/.test(it)
+      });
+    }
+  }
+  return out;
+}
+
+/* ── Stream Çıkarma ─────────────────────────────────────────────────────── */
+/**
+ * Starfire watch sayfasından oynatılabilir HLS bulur.
+ * 1) Doğrudan CDN URL'i → Referer: shortizle.com ile oynatılır.
+ * 2) resolve_url → oturum çerezli GET → {type:'hls', url}.
+ * Her aday #EXTM3U olarak CANLI doğrulanır — ölü adres oynatıcıya gitmez.
+ * @returns {{streamUrl:string,isHls:boolean,headers:object,subtitles:Array}|null}
+ */
+export async function fetchShortizleStream(slug, season = 1, episode = 1, opts = {}) {
+  const wantDub = opts.isDub !== false;   // varsayılan: dublaj hattı
+  const html = await watchSayfaGetir(slug, season, episode);
+  if (!html) return null;
+
+  const set = kaynaklariAyikla(html);
+  const havuz = [...(wantDub ? set.dublaj : set.altyazi), ...(wantDub ? set.altyazi : set.dublaj)];
+  // primary önce, sonra doğrudan URL'liler önce
+  havuz.sort((a, b) => (b.directUrl ? 1 : 0) - (a.directUrl ? 1 : 0) || (b.primary ? 1 : 0) - (a.primary ? 1 : 0));
+
+  for (const src of havuz) {
+    let streamUrl = '';
+    if (src.directUrl) {
+      streamUrl = src.directUrl;
+    } else if (src.resolvePath) {
+      const res = await fetchSafe(mutlaklastir(src.resolvePath), { headers: { Referer: `${BASE_URL}/` } });
+      if (!res) continue;
+      const data = await res.json().catch(() => null);
+      const u = data?.url || '';
+      if (!/^https?:/.test(u)) continue;   // gateway_bootstrap akışı bilinçli olarak denemez
+      streamUrl = u;
+    }
+    if (!streamUrl) continue;
+
+    // Kanıt ilkesi: manifest gerçekten #EXTM3U dönmüyorsa bu hat satır olmaz
+    const check = await fetchSafe(streamUrl, { headers: { Referer: `${BASE_URL}/`, Origin: BASE_URL } });
+    if (!check) continue;
+    const body = await check.text().catch(() => '');
+    if (!/#EXTM3U/.test(body.slice(0, 64))) continue;
+
+    // Altyazı ucu yalnız GERÇEK WebVTT dönerse listelenir (ölü altyazı yok)
+    const subtitles = [];
+    if (src.subtitlePath) {
+      const subRes = await fetchSafe(mutlaklastir(src.subtitlePath), { headers: { Referer: `${BASE_URL}/` } });
+      if (subRes) {
+        const subBody = await subRes.text().catch(() => '');
+        const ct = subRes.headers.get('content-type') || '';
+        if (/WEBVTT/i.test(subBody.slice(0, 32)) || /text\/vtt/i.test(ct)) {
+          const u = mutlaklastir(src.subtitlePath);
+          subtitles.push({ url: u, src: u, label: 'Türkçe', language: 'tr', headers: { Referer: `${BASE_URL}/`, 'User-Agent': PLAYER_UA } });
+        }
+      }
+    }
+
+    return {
+      streamUrl,
+      isHls: true,
+      headers: { Referer: `${BASE_URL}/`, Origin: BASE_URL, 'User-Agent': PLAYER_UA },
+      subtitles
+    };
+  }
+  return null;
+}
+
 /* ── Detay + Bölüm Listesi ──────────────────────────────────────────────── */
 export async function fetchShortizleDetails(slug) {
   if (!slug) return null;
-
-  const res = await fetchSafe(`/watch/${slug}`);
-  if (!res) return null;
-
-  const html = await res.text().catch(() => '');
+  const html = await watchSayfaGetir(slug, 1, 1);
   if (!html) return null;
 
-  // Başlık
-  const titleMatch = html.match(/<h1[^>]*>(.*?)<\/h1>/i);
-  const title = cleanText(titleMatch ? titleMatch[1] : slug);
+  const titleMatch = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  let title = cleanText(titleMatch ? titleMatch[1] : '') || slug;
+  title = title.replace(/\s*\d+\s*\.?\s*(?:bölüm|sezon)\b[\s\S]*$/i, '').trim() || title;
 
-  // Açıklama: meta og:description veya en uzun <p>
+  // Poster: kaçışlı JSON thumbnailUrl ya da og:image
+  let poster = '';
+  const posterM = html.match(escapedField('thumbnailUrl')) ||
+                  html.match(/<meta\s+(?:property="og:image"|name="twitter:image")\s+content="([^"]+)"/i);
+  if (posterM) poster = cleanImageUrl(unescapeJsonPiece(posterM[1]).split(',')[0].trim());
+
+  // Açıklama: meta og:description (sitede gerçek özet meta'da taşıyor)
   let description = '';
-  const metaDesc = html.match(/<meta\s+(?:property="og:description"|name="description")\s+content="([^"]+)"/i) ||
-                   html.match(/<meta\s+content="([^"]+)"\s+(?:property="og:description"|name="description")/i);
+  const metaDesc = html.match(/<meta\s+(?:property=["']og:description["']|name=["']description["'])\s+content=["']([^"']+)["']/i);
   if (metaDesc) description = cleanText(metaDesc[1]);
 
-  if (!description || description.length < 25) {
-    const pMatches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
-    const candidates = pMatches
-      .map(m2 => cleanText(m2[1]))
-      .filter(t => t.length >= 30 && !/çerez|cookie|reklam|tüm hakları|bildirim|yapay zeka|bize bildirin/i.test(t));
-    if (candidates.length) {
-      candidates.sort((a, b) => b.length - a.length);
-      description = candidates[0];
-    }
-  }
-
-  // Poster
-  const posterMatch = html.match(/<meta\s+(?:property="og:image"|name="twitter:image")\s+content="([^"]+)"/i) ||
-                      html.match(/<img[^>]+(?:class="[^"]*poster[^"]*"|alt="[^"]*")[^>]+src="([^"]+)"/i);
-  const poster = posterMatch ? cleanImageUrl(posterMatch[1]) : '';
-
-  // Bölümler: /watch/{slug}/{s}/{e} linkleri veya "Bölüm 1/45" sayaçları
+  // Bölümler: /watch/{slug}/{s}/{e} desenleri tüm HTML'de (JSON içi dahil)
   const episodes = [];
-  const epRegex = /<a[^>]+href="\/watch\/([a-zA-Z0-9_-]+)\/(\d+)\/(\d+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  const epRe = /\/watch\/[a-zA-Z0-9_-]+\/(\d+)\/(\d+)/g;
   let em;
-  while ((em = epRegex.exec(html)) !== null) {
-    const s = parseInt(em[2], 10) || 1;
-    const e = parseInt(em[3], 10) || 1;
-    const inner = em[4];
-    const numMatch = inner.match(/(\d+)/);
-    const epNum = numMatch ? parseInt(numMatch[1], 10) : e;
-    const epTitle = `Bölüm ${epNum}`;
-    const thumbMatch = inner.match(/src="([^"]+)"/i);
-    const thumb = thumbMatch ? cleanImageUrl(thumbMatch[1]) : '';
-    if (!episodes.some(ep => ep.season === s && ep.episode === epNum)) {
-      episodes.push({ season: s, episode: epNum, title: epTitle, thumb });
+  while ((em = epRe.exec(html)) !== null) {
+    const s = parseInt(em[1], 10) || 1;
+    const e = parseInt(em[2], 10) || 1;
+    if (!episodes.some(ep => ep.season === s && ep.episode === e)) {
+      episodes.push({ season: s, episode: e, title: `Bölüm ${e}`, thumb: '' });
     }
   }
-
-  // "Bölüm 1/45" gibi sayaç → toplam bölüm sayısı
-  if (episodes.length === 0) {
-    const counterMatch = html.match(/Bölüm\s*(\d+)\s*\/\s*(\d+)/i);
-    const total = counterMatch ? parseInt(counterMatch[2], 10) : 0;
-    if (total > 0) {
-      for (let i = 1; i <= total; i++) {
-        episodes.push({ season: 1, episode: i, title: `Bölüm ${i}`, thumb: '' });
-      }
-    }
-  }
-
   episodes.sort((a, b) => (a.season - b.season) || (a.episode - b.episode));
 
   return {
@@ -162,91 +270,8 @@ export async function fetchShortizleDetails(slug) {
     title,
     poster,
     description,
-    isDubbed: title.toLowerCase().includes('dublaj'),
+    isDubbed: /dublaj/i.test(title),
     totalEpisodes: episodes.length,
     episodes
   };
-}
-
-/* ── Stream Çıkarma ─────────────────────────────────────────────────────── */
-/**
- * Shortizle watch sayfasından HLS/MP4 stream URL'ini çıkarır.
- * Sayfa embed player yükler; stream URL'i ya HTML içinde ya da
- * /api/... endpoint'inde bulunur.
- */
-export async function fetchShortizleStream(slug, season = 1, episode = 1) {
-  const watchPath = `/watch/${slug}/${season}/${episode}`;
-  const res = await fetchSafe(watchPath);
-  if (!res) return null;
-
-  const html = await res.text().catch(() => '');
-  if (!html) return null;
-
-  // 1) Doğrudan m3u8/mp4 URL ara
-  const directMedia = html.match(/https?:\/\/[^"'\s\\]+\.(?:m3u8|mp4)[^"'\s\\]*/i);
-  if (directMedia) {
-    return {
-      streamUrl: directMedia[0],
-      isHls: directMedia[0].includes('.m3u8') || directMedia[0].includes('mpegurl')
-    };
-  }
-
-  // 2) data-src veya source src içinde video URL
-  const sourceMatch = html.match(/(?:data-src|<source[^>]+src)=["']([^"']+\.(?:m3u8|mp4)[^"']*)["']/i);
-  if (sourceMatch) {
-    let url = sourceMatch[1].replace(/&amp;/g, '&');
-    if (url.startsWith('/')) url = `${BASE_URL}${url}`;
-    return {
-      streamUrl: url,
-      isHls: url.includes('.m3u8') || url.includes('mpegurl')
-    };
-  }
-
-  // 3) iframe embed → embed sayfasından çıkar
-  const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
-  if (iframeMatch) {
-    let embedUrl = iframeMatch[1].replace(/&amp;/g, '&');
-    if (embedUrl.startsWith('/')) embedUrl = `${BASE_URL}${embedUrl}`;
-    const embedRes = await fetchSafe(embedUrl, {
-      headers: { 'Referer': `${BASE_URL}${watchPath}` }
-    });
-    if (embedRes) {
-      const embedHtml = await embedRes.text().catch(() => '');
-      const mediaUrl = embedHtml.match(/https?:\/\/[^"'\s\\]+\.(?:m3u8|mp4)[^"'\s\\]*/i);
-      if (mediaUrl) {
-        return {
-          streamUrl: mediaUrl[0],
-          isHls: mediaUrl[0].includes('.m3u8') || mediaUrl[0].includes('mpegurl')
-        };
-      }
-      const srcMatch = embedHtml.match(/(?:source|file|src)\s*[:=]\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']/i);
-      if (srcMatch) {
-        let url = srcMatch[1].replace(/&amp;/g, '&');
-        if (url.startsWith('/')) url = `${BASE_URL}${url}`;
-        return { streamUrl: url, isHls: url.includes('.m3u8') };
-      }
-    }
-  }
-
-  // 4) API endpoint ara (window.__NEXT_DATA__ veya fetch URL'leri)
-  const apiMatch = html.match(/["']\/api\/(?:playback|stream|video|source)[^"']*["']/i);
-  if (apiMatch) {
-    let apiUrl = apiMatch[0].replace(/["']/g, '');
-    if (apiUrl.startsWith('/')) apiUrl = `${BASE_URL}${apiUrl}`;
-    const apiRes = await fetchSafe(apiUrl, {
-      headers: { 'Referer': `${BASE_URL}${watchPath}` }
-    });
-    if (apiRes) {
-      const data = await apiRes.json().catch(() => null);
-      if (data && (data.url || data.streamUrl || data.src)) {
-        const url = data.url || data.streamUrl || data.src;
-        return {
-          streamUrl: url.startsWith('/') ? `${BASE_URL}${url}` : url,
-          isHls: data.kind === 'hls' || String(url).includes('.m3u8')
-        };
-      }
-    }
-  }
-
-  return null;
 }

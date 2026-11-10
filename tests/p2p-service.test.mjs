@@ -91,12 +91,36 @@ test('magnet önceliklidir: metin içinde btih aranır', () => {
 
 // ---------- URL üreticileri ----------
 
-test('check URL :4000 sidecarına gider (node: pencere yok)', () => {
-  assert.equal(buildCheckUrl(HEX), `http://127.0.0.1:4000/torrent-check/${HEX}`);
+function withDesktopGateway(callback) {
+  const previousWindow = globalThis.window;
+  globalThis.window = {
+    CinePulseDesktop: {
+      isDesktop: true,
+      getApiConfig: () => ({ origin: 'http://127.0.0.1:49123', token: 'test-token' })
+    }
+  };
+  try { callback(); } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+}
+
+test('check URL per-process desktop gateway port and token kullanır', () => {
+  withDesktopGateway(() => {
+    const url = new URL(buildCheckUrl(HEX));
+    assert.equal(url.origin, 'http://127.0.0.1:49123');
+    assert.equal(url.pathname, `/torrent-check/${HEX}`);
+    assert.equal(url.searchParams.get('__cp_token'), 'test-token');
+  });
 });
 
-test('play URL :4000 sidecarına gider', () => {
-  assert.equal(buildPlayUrl(HEX), `http://127.0.0.1:4000/torrent/${HEX}`);
+test('play URL per-process desktop gateway port and token kullanır', () => {
+  withDesktopGateway(() => {
+    const url = new URL(buildPlayUrl(HEX));
+    assert.equal(url.origin, 'http://127.0.0.1:49123');
+    assert.equal(url.pathname, `/torrent/${HEX}`);
+    assert.equal(url.searchParams.get('__cp_token'), 'test-token');
+  });
 });
 
 // ---------- durum sınıflandırma ----------

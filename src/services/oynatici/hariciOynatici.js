@@ -36,7 +36,7 @@ export function streamUrlCoz(stream) {
 }
 
 /** Harici oynatıcıda açar. Başarı → true. */
-export async function hariciOynaticidaAc(stream, { baslangicSn = 0 } = {}) {
+export async function hariciOynaticidaAc(stream, { baslangicSn = 0, tamEkran = false } = {}) {
   const url = streamUrlCoz(stream);
   if (!url || !/^https?:\/\//i.test(url)) return false;
   const headers = stream?.headers || {};
@@ -48,8 +48,10 @@ export async function hariciOynaticidaAc(stream, { baslangicSn = 0 } = {}) {
     if (window.CinePulseDesktop?.openExternalPlayer) {
       const r = await window.CinePulseDesktop.openExternalPlayer(url, {
         baslangicSn: Math.max(0, Number(baslangicSn) || 0),
+        tamEkran: tamEkran === true,
         referer: String(headers.Referer || headers.referer || ''),
-        ua: String(headers['User-Agent'] || headers['user-agent'] || '')
+        ua: String(headers['User-Agent'] || headers['user-agent'] || ''),
+        headers
       });
       return Boolean(r && r.ok);
     }

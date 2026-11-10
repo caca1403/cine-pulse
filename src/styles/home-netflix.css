@@ -1,0 +1,271 @@
+/* ==========================================================================
+   CinePulse — Ana Sayfa "premium streaming sıcaklığı" katmanı.
+   Yükleme sırası: main.css → motion.css → home-polish.css → BU dosya
+   (HomeView.js, home-polish.css'ten hemen sonra import eder → cascade'de
+   aynı specificity'te buradaki değerler geçerli kalır).
+
+   İlkeler:
+   · Renk/token main.css :root'tan gelir (--primary lime tek vurgu rengi;
+     yeni renk icat edilmez).
+   · Mevcut sınıf adları korunur; hiçbir kural silinmez.
+   · !important KULLANILMAZ. main.css'teki kasıtlı !important'lı masaüstü
+     kart performans kurallarıyla çakışan bildirimler yerine pseudo-element
+     ve daha spesifik seçicilerle cilalanır.
+   · Tüm hareketler 150-300ms ease-out ailesinden; dosya sonundaki
+     prefers-reduced-motion bloğu bu katmanı tamamen kapatır.
+   ========================================================================== */
+
+/* ── 1. HERO — büyük afiş, koyu alt degrade, belirgin tip ölçeği ─────────── */
+
+/* Netflix vitrin ölçeği: 4K'dan telefona clamp ile akar, başlık "olay" olur. */
+.home-view .hero-title {
+  font-size: clamp(2.6rem, 5.6vw, 4.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.04;
+  text-wrap: balance;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.85), 0 0 48px rgba(0, 0, 0, 0.55);
+}
+
+/* Afiş metni: 62ch sütunda, bir tık daha sıcak gri — degrade üstünde okunur. */
+.home-view .hero-overview {
+  max-width: 62ch;
+  color: #dbe2ea;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.8);
+}
+
+/* Badge'ler: yarı saydam koyu pill — afiş üstünde okunur, vurgu rengini
+   CTA'ya bırakır (tek vurgu rengi ilkesi). */
+.home-view .hero-badge-row .badge,
+.home-view .hero-badge-row .badge-rating,
+.home-view .hero-badge-row .badge-type {
+  background: rgba(8, 10, 15, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #e9e9e9;
+}
+
+/* CTA: tek vurgu rengi (marka lime'u) yalnızca ana oynat düğmesinde. */
+.home-view .hero-actions .btn-primary {
+  background: var(--primary, #dfff76);
+  color: #101216;
+  font-weight: 800;
+  padding: 0.9rem 2.1rem;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+  transition: transform 200ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+              background-color 200ms ease-out,
+              filter 200ms ease-out,
+              box-shadow 200ms ease-out;
+}
+
+.home-view .hero-actions .btn-primary:hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+.home-view .hero-actions .btn-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Hero → raylar arası yumuşak zemin geçişi: alt kenarda siyaha nefes.
+   (main.css'in scrimsine ek katman; yazı z-3 ile üstte kalır.) */
+.home-view .hero-slider::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 160px;
+  background: linear-gradient(0deg, var(--bg-dark, #000000) 0%, rgba(0, 0, 0, 0) 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ── 2. RAY BAŞLIKLARI — küçük eyebrow + kalın başlık hiyerarşisi ────────── */
+
+/* Eyebrow, rail-title'ın lime çubuğuyla aynı dikey hizada başlar
+   (3px çubuk + 0.6rem başlık gap'i ≈ 0.75rem sol iç kenar). */
+.home-view .rail-heading-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.home-view .rail-eyebrow {
+  padding-left: 0.75rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--primary, #dfff76);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.home-view .rail-title {
+  font-size: 1.34rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-main, #f5f5f5);
+}
+
+/* Kişisel öneri satırında sayım, başlıkla aynı satırda — sağdaki ok
+   grubuna yer bırakır. */
+.home-view .rail-title .reco-row-count {
+  margin-left: 0.35rem;
+  align-self: center;
+}
+
+/* ── 3. RAY OKLARI — görünür, dokunmatik hedefi ≥ 40px ───────────────────── */
+
+.home-view .rail-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.home-view .rail-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: var(--radius-full, 9999px);
+  background: rgba(18, 20, 27, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-main, #f5f5f5);
+  cursor: pointer;
+  opacity: 0.92;
+  transition: background-color 200ms ease-out,
+              border-color 200ms ease-out,
+              color 200ms ease-out,
+              opacity 200ms ease-out,
+              transform 200ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.home-view .rail-nav-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.home-view .rail-nav-btn:hover {
+  background: rgba(223, 255, 118, 0.14);
+  border-color: rgba(223, 255, 118, 0.42);
+  color: var(--primary, #dfff76);
+  opacity: 1;
+}
+
+.home-view .rail-nav-btn:active {
+  transform: scale(0.92);
+}
+
+.home-view .rail-nav-btn:disabled {
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.home-view .rail-nav-btn:focus-visible {
+  outline: 2px solid var(--primary, #dfff76);
+  outline-offset: 2px;
+}
+
+/* ── 4. KART — hover seçim halkası (pseudo'ya yazılır: main.css'in
+   !important'lı poster gölge/transform kurallarıyla çakışmaz) ─────────────── */
+
+.home-view .card-rail .media-card .card-poster-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px rgba(223, 255, 118, 0);
+  pointer-events: none;
+  transition: box-shadow 220ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.home-view .card-rail > .media-card:hover .card-poster-wrapper::after,
+.home-view .card-rail > .continue-card-wrapper:hover .card-poster-wrapper::after,
+.home-view .card-rail > .media-card:focus-visible .card-poster-wrapper::after {
+  box-shadow: inset 0 0 0 2px rgba(223, 255, 118, 0.32);
+}
+
+/* ── 5. YÜKLEME — kart iskeletinde canlılık nefesi.
+   Nabız opacity üzerinden çalışır (GPU dostu; APK'da pahalı olan
+   background-position shimmer bilinçli olarak kullanılmaz). Kart afişi
+   gelince cp-anim-in devralır, keçe gibi değil "yüklüyor" hissi kalır. */
+
+@keyframes home-skeleton-nefes {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.7; }
+}
+
+.home-view .card-poster-img.cp-skeleton {
+  animation: home-skeleton-nefes 1.5s ease-in-out infinite;
+}
+
+/* ── 6. MOBİL (375-768px) — tip ölçeği küçülür, ray taşmaz ───────────────── */
+
+/* Tema (navigation.css) hero'yu ≤860px'te 270px yüksekliğe sıkıştırır;
+   alt degrade o ölçekte orana uyar — afişi karartmadan metni okunur kılar. */
+@media (max-width: 860px) {
+  .home-view .hero-slider::after {
+    height: 92px;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-view .hero-title {
+    font-size: clamp(1.7rem, 7.5vw, 2.3rem);
+    letter-spacing: -0.01em;
+  }
+  .home-view .hero-overview {
+    font-size: 0.9rem;
+    max-width: 100%;
+  }
+  .home-view .rail-title {
+    font-size: 1.14rem;
+  }
+  .home-view .rail-eyebrow {
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
+    padding-left: 0.7rem;
+  }
+  .home-view .rail-heading-wrap {
+    gap: 0.15rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-view .rail-nav {
+    gap: 0.3rem;
+  }
+  .home-view .rail-nav-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .home-view .rail-nav-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* ── 7. HAREKET HASSASİYETİ — bu katmanın tüm canlılığı kapanır ──────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .home-view .card-poster-img.cp-skeleton {
+    animation: none;
+  }
+  .home-view .card-rail .media-card .card-poster-wrapper::after,
+  .home-view .rail-nav-btn,
+  .home-view .hero-actions .btn-primary {
+    transition: none;
+  }
+  .home-view .rail-nav-btn:active,
+  .home-view .hero-actions .btn-primary:hover,
+  .home-view .hero-actions .btn-primary:active {
+    transform: none;
+  }
+}

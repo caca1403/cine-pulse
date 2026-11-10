@@ -6,6 +6,43 @@ test('masaustu/webde cozumleyici yok sayilir', () => {
   assert.equal(hasNativeWebViewResolver(), false);
 });
 
+test('Electron gizli Chromium resolver provider köprüsüne bağlanır ve oturum çerezlerini döndürür', async () => {
+  const previousWindow = globalThis.window;
+  const calls = [];
+  globalThis.window = {
+    CinePulseDesktop: {
+      isDesktop: true,
+      ghostResolve: async (url, options) => {
+        calls.push({ url, options });
+        return {
+          ok: true,
+          url: 'https://provider.example/episode',
+          html: `<html>${'resolved'.repeat(200)}</html>`,
+          cookies: [{ name: 'cf_clearance', value: 'session-value', domain: '.provider.example' }]
+        };
+      }
+    }
+  };
+  try {
+    assert.equal(hasNativeWebViewResolver(), true);
+    const result = await resolvePageInNativeWebView('https://provider.example/episode', {
+      timeoutMs: 8000,
+      media: true,
+      referer: 'https://provider.example/'
+    });
+    assert.equal(result.finalUrl, 'https://provider.example/episode');
+    assert.equal(result.text, result.html);
+    assert.equal(result.cookies[0].name, 'cf_clearance');
+    assert.deepEqual(calls[0], {
+      url: 'https://provider.example/episode',
+      options: { timeout: 8000, waitAfterLoad: 1000, referer: 'https://provider.example/' }
+    });
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
 test('kokpru yoksa null doner (APK disi ortam sessizce gecer)', async () => {
   const result = await resolvePageInNativeWebView('https://example.com/');
   assert.equal(result, null);

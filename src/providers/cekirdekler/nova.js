@@ -277,7 +277,7 @@ async function embedCoz(embedUrl, ref) {
 /* ── ana giriş ───────────────────────────────────────────────────────────── */
 
 const ONBELLEK = new Map();
-const ONBELLEK_MS = 15 * 60 * 1000;
+const ONBELLEK_MS = 30 * 1000;
 
 export async function getStreams(kimlik, tur = 'tv', sezon = 1, bolum = 1) {
   const kim = (kimlik && typeof kimlik === 'object') ? (kimlik.tmdbId || kimlik.id || kimlik.imdbId || '') : kimlik;

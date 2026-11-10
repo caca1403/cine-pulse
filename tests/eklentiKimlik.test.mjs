@@ -27,18 +27,17 @@ test('önbayarak senaryosu: cache-tohum + dönen URL\'li tarama satırı YIĞILM
   _onbellekBosalt();
   const anahtar = 'movie:1:s1e1';
   const tohum = { streamUrl: 'https://cdn.example/master.m3u8?tok=ESKI', source: 'Wio', baslik: 'Wio • HDF • 1080p' };
-  onbellekYaz(anahtar, [{ ham: tohum, tip: 'eklenti', kimlik: satirKimligi(tohum), ekKaynak: '', kategori: '' }], false);
-  // KaynakListesi'nin satırEkle mantığının çekirdeği: aynı kimlik → ikinci satır yok.
-  const satirlar = [{ adres: satirKimligi(tohum) }];
+  const kimlik = satirKimligi(tohum);
+  onbellekYaz(anahtar, [{ ham: tohum, tip: 'eklenti', kimlik, ekKaynak: '', kategori: '' }], false);
   const yeniTarama = { streamUrl: 'https://cdn.example/master.m3u8?tok=YENI', source: 'Wio', baslik: 'Wio • HDF • 1080p' };
-  const adres = satirKimligi(yeniTarama);
-  if (!satirlar.some(x => x.adres === adres)) satirlar.push({ adres });
-  assert.equal(satirlar.length, 1, 'dönen imza ikinci satır üretemez');
+  onbellekYaz(anahtar, [{ ham: yeniTarama, tip: 'eklenti', kimlik, ekKaynak: '', kategori: '' }], false);
+  const girisler = onbellekten(anahtar).girisler;
+  assert.equal(girisler.length, 1, 'dönen imza ikinci satır üretemez');
+  assert.equal(girisler[0].ham.streamUrl, yeniTarama.streamUrl, 'önbellekte eski imzalı URL yerine taze adres tutulmalı');
   // Gerçekten yeni adres → büyür (monoton kural bozulmaz).
   const baska = { streamUrl: 'https://cdn2.example/x.mp4?tok=1', source: 'Wio', baslik: 'Wio • Diger' };
-  const a2 = satirKimligi(baska);
-  if (!satirlar.some(x => x.adres === a2)) satirlar.push({ adres: a2 });
-  assert.equal(satirlar.length, 2, 'gerçek yeni satır yine eklenir');
+  onbellekYaz(anahtar, [{ ham: baska, tip: 'eklenti', kimlik: satirKimligi(baska), ekKaynak: '', kategori: '' }], false);
+  assert.equal(onbellekten(anahtar).girisler.length, 2, 'gerçek yeni satır yine eklenir');
   _onbellekBosalt();
 });
 

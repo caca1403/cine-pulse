@@ -223,6 +223,42 @@
   }
 }
 
+html.desktop-app #player-modal .player-cinema-bar {
+  padding: 1.15rem 2rem 2.4rem !important;
+}
+
+html.desktop-app #player-modal .custom-player-controls {
+  gap: 0.65rem;
+  padding: 2rem 2rem 1.3rem;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.96), rgba(0, 0, 0, 0.66) 58%, transparent);
+}
+
+html.desktop-app #player-modal .custom-timeline-container {
+  height: 28px;
+}
+
+html.desktop-app #player-modal .custom-controls-row {
+  min-height: 48px;
+  align-items: center;
+}
+
+html.desktop-app #player-modal .compact-transport-btn,
+html.desktop-app #player-modal .pill-bar-btn,
+html.desktop-app #player-modal .btn-player-close {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+@media (max-width: 900px) {
+  html.desktop-app #player-modal .player-cinema-bar {
+    padding: 0.9rem 1.1rem 2rem !important;
+  }
+
+  html.desktop-app #player-modal .custom-player-controls {
+    padding: 1.5rem 1.1rem 0.8rem;
+  }
+}
+
 /* ── Sahne katmanı ─────────────────────────────────────────────────────── */
 .native-sahne {
   position: absolute;

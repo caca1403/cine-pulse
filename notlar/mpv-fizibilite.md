@@ -4,17 +4,35 @@
 > big-pickle sonra tamamlandı ve bulguları DOĞRULANARAK bu belgeye birleştirildi
 > (2026-10-15). Tüm bulgular depo grep'ine veya açık kaynak belgesine dayanır.
 
+## Güncel karşılaştırma (2026-10-31)
+
+Stremio'nun Qt masaüstü kabuğu `QQuickFramebufferObject` içinde `mpv_create()`
+ile libmpv oturumu kuruyor ve `mpv_render_context_render()` ile kareleri
+uygulamanın kendi video yüzeyine çiziyor (`Stremio/stremio-shell:mpv.cpp`).
+Bu, tarayıcı `<video>` oynatıcısı veya yalnızca `mpv` süreci başlatıp uygulama
+içinde durum kartı göstermek değildir.
+
+CinePulse APK'sı Media3/ExoPlayer'ı Java köprüsü üzerinden kullanır. Electron
+sürümü ise Chromium + hls.js kullanmaktadır; `openExternalPlayer` sadece
+kullanıcının açık tercihiyle ayrı MPV/VLC penceresi açar ve gömülü render
+yüzeyinin yerini tutmaz. Süreç başlatılması ilk kare/oynatma başarısı sayılmaz.
+
+Dolayısıyla APK/Stremio benzeri masaüstü deneyimi için gereken iş, video alanına
+gerçek native render yüzeyi ve oynatma durumu/komut köprüsü eklemektir. Bunu
+gerçekleştirmeden otomatik MPV devri veya başarı kartı varsayılan yapılmamalıdır.
+
 ## 1. Bugünkü gerçeklik (dosya:kanıt)
 
-- **Electron zaten çocuk süreç doğuruyor**: `electron/main.cjs:232` (:4000 sidecar'ı
-  `process.execPath` ile spawn), `runBin` yardımcıları, terminal spawn desenleri
+- **Electron zaten çocuk süreç doğuruyor**: `electron/main.cjs` uygulama-içi medya
+  ağ geçidini `process.execPath` ile rastgele loopback portunda spawn ediyor,
+  `runBin` yardımcıları, terminal spawn desenleri
   (`main.cjs:901`). mpv spawn bu kasada **yeni beceri değil, yeni satır**.
 - **MKV bugün ölü değil**: `server/mediaServer.js:1803` `/api/mkv_stream` ffmpeg ile
   `-c copy` remux yapıyor → MKV içinde H.264/AAC varsa masaüstü+web bugün çalar.
   Kalan acı: **HEVC/DV video, DTS/Atmos ses, ASS altyazı stilleri** — tarayıcı
   kodek tavanı remux ile aşılamaz; Nuvio'nun 1 numaralı farkı tam burası.
-- **P2P motoru** (:4000 WebTorrent + Range/206) F1 ile üretime bağlandı; mpv aynı
-  `:4000/torrent/<hash>` URL'ini source'suz yutar — P2P×mpv bedava birleşim.
+- **P2P motoru** (WebTorrent + Range/206) F1 ile üretime bağlandı; mpv uygulama
+  içi geçidin `/torrent/<hash>` URL'ini source'suz yutar — P2P×mpv bedava birleşim.
 - **ÖLÜ SÖZ (doğrulandı 2026-10-15)**: `SetupWizardModal.js:523-530` kullanıcıya
   "Harici Oynatıcı: MPV, VLC" seçtiriyor ama `opt_player_mode` HİÇBİR YERDE
   okunmuyor/kaydedilmiyor — tek göründüğü dosya wizard'ın kendisi. Dürüstlük

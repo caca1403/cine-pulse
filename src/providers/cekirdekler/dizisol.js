@@ -100,8 +100,19 @@ const SAGLAYICI_ETIKET = {
 };
 
 const ONBELLEK = new Map();
-const ONBELLEK_MS = 15 * 60 * 1000;
+const ONBELLEK_MS = 30 * 1000;
 const UCAN = new Map();
+
+function akisUrliniCoz(deger) {
+  const ham = String(deger || '').trim();
+  if (!/^https?:\/\//i.test(ham) && !ham.startsWith('/')) return '';
+  try {
+    const url = new URL(ham, SITE);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '';
+  } catch (_) {
+    return '';
+  }
+}
 
 export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
   const kim = (kimlik && typeof kimlik === 'object')
@@ -130,12 +141,14 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
 
     // Kaynak listesi: tekil m3u8Url + sources[] birleşir, önceliğe göre sıralanır
     const adaylar = [];
-    if (kayit.m3u8Url && String(kayit.m3u8Url).startsWith('http')) {
-      adaylar.push({ provider: 'ana', m3u8Url: kayit.m3u8Url, priority: 0, subtitleTr: kayit.subtitleTr });
+    const anaAkisUrl = akisUrliniCoz(kayit.m3u8Url);
+    if (anaAkisUrl) {
+      adaylar.push({ provider: 'ana', m3u8Url: anaAkisUrl, priority: 0, subtitleTr: kayit.subtitleTr });
     }
     for (const s of kayit.sources || []) {
-      if (!s || s.isActive === false || !s.m3u8Url || !String(s.m3u8Url).startsWith('http')) continue;
-      adaylar.push(s);
+      const m3u8Url = akisUrliniCoz(s?.m3u8Url);
+      if (!s || s.isActive === false || !m3u8Url) continue;
+      adaylar.push({ ...s, m3u8Url });
     }
     const oncelik = (s) => Number.isFinite(Number(s?.priority)) ? Number(s.priority) : 99;
     adaylar.sort((a, b) => oncelik(a) - oncelik(b));

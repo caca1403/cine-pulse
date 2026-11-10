@@ -10,6 +10,7 @@ import { showToast } from './Toast.js';
 import { getUserSettings, saveUserSettings } from '../services/altyapi/storage.js';
 import { isDesktopApp } from '../services/platform/platformBridge.js';
 import { canUseDesktopSetup } from '../services/kabuk/desktopSetupPolicy.js';
+import { apiUrl } from '../services/altyapi/apiOrigin.js';
 
 let currentStep = 1;
 const TOTAL_STEPS = 3;
@@ -17,7 +18,7 @@ const TOTAL_STEPS = 3;
 // Sistem tanılaması önbelleği
 let diagState = {
   python: { ok: false, version: 'Kontrol ediliyor…', path: '' },
-  sidecar: { ok: false, port: 4000, latency: 0 },
+  sidecar: { ok: false, port: null, latency: 0 },
   gpu: { ok: false, renderer: 'Kontrol ediliyor…' },
   network: { ok: false, ping: 0 },
   checking: false
@@ -50,18 +51,22 @@ async function runSystemDiagnostics() {
   const gpu = detectGpuInfo();
   diagState.gpu = gpu;
 
-  // 2. Sidecar (127.0.0.1:4000)
+  // 2. Uygulama-içi yerel medya ağ geçidi
   const t0 = performance.now();
+  let sidecarPort = null;
   try {
-    const res = await fetch('http://127.0.0.1:4000/health', { signal: AbortSignal.timeout(3000) });
+    const healthUrl = apiUrl('/health');
+    sidecarPort = Number(new URL(healthUrl).port) || null;
+    const res = await fetch(healthUrl, { signal: AbortSignal.timeout(3000) });
     const t1 = performance.now();
     if (res.ok) {
-      diagState.sidecar = { ok: true, port: 4000, latency: Math.round(t1 - t0) };
+      diagState.sidecar = { ok: true, port: sidecarPort, latency: Math.round(t1 - t0) };
     } else {
-      diagState.sidecar = { ok: false, port: 4000, latency: 0 };
+      diagState.sidecar = { ok: false, port: sidecarPort, latency: 0 };
     }
-  } catch (_) {
-    diagState.sidecar = { ok: false, port: 4000, latency: 0 };
+  } catch (error) {
+    console.warn('[SetupWizard] Yerel medya ağ geçidi denetlenemedi:', error);
+    diagState.sidecar = { ok: false, port: sidecarPort, latency: 0 };
   }
 
   // 3. Masaüstü Electron ise doğrudan Python ve ortam sorgula
@@ -577,5 +582,3 @@ function attachStep2PlayerEvents() {
     saveUserSettings({ hoverPreviewsEnabled: e.target.checked === true });
   });
 }
-
-

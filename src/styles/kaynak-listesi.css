@@ -77,9 +77,10 @@
 }
 
 .kaynak-durum {
-  min-height: 1.1rem;
+  min-height: 1.2rem;
   font-size: 0.75rem;
   color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .kaynak-tarama {
@@ -91,6 +92,18 @@
 .kaynak-tarama .spin-loader {
   width: 13px;
   height: 13px;
+}
+
+.kaynak-sayi {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.kaynak-bos-rehber {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-sub);
 }
 
 .kaynak-bos {

@@ -1,6 +1,6 @@
 /* ==========================================================================
    CinePulse Studio — P2P motor bağlayıcısı (F1, masaüstü)
-   WebTorrent motoru server/mediaServer.js içinde zaten koşuyor (:4000).
+   WebTorrent motoru uygulama-içi yerel medya ağ geçidinde çalışır.
    Bu modul YALNIZ üretici tarafı: magnet doğrulama, durum yoklama, URL
    üretimi ve onay kaydı. Ağ işi yapmaz — fetch enjekte edilir, böylece
    testler ağsız koşar. Türkçe UI metinleri burada tutulur.

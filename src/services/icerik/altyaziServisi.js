@@ -33,6 +33,12 @@ const OS_V3 = 'https://opensubtitles-v3.strem.io';
 const kaynakOnbellek = new Map();
 const metinOnbellek = new Map();
 
+function proxyHedefUrl(hedef, api = apiUrl) {
+  const endpoint = api('/api/proxy');
+  const ayirac = endpoint.includes('?') ? '&' : '?';
+  return `${endpoint}${ayirac}url=${encodeURIComponent(hedef)}`;
+}
+
 /** "tt1234567" ya da gömülü imdb kimliğini ayıklar. */
 export function imdbKimligi(deger) {
   const m = String(deger || '').match(/tt\d{6,9}/i);
@@ -217,7 +223,7 @@ export function restSirala(liste, dil) {
 
 async function restIstek(uzakUrl, timeoutMs) {
   // rest API CORS'suz → her ortamda çalışan generic vekilden geçir.
-  const hedef = `${publicApiUrl('/api/proxy')}?url=${encodeURIComponent(uzakUrl)}`;
+  const hedef = proxyHedefUrl(uzakUrl, publicApiUrl);
   const res = await fetch(hedef, {
     signal: AbortSignal.timeout(timeoutMs),
     headers: { Accept: 'application/json' }
@@ -311,8 +317,11 @@ export async function altyaziAdaylari({ imdbId, tmdbId, title, type = 'movie', s
   // gerekmez, her cihazda bugün çalışır. Eksik dil öteki kaynaktan tamamlanır.
   if ((!imdb || !trVar || !adaylar.some(a => a.dil === 'en')) && (imdb || tmdbId || title)) {
     const kalan = Math.max(2500, timeoutMs - 1000);
+    const isDesktop = typeof window !== 'undefined' && window.CinePulseDesktop?.isDesktop === true;
     const [ara, rest] = await Promise.all([
-      sunucuAdaylari({ imdbId: imdb, tmdbId, title, type, season, episode }, Math.min(2500, kalan)),
+      isDesktop
+        ? Promise.resolve([])
+        : sunucuAdaylari({ imdbId: imdb, tmdbId, title, type, season, episode }, Math.min(2500, kalan)),
       restAdaylari({ imdbId: imdb, title, season, episode }, kalan)
     ]);
     const birlesik = altyaziBirlestir(adaylar, altyaziBirlestir(ara, rest));
@@ -351,7 +360,7 @@ export async function altyaziVttMetni(kaynak, timeoutMs = 5000) {
     // Çapraz-kaynak sağlayıcı/OS alt-yazıları CORS'suz olabilir → vekilden geçir.
     const ikili = !!(kaynak && typeof kaynak === 'object' && kaynak.ikili);
     const hedef = (kaynak?.kaynak || ikili) && /^https?:\/\//i.test(url)
-      ? `${apiUrl('/api/proxy')}?url=${encodeURIComponent(url)}`
+      ? proxyHedefUrl(url)
       : url;
     const res = await fetch(hedef, { signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) return null;
