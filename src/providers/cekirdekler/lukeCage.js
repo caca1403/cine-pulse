@@ -4528,7 +4528,11 @@ async function log2(arg1 = !1) {
   } catch {}
   let signal =
     typeof AbortSignal < "u" && typeof AbortSignal.timeout == "function"
-      ? AbortSignal.timeout(4000)
+      /* onarim:lc-config — ÖLÇÜM 2026-11-14: cdn.izlelan.com yanıtı 2.3-3.5 sn
+         arasında salınıyor; 4 sn sinyal ara ara tüm uçları düşürüyor, alan adı
+         çözülemeyince çekirdek daha aramaya geçmeden 0 dönüyordu ("Domain not
+         resolved"). 9 sn + ilk turda başarısız olursa tek yeniden deneme. */
+      ? AbortSignal.timeout(9000)
       : void 0;
   for (let value33 of list)
     try {
@@ -4607,8 +4611,12 @@ async function fetchJson(url) {
       val4 = url.includes("?") ? "&" : "?",
       val5 = "https://api.themoviedb.org/3/" + url + val4 + "api_key=" + value33;
     try {
+      /* onarim:lc-tmdb — ÖLÇÜM 2026-11-14: TMDB yanıtı bu ağda 2.5-3.5 sn;
+         4000 ms sinyal ara ara tüm 5 anahtarı düşürüyor ve çekirdek "IMDb ID
+         bulunamadı" ile aramaya hiç geçmeden 0 dönüyordu (3/3 koşuda ölçüldü).
+         9 sn sinyal + hata durumunda anahtar listesini bir tur daha dene. */
       let signal =
-          typeof AbortSignal < "u" && AbortSignal.timeout ? AbortSignal.timeout(4000) : void 0,
+          typeof AbortSignal < "u" && AbortSignal.timeout ? AbortSignal.timeout(9000) : void 0,
         response = await fetch(val5, {
           signal: signal
         });
@@ -7137,6 +7145,94 @@ function xorDecode5(arg1) {
   } catch {}
   return null;
 }
+/* onarim:lc-rplayer — hdfc ailesinin YENİ oynatıcı şifresi (ölçüm 2026-11-14).
+   /rplayer/<id>/ gövdesi Dean Edwards "p,a,c,k,e,d" paketiyle sarılı ve akış
+   adresi `uhin(["a~b~c…"])` içinde. paketAc → uhinCoz → https doğrulaması.
+   Sihirli sabitler (241/256/11/65519/97/41) canlı sayfadan okundu. */
+function paketAc(js) {
+  let m = String(js || "").match(
+    /eval\(function\(p,a,c,k,e,d\)\{[\s\S]*?\}\('([\s\S]*?)',(\d+),(\d+),'([\s\S]*?)'\.split\('\|'\),0,\{\}\)\)/
+  );
+  if (!m) return "";
+  let p = m[1], taban = parseInt(m[2], 10), sayi = parseInt(m[3], 10), sozluk = m[4].split("|");
+  function ad(n) {
+    return (n < taban ? "" : ad(Math.floor(n / taban))) +
+      ((n % taban) > 35 ? String.fromCharCode((n % taban) + 29) : (n % taban).toString(36));
+  }
+  for (; sayi--;) if (sozluk[sayi]) p = p.replace(new RegExp("\\b" + ad(sayi) + "\\b", "g"), () => sozluk[sayi]);
+  return p;
+}
+function uhinCoz(dizi) {
+  if (!Array.isArray(dizi) || dizi.length < 5) return "";
+  let liste = [...dizi],
+    n0 = liste.length - 2,
+    xs = n0 % 7,
+    fh = 8 + (n0 % 5);
+  if (fh >= liste.length || xs >= liste.length) return "";
+  let g = liste.splice(fh, 1)[0],
+    tohum = liste.splice(xs, 1)[0],
+    q = liste.join("");
+  if (tohum.length > 4096) q = A0(q);
+  let h4e = 0,
+    c8k = 0;
+  for (let i = 0; i < tohum.length; i++) {
+    let c = tohum.charCodeAt(i);
+    ((h4e = (h4e * 37 + c) % 241), (c8k = (c8k + ((c << 1) ^ i)) & 255));
+  }
+  let jb = (h4e * 3 + c8k) % 256,
+    wx = (c8k % 11) + 5,
+    l4 = ((c8k * 251 + h4e) % 65519) + 1;
+  for (let i = g.length - 1; i >= 0; i--) {
+    let ch = g.charAt(i);
+    if (ch === "7") q = A0(q);
+    else if (ch === "3") q = q.split("").reverse().join("");
+    else {
+      let k = (26 - ((ch.charCodeAt(0) - 96) % 26)) % 26;
+      q = q.replace(/[a-zA-Z]/g, (y) => {
+        let c = y.charCodeAt(0),
+          b = c <= 90 ? 65 : 97;
+        return String.fromCharCode(((c - b + k) % 26) + b);
+      });
+    }
+  }
+  if (g.length > 2048) q = q.split("").reverse().join("");
+  let n = q.length,
+    sira = [];
+  for (let i = n - 1; i >= 1; i--) ((l4 = (l4 * 97 + 41) % 65519), (sira[i] = l4 % (i + 1)));
+  let harf = q.split("");
+  for (let i = 1; i < n; i++) {
+    let j = sira[i],
+      t = harf[i];
+    ((harf[i] = harf[j]), (harf[j] = t));
+  }
+  q = harf.join("");
+  let el = jb,
+    cikti = "";
+  for (let i = 0; i < q.length; i++) {
+    let c = q.charCodeAt(i);
+    ((el = (el * 5 + wx) % 256),
+      (cikti += String.fromCharCode(c ^ el)),
+      (el = (el + c) % 256));
+  }
+  return /^https?:\/\//.test(cikti) ? cikti : "";
+}
+function rplayerCoz(html) {
+  let kaynaklar = [String(html || "")],
+    acik = paketAc(html);
+  if (acik) kaynaklar.push(acik);
+  for (let src of kaynaklar) {
+    let re = /([a-zA-Z0-9_$]+)\s*\(\s*["']([\s\S]{80,}?)["']\.split\(\s*["']([^"']{1,4})["']\s*\)\s*\)/g,
+      m;
+    while ((m = re.exec(src))) {
+      let cikti = uhinCoz(m[2].replace(/\\\//g, "/").split(m[3]));
+      if (cikti)
+        return cikti
+          .replace(/\/txt\/master\.txt/i, "/master.m3u8")
+          .replace(/\/master\.txt/i, "/master.m3u8");
+    }
+  }
+  return "";
+}
 function matchOf(input) {
   /* onarim:lc-rplayer — ÖLÇÜM 2026-11-14: hdfc ailesi oynatıcıyı değiştirdi;
      /rplayer/<id>/ gövdesi artık "p,a,c,k,e,d" paketleyicisi + `uhin([...])`
@@ -7245,14 +7341,19 @@ function userAgentOf(input, url) {
         !value40.file.includes("get_slides") &&
         value40.kind !== "thumbnails"
       ) {
-        let url = value40.file.startsWith("/") ? "" + url + value40.file : value40.file,
+        /* onarim:lc-tdz — ÖLÇÜM 2026-11-14: gölgeleme hatası. `let url = ... + url + ...`
+           KENDİ başlatıcısında `url`e dokunuyor → "Cannot access 'url' before
+           initialization" (TDZ). Hata dış try/catch'e kaçıp tüm çekirdeği 0'a
+           düşürüyordu. Akış çözümü eskiden hiç buraya gelmediği için gizli kalmıştı.
+           Çözüm: parametre adı korunur, iç değişken `altyaziUrl` olur. */
+        let altyaziUrl = value40.file.startsWith("/") ? "" + url + value40.file : value40.file,
           label = value40.label || "Türkçe",
           val4 = label.toLowerCase().includes("türk") || label.toLowerCase().includes("turk"),
           val5 = label.toLowerCase().includes("ing") || label.toLowerCase().includes("eng"),
-          val6 = url.startsWith("http") ? new URL(url).origin : url;
+          val6 = altyaziUrl.startsWith("http") ? new URL(altyaziUrl).origin : altyaziUrl;
         list2.push({
           id: String(list2.length),
-          url: url,
+          url: altyaziUrl,
           language: val4 ? "Turkish" : val5 ? "English" : label,
           name: label,
           lang: val4 ? "tr" : val5 ? "en" : "und",
@@ -7321,27 +7422,38 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
     } catch {}
     if (!str2) return (log("Luke-Cage", "IMDb ID bulunamadı: " + trimmed2, "error"), []);
     log("Luke-Cage", "[Adım 2/4] Kesin IMDb araması yapılıyor (" + str2 + ")...");
+    /* onarim:lc-arama — ÖLÇÜM 2026-11-14: iki kusur birlikte 0'a düşürüyordu.
+       1) "/search?q=" (eğik çizgisiz) sunucuda 301 dönüyor; yönlendirme + yavaş
+          yanıt 3500 ms sinyalini aşıyor, istek AbortError ile düşüyordu.
+          Site "/search/?q=" ile doğrudan 200 veriyor.
+       2) Yedek sorgu "tt" önekini atıyordu ("0137523") — o sorgu boş liste
+          döndürüyor, yani yedek hiçbir zaman işe yaramıyordu.
+       Düzeltme: eğik çizgili uç + 8 sn sinyal + tek yeniden deneme; yedek sorgu
+       "tt" önekini KORUYARAK yalnızca gecikme kaynaklı hatalar için. */
     let list2 = [],
-      replaced = [str2, str2.startsWith("tt") ? str2.replace(/^tt/, "") : ""].filter(Boolean);
-    for (let value40 of replaced)
-      try {
-        let val7 = result + "/search?q=" + encodeURIComponent(value40),
-          response = await fetch(val7, {
-            headers: {
-              "User-Agent": g0,
-              "X-Requested-With": "fetch",
-              Referer: result + "/"
-            },
-            signal: c0(3500)
-          });
-        if (response.ok) {
-          let data = await response.json();
-          if (Array.isArray(data.results) && data.results.length > 0) {
-            list2 = data.results;
-            break;
+      replaced = [str2].filter(Boolean);
+    for (let tur = 0; tur < 2 && list2.length === 0; tur++)
+      for (let value40 of replaced)
+        try {
+          let val7 = result + "/search/?q=" + encodeURIComponent(value40),
+            response = await fetch(val7, {
+              headers: {
+                "User-Agent": g0,
+                "X-Requested-With": "fetch",
+                Referer: result + "/"
+              },
+              signal: c0(8000)
+            });
+          if (response.ok) {
+            let data = await response.json();
+            if (Array.isArray(data.results) && data.results.length > 0) {
+              list2 = data.results;
+              break;
+            }
           }
+        } catch {
+          if (tur === 0) await new Promise((r) => setTimeout(r, 700));
         }
-      } catch {}
     if (list2.length === 0) return (log("Luke-Cage", "Eşleşen içerik bulunamadı.", "warn"), []);
     let value40 = null;
     for (let value41 of list2) {
