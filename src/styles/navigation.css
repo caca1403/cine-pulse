@@ -205,7 +205,9 @@
   /* Secondary routes previously reserved space for a one-line header. */
   .cine-discovery-theme #app > main:not(:has(.home-view)) { padding-top: max(0px,calc(var(--cp-header-height,155px) - 78px)); }
 }
-.cine-discovery-theme .home-view .card-rail { gap: 12px !important; }
+/* ÖLÇÜM (dizilla.la 2026-11-13): ray kart aralığı 24px; buradaki 12px
+   !important temel token'ı eziyor ve afişler yapışık görünüyordu. */
+.cine-discovery-theme .home-view .card-rail { gap: 24px !important; }
 .cine-discovery-theme .home-view .rail-icon-pill { color: var(--cp-lime) !important; background: transparent !important; }
 .cine-discovery-theme .home-view .media-card:hover .card-info .card-title { color: #ffffff; }
 .cp-search .search-results-overlay { top: calc(100% + 10px); left: 0; right: 0; width: max(100%,320px); max-width: calc(100vw - 36px); max-height: min(60dvh,480px); overflow-y: auto; background: #12161c; border: 1px solid #ffffff26; border-radius: 14px; }

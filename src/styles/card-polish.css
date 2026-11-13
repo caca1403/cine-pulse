@@ -25,10 +25,13 @@
   outline-offset: 4px;
 }
 
+/* ── KART HOVER: SADECE AFİŞ BÜYÜR (ölçümlü düzeltme 2026-11-13) ──────────
+   Eski hâlde TÜM kart (başlık, yıl, rozetler dahil) 1.05 ölçekleniyordu; yazı
+   da büyüdüğü için "ucuz" bir zum hissi veriyordu. Referans ölçüm (dizilla.la):
+   onlar da yalnız afiş katmanını .pimg büyütüp gölgeyi derinleştiriyor, metin
+   sabit kalıyor. Artık aynı: kart kutusu sabit, afiş + gölge hareket eder. */
 .media-card:hover,
 .media-card:focus-within {
-  transform: scale(1.05);
-  box-shadow: var(--shadow-card-hover, 0 12px 28px rgba(0, 0, 0, 0.55));
   z-index: 2;
 }
 
@@ -40,6 +43,29 @@
   background: var(--bg-card);
   /* Derinlik tek kaynaktan: kart yüzeyi --shadow-card, hover --shadow-card-hover. */
   box-shadow: var(--shadow-card, 0 2px 10px rgba(0, 0, 0, 0.45));
+  /* Ölçek + gölge aynı anda, fiziksel eğriyle (250ms). transform/box-shadow
+     GPU'da birleşir; layout tetiklenmez. */
+  transition:
+    transform var(--dur-250, 250ms) var(--ease-hover, cubic-bezier(0.25, 0.46, 0.45, 0.94)),
+    box-shadow var(--dur-250, 250ms) var(--ease-hover, cubic-bezier(0.25, 0.46, 0.45, 0.94));
+  /* ŞEFFAF ÇERÇEVE (dizilla ölçümü: 3px rgba(249,249,249,.2), hover'da .8):
+     koyu zeminde afişin kenarını "keskinleştirir", hover'da hafif parlar. */
+  outline: 3px solid rgba(249, 249, 249, 0.16);
+  outline-offset: -3px;
+}
+
+.media-card:hover .card-poster-wrapper,
+.media-card:focus-within .card-poster-wrapper {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-card-hover, 0 12px 28px rgba(0, 0, 0, 0.55));
+  outline-color: rgba(249, 249, 249, 0.8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-card:hover .card-poster-wrapper,
+  .media-card:focus-within .card-poster-wrapper {
+    transform: none;
+  }
 }
 
 .cards-landscape .card-poster-wrapper {
