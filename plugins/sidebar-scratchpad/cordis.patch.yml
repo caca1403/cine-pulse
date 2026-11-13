@@ -1,0 +1,3 @@
+- insert:
+    - id: sidebar-scratchpad
+      name: '@local/sidebar-scratchpad'

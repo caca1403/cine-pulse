@@ -4936,10 +4936,68 @@ export async function openPlayerModal({
   }
 
   function updateNavButtons() {
+    try { if (typeof refreshHeaderEpNav === 'function') refreshHeaderEpNav(); } catch (_) {}
     const navGroup = document.getElementById('player-nav-btn-group');
     if (navGroup) {
       navGroup.innerHTML = renderFooterNavButtonsHTML();
       attachFooterNavEvents();
+
+  /* ── BAŞLIK ÇUBUĞU BÖLÜM GEÇİŞİ (kullanıcı 2026-11-13) ──────────────────
+     Sinema sahnesinde yan panel ve alt çubuk `display:none` olduğundan bölüm
+     değiştirmenin GÖRÜNÜR yolu kalmıyordu (DOM'da vardı, ekranda yoktu).
+     Bu üç kontrol her zaman görünür: önceki / bölüm listesi / sonraki. */
+  function refreshHeaderEpNav() {
+    const label = document.getElementById('player-ep-nav-label');
+    if (label) label.textContent = `S${currentSeason} · B${currentEpisode}`;
+    const prev = document.getElementById('btn-ep-prev');
+    const next = document.getElementById('btn-ep-next');
+    if (prev) {
+      const bastaMi = currentSeason <= 1 && currentEpisode <= 1;
+      prev.toggleAttribute('disabled', bastaMi);
+      prev.setAttribute('aria-disabled', String(bastaMi));
+    }
+    if (next) {
+      const bolumSayisi = getSeasonEpisodeCount(currentSeason);
+      const sonrakiSezon = currentSeasonsList.some(x => Number(x.season_number) === currentSeason + 1);
+      const sondaMi = bolumSayisi > 0 && currentEpisode >= bolumSayisi && !sonrakiSezon;
+      next.toggleAttribute('disabled', sondaMi);
+      next.setAttribute('aria-disabled', String(sondaMi));
+    }
+  }
+
+  const headerPrev = document.getElementById('btn-ep-prev');
+  if (headerPrev) {
+    headerPrev.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (currentEpisode > 1) switchEpisodeInPlayer(currentSeason, currentEpisode - 1);
+      else if (currentSeason > 1) switchEpisodeInPlayer(currentSeason - 1, getSeasonEpisodeCount(currentSeason - 1) || 1);
+    });
+  }
+  const headerNext = document.getElementById('btn-ep-next');
+  if (headerNext) {
+    headerNext.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const bolumSayisi = getSeasonEpisodeCount(currentSeason);
+      if (bolumSayisi > 0 && currentEpisode >= bolumSayisi) {
+        if (currentSeasonsList.some(x => Number(x.season_number) === currentSeason + 1)) switchEpisodeInPlayer(currentSeason + 1, 1);
+      } else {
+        switchEpisodeInPlayer(currentSeason, currentEpisode + 1);
+      }
+    });
+  }
+  const headerOpen = document.getElementById('btn-ep-open');
+  if (headerOpen) {
+    headerOpen.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      acBolumSecici();
+    });
+  }
+  refreshHeaderEpNav();
+  // Bölüm verisi geç geldiyse (TMDB) buton durumları güncellenir.
+  setTimeout(() => { if (!closed) refreshHeaderEpNav(); }, 2500);
       renderPlayerIcons(modalContainer);
     }
   }
@@ -5146,6 +5204,23 @@ export async function openPlayerModal({
 
         <!-- Right: Action Icons (Shortcuts, Fullscreen) -->
         <div class="player-header-right">
+          ${isSeries && !isOfflinePlayback ? `
+          <!-- BÖLÜM GEÇİŞİ HER ZAMAN GÖRÜNÜR (kullanıcı 2026-11-13: "player
+               yanında bölüm geçişi sekmesi yok, eskisinde gibi değil").
+               Sinema sahnesi yan paneli/alt çubuğu gizlediği için bölüm
+               kontrolleri başlık çubuğuna taşındı: ◀ | S1·B3 / Bölümler | ▶ -->
+          <div class="player-ep-nav" id="player-ep-nav" role="group" aria-label="Bölüm geçişi">
+            <button id="btn-ep-prev" class="btn-player-tool cp-press" title="Önceki Bölüm (P)" aria-label="Önceki Bölüm">
+              <i data-lucide="skip-back" style="width: 15px; height: 15px;"></i>
+            </button>
+            <button id="btn-ep-open" class="btn-player-tool cp-press player-ep-nav-open" title="Bölüm Listesi (S)" aria-label="Bölüm Listesi">
+              <i data-lucide="list-video" style="width: 15px; height: 15px;"></i>
+              <span id="player-ep-nav-label">S${currentSeason} · B${currentEpisode}</span>
+            </button>
+            <button id="btn-ep-next" class="btn-player-tool cp-press" title="Sonraki Bölüm (N)" aria-label="Sonraki Bölüm">
+              <i data-lucide="skip-forward" style="width: 15px; height: 15px;"></i>
+            </button>
+          </div>` : ''}
           ${nativeOynaticiVar() ? `
           <button id="btn-native-dondur" class="btn-player-tool cp-press btn-native-dondur" title="Ekranı Döndür" aria-label="Ekranı Döndür">
             <i data-lucide="rotate-cw" style="width: 16px; height: 16px;"></i>
@@ -8902,22 +8977,44 @@ export async function openPlayerModal({
     const discoveryStartTime = Date.now();
     lastDiscoveryStartedAt = discoveryStartTime;
     let sourceRefreshFrame = 0;
-    /* Kaynak sürekliliği bekleme penceresi: tercih edilen sağlayıcı (son
-       izlenen) geç yanıt verirse "ilk yanıt kazanır" yarışına düşmemek için
-       ilk kaynağı en fazla bu süre kadar bekletiriz. Süre dolunca son çare
-       ilk uygun hat oynatılır (aşağıdaki zamanlayıcı). */
-    const TERCIH_BEKLEME_MS = 8000;
-    let tercihBeklemeZamanlayici = null;
-    const tercihBeklemesiniKur = () => {
-      if (tercihBeklemeZamanlayici) return;
-      const kalan = Math.max(0, TERCIH_BEKLEME_MS - (Date.now() - discoveryStartTime));
-      tercihBeklemeZamanlayici = setTimeout(() => {
-        tercihBeklemeZamanlayici = null;
+    /* ── İLK OYNATMA KARARI (kullanıcı 2026-11-13) ────────────────────────
+       Önceki hâlde "tercih bekleniyor" dalları bazı durumlarda hiç sonuç
+       üretmiyordu: bölüm değişince kategori boş kalıyor, ekranda "kaynak yok"
+       görünüyor ve bir daha denenmiyordu (ölçüldü: S1B1→S1B2'de video yok).
+       Artık TEK karar noktası var ve KESİN bir son tarihi var:
+         1) son izlenen sağlayıcı ailesi (kaynak sürekliliği),
+         2) mevcut kategoride ilk oynatılabilir hat,
+         3) diğer kategoride ilk oynatılabilir hat.
+       Tercih için kısa bekleme; son tarihte (ILK_KARAR_SON_MS) ne olursa olsun
+       karar verilir — sonsuz "Aranıyor..." durumu oluşamaz. */
+    const TERCIH_BEKLEME_MS = 6000;
+    const ILK_KARAR_SON_MS = 12000;
+    let ilkKararZamanlayici = null;
+    const ilkOynatmaKarariVer = (zorla) => {
+      if (closed || hasPlayerStartedPlaying) return true;
+      if (tercihliKaynagiBaslat()) return true;
+      if (!zorla && tercihliKaynak && (Date.now() - discoveryStartTime) < TERCIH_BEKLEME_MS) return false;
+      return ilkUygunKaynagiBaslat();
+    };
+    let ilkKararDeneme = 0;
+    const ilkKarariPlanla = () => {
+      if (ilkKararZamanlayici) clearTimeout(ilkKararZamanlayici);
+      const kalan = Math.max(0, ILK_KARAR_SON_MS - (Date.now() - discoveryStartTime));
+      ilkKararZamanlayici = setTimeout(() => {
+        ilkKararZamanlayici = null;
         if (closed || generation !== discoveryGeneration || hasPlayerStartedPlaying) return;
-        if (tercihliKaynagiBaslat()) return;
-        ilkUygunKaynagiBaslat();
+        if (ilkOynatmaKarariVer(true)) return;
+        /* 12 sn doldu ama henüz oynatılabilir hat YOK (tarama sürüyor).
+           Kararı bırakmıyoruz: kısa aralıklarla yeniden dene; tarama
+           bittiğinde tek deneme kalırsa kesin karar verilir. Aksi hâlde
+           "Aranıyor..." ekranda sonsuza kadar kalıyordu (ölçüldü 2026-11-13). */
+        ilkKararDeneme += 1;
+        if (ilkKararDeneme <= 16) {
+          ilkKararZamanlayici = setTimeout(() => { if (!closed) ilkKarariPlanla(); }, 2500);
+        }
       }, kalan);
     };
+    ilkKarariPlanla();
     isSearching = true;
     isDiscoveryActive = true;
     hasPlayerStartedPlaying = false;
@@ -8946,28 +9043,12 @@ export async function openPlayerModal({
     }, 9000);
 
     // Fast 1.8s fallback: if user's category has 0 streams but alternative has ready streams, start immediately
+    /* 1.8 sn'lik erken deneme: karar noktası tek yerde (ilkOynatmaKarariVer).
+       Tercih bekleniyorsa erken karar VERİLMEZ; son tarih zamanlayıcısı ve
+       onUpdate kararı garanti eder. */
     const fastPlaybackTimer = setTimeout(() => {
       if (closed || generation !== discoveryGeneration || hasPlayerStartedPlaying) return;
-      // Son izlenen sağlayıcı ailesi geldiyse doğrudan onu oynat (bölüm
-      // geçişi/"Devam Et" sürekliliği — kaynak seç ekranına düşülmez).
-      if (tercihliKaynagiBaslat()) return;
-      // Tercih var ama henüz gelmedi: yanlış kategoriye sapıp ilk bulunan
-      // kaynağı başlatma; keşif tamamlanınca son çare devreye girer.
-      if (tercihliKaynak) return;
-      const fallbackCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
-      if ((categorizedServers[currentCategory] || []).length === 0 && (categorizedServers[fallbackCat] || []).some(s => s.autoPlayable !== false)) {
-        currentCategory = fallbackCat;
-        document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
-        document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
-        hasPlayerStartedPlaying = true;
-        isSearching = false;
-        activeServers = birlestirilmisKaynaklar();
-        if (torrentIndexeYapis(activeServers) < 0) currentServerIndex = getRoomPreferredServerIndex(activeServers);
-        updateServerPillsEvents();
-        updateActiveSourceLabel();
-        renderSourcesPopoverList();
-        updatePlayerContainer();
-      }
+      ilkOynatmaKarariVer(false);
     }, 1800);
 
     // Eklenti satırları — sağlayıcı havuzuna KARIŞMAZ; dropdown'da kendi
@@ -9055,69 +9136,15 @@ export async function openPlayerModal({
           showDubbedFoundBanner(newStream);
         }
 
-        // Play the first available source in the user's SELECTED category immediately.
+        // İLK OYNATMA KARARI: tek nokta, kesin son tarih.
         if (!hasPlayerStartedPlaying) {
-          // 0) Tercih edilen (son izlenen) sağlayıcı ailesi önce denenir.
-          if (tercihliKaynagiBaslat()) { clearTimeout(fastPlaybackTimer); return; }
-          /* 0b) Tercih henüz gelmediyse ilk gelen hattı ANINDA oynatma
-             ("ilk yanıt kazanır" yarışı). Kısa bekleme penceresi; süre
-             dolunca ya da keşif bitince ilk uygun hat oynatılır. */
-          if (tercihliKaynak && !isComplete && Date.now() - discoveryStartTime < TERCIH_BEKLEME_MS) {
-            tercihBeklemesiniKur();
-            updateServerPillsEvents();
-            updateActiveSourceLabel();
-            renderSourcesPopoverList();
-            return;
-          }
-          if (categorizedServers[currentCategory]?.some(s => s.autoPlayable !== false)) {
-            clearTimeout(fastPlaybackTimer);
-            hasPlayerStartedPlaying = true;
-            isSearching = false;
-            activeServers = birlestirilmisKaynaklar();
-
-            updateServerPillsEvents();
-            updateActiveSourceLabel();
-            renderSourcesPopoverList();
-            updatePlayerContainer();
-            return;
-          }
-
-          // If after 1.8s the chosen category is still empty, or if all providers completed:
-          const timeSinceStart = Date.now() - discoveryStartTime;
-          const fallbackCategory = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
-          const fallbackStreams = categorizedServers[fallbackCategory] || [];
-          // Tercih edilen kaynak bekleniyorsa son çareyi bekleme penceresi
-          // dolana kadar geciktir (yanlış sağlayıcıya atlamak yerine doğru
-          // hat gelene kadar bekle).
-          const fallbackHazir = tercihliKaynak
-            ? (isComplete || timeSinceStart >= TERCIH_BEKLEME_MS)
-            : (isComplete || timeSinceStart >= 1800);
-
-          if (fallbackHazir && fallbackStreams.some(s => s.autoPlayable !== false)) {
-            clearTimeout(fastPlaybackTimer);
-            currentCategory = fallbackCategory;
-            document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
-            document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
-            hasPlayerStartedPlaying = true;
-            isSearching = false;
-            activeServers = fallbackStreams;
-            currentServerIndex = getRoomPreferredServerIndex(activeServers);
-            updateServerPillsEvents();
-            updateActiveSourceLabel();
-            renderSourcesPopoverList();
-            updatePlayerContainer();
-            return;
-          }
-
-          if (isComplete) {
-            clearTimeout(fastPlaybackTimer);
-            isSearching = false;
-            updateServerPillsEvents();
-            updateActiveSourceLabel();
-            renderSourcesPopoverList();
-            updatePlayerContainer();
-            return;
-          }
+          if (ilkOynatmaKarariVer(false)) { clearTimeout(fastPlaybackTimer); return; }
+          // Henüz karar verilmedi (tercih bekleniyor): sayaç/etiketleri tazele.
+          updateCategoryCounts();
+          updateServerPillsEvents();
+          updateActiveSourceLabel();
+          renderSourcesPopoverList();
+          return;
         }
 
         // While playing or waiting: update activeServers for currentCategory
@@ -9131,12 +9158,23 @@ export async function openPlayerModal({
           }
         }
 
-        // If player was waiting on an empty category and streams just arrived:
+        // Bekleme durumunda kaynak geldiyse: karar noktasına devret.
         if (!hasPlayerStartedPlaying && activeServers.some(s => s.autoPlayable !== false)) {
-          if (tercihliKaynagiBaslat()) return;
+          if (!ilkOynatmaKarariVer(isComplete === true)) return;
+          if (hasPlayerStartedPlaying) return;
           hasPlayerStartedPlaying = true;
           isSearching = false;
           currentServerIndex = getRoomPreferredServerIndex(activeServers);
+          updateServerPillsEvents();
+          updateActiveSourceLabel();
+          renderSourcesPopoverList();
+          updatePlayerContainer();
+          return;
+        }
+        // Tarama bitti ve hâlâ oynatma başlamadıysa liste/boş rehber çizilir.
+        if (!hasPlayerStartedPlaying && isComplete) {
+          isSearching = false;
+          updateCategoryCounts();
           updateServerPillsEvents();
           updateActiveSourceLabel();
           renderSourcesPopoverList();
@@ -9431,6 +9469,7 @@ export async function openPlayerModal({
 
       const titleEl = document.getElementById('player-modal-title');
       if (titleEl) titleEl.textContent = getDisplayTitle();
+      try { refreshHeaderEpNav(); } catch (_) {}
 
       const resumeBadge = document.getElementById('player-resume-time-badge');
       if (resumeBadge) resumeBadge.remove();

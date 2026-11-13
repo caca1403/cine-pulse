@@ -946,6 +946,13 @@ function yarisla(vaat, ms, mesaj) {
 }
 
 let aktifKopruSayaci = 0;
+/* Köprü fetch'i kurulurken ÖNCEKİ global fetch saklanır ve sayaç sıfıra
+   döndüğünde AYNEN geri konur. Eskiden modül yüklenirken yakalanan
+   `YEREL_FETCH` geri yazılıyordu; butik sarmalayıcılar (web fetch shim,
+   Capacitor taşıma katmanı) sonradan kurulduysa yanlış katman geri geliyor
+   ve SONRAKİ taramalar sessizce 0 kaynak dönüyordu (ölçüldü 2026-11-13:
+   aynı sayfada 1. tarama 29 kaynak, sonraki taramalar 0). */
+let kopruOncesiFetch = null;
 
 /**
  * Tek sağlayıcıyı çözer.
@@ -987,6 +994,9 @@ export async function kaynakCoz({
     const diziGibi = ['tv', 'series', 'anime', 'animeseries', 'cizgifilm', 'cartoon', 'animation', 'kids'];
     return diziGibi.includes(t) ? 'tv' : 'movie';
   })();
+  if (aktifKopruSayaci === 0 && typeof globalThis.fetch === 'function' && globalThis.fetch !== kopruFetch) {
+    kopruOncesiFetch = globalThis.fetch;
+  }
   aktifKopruSayaci++;
   globalThis.fetch = kopruFetch;          // köprü paralel çekirdekler bitene kadar açık kalır
   iz.koy('basladi', { kodAdi: kayit.kodAdi, tur, tmdbId, season, episode });
@@ -1062,7 +1072,11 @@ export async function kaynakCoz({
     };
   } finally {
     aktifKopruSayaci = Math.max(0, aktifKopruSayaci - 1);
-    if (aktifKopruSayaci === 0 && YEREL_FETCH) globalThis.fetch = YEREL_FETCH;
+    if (aktifKopruSayaci === 0) {
+      const geri = kopruOncesiFetch || YEREL_FETCH;
+      if (geri) globalThis.fetch = geri;
+      kopruOncesiFetch = null;
+    }
     birak();
   }
 }

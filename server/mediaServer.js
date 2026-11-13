@@ -335,6 +335,110 @@ const torrentCache = new Map();
 const pendingTorrents = new Map();
 const TORRENT_TIMEOUT_MS = 30 * 60 * 1000;
 
+/* ── TORRENT ÖNBELLEK TAVANI (ölçüldü 2026-11-13) ─────────────────────────
+   Masaüstü uygulamasında bir torrent hattı oynarken önbellek ~15 dakikada
+   8.9 GB'a ulaşıp diski doldurdu (uygulama ENOSPC ile yazamaz hâle geliyor,
+   kullanıcının diski de sessizce doluyor). Zaman tabanlı temizlik (30 dk
+   boşta) yetmiyor: AKTİF akış önbelleği büyütmeye devam ediyor. Bu yüzden
+   BOYUT TAVANI eklendi. Tavan aşılırsa en eski ÖLÜ torrentler parçalarıyla
+   birlikte diskten silinir; son TORRENT_AKTIF_MS içinde erişilen akış korunur
+   (izleyen kullanıcının tamponu bozulmaz). Tavan: CINEPULSE_TORRENT_CACHE_MB,
+   varsayılan 6144 MB; hedef tavanın %80'i (histerezis — sürekli tetiklenmesin). */
+const TORRENT_CACHE_TAVAN_BAYT = (() => {
+  const mb = Number(process.env.CINEPULSE_TORRENT_CACHE_MB);
+  return (Number.isFinite(mb) && mb > 0 ? mb : 6144) * 1024 * 1024;
+})();
+const TORRENT_AKTIF_MS = 5 * 60 * 1000;
+const TORRENT_CACHE_DIZIN = path.join(MEDIA_DIR, 'torrent_cache');
+let torrentTemizlikSuruyor = false;
+
+/** Dizin boyutunu (bayt) ölçer; hata durumunda 0 döner (temizlik asla akışı bozmaz). */
+function dizinBoyutu(dir) {
+  let toplam = 0;
+  try {
+    const yigin = [dir];
+    while (yigin.length) {
+      const kok = yigin.pop();
+      let girdiler;
+      try { girdiler = fs.readdirSync(kok, { withFileTypes: true }); } catch (_) { continue; }
+      for (const girdi of girdiler) {
+        const tam = path.join(kok, girdi.name);
+        try {
+          if (girdi.isDirectory()) yigin.push(tam);
+          else if (girdi.isFile()) toplam += fs.statSync(tam).size;
+        } catch (_) { /* değişen dosya: atla */ }
+      }
+    }
+  } catch (_) { return 0; }
+  return toplam;
+}
+
+/** Bir torrent girdisinin disk yolu (parçalarıyla birlikte silmek için). */
+function torrentDiskYolu(torrent) {
+  try {
+    if (torrent?.path) return torrent.path;
+    const ilk = torrent?.files?.[0];
+    if (ilk?.path) return path.dirname(ilk.path);
+    const ad = torrent?.name;
+    if (ad) return path.join(TORRENT_CACHE_DIZIN, ad);
+  } catch (_) { /* yol çözülemedi */ }
+  return '';
+}
+
+function diziniSil(yol) {
+  if (!yol) return;
+  const kok = path.resolve(TORRENT_CACHE_DIZIN);
+  const hedef = path.resolve(yol);
+  // GÜVENLİK: yalnız önbellek dizini içindeki yollar silinir.
+  if (!hedef.startsWith(kok + path.sep) && hedef !== kok) return;
+  try { fs.rmSync(hedef, { recursive: true, force: true }); } catch (_) {}
+}
+
+/** Tavan aşıldıysa en eski ölü torrentleri tahliye eder. Aktif akış korunur. */
+function torrentOnbelleginiSinirla() {
+  if (torrentTemizlikSuruyor) return;
+  torrentTemizlikSuruyor = true;
+  try {
+    const boyut = dizinBoyutu(TORRENT_CACHE_DIZIN);
+    if (boyut <= TORRENT_CACHE_TAVAN_BAYT) return;
+    const hedef = Math.round(TORRENT_CACHE_TAVAN_BAYT * 0.8);
+    const simdi = Date.now();
+    console.log(`[MediaServer] Torrent önbelleği ${(boyut / 1073741824).toFixed(2)} GB > tavan ${(TORRENT_CACHE_TAVAN_BAYT / 1073741824).toFixed(2)} GB — tahliye başlıyor`);
+    // En yeni erişilen = muhtemelen izlenen akış; onu koru.
+    const enYeniHash = [...torrentCache.entries()]
+      .sort((a, b) => (b[1].lastAccess || 0) - (a[1].lastAccess || 0))[0]?.[0] || '';
+    const adaylar = [...torrentCache.entries()]
+      .filter(([hash, entry]) => hash !== enYeniHash && (simdi - (entry.lastAccess || 0)) >= TORRENT_AKTIF_MS)
+      .sort((a, b) => (a[1].lastAccess || 0) - (b[1].lastAccess || 0));
+    let kalan = boyut;
+    for (const [hash, entry] of adaylar) {
+      if (kalan <= hedef) break;
+      const yol = torrentDiskYolu(entry.torrent);
+      try { entry.torrent?.destroy?.(); } catch (_) {}
+      torrentCache.delete(hash);
+      const tahmini = Math.max(0, Number(entry.torrent?.length) || 0);
+      diziniSil(yol);
+      kalan -= tahmini;
+      console.log(`[MediaServer] Torrent tahliye edildi: ${hash.substring(0, 10)}… (${(tahmini / 1073741824).toFixed(2)} GB)`);
+    }
+    // Girdi boyutları eksikse kalanı dosya sistemi ölçümüyle doğrula.
+    if (dizinBoyutu(TORRENT_CACHE_DIZIN) > TORRENT_CACHE_TAVAN_BAYT) {
+      try {
+        for (const girdi of fs.readdirSync(TORRENT_CACHE_DIZIN, { withFileTypes: true })) {
+          if (!girdi.isDirectory()) continue;
+          const tam = path.join(TORRENT_CACHE_DIZIN, girdi.name);
+          const hashli = [...torrentCache.keys()].some(h => tam.includes(h));
+          if (!hashli) diziniSil(tam);
+        }
+      } catch (_) {}
+    }
+  } catch (hata) {
+    console.warn('[MediaServer] Torrent önbellek sınırlama hatası:', hata?.message || hata);
+  } finally {
+    torrentTemizlikSuruyor = false;
+  }
+}
+
 process.on('unhandledRejection', (reason) => {
   console.warn('[MediaServer] Handled unhandled rejection:', reason?.message || reason);
 });
@@ -344,10 +448,14 @@ setInterval(() => {
   for (const [hash, entry] of torrentCache) {
     if (now - entry.lastAccess > TORRENT_TIMEOUT_MS) {
       console.log(`[MediaServer] Cleaning up idle torrent: ${hash.substring(0, 10)}...`);
+      const yol = torrentDiskYolu(entry.torrent);
       try { entry.torrent.destroy(); } catch (_) {}
       torrentCache.delete(hash);
+      // Boşta kalan torrent'in parçaları da diskte kalmasın (disk şişmesi).
+      diziniSil(yol);
     }
   }
+  torrentOnbelleginiSinirla();
 }, 5 * 60 * 1000);
 
 function getLargestVideoFile(torrent) {
@@ -487,6 +595,8 @@ async function getTorrentVideoFile(infoHashOrMagnet) {
         console.log(`[MediaServer] Torrent ready: ${torrent.name} (${torrent.files.length} files)`);
 
         torrentCache.set(infoHash, { torrent, lastAccess: Date.now() });
+        // Yeni akış eklendi: önbellek tavanı aşıldıysa eski ölüleri hemen tahliye et.
+        setTimeout(() => { try { torrentOnbelleginiSinirla(); } catch (_) {} }, 5000);
 
         const videoFile = getLargestVideoFile(torrent);
         if (!videoFile) {
@@ -662,10 +772,13 @@ const server = http.createServer(async (req, res) => {
   // ============ Health Check ============
   if (reqUrl.pathname === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-      status: 'ok', 
+    res.end(JSON.stringify({
+      status: 'ok',
       webtorrent: !!wtClient,
-      activeTorrents: torrentCache.size 
+      activeTorrents: torrentCache.size,
+      // Disk sağlığı: kullanıcı/CI önbelleğin tavanı aşıp aşmadığını görebilsin.
+      torrentCacheBytes: dizinBoyutu(TORRENT_CACHE_DIZIN),
+      torrentCacheLimitBytes: TORRENT_CACHE_TAVAN_BAYT
     }));
     return;
   }

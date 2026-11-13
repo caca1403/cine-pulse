@@ -176,6 +176,7 @@ export function kaynakListesiOlustur({
     saglayiciHatalari: [],      // yanıt vermesi geç/dürülen farklı sağlayıcı adları
     tamamlananSaglayicilar: [], // tamamlanması bildirilen farklı sağlayıcı adları
     cekirdekYok: 0,             // yüklenemeyen çekirdek adedi
+    otomatikTekrar: false,      // boş biten tarama için tek otomatik yeniden deneme
     sezon: Number(sezon) || 1,
     bolum: Number(bolum) || 1,
     nesil: 0
@@ -266,7 +267,18 @@ export function kaynakListesiOlustur({
   function cizDurum(satirSayisi) {
     const toplamBulunan = durum.satirlar.length;
 
-    if (durum.araniyor) {
+    /* ÖLÇÜLEN HATA (kullanıcı 2026-11-13: "1. sezon 1. bölüm çalışıyor,
+       gerisinde yok"): bölüm değiştirilince liste boş kalıyor ve ekranda
+       "oynatılabilir kaynak bulunamadı" yazıyordu — OYSA sağlayıcı taraması
+       arka planda koşuyor ve sonuç üretiyordu (kanıt: konsolda 52/52 tarandı).
+       Kök neden: `araniyor` bayrağı eklenti kolunun erken bitişiyle yanlışlıkla
+       false'a düşebiliyordu. Artık sağlayıcı taraması bitmedikçe (saglayiciBitti)
+       boş-durum ASLA çizilmez; tarama sürüyorsa sayaç gösterilir. */
+    // Yalnız SAĞLAYICI taraması bitmediyse "taranıyor" gösterilir; eklenti
+    // kolunun erken bitişi boş-durum kararını vermez.
+    const aramaSuruyor = !durum.saglayiciBitti;
+    if (aramaSuruyor) {
+      durum.araniyor = true;
       durumKok.innerHTML = `<span class="kaynak-tarama"><i data-lucide="loader-2" class="spin-loader"></i> ${toplamBulunan} kaynak bulundu · ${durum.tamamlananSaglayicilar.length} sağlayıcı tamamlandı · taranıyor…</span>`;
       return;
     }
@@ -345,6 +357,7 @@ export function kaynakListesiOlustur({
     durum.saglayiciHatalari = [];
     durum.tamamlananSaglayicilar = [];
     durum.cekirdekYok = 0;
+    durum.saglayiciBitti = false;
 
     // Oturum ömürlü ortak önbellek (kaynakOnbellek; kullanıcı 2026-10-29):
     // tohumla → tarama her durumda devam eder → birleşim yazımı. Liste SADECE
@@ -445,6 +458,22 @@ export function kaynakListesiOlustur({
       durum.saglayiciBitti = true;
       durum.araniyor = !durum.eklentiBitti;
       kaydetVeCiz();
+      /* KENDİLİĞİNDEN TEK YENİDEN DENEME (ölçüldü 2026-11-13): ilk tarama
+         bazen ağ/oturum ısınması yüzünden 0 satırla bitiyor, hemen ardından
+         yapılan tarama 29 kaynak buluyordu. Kullanıcıya "kaynak yok" demek
+         yerine bir kez sessizce yeniden taranır (döngü yok: bayrak). */
+      if (durum.satirlar.length === 0 && !durum.otomatikTekrar) {
+        durum.otomatikTekrar = true;
+        setTimeout(() => {
+          if (nesil !== durum.nesil) return;
+          if (durum.satirlar.length > 0) return;
+          durum.saglayiciBitti = false;
+          durum.eklentiBitti = false;
+          durum.araniyor = true;
+          try { ciz(); } catch (_) {}
+          tara();
+        }, 1200);
+      }
     });
 
     // Eklenti satırları — kendi adlarıyla sekmeye düşer. baslik: CloudStream
@@ -478,6 +507,14 @@ export function kaynakListesiOlustur({
       durum.sezon = s;
       durum.bolum = b;
       durum.baslatildi = true;
+      /* Bölüm değişimi: liste ESKİ bölümün kaynaklarını göstermeye devam
+         etmesin; hemen "taranıyor…" durumuna geçilir (yanlış "kaynak yok"
+         mesajı ve eski bölümün hatlarına tıklama riski kapanır). */
+      durum.satirlar = [];
+      durum.araniyor = true;
+      durum.saglayiciBitti = false;
+      durum.eklentiBitti = false;
+      try { ciz(); } catch (_) {}
       tara();
     },
     yokEt() {

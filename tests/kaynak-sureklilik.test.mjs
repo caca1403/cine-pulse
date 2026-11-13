@@ -87,13 +87,16 @@ test('PlayerModal: preferredSource opsiyonu ve izleme kaydından türetme', () =
 });
 
 test('PlayerModal: keşif ilk kaynak yerine önce tercihli aileyi başlatır', () => {
-  assert.ok(PLAYER.includes('if (tercihliKaynagiBaslat()) { clearTimeout(fastPlaybackTimer); return; }'),
-    'onUpdate autoplay dalında tercih önce denenir');
-  const fast = PLAYER.indexOf('const fastPlaybackTimer');
-  assert.ok(fast > -1);
-  const pencere = PLAYER.slice(fast, fast + 900);
-  assert.ok(pencere.includes('if (tercihliKaynagiBaslat()) return;'), '1.8 sn yedek zamanlayıcı da tercihi dener');
-  assert.ok(pencere.includes('if (tercihliKaynak) return;'), 'tercih henüz gelmediyse yanlış kategoriye sapmaz');
+  // Tek karar noktası: ilkOynatmaKarariVer — tercih → mevcut kategori → diğeri.
+  assert.ok(PLAYER.includes('ilkOynatmaKarariVer'), 'tek karar fonksiyonu var');
+  const bas = PLAYER.indexOf('const ilkOynatmaKarariVer');
+  const govde = PLAYER.slice(bas, bas + 700);
+  assert.ok(govde.includes('tercihliKaynagiBaslat()'), 'karar önce tercihli sağlayıcıyı dener');
+  assert.ok(govde.includes('ilkUygunKaynagiBaslat()'), 'bulunamazsa ilk uygun hatta düşer');
+  assert.ok(govde.includes('TERCIH_BEKLEME_MS'), 'tercih için bekleme penceresi var');
+  assert.ok(PLAYER.includes('ILK_KARAR_SON_MS'), 'kesin son tarih var (sonsuz "Aranıyor" olamaz)');
+  assert.ok(PLAYER.includes('if (ilkOynatmaKarariVer(false)) { clearTimeout(fastPlaybackTimer); return; }'),
+    'onUpdate kararı tek noktadan verir');
 });
 
 test('PlayerModal: bölüm geçişi son kaynağı taşır (yan liste = kısayol davranışı)', () => {
