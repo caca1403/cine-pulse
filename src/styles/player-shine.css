@@ -12,9 +12,9 @@
   border: 1px solid rgba(74, 222, 128, 0.3) !important;
 }
 .server-chip-badge.bridge-req {
-  background: rgba(223, 255, 118, 0.18) !important;
-  color: #dfff76 !important;
-  border: 1px solid rgba(223, 255, 118, 0.35) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #e5e7eb !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
 }
 
 /* ==========================================================================
@@ -723,7 +723,7 @@ html.cp-native-video.native-android #player-modal.modal-backdrop {
 
 #player-modal .tarama-karti-sayac {
   font-size: 0.78rem;
-  color: #dfff76;
+  color: #9ca3af;
 }
 
 /* ── Hazır havuz şeridi (madde 2, kullanıcı 2026-10-28) ─────────────────────

@@ -40,8 +40,20 @@ const HOME_CACHE_TTL_MS = 10 * 60 * 1000;
    içerikle gelir; öneri ve katalog havuzu en geç 10 dakikada yenilenir. */
 const HOME_DISK_TTL_MS = HOME_CACHE_TTL_MS;
 let homeDataCacheSavedAt = 0;
+/* Ana sayfa "İzlemeye Devam Et" canlı güncelleme dinleyicisi: her mount'ta
+   yenisi eklenip eskisi kaldırılmazsa dinleyiciler birikiyor ve oynatıcının
+   her ilerleme yazımında (15 sn) tüm şerit yeniden çiziliyordu
+   (inceleme 2026-11-13 #4). Tek dinleyici + ilerleme yazımlarında 10 sn
+   throttle. */
+let homeContinueWatchingListener = null;
+let homeContinueWatchingSonGuncelleme = 0;
 
 export function cleanupHomeView() {
+  if (homeContinueWatchingListener) {
+    window.removeEventListener('cinepulse_data_changed', homeContinueWatchingListener);
+    window.removeEventListener('sineflix_data_changed', homeContinueWatchingListener);
+    homeContinueWatchingListener = null;
+  }
   stopHeroSlider();
   for (const observer of activeRailObservers) observer.disconnect();
   activeRailObservers.clear();
@@ -1005,8 +1017,13 @@ export async function renderHomeView() {
       });
 
       // Live-update Continue Watching section when Trakt sync completes (NO page refresh needed)
-      const liveUpdateContinueWatching = () => {
+      const liveUpdateContinueWatching = (olay) => {
         if (!(window.location.hash || '#home').startsWith('#home')) return;
+        // Oynatma sırasında her 15 sn'lik ilerleme yazımı tüm şeridi yeniden
+        // çizmesin: yalnız ilerleme kaynaklı olaylar 10 sn'de bir işlenir.
+        const simdi = Date.now();
+        if (olay?.detail?.isProgressUpdate && simdi - homeContinueWatchingSonGuncelleme < 10000) return;
+        homeContinueWatchingSonGuncelleme = simdi;
         const homeView = container.querySelector('.home-view');
         if (!homeView?.isConnected) return;
 
@@ -1091,6 +1108,11 @@ export async function renderHomeView() {
         }
       };
 
+      if (homeContinueWatchingListener) {
+        window.removeEventListener('cinepulse_data_changed', homeContinueWatchingListener);
+        window.removeEventListener('sineflix_data_changed', homeContinueWatchingListener);
+      }
+      homeContinueWatchingListener = liveUpdateContinueWatching;
       window.addEventListener('cinepulse_data_changed', liveUpdateContinueWatching);
       window.addEventListener('sineflix_data_changed', liveUpdateContinueWatching);
     }

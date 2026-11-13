@@ -7,7 +7,7 @@
 
    Değerler yayıncının alan adıdır; arayüze ASLA sızmaz.
 
-   Doğrulama (2026-10-16): her satır, çekirdek dosyası başlığındaki gerçek
+   Doğrulama (2026-11-13, canlı https://cdn.izlelan.com/domains.json): her satır, çekirdek dosyası başlığındaki gerçek
    satıcı takma adı (örn. batman.js ← oden.js) ile satıcının kendi
    alanlar.json haritasından birebir eşleştirilerek yazıldı.
    ========================================================================== */
@@ -22,7 +22,7 @@ export const ALANLAR = Object.freeze({
   "Aqualad": "https://vixsrc.to",                // rayleigh
   "Aquaman": "https://ddizibox.net",             // teach
   "Batgirl": "https://animezer.com",             // shamrock
-  "Batman": "https://yabancidizi.watch",          // oden
+  "Batman": "https://ybncidizi.com",             // oden
   "Beast-Boy": "https://api.wecollege.net",      // gorosei
   "Black-Adam": "https://lmscript.xyz",          // urouge
   "Black-Panther": "https://siyahfilmizle.vip",  // garp
@@ -31,7 +31,7 @@ export const ALANLAR = Object.freeze({
   "Constantine": "https://arc018.stream",        // ace
   "Cyborg": "https://liderfilmizle.vip",         // garling
   "Daredevil": "https://dizipod.com",            // katakuri
-  "Deadpool": "https://diziizle.cafe",           // sengoku
+  "Deadpool": "https://diziizle.cloud",          // sengoku
   "Doctor-Fate": "https://nxsha.space",          // jinbe
   "Doctor-Strange": "https://lovefilmizle.net",  // ryuma
   "Falcon": "https://dizibal.org",               // kalgara
@@ -41,14 +41,18 @@ export const ALANLAR = Object.freeze({
   "Hawkeye": "https://www.hdfilmcehennemi2.biz", // shiki
   "Hawkman": "https://streamdata.vaplayer.ru",   // gaban
   "Hulk": "https://www.fullhdfilmizlesene.now",  // xebec
-  // dizipal aynaları sık döner (2026-10-25: 1590/2140/10 öldü; vendor'un
-  // taze domains.json'ından alındı: smoker=1592, zunesha=12, sakazuki=2143).
-  "Iron-Fist": "https://dizipal1592.com",        // smoker
+  // dizipal aynaları sık döner. 2026-11-13 canlı domains.json: smoker=1595,
+  // sakazuki=2149 (1592/2145 öldü). zunesha alias'ı artık vendor listesinde
+  // YOK; Moon-Knight girdisi en son ölçülen aynayı korur (aşağıda ayrı not).
+  "Iron-Fist": "https://dizipal1595.com",        // smoker
   "Iron-Man": "https://www.hdfilmizle.best",     // joyboy
   "Joker": "https://diziroom.com",               // toki
   "Loki": "https://filmekseni.vip",              // shanks
   "Luke-Cage": "https://www.hdfilmcehennemi.nl", // kizaru
-  "Moon-Knight": "https://dizipal12.com.tr",     // zunesha
+  // zunesha alias'ı 2026-11-13 vendor listesinden düşmüş (domains/disabled
+  // hiçbirinde yok); son çalışan dizipal aynası korunuyor — sağlık raporunda
+  // "alias kaldırıldı" olarak işaretli.
+  "Moon-Knight": "https://dizipal12.com.tr",     // zunesha (vendor'dan düştü)
   "Nightwing": "https://api.anizium.co",         // sabo
   "Poison-Ivy": "https://openani.me",            // lili
   "Punisher": "https://webdramaturkey2.com",     // mihawk
@@ -57,21 +61,21 @@ export const ALANLAR = Object.freeze({
   "Scarlet-Witch": "https://ydfvfdizipanel.ru",
   "Shazam": "https://dizisol.com",               // dragon
   "Spider-Man": "https://ha.vixolity.com",       // imu
-  "Spider-Woman": "https://dizi82.life",         // noland (dizi79 taşındı)
+  "Spider-Woman": "https://dizi86.life",         // noland (dizi79 → 82 → 86)
   "Supergirl": "https://api.sonanime.com",       // beckman
   "Superman": "https://japierdolevid.com",       // clover
   "Thanos": "https://streamcorecdn.com",         // bogard
   "Thor": "https://dizilla.now",                 // crocodile
-  "Winter-Soldier": "https://dizipal2145.com",   // sakazuki
+  "Winter-Soldier": "https://dizipal2149.com",   // sakazuki
   "Wonder-Woman": "https://asyawatch.com",       // doflamingo
   "Zatanna": "https://www.showbox.media",        // hiriluk
 
   // Birinci taraf TR-site çekirdekleri (2026-10-18 canlı ölçümlü)
   "Green-Arrow": "https://dizisol.com",
   "Robin": "https://sezonlukdizi.cc",
-  "Bane": "https://jetfilmizle.now",
+  "Bane": "https://jetfilmizle.app",
   "Cat-Woman": "https://dizibal.org",
-  "Raven": "https://dizipal2145.com",
+  "Raven": "https://dizipal2149.com",
   "Darkseid": "https://www.hdfilmcehennemi.nl",
 });
 
@@ -128,7 +132,7 @@ const ALAN_LISTESI_URL = 'https://raw.githubusercontent.com/patr0nq/veriler/main
 // v2 (2026-10-25): v1 önbellekleri bayat patr0nq değerleriyle (ölü dizipal
 // aynaları, Iron-Man'in Hulk alanına kaçması) çalışan alanları eziyordu.
 const LS_ALAN = 'cp_canli_alanlar_v2';
-const ALAN_OMUR_MS = 6 * 60 * 60 * 1000; // 6 saat
+export const ALAN_OMUR_MS = 6 * 60 * 60 * 1000; // 6 saat
 
 /* Gömülü TMDB anahtarları — Nuvio-tabanlı çekirmelerın çekirdekleri köprüden bu
    listeyi `tmdb_keys` olarak alır (bkz. alanYaniti + vekil kopruFetch).
@@ -169,16 +173,147 @@ const SATICI_TAKMA = {
 /** Sabit harita + canlı güncelleme katmanı (çalışma anında değişebilir). */
 const GUNCEL = { ...ALANLAR };
 
-/** Kaydedilmiş canlı listeyi uygula (varsa). */
+/* ── ADAY (YEDEK) HAVUZU — dayanıklılık katmanı (2026-11-13) ───────────────
+   Kullanıcı gereksinimi: "site tamamen çökmediği sürece kaynaklar asla
+   bozulmasın". Tek alan adı tek nokta arızaydı: ayna değişince ya da TLS/ağ
+   hatası gelince o kahraman sessizce 0 kaynak veriyordu. Artık her kahraman
+   için ADAY listesi tutulur: statik harita + canlı listelerden gelen adaylar +
+   aynı yayıncı ailesinin ölçülmüş aynaları. Birincil hat düşerse sıradaki
+   denenir; çalışan hat öne alınır ve 6 saatlik önbelleğe yazılır. */
+const ADAYLAR = new Map(); // kod → ['https://origin', ...] (birincil ilk sırada)
+
+/* Aynı yayıncı ailesinin dönen aynaları. Dizipal CMS'i birebir aynı yolu
+   servis ediyor (2026-11-13 ölçümü: 1595 ve 2149 canlı); biri düşünce
+   diğeri aynı isteği yanıtlayabiliyor. Diğer sitelerin aynaları farklı yol
+   şemaları kullandığı için BİLİNÇLİ olarak eklenmedi. */
+const AYNI_AILE = [
+  ['Iron-Fist', 'Winter-Soldier', 'Raven', 'Moon-Knight'],
+];
+
+/** URL'yi origin'e indirger (yol/sorgu yok); geçersizse null. */
+function originAl(url) {
+  try {
+    const u = new URL(String(url || '').trim());
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.origin : null;
+  } catch (_) { return null; }
+}
+
+function adayEkle(kod, url) {
+  const origin = originAl(url);
+  if (!kod || !origin) return;
+  if (!ADAYLAR.has(kod)) ADAYLAR.set(kod, []);
+  const liste = ADAYLAR.get(kod);
+  if (!liste.includes(origin)) liste.push(origin);
+}
+
+/** Aday havuzunu statik harita + aile aynalarından kur. */
+function adaylariKur() {
+  for (const [kod, url] of Object.entries(ALANLAR)) adayEkle(kod, url);
+  for (const aile of AYNI_AILE) {
+    const urller = [...new Set(aile.map((kod) => ALANLAR[kod]).filter(Boolean))];
+    for (const kod of aile) for (const url of urller) adayEkle(kod, url);
+  }
+}
+adaylariKur();
+
+/** kod → aday listesi kopyası (birincil GUNCEL değeri ilk sırada). */
+export function alanAdaylari(kod) {
+  const birincil = originAl(GUNCEL[kod]);
+  const liste = [...(ADAYLAR.get(kod) || [])];
+  const sira = birincil ? [birincil, ...liste] : liste;
+  return [...new Set(sira)];
+}
+
+/** Aday olarak kullanılabilecek TÜM origin'ler (test/teşhis). */
+export function alanAdaylariHaritasi() {
+  return Object.fromEntries([...ADAYLAR.entries()].map(([kod, liste]) => [kod, [...liste]]));
+}
+
+/**
+ * Elimizdeki mutlak adres düşerse denenecek YEDEK adresler (aynı yol+sorgu,
+ * farklı origin). Aynı kahramanın adayları + ölçülmüş aile aynaları taranır.
+ * @returns {Array<{kod: string, url: string}>}
+ */
+export function alanYedekAdresleri(adres) {
+  try {
+    const u = new URL(String(adres || ''));
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return [];
+    const bulunan = [];
+    const gorulen = new Set();
+    for (const [kod, liste] of ADAYLAR) {
+      if (!liste.includes(u.origin)) continue;
+      for (const origin of liste) {
+        if (origin === u.origin) continue;
+        const url = origin + u.pathname + u.search + u.hash;
+        if (gorulen.has(url)) continue;
+        gorulen.add(url);
+        bulunan.push({ kod, url });
+      }
+    }
+    return bulunan;
+  } catch (_) { return []; }
+}
+
+/** Önbelleği (canlı harita + aday havuzu) diske yaz. */
+function alanlariKaydet() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(LS_ALAN, JSON.stringify({
+        t: Date.now(),
+        harita: GUNCEL,
+        adaylar: Object.fromEntries(ADAYLAR.entries()),
+      }));
+    }
+  } catch (_) {}
+}
+
+/**
+ * Ölçülmüş ÇALIŞAN yedek hattı birincil yapar. Yalnız birincil istek fiilen
+ * düştükten sonra çağrılır (vek il köprü yedek denemesi); "çalışan alan asla
+ * ezilmez" kuralını bozmaz — burada ezilen alan zaten ölçülmüş ölü hattır.
+ */
+export function alanYedekOnayla(kod, adres) {
+  const origin = originAl(adres);
+  if (!kod || !origin) return false;
+  if (!ADAYLAR.has(kod)) ADAYLAR.set(kod, []);
+  const liste = ADAYLAR.get(kod);
+  const i = liste.indexOf(origin);
+  if (i > 0) { liste.splice(i, 1); liste.unshift(origin); }
+  else if (i < 0) liste.unshift(origin);
+  if (GUNCEL[kod] === origin) return false;
+  GUNCEL[kod] = origin;
+  alanlariKaydet();
+  return true;
+}
+
+/** Test/teşhis kancası: haritayı ve aday havuzunu ilk haline döndürür. */
+export function alanlariSifirla() {
+  for (const kod of Object.keys(GUNCEL)) delete GUNCEL[kod];
+  Object.assign(GUNCEL, ALANLAR);
+  ADAYLAR.clear();
+  adaylariKur();
+  sonTazelemeDenemesi = 0;
+  tazelemeUcusta = null;
+}
+
+/** Kaydedilmiş canlı listeyi (harita + aday havuzu) uygula. Çevrimdışıyken
+ *  son iyi harita böylece korunur; ağ yoksa hiçbir şey silinmez. */
 export function kayitliAlanlariUygula() {
   try {
     const ham = typeof localStorage !== 'undefined' && localStorage.getItem(LS_ALAN);
     if (!ham) return 0;
-    const { t, harita } = JSON.parse(ham);
+    const { t, harita, adaylar } = JSON.parse(ham);
     if (!harita || Date.now() - (t || 0) > ALAN_OMUR_MS) return 0;
     let n = 0;
     for (const [kod, url] of Object.entries(harita)) {
       if (GUNCEL[kod] !== url && url) { GUNCEL[kod] = url; n++; }
+    }
+    if (adaylar && typeof adaylar === 'object') {
+      for (const [kod, urller] of Object.entries(adaylar)) {
+        if (!Array.isArray(urller)) continue;
+        ADAYLAR.set(kod, []);
+        for (const url of urller) adayEkle(kod, url);
+      }
     }
     return n;
   } catch (_) { return 0; }
@@ -210,11 +345,15 @@ export async function canliAlanlariYenile(fetchFn) {
   try {
     const f = fetchFn || (typeof fetch === 'function' ? fetch : null);
     if (!f) return 0;
-    const adaylar = new Map(); // kod → Set(url)
+    const adaylar = new Map(); // kod → Set(origin)
     const ekle = (kod, url) => {
-      if (!Object.prototype.hasOwnProperty.call(GUNCEL, kod) || !url || GUNCEL[kod] === url) return;
+      if (!Object.prototype.hasOwnProperty.call(GUNCEL, kod)) return;
+      const origin = originAl(url);
+      if (!origin) return;
+      adayEkle(kod, origin); // canlı kaynaklar ADAY havuzunu da büyütür (yedek)
+      if (GUNCEL[kod] === origin) return;
       if (!adaylar.has(kod)) adaylar.set(kod, new Set());
-      adaylar.get(kod).add(url);
+      adaylar.get(kod).add(origin);
     };
 
     /* Kaynak 1: patr0nq siteurl.txt (SITE_KODLARI, KESİN eşleşme). */
@@ -261,17 +400,48 @@ export async function canliAlanlariYenile(fetchFn) {
       for (const url of urlKumesi) {
         if (!(await erisilebilirMi(url, f))) continue;          // ölü aday uygulanmaz
         GUNCEL[kod] = url;
+        alanYedekOnayla(kod, url); // çalışan hattı aday listesinin başına al
         n++;
         break;
       }
     }
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(LS_ALAN, JSON.stringify({ t: Date.now(), harita: GUNCEL }));
-      }
-    } catch (_) {}
+    alanlariKaydet();
     return n;
   } catch (_) { return 0; }
+}
+
+/* ── ON-DEMAND TAZELEME (2026-11-13) ──────────────────────────────────────
+   Açılışta bir kez tazelemek yetmiyor: uygulama uzun süre açık kalıyor ve
+   site aynası gece değişebiliyor. Ardışık ağ/TLS/5xx hataları görülünce
+   (vek il köprüsü bildirir) ve 6 saatlik periyodik zamanlayıcıyla tazelenir.
+   Tekrar giriş korumalı + 5 dk cooldown: hata fırtınasında ağ boğulmaz. */
+let tazelemeUcusta = null;
+let sonTazelemeDenemesi = 0;
+const TAZELEME_COOLDOWN_MS = 5 * 60 * 1000;
+
+/**
+ * Gerekirse canlı alan listelerini yeniler. Uçuşta istek varsa ona bağlanır;
+ * cooldown içindeyse ağa çıkmaz.
+ * @returns {Promise<number>} uygulanan güncelleme sayısı
+ */
+export async function gerektigindeYenile(fetchFn, { minAralikMs = TAZELEME_COOLDOWN_MS } = {}) {
+  const f = fetchFn || (typeof fetch === 'function' ? fetch : null);
+  if (!f) return 0;
+  if (tazelemeUcusta) return tazelemeUcusta;
+  const simdi = Date.now();
+  if (sonTazelemeDenemesi && simdi - sonTazelemeDenemesi < minAralikMs) return 0;
+  sonTazelemeDenemesi = simdi;
+  tazelemeUcusta = (async () => {
+    try { return await canliAlanlariYenile(f); }
+    catch (_) { return 0; }
+    finally { tazelemeUcusta = null; }
+  })();
+  return tazelemeUcusta;
+}
+
+/** Teşhis: tazeleme katmanının son durumu. */
+export function alanTazelemeDurumu() {
+  return { sonDeneme: sonTazelemeDenemesi, ucusta: Boolean(tazelemeUcusta) };
 }
 
 /** Çekirdeğin beklediği yanıt biçimi (canlı katman dahil). */

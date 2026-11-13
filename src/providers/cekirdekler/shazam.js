@@ -2892,6 +2892,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
     }
     log("Shazam", "[Adım 2/3] Toplam " + list3.length + " potansiyel akış çözümleniyor...");
     let list4 = [],
+      yedekler = [],
       set = new Set();
     for (let value7 of list3)
       try {
@@ -2956,19 +2957,27 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
         let flag = !1,
           m3u8Text = "";
         try {
+          /* GREEN-ARROW (dizisol.js) ile AYNI site ve AYNI kanıtlanmış set:
+             s*.dizisol.com master'ları Origin: site olmadan Cloudflare WAF
+             tarafından 403'lenir ("Çelik Kalkan"). Sec-Fetch-* EKLENMEZ. */
           let response2 = await fetch(url, {
             headers: {
               "User-Agent": userAgent,
+              Accept: "*/*",
               Referer: Origin + "/",
               Origin: Origin
             },
-            signal: AbortSignal.timeout ? AbortSignal.timeout(2500) : void 0
+            signal: AbortSignal.timeout ? AbortSignal.timeout(7000) : void 0
           });
           response2.ok &&
             ((m3u8Text = await response2.text()), m3u8Text.includes("#EXTM3U") && (flag = !0));
         } catch {}
         if (!flag) {
-          log("Shazam", "Geçersiz veya yanıt vermeyen akış elendi.", "warn");
+          /* SIFIR DÖNÜŞ YASAĞI (dizisol.js'den port): doğrulama düşse bile
+             kaynak listeden atılmaz; kanıtsız olduğu için "HLS yedeği"
+             etiketiyle, dil iddiası taşımadan sunulur. */
+          yedekler.push({ url: url, externalSubtitles: externalSubtitles });
+          log("Shazam", "Doğrulanamayan hat yedek listesine alındı.", "warn");
           continue;
         }
         let inspection = defineProp3({
@@ -2977,13 +2986,11 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
             externalSubtitles: externalSubtitles
           }),
           languageTitle = inspection.languageTitle,
-          length = list4.length,
           value8 = defineProp4({
-            name: length > 0 ? "Dragon [" + (length + 1) + "]" : "Shazam",
+            name: "Shazam",
             url: url,
             inspection: inspection,
             languageTitle: languageTitle,
-            quality: "1080p",
             format: "m3u8",
             headers: {
               "User-Agent": userAgent,
@@ -2991,9 +2998,40 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
               Origin: Origin
             }
           });
+        value8.title = "Shazam" + (languageTitle ? " · " + languageTitle : "");
         (list4.push(value8), log("Shazam", " Akış Eklendi: " + languageTitle, "success"));
       } catch (err) {
         log("Shazam", "Kaynak çözümleme hatası: " + err.message, "warn");
+      }
+    /* Doğrulanamayan hatlar: dizisol.js'teki gibi yedek olarak listelenir.
+       Etiket gerçek site adı taşımaz; dil iddiası yok (uydurma yok). */
+    for (let i = 0; i < yedekler.length; i += 1)
+      try {
+        let yedek = yedekler[i],
+          inspection = defineProp3({
+            m3u8Text: "",
+            m3u8Url: yedek.url,
+            externalSubtitles: yedek.externalSubtitles
+          }),
+          value8 = defineProp4({
+            name: "Shazam",
+            url: yedek.url,
+            inspection: inspection,
+            format: "m3u8",
+            headers: {
+              "User-Agent": userAgent,
+              Referer: Origin + "/",
+              Origin: Origin
+            }
+          });
+        // Kanıtsız hat: kalite iddiası YOK ("autop" gibi uydurma etiket olmasın).
+        value8.quality = "auto";
+        value8.title = "Shazam · HLS yedeği";
+        value8.dogrulanamadi = !0;
+        list4.push(value8);
+        log("Shazam", "Yedek hat eklendi: HLS yedeği", "info");
+      } catch (err) {
+        log("Shazam", "Yedek hat etiketlenemedi: " + err.message, "warn");
       }
     let now3 = ((Date.now() - now2) / 1000).toFixed(2);
     return (

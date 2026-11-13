@@ -685,7 +685,7 @@
 }
 .kd-state h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--kd-text); letter-spacing: -0.02em; }
 .kd-state p { margin: 0; font-size: 13.5px; max-width: 44ch; line-height: 1.5; }
-.kd-state svg { width: 40px; height: 40px; color: rgba(223, 255, 118, 0.6); }
+.kd-state svg { width: 40px; height: 40px; color: rgba(255, 255, 255, 0.55); }
 
 /* ── Detay perdesi (iOS alt çekmece → masaüstünde ortalanmış kart) ─────── */
 .kd-sheet-backdrop {
@@ -834,7 +834,7 @@
   cursor: pointer;
   transition: background .18s, border-color .18s;
 }
-.kd-ep-chip:hover { background: rgba(223, 255, 118, 0.14); border-color: rgba(223, 255, 118, 0.4); }
+.kd-ep-chip:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.3); }
 .kd-ep-more { align-self: center; font-size: 12px; color: var(--kd-muted); }
 .kd-sheet-poster {
   width: 92px;
@@ -934,7 +934,7 @@
   cursor: pointer;
   transition: border-color .18s, background .18s;
 }
-.kd-detail-episode:hover { border-color: rgba(223,255,118,.45); background: var(--kd-surface-2); }
+.kd-detail-episode:hover { border-color: rgba(255,255,255,.32); background: var(--kd-surface-2); }
 .kd-detail-episode > img, .kd-detail-episode-number {
   display: grid;
   place-items: center;

@@ -93,6 +93,12 @@ final class NativeMediaGateway extends NanoHTTPD {
                     headers.put(key, e.getValue());
             }
             if (ref.isEmpty()) ref = session.getHeaders().getOrDefault("referer", "");
+            // YEDEK ALANLAR (2026-11-13): native-routes.json girislerindeki
+            // "mirrors" listesi. Web worker ayni listeyi uyguluyor; mobil kopru
+            // de uygulamazsa parite asimetrisi olusur (birincil dusunce web
+            // yedekle kurtarir, mobil 0 kaynak doner). Birincil 5xx/ag hatasi
+            // verirse siradaki taban denenir; yanit ayni istege seffaf doner.
+            List<String> yedekHedefler = new ArrayList<>();
             boolean playlistProxy = route.equals("hls_proxy") || route.equals("mkv_stream");
             if (route.equals("proxy") || playlistProxy || route.equals("stream_proxy")) {
                 target = params.get("url");
@@ -107,6 +113,14 @@ final class NativeMediaGateway extends NanoHTTPD {
                     for (String value : e.getValue()) query.add(enc(e.getKey()) + "=" + enc(value));
                 }
                 if (!query.isEmpty()) target += (target.contains("?") ? "&" : "?") + String.join("&", query);
+                org.json.JSONArray mirrors = config.optJSONArray("mirrors");
+                if (mirrors != null) for (int mi = 0; mi < mirrors.length(); mi++) {
+                    String mbase = mirrors.optString(mi, "");
+                    if (!mbase.startsWith("http")) continue;
+                    String mtarget = mbase + (sub.isEmpty() || sub.startsWith("/") ? sub : "/" + sub);
+                    if (!query.isEmpty()) mtarget += (mtarget.contains("?") ? "&" : "?") + String.join("&", query);
+                    if (!mtarget.equals(target)) yedekHedefler.add(mtarget);
+                }
                 ref = config.optString("referer", base + "/");
                 JSONObject configured = config.optJSONObject("headers");
                 if (configured != null) for (Iterator<String> it = configured.keys(); it.hasNext();) {
@@ -161,10 +175,29 @@ final class NativeMediaGateway extends NanoHTTPD {
                     body = String.join("&", pairs).getBytes(StandardCharsets.UTF_8);
                 }
             }
-            HttpURLConnection conn = connect(target, session.getMethod().name(), headers, body);
-            int status = conn.getResponseCode();
-            String mime = conn.getContentType();
-            if (mime == null) mime = "application/octet-stream";
+            List<String> adayHedefler = new ArrayList<>();
+            adayHedefler.add(target);
+            adayHedefler.addAll(yedekHedefler);
+            HttpURLConnection conn = null;
+            int status = 0;
+            String mime = "application/octet-stream";
+            for (int adayNo = 0; adayNo < adayHedefler.size(); adayNo++) {
+                String aday = adayHedefler.get(adayNo);
+                boolean sonAday = adayNo == adayHedefler.size() - 1;
+                HttpURLConnection deneme = connect(aday, session.getMethod().name(), headers, body);
+                int denemeDurum = deneme.getResponseCode();
+                String denemeMime = deneme.getContentType();
+                if (denemeDurum < 500 || sonAday) {
+                    conn = deneme; status = denemeDurum;
+                    if (denemeMime != null) mime = denemeMime;
+                    if (adayNo > 0) target = aday;
+                    break;
+                }
+                deneme.disconnect();
+            }
+            if (conn == null) {
+                return reply(newFixedLengthResponse(Response.Status.SERVICE_UNAVAILABLE, "application/json", "{\"success\":false,\"error\":\"native-upstream-failed\"}"));
+            }
             InputStream raw = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
             if (raw == null) raw = new ByteArrayInputStream(new byte[0]);
             PushbackInputStream sniffed = new PushbackInputStream(raw, 32);
@@ -176,9 +209,12 @@ final class NativeMediaGateway extends NanoHTTPD {
             InputStream stream = new FilterInputStream(sniffed) {
                 @Override public void close() throws IOException { try { super.close(); } finally { opened.disconnect(); } }
             };
+            // Anonim sinifa yalniz effectively-final degisken gecebilir: dongude
+            // atanan `status` dogrudan kullanilamaz.
+            final int sonDurum = status;
             Response.IStatus code = new Response.IStatus() {
-                public int getRequestStatus() { return status; }
-                public String getDescription() { return status + " Upstream"; }
+                public int getRequestStatus() { return sonDurum; }
+                public String getDescription() { return sonDurum + " Upstream"; }
             };
             Response response;
             boolean isPlaylist = playlistBody || mime.toLowerCase(Locale.ROOT).contains("mpegurl") || conn.getURL().getPath().toLowerCase(Locale.ROOT).endsWith(".m3u8");

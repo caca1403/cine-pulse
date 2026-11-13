@@ -30,6 +30,7 @@ import { fetchLiveSourceChannels, fetchAllLiveSources, listLiveSources, isLiveSo
 import { traktTokenKopru } from '../api/_traktToken.js';
 import { xtreamPanelsFromEnv } from '../api/_xtreamPanels.js';
 import { ariaKeyPayload } from '../api/_ariaKey.js';
+import { saglayiciRotaCoz, saglayiciBasliklari, saglayiciIstekDene } from './saglayiciKopru.js';
 
 let resolveWebteizleStreams = async () => {
   throw new Error('Webteizle resolver is not included in this desktop build');
@@ -221,6 +222,20 @@ function isSafePublicUrl(rawUrl) {
   } catch (_) {
     return false;
   }
+}
+
+/** Sağlayıcı köprüsü için istek gövdesini (küçük API POST'ları) toplar. */
+function saglayiciGovdesiniOku(req, limit = 2 * 1024 * 1024) {
+  return new Promise((resolve) => {
+    const parcalar = [];
+    let boyut = 0;
+    req.on('data', (parca) => {
+      boyut += parca.length;
+      if (boyut <= limit) parcalar.push(parca);
+    });
+    req.on('end', () => resolve(Buffer.concat(parcalar)));
+    req.on('error', () => resolve(Buffer.alloc(0)));
+  });
 }
 
 function exceedsRateLimit(req, limit = 1200) {
@@ -2345,6 +2360,66 @@ const server = http.createServer(async (req, res) => {
       }
     }));
     return;
+  }
+
+  /* ── SAĞLAYICI ROTA KÖPRÜSÜ (masaüstü ↔ web/mobil parite) ────────────────
+     Çekirdeklerin `/api/<kod>/...` göreli isteklerini native-routes.json
+     tablosundan hedef siteye taşır. Web'de cf/provider-routes.js, Android'de
+     NativeMediaGateway aynı tabloyu kullanır; masaüstünde bu handler eksik
+     olduğu için aynı çekirdek 404 alıp 0 kaynak dönüyordu (inceleme #2).
+     Medya akışı buradan geçmez; yalnız API/HTML yanıtları taşınır. */
+  if (reqUrl.pathname.startsWith('/api/')) {
+    const hedef = saglayiciRotaCoz(reqUrl.pathname, reqUrl.search);
+    if (hedef) {
+      try {
+        // Yerel gateway jetonu upstream'e SIZMAZ.
+        const sorgu = new URLSearchParams(hedef.sorgu || '');
+        sorgu.delete('__cp_token');
+        const temizSorgu = sorgu.toString() ? `?${sorgu.toString()}` : '';
+        let govde;
+        if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+          govde = await saglayiciGovdesiniOku(req);
+        }
+        const basliklar = saglayiciBasliklari(hedef.konf, {
+          'content-type': req.headers['content-type'],
+          'x-requested-with': req.headers['x-requested-with'],
+          'cf-control': req.headers['cf-control'],
+          language: req.headers['language'],
+          site: req.headers['site'],
+          device: req.headers['device'],
+        });
+        const { cevap, hata } = await saglayiciIstekDene({
+          adaylar: hedef.adaylar,
+          yol: hedef.yol,
+          sorgu: temizSorgu,
+          method: req.method === 'HEAD' ? 'GET' : req.method,
+          basliklar,
+          govde,
+        });
+        if (!cevap) {
+          res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'upstream-unreachable',
+            detail: String((hata && hata.message) || hata || 'tüm alan adları düştü').slice(0, 120)
+          }));
+          return;
+        }
+        const icerikTipi = cevap.headers.get('content-type') || 'application/octet-stream';
+        const govdeTamponu = req.method === 'HEAD' ? null : Buffer.from(await cevap.arrayBuffer());
+        res.writeHead(cevap.status, {
+          'Content-Type': icerikTipi,
+          ...(govdeTamponu ? { 'Content-Length': govdeTamponu.length } : {}),
+          'X-Upstream-URL': String(cevap.url || '').slice(0, 300),
+        });
+        res.end(govdeTamponu || undefined);
+        return;
+      } catch (hata) {
+        res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, error: 'provider-bridge-error', detail: String(hata && hata.message || hata).slice(0, 120) }));
+        return;
+      }
+    }
   }
 
   // Bilinmeyen yol -> 404 (istemcinin yedek zincirini çalıştırması için şart)

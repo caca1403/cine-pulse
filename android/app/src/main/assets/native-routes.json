@@ -85,10 +85,11 @@
     }
   },
   "hfd": {
-    "base": "https://hdfilmdelisi.one",
-    "referer": "https://hdfilmdelisi.one/",
+    "base": "https://hdfilmdelisi1.com",
+    "mirrors": ["https://hdfilmdelisi.one"],
+    "referer": "https://hdfilmdelisi1.com/",
     "headers": {
-      "Origin": "https://hdfilmdelisi.one"
+      "Origin": "https://hdfilmdelisi1.com"
     }
   },
   "dzl": {
@@ -106,10 +107,11 @@
     }
   },
   "jet": {
-    "base": "https://jetfilmizle.now",
-    "referer": "https://jetfilmizle.now/",
+    "base": "https://jetfilmizle.app",
+    "mirrors": ["https://jetfilmizle.now"],
+    "referer": "https://jetfilmizle.app/",
     "headers": {
-      "Origin": "https://jetfilmizle.now",
+      "Origin": "https://jetfilmizle.app",
       "X-Requested-With": "XMLHttpRequest",
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
     }

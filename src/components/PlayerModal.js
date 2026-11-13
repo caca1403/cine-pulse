@@ -1,4 +1,4 @@
-import { getAnonymousSourceLabel } from '../services/kaynak/sourceLabels.js';
+import { getAnonymousSourceLabel, getSourceFamily } from '../services/kaynak/sourceLabels.js';
 import { nativeOynaticiVar, nativeOynat, nativeKapat, nativeModAc, nativeKonumSaniye, nativeSureSaniye, nativeOynuyorMu, nativeSarmala, nativeAtla, nativeDevam, nativeDuraklat, nativeDurumDegistir, nativeHiz, nativeSes, nativeBackdrop, nativeDurum, nativeIzler, nativeIzSec, nativeOran, nativeDondur } from '../services/platform/nativePlayer.js';
 import { motorVar as torrentMotorVar, motorBaslat as torrentMotorBaslat, motorDurdur as torrentMotorDurdur } from '../services/platform/torrentYerel.js';
 import { nativeAltyazilariHazirla } from '../services/icerik/altyaziServisi.js';
@@ -213,7 +213,12 @@ export async function openPlayerModal({
   // Detay sayfası hazır havuzu: verilirse tarama YAPILMAZ (regresyon yok —
   // verilmediğinde aşağıdaki akış aynen bugünkü gibi çalışır).
   hazirKaynaklar = null,
-  secilenKaynak = null
+  secilenKaynak = null,
+  // "İzlemeye devam et" / bölüm geçişi sürekliliği: kullanıcının bu yapıt
+  // için EN SON oynattığı sağlayıcı ailesi. Verilmezse izleme kaydındaki
+  // preferredSource alanından okunur (aşağıda) — çağıranların çoğu bu yüzden
+  // ek parametre geçmek zorunda değildir.
+  preferredSource = null
 }, taramaKarti = null) {
   // Madde 1 sözleşmesi (kullanıcı 2026-10-28): openPlayer.js 2. opsiyonel
   // argümanı aynen iletir — {baslik, posterUrl, altBaslik, kaynakSayisi} | null.
@@ -314,7 +319,7 @@ export async function openPlayerModal({
   modalContainer.classList.toggle('player-variant-short-drama', playerVariant === 'short-drama');
 
   nativeKapatYoksayTa = Date.now() + 1500;
-  activeModalClose?.();
+  activeModalClose?.({ yonlendirme: false });
 
   // Closing a previous player releases all cached blob URLs. Create the new
   // playback URL only after that cleanup so the downloaded source stays alive.
@@ -616,6 +621,43 @@ export async function openPlayerModal({
   }
 
   const existingRecord = isOfflinePlayback ? null : getMediaProgress(tmdbId, currentSeason, currentEpisode);
+  /* ── KAYNAK SÜREKLİLİĞİ (kullanıcı 2026-11-13) ──────────────────────────
+     Şikâyetler: (a) "İzlemeye devam et" ilgili yapıtın ilgili kaynağını
+     değil ilk bulduğu kaynağı açıyor, (b) oynatıcı açıkken yan listeden
+     bölüm seçince kaynak-seç moduna düşüyor. Ortak kök neden: her açılış/
+     bölüm geçişi keşfi SIFIRDAN koşup ilk bulunan hattı seçiyordu; son
+     kullanılan sağlayıcı hiç hatırlanmıyordu. Artık son kullanılan kaynağın
+     kimliği (id + sağlayıcı + aile + kategori) ilerleme kaydına yazılır ve
+     yeni keşif önce AYNI aileyi arar; bulursa otomatik oynatır. */
+  let tercihliKaynak = (() => {
+    const aday = preferredSource || (!isOfflinePlayback && existingRecord?.preferredSource) || null;
+    return aday && typeof aday === 'object' ? aday : null;
+  })();
+  /* Eski kayıtlarda preferredSource yoksa son başarılı kaynak listesi
+     önbelleğinden sağlayıcı ailesi türetilir (ilk-açılan-kaynak davranışını
+     mevcut kullanıcılar için de düzeltir). Yalnız kimlik okunur; önbellekteki
+     imzalı URL'ler oynatma için KULLANILMAZ. */
+  if (!tercihliKaynak && !isOfflinePlayback && tmdbId) {
+    try {
+      const ob = onbellekten(anahtarOlustur({
+        tur: isSeries ? 'tv' : type,
+        tmdbId,
+        baslik: cleanSeriesName,
+        sezon: currentSeason,
+        bolum: currentEpisode
+      }));
+      const ilk = (ob?.girisler || []).find(g => g?.ham && g.tip !== 'eklenti' && g.ham.autoPlayable !== false);
+      if (ilk?.ham) {
+        tercihliKaynak = kaynakTercihTarifi(ilk.ham, ilk.kategori === 'subtitled' ? 'subtitled' : (ilk.ham.trSes || ilk.ham.isDual ? 'dubbed' : 'subtitled'));
+      }
+    } catch (_) { /* önbellek yoksa sessiz geç */ }
+  }
+  // Kısa dizide oynatıcı kapanınca bölümlü detay sayfasına dönülür (aşağıda
+  // closeModal); bölüm geçişi/yeniden açılış bu yönlendirmeyi bastırır.
+  const kisaDiziDetayinaDon = playerVariant === 'short-drama';
+  // Açılış anındaki rota: kullanıcı oynatma sırasında kendi gezinmesini
+  // (geri tuşu vb.) yaptıysa kapanışta onun rotasını EZMEYİZ.
+  const acilisRotaHash = (() => { try { return window.location.hash; } catch (_) { return ''; } })();
   // Sihirbaz "Kaldığı Yerden Devam" (cp_resume_playback): kapalıysa otomatik
   // sarma yapılmaz (kullanıcının açık seçimiyle verilen currentTime hariç).
   const otomatikDevamAçık = resumeEnabled((() => { try { return localStorage.getItem('cp_resume_playback'); } catch (_) { return null; } })());
@@ -1171,6 +1213,7 @@ export async function openPlayerModal({
       updateWatchedUI(true);
     }
 
+    const kaynakTarifi = kaynakTercihTarifi(activeServers[currentServerIndex]) || tercihliKaynak || null;
     saveWatchProgress({
       id: tmdbId,
       title: cleanSeriesName,
@@ -1183,7 +1226,10 @@ export async function openPlayerModal({
       episode: isSeries ? currentEpisode : undefined,
       currentTime: cur,
       duration: dur > 0 ? dur : estimatedDuration,
-      completed: completedStatus
+      completed: completedStatus,
+      // "İzlemeye devam et" aynı sağlayıcıyı açsın: kaynak kimliği ilerlemeyle
+      // birlikte saklanır (saveWatchProgress ...rest'i kayda yazar).
+      ...(kaynakTarifi ? { preferredSource: kaynakTarifi } : {})
     });
 
     // Trakt.tv Real-Time Scrobble
@@ -1817,7 +1863,7 @@ export async function openPlayerModal({
       showToast(`🎬 ${finished.nickname || 'Bir katılımcı'} ${episodeLabel} bitirdi. Sen akıcı izlemeye devam ediyorsun.`, 'info');
     });
     modalScope.on(window, 'cinepulse:decision-room-close-player', event => {
-      if (event.detail?.roomCode === roomSync.roomCode) activeModalClose?.();
+      if (event.detail?.roomCode === roomSync.roomCode) activeModalClose?.({ yonlendirme: false });
     });
   }
 
@@ -1928,6 +1974,108 @@ export async function openPlayerModal({
         && (!targetName || srvName === targetName));
     }
     return Boolean(srvName && targetName && srvName === targetName);
+  }
+
+  /* ── KAYNAK SÜREKLİLİĞİ YARDIMCILARI ─────────────────────────────────────
+     Tercih tarifi, izleme kaydına yazılabilecek kadar KÜÇÜK ve kalıcı
+     kimlik taşır: stream id'si (imzalı URL değil), sağlayıcı kodu ve
+     kaynak ailesi kod adı. Eşleştirme sırası: aynı id → aynı aile →
+     aynı sağlayıcı adı. Böylece "Devam Et" ve bölüm geçişi aynı sağlayıcıyı
+     otomatik açar; sağlayıcı o bölümde yoksa mevcut ilk-kaynak davranışı
+     aynen korunur (kaynak seç ekranına düşülmez). */
+  function kaynakTercihTarifi(srv, kategori = currentCategory) {
+    if (!srv) return null;
+    let aile = '';
+    try { aile = getSourceFamily(srv).alias || ''; } catch (_) { aile = ''; }
+    return {
+      id: String(srv.id || ''),
+      provider: String(srv.source || ''),
+      name: String(srv.displayName || srv.name || ''),
+      category: kategori === 'subtitled' ? 'subtitled' : 'dubbed',
+      aile,
+      at: Date.now()
+    };
+  }
+
+  function kaynakTerciheUyar(srv, tercih) {
+    if (!srv || !tercih) return false;
+    const normalized = value => String(value || '').trim().toLocaleLowerCase('tr-TR');
+    const srvId = normalized(srv.id);
+    const targetId = normalized(tercih.id);
+    if (srvId && targetId && srvId === targetId) return true;
+    let srvAile = '';
+    try { srvAile = getSourceFamily(srv).alias || ''; } catch (_) { srvAile = ''; }
+    // 'Nexus' tarafsız yutucudur: tanınmayan kaynakları eşleştirmez.
+    if (srvAile && tercih.aile && srvAile === tercih.aile && srvAile !== 'Nexus') return true;
+    const srvProvider = normalized(srv.source);
+    const targetProvider = normalized(tercih.provider);
+    if (srvProvider && targetProvider && srvProvider === targetProvider) {
+      const srvName = normalized(srv.displayName || srv.name);
+      const targetName = normalized(tercih.name);
+      return !targetName || !srvName || srvName === targetName;
+    }
+    return false;
+  }
+
+  /** Keşif listesinde tercih edilen sağlayıcıyı arar (önce mevcut kategori). */
+  function tercihliKaynakBul() {
+    if (!tercihliKaynak) return null;
+    const dubbed = categorizedServers.dubbed || [];
+    const subtitled = categorizedServers.subtitled || [];
+    const sira = currentCategory === 'subtitled'
+      ? [['subtitled', subtitled], ['dubbed', dubbed]]
+      : [['dubbed', dubbed], ['subtitled', subtitled]];
+    for (const [kategori, liste] of sira) {
+      for (const srv of liste) {
+        if (!srv || srv.autoPlayable === false) continue;
+        if (kaynakTerciheUyar(srv, tercihliKaynak)) return { kategori, srv };
+      }
+    }
+    return null;
+  }
+
+  /** Tercihli kaynak bulunduysa onu oynatır; bulunamazsa false döner. */
+  function tercihliKaynagiBaslat() {
+    const bulunan = tercihliKaynakBul();
+    if (!bulunan) return false;
+    currentCategory = bulunan.kategori;
+    activeServers = birlestirilmisKaynaklar();
+    const ix = activeServers.indexOf(bulunan.srv);
+    currentServerIndex = ix >= 0 ? ix : 0;
+    document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
+    document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
+    hasPlayerStartedPlaying = true;
+    isSearching = false;
+    updateServerPillsEvents();
+    updateActiveSourceLabel();
+    renderSourcesPopoverList();
+    updatePlayerContainer();
+    return true;
+  }
+
+  /** Tercih bekleme penceresi dolduğunda devreye giren "son çare": mevcut
+   *  kategoride (yoksa diğerinde) ilk oynatılabilir hattı başlatır. */
+  function ilkUygunKaynagiBaslat() {
+    if (hasPlayerStartedPlaying || closed) return false;
+    const kategoriler = [currentCategory, currentCategory === 'dubbed' ? 'subtitled' : 'dubbed'];
+    for (const kategori of kategoriler) {
+      const liste = categorizedServers[kategori] || [];
+      const uygun = liste.find(s => s && s.autoPlayable !== false);
+      if (!uygun) continue;
+      currentCategory = kategori;
+      activeServers = birlestirilmisKaynaklar();
+      currentServerIndex = Math.max(0, activeServers.indexOf(uygun));
+      document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
+      document.getElementById('tab-subtitled')?.classList.toggle('active', currentCategory === 'subtitled');
+      hasPlayerStartedPlaying = true;
+      isSearching = false;
+      updateServerPillsEvents();
+      updateActiveSourceLabel();
+      renderSourcesPopoverList();
+      updatePlayerContainer();
+      return true;
+    }
+    return false;
   }
 
   function broadcastRoomSource() {
@@ -5372,7 +5520,7 @@ export async function openPlayerModal({
     renderRoomPlayerHud();
     setupRoomCloudPopover();
     modalContainer.querySelector('#btn-room-return')?.addEventListener('click', () => {
-      closeModal();
+      closeModal({ yonlendirme: false });
       window.setTimeout(() => returnToDecisionRoomModal(), 0);
     });
     modalContainer.querySelector('#btn-room-chat')?.addEventListener('click', () => {
@@ -5453,11 +5601,13 @@ export async function openPlayerModal({
         if (nextEpisode === Number(currentEpisode) && nextSeason === Number(currentSeason)) return;
         const next = shortDramaEpisodes.find(ep => Number(ep.season) === nextSeason && Number(ep.episode) === nextEpisode);
         try {
+          const tercih = kaynakTercihTarifi(activeServers[currentServerIndex], currentCategory) || tercihliKaynak;
           await openPlayerModal({
             type: 'tv', tmdbId, title: `${cleanSeriesName} - B${nextEpisode}`, seriesTitle: cleanSeriesName,
             season: nextSeason, episode: nextEpisode, posterPath, backdropPath, playerVariant,
             seriesOverview, episodeArtworkPath: next?.thumb || posterPath, shortDramaEpisodes, maxEpisodes,
-            seasonsList: [{ season_number: nextSeason, episode_count: maxEpisodes }]
+            seasonsList: [{ season_number: nextSeason, episode_count: maxEpisodes }],
+            preferredSource: tercih
           });
         } catch (err) {
           console.error('[PlayerModal] Kısa dizi bölüm geçiş hatası:', err);
@@ -7906,6 +8056,24 @@ export async function openPlayerModal({
     }
 
     let srv = activeServers[currentServerIndex];
+    /* TEŞHİS (2026-11-13): "Devam Et" kaynak sürekliliğinin canlı E2E'de
+       doğrulanabilmesi için seçilen ilk kaynak ailesi kaydedilir. Üretim
+       davranışını etkilemez; yalnız pencere üzerinde küçük bir geçmiş tutar. */
+    try {
+      if (srv) {
+        const secim = {
+          kaynak: getSourceLabel(srv),
+          aile: getSourceFamily(srv).alias,
+          kategori: currentCategory,
+          tercih: tercihliKaynak && tercihliKaynak.aile ? tercihliKaynak.aile : null,
+          zaman: Date.now()
+        };
+        window.__cpKaynakSecimGecmisi = window.__cpKaynakSecimGecmisi || [];
+        window.__cpKaynakSecimGecmisi.push(secim);
+        if (window.__cpKaynakSecimGecmisi.length > 30) window.__cpKaynakSecimGecmisi.shift();
+        window.__cpKaynakSecim = secim;
+      }
+    } catch (_) {}
     // Döngü koruması 2: aynı iframe kaynağı tekrar basılmaz. Cozulmus
     // challenge/video bastan baslardi ("onaylandi -> basa sar" dongusu).
     // Kaynak degisimi (farkli URL) veya dogrudan video her zaman calisir.
@@ -8734,6 +8902,22 @@ export async function openPlayerModal({
     const discoveryStartTime = Date.now();
     lastDiscoveryStartedAt = discoveryStartTime;
     let sourceRefreshFrame = 0;
+    /* Kaynak sürekliliği bekleme penceresi: tercih edilen sağlayıcı (son
+       izlenen) geç yanıt verirse "ilk yanıt kazanır" yarışına düşmemek için
+       ilk kaynağı en fazla bu süre kadar bekletiriz. Süre dolunca son çare
+       ilk uygun hat oynatılır (aşağıdaki zamanlayıcı). */
+    const TERCIH_BEKLEME_MS = 8000;
+    let tercihBeklemeZamanlayici = null;
+    const tercihBeklemesiniKur = () => {
+      if (tercihBeklemeZamanlayici) return;
+      const kalan = Math.max(0, TERCIH_BEKLEME_MS - (Date.now() - discoveryStartTime));
+      tercihBeklemeZamanlayici = setTimeout(() => {
+        tercihBeklemeZamanlayici = null;
+        if (closed || generation !== discoveryGeneration || hasPlayerStartedPlaying) return;
+        if (tercihliKaynagiBaslat()) return;
+        ilkUygunKaynagiBaslat();
+      }, kalan);
+    };
     isSearching = true;
     isDiscoveryActive = true;
     hasPlayerStartedPlaying = false;
@@ -8764,6 +8948,12 @@ export async function openPlayerModal({
     // Fast 1.8s fallback: if user's category has 0 streams but alternative has ready streams, start immediately
     const fastPlaybackTimer = setTimeout(() => {
       if (closed || generation !== discoveryGeneration || hasPlayerStartedPlaying) return;
+      // Son izlenen sağlayıcı ailesi geldiyse doğrudan onu oynat (bölüm
+      // geçişi/"Devam Et" sürekliliği — kaynak seç ekranına düşülmez).
+      if (tercihliKaynagiBaslat()) return;
+      // Tercih var ama henüz gelmedi: yanlış kategoriye sapıp ilk bulunan
+      // kaynağı başlatma; keşif tamamlanınca son çare devreye girer.
+      if (tercihliKaynak) return;
       const fallbackCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
       if ((categorizedServers[currentCategory] || []).length === 0 && (categorizedServers[fallbackCat] || []).some(s => s.autoPlayable !== false)) {
         currentCategory = fallbackCat;
@@ -8867,6 +9057,18 @@ export async function openPlayerModal({
 
         // Play the first available source in the user's SELECTED category immediately.
         if (!hasPlayerStartedPlaying) {
+          // 0) Tercih edilen (son izlenen) sağlayıcı ailesi önce denenir.
+          if (tercihliKaynagiBaslat()) { clearTimeout(fastPlaybackTimer); return; }
+          /* 0b) Tercih henüz gelmediyse ilk gelen hattı ANINDA oynatma
+             ("ilk yanıt kazanır" yarışı). Kısa bekleme penceresi; süre
+             dolunca ya da keşif bitince ilk uygun hat oynatılır. */
+          if (tercihliKaynak && !isComplete && Date.now() - discoveryStartTime < TERCIH_BEKLEME_MS) {
+            tercihBeklemesiniKur();
+            updateServerPillsEvents();
+            updateActiveSourceLabel();
+            renderSourcesPopoverList();
+            return;
+          }
           if (categorizedServers[currentCategory]?.some(s => s.autoPlayable !== false)) {
             clearTimeout(fastPlaybackTimer);
             hasPlayerStartedPlaying = true;
@@ -8884,8 +9086,14 @@ export async function openPlayerModal({
           const timeSinceStart = Date.now() - discoveryStartTime;
           const fallbackCategory = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
           const fallbackStreams = categorizedServers[fallbackCategory] || [];
+          // Tercih edilen kaynak bekleniyorsa son çareyi bekleme penceresi
+          // dolana kadar geciktir (yanlış sağlayıcıya atlamak yerine doğru
+          // hat gelene kadar bekle).
+          const fallbackHazir = tercihliKaynak
+            ? (isComplete || timeSinceStart >= TERCIH_BEKLEME_MS)
+            : (isComplete || timeSinceStart >= 1800);
 
-          if ((isComplete || timeSinceStart >= 1800) && fallbackStreams.some(s => s.autoPlayable !== false)) {
+          if (fallbackHazir && fallbackStreams.some(s => s.autoPlayable !== false)) {
             clearTimeout(fastPlaybackTimer);
             currentCategory = fallbackCategory;
             document.getElementById('tab-dubbed')?.classList.toggle('active', currentCategory === 'dubbed');
@@ -8925,6 +9133,7 @@ export async function openPlayerModal({
 
         // If player was waiting on an empty category and streams just arrived:
         if (!hasPlayerStartedPlaying && activeServers.some(s => s.autoPlayable !== false)) {
+          if (tercihliKaynagiBaslat()) return;
           hasPlayerStartedPlaying = true;
           isSearching = false;
           currentServerIndex = getRoomPreferredServerIndex(activeServers);
@@ -9016,6 +9225,9 @@ export async function openPlayerModal({
         || (s.streamUrl && secilenKaynak.streamUrl && s.streamUrl === secilenKaynak.streamUrl))
       : -1;
     currentServerIndex = secilenIndex >= 0 ? secilenIndex : 0;
+    // Seçilen hat bundan sonraki bölüm geçişleri için tercih edilen kaynaktır.
+    const secilenTercih = kaynakTercihTarifi(activeServers[currentServerIndex], currentCategory);
+    if (secilenTercih) tercihliKaynak = secilenTercih;
     isSearching = false;
     isDiscoveryActive = false;
     hasPlayerStartedPlaying = true;
@@ -9160,6 +9372,38 @@ export async function openPlayerModal({
     isSwitchingEpisode = true;
 
     try {
+      /* Kısa dizi (mini dizi) geçişi: bölüm listesi açılışta elde tutulur
+         (shortDramaEpisodes) ve geçiş yalnız bu listeyle anlamlıdır. Oynatıcıyı
+         keşif akışına düşürmek yerine aynı sağlayıcı tercihiyle yeniden aç —
+         kullanıcı 2026-11-13: "bölüm seçince kaynak seç moduna düşüyor". */
+      if (playerVariant === 'short-drama') {
+        const siradaki = shortDramaEpisodes.find(
+          ep => Number(ep.season) === Number(newSeason) && Number(ep.episode) === Number(newEpisode)
+        );
+        const tercih = kaynakTercihTarifi(activeServers[currentServerIndex], currentCategory) || tercihliKaynak;
+        await openPlayerModal({
+          type: 'tv',
+          tmdbId,
+          title: `${cleanSeriesName} - B${newEpisode}`,
+          seriesTitle: cleanSeriesName,
+          season: newSeason,
+          episode: newEpisode,
+          posterPath,
+          backdropPath,
+          playerVariant,
+          seriesOverview,
+          episodeArtworkPath: siradaki?.thumb || posterPath,
+          shortDramaEpisodes,
+          maxEpisodes,
+          seasonsList: [{ season_number: newSeason, episode_count: maxEpisodes }],
+          preferredSource: tercih
+        });
+        return;
+      }
+      // Son oynatılan sağlayıcıyı geçişe taşı: yeni bölüm keşfi önce AYNI
+      // aileyi arar (kaynak seç ekranına düşmeden otomatik oynatma).
+      const oncekiKaynak = kaynakTercihTarifi(activeServers[currentServerIndex], currentCategory);
+      if (oncekiKaynak) tercihliKaynak = oncekiKaynak;
       disposePlayback();
       const prevSeason = currentSeason;
       const prevEpisode = currentEpisode;
@@ -9313,7 +9557,7 @@ export async function openPlayerModal({
     btnKaynaklariGoster.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      closeModal();
+      closeModal({ yonlendirme: false });
       window.location.hash = `#detail?type=${isAnime ? 'anime' : (isSeries ? 'tv' : 'movie')}&id=${tmdbId}`;
       // Detay mount edildikten sonra KAYNAKLAR sekmesine geç (~3 sn yoklama).
       // DİKKAT: closeModal modalScope'u senkron dispose etti → scope'lu
@@ -9400,12 +9644,12 @@ export async function openPlayerModal({
          2026-10-31: "simsiyah ekrana atıyor"). Modal kapanıp hash
          değiştirilince DramaView perde/bölüm ekranı çizilir. */
       if (playerVariant === 'short-drama') {
-        try { closeModal(); } catch (_) {}
+        try { closeModal({ yonlendirme: false }); } catch (_) {}
         const kdSlug = String(tmdbId || '').replace(/^dml_/, 'dml_');
         if (kdSlug) window.location.hash = `#dramas?slug=${encodeURIComponent(kdSlug)}`;
         return;
       }
-      try { closeModal(); } catch (_) {}
+      try { closeModal({ yonlendirme: false }); } catch (_) {}
       // Yönlendirme closed beklemeksizin yapılır: JS bekçisi modalı olaydan
       // önce kapatmış olabilir; hash ataması idempotent'tir.
       try {
@@ -9553,7 +9797,7 @@ export async function openPlayerModal({
 
   // Close Modal Cleanly
   const closeBtn = document.getElementById('player-close-btn');
-  const closeModal = () => {
+  const closeModal = (secenekler = {}) => {
     if (closed) return;
     closed = true;
     discoveryGeneration++;
@@ -9617,6 +9861,23 @@ export async function openPlayerModal({
     modalContainer.innerHTML = '';
     document.body.style.overflow = '';
     document.removeEventListener('keydown', handleKeydown);
+
+    /* KULLANICI ŞİKÂYETİ (2026-11-13): "Kısa dizilerde bölüm bitince ve
+       oynatıcı kapanınca detay sayfası açılmıyor; illa kısa diziler
+       sayfasına girmek gerekiyor." Kısa dizide kullanıcı kapatınca artık
+       doğrudan o dizinin BÖLÜMLÜ DETAY sayfasına (#dramas?slug=...) dönülür
+       — bölüm geçişi ve dizi özeti orada. Bölüm geçişi/yeniden açılış
+       ({yonlendirme:false}) bu yönlendirmeyi bastırır. */
+    if (kisaDiziDetayinaDon && secenekler.yonlendirme !== false) {
+      const slug = String(tmdbId || '');
+      const rotaDegismedi = !acilisRotaHash || window.location.hash === acilisRotaHash;
+      if (slug && rotaDegismedi) {
+        const hedef = `#dramas?slug=${encodeURIComponent(slug)}`;
+        if (window.location.hash !== hedef) {
+          try { window.location.hash = hedef; } catch (_) {}
+        }
+      }
+    }
   };
 
   activeModalClose = closeModal;

@@ -147,6 +147,11 @@ let routeGeneration = 0;
 async function renderRoute() {
   const generation = ++routeGeneration;
   cleanupHomeView();
+  // Detay görünümü kendi listener/tarama kayıtlarını bırakır: yeni rotaya
+  // geçerken temizle (inceleme 2026-11-13 #4 — kaynak taraması detached DOM'a
+  // yazmaya devam ediyordu).
+  try { window.__detailCleanup?.(); } catch (_) {}
+  window.__detailCleanup = null;
   flushScrollState();
   // CP-QUALITY-PACK: önceki rota'nın önizleme iframe'i ve yapışkan CTA'sı temizlenir.
   closeCardPreview();

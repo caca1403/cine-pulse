@@ -231,8 +231,9 @@ html.desktop-app #player-modal .player-iframe-container::after {
 
 #player-modal .custom-ctrl-btn:hover,
 #player-modal .compact-transport-btn:hover {
-  background: rgba(223, 255, 118, 0.12);
-  color: #dfff76;
+  /* Transport kontrolleri ikincil: hover nötr, aktif durum lime kalır. */
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
 }
 
 #player-modal .compact-transport-btn span {
@@ -255,10 +256,10 @@ html.desktop-app #player-modal .player-iframe-container::after {
 }
 
 .custom-slider-popup-wrap .custom-slider-val-badge {
-  background: rgba(223, 255, 118, 0.12);
-  border: 1px solid rgba(223, 255, 118, 0.28);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
-  color: #dfff76;
+  color: #e5e7eb;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -293,7 +294,7 @@ html.desktop-app #player-modal .player-iframe-container::after {
 }
 
 #player-modal .custom-menu-opt-row:hover {
-  background: rgba(223, 255, 118, 0.09);
+  background: rgba(255, 255, 255, 0.09);
   color: #f4f6fb;
 }
 
@@ -370,9 +371,9 @@ html.desktop-app #player-modal .player-iframe-container::after {
 
 #player-modal .bolum-secici-sezon:hover,
 .bolum-secici-sezon:hover {
-  border-color: rgba(223, 255, 118, 0.45);
-  background: rgba(223, 255, 118, 0.08);
-  color: #dfff76;
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 
 /* Bolum kartlari: net sayi, hover'da lime nefes, aktif'te dolu lime */
@@ -390,9 +391,9 @@ html.desktop-app #player-modal .player-iframe-container::after {
 
 #player-modal .bolum-secici-kart:hover,
 .bolum-secici-kart:hover {
-  border-color: rgba(223, 255, 118, 0.5);
-  background: rgba(223, 255, 118, 0.1);
-  color: #dfff76;
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
@@ -427,8 +428,8 @@ html.desktop-app #player-modal .player-iframe-container::after {
 }
 
 #player-modal .kaynak-kart:hover {
-  border-color: rgba(223, 255, 118, 0.45);
-  background: rgba(223, 255, 118, 0.06);
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.06);
   outline: none;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
   transform: translateY(-1px);
@@ -467,9 +468,9 @@ html.desktop-app #player-modal .player-iframe-container::after {
 }
 
 #player-modal .custom-skip-intro-btn:hover {
-  border-color: rgba(223, 255, 118, 0.5);
-  color: #dfff76;
-  background: rgba(223, 255, 118, 0.1);
+  border-color: rgba(255, 255, 255, 0.38);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 #custom-binge-card .binge-card-jump-btn {

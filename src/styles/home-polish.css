@@ -29,9 +29,10 @@
 /* Çift scrim: alttan koyu %72→0 + sağa açılan sinema enlemi (okunurluk
    metnin altında, afişin sağ üst hâlâ "nefes" alır). */
 .hero-slider .hero-overlay-gradient {
-  background:
+  /* CP-IMAGE-RECIPE: aynı hero scrim token'ı (tek tarif). */
+  background: var(--hero-scrim,
     linear-gradient(0deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.34) 26%, transparent 62%),
-    linear-gradient(100deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.18) 44%, transparent 70%);
+    linear-gradient(100deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.18) 44%, transparent 70%));
 }
 
 /* Slayt başlığı/butonları: cp-fade-up stagger. Sınıf .hero-content-committing

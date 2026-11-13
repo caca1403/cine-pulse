@@ -19,6 +19,7 @@
     "preview": "vite preview",
     "manifest:sync": "node scripts/generate-update-manifest.mjs",
     "manifest:check": "node scripts/generate-update-manifest.mjs --check",
+    "routes:sync": "node scripts/native-routes-sync.mjs",
     "server": "node server/mediaServer.js",
     "tunnel": "npx localtunnel --port 4000",
     "electro:dev": "electron electron/main.cjs",
@@ -121,6 +122,7 @@
       "server/**/*",
       "api/**/*",
       "electron/**/*",
+      "android/app/src/main/assets/native-routes.json",
       "package.json"
     ],
     "win": {

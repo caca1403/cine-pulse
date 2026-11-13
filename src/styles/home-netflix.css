@@ -51,10 +51,10 @@
   font-weight: 800;
   padding: 0.9rem 2.1rem;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
-  transition: transform 200ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
-              background-color 200ms ease-out,
-              filter 200ms ease-out,
-              box-shadow 200ms ease-out;
+  transition: transform var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1)),
+              background-color var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1)),
+              filter var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1)),
+              box-shadow var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1));
 }
 
 .home-view .hero-actions .btn-primary:hover {
@@ -98,7 +98,8 @@
   font-weight: 800;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--primary, #dfff76);
+  /* Highlight yazı diyeti: nötr gri (#9ca3af, koyu zeminde ~7:1). */
+  color: var(--text-muted, #9ca3af);
   line-height: 1;
   white-space: nowrap;
 }
@@ -140,11 +141,11 @@
   color: var(--text-main, #f5f5f5);
   cursor: pointer;
   opacity: 0.92;
-  transition: background-color 200ms ease-out,
-              border-color 200ms ease-out,
-              color 200ms ease-out,
-              opacity 200ms ease-out,
-              transform 200ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: background-color var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1)),
+              border-color var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1)),
+              color var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1)),
+              opacity var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1)),
+              transform var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1));
 }
 
 .home-view .rail-nav-btn svg {
@@ -153,9 +154,9 @@
 }
 
 .home-view .rail-nav-btn:hover {
-  background: rgba(223, 255, 118, 0.14);
-  border-color: rgba(223, 255, 118, 0.42);
-  color: var(--primary, #dfff76);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.36);
+  color: #ffffff;
   opacity: 1;
 }
 
@@ -181,15 +182,19 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 2px rgba(223, 255, 118, 0);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0);
   pointer-events: none;
-  transition: box-shadow 220ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: box-shadow var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1));
 }
 
 .home-view .card-rail > .media-card:hover .card-poster-wrapper::after,
-.home-view .card-rail > .continue-card-wrapper:hover .card-poster-wrapper::after,
+.home-view .card-rail > .continue-card-wrapper:hover .card-poster-wrapper::after {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.26);
+}
+
+/* Klavye odağı = aktif durum → vurgu rengi burada meşru. */
 .home-view .card-rail > .media-card:focus-visible .card-poster-wrapper::after {
-  box-shadow: inset 0 0 0 2px rgba(223, 255, 118, 0.32);
+  box-shadow: inset 0 0 0 2px rgba(223, 255, 118, 0.55);
 }
 
 /* ── 5. YÜKLEME — kart iskeletinde canlılık nefesi.

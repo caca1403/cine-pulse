@@ -15,8 +15,8 @@
   flex-direction: column;
   border-radius: var(--radius-lg);
   outline: none;
-  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1)),
+              box-shadow var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1));
   will-change: transform;
 }
 
@@ -28,16 +28,18 @@
 .media-card:hover,
 .media-card:focus-within {
   transform: scale(1.05);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-card-hover, 0 12px 28px rgba(0, 0, 0, 0.55));
   z-index: 2;
 }
 
 .card-poster-wrapper {
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card, var(--radius-lg, 12px));
   aspect-ratio: 2 / 3;
   background: var(--bg-card);
+  /* Derinlik tek kaynaktan: kart yüzeyi --shadow-card, hover --shadow-card-hover. */
+  box-shadow: var(--shadow-card, 0 2px 10px rgba(0, 0, 0, 0.45));
 }
 
 .cards-landscape .card-poster-wrapper {
@@ -58,7 +60,7 @@
   pointer-events: none;
   background: radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, 0.06), transparent 60%);
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1));
 }
 
 .media-card:hover .card-glass-glow,
@@ -83,7 +85,7 @@
   gap: 8px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 200ms ease;
+  transition: opacity var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1));
 }
 
 .media-card:hover .card-hover-overlay,
@@ -106,13 +108,14 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   cursor: pointer;
-  transition: background 200ms ease, color 200ms ease, border-color 200ms ease, transform 200ms ease;
+  transition: background var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1)), color var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1)), border-color var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1)), transform var(--dur-250, 250ms) var(--ease-out-premium, cubic-bezier(.22, 1, .36, 1));
 }
 
 .card-action-btn:hover {
-  background: rgba(223, 255, 118, 0.16);
-  color: var(--cp-lime);
-  border-color: rgba(223, 255, 118, 0.35);
+  /* Diyet: ikincil kart aksiyonu hover'ı nötr; lime yalnız ana eylemde. */
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-1px);
 }
 
@@ -184,17 +187,17 @@
   border-radius: var(--radius-full);
   font-size: 10px;
   line-height: 1;
-  background: rgba(223, 255, 118, 0.12);
-  color: var(--cp-lime);
-  border: 1px solid rgba(223, 255, 118, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .card-status-chip--done {
-  background: rgba(223, 255, 118, 0.16);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .card-status-chip--continue {
-  background: rgba(223, 255, 118, 0.10);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .card-rating-inline {

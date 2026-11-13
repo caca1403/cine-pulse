@@ -99,8 +99,36 @@ function argKullanim() {
     '  --limit <n>           en fazla n başlık (filtreleme sonrası)',
     '  --paralel <n>         eşzamanlı başlık (varsayılan: 4)',
     '  --butce <ms>          başlık başına tarama bütçesi (varsayılan: 90000)',
+    '  --devam               önceki koşuda tamamlanan başlıkları atla (kesinti-güvenli sürdürme)',
   ].join('\n');
 }
+
+/* ── Uzun koşu dayanıklılığı ────────────────────────────────────────────────
+   Sağlayıcı çekirdekleri kendi `AbortSignal.timeout(...)` zaman aşımını bazı
+   yollarda yakalamıyor; Node 26 bunu unhandledRejection olarak fırlatıp TÜM
+   arşiv koşusunu öldürüyordu (ölçüldü: 110 başlığın 9'unda çöküş). Zaman
+   aşımı/iptal kaynaklı redler yok sayılır — kayıt zaten 'bilinmiyor' kalır;
+   arşiv atomik yazıldığı için veri kaybı olmaz. Diğer hatalar hâlâ ölümcül. */
+function zamanAsimiMi(h) {
+  const ad = String(h?.name || '');
+  const kod = String(h?.code || '');
+  return ad === 'TimeoutError' || ad === 'AbortError' || kod === 'ABORT_ERR';
+}
+process.on('unhandledRejection', (h) => {
+  if (zamanAsimiMi(h)) {
+    console.error(`[uyarı] zaman aşımı reddi yok sayıldı: ${h?.message || h}`);
+    return;
+  }
+  console.error(`[uyarı] yakalanmamış vaat reddi yok sayıldı: ${h?.message || h}`);
+});
+process.on('uncaughtException', (h) => {
+  if (zamanAsimiMi(h)) {
+    console.error(`[uyarı] zaman aşımı istisnası yok sayıldı: ${h?.message || h}`);
+    return;
+  }
+  console.error(`CLI hatası (ölümcül): ${h?.stack || h}`);
+  process.exit(1);
+});
 
 /** Liste girdisini doğrular; geçersiz satır null döner. */
 function normalizeGiris(g) {
@@ -113,6 +141,11 @@ function normalizeGiris(g) {
   return tip === 'movie'
     ? { tmdbTip: tip, tmdbId: id, sezon: null, bolum: null }
     : { tmdbTip: tip, tmdbId: id, sezon: pozitif(g.sezon), bolum: pozitif(g.bolum) };
+}
+
+/** İlerleme dosyası anahtarı: tür:id:sezon:bölüm (--devam atlama ölçütü). */
+function ilerlemeAnahtari(g) {
+  return `${g.tmdbTip}:${g.tmdbId}:${g.sezon ?? ''}:${g.bolum ?? ''}`;
 }
 
 /** Eşzamanlılık kapısı: aynı anda en fazla `boy` iş. */
@@ -142,6 +175,10 @@ async function main() {
   const limit = argSayi('--limit', 0) || null;
   const paralel = argSayi('--paralel', 4);
   const butce = argSayi('--butce', VARSAYILAN_BUTCE_MS);
+  const devam = process.argv.includes('--devam');
+  // --devam: yan dosyadaki tamamlanmış başlıkları atlamak için (aşağıda liste hazır olunca).
+  const ilerlemeYolu = `${ciktiYolu}.ilerleme.json`;
+  const tamamlandi = new Set();
 
   if (tur && !GECERLI_TURLER.has(tur)) {
     console.error(`geçersiz --tur: ${tur} (movie|tv|anime olmalı)`);
@@ -158,6 +195,21 @@ async function main() {
   liste = liste.map(normalizeGiris).filter(Boolean);
   if (tur) liste = liste.filter(g => g.tmdbTip === tur);
   if (limit) liste = liste.slice(0, limit);
+
+  if (devam) {
+    if (existsSync(ilerlemeYolu)) {
+      try {
+        const ham = JSON.parse(await readFile(ilerlemeYolu, 'utf8'));
+        for (const k of ham?.tamamlandi || []) tamamlandi.add(String(k));
+      } catch (_) {
+        console.warn('ilerleme dosyası okunamadı — tüm liste işlenecek');
+      }
+    }
+    const once = liste.length;
+    liste = liste.filter(g => !tamamlandi.has(ilerlemeAnahtari(g)));
+    console.log(`--devam: ${once - liste.length} tamamlanmış başlık atlandı, ${liste.length} kalacak`);
+  }
+
   if (!liste.length) {
     console.error('işlenecek başlık yok (--tur/--limit/--liste kontrol edin)');
     process.exitCode = 2;
@@ -205,10 +257,30 @@ async function main() {
     return yazKuyruk;
   }
 
+  /* --devam ilerleme dosyası: başlık tamamlandıkça atomik yazılır. */
+  let ilerlemeKuyruk = Promise.resolve();
+  async function ilerlemeYaz() {
+    const anlik = [...tamamlandi];
+    await mkdir(path.dirname(ilerlemeYolu), { recursive: true });
+    const gecici = `${ilerlemeYolu}.gecici`;
+    await writeFile(gecici, JSON.stringify({
+      guncellendi: new Date().toISOString(),
+      tamamlandi: anlik,
+    }, null, 2), 'utf8');
+    await rename(gecici, ilerlemeYolu);
+  }
+  function ilerlemePlanla() {
+    ilerlemeKuyruk = ilerlemeKuyruk
+      .then(() => ilerlemeYaz())
+      .catch(h => console.warn(`ilerleme yazımı başarısız: ${h?.message || h}`));
+    return ilerlemeKuyruk;
+  }
+
   process.on('SIGINT', () => {
     console.error('\n[SIGINT] mevcut durum yazılıyor…');
     yazKuyruk
       .then(() => arsiviYaz())
+      .then(() => ilerlemeKuyruk)
       .catch(() => {})
       .finally(() => process.exit(130));
   });
@@ -287,6 +359,8 @@ async function main() {
       const giris = liste[i];
       try {
         await basligiIsle(giris, i + 1, liste.length);
+        tamamlandi.add(ilerlemeAnahtari(giris));
+        await ilerlemePlanla();
       } catch (h) {
         console.error(`[${i + 1}/${liste.length}] ${giris.tmdbId} → hata: ${h?.message || h}`);
         await yazPlanla();
@@ -295,10 +369,14 @@ async function main() {
   };
   await Promise.all(Array.from({ length: Math.min(paralel, liste.length) }, () => isci()));
   await yazKuyruk;
+  await ilerlemeKuyruk;
 
   const ozet = arsOzeti(arsiv);
   console.log(`bitti: ${liste.length} başlık → toplam ${ozet.toplamKayit} kayıt, ${ozet.trSesliKayit} TR sesli`);
   console.log(`durumlar: ${JSON.stringify(ozet.durumlar)} · çıktı: ${ciktiYolu}`);
+  // Açık kalan sağlayıcı tutamaçları (zamanlayıcı/oturum) süreci askıda
+  // bırakabiliyor; tüm yazımlar beklendiğine göre temiz çıkış güvenli.
+  process.exit(0);
 }
 
 main().catch(h => {

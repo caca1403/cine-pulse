@@ -77,10 +77,10 @@ test('ölü aday asla uygulanmaz', async () => {
 });
 
 test('ikinci kaynak (izlelan) iyileştirir: patr0nq ölü olsa bile taze ayna bulunur', async () => {
-  // patr0nq erişilemez; izlelan noland → dizi90.life. Mevcut dizi82 ölü,
-  // aday canlı → uygulanmalı.
+  // patr0nq erişilemez; izlelan noland → dizi90.life. Mevcut statik ayna
+  // (2026-11-13 canlı domains.json'dan: dizi86.life) ölü, aday canlı → uygulanmalı.
   await canliAlanlariYenile(sahteFetch(
-    { 'https://dizi82.life': 503, 'https://dizi90.life': 200 },
+    { 'https://dizi86.life': 503, 'https://dizi90.life': 200 },
     { patr0nOk: false }
   ));
   const { alanYaniti } = await import('../src/providers/alanlar.js');

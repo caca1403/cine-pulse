@@ -1539,10 +1539,17 @@ export function getContinueWatchingList() {
       // === SERIES HANDLING ===
       // A series whose recorded episodes are all watched belongs in Completed,
       // and must not also appear in Continue Watching with an "İZLENDİ" badge.
-      if (records.every(r => r.completed || r.progressPercent >= 85)) continue;
+      // Tamamlanma eşiği TEK: %90 (aşağıdaki "izlendi" eşiğiyle aynı).
+      if (records.every(r => r.completed || r.progressPercent >= 90)) continue;
 
-      // Find any record that is explicitly in-progress (not completed, with watch time)
-      const inProgressRecord = records.find(r => !r.completed && r.currentTime > 0 && r.progressPercent < 100);
+      /* "Devam Et" EN YENİ etkinliği izlemeli: sıralı listede ilk yarım
+         kalmış eski bölümü seçmek, son bölüm bitirilmişse eski bölüme
+         düşürüyordu (inceleme 2026-11-13 #13). Yalnız EN SON kayıt yarım
+         kaldıysa ondan devam edilir; değilse sıradaki izlenmemiş bölüm
+         hesaplanır. */
+      const inProgressRecord = (!firstRecord.completed && firstRecord.currentTime > 0 && firstRecord.progressPercent < 100)
+        ? firstRecord
+        : null;
       
       // Determine the active season from the in-progress record or the most recent record
       let currentActiveSeason = inProgressRecord 
@@ -2282,3 +2289,27 @@ export function pruneOversizedStorage() {
 
 // Auto prune on module initialization
 pruneOversizedStorage();
+
+/* ── ÇOKLU SEKME TUTARLILIĞI (inceleme 2026-11-13 #3) ─────────────────────
+   İki sekme açıkken her sekme bellekteki watch-history kopyasıyla yazıyordu;
+   son yazan diğerinin ilerlemesini siliyordu (gerçek veri kaybı). Başka bir
+   sekme izleme geçmişini yazınca bu sekmenin bellek kopyası GEÇERSİZ kılınır:
+   sonraki okuma diskten taze veriyi kurar, yazma da güncel listeyi temel alır. */
+try {
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('storage', (olay) => {
+      try {
+        if (!olay || !olay.key) return;
+        if (olay.key !== getNamespacedKey(STORAGE_KEYS.WATCH_HISTORY)) return;
+        _watchHistoryCache = null;
+        _progressMapCache = null;
+        _seriesLatestMapCache = null;
+        invalidateDerivedHistoryCaches();
+        window.dispatchEvent(new CustomEvent('sineflix_data_changed', {
+          detail: { key: olay.key, external: true, isProgressUpdate: true }
+        }));
+      } catch (_) { /* sessiz: sekme senkronu asla uygulamayı durdurmaz */ }
+    });
+  }
+} catch (_) {}
+

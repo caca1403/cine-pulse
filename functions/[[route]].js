@@ -14,6 +14,10 @@ import xtreamPanels from '../api/xtream_panels.js';
 import ariaKey from '../api/aria_key.js';
 import resolve from '../cf/resolve.js';
 import streamProxy from '../api/stream-proxy.js';
+// SAĞLAYICI ROTALARI (2026-11-13): /api/<kod>/... çözümü worker girişiyle
+// AYNI modülden gelir (native-routes.json tek kaynak). Dağıtım hedefi
+// Workers'tan Pages'e kaysa bile mobil+web paritesi sessizce kaybolmasın.
+import { saglayiciYaniti } from '../cf/provider-routes.js';
 
 // yol -> mod (Vercel'de dosya adi neyse o; czm/dzs/kvip catch-all alias'idir)
 const NODE_FILES = {
@@ -87,6 +91,12 @@ export async function onRequest(context) {
       process.env.VERCEL_URL = url.host;
     }
   } catch { /* ortam */ }
+
+  // Sağlayıcı rota tablosu: çekirdeklerin göreli /api/<kod>/ istekleri.
+  if (url.pathname.startsWith('/api/')) {
+    const saglayici = await saglayiciYaniti(request, url);
+    if (saglayici) return withSecurity(saglayici);
+  }
 
   for (const ext of EXTERNAL) {
     if (url.pathname === ext.prefix || url.pathname.startsWith(`${ext.prefix}/`)) {

@@ -93,6 +93,22 @@ async function baslikLogosunuUygula(kok, tmdbId, tur) {
   }
 }
 
+/* ── DETAY TEMİZLİĞİ (inceleme 2026-11-13 #4) ─────────────────────────────
+   Detay her açılışta window'a veri-değişimi dinleyicisi ekliyor, kaynak
+   taraması da route değişiminde durdurulmuyordu (43 sağlayıcı detached DOM'a
+   yazmaya devam ediyordu). Router yeni rotaya geçerken bu kayıtları çağırır. */
+let detailTemizlikGorevleri = [];
+export function cleanupDetailView() {
+  const gorevler = detailTemizlikGorevleri;
+  detailTemizlikGorevleri = [];
+  for (const gorev of gorevler) {
+    try { gorev(); } catch (_) { /* temizlik asla rotayı bozmaz */ }
+  }
+}
+function detailTemizlikKaydet(gorev) {
+  if (typeof gorev === 'function') detailTemizlikGorevleri.push(gorev);
+}
+
 export async function renderDetailView(typeOrObj = 'tv', maybeId) {
   const type = (typeof typeOrObj === 'object' && typeOrObj !== null) ? (typeOrObj.type || 'tv') : (typeOrObj || 'tv');
   const id = (typeof typeOrObj === 'object' && typeOrObj !== null) ? typeOrObj.id : maybeId;
@@ -111,6 +127,11 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
       init: () => {}
     };
   }
+
+  // Her render kendi temizlik defteriyle başlar; router önceki detayın
+  // temizliğini window.__detailCleanup üzerinden çağırır.
+  detailTemizlikGorevleri = [];
+  if (typeof window !== 'undefined') window.__detailCleanup = cleanupDetailView;
 
   const isSeries = !!(media.seasons && media.seasons.length > 0) || normalizedType === 'tv';
   const effectiveType = isSeries ? 'tv' : 'movie';
@@ -753,6 +774,8 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
       // (durum.baslatildi): sekme tıklaması, IntersectionObserver ve bölüm
       // değişikliği aynı taramayı ikinci kez başlatmaz.
       kaynakListesi.baslat();
+      // Route değişiminde taramayı durdur ve detached DOM'a yazımı kes.
+      detailTemizlikKaydet(() => { try { kaynakListesi.yokEt(); } catch (_) {} });
 
       // ── Sekmeler ─────────────────────────────────────────────────────────
       // Jenerik data-tab mekanizması: aynı data-panel'e sahip tüm bloklar
@@ -1180,6 +1203,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
       };
 
       window.addEventListener('sineflix_data_changed', onDetailDataChanged);
+      detailTemizlikKaydet(() => window.removeEventListener('sineflix_data_changed', onDetailDataChanged));
 
       // Halfway in-progress button handler
       const halfwayBtn = container.querySelector('#btn-mark-halfway-detail');

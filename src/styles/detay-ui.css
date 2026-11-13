@@ -71,7 +71,7 @@
   transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.dt-ikonbtn:hover { transform: translateY(-1px); border-color: rgba(223, 255, 118, 0.6); color: #dfff76; }
+.dt-ikonbtn:hover { transform: translateY(-1px); border-color: rgba(255, 255, 255, 0.36); color: #ffffff; }
 .dt-ikonbtn.is-active { border-color: #10b981; color: #34d399; }
 
 .dt-hero-ic {
@@ -164,7 +164,7 @@
   backdrop-filter: blur(6px);
   transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
-.dt-aksiyon-cip:hover { transform: translateY(-1px); border-color: rgba(223, 255, 118, 0.55); color: #dfff76; }
+.dt-aksiyon-cip:hover { transform: translateY(-1px); border-color: rgba(255, 255, 255, 0.34); color: #ffffff; }
 .dt-aksiyon-cip.is-active { border-color: var(--primary); color: var(--primary); }
 
 /* Netflix-stili detay UI desteği — mevcut kuralları silmeden ekleme */
@@ -262,7 +262,7 @@
   cursor: pointer;
   transition: transform 0.16s ease, border-color 0.16s ease;
 }
-.dt-fragman-kart:hover { transform: translateY(-2px); border-color: rgba(223, 255, 118, 0.5); }
+.dt-fragman-kart:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.32); }
 .dt-fragman-kart img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
 .dt-fragman-ust {
   position: absolute;

@@ -25,19 +25,37 @@
    ========================================================================== */
 
 import { KAYIT, turDestekler, durumAyarla } from './kayit.js';
-import { alanYaniti, alanListesiIstegiMi, canliAlanlariYenile } from './alanlar.js';
+import {
+  alanYaniti, alanListesiIstegiMi, canliAlanlariYenile,
+  gerektigindeYenile, alanYedekAdresleri, alanYedekOnayla, ALAN_OMUR_MS,
+} from './alanlar.js';
 import { ensureChallengeCookies, fetchTextWithSession, looksLikeChallenge } from '../services/platform/androidChallengeSolver.js';
 
 /* CANLI ALAN ADI TAZELEME (nuvioaddons dersi): domain'ler koda gömülü
    kalmasın; ortak listeden çekilip üzerine yazılsın. Site taşındığında
-   uygulama kendini düzeltir. Ağ yoksa sessizce sabit harita kalır. */
+   uygulama kendini düzeltir. Ağ yoksa sessizce sabit harita kalır.
+
+   DAYANIKLILIK (2026-11-13, kullanıcı: "site tamamen çökmediği sürece
+   kaynaklar asla bozulmasın"): açılışta TEK tazeleme yetmiyordu — uygulama
+   saatlerce açık kalıyor ve aynalar gece değişebiliyor. (a) 6 saatte bir
+   periyodik tazeleme, (b) köprü art arda ağ hatası görünce on-demand tazeleme
+   (alanlar.js gerektigindeYenile: tek uçuş + 5 dk cooldown), (c) çevrimdışı
+   başlangıçta localStorage'daki son iyi harita zaten uygulanıyor. */
 if (typeof fetch === 'function' && typeof window !== 'undefined') {
   // ÖLÇÜLEN SESSİZLİK (D, 2026-10-29): tazeleme hatası tamamıyla yutuluyordu;
   // alan adı taşındığında uygulamanın kendini düzeltip düzeltmediği hiç
   // bilinmiyordu. Yumuşak sinyal: tek satır uyarı, taramayı etkilemez.
   setTimeout(() => { try { canliAlanlariYenile(); } catch (h) { console.warn('[kahraman] canlı alan adı tazeleme çağrısı başarısız —', String(h?.message || h).slice(0, 120)); } }, 1500);
+  try {
+    const zamanlayici = setInterval(() => {
+      try { gerektigindeYenile(undefined, { minAralikMs: ALAN_OMUR_MS }); }
+      catch (h) { console.warn('[kahraman] periyodik alan tazeleme başarısız —', String(h?.message || h).slice(0, 120)); }
+    }, ALAN_OMUR_MS);
+    // Node testlerine sızmayı önle: tarayıcıda interval uygulama ömrü boyunca kalır.
+    if (zamanlayici && typeof zamanlayici.unref === 'function') zamanlayici.unref();
+  } catch (_) { /* zamanlayıcı yok → periyodik tazeleme devre dışı */ }
 }
-import { apiUrl } from '../services/altyapi/apiOrigin.js';
+import { apiUrl, publicApiUrl } from '../services/altyapi/apiOrigin.js';
 
 /**
  * Toplam tarama bütçesi.
@@ -324,7 +342,21 @@ export async function kopruFetch(girdi, secenek = {}) {
   // göreli /api/dzs... ham fetch'e düşünce https://localhost'ta 404 → 6 yeni
   // çekirdek cihazda 0 kaynak dönüyordu (Node'da görünmezdi).
   if (hamUrl && /^\/api\//i.test(hamUrl) && typeof window !== 'undefined' && !zatenKoprudeMi(hamUrl)) {
-    try { return tabii(apiUrl(hamUrl), opts); } catch (_) { return tabii(girdi, opts); }
+    /* Yerel köprü rota tablosunda olmayan kodlarda 501 döner; site aynası
+       düştüğünde 5xx gelebilir. Her iki durumda genel worker aynı rota
+       tablosunu (ve yedek origin'leri) çözer — mobilde tek nokta arıza kalmasın. */
+    let yerel = null;
+    try { yerel = await tabii(apiUrl(hamUrl), opts); }
+    catch (_) {
+      try { return await tabii(publicApiUrl(hamUrl), opts); }
+      catch (_) { return tabii(girdi, opts); }
+    }
+    if (yerel && yerel.status !== 501 && yerel.status < 500) return yerel;
+    try {
+      const genel = await tabii(publicApiUrl(hamUrl), opts);
+      if (genel && genel.ok) return genel;
+    } catch (_) { /* genel worker da yok → yerel yanıt */ }
+    return yerel || tabii(girdi, opts);
   }
 
   // EKLENTİ (Stremio-tarzı) ROTALARI KÖPRÜ DIŞI — (ölçüm D, kullanıcı 2026-10-28:
@@ -381,10 +413,55 @@ export async function kopruFetch(girdi, secenek = {}) {
   });
   if (kurabiye) ekBasliklar.Cookie = kurabiye;
 
-  return cfGerekirseDüzelt(
-    tabii(kopruAdresi(hamUrl, referer, ekBasliklar), { ...opts, headers: istekBasliklari }),
-    { hamUrl, opts, istekBasliklari, ekBasliklar, referer, fetchImpl: tabii }
+  const tekIstek = (adres) => cfGerekirseDüzelt(
+    tabii(kopruAdresi(adres, referer, ekBasliklar), { ...opts, headers: istekBasliklari }),
+    { hamUrl: adres, opts, istekBasliklari, ekBasliklar, referer, fetchImpl: tabii }
   );
+
+  let sonuc = null;
+  let sonHata = null;
+  try { sonuc = await tekIstek(hamUrl); }
+  catch (hata) { sonHata = hata; }
+
+  if (!sonuc || sonuc.status >= 500) {
+    /* YEDEK ALAN (2026-11-13): birincil hat düştüyse aynı yolu aynı ailenin
+       ölçülmüş aynasında dene; çalışan hat alanlar.js'te öne alınır. Yanıt
+       aynı isteğe ŞEFFAF döner (çekirdek farkı görmez). */
+    for (const yedek of alanYedekAdresleri(hamUrl).slice(0, 3)) {
+      try {
+        const yedekCevap = await tekIstek(yedek.url);
+        if (yedekCevap && yedekCevap.status < 500) {
+          alanYedekOnayla(yedek.kod, yedek.url);
+          kopruBasarisi();
+          return yedekCevap;
+        }
+      } catch (_) { /* sıradaki aday */ }
+    }
+    kopruHatasi();
+    if (!sonuc) throw sonHata || new Error('sağlayıcı isteği başarısız');
+  } else {
+    kopruBasarisi();
+  }
+  return sonuc;
+}
+
+/* ── ON-DEMAND TAZELEME SAYACI (2026-11-13) ───────────────────────────────
+   Art arda ARDISIK_HATA_ESIGI başarısız/tükenmiş istek görülünce alan
+   listeleri yenilenir (site aynası değişmiş olabilir). Sayaç başarıda sıfırlanır. */
+const ARDISIK_HATA_ESIGI = 4;
+let ardisikKopruHatasi = 0;
+
+function kopruBasarisi() {
+  ardisikKopruHatasi = 0;
+}
+
+function kopruHatasi() {
+  ardisikKopruHatasi += 1;
+  if (ardisikKopruHatasi < ARDISIK_HATA_ESIGI) return;
+  ardisikKopruHatasi = 0;
+  // Ağ yokken her hatada tazeleme denemesi yapma: gerektigindeYenile cooldown'lu.
+  if (typeof window === 'undefined') return;
+  try { gerektigindeYenile(); } catch (_) { /* sessiz: tarama devam eder */ }
 }
 
 /* ── kayıt erişimi (test kancası) ─────────────────────────────────────── */
@@ -718,6 +795,14 @@ export function oynatmaAdresi(url, basliklar = {}) {
   if (referer) parcalar.push(`ref=${encodeURIComponent(referer)}`);
   if (userAgent) parcalar.push(`ua=${encodeURIComponent(userAgent)}`);
   if (Object.keys(ek).length) parcalar.push(`headers=${encodeURIComponent(JSON.stringify(ek))}`);
+  /* PARİTE (2026-11-13): Android ağ geçidi `headers` JSON'undaki Origin'i
+     hedefe yazar; Cloudflare worker'ın /api/hls_proxy hattı Origin'i YALNIZ
+     `origin` sorgu parametresinden okur. DiziSol/Shazam master'ları Origin
+     olmadan 403 ("Çelik Kalkan") döndüğü için Origin web'de sessizce
+     kayboluyordu → aynı kaynak mobilde oynayıp web'de oynamıyordu.
+     İki taşıma biçimi birlikte gönderilir; mobil taraf fazladan parametreyi yok sayar. */
+  const origin = oku('origin');
+  if (origin) parcalar.push(`origin=${encodeURIComponent(origin)}`);
   return `/api/hls_proxy?${parcalar.join('&')}`;
 }
 
