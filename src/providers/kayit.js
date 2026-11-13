@@ -70,7 +70,6 @@ export const KAYIT = new Map([
   ['Darkseid', { onek: 'sp_darkseid_', dosya: 'darkseid.js', yukle: () => import('./cekirdekler/darkseid.js'), turler: ['movie', 'tv'], durum: 'bilinmiyor', tavaniMs: 26000, kimlik: 'tmdb' }],
 
   // ── birinci taraf TR-site çekirdekleri, ikinci dalga (2026-10-18) ──
-  ['Bellatrix', { onek: 'sp_bellatrix_', dosya: 'bellatrix.js', yukle: () => import('./cekirdekler/bellatrix.js'), turler: ['movie', 'tv'], durum: 'canli', kimlik: 'tmdb' }],
   ['Lyra', { onek: 'sp_lyra_', dosya: 'lyra.js', yukle: () => import('./cekirdekler/lyra.js'), turler: ['movie', 'tv'], durum: 'bilinmiyor', tavaniMs: 26000, kimlik: 'tmdb' }],
   ['Arcturus', { onek: 'sp_arcturus_', dosya: 'arcturus.js', yukle: () => import('./cekirdekler/arcturus.js'), turler: ['movie', 'tv'], durum: 'bilinmiyor', tavaniMs: 65000, kimlik: 'tmdb' }],
   ['Sirius', { onek: 'sp_sirius_', dosya: 'sirius.js', yukle: () => import('./cekirdekler/sirius.js'), turler: ['movie'], durum: 'bilinmiyor', tavaniMs: 26000, kimlik: 'tmdb' }],

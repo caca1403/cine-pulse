@@ -123,7 +123,7 @@ test('rota tablosu çekirdeklerin kullandığı TÜM kodları içerir (mobil+web
     for (const m of metin.matchAll(/const\s+ROTA\s*=\s*['"]([^'"]+)['"]/g)) kodlar.add(m[1]);
   }
   // Ölçülen gerçek kullanım: bane=jet, bellatrix=hfd, catWoman=dzb, lyra=slc, sirius=fhdf
-  assert.ok(kodlar.size >= 5, `beklenen en az 5 rota kodu, bulunan: ${[...kodlar].join(',')}`);
+  assert.ok(kodlar.size >= 4, `beklenen en az 4 rota kodu, bulunan: ${[...kodlar].join(',')}`);
   for (const kod of kodlar) {
     assert.ok(saglayiciRotalari()[kod], `ROTA '${kod}' native-routes.json'da yok — web'de 404 olurdu`);
   }
@@ -170,13 +170,13 @@ test('mirror tercihi KALICI: başarılı yedek sonraki istekte öne alınır, ö
   const cagrilar = [];
   const f = async (adres) => {
     cagrilar.push(String(adres));
-    return String(adres).startsWith('https://hdfilmdelisi1.com')
+    return String(adres).startsWith('https://jetfilmizle.app')
       ? new Response('down', { status: 502 })
       : new Response('{"ok":true}', { status: 200, headers: { 'content-type': 'application/json' } });
   };
   const iste = () => saglayiciYaniti(
-    new Request('https://worker.example/api/hfd/api/search?q=1'),
-    new URL('https://worker.example/api/hfd/api/search?q=1'),
+    new Request('https://worker.example/api/jet/api/search?q=1'),
+    new URL('https://worker.example/api/jet/api/search?q=1'),
     f,
   );
   assert.equal((await iste()).status, 200);
@@ -184,7 +184,7 @@ test('mirror tercihi KALICI: başarılı yedek sonraki istekte öne alınır, ö
   cagrilar.length = 0;
   assert.equal((await iste()).status, 200);
   assert.equal(cagrilar.length, 1, 'ikinci istek yedekle başlamalı (tercih kalıcı)');
-  assert.ok(cagrilar[0].startsWith('https://hdfilmdelisi.one'), 'yedek öne alınmalı');
+  assert.ok(cagrilar[0].startsWith('https://jetfilmizle.now'), 'yedek öne alınmalı');
 });
 
 test('Pages/Vercel girişi (functions/[[route]].js) de aynı sağlayıcı rota çözümünü kullanır', async () => {

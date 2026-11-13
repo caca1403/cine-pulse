@@ -7673,16 +7673,27 @@ async function defineProp4(tmdbId2) {
       str2 = "";
     for (let value42 of list2)
       try {
-        let val6 = Origin + "/api/bg/searchContent?searchterm=" + encodeURIComponent(value42),
+        /* onarim:mj-arama — ÖLÇÜM 2026-11-14 (canlı, iki site): Next.js yeniden
+           yazımından sonra eski uç GET /api/bg/searchContent?searchterm=… her
+           sorguda 404 dönüyor ("eşleşen içerik bulunamadı" → 0 kaynak).
+           Sitenin kendi JS paketinde (chunk 28dw7ae-7fhmj) güncel akış okundu:
+           POST /api/mj  {action:"searchContent", params:[sorgu]}.
+           ÖLÇÜLEN EK KOŞUL: `Origin` başlığı ŞART — onsuz 403 forbidden;
+           Referer/X-Requested-With/Accept başlıkları ise 403'e sokuyor.
+           Ayrıca yanıt `response` alanına sarılı değil, doğrudan
+           {ok:true, result:[...]} → parsedJson2 çözümü değişmedi, iki biçim de
+           okunuyor. Slug farkı: ybncidizi "film/fight-club", selcukflix
+           "film/fight-club/izle" → dönen used_slug AYNEN kullanılır. */
+        let val6 = Origin + "/api/mj",
           response = await fetch(val6, {
             method: "POST",
             headers: {
               "User-Agent": val4,
-              Referer: Origin + "/",
               Origin: Origin,
               "Content-Type": "application/json"
             },
-            signal: f0(5000)
+            body: JSON.stringify({ action: "searchContent", params: [String(value42)] }),
+            signal: f0(9000)
           });
         if (!response.ok) continue;
         let text4 = await response.text();

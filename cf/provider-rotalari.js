@@ -96,16 +96,6 @@ export const ROTA_TABLOSU = {
       "Origin": "https://filmekseni.vip"
     }
   },
-  "hfd": {
-    "base": "https://hdfilmdelisi1.com",
-    "mirrors": [
-      "https://hdfilmdelisi.one"
-    ],
-    "referer": "https://hdfilmdelisi1.com/",
-    "headers": {
-      "Origin": "https://hdfilmdelisi1.com"
-    }
-  },
   "dzl": {
     "base": "https://dizilla.now",
     "referer": "https://dizilla.now/",

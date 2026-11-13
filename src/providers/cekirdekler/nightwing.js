@@ -2694,6 +2694,17 @@ function defineProp3(arg1) {
   );
 }
 var _e = "134e150d5b430204550809065940060f014441085852560f";
+/* Sitenin klausBundle.js içindeki TOKEN_KEY (canlı doğrulandı 2026-11-14). */
+const NW_CF_ANAHTAR = "hlxjl1c2w281ax473rt1ofgrvhyjvi";
+function nwCfAnahtari() {
+  let env = "";
+  try {
+    if (typeof globalThis < "u" && globalThis.__cpAriaAnahtar) env = String(globalThis.__cpAriaAnahtar);
+  } catch (_) {}
+  /* env anahtarı yalnızca gerçekten dolu ve makul uzunluktaysa kullanılır;
+     boş/eksik değer jetonu geçersiz kılıyordu. */
+  return env && env.length >= 16 ? env : NW_CF_ANAHTAR;
+}
 function cfToken() {
   try {
     let gun = new Date()
@@ -2711,9 +2722,16 @@ function cfToken() {
           () => (Math.random() + 1).toString(36)[2]
         ).join("")]: Date.now()
       }),
-      // Anahtar bundle'dan çıkarıldı: kayit.js açılışta sunucudan
-      // (/api/aria_key, env ARIA_CF_KEY) globalThis.__cpAriaAnahtar'a koyar.
-      ((typeof globalThis < "u" && globalThis.__cpAriaAnahtar) || "") + "_" + gun
+      /* onarim:nw-token — ÖLÇÜM 2026-11-14 (canlı): Cf-Control jetonu, sitenin
+         kendi /klausBundle.js dosyasındaki TOKEN_KEY ile üretiliyor:
+             config.TOKEN_KEY = "hlxjl1c2w281ax473rt1ofgrvhyjvi"
+             je(JSON.stringify({rand6: Date.now()}), TOKEN_KEY + "_" + gün)
+         Bizim anahtar /api/aria_key'den (env ARIA_CF_KEY) geliyordu; o uç artık
+         {"key":""} döndüğü için jeton "_<gün>" ile üretiliyor ve API her isteği
+         "API tokeni mevcut değil veya geçersiz." + 401 ile reddediyordu
+         (Attack on Titan: 12/12 istek 401 → 0 kaynak). Araya gömülü sabit,
+         canlı uçta 200 doğrulandı; env değeri varsa o yine öncelikli. */
+      nwCfAnahtari() + "_" + gun
     );
   } catch {
     return _e;
@@ -2865,31 +2883,51 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
         "): " +
         list2.slice(0, 8).join(" | ")
     );
-    for (let value7 of list2)
+    /* onarim:nw-429 — ÖLÇÜM 2026-11-14 (canlı): site IP başına hız sınırı
+       uyguluyor. Çekirdek 58-94 başlık çevirisinin HER BİRİ için art arda istek
+       atıyordu → ilk birkaç istekten sonra tümü 429 dönüyor, hiç sonuç
+       bulunamıyordu (Fight Club: 24/24 istek 429; Attack on Titan: 401+429).
+       Düzeltme: (1) istekler 320 ms aralıkla sıraya alınır, (2) 429 gelirse
+       artan bekleme ile 3 deneme, (3) arama başlığı sayısı 94 → 12 ile
+       sınırlanır (aynı yapımın çevirileri; ilk 12 zaten tr+en+özgün başlığı
+       kapsıyor). */
+    let nwSonIstek = 0,
+      nwBekle = (ms) => new Promise((r) => setTimeout(r, ms)),
+      nwGetir = async (url) => {
+        for (let deneme = 0; deneme < 3; deneme++) {
+          let ara = 320 - (Date.now() - nwSonIstek);
+          if (ara > 0) await nwBekle(ara);
+          nwSonIstek = Date.now();
+          let yanit = null;
+          try {
+            yanit = await fetch(url, {
+              headers: headers,
+              signal:
+                typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+                  ? AbortSignal.timeout(9000)
+                  : void 0
+            });
+          } catch (_) { yanit = null; }
+          if (yanit && yanit.status === 429) { await nwBekle(900 * (deneme + 1)); continue; }
+          return yanit;
+        }
+        return null;
+      },
+      nwBasliklar = list2.slice(0, 12);
+    log("Nightwing", "Hız sınırı için taranacak başlık: " + nwBasliklar.length + "/" + list2.length);
+    for (let value7 of nwBasliklar)
       try {
         let val7 = result2 + "/page/search?value=" + encodeURIComponent(value7) + "&page=1",
-          response = await fetch(val7, {
-            headers: headers,
-            signal:
-              typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-                ? AbortSignal.timeout(8000)
-                : void 0
-          });
-        if (!response.ok) continue;
+          response = await nwGetir(val7);
+        if (!response || !response.ok) continue;
         let val8 = (await response.json())?.page?.data || [];
         log("Nightwing", '[Arama "' + value7 + '"] sonuç: ' + val8.length);
         for (let value8 of val8) {
           let value9 = value8?.ID;
           if (!value9) continue;
           let val9 = result2 + "/anime/get?id=" + value9,
-            response2 = await fetch(val9, {
-              headers: headers,
-              signal:
-                typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-                  ? AbortSignal.timeout(8000)
-                  : void 0
-            });
-          if (!response2.ok) continue;
+            response2 = await nwGetir(val9);
+          if (!response2 || !response2.ok) continue;
           let value10 = (await response2.json())?.data;
           if (!value10) continue;
           let trimmed4 = String(value10?.tmdb_id || "").trim(),

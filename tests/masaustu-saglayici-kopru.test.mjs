@@ -22,7 +22,7 @@ test('masaüstü köprüsü mobil köprüyle AYNI tabloyu okur', () => {
   const tablo = rotaTablosunuYukle({ yol: ROTALAR_YOLU });
   const mobil = JSON.parse(fs.readFileSync(ROTALAR_YOLU, 'utf8'));
   assert.deepEqual(Object.keys(tablo).sort(), Object.keys(mobil).sort(), 'tek kaynak: aynı tablo anahtarları');
-  for (const kod of ['jet', 'hfd', 'slc', 'fhdf', 'ddz', 'szd']) {
+  for (const kod of ['jet', 'slc', 'fhdf', 'ddz', 'szd']) {
     assert.ok(Object.prototype.hasOwnProperty.call(tablo, kod), `${kod} rotası tabloda olmalı`);
   }
 });

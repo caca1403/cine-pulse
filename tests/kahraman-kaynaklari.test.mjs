@@ -69,10 +69,10 @@ function cizgi(tekrar = 3, gecikme = 0) {
 
 /* ── kayıt bütünlüğü (45 kayıt, hepsi taramaya açık) ── */
 
-test('kayıt: 57 sağlayıcı, kod adları tekil', () => {
+test('kayıt: 56 sağlayıcı, kod adları tekil', () => {
   kayitKancasi(null);
   const durum = kayitDurumu();
-  assert.equal(durum.toplam, 57, '57 kayıt: 54 + 3 yeni yerli çekirdek (Nova/Vision/Phyla, 2026-10-30 cihazda doğrulandı)');
+  assert.equal(durum.toplam, 56, '56 kayıt: 54 + 3 yeni yerli çekirdek (Nova/Vision/Phyla, 2026-10-30 cihazda doğrulandı)');
   assert.deepEqual(durum.cakisma, [], 'kod adı çakışmamalı');
   assert.ok(durum.film > 0 && durum.dizi > 0);
 });
@@ -377,11 +377,11 @@ test('vendor: çekirdekler kahraman koduyla etiketlenebilir (getStreams var)', (
 test('durum: her kayıt ölçüm alanı taşır, varsayılan bilinmiyor', () => {
   kayitKancasi(null);
   const ozet = durumOzeti();
-  assert.equal(ozet.toplam, 57, '54 + Nova/Vision/Phyla (2026-10-30)');
+  assert.equal(ozet.toplam, 56, '54 + Nova/Vision/Phyla (2026-10-30)');
   // Tek kalici 'canli' kayit, OLCUMLU birinci taraf cekirdegidir (Star-Lord:
   // film + dizi kosesinde canli olarak dogrulandi). Vendor kayitlar olcum
   // yapilmadan asla kapali sayilmaz.
-  assert.equal(ozet.canli, 31, '31 canlı: 28 + Nova/Vision/Phyla');
+  assert.equal(ozet.canli, 30, '30 canlı: 28 + Nova/Vision/Phyla');
   assert.equal(ozet.bilinmiyor, 26, '26 henüz ölçülmeyen kayıt');
   assert.equal(ozet.kapali, 0, 'ölçümsüz kapalı kayıt kalmadı');
 });
