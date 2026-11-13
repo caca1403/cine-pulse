@@ -7138,6 +7138,13 @@ function xorDecode5(arg1) {
   return null;
 }
 function matchOf(input) {
+  /* onarim:lc-rplayer — ÖLÇÜM 2026-11-14: hdfc ailesi oynatıcıyı değiştirdi;
+     /rplayer/<id>/ gövdesi artık "p,a,c,k,e,d" paketleyicisi + `uhin([...])`
+     şifresi. Aşağıdaki xorDecode2/4 zinciri `charCode - (N % (i + 9))`
+     imzasını arıyor, yeni sayfada YOK → eski akış 0 kaynak veriyordu.
+     Canlı kanıt: Fight Club 1999 → s230.rapidrame.com master.m3u8 (200). */
+  let uh = rplayerCoz(input);
+  if (uh && !uh.includes("playmix.uno")) return uh;
   let match = input.match(/sources:\s*\[\{\s*file:\s*([a-zA-Z0-9_$]+)/i);
   if (match) {
     let value40 = match[1],

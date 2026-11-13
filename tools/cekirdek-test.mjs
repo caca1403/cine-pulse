@@ -23,9 +23,31 @@ globalThis.fetch = async (adres, secenekler = {}) => {
   const es = hedef.match(/^\/api\/([a-zA-Z0-9_-]+)(\/[^?]*)?(\?.*)?$/);
   if (es && es[1] !== 'proxy' && ROTALAR[es[1]]) {
     const konf = ROTALAR[es[1]];
-    hedef = konf.base + (es[2] || '') + (es[3] || '');
+    /* YEDEK ALAN (2026-11-14 ölçümü): tabloda `mirrors` varken test kılıfı
+       yalnız `base`i deniyordu. Ölçülen vaka: hfd.base = hdfilmdelisi1.com
+       ÖLÜ (DNS/bağlantı yok), mirrors[0] = hdfilmdelisi.one CANLI (api/search
+       200 + geçerli JSON). Sonuç: Bellatrix/Spectre gibi çekirdekler testte
+       "0 kaynak" görünüyordu, oysa mobil köprü ve web worker yedeği zaten
+       uyguluyordu. Artık test kılıfı da üretimle aynı sırayı izler. */
+    const adaylar = [konf.base, ...(Array.isArray(konf.mirrors) ? konf.mirrors : [])]
+      .filter(u => typeof u === 'string' && /^https?:\/\//i.test(u));
+    hedef = (adaylar[0] || konf.base) + (es[2] || '') + (es[3] || '');
     if (konf.referer) basliklar.Referer = konf.referer;
     Object.assign(basliklar, konf.headers || {});
+    // Birincil ağ/TLS/5xx ile düşerse sıradaki aday denenir (üretim paritesi).
+    if (adaylar.length > 1) {
+      for (let i = 0; i < adaylar.length; i += 1) {
+        const denemeHedef = adaylar[i] + (es[2] || '') + (es[3] || '');
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const deneme = await gercekFetch(denemeHedef, { ...secenekler, headers: basliklar, redirect: 'follow' });
+          if (deneme.status < 500) return deneme;
+          if (i === adaylar.length - 1) return deneme;
+        } catch (_) {
+          if (i === adaylar.length - 1) throw _;
+        }
+      }
+    }
   }
   const yanit = await gercekFetch(hedef, { ...secenekler, headers: basliklar, redirect: 'follow' });
   return yanit;

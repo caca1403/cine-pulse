@@ -157,9 +157,11 @@ async function oynaticiAdaylari(ham, base, referer) {
     const url = m[1].startsWith('http') ? m[1] : `${base}${m[1]}`;
     if (OYATICI_KAPI.test(url) && !gorulen.has(url)) { gorulen.add(url); adaylar.push(url); }
   }
-  /* onarim:ds-dugme — ölçüm 2026-10-28: /video/{id}/ düz HTTP'de her zaman CF 403;
-     sayfada iframe zaten varsa düğme uçlarını hiç çağırma (2 boşa istek). */
-  if (adaylar.length) return adaylar.slice(0, 3);
+  /* onarim:ds-dugme2 — ölçüm 2026-11-14: "sayfada iframe varsa düğmeleri hiç çağırma"
+     kısayolu artık ZARARLI. Film sayfasında ilk iframe ölü mobi embed'e
+     (hdfilmcehennemi.mobi → düz HTTP 404) işaret ediyor; erken `return` yüzünden
+     ÇALIŞAN rplayer düğmesi hiç denenmiyordu (Fight Club: 0 kaynak). Artık iki
+     kaynak birlikte toplanır; iframe yalnız ilk sırada kalır. */
   for (const m of String(ham).matchAll(/<button[^>]*data-video=["']?([\w-]+)["']?[^>]*>([\s\S]{0,200}?)<\/button>/gi)) {
     const id = m[1];
     if (gorulen.has(`v:${id}`)) continue;
@@ -234,6 +236,88 @@ function vnbCoz(html, host) {
   } catch (_) { return ''; }
 }
 
+/* ── rplayer (rapidrame) çözücüsü — ÖLÇÜM 2026-11-14, canlı ────────────────
+   Site oynatıcıyı değiştirdi: /rplayer/<id>/ sayfası artık kendi şifresini
+   `uhin([...])` ile çözüyor VE gövde Dean Edwards "p,a,c,k,e,d" paketleyicisiyle
+   sarılı. kodCozler.js'deki be/dn/gn/paket şemaları bu biçimi bilmiyor
+   (Node'da ölçüldü: sifreCoz(rplayer) → null), vnb74 şeması da tutmuyor
+   (regex hiç eşleşmiyor). Bu yüzden çözücü burada, çekirdeğin içinde.
+   Kanıt: Fight Club 1999 (rapidrame 8m18g13vwzfe) → master.m3u8 (200).
+   Şema: paketi aç → `FN("a~b~c…".split("~"))` bul → diziden 2 tohum eleman
+   çıkar → harf kaydırma/base64/ters çevirme zinciri → Fisher-Yates geri al →
+   XOR akışı. Sihirli sabitler (241/256/11/65519/97/41) canlı sayfadan okundu. */
+function paketAc(js) {
+  const m = String(js || '').match(/eval\(function\(p,a,c,k,e,d\)\{[\s\S]*?\}\('([\s\S]*?)',(\d+),(\d+),'([\s\S]*?)'\.split\('\|'\),0,\{\}\)\)/);
+  if (!m) return '';
+  const p = m[1], taban = +m[2], sayi = +m[3], sozluk = m[4].split('|');
+  const ad = (n) => (n < taban ? '' : ad(Math.floor(n / taban))) + ((n % taban) > 35 ? String.fromCharCode((n % taban) + 29) : (n % taban).toString(36));
+  let kod = p;
+  for (let i = sayi - 1; i >= 0; i--) if (sozluk[i]) kod = kod.replace(new RegExp('\\b' + ad(i) + '\\b', 'g'), sozluk[i]);
+  return kod;
+}
+
+function uhinCoz(dizi) {
+  const b64 = s => { try { return atob(String(s)); } catch (_) { return ''; } };
+  if (!Array.isArray(dizi) || dizi.length < 5) return '';
+  const liste = [...dizi];
+  const n0 = liste.length - 2, xs = n0 % 7, fh = 8 + (n0 % 5);
+  if (fh >= liste.length || xs >= liste.length) return '';
+  const g = liste.splice(fh, 1)[0];        // harf kaydırma komut zinciri
+  const tohum = liste.splice(xs, 1)[0];    // XOR tohumu
+  let q = liste.join('');
+  if (tohum.length > 4096) q = b64(q);
+  let h4e = 0, c8k = 0;
+  for (let i = 0; i < tohum.length; i++) {
+    const c = tohum.charCodeAt(i);
+    h4e = (h4e * 37 + c) % 241;
+    c8k = (c8k + ((c << 1) ^ i)) & 255;
+  }
+  const jb = (h4e * 3 + c8k) % 256, wx = (c8k % 11) + 5;
+  let l4 = ((c8k * 251 + h4e) % 65519) + 1;
+  for (let i = g.length - 1; i >= 0; i--) {
+    const ch = g.charAt(i);
+    if (ch === '7') q = b64(q);
+    else if (ch === '3') q = q.split('').reverse().join('');
+    else {
+      const k = (26 - ((ch.charCodeAt(0) - 96) % 26)) % 26;
+      q = q.replace(/[a-zA-Z]/g, (y) => {
+        const c = y.charCodeAt(0), b = c <= 90 ? 65 : 97;
+        return String.fromCharCode((c - b + k) % 26 + b);
+      });
+    }
+  }
+  if (g.length > 2048) q = q.split('').reverse().join('');
+  const n = q.length, sira = [];
+  for (let i = n - 1; i >= 1; i--) { l4 = (l4 * 97 + 41) % 65519; sira[i] = l4 % (i + 1); }
+  const harf = q.split('');
+  for (let i = 1; i < n; i++) { const j = sira[i], t = harf[i]; harf[i] = harf[j]; harf[j] = t; }
+  q = harf.join('');
+  let el = jb, cikti = '';
+  for (let i = 0; i < q.length; i++) {
+    const c = q.charCodeAt(i);
+    el = (el * 5 + wx) % 256;
+    cikti += String.fromCharCode(c ^ el);
+    el = (el + c) % 256;
+  }
+  return /^https?:\/\//.test(cikti) ? cikti : '';
+}
+
+/** rplayer/rapidrame sayfasından akış adresi (paket aç → uhin → doğrula). */
+function rplayerCoz(html) {
+  const kaynaklar = [String(html || '')];
+  const acik = paketAc(html);
+  if (acik) kaynaklar.push(acik);
+  for (const src of kaynaklar) {
+    const re = /([a-zA-Z0-9_$]+)\s*\(\s*["']([\s\S]{80,}?)["']\.split\(\s*["']([^"']{1,4})["']\s*\)\s*\)/g;
+    let m;
+    while ((m = re.exec(src))) {
+      const cikti = uhinCoz(m[2].replace(/\\\//g, '/').split(m[3]));
+      if (cikti) return cikti.replace(/\/txt\/master\.txt/i, '/master.m3u8').replace(/\/master\.txt/i, '/master.m3u8');
+    }
+  }
+  return '';
+}
+
 /* 2026-10-18 cihaz analizi: arama + /video/{id} uçları duruyor AMA gösterim/bölüm
    sayfalarında sunucu düğmeleri (data-video / aria-label='Play video') artık hiç
    basılmıyor — oynatıcı bölümü oturum/gerisayım koşullu dolduruluyor.
@@ -298,13 +382,16 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
       /* onarim:ds-vnb — .mobi embed'i kendi şifresini (vnb74) kullanıyor; sifreCoz
          burada çöp döndürüyor. Tohum hostname = embed'in alan adı. */
       if (!url && oynaticiHam) url = vnbCoz(oynaticiHam, host);
+      /* onarim:ds-rplayer — 2026-11-14: oynatıcı artık paketli `uhin(...)` şeması;
+         sifreCoz/vnbCoz ikisi de null dönüyor (canlı ölçüm). */
+      if (!url && oynaticiHam) url = rplayerCoz(oynaticiHam);
       if (!url && d === 0) await new Promise(r => setTimeout(r, 900));
     }
     if (!url) {
       const rapid = iframe.match(/\/rplayer\/([a-zA-Z0-9]+)/)?.[1];
       if (rapid) {
         const yedek = await sayfaAc(`${base}/rplayer/${rapid}/`, { ref: adres, ms: 10000 });
-        url = yedek ? sifreCoz(yedek) : '';
+        url = yedek ? (sifreCoz(yedek) || rplayerCoz(yedek)) : '';
       }
     }
     if (!url || gorulen.has(url)) continue;
