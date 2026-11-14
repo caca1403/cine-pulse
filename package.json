@@ -1,7 +1,7 @@
 {
   "name": "cinepulse-studio",
   "private": true,
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "CinePulse Studio - yerli ve global kaynakli hibrit medya merkezi",
   "author": {
     "name": "CinePulse Studio",
@@ -141,5 +141,5 @@
       "runAfterFinish": true
     }
   },
-  "versionCode": 206
+  "versionCode": 207
 }

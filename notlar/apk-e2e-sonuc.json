@@ -1,0 +1,1597 @@
+{
+ "ozet": {
+  "tarih": "2026-11-14T10:42:09.908Z",
+  "hedef": "android-apk-emulator-5554",
+  "baslikSayisi": 30,
+  "kaynakBulunan": 30,
+  "trDublajOlan": 0,
+  "toplamEslesme": 107
+ },
+ "sonuclar": [
+  {
+   "ad": "Fight Club",
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sure": 676,
+   "adaySayisi": 3,
+   "eslesenSayisi": 2,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    }
+   ],
+   "kaynakDurumu": {
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 357
+    },
+    "star:hdfc": {
+     "ok": true,
+     "adet": 2,
+     "ms": 495
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 1,
+     "ms": 560
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 674
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "Inception",
+   "tmdbTip": "movie",
+   "tmdbId": "27205",
+   "sure": 424,
+   "adaySayisi": 10,
+   "eslesenSayisi": 2,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 1,
+     "ms": 214
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 305
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 9,
+     "ms": 308
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 423
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "Interstellar",
+   "tmdbTip": "movie",
+   "tmdbId": "157336",
+   "sure": 1207,
+   "adaySayisi": 3,
+   "eslesenSayisi": 1,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 2,
+     "ms": 287
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 1,
+     "ms": 729
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 729
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 1207
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "The Dark Knight",
+   "tmdbTip": "movie",
+   "tmdbId": "155",
+   "sure": 2868,
+   "adaySayisi": 12,
+   "eslesenSayisi": 5,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.857
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.667
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 6,
+     "ms": 1224
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 6,
+     "ms": 1489
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 1529
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 2867
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "Pulp Fiction",
+   "tmdbTip": "movie",
+   "tmdbId": "680",
+   "sure": 507,
+   "adaySayisi": 2,
+   "eslesenSayisi": 2,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 1,
+     "ms": 249
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 1,
+     "ms": 346
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 347
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 507
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "The Matrix",
+   "tmdbTip": "movie",
+   "tmdbId": "603",
+   "sure": 448,
+   "adaySayisi": 10,
+   "eslesenSayisi": 9,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.667
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 4,
+     "ms": 206
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 303
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 6,
+     "ms": 311
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 447
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "Forrest Gump",
+   "tmdbTip": "movie",
+   "tmdbId": "13",
+   "sure": 437,
+   "adaySayisi": 2,
+   "eslesenSayisi": 2,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 1,
+     "ms": 257
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 342
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 1,
+     "ms": 343
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 437
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "The Godfather",
+   "tmdbTip": "movie",
+   "tmdbId": "238",
+   "sure": 1991,
+   "adaySayisi": 11,
+   "eslesenSayisi": 7,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.667
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 3,
+     "ms": 250
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 7,
+     "ms": 301
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 397
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 1,
+     "ms": 1990
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "Schindler's List",
+   "tmdbTip": "movie",
+   "tmdbId": "424",
+   "sure": 420,
+   "adaySayisi": 1,
+   "eslesenSayisi": 1,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 0,
+     "ms": 242
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 1,
+     "ms": 303
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 327
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 420
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "Gladiator",
+   "tmdbTip": "movie",
+   "tmdbId": "98",
+   "sure": 1837,
+   "adaySayisi": 15,
+   "eslesenSayisi": 4,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.667
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 3,
+     "ms": 303
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 8,
+     "ms": 358
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 651
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 4,
+     "ms": 1837
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "Avengers: Endgame",
+   "tmdbTip": "movie",
+   "tmdbId": "299534",
+   "sure": 2515,
+   "adaySayisi": 3,
+   "eslesenSayisi": 3,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.571
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 1,
+     "ms": 1753
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 2,
+     "ms": 1927
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 2108
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 2513
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "Avengers: Infinity War",
+   "tmdbTip": "movie",
+   "tmdbId": "299536",
+   "sure": 447,
+   "adaySayisi": 3,
+   "eslesenSayisi": 2,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.6
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 2,
+     "ms": 229
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 320
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 1,
+     "ms": 320
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 447
+    }
+   },
+   "ipucuSayisi": 0,
+   "basarili": true
+  },
+  {
+   "ad": "The Avengers",
+   "tmdbTip": "movie",
+   "tmdbId": "24428",
+   "sure": 1729,
+   "adaySayisi": 12,
+   "eslesenSayisi": 4,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 4,
+     "ms": 203
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 288
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 6,
+     "ms": 362
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 2,
+     "ms": 1729
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Mad Max: Fury Road",
+   "tmdbTip": "movie",
+   "tmdbId": "76341",
+   "sure": 835,
+   "adaySayisi": 2,
+   "eslesenSayisi": 2,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    }
+   ],
+   "kaynakDurumu": {
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 1,
+     "ms": 383
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 481
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 528
+    },
+    "star:hdfc": {
+     "ok": true,
+     "adet": 1,
+     "ms": 835
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Titanic",
+   "tmdbTip": "movie",
+   "tmdbId": "597",
+   "sure": 2276,
+   "adaySayisi": 11,
+   "eslesenSayisi": 2,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 4,
+     "ms": 228
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 6,
+     "ms": 308
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 310
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 1,
+     "ms": 2275
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Toy Story",
+   "tmdbTip": "movie",
+   "tmdbId": "862",
+   "sure": 4247,
+   "adaySayisi": 17,
+   "eslesenSayisi": 13,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.571
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 8,
+     "ms": 1757
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 9,
+     "ms": 1938
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 2030
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 4245
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Avatar: The Way of Water",
+   "tmdbTip": "movie",
+   "tmdbId": "76600",
+   "sure": 6213,
+   "adaySayisi": 1,
+   "eslesenSayisi": 1,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    }
+   ],
+   "kaynakDurumu": {
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 1,
+     "ms": 3958
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 4193
+    },
+    "star:hdfc": {
+     "ok": true,
+     "adet": 0,
+     "ms": 4356
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 6212
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Across the Spider-Verse",
+   "tmdbTip": "movie",
+   "tmdbId": "569094",
+   "sure": 2721,
+   "adaySayisi": 2,
+   "eslesenSayisi": 2,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "dublaj",
+     "skor": 0.889
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.889
+    }
+   ],
+   "kaynakDurumu": {
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 1,
+     "ms": 1011
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 0,
+     "ms": 1225
+    },
+    "star:hdfc": {
+     "ok": true,
+     "adet": 1,
+     "ms": 1565
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 2721
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Game of Thrones",
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sure": 2796,
+   "adaySayisi": 7,
+   "eslesenSayisi": 4,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.75
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 0.667
+    }
+   ],
+   "kaynakDurumu": {
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 1185
+    },
+    "star:hdfc": {
+     "ok": true,
+     "adet": 2,
+     "ms": 1186
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 2,
+     "ms": 1259
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 3,
+     "ms": 2796
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Breaking Bad",
+   "tmdbTip": "tv",
+   "tmdbId": "1396",
+   "sure": 2675,
+   "adaySayisi": 8,
+   "eslesenSayisi": 5,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 0.571
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.571
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 2,
+     "ms": 222
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 4,
+     "ms": 458
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 2,
+     "ms": 1956
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 2675
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Stranger Things",
+   "tmdbTip": "tv",
+   "tmdbId": "66732",
+   "sure": 2676,
+   "adaySayisi": 11,
+   "eslesenSayisi": 7,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.571
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 3,
+     "ms": 1043
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 5,
+     "ms": 1061
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 2388
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 3,
+     "ms": 2676
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Rick and Morty",
+   "tmdbTip": "tv",
+   "tmdbId": "60625",
+   "sure": 3976,
+   "adaySayisi": 10,
+   "eslesenSayisi": 6,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.857
+    },
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.75
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 0.75
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.75
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 2,
+     "ms": 1634
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 6,
+     "ms": 1727
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 3203
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 2,
+     "ms": 3976
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "The Simpsons",
+   "tmdbTip": "tv",
+   "tmdbId": "456",
+   "sure": 3521,
+   "adaySayisi": 11,
+   "eslesenSayisi": 4,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 0.8
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.8
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 2,
+     "ms": 391
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 428
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 7,
+     "ms": 479
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 2,
+     "ms": 3521
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Money Heist",
+   "tmdbTip": "tv",
+   "tmdbId": "71446",
+   "sure": 7443,
+   "adaySayisi": 8,
+   "eslesenSayisi": 1,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 0.8
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 3,
+     "ms": 1843
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 2,
+     "ms": 1890
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 2363
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 3,
+     "ms": 7442
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "The Mandalorian",
+   "tmdbTip": "tv",
+   "tmdbId": "82856",
+   "sure": 6371,
+   "adaySayisi": 8,
+   "eslesenSayisi": 1,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 2,
+     "ms": 2025
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 4,
+     "ms": 2284
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 3679
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 2,
+     "ms": 6371
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Chernobyl",
+   "tmdbTip": "tv",
+   "tmdbId": "87108",
+   "sure": 2893,
+   "adaySayisi": 9,
+   "eslesenSayisi": 2,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 3,
+     "ms": 863
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 4,
+     "ms": 904
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 962
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 2,
+     "ms": 2893
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Lucifer",
+   "tmdbTip": "tv",
+   "tmdbId": "63174",
+   "sure": 2199,
+   "adaySayisi": 9,
+   "eslesenSayisi": 3,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:hdfc",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 4,
+     "ms": 289
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 3,
+     "ms": 324
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 372
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 2,
+     "ms": 2199
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Grey's Anatomy",
+   "tmdbTip": "tv",
+   "tmdbId": "1416",
+   "sure": 1911,
+   "adaySayisi": 2,
+   "eslesenSayisi": 2,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    }
+   ],
+   "kaynakDurumu": {
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 1,
+     "ms": 333
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 402
+    },
+    "star:hdfc": {
+     "ok": true,
+     "adet": 0,
+     "ms": 792
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 1,
+     "ms": 1911
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "Friends",
+   "tmdbTip": "tv",
+   "tmdbId": "1668",
+   "sure": 6193,
+   "adaySayisi": 85,
+   "eslesenSayisi": 6,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 0.667
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 25,
+     "ms": 221
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 300
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 30,
+     "ms": 304
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 30,
+     "ms": 6192
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  },
+  {
+   "ad": "True Detective",
+   "tmdbTip": "tv",
+   "tmdbId": "46648",
+   "sure": 3003,
+   "adaySayisi": 2,
+   "eslesenSayisi": 2,
+   "trDublaj": 0,
+   "kaynaklar": [
+    {
+     "kaynak": "star:selcukflix",
+     "dilDurumu": "altyazi",
+     "skor": 1
+    },
+    {
+     "kaynak": "star:dizilla",
+     "dilDurumu": "bilinmiyor",
+     "skor": 1
+    }
+   ],
+   "kaynakDurumu": {
+    "star:hdfc": {
+     "ok": true,
+     "adet": 0,
+     "ms": 1380
+    },
+    "star:filmmakinesi": {
+     "ok": true,
+     "adet": 0,
+     "ms": 1434
+    },
+    "star:selcukflix": {
+     "ok": true,
+     "adet": 1,
+     "ms": 1443
+    },
+    "star:dizilla": {
+     "ok": true,
+     "adet": 1,
+     "ms": 3003
+    }
+   },
+   "ipucuSayisi": 1,
+   "basarili": true
+  }
+ ]
+}

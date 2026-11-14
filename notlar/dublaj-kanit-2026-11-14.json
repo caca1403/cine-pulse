@@ -1,0 +1,2152 @@
+{
+  "olcum": "2026-11-14",
+  "ozet": {
+    "cekirdekSayisi": 26,
+    "denenenBaslik": 52,
+    "akisSayisi": 74,
+    "trSesKanitli": 37,
+    "durumlar": {
+      "orijinal": 1,
+      "altyazi": 1,
+      "dublaj": 37,
+      "bilinmiyor": 35
+    },
+    "kanitlar": {
+      "m3u8": 39,
+      "yok": 35
+    },
+    "cekirdekDurumu": [
+      {
+        "cekirdek": "hulk.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "hulk.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 0,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "dizisol.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 8,
+        "trSes": 4,
+        "hata": ""
+      },
+      {
+        "cekirdek": "dizisol.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 7,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "shazam.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 9,
+        "trSes": 5,
+        "hata": ""
+      },
+      {
+        "cekirdek": "shazam.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 7,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "starLord.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 3,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "starLord.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 4,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "phyla.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "phyla.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "hawkeye.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "hawkeye.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 0,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "lukeCage.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "lukeCage.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 0,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "darkseid.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "darkseid.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 0,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "cyborg.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "cyborg.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 0,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "constantine.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "constantine.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "daredevil.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "daredevil.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 0,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "beastBoy.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "beastBoy.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "blackPanther.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "blackPanther.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 0,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "aquaman.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "aquaman.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "aqualad.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "aqualad.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "catWoman.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "catWoman.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "ironMan.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "ironMan.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "loki.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "loki.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 0,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "nova.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "nova.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "raven.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "raven.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "superman.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "superman.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "winterSoldier.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "winterSoldier.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "doctorStrange.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "doctorStrange.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 0,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "falcon.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "falcon.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "huntress.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 1,
+        "hata": ""
+      },
+      {
+        "cekirdek": "huntress.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 0,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "blackAdam.js",
+        "tmdbTip": "movie",
+        "tmdbId": "550",
+        "akis": 1,
+        "trSes": 0,
+        "hata": ""
+      },
+      {
+        "cekirdek": "blackAdam.js",
+        "tmdbTip": "tv",
+        "tmdbId": "1399",
+        "akis": 1,
+        "trSes": 0,
+        "hata": ""
+      }
+    ]
+  },
+  "kayitlar": [
+    {
+      "cekirdek": "aqualad.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/playlist/170060",
+      "dilDurumu": "orijinal",
+      "kanit": "m3u8",
+      "diller": [
+        "it",
+        "en"
+      ],
+      "sureMs": 408,
+      "etiket": "Orijinal",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "ita:Italian",
+          "eng:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: ita:Italian|eng:English · altyazı: eng:English|ger:German|gre:Greek|fre:French|ita:Italian|ukr:Ukrainian"
+    },
+    {
+      "cekirdek": "aqualad.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/playlist/629736",
+      "dilDurumu": "altyazi",
+      "kanit": "m3u8",
+      "diller": [
+        "it",
+        "en"
+      ],
+      "sureMs": 709,
+      "etiket": "Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "ita:Italian",
+          "eng:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: ita:Italian|eng:English · altyazı: eng:English [CC]|eng:English|bul:Bulgarian|cze:Czech|dan:Danish|ger:German|spa:Spanish (Latin American)|spa:Spanish (European)|est:Estonian|fin:Finnish|fre:French|hrv:Croatian|hun:Hungarian|ice:Icelandic|ita-forced:Italian [Forced]|ita:Italian [CC]|lit:Lithuanian|lav:Latvian|mac:Macedonian|nob:Norwegian Bokmål|dut:Dutch|pol:Polish (European)|por:Portuguese (Brazilian)|por:Portuguese|rum:Romanian|rus:Russian|slo:Slovak|slv:Slovenian|srp:Serbian|swe:Swedish|tur:Turkish"
+    },
+    {
+      "cekirdek": "aquaman.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/api/stream.php",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 279,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:audio_1",
+          "en:audio_2"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:audio_1|en:audio_2"
+    },
+    {
+      "cekirdek": "aquaman.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/api/stream.php",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 257,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:audio_1",
+          "en:audio_2"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:audio_1|en:audio_2"
+    },
+    {
+      "cekirdek": "beastBoy.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/vd/OXN3d0w5Q1pyVGNmVFNmZFpLeERhQTo0VTdCeWtXM2Q2UEJyb2M5bm91UnhB/index-s2160p-v1-a1.m3u8",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 8168,
+      "etiket": "Orijinal",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 200 video/mp4 · kanıt okuyucu: zaman aşımı · master EXT-X-MEDIA ses bildirimi yok (gömülü ses)"
+    },
+    {
+      "cekirdek": "beastBoy.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/vd/U2pISEFyMXRrWHVFNGRoc0ZDV3kyUTpDa2txS0NlVTE2MEMwUVo4M1Q4TU1VMFhUV0FBMWVKYi03ZHN0VWpqbDhJ/index-s2160p-v1-a1.m3u8",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 8170,
+      "etiket": "Orijinal",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 200 video/mp4 · kanıt okuyucu: zaman aşımı · master EXT-X-MEDIA ses bildirimi yok (gömülü ses)"
+    },
+    {
+      "cekirdek": "blackAdam.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/aes/0/0efb81f0e7275fa554e4111587d71ba3/d0LDbPiDBHYUzo_ZCQAPNw/1794637793/storage8/movies/1782979130-0137523-fight-club-1999/c1fd8030c12be07533b3793bfb8e6f34.mp4/index.m3u8",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 8136,
+      "etiket": "Orijinal",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 200 video/MP2T · master EXT-X-MEDIA ses bildirimi yok (gömülü ses) · segman TS okundu, ISO-639 dil tanımlayıcısı yok"
+    },
+    {
+      "cekirdek": "blackAdam.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/aes/0/0efb81f0e7275fa554e4111587d71ba3/g5RlT_8wULk5L2kkUJQ5MA/1794637802/storage1/shows/0944947-game-of-thrones-2011/944947-s1-e1-1754284012/03dbb8d15e949f1010ca8694c4ba34d2.mp4/index.m3u8",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 8188,
+      "etiket": "Orijinal",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 200 video/MP2T · master EXT-X-MEDIA ses bildirimi yok (gömülü ses) · segman TS okundu, ISO-639 dil tanımlayıcısı yok"
+    },
+    {
+      "cekirdek": "blackPanther.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/hls2/01/01691/sn2j89n5libv_,n,l,.urlset/master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 633,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:Türkçe|en:English"
+    },
+    {
+      "cekirdek": "catWoman.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzb",
+      "yol": "/api/stream.php",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 273,
+      "etiket": "Cat-Woman 1080p",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:audio_1",
+          "en:audio_2"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:audio_1|en:audio_2"
+    },
+    {
+      "cekirdek": "catWoman.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzb",
+      "yol": "/api/stream.php",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 270,
+      "etiket": "Cat-Woman 1080p",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:audio_1",
+          "en:audio_2"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:audio_1|en:audio_2"
+    },
+    {
+      "cekirdek": "constantine.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/hls2/01/02664/x71vfy64j318_,n,l,.urlset/master.m3u8",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 1672,
+      "etiket": "Orijinal",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 206 video/MP2T · master EXT-X-MEDIA ses bildirimi yok (gömülü ses) · segman TS okundu, ISO-639 dil tanımlayıcısı yok"
+    },
+    {
+      "cekirdek": "constantine.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/hls2/01/02687/v0rn1uzngix9_,n,l,.urlset/master.m3u8",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 1583,
+      "etiket": "Orijinal",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 206 video/MP2T · master EXT-X-MEDIA ses bildirimi yok (gömülü ses) · segman TS okundu, ISO-639 dil tanımlayıcısı yok"
+    },
+    {
+      "cekirdek": "cyborg.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/hls2/01/00018/zq4zrdmqkx8k_n/master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 354,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:Türkçe|en:English"
+    },
+    {
+      "cekirdek": "daredevil.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/storage/media/8e2260c6982b8e999770bd484f1922c3-720.mp4/gomindex.m3u8",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 7826,
+      "etiket": "Türkçe",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 206 video/MP2T · master EXT-X-MEDIA ses bildirimi yok (gömülü ses) · segman TS okundu, ISO-639 dil tanımlayıcısı yok"
+    },
+    {
+      "cekirdek": "darkseid.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "hdfc",
+      "yol": "/hls2/01/00026/8m18g13vwzfe_,l,n,.urlset/master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 195,
+      "etiket": "Darkseid Sunucu 1 · Türkçe Dublaj",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:Türkçe|en:English"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/api/proxy/hdfilmizle/play/3948",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en",
+        "fr",
+        "es",
+        "ru",
+        "pl",
+        "cs",
+        "hu"
+      ],
+      "sureMs": 1140,
+      "etiket": "Green-Arrow · HDFilmizle · 1080p · Türkçe Dublaj · 8 Ses",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:İngilizce [Original]",
+          "fr:Fransızca",
+          "es:İspanyolca",
+          "ru:Rusça",
+          "pl:Lehçe",
+          "cs:Çekçe",
+          "hu:Macarca"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:Türkçe|en:İngilizce [Original]|fr:Fransızca|es:İspanyolca|ru:Rusça|pl:Lehçe|cs:Çekçe|hu:Macarca"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/mu/ET92qKZhF3IfqJW1YxMcM2u0YxAfqJVhZGx5BF4kZQtjpP5RqJSfd0zxL2EhnJ1apmxmAmphp2uipNs0xi2vr1",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 473,
+      "etiket": "Green-Arrow · FullHD · 720p · Türkçe Dublaj · 2 Ses",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/x-mpegURL · EXT-X-MEDIA ses: tr:Türkçe|en:English"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 322,
+      "etiket": "Green-Arrow · ana · 1080p · Türkçe Dublaj · 2 Ses",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:Türkçe|en:English · altyazı: tr:Türkçe|en:İngilizce"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "en",
+        "tr"
+      ],
+      "sureMs": 811,
+      "etiket": "Green-Arrow · ImagesToo · 720p · Türkçe Dublaj · 2 Ses",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "eng:English",
+          "tur:Turkish"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: eng:English|tur:Turkish"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2753,
+      "etiket": "Green-Arrow · VidMixi · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2796,
+      "etiket": "Green-Arrow · FilmEkseni · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2650,
+      "etiket": "Green-Arrow · HDFilmDelisi · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 530 text/plain · master HTTP 530"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2817,
+      "etiket": "Green-Arrow · Yedek Hat 8 · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 818,
+      "etiket": "Green-Arrow · draktar · 1080p · Türkçe Dublaj · 2 Ses",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tur:Tur",
+          "eng:Eng"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tur:Tur|eng:Eng · altyazı: tur:Türkçe|eng:English"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2665,
+      "etiket": "Green-Arrow · Yedek Hat 1 · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2687,
+      "etiket": "Green-Arrow · Yedek Hat 2 · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2691,
+      "etiket": "Green-Arrow · Yedek Hat 3 · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2664,
+      "etiket": "Green-Arrow · HDFilmDelisi · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 530 text/plain · master HTTP 530"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2676,
+      "etiket": "Green-Arrow · Yedek Hat 6 · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "dizisol.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2824,
+      "etiket": "Green-Arrow · Yedek Hat 7 · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "doctorStrange.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/hls2/01/01691/sn2j89n5libv_,n,l,.urlset/master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 599,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:Türkçe|en:English"
+    },
+    {
+      "cekirdek": "falcon.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dbl",
+      "yol": "/api/stream.php",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 275,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:audio_1",
+          "en:audio_2"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:audio_1|en:audio_2"
+    },
+    {
+      "cekirdek": "falcon.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dbl",
+      "yol": "/api/stream.php",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 267,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:audio_1",
+          "en:audio_2"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:audio_1|en:audio_2"
+    },
+    {
+      "cekirdek": "hawkeye.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/hls/tl2h7darb1vb78pbj8u5/1/1794630451/696a2fad-f361-4011-8462-db0ec12c9f4b/0f639c497297823ad69c48a0e830584a303e3efb3af577aeddd3f4aaa2086b49/aistream-legacy-master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 265,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tur:Türkçe",
+          "eng:İngilizce",
+          "tur:Türkçe",
+          "eng:İngilizce"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · master HTTP 206 · EXT-X-MEDIA ses: tur:Türkçe|eng:İngilizce|tur:Türkçe|eng:İngilizce"
+    },
+    {
+      "cekirdek": "hulk.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "fhdf",
+      "yol": "/mc/ET92qKZhF3IfqJW1YxMcM2u0YxAfqJVhZGx5BF4kZQtjpP5RqJSfd0zxL2EhnJ1apmxmAmphp2uipNs0xi2vr1",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 263,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/x-mpegURL · EXT-X-MEDIA ses: tr:Türkçe|en:English"
+    },
+    {
+      "cekirdek": "huntress.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "fex",
+      "yol": "/hls/tl2h7darb1vb78pbj8u5/1/1794630589/dc1e3e9f-9518-434a-9eba-bd963fd999f6/2c5f60908a7c8ff794ac8be13a63eb9e8f534ef0c9f6e839a9cd743bea5fcdf6/aistream-legacy-master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 127,
+      "etiket": "Huntress · VIP · 1080p · Türkçe Dublaj · 4 Ses",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tur:Türkçe",
+          "eng:İngilizce",
+          "tur:Türkçe",
+          "eng:İngilizce"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · master HTTP 206 · EXT-X-MEDIA ses: tur:Türkçe|eng:İngilizce|tur:Türkçe|eng:İngilizce"
+    },
+    {
+      "cekirdek": "ironMan.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/ajax/master/",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en",
+        "fr",
+        "es",
+        "ru",
+        "pl",
+        "cs",
+        "hu"
+      ],
+      "sureMs": 988,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:İngilizce [Original]",
+          "fr:Fransızca",
+          "es:İspanyolca",
+          "ru:Rusça",
+          "pl:Lehçe",
+          "cs:Çekçe",
+          "hu:Macarca"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 text/plain · EXT-X-MEDIA ses: tr:Türkçe|en:İngilizce [Original]|fr:Fransızca|es:İspanyolca|ru:Rusça|pl:Lehçe|cs:Çekçe|hu:Macarca"
+    },
+    {
+      "cekirdek": "ironMan.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/ajax/master/",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en",
+        "de",
+        "fr",
+        "es",
+        "it",
+        "th",
+        "ru",
+        "uk",
+        "pt",
+        "ja",
+        "zh",
+        "pl",
+        "cs",
+        "hu",
+        "lv",
+        "sk"
+      ],
+      "sureMs": 700,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:İngilizce [Original]",
+          "de:Almanca",
+          "fr-FR:Fransızca (Avrupa)",
+          "es-419:İspanyolca (Latin)",
+          "es-ES:İspanyolca (Avrupa)",
+          "it:İtalyanca",
+          "th:Tayca",
+          "ru:Rusça",
+          "uk:Ukraynaca",
+          "pt-BR:Portekizce (Brezilya)",
+          "ja:Japonca",
+          "zh-Hans:Çince (Basitleştirilmiş)",
+          "pl:Lehçe",
+          "cs:Çekçe",
+          "hu:Macarca",
+          "lv:Letonca",
+          "sk:Slovakça"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 text/plain · EXT-X-MEDIA ses: tr:Türkçe|en:İngilizce [Original]|de:Almanca|fr-FR:Fransızca (Avrupa)|es-419:İspanyolca (Latin)|es-ES:İspanyolca (Avrupa)|it:İtalyanca|th:Tayca|ru:Rusça|uk:Ukraynaca|pt-BR:Portekizce (Brezilya)|ja:Japonca|zh-Hans:Çince (Basitleştirilmiş)|pl:Lehçe|cs:Çekçe|hu:Macarca|lv:Letonca|sk:Slovakça"
+    },
+    {
+      "cekirdek": "loki.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "fex",
+      "yol": "/hls/tl2h7darb1vb78pbj8u5/1/1794630548/48feaf3c-0e97-4fea-9f31-bafd97c4b459/5926276609708e20ce5e1f47d13d9156db5f744437f2b2718501f4ca8aa28dd9/aistream-legacy-master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 250,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tur:Türkçe",
+          "eng:İngilizce",
+          "tur:Türkçe",
+          "eng:İngilizce"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · master HTTP 206 · EXT-X-MEDIA ses: tur:Türkçe|eng:İngilizce|tur:Türkçe|eng:İngilizce"
+    },
+    {
+      "cekirdek": "lukeCage.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "hdfc",
+      "yol": "/hls2/01/00026/8m18g13vwzfe_,l,n,.urlset/master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 201,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:Türkçe|en:English"
+    },
+    {
+      "cekirdek": "nova.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "vidmixi",
+      "yol": "/list/OE9hc2JuSTBXQitpY3RyWkorSmpiT1djcXRvVEVHdHc3M2V3VFk1Nk50eTNXbzZkcTRoZjdiNVZuTGNiakNJUkVlajkwTnNBak9jams0MDZZZm13UmRwQXpyaHhlOVZ3QmZjTWZXVWtRdkhYVDlGdDZoWWE0YzJXaWFvQ0ZnaXU=",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 489,
+      "etiket": "Nova · 360p · Türkçe Dublaj · Altyazı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tur:Turkish",
+          "eng:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 text/plain · EXT-X-MEDIA ses: tur:Turkish|eng:English"
+    },
+    {
+      "cekirdek": "nova.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "vidmixi",
+      "yol": "/list/OE9hc2JuSTBXQitpY3RyWkorSmpiT1djcXRvVEVHdHc3M2V3VFk1Nk50d0p5VlFXSC9BMVBwY040OVRJUDhRNGJaNEJCVU01dkdNeUwvMzZleWJ3RXh4ZHBiVytHZlpOK2oxeVFkVlZ1YS9sRU9XK3VSVk5ycVFHVy9ZeENnUFU=",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 604,
+      "etiket": "Nova · 1080p · Türkçe Dublaj · Altyazı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tur:Turkish",
+          "eng:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 text/plain · EXT-X-MEDIA ses: tur:Turkish|eng:English"
+    },
+    {
+      "cekirdek": "phyla.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dbl",
+      "yol": "/api/stream.php",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 319,
+      "etiket": "Phyla · Pilavyer · 720p · Türkçe Dublaj · TR Altyazı · 2 Ses",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:audio_1",
+          "en:audio_2"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:audio_1|en:audio_2"
+    },
+    {
+      "cekirdek": "phyla.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dbl",
+      "yol": "/api/stream.php",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 285,
+      "etiket": "Phyla · Pilavyer · 720p · Türkçe Dublaj · TR Altyazı · 2 Ses",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:audio_1",
+          "en:audio_2"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:audio_1|en:audio_2"
+    },
+    {
+      "cekirdek": "raven.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/cdn/hls/2d7bf29a5439f561df5f1f820b060f39/master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "en",
+        "tr"
+      ],
+      "sureMs": 318,
+      "etiket": "Raven Akış 1",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "eng:English",
+          "tur:Turkish"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/x-mpegURL · EXT-X-MEDIA ses: eng:English|tur:Turkish"
+    },
+    {
+      "cekirdek": "raven.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/hls2/01/00009/7yno2djovj7e_,n,h,.urlset/master.m3u8",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 4508,
+      "etiket": "Raven Akış 1",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/api/proxy/hdfilmizle/play/3948",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en",
+        "fr",
+        "es",
+        "ru",
+        "pl",
+        "cs",
+        "hu"
+      ],
+      "sureMs": 565,
+      "etiket": "Shazam · Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:İngilizce [Original]",
+          "fr:Fransızca",
+          "es:İspanyolca",
+          "ru:Rusça",
+          "pl:Lehçe",
+          "cs:Çekçe",
+          "hu:Macarca"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:Türkçe|en:İngilizce [Original]|fr:Fransızca|es:İspanyolca|ru:Rusça|pl:Lehçe|cs:Çekçe|hu:Macarca"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/api/proxy/setplay/playlist",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "en",
+        "tr"
+      ],
+      "sureMs": 2059,
+      "etiket": "Shazam · Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "eng:İngilizce (Orijinal)",
+          "tur:Türkçe"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: eng:İngilizce (Orijinal)|tur:Türkçe · altyazı: tur:Türkçe|eng:İngilizce"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/mu/ET92qKZhF3IfqJW1YxMcM2u0YxAfqJVhZGx5BF4kZQtjpP5RqJSfd0zxL2EhnJ1apmxmAmphp2uipNs0xi2vr1",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 257,
+      "etiket": "Shazam · Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/x-mpegURL · EXT-X-MEDIA ses: tr:Türkçe|en:English"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 332,
+      "etiket": "Shazam · Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:Türkçe|en:English · altyazı: tr:Türkçe|en:İngilizce"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "en",
+        "tr"
+      ],
+      "sureMs": 666,
+      "etiket": "Shazam · Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "eng:English",
+          "tur:Turkish"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: eng:English|tur:Turkish"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2783,
+      "etiket": "Shazam · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2859,
+      "etiket": "Shazam · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2743,
+      "etiket": "Shazam · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 530 text/plain · master HTTP 530"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2668,
+      "etiket": "Shazam · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 721,
+      "etiket": "Shazam · Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tur:Tur",
+          "eng:Eng"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tur:Tur|eng:Eng · altyazı: tur:Türkçe|eng:English"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2685,
+      "etiket": "Shazam · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2696,
+      "etiket": "Shazam · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 3147,
+      "etiket": "Shazam · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2620,
+      "etiket": "Shazam · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2667,
+      "etiket": "Shazam · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 530 text/plain · master HTTP 530"
+    },
+    {
+      "cekirdek": "shazam.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dzs",
+      "yol": "/play",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 2741,
+      "etiket": "Shazam · HLS yedeği",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 403 text/html · master HTTP 403 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "starLord.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/bt/63f060bb6be08ff48a9e197e8e0ceb95.mp4",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 683,
+      "etiket": "Altyazı 360p",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 428 text/html · master HTTP 428 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "starLord.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/resource/h265/ac5979a336ffaf7286d0d71fc3e62e22.mp4",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 683,
+      "etiket": "Altyazı 480p",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 428 text/html · master HTTP 428 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "starLord.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/resource/h265/c9856c84997f1a1b4063bd9dd9ac8651.mp4",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 685,
+      "etiket": "Altyazı 720p",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 428 text/html · master HTTP 428 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "starLord.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/resource/h265/616f03840344e8d605bf6ab00c8a7fa8.mp4",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 534,
+      "etiket": "Altyazı 720p",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 428 text/html · master HTTP 428 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "starLord.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/resource/h265/71a6a8a058afb77d877557562814c352.mp4",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 219,
+      "etiket": "Altyazı 360p",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 428 text/html · master HTTP 428 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "starLord.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/resource/h265/ce8ff8b8d78c6aec54f98cc02ad0869d.mp4",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 529,
+      "etiket": "Altyazı 1080p",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 428 text/html · master HTTP 428 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "starLord.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/resource/h265/e9706b452edfb3b71631e5745ec5bf8a.mp4",
+      "dilDurumu": "bilinmiyor",
+      "kanit": "yok",
+      "diller": [],
+      "sureMs": 535,
+      "etiket": "Altyazı 480p",
+      "sesGrubu": {
+        "var": false,
+        "diller": []
+      },
+      "not": "HTTP 428 text/html · master HTTP 428 · HTML yanıt (embed/hata sayfası)"
+    },
+    {
+      "cekirdek": "superman.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/hls/videos/4936/master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 1003,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tur:Tur",
+          "eng:Eng"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tur:Tur|eng:Eng"
+    },
+    {
+      "cekirdek": "superman.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/hls/videos/23512/master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 1545,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tur:Tur",
+          "eng:Eng"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tur:Tur|eng:Eng"
+    },
+    {
+      "cekirdek": "winterSoldier.js",
+      "tmdbTip": "movie",
+      "tmdbId": "550",
+      "sezon": null,
+      "bolum": null,
+      "rota": "dogrudan",
+      "yol": "/cdn/hls/2d7bf29a5439f561df5f1f820b060f39/master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "en",
+        "tr"
+      ],
+      "sureMs": 265,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "eng:English",
+          "tur:Turkish"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/x-mpegURL · EXT-X-MEDIA ses: eng:English|tur:Turkish"
+    },
+    {
+      "cekirdek": "winterSoldier.js",
+      "tmdbTip": "tv",
+      "tmdbId": "1399",
+      "sezon": 1,
+      "bolum": 1,
+      "rota": "dogrudan",
+      "yol": "/hls2/01/00009/7yno2djovj7e_,n,h,.urlset/master.m3u8",
+      "dilDurumu": "dublaj",
+      "kanit": "m3u8",
+      "diller": [
+        "tr",
+        "en"
+      ],
+      "sureMs": 344,
+      "etiket": "Dublaj / Altyazılı",
+      "sesGrubu": {
+        "var": true,
+        "diller": [
+          "tr:Türkçe",
+          "en:English"
+        ]
+      },
+      "not": "akisanDilKaniti · HTTP 200 application/vnd.apple.mpegurl · EXT-X-MEDIA ses: tr:Türkçe|en:English"
+    }
+  ]
+}

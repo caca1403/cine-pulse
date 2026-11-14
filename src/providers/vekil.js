@@ -945,14 +945,33 @@ export function normalizeEt(oge, kayit) {
  * sağlayıcı ne kadar uzun sürerse sürsün adaptör zamanında döner.
  * "Hiçbir sağlayıcı 30 sn aşamaz" kuralının tek güvencesi budur.
  */
-function yarisla(vaat, ms, mesaj) {
+function yarisla(vaat, ms, mesaj, signal = null) {
+  if (signal?.aborted) return Promise.reject(new Error('iptal-edildi'));
   return new Promise((coz, reddet) => {
     // Sınırsız bütçe: zaman aşımı yok, yalnız vaadin kendisi sonuçlandırır.
     const sureGecerli = Number.isFinite(ms) && ms > 0 && ms < 2 ** 31 - 1;
-    const zamanlayici = sureGecerli ? setTimeout(() => reddet(new Error(mesaj)), Math.max(1, ms)) : null;
+    let bitti = false;
+    let zamanlayici = null;
+    const temizle = () => {
+      if (zamanlayici) clearTimeout(zamanlayici);
+      if (signal && iptalDinleyici) signal.removeEventListener('abort', iptalDinleyici);
+    };
+    const iptalDinleyici = signal ? () => {
+      if (bitti) return;
+      bitti = true;
+      temizle();
+      reddet(new Error('iptal-edildi'));
+    } : null;
+    if (signal && iptalDinleyici) signal.addEventListener('abort', iptalDinleyici, { once: true });
+    zamanlayici = sureGecerli ? setTimeout(() => {
+      if (bitti) return;
+      bitti = true;
+      temizle();
+      reddet(new Error(mesaj));
+    }, Math.max(1, ms)) : null;
     vaat.then(
-      v => { clearTimeout(zamanlayici); coz(v); },
-      h => { clearTimeout(zamanlayici); reddet(h); }
+      v => { if (bitti) return; bitti = true; temizle(); coz(v); },
+      h => { if (bitti) return; bitti = true; temizle(); reddet(h); }
     );
   });
 }
@@ -1014,7 +1033,7 @@ export async function kaynakCoz({
   iz.koy('basladi', { kodAdi: kayit.kodAdi, tur, tmdbId, season, episode });
 
   try {
-    const cekirdek = await yarisla(cekirdekAl(id), butceMs, 'yukleme-asim');
+    const cekirdek = await yarisla(cekirdekAl(id), butceMs, 'yukleme-asim', siny);
     if (!cekirdek) {
       iz.koy('cekirdek-yok', {});
       // ÖLÇÜLEN SESSİZ ÖLÜM (D): çekirdek yüklenemezse boş liste dönüyordu,
@@ -1055,7 +1074,8 @@ export async function kaynakCoz({
       ham = await yarisla(
         cekirdek(kimlik, cekirdekTur, Number(season) || 1, Number(episode) || 1),
         Math.max(1, i === 0 ? butceMs : kalan),
-        'butce-asim'
+        'butce-asim',
+        siny
       );
       iz.koy('yanit', {
         kimlik: /^tt/i.test(kimlik) ? 'imdb' : 'tmdb',
@@ -1209,7 +1229,7 @@ export async function kaynakTara({
   const isler = [havuzIslet(tumGorevler, HAVUZ_BOYU, () => Boolean(siny?.aborted))];
 
   try {
-    await yarisla(Promise.allSettled(isler), butceMs, 'toplam-butce-asim');
+    await yarisla(Promise.allSettled(isler), butceMs, 'toplam-butce-asim', siny);
   } catch (_) {
     /* bütçe doldu: bekleyenler düşer, toplananlar korunur */
   }

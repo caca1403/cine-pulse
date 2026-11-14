@@ -9535,17 +9535,18 @@ export async function openPlayerModal({
         renderPlayerIcons(modalContainer);
       }
 
-      // Recap kartı: önceki bölüm özeti (OYNATMA BAŞLAMADAN ÖNCE)
-      if (isSeries && tmdbId && !isOfflinePlayback) {
-        await gosterRecapKarti(currentSeason, currentEpisode);
-      }
-
       const newRecord = getMediaProgress(tmdbId, currentSeason, currentEpisode);
       initialTime = newRecord ? newRecord.currentTime : 0;
       isWatched = isMediaWatched(tmdbId, currentSeason, currentEpisode);
       simulatedCurrentTime = initialTime;
       lastProgressSaveTimestamp = 0;
+      // Kaynak taramasını HEMEN başlat; recap kartı taramayı bekletmesin.
       startServerDiscovery({ isEpisodeSwitch: true });
+
+      // Recap kartı: önceki bölüm özeti (tarama arka planda sürerken)
+      if (isSeries && tmdbId && !isOfflinePlayback) {
+        gosterRecapKarti(currentSeason, currentEpisode).catch(() => {});
+      }
 
       updateWatchedUI(isWatched);
       updateNavButtons();
