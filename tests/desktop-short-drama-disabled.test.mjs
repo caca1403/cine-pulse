@@ -20,10 +20,12 @@ test('Desktop short-drama playback is visibly locked while details remain access
   const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
   const version = JSON.parse(fs.readFileSync(path.join(repoRoot, 'public/version.json'), 'utf8'));
   const desktopVersion = JSON.parse(fs.readFileSync(path.join(repoRoot, 'public/desktop-version.json'), 'utf8'));
-  /* Sürüm 2.0.4'e çıkarken (42fa78a) bu beklenti güncellenmemişti.
-     Dosyalar kendi aralarında TUTARLI; test onları doğrular. */
-  assert.equal(pkg.version, '2.0.4');
-  assert.equal(pkg.versionCode, 204);
+  /* Sürüm çıplak sayıyla sabitlemez: sürüm bump'larında kırılmasın.
+     Bunun yerine versionCode'un semver ile tutarlılığını ve üç dosyanın
+     kendi aralarında TUTARLI olduğunu doğrular (ör. 2.0.7 -> 207). */
+  const [buyuk, kucuk, yama] = String(pkg.version).split('.').map(Number);
+  assert.ok(Number.isInteger(buyuk) && Number.isInteger(kucuk) && Number.isInteger(yama), `package.json sürümü semver olmalı: ${pkg.version}`);
+  assert.equal(pkg.versionCode, buyuk * 100 + kucuk * 10 + yama);
   assert.equal(version.version, pkg.version);
   assert.equal(version.versionCode, pkg.versionCode);
   assert.equal(desktopVersion.version, pkg.version);
