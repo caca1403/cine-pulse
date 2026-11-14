@@ -1,5 +1,13 @@
 const origin = process.env.CF_SITE || 'https://cinepulse.cinepulse.workers.dev';
-const headers = { 'User-Agent': 'Mozilla/5.0 Chrome/124' };
+/* Kalkan (worker WAF) kırpılmış UA'ları reddediyor (ölçüldü 2026-11-14:
+ * 'Mozilla/5.0 Chrome/124' → /cinepulse.apk 302/403; tam Chrome UA → 200 +
+ * application/vnd.android.package-archive). Test aracının UA'sı gerçek tarayıcı
+ * gibi olmalı, yoksa canlı site "bozuk" gibi görünür (yanlış pozitif). */
+const headers = {
+  'User-Agent':
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  'Accept-Language': 'tr-TR,tr;q=0.9',
+};
 async function check(path, status, options = {}, validate = () => true) {
   const r = await fetch(`${origin}${path}`, { ...options, headers: { ...headers, ...options.headers }, signal: AbortSignal.timeout(30000), redirect: 'manual' });
   const body = await r.text();
