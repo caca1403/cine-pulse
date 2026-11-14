@@ -9,8 +9,8 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
-  const isMediaSegment = /hls_proxy|live_tv_stream/.test(req.url || '');
-  if (guardNodeRequest(req, res, { limit: isMediaSegment ? 900 : 180, bucket: isMediaSegment ? 'media' : 'proxy' })) return;
+  const isMediaSegment = /hls_proxy|live_tv_stream|stream-proxy/.test(req.url || '');
+  if (guardNodeRequest(req, res, { limit: isMediaSegment ? 3600 : 2400, bucket: isMediaSegment ? 'media' : 'proxy' })) return;
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -237,24 +237,66 @@ export default async function handler(req, res) {
       // gelir (?ua=). Tarayici hls.js/mpegts.js'in User-Agent'ini degistire-
       // medigi icin (forbidden header) proxy tarafinda uygulanmasi gerekir.
       const forcedUa = String(urlObj.searchParams.get('ua') || '').slice(0, 400);
+      const rawHeadersParam = urlObj.searchParams.get('headers');
+      let parsedCustomHeaders = null;
+      if (rawHeadersParam) {
+        try {
+          const obj = JSON.parse(rawHeadersParam);
+          if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+            parsedCustomHeaders = {};
+            for (const [k, v] of Object.entries(obj)) {
+              const key = String(k || '').trim();
+              if (!key) continue;
+              const lower = key.toLowerCase();
+              if (lower === 'host' || lower === 'content-length' || lower === 'connection' || lower === 'accept-encoding') continue;
+              if (v === undefined || v === null) continue;
+              parsedCustomHeaders[key] = String(v).slice(0, 800);
+            }
+            if (Object.keys(parsedCustomHeaders).length === 0) parsedCustomHeaders = null;
+          }
+        } catch (_) {}
+      }
+
+      const setCIHeader = (obj, name, value) => {
+        const lower = name.toLowerCase();
+        for (const k of Object.keys(obj)) {
+          if (k.toLowerCase() === lower) delete obj[k];
+        }
+        obj[name] = value;
+      };
+      const getCIHeader = (obj, name) => {
+        if (!obj) return '';
+        const lower = name.toLowerCase();
+        for (const [k, v] of Object.entries(obj)) {
+          if (k.toLowerCase() === lower) return String(v);
+        }
+        return '';
+      };
+
+      const customHeaderUa = getCIHeader(parsedCustomHeaders, 'User-Agent');
       const ua = forcedUa
+        || customHeaderUa
         || (isRecTv ? 'okhttp/4.12.0' : (req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'));
 
-      const upstreamHeaders = {
-        'User-Agent': ua
-      };
+      const upstreamHeaders = {};
+      if (parsedCustomHeaders) {
+        for (const [k, v] of Object.entries(parsedCustomHeaders)) {
+          upstreamHeaders[k] = v;
+        }
+      }
+      setCIHeader(upstreamHeaders, 'User-Agent', ua);
       if (rawXSp) {
-        upstreamHeaders['X-Sp'] = rawXSp;
+        setCIHeader(upstreamHeaders, 'X-Sp', rawXSp);
       }
       if (req.headers.range) {
-        upstreamHeaders['Range'] = req.headers.range;
+        setCIHeader(upstreamHeaders, 'Range', req.headers.range);
       }
       if (ref) {
-        upstreamHeaders['Referer'] = ref;
-        // Media CDNs reject Origin; Referer is sufficient.
+        setCIHeader(upstreamHeaders, 'Referer', ref);
+        // Media CDNs reject Origin; Referer is sufficient unless explicitly set.
       }
       const forcedOrigin = String(urlObj.searchParams.get('origin') || '').slice(0, 400);
-      if (forcedOrigin) upstreamHeaders['Origin'] = forcedOrigin;
+      if (forcedOrigin) setCIHeader(upstreamHeaders, 'Origin', forcedOrigin);
 
       const upstreamRes = await fetch(decodedTarget, {
         headers: upstreamHeaders
@@ -299,6 +341,26 @@ export default async function handler(req, res) {
         const baseOrigin = new URL(finalUpstreamUrl).origin;
 
         const forceProxyAll = urlObj.searchParams.get('live') === '1';
+        const xspParam = rawXSp ? `&xsp=${encodeURIComponent(rawXSp)}` : '';
+        const originParam = forcedOrigin ? `&origin=${encodeURIComponent(forcedOrigin)}` : '';
+        const uaParam = forcedUa ? `&ua=${encodeURIComponent(forcedUa)}` : '';
+        let sameRefHeadersParam = '';
+        let diffRefHeadersParam = '';
+        if (parsedCustomHeaders) {
+          sameRefHeadersParam = `&headers=${encodeURIComponent(JSON.stringify(parsedCustomHeaders))}`;
+          const stripped = {};
+          for (const [k, v] of Object.entries(parsedCustomHeaders)) {
+            if (k.toLowerCase() !== 'referer') stripped[k] = v;
+          }
+          if (Object.keys(stripped).length > 0) {
+            diffRefHeadersParam = `&headers=${encodeURIComponent(JSON.stringify(stripped))}`;
+          }
+        }
+        const buildChildProxyUrl = (targetChildUrl, childRef, extra = '') => {
+          const headersPart = childRef !== ref ? diffRefHeadersParam : sameRefHeadersParam;
+          return `/api/hls_proxy?url=${encodeURIComponent(targetChildUrl)}&ref=${encodeURIComponent(childRef)}${extra}${forceProxyAll ? '&live=1' : ''}${xspParam}${originParam}${uaParam}${headersPart}`;
+        };
+
         const rewritten = text.split('\n').map(line => {
           let currentLine = line;
           const trimmed = currentLine.trim();
@@ -317,8 +379,7 @@ export default async function handler(req, res) {
               }
 
               const childRef = fullU.includes('dizisol.com') ? 'https://dizisol.com/' : (fullU.includes('ag2m4') || fullU.includes('uk-traffic-076') ? 'https://x.ag2m4.cfd/' : (fullU.includes('fastplay.mom') ? 'https://fastplay.mom/' : ref));
-              const xspParam = rawXSp ? `&xsp=${encodeURIComponent(rawXSp)}` : '';
-              return `URI="/api/hls_proxy?url=${encodeURIComponent(fullU)}&ref=${encodeURIComponent(childRef)}${forceProxyAll ? '&live=1' : ''}${xspParam}"`;
+              return `URI="${buildChildProxyUrl(fullU, childRef)}"`;
             });
           }
 
@@ -380,8 +441,7 @@ export default async function handler(req, res) {
             && /\.(?:png|jpg)(?:$|\?)/i.test(fullLineUrl)
             ? '&hdf_ts=2'
             : '';
-          const xspParam = rawXSp ? `&xsp=${encodeURIComponent(rawXSp)}` : '';
-          return `/api/hls_proxy?url=${encodeURIComponent(fullLineUrl)}&ref=${encodeURIComponent(childRef)}${hdfTransportVersion}${forceProxyAll ? '&live=1' : ''}${xspParam}`;
+          return buildChildProxyUrl(fullLineUrl, childRef, hdfTransportVersion);
         }).join('\n');
 
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');

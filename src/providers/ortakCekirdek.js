@@ -104,6 +104,56 @@ export function rotaYol(kod, yol = '', paramlar = null) {
   return u;
 }
 
+const TMDB_ONBELLEK = new Map();
+const TMDB_UCUSTA = new Map();
+
+/**
+ * TMDB bilgi önbelleğini eldeki kart/detay verisiyle önceden doldurur;
+ * böylece çok sayıda çekirdek aynı anda TMDB API'sine yığılmaz.
+ */
+export function tmdbBilgiTohumla({ tmdbId = '', imdbId = '', baslik = '', orijinal = '', yil = null, tur = 'movie' } = {}) {
+  const tip = String(tur || '').toLowerCase() === 'tv' ? 'tv' : 'movie';
+  const b = String(baslik || '').trim();
+  const o = String(orijinal || '').trim();
+  if (!b && !o) return;
+  const tid = String(tmdbId || '').replace(/^(ddz_|dml_)/, '').trim();
+  const iid = String(imdbId || '').trim();
+  const parsedYil = parseInt(String(yil || ''), 10) || null;
+  const numTid = /^\d+$/.test(tid) ? Number(tid) : null;
+  const keys = [];
+  if (tid) keys.push(`${tip}:${tid}`);
+  if (/^tt\d{5,10}$/i.test(iid)) keys.push(`${tip}:${iid}`);
+  for (const k of keys) {
+    const mevcut = TMDB_ONBELLEK.get(k);
+    TMDB_ONBELLEK.set(k, {
+      baslik: b || mevcut?.baslik || o,
+      orijinal: o || mevcut?.orijinal || b,
+      yil: parsedYil || mevcut?.yil || null,
+      tmdbId: numTid || mevcut?.tmdbId || null,
+    });
+  }
+}
+
+async function unifiedCacheYedekOku(no) {
+  try {
+    const cache = globalThis?.__NUVIO_TMDB_UNIFIED_CACHE__;
+    if (!cache || typeof cache !== 'object') return null;
+    for (const [k, rawVal] of Object.entries(cache)) {
+      if (!k.includes(String(no))) continue;
+      const val = await Promise.resolve(rawVal).catch(() => null);
+      if (val && Array.isArray(val.titles) && val.titles.length > 0) {
+        return {
+          baslik: String(val.titles[0] || '').trim(),
+          orijinal: String(val.titles[1] || val.titles[0] || '').trim(),
+          yil: null,
+          tmdbId: /^\d+$/.test(String(no)) ? Number(no) : null,
+        };
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
 /**
  * TMDB kimliğini içerik bilgisine çevirir: sayısal TMDB no veya tt… numarası.
  * → { baslik, orijinal, yil, tmdbId } | null
@@ -112,28 +162,51 @@ export async function tmdbBilgi(kimlik, tur = 'movie', ms = 9000) {
   const no = String(kimlik || '').trim();
   if (!no && no !== 0) return null;
   const tip = tur === 'tv' ? 'tv' : 'movie';
-  let veri = null;
-  if (/^tt\d{5,10}$/.test(no)) {
-    veri = await jsonAl(
-      `https://api.themoviedb.org/3/find/${no}?api_key=${TMDB_ANAHTAR}&language=tr-TR&external_source=imdb_id`,
-      { ms }
-    );
-    const ilk = veri && (tip === 'tv' ? veri.tv_results : veri.movie_results)?.[0];
-    veri = ilk || null;
-  } else if (/^\d+$/.test(no)) {
-    veri = await jsonAl(
-      `https://api.themoviedb.org/3/${tip}/${no}?api_key=${TMDB_ANAHTAR}&language=tr-TR`,
-      { ms }
-    );
+  const anahtar = `${tip}:${no}`;
+  if (TMDB_ONBELLEK.has(anahtar)) {
+    return TMDB_ONBELLEK.get(anahtar);
   }
-  if (!veri) return null;
-  const yilKaynagi = veri.release_date || veri.first_air_date || veri.production_year || '';
-  return {
-    baslik: String(veri.title || veri.name || '').trim(),
-    orijinal: String(veri.original_title || veri.original_name || '').trim(),
-    yil: parseInt(String(yilKaynagi).slice(0, 4), 10) || null,
-    tmdbId: veri.id || (tip === 'tv' ? veri.tv_results?.[0]?.id : null) || (/^\d+$/.test(no) ? Number(no) : null),
-  };
+  if (TMDB_UCUSTA.has(anahtar)) {
+    return TMDB_UCUSTA.get(anahtar);
+  }
+
+  const istek = (async () => {
+    let veri = null;
+    if (/^tt\d{5,10}$/.test(no)) {
+      veri = await jsonAl(
+        `https://api.themoviedb.org/3/find/${no}?api_key=${TMDB_ANAHTAR}&language=tr-TR&external_source=imdb_id`,
+        { ms }
+      );
+      const ilk = veri && (tip === 'tv' ? veri.tv_results : veri.movie_results)?.[0];
+      veri = ilk || null;
+    } else if (/^\d+$/.test(no)) {
+      veri = await jsonAl(
+        `https://api.themoviedb.org/3/${tip}/${no}?api_key=${TMDB_ANAHTAR}&language=tr-TR`,
+        { ms }
+      );
+    }
+    if (!veri) {
+      return await unifiedCacheYedekOku(no);
+    }
+    const yilKaynagi = veri.release_date || veri.first_air_date || veri.production_year || '';
+    const sonuc = {
+      baslik: String(veri.title || veri.name || '').trim(),
+      orijinal: String(veri.original_title || veri.original_name || '').trim(),
+      yil: parseInt(String(yilKaynagi).slice(0, 4), 10) || null,
+      tmdbId: veri.id || (tip === 'tv' ? veri.tv_results?.[0]?.id : null) || (/^\d+$/.test(no) ? Number(no) : null),
+    };
+    if (sonuc.baslik || sonuc.orijinal) {
+      TMDB_ONBELLEK.set(anahtar, sonuc);
+      if (sonuc.tmdbId) TMDB_ONBELLEK.set(`${tip}:${sonuc.tmdbId}`, sonuc);
+      return sonuc;
+    }
+    return null;
+  })().finally(() => {
+    TMDB_UCUSTA.delete(anahtar);
+  });
+
+  TMDB_UCUSTA.set(anahtar, istek);
+  return istek;
 }
 
 /* ── Türkçe başlık/slug yardımcıları ───────────────────────────────────── */

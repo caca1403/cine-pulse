@@ -68,31 +68,48 @@ async function metinAl(adres, seçenekler = {}) {
   }
 }
 
+const BASLIK_ONBELLEK = new Map();
+const BASLIK_UCUSTA = new Map();
+
 /** TMDB'den başlığın Türkçe/ORİJİNAL biçimini ve yılını alır.
  *  Anahtar havuzu kullanılır; 429'da sıradaki anahtarla bir kez denenır. */
 async function başlıklarıAl(tmdbId) {
-  for (let deneme = 0; deneme < 2; deneme++) {
-    const anahtar = deneme ? siradakiAnahtar() : aktifAnahtar();
-    try {
-      const yanıt = await fetch(
-        `https://api.themoviedb.org/3/tv/${encodeURIComponent(tmdbId)}?api_key=${anahtar}&language=tr-TR`,
-        { signal: zamanAşımı(7000) }
-      );
-      if (yanıt.status === 429 || yanıt.status === 401) continue;
-      if (!yanıt.ok) return null;
-      const veri = await yanıt.json();
-      const tr = String(veri?.name || veri?.original_name || '').trim();
-      const orijinal = String(veri?.original_name || tr).trim();
-      if (!tr && !orijinal) return null;
-      return {
-        tr,
-        orijinal,
-        kısa: tr.split(' ').slice(0, 2).join(' '),
-        yıl: parseInt(String(veri?.first_air_date || '').slice(0, 4), 10) || null,
-      };
-    } catch (_) { /* sıradaki anahtar / sessiz düşüş */ }
-  }
-  return null;
+  const key = String(tmdbId || '').trim();
+  if (!key) return null;
+  if (BASLIK_ONBELLEK.has(key)) return BASLIK_ONBELLEK.get(key);
+  if (BASLIK_UCUSTA.has(key)) return BASLIK_UCUSTA.get(key);
+
+  const p = (async () => {
+    for (let deneme = 0; deneme < 2; deneme++) {
+      const anahtar = deneme ? siradakiAnahtar() : aktifAnahtar();
+      try {
+        const yanıt = await fetch(
+          `https://api.themoviedb.org/3/tv/${encodeURIComponent(key)}?api_key=${anahtar}&language=tr-TR`,
+          { signal: zamanAşımı(7000) }
+        );
+        if (yanıt.status === 429 || yanıt.status === 401) continue;
+        if (!yanıt.ok) return null;
+        const veri = await yanıt.json();
+        const tr = String(veri?.name || veri?.original_name || '').trim();
+        const orijinal = String(veri?.original_name || tr).trim();
+        if (!tr && !orijinal) return null;
+        const sonuc = {
+          tr,
+          orijinal,
+          kısa: tr.split(' ').slice(0, 2).join(' '),
+          yıl: parseInt(String(veri?.first_air_date || '').slice(0, 4), 10) || null,
+        };
+        BASLIK_ONBELLEK.set(key, sonuc);
+        return sonuc;
+      } catch (_) { /* sıradaki anahtar / sessiz düşüş */ }
+    }
+    return null;
+  })().finally(() => {
+    BASLIK_UCUSTA.delete(key);
+  });
+
+  BASLIK_UCUSTA.set(key, p);
+  return p;
 }
 
 /** Alan adı harita degeriyle gelmiyorsa, yukarı akışın canlı listesinden oku. */

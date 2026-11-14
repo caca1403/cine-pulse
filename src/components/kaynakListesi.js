@@ -435,6 +435,7 @@ export function kaynakListesiOlustur({
     getStreamingServersProgressive({
       type: tur,
       tmdbId,
+      imdbId,
       title: baslik,
       seriesTitle: baslik,
       originalTitle: orijinalBaslik,

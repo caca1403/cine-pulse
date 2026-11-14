@@ -28,10 +28,18 @@ export function isSafePublicUrl(rawUrl) {
   }
 }
 
+function readHeader(headers, name) {
+  if (!headers) return '';
+  if (typeof headers.get === 'function') return headers.get(name) || '';
+  return headers[name] || headers[name.toLowerCase()] || '';
+}
+
 function getClientIp(headers, fallback = 'unknown') {
-  const forwarded = headers?.get
-    ? headers.get('x-forwarded-for')
-    : headers?.['x-forwarded-for'];
+  const cfIp = readHeader(headers, 'cf-connecting-ip');
+  if (cfIp) return String(cfIp).split(',')[0].trim();
+  const realIp = readHeader(headers, 'x-real-ip');
+  if (realIp) return String(realIp).split(',')[0].trim();
+  const forwarded = readHeader(headers, 'x-forwarded-for');
   return String(forwarded || fallback).split(',')[0].trim();
 }
 
@@ -54,7 +62,7 @@ function requestLooksUnsafe(headers, userAgent) {
   return !userAgent || AUTOMATION_UA.test(userAgent);
 }
 
-export function guardNodeRequest(req, res, { limit = 180, bucket = 'api' } = {}) {
+export function guardNodeRequest(req, res, { limit = 2400, bucket = 'api' } = {}) {
   const userAgent = String(req.headers?.['user-agent'] || '');
   const ip = getClientIp(req.headers, req.socket?.remoteAddress);
 
@@ -77,7 +85,7 @@ export function guardNodeRequest(req, res, { limit = 180, bucket = 'api' } = {})
   return false;
 }
 
-export function guardEdgeRequest(request, { limit = 180, bucket = 'api' } = {}) {
+export function guardEdgeRequest(request, { limit = 2400, bucket = 'api' } = {}) {
   const userAgent = String(request.headers.get('user-agent') || '');
   const ip = getClientIp(request.headers, 'unknown');
   const securityHeaders = {

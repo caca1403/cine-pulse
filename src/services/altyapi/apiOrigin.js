@@ -36,11 +36,11 @@ export function apiUrl(path = '') {
     return `${origin}${path}`;
   }
   const host = window.location?.hostname || '';
+  const isViteDev = Boolean(typeof import.meta !== 'undefined' && import.meta.env?.DEV);
   const isCapacitorOrStatic = Boolean(
     window.Capacitor?.isNativePlatform?.() ||
     window.location?.protocol === 'capacitor:' ||
-    host === 'localhost' ||
-    host === '127.0.0.1' ||
+    (!isViteDev && (host === 'localhost' || host === '127.0.0.1')) ||
     host.endsWith('github.io')
   );
   return isCapacitorOrStatic ? `${PUBLIC_API_ORIGIN}${path}` : path;
@@ -48,11 +48,8 @@ export function apiUrl(path = '') {
 
 export function mediaPlaybackProxyUrl(streamUrl, referer, origin = '') {
   const query = `url=${encodeURIComponent(streamUrl)}&ref=${encodeURIComponent(referer)}`;
-  if (typeof window !== 'undefined' && window.CinePulseDesktop?.isDesktop === true) {
-    const originQuery = origin ? `&origin=${encodeURIComponent(origin)}` : '';
-    return apiUrl(`/api/hls_proxy?${query}${originQuery}`);
-  }
-  return `/api/stream-proxy?url=${encodeURIComponent(streamUrl)}&referer=${encodeURIComponent(referer)}`;
+  const originQuery = origin ? `&origin=${encodeURIComponent(origin)}` : '';
+  return apiUrl(`/api/hls_proxy?${query}${originQuery}`);
 }
 
 export function mkvRelayUrl(path = '') {

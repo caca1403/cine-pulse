@@ -232,6 +232,69 @@ function epgDevPlugin() {
             return next();
           }
         }
+        // Yerel Node API yedegi: :4000 sidecar calismiyorken /api/proxy,
+        // /api/hls_proxy, /api/subtitles ve /api/stream-proxy isteklerini
+        // uzak sunucuya dusurmeden dogrudan Vite icinden calistir.
+        if (
+          req.url &&
+          (
+            req.url.startsWith('/api/proxy') ||
+            req.url.startsWith('/api/hls_proxy') ||
+            req.url.startsWith('/api/subtitles') ||
+            req.url.startsWith('/api/stream-proxy')
+          )
+        ) {
+          try {
+            if (!(await sidecarUp())) {
+              if (!req.headers['user-agent']) {
+                req.headers['user-agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+              }
+              const resWrapper = {
+                get headersSent() { return res.headersSent; },
+                get writableEnded() { return res.writableEnded; },
+                setHeader: (k, v) => res.setHeader(k, v),
+                getHeader: (k) => res.getHeader(k),
+                write: (...args) => res.write(...args),
+                on: (...args) => res.on(...args),
+                once: (...args) => res.once(...args),
+                emit: (...args) => res.emit(...args),
+                removeListener: (...args) => res.removeListener(...args),
+                end: (...args) => res.end(...args),
+                json: (data) => {
+                  if (!res.headersSent) res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                  res.end(JSON.stringify(data));
+                  return resWrapper;
+                },
+                send: (data) => {
+                  if (Buffer.isBuffer(data) || data instanceof Uint8Array) {
+                    res.end(Buffer.from(data));
+                  } else {
+                    res.end(typeof data === 'string' ? data : JSON.stringify(data));
+                  }
+                  return resWrapper;
+                },
+                status: (code) => {
+                  res.statusCode = code;
+                  return resWrapper;
+                }
+              };
+              if (req.url.startsWith('/api/stream-proxy')) {
+                const streamProxyHandler = (await import('./api/stream-proxy.js')).default;
+                return await streamProxyHandler(req, resWrapper);
+              }
+              const apiAllHandler = (await import('./api/[...all].js')).default;
+              return await apiAllHandler(req, resWrapper);
+            }
+          } catch (err) {
+            console.error('Vite API Fallback Error:', err?.message);
+            if (!res.headersSent) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.end(JSON.stringify({ error: err?.message || 'Vite API fallback error' }));
+            }
+            return;
+          }
+        }
         next();
       });
     }
