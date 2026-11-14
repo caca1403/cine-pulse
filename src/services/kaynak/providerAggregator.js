@@ -309,6 +309,7 @@ export async function getStreamingServersProgressive({
   seriesTitle = '',
   season = 1,
   episode = 1,
+  signal = null,
   onUpdate = () => {}
 }) {
   const targetTitle = cleanTitle(seriesTitle || title);
@@ -447,6 +448,7 @@ export async function getStreamingServersProgressive({
       imdbId: String(imdbId || '').trim(),
       season,
       episode,
+      signal,
       // ADDITIVE (D): sağlayıcı-bazlı tamamlanma/hata olayı — her sağlayıcı
       // bittiğinde (hata dahil) tüketicilere parti düşer; 'cekirdek-yok'
       // artık sayılabilir. Eski çağrılar bu parametresi geçmez → etkilenmez.
@@ -563,6 +565,7 @@ export async function getStreamingServersProgressive({
     // spreads ile taşınır (zararsız).
     ...hataAlanlari(),
   };
+  if (signal?.aborted) return payload;
   if (payload.totalServers > 0) {
     streamServersCache.set(cacheKey, payload);
     try { sessionStorage.setItem(`cp_streams_${CACHE_VERSION}_${cacheKey}`, JSON.stringify(payload)); } catch (h) { console.debug('[kaynak] önbellek yazılamadı (gizli mod/kota?) —', String(h?.message || h).slice(0, 80)); }

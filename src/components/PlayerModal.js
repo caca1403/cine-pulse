@@ -402,6 +402,7 @@ export async function openPlayerModal({
   modalContainer.classList.toggle('player-offline-playback', isNativeOfflinePlayback);
   let closed = false;
   let discoveryGeneration = 0;
+  let discoveryAbortController = null;
   let playbackGeneration = 0;
   let playbackScope = createPlayerScope();
   const subtitleObjectUrls = new Set();
@@ -9012,6 +9013,8 @@ export async function openPlayerModal({
   let hasShownDubbedAlert = false;
 
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
+    try { discoveryAbortController?.abort(); } catch (_) {}
+    discoveryAbortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const generation = ++discoveryGeneration;
     const discoveryStartTime = Date.now();
     lastDiscoveryStartedAt = discoveryStartTime;
@@ -9130,6 +9133,7 @@ export async function openPlayerModal({
       originalTitle,
       season: currentSeason,
       episode: currentEpisode,
+      signal: discoveryAbortController?.signal || null,
       onUpdate: ({ dubbed = [], subtitled = [], isComplete = false, newStream = null, isDubbedStream = false, fromCache = false, cachedAt = 0 }) => {
         if (closed || generation !== discoveryGeneration) return;
         categorizedServers = {
@@ -9876,6 +9880,8 @@ export async function openPlayerModal({
   // Close Modal Cleanly
   const closeBtn = document.getElementById('player-close-btn');
   const closeModal = (secenekler = {}) => {
+    try { discoveryAbortController?.abort(); } catch (_) {}
+    discoveryAbortController = null;
     if (closed) return;
     closed = true;
     discoveryGeneration++;

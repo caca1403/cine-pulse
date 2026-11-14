@@ -344,6 +344,9 @@ export function kaynakListesiOlustur({
   }
 
   function tara() {
+    try { durum.abortController?.abort(); } catch (_) {}
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    durum.abortController = controller;
     const s = durum.sezon;
     const b = durum.bolum;
     const anahtar = taramaAnahtari(s, b);
@@ -357,7 +360,6 @@ export function kaynakListesiOlustur({
     durum.saglayiciHatalari = [];
     durum.tamamlananSaglayicilar = [];
     durum.cekirdekYok = 0;
-    durum.saglayiciBitti = false;
 
     // Oturum ömürlü ortak önbellek (kaynakOnbellek; kullanıcı 2026-10-29):
     // tohumla → tarama her durumda devam eder → birleşim yazımı. Liste SADECE
@@ -438,6 +440,7 @@ export function kaynakListesiOlustur({
       originalTitle: orijinalBaslik,
       season: s,
       episode: b,
+      signal: controller?.signal || null,
       onUpdate: ({ dubbed = [], subtitled = [], saglayiciHatasi = [], cekirdekYok = 0, tamamlananSaglayici = '' } = {}) => {
         if (nesil !== durum.nesil) return;
         dubbed.forEach(kaynak => satirEkle(kaynak, 'saglayici', null, 'dubbed'));
@@ -514,10 +517,13 @@ export function kaynakListesiOlustur({
       durum.araniyor = true;
       durum.saglayiciBitti = false;
       durum.eklentiBitti = false;
+      durum.otomatikTekrar = false;
       try { ciz(); } catch (_) {}
       tara();
     },
     yokEt() {
+      try { durum.abortController?.abort(); } catch (_) {}
+      durum.abortController = null;
       durum.nesil++;
       durum.satirlar = [];
       dinleBirak();
