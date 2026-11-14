@@ -14,5 +14,20 @@ await check(js, 200, {}, body => body.length > 1000);
 await check('/version.json', 200, {}, body => Boolean(JSON.parse(body).version));
 await check('/api/hls_proxy?url=x', 200, { method: 'OPTIONS' });
 await check('/api/proxy?url=http%3A%2F%2F169.254.169.254%2Flatest%2F', 403);
-await check('/cinepulse.apk', 302, {}, (_, r) => r.headers.get('location')?.startsWith('https://github.com/caca1403/cine-pulse/releases/'));
+// /cinepulse.apk artık 302 değil: baytlar worker üzerinden AKITILIR.
+// Gövdeyi indirmeden başlıkları doğrula (80MB'lık indirme testi yapma).
+{
+  const r = await fetch(`${origin}/cinepulse.apk`, {
+    headers, redirect: 'manual', signal: AbortSignal.timeout(30000),
+  });
+  try {
+    if (r.status !== 200) throw new Error(`/cinepulse.apk: status=${r.status}`);
+    if (!/package-archive/.test(r.headers.get('content-type') || '')) {
+      throw new Error(`/cinepulse.apk: beklenmeyen content-type=${r.headers.get('content-type')}`);
+    }
+    console.log(`PASS /cinepulse.apk: ${r.status} (content-type=package-archive)`);
+  } finally {
+    try { await r.body?.cancel(); } catch { /* akış kapansın */ }
+  }
+}
 console.log('Production smoke passed; provider playback is not covered by this test.');

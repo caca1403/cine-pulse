@@ -1,8 +1,10 @@
 package com.cinepulse.studio;
 
 import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.ContentValues;
 import android.Manifest;
@@ -11,14 +13,19 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.ParcelFileDescriptor;
 import android.os.StatFs;
 import android.provider.MediaStore;
 import android.webkit.JavascriptInterface;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.URLUtil;
+import android.widget.Toast;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import org.json.JSONObject;
 import com.getcapacitor.BridgeActivity;
@@ -43,6 +50,21 @@ public class MainActivity extends BridgeActivity {
         return bridge != null ? bridge.getWebView() : null;
     }
     private NativePlayerView nativePlayer;
+
+    /** APK güncelleme indirmesi: kimlik + tamamlanma alıcısı (otomatik kurulum). */
+    private volatile long apkDownloadId = -1L;
+    private boolean apkReceiverRegistered = false;
+
+    /** Sistem indirme tamamlandığında APK'yı otomatik açıp kurulum ekranını başlatır. */
+    private final BroadcastReceiver apkDownloadReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L);
+            if (id == -1L || apkDownloadId != id) return;
+            apkDownloadId = -1L; // aynı indirme için tekrar işlem yapma
+            apkIndirmeyiTamamla(context, id);
+        }
+    };
 
     /** 6a: TorrentBridge 'yayinda' olduğunda (magnetOynat otomatik) yerel akışı
      *  native oynatıcıya verir — JS köprü beklemeden çalar; play yolu JS'in
@@ -609,16 +631,35 @@ public class MainActivity extends BridgeActivity {
 
         @JavascriptInterface
         public void downloadApk(String url) {
-            runOnUiThread(() -> {
-                if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_REQUEST);
-                }
-                try {
-                    enqueueDownload(url, null, "cinepulse.apk", "application/vnd.android.package-archive", true);
-                } catch (Exception error) {
-                    android.widget.Toast.makeText(MainActivity.this, "APK indirilemedi: " + error.getMessage(), android.widget.Toast.LENGTH_LONG).show();
-                }
-            });
+            downloadApkYeni(url, null);
+        }
+
+        /**
+         * APK güncellemesini sistem DownloadManager'a kuyruklar.
+         * DÖNÜŞ DEĞERİ: "OK:<id>" ya da "ERR:<mesaj>" — JS artık başarısızlığı
+         * hissedip yedek yolu (harici tarayıcı) deneyebilir; eskiden void
+         * döndüğü için hatalar sessizce yutuluyordu.
+         */
+        @JavascriptInterface
+        public String downloadApkYeni(String url, String suggestedName) {
+            try {
+                final String hedefAd = (suggestedName != null && suggestedName.trim().toLowerCase().endsWith(".apk"))
+                        ? suggestedName.trim()
+                        : "cinepulse.apk";
+                // Bildirim izni UI işidir; arka plan iş parçacığından ister.
+                runOnUiThread(() -> {
+                    if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_REQUEST);
+                    }
+                });
+                long id = enqueueDownload(url, null, null, "application/vnd.android.package-archive", true, hedefAd);
+                apkDownloadId = id;
+                apkTamamlanmaAlicisiEkle();
+                return "OK:" + id;
+            } catch (Exception error) {
+                android.util.Log.w("CinePulseUpdate", "APK indirilemedi: " + error);
+                return "ERR:" + (error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage());
+            }
         }
 
         /**
@@ -856,10 +897,11 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void enqueueDownload(String url, String userAgent, String contentDisposition, String mimeType) {
-        enqueueDownload(url, userAgent, contentDisposition, mimeType, false);
+        enqueueDownload(url, userAgent, contentDisposition, mimeType, false, null);
     }
 
-    private void enqueueDownload(String url, String userAgent, String contentDisposition, String mimeType, boolean apkUpdate) {
+    private long enqueueDownload(String url, String userAgent, String contentDisposition, String mimeType,
+                                 boolean apkUpdate, String apkFileName) {
         Uri uri = Uri.parse(url);
         DownloadManager.Request request = new DownloadManager.Request(uri);
         String cookie = CookieManager.getInstance().getCookie(url);
@@ -870,10 +912,13 @@ public class MainActivity extends BridgeActivity {
         request.setDescription(apkUpdate ? "Güncel APK indiriliyor" : "CinePulse bölüm indiriliyor");
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
         request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,
-                URLUtil.guessFileName(url, contentDisposition, mimeType));
+                apkUpdate && apkFileName != null && apkFileName.endsWith(".apk")
+                        ? apkFileName
+                        : URLUtil.guessFileName(url, contentDisposition, mimeType));
         DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
         if (manager == null) throw new IllegalStateException("Android indirme servisi kullanılamıyor");
         long downloadId = manager.enqueue(request);
+        if (apkUpdate) apkTamamlanmaAlicisiEkle();
         Cursor cursor = manager.query(new DownloadManager.Query().setFilterById(downloadId));
         if (cursor != null) {
             try {
@@ -883,6 +928,86 @@ public class MainActivity extends BridgeActivity {
             } finally {
                 cursor.close();
             }
+        }
+        return downloadId;
+    }
+
+    /** Tamamlanma alıcısını (targetSdk 34+ flag zorunlu) tek kez kaydeder. */
+    private void apkTamamlanmaAlicisiEkle() {
+        if (apkReceiverRegistered) return;
+        apkReceiverRegistered = true;
+        try {
+            ContextCompat.registerReceiver(this, apkDownloadReceiver,
+                    new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+                    ContextCompat.RECEIVER_EXPORTED); // gönderici sistem DownloadProvider'ı (başka uygulama)
+        } catch (Exception error) {
+            apkReceiverRegistered = false;
+            android.util.Log.w("CinePulseUpdate", "Tamamlanma alıcısı kaydedilemedi: " + error);
+        }
+    }
+
+    /**
+     * İndirme bitti: başarılıysa APK'yı FileProvider üzerinden açıp sistem
+     * kurulum ekranını OTOMATİK başlatır; başarısızsa kullanıcıya net hata
+     * verir. Dosyaya doğrudan erişilemezse (API 30+ kısıtları) önce uygulama
+     * önbelleğine kopyalar.
+     */
+    private void apkIndirmeyiTamamla(Context context, long id) {
+        try {
+            DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            if (manager == null) return;
+            Cursor cursor = manager.query(new DownloadManager.Query().setFilterById(id));
+            int status = DownloadManager.STATUS_FAILED;
+            String localUri = null;
+            int reason = -1;
+            if (cursor != null) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                        localUri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI));
+                        reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON));
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+            if (status != DownloadManager.STATUS_SUCCESSFUL) {
+                String mesaj = "Güncelleme indirilemedi (kod " + reason + "). Ayarlar > Uygulamalar'dan indirme yöneticisine izin verin.";
+                Toast.makeText(context, mesaj, Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            File apkDosyasi = null;
+            if (localUri != null && localUri.startsWith("file:")) {
+                File dogrudan = new File(Uri.parse(localUri).getPath());
+                if (dogrudan.exists() && dogrudan.length() > 0) apkDosyasi = dogrudan;
+            }
+            if (apkDosyasi == null) {
+                // Doğrudan erişim yok (kapsamlı depolama): indirme sağlayıcısından
+                // uygulama önbelleğine aktar; AutoCloseInputStream pfd'yi kapatır.
+                File kopya = new File(getCacheDir(), "cinepulse_guncelleme.apk");
+                try (InputStream in = new ParcelFileDescriptor.AutoCloseInputStream(manager.openDownloadedFile(id));
+                     OutputStream out = new FileOutputStream(kopya)) {
+                    byte[] tampon = new byte[65536];
+                    int okunan;
+                    while ((okunan = in.read(tampon)) > 0) out.write(tampon, 0, okunan);
+                }
+                if (kopya.length() <= 0) throw new IllegalStateException("APK kopyalanamadı");
+                apkDosyasi = kopya;
+            }
+
+            Uri contentUri = FileProvider.getUriForFile(context,
+                    getPackageName() + ".fileprovider", apkDosyasi);
+            Intent kurulum = new Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(contentUri, "application/vnd.android.package-archive")
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(kurulum);
+            Toast.makeText(context, "Güncelleme indirildi; kurulum ekranı açıldı.", Toast.LENGTH_LONG).show();
+        } catch (Exception error) {
+            android.util.Log.w("CinePulseUpdate", "APK açılamadı: " + error);
+            Toast.makeText(context,
+                    "Güncelleme indirildi ama açılamadı. İndirilenler klasöründen cinepulse.apk dosyasına dokun.",
+                    Toast.LENGTH_LONG).show();
         }
     }
 }

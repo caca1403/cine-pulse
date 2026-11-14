@@ -33,10 +33,17 @@ if (!/^\d+\.\d+\.\d+$/.test(String(pkg.version || '')) || !Number.isInteger(pkg.
 
 // Butonlar dogrudan GitHub "latest" varliklarina iner — surum adi tasidiklari
 // icin HICBIR ZAMAN eskimez; yeni surum cikinca ayni bag calismaya devam eder.
+// APK istisna: GitHub engelli aglarda (TR) objects.githubusercontent.com
+// tikanabilir ve kurulu APK'nin DownloadManager'i sessizce bekler. APK'nin
+// ana indirilme adresi bu yuzden Cloudflare uzerinden AKITAN relay'dir
+// (api/download_apk.js baytlari akitar; relay tutmazsa 302 GitHub'a duser).
+// githubDownloadUrl bilinçli olarak BOŞ: eski kurulu APK'lar
+// (githubDownloadUrl || downloadUrl) önceliğiyle relay'i seçsin.
+const RELAY = process.env.CINEPULSE_RELAY_ORIGIN || 'https://cinepulse.cinepulse.workers.dev';
 const latest = `https://github.com/${slug}/releases/latest/download`;
 const urls = {
-  downloadUrl: `${latest}/cinepulse.apk`,
-  githubDownloadUrl: `${latest}/cinepulse.apk`,
+  downloadUrl: `${RELAY}/cinepulse.apk`,
+  githubDownloadUrl: '',
   windowsSetupUrl: `${latest}/CinePulse-Setup.exe`,
   linuxFlatpakUrl: `${latest}/CinePulse.flatpak`,
   linuxDebUrl: `${latest}/CinePulse.deb`,

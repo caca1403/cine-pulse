@@ -193,9 +193,9 @@ export function showUpdateModal(updateInfo) {
       <div style="margin-top: 1rem; padding: 0.65rem 0.85rem; border-radius: 12px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); text-align: left; font-size: 0.76rem; color: #fde68a; line-height: 1.4;">
         <div style="font-weight: 700; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.35rem; color: #fbbf24;">
           <i data-lucide="info" style="width: 13px; height: 13px;"></i>
-          <span>İndirme İpucu</span>
+          <span>Otomatik Kurulum</span>
         </div>
-        Chrome tarayıcısında <em>"Zararlı dosya olabilir"</em> uyarısı çıkarsa bildirim çubuğunu indirip <strong>"Yine de indir"</strong> butonuna basarak indirmeyi tamamlayabilirsiniz.
+        İndirme bitince Android kurulum ekranı <strong>otomatik açılır</strong>; sadece "Yükle" demeniz yeterli. İndirme başarısız olursa hata bildirimi görürsünüz.
       </div>
     </div>
   `;
@@ -213,14 +213,24 @@ export function showUpdateModal(updateInfo) {
   const triggerDownload = (targetUrl) => {
     showToast('APK indirmesi başlatılıyor...', 'info');
     if (isNativeAndroidApp()) {
-      if (window.CinePulseNative?.downloadApk) {
+      // downloadApkYeni: "OK:<id>" | "ERR:<mesaj>" döner. Eski köprülerdeki
+      // void muadili downloadApk hâlâ çalışır; sonuç gelmezse sessiz geçilir.
+      if (window.CinePulseNative?.downloadApkYeni || window.CinePulseNative?.downloadApk) {
         try {
-          window.CinePulseNative.downloadApk(targetUrl);
-          showToast('İndirme bildirimi açıldı. İndirme bitince bildirime dokunup Android kurulum ekranını aç.', 'success');
+          const sonuc = window.CinePulseNative.downloadApkYeni
+            ? window.CinePulseNative.downloadApkYeni(targetUrl, 'cinepulse.apk')
+            : window.CinePulseNative.downloadApk(targetUrl);
+          if (typeof sonuc === 'string' && sonuc.startsWith('ERR:')) {
+            throw new Error(sonuc.slice(4) || 'bilinmeyen indirme hatası');
+          }
+          showToast('İndirme başladı; bitince Android kurulum ekranı otomatik açılır.', 'success');
           modal.remove();
           return;
-        } catch (_) {}
+        } catch (hata) {
+          console.warn('[appUpdater] native APK indirme başarısız:', hata?.message || hata);
+        }
       }
+      // Native yol açılamadı: tarayıcıyı sistem tarafında açmayı dene.
       try {
         const opened = window.open(targetUrl, '_system');
         if (!opened) {
