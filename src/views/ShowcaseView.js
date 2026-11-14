@@ -14,19 +14,36 @@ let heroScrollFx = null;
 let heroScrollRaf = 0;
 
 const benefits = [
-  ['compass', 'İzleyecek bir şey bul.', 'Film, dizi, anime ve kısa diziler. Doğal dil arama ("2020 sonrası aksiyon"), tür/oyuncu/yönetmen filtreleme ve yapım detaylarıyla bir sonraki hikâyene karar ver.'],
-  ['sparkles', 'Kişisel öneri motoru.', 'BPR + lojistik sıralayıcı + birlikte izlenme analizi. Zevk profiline göre sıralanan öneriler; favori, liste ve bitirme sinyallerinden öğrenir.'],
-  ['users', 'Birlikte izleme kararı ver.', 'Karar Odası ile arkadaşlarınla P2P oylama yap. Sessiz oylama modu, ortak sonuç listesi ve "Herkes izlemek istiyor!" eşleşmesi.'],
-  ['bookmark', 'Kendi arşivini oluştur.', 'Favorilerini ve izleme listeni tek yerde tut. Bitirdiğin yapımları, sıradaki bölümleri ve yarım kalanları takip et.'],
-  ['history', 'Yarım kalan yerden devam et.', 'İzleme ilerlemen bu cihazda saklanır. Geri geldiğinde hangi bölümde veya dakikada kaldığını yeniden arama.'],
-  ['shield-check', 'Spoilersız keşfet.', 'İlerleme sınırının ötesindeki bölüm başlıkları, görselleri ve özetleri otomatik gizlenir. Recap kartı sadece gerçekten izlediğin bölümler için açılır.'],
-  ['monitor-play', 'Sahne modu & saf sinema.', 'Tam ekran sinema sahnesi, hover önizleme, kalite çipleri ve oyuncu kadrosu keşfi. Masaüstünde imleçle kart üzerinde önizleme.'],
-  ['sliders-horizontal', 'Deneyimini kendin seç.', 'Dublaj ve altyazılı seçenekleri ayrı gör. Çoklu kaynak alternatifleri arasında geçiş yap; destekleyen yayınlarda ses, hız ve altyazıyı ayarla.'],
-  ['baby', 'Çocuk modu.', 'PIN korumalı çocuk profili, yaş kademesi filtreleri ve güvenli içerik seçimi. Aile için ayrı bir deneyim.'],
-  ['download', 'İndir & çevrimdışı izle.', 'Desteklenen içerikleri cihazına indir, internet olmadan izle. Çevrimdışı kütüphane ile her yerde erişim.'],
-  ['plug', 'Eklenti ekosistemi.', 'Stremio, Nuvio ve CloudStream eklenti depolarını CinePulse\'a bağla. Yerel kahraman motorla birlikte çoklu kaynak desteği.'],
-  ['zap', 'P2P torrent & debrid.', 'Yerel libtorrent motoru (Android) ve Real-Debrid entegrasyonu ile doğrudan magnet bağlantısı oynatma.']
+  ['compass', 'İzleyecek bir şey bul.', 'Film, dizi, anime ve kısa diziler. Doğal dil arama ("2020 sonrası aksiyon"), tür/oyuncu/yönetmen filtreleme ve yapım detaylarıyla bir sonraki hikâyene karar ver.', 'kesif'],
+  ['sparkles', 'Kişisel öneri motoru.', 'BPR + lojistik sıralayıcı + birlikte izlenme analizi. Zevk profiline göre sıralanan öneriler; favori, liste ve bitirme sinyallerinden öğrenir.', 'kesif'],
+  ['users', 'Birlikte izleme kararı ver.', 'Karar Odası ile arkadaşlarınla P2P oylama yap. Sessiz oylama modu, ortak sonuç listesi ve "Herkes izlemek istiyor!" eşleşmesi.', 'sosyal'],
+  ['bookmark', 'Kendi arşivini oluştur.', 'Favorilerini ve izleme listeni tek yerde tut. Bitirdiğin yapımları, sıradaki bölümleri ve yarım kalanları takip et.', 'sosyal'],
+  ['history', 'Yarım kalan yerden devam et.', 'İzleme ilerlemen bu cihazda saklanır. Geri geldiğinde hangi bölümde veya dakikada kaldığını yeniden arama.', 'sosyal'],
+  ['shield-check', 'Spoilersız keşfet.', 'İlerleme sınırının ötesindeki bölüm başlıkları, görselleri ve özetleri otomatik gizlenir. Recap kartı sadece gerçekten izlediğin bölümler için açılır.', 'kesif'],
+  ['monitor-play', 'Sahne modu & saf sinema.', 'Tam ekran sinema sahnesi, hover önizleme, kalite çipleri ve oyuncu kadrosu keşfi. Masaüstünde imleçle kart üzerinde önizleme.', 'oynatma'],
+  ['sliders-horizontal', 'Dublaj Zekası & kaynak seçimi.', 'Kanıtlı Türkçe dublaj ve altyazılı kaynaklar otomatik öne çıkar; yıldız kod adlı çoklu alternatifler arasında anında geçiş yap.', 'oynatma'],
+  ['baby', 'Çocuk modu.', 'PIN korumalı çocuk profili, yaş kademesi filtreleri ve güvenli içerik seçimi. Aile için ayrı bir deneyim.', 'sosyal'],
+  ['download', 'İndir & çevrimdışı izle.', 'Desteklenen içerikleri cihazına indir, internet olmadan izle. Çevrimdışı kütüphane ile her yerde erişim.', 'oynatma'],
+  ['plug', 'Eklenti ekosistemi.', 'Stremio, Nuvio ve CloudStream eklenti depolarını CinePulse\'a bağla. Yerel kahraman motorla birlikte çoklu kaynak desteği.', 'eklenti'],
+  ['zap', 'P2P torrent & debrid.', 'Yerel libtorrent motoru (Android) ve Real-Debrid entegrasyonu ile doğrudan magnet bağlantısı oynatma.', 'eklenti']
 ];
+const dublajDemoModes = {
+  dub: [
+    { name: '★ Sirius · 1080p HLS', detail: 'Kanıtlı TR Dublaj (m3u8 ses izi doğrulandı)', badge: 'TR DUBLAJ', badgeClass: 'is-dub', score: '98 puan', top: true },
+    { name: '★ Vega · 1080p Doğrudan', detail: 'Çift ses (TR / EN) · Hızlı akış', badge: 'TR DUBLAJ', badgeClass: 'is-dub', score: '91 puan', top: false },
+    { name: '★ Altair · 1080p', detail: 'Türkçe altyazı gömülü', badge: 'ALTYAZI', badgeClass: 'is-sub', score: '64 puan', top: false }
+  ],
+  sub: [
+    { name: '★ Altair · 4K HDR', detail: 'Orijinal ses + senkron Türkçe altyazı', badge: 'ALTYAZI', badgeClass: 'is-sub', score: '96 puan', top: true },
+    { name: '★ Orion · 1080p', detail: 'Çoklu altyazı desteği (TR / EN)', badge: 'ALTYAZI', badgeClass: 'is-sub', score: '88 puan', top: false },
+    { name: '★ Sirius · 1080p', detail: 'Türkçe dublaj alternatifi', badge: 'TR DUBLAJ', badgeClass: 'is-dub', score: '70 puan', top: false }
+  ],
+  multi: [
+    { name: '★ Sirius (Filmmakinesi)', detail: '2 kaynak · anında yanıt · doğrulandı', badge: 'TR DUBLAJ', badgeClass: 'is-dub', score: '99 puan', top: true },
+    { name: '★ Vega (HDFC)', detail: '2 kaynak · 1080p / 720p uyarlanabilir', badge: 'TR DUBLAJ', badgeClass: 'is-dub', score: '94 puan', top: false },
+    { name: '★ Rigel (Selcukflix)', detail: '1 kaynak · yedek ayna hazır', badge: 'ALTYAZI', badgeClass: 'is-sub', score: '86 puan', top: false }
+  ]
+};
 const comparison = [
   ['Keşif, arama ve yapım detayları', 'Var', 'Var'],
   ['Doğal dil arama ("2020 sonrası aksiyon")', 'Var', 'Var'],
@@ -109,8 +126,9 @@ export function renderShowcaseView() {
             <p>Aşağıdaki kareler CinePulse'ın Android uygulamasından alınmış gerçek ekran görüntüleridir — keşif akışından sezon takibine, kitaplıktan CP ÖZEL kısa dizi perdesine kadar uygulamada tam olarak gördüğün arayüz.</p>
           </div>
           <div class="cp-landing-gallery-grid">
-            <article class="cp-landing-gallery-card">
+            <article class="cp-landing-gallery-card" tabindex="0" data-lightbox-src="${base}images/gallery/discover.webp" data-lightbox-title="Zengin Keşif & Filtreleme" data-lightbox-desc="IMDb / TMDb puanları, trend listeleri, yıl ve tür filtreleri ile aradığın hikâyeyi anında bul.">
               <div class="cp-landing-gallery-screen">
+                <span class="cp-landing-gallery-zoom" aria-hidden="true">${icon('maximize-2')}</span>
                 <div class="cp-landing-phone"><img src="${base}images/gallery/discover.webp" alt="CinePulse Android ana sayfa keşif akışı" loading="lazy" width="640" height="1386"></div>
                 <span class="cp-landing-gallery-badge">${icon('compass')} Yapım Keşfi</span>
               </div>
@@ -119,8 +137,9 @@ export function renderShowcaseView() {
                 <p>IMDb / TMDb puanları, trend listeleri, yıl ve tür filtreleri. Film, dizi, anime ve belgeseller arasında kaybolmadan aradığın hikâyeyi anında bul.</p>
               </div>
             </article>
-            <article class="cp-landing-gallery-card">
+            <article class="cp-landing-gallery-card" tabindex="0" data-lightbox-src="${base}images/gallery/episodes.webp" data-lightbox-title="Akıllı Sezon & İzlendi İşaretleme" data-lightbox-desc="Dizi takibinde nerede kaldığını hatırlama derdine son. Sezonları tek tıkla izlendi işaretle.">
               <div class="cp-landing-gallery-screen">
+                <span class="cp-landing-gallery-zoom" aria-hidden="true">${icon('maximize-2')}</span>
                 <div class="cp-landing-phone"><img src="${base}images/gallery/episodes.webp" alt="Dizi detayında sezon sekmeleri ve bölüm listesi" loading="lazy" width="640" height="1386"></div>
                 <span class="cp-landing-gallery-badge">${icon('check-circle-2')} Bölüm Takibi</span>
               </div>
@@ -129,8 +148,9 @@ export function renderShowcaseView() {
                 <p>Dizi takibinde nerede kaldığını hatırlama derdine son. Sezonları tek tıkla izlendi işaretle, sonraki bölüme geçişte hiçbir zaman ritmini bozma.</p>
               </div>
             </article>
-            <article class="cp-landing-gallery-card">
+            <article class="cp-landing-gallery-card" tabindex="0" data-lightbox-src="${base}images/gallery/library.webp" data-lightbox-title="Kaldığın Yerden Devam Et" data-lightbox-desc="Yarım bıraktığın içerikler ilerleme çubuklarıyla saklanır; JSON yedeği veya Trakt ile eşitle.">
               <div class="cp-landing-gallery-screen">
+                <span class="cp-landing-gallery-zoom" aria-hidden="true">${icon('maximize-2')}</span>
                 <div class="cp-landing-phone"><img src="${base}images/gallery/library.webp" alt="Kitaplığımda izleme istatistikleri ve favoriler" loading="lazy" width="640" height="1386"></div>
                 <span class="cp-landing-gallery-badge">${icon('bookmark')} Kişisel Kitaplık</span>
               </div>
@@ -139,8 +159,9 @@ export function renderShowcaseView() {
                 <p>Yarım bıraktığın içerikler ilerleme çubuklarıyla saklanır. JSON yedeğiyle tüm listeni cihazlar arasında taşıyabilir veya Trakt ile eşitleyebilirsin.</p>
               </div>
             </article>
-            <article class="cp-landing-gallery-card">
+            <article class="cp-landing-gallery-card" tabindex="0" data-lightbox-src="${base}images/gallery/short-series.webp" data-lightbox-title="Mini Dizi, Perde Deneyimi" data-lightbox-desc="CP ÖZEL vitrininden açılan perde sayfası: dublaj/altyazı etiketleri ve 1080p HLS akışı.">
               <div class="cp-landing-gallery-screen">
+                <span class="cp-landing-gallery-zoom" aria-hidden="true">${icon('maximize-2')}</span>
                 <div class="cp-landing-phone"><img src="${base}images/gallery/short-series.webp" alt="CP ÖZEL kısa dizi perde sayfası" loading="lazy" width="640" height="1386"></div>
                 <span class="cp-landing-gallery-badge">${icon('clapperboard')} CP ÖZEL · Kısa Dizi</span>
               </div>
@@ -153,15 +174,39 @@ export function renderShowcaseView() {
         </section>
         <section id="landing-features" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-features-title">
           <div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">TÜM ÖZELLİKLER</span><h2 id="landing-features-title">Daha az arayış.<br><span>Daha çok kendi listen.</span></h2><p>Sadece bir oynatıcı değil. Keşiften öneriden birlikte izlemeye, çocuk modundan eklenti ekosistemine kadar her şey tek uygulamada.</p></div>
-          <div class="cp-landing-benefits">${benefits.map(([symbol,title,text],i)=>`<article class="cp-landing-benefit"><div>${icon(symbol)}<span>${String(i+1).padStart(2,'0')}</span></div><h3>${title}</h3><p>${text}</p></article>`).join('')}</div>
+          <div class="cp-landing-tabs" role="tablist" aria-label="Özellik kategorileri">
+            <button class="cp-landing-pill is-active" data-feature-filter="all" role="tab" aria-selected="true">Tümü (12)</button>
+            <button class="cp-landing-pill" data-feature-filter="kesif" role="tab" aria-selected="false">Keşif & Öneri</button>
+            <button class="cp-landing-pill" data-feature-filter="oynatma" role="tab" aria-selected="false">Oynatma & Dublaj</button>
+            <button class="cp-landing-pill" data-feature-filter="sosyal" role="tab" aria-selected="false">Kütüphane & Sosyal</button>
+            <button class="cp-landing-pill" data-feature-filter="eklenti" role="tab" aria-selected="false">Eklenti & P2P</button>
+          </div>
+          <div class="cp-landing-benefits">${benefits.map(([symbol,title,text,cat],i)=>`<article class="cp-landing-benefit" data-feature-cat="${cat}"><div>${icon(symbol)}<span>${String(i+1).padStart(2,'0')}</span></div><h3>${title}</h3><p>${text}</p></article>`).join('')}</div>
+          <div class="cp-landing-dublaj-demo" aria-label="Dublaj Zekası etkileşimli önizleme">
+            <div class="cp-landing-dublaj-head">
+              <h3>${icon('sparkles')}Dublaj Zekası & Yıldız Kaynak Sıralaması</h3>
+              <div class="cp-landing-tabs" style="margin:0">
+                <button class="cp-landing-pill is-active" data-dublaj-mode="dub">TR Dublaj Önceliği</button>
+                <button class="cp-landing-pill" data-dublaj-mode="sub">Altyazılı Seçim</button>
+                <button class="cp-landing-pill" data-dublaj-mode="multi">Çoklu Kaynak Tarama</button>
+              </div>
+            </div>
+            <div class="cp-landing-dublaj-rows" data-dublaj-rows>
+              ${dublajDemoModes.dub.map(r=>`<div class="cp-landing-dublaj-row ${r.top?'is-top':''}"><div><strong>${r.name}</strong><small>${r.detail}</small></div><span class="cp-landing-dublaj-badge ${r.badgeClass}">${r.badge}</span><span class="cp-landing-dublaj-score">${r.score}</span></div>`).join('')}
+            </div>
+          </div>
         </section>
         <section id="landing-compare" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-compare-title">
           <div class="cp-landing-compare-intro"><div><span class="cp-landing-eyebrow">AYNI CINEPULSE, FARKLI İMKÂNLAR</span><h2 id="landing-compare-title">Masaüstünde ne var?<br><span>Android'de ne açılıyor?</span></h2></div><p>Keşif ve oynatıcı tarayıcıda çalışır; paketler ise yerel medya, indirme ve P2P gibi ek imkânları açar. İhtiyacına göre paketi seç.</p></div>
-          <div class="cp-landing-table-wrap" tabindex="0" role="region" aria-label="Masaüstü ve Android özellik karşılaştırması"><table class="cp-landing-compare-table"><caption class="cp-landing-sr-only">CinePulse platform özellikleri</caption><thead><tr><th scope="col">Özellik</th><th scope="col">Masaüstü<span>Windows / Linux</span></th><th scope="col">Android<span>Telefon / Tablet</span></th></tr></thead><tbody>${comparison.map(([feature,...values])=>`<tr><th scope="row">${feature}</th>${values.map(value=>`<td><span class="cp-landing-status ${value==='Var'?'is-available':value==='Yok'?'is-unavailable':'is-conditional'}">${icon(value==='Var'?'check':value==='Yok'?'minus':'circle-dot')}${value}</span></td>`).join('')}</tr>`).join('')}</tbody></table></div>
+          <div class="cp-landing-tabs" aria-label="Karşılaştırma filtresi">
+            <button class="cp-landing-pill is-active" data-compare-filter="all">Tüm Özellikler</button>
+            <button class="cp-landing-pill" data-compare-filter="diff">Sadece Platform Farkları</button>
+          </div>
+          <div class="cp-landing-table-wrap" tabindex="0" role="region" aria-label="Masaüstü ve Android özellik karşılaştırması"><table class="cp-landing-compare-table"><caption class="cp-landing-sr-only">CinePulse platform özellikleri</caption><thead><tr><th scope="col">Özellik</th><th scope="col">Masaüstü<span>Windows / Linux</span></th><th scope="col">Android<span>Telefon / Tablet</span></th></tr></thead><tbody>${comparison.map(([feature,...values])=>`<tr data-compare-diff="${values[0] !== values[1] ? '1' : '0'}"><th scope="row">${feature}</th>${values.map(value=>`<td><span class="cp-landing-status ${value==='Var'?'is-available':value==='Yok'?'is-unavailable':'is-conditional'}">${icon(value==='Var'?'check':value==='Yok'?'minus':'circle-dot')}${value}</span></td>`).join('')}</tr>`).join('')}</tbody></table></div>
           <div class="cp-landing-web-note">${icon('info')}<p><strong>Web sitesi neden oynatmıyor?</strong> Web yalnızca tanıtım ve indirme merkezidir; kaynak taraması ve oynatma tarayıcı kurallarına takıldığı için uygulamaya taşındı. Tam deneyim için yukarıdaki paketlerden birini kur.</p></div>
         </section>
         <section class="cp-landing-start cp-landing-shell" aria-labelledby="landing-start-title"><div><span class="cp-landing-eyebrow">ÜÇ ADIM, KENDİ AKIŞIN</span><h2 id="landing-start-title">Hazırlık yok.<br><span>Keşifle başla.</span></h2><button class="cp-landing-button cp-landing-secondary" data-landing-section="landing-downloads">${icon('download')}Paketi Kur</button></div><ol><li><span>01</span><div><h3>İlgini çekeni bul.</h3><p>Ana sayfadan, aramadan veya kategorilerden ilerle. Diziyse sezon ve bölümünü seç.</p></div></li><li><span>02</span><div><h3>Dilini ve yayınını seç.</h3><p>Dublaj / altyazılı seçenekleri gör. Açılmayan bir bağlantıda diğer alternatife geç.</p></div></li><li><span>03</span><div><h3>Listene ekle, geri dön.</h3><p>Beğendiklerini sakla. Ara verdiğinde kütüphanenden kaldığın yere dön.</p></div></li></ol></section>
-        <section class="cp-landing-release cp-landing-shell" aria-labelledby="landing-release-title"><div><span class="cp-landing-eyebrow">v${pkg.version} · BU SÜRÜMÜN ODAĞI</span><h2 id="landing-release-title">Kaynaklar tazelendi.<br><span>Kurulum seçenekleri çoğaldı.</span></h2><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notlarını gör ${icon('arrow-up-right')}</a></div><ul><li>${icon('timer')}<div><strong>Daha zengin Türkçe dublaj hattı</strong><p>Yeni yıldız kod adlı kaynaklar eklendi; dublaj / altyazı ayrımı gerçek etiketlerle listeleniyor.</p></div></li><li>${icon('panel-right')}<div><strong>İzleme ilerlemesi anında güncelleniyor</strong><p>Sezonu izlendi işaretleme artık uygulamayı kapatmadan görünür; kütüphane ve devam listeleri taze kalıyor.</p></div></li><li>${icon('download')}<div><strong>Flatpak desteği</strong><p>Windows EXE, Android APK, Linux DEB ve yeni Flatpak paketi doğrudan Releases'te. Android sürümleri aynı kalıcı anahtarla imzalanıyor.</p></div></li></ul></section>
+        <section class="cp-landing-release cp-landing-shell" aria-labelledby="landing-release-title"><div><span class="cp-landing-eyebrow">v${pkg.version} · BU SÜRÜMÜN ODAĞI</span><h2 id="landing-release-title">Dublaj zekası ve<br><span>çoklu kaynak motoru yenilendi.</span></h2><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notlarını gör ${icon('arrow-up-right')}</a></div><ul><li>${icon('sparkles')}<div><strong>Dublaj Zekası & Kalıcı Sicil</strong><p>Filmmakinesi, HDFC, Selcukflix ve yıldız kaynaklarında kanıtlı Türkçe dublaj otomatik öne çıkar; başarısız kaynaklar akıllıca elenir.</p></div></li><li>${icon('shield-check')}<div><strong>Android WebView & Masaüstü Doğrulama</strong><p>Taşıyıcı başlık (header) koruması ve çoklu kaynak taramasıyla doğrulama isteyen bağlantılar kararlı şekilde çözülür.</p></div></li><li>${icon('download')}<div><strong>Tüm Platformlar Senkron (v${pkg.version})</strong><p>Windows EXE, Android APK (aynı kalıcı release anahtarıyla imzalı), Linux DEB ve Flatpak doğrudan GitHub Releases'te.</p></div></li></ul></section>
         <section id="landing-license" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-license-title">
           <div class="cp-landing-section-heading">
             <span class="cp-landing-eyebrow">YASAL GÜVENCE VE TELİF HAKKI</span>
@@ -182,9 +227,20 @@ export function renderShowcaseView() {
             </div>
           </div>
         </section>
-        <section id="landing-faq" class="cp-landing-section cp-landing-shell cp-landing-faq" aria-labelledby="landing-faq-title"><div><span class="cp-landing-eyebrow">AKLINDA KALMASIN</span><h2 id="landing-faq-title">Sık sorulan<br><span>sorular.</span></h2><p>Başlamadan önce neyin nerede çalıştığını bil.</p></div><div class="cp-landing-questions">${faqs.map(([question,answer])=>`<details><summary>${question}${icon('plus')}</summary><p>${answer}</p></details>`).join('')}</div></section>
+        <section id="landing-faq" class="cp-landing-section cp-landing-shell cp-landing-faq" aria-labelledby="landing-faq-title"><div><span class="cp-landing-eyebrow">AKLINDA KALMASIN</span><h2 id="landing-faq-title">Sık sorulan<br><span>sorular.</span></h2><p>Başlamadan önce neyin nerede çalıştığını bil.</p><div class="cp-landing-faq-actions"><button class="cp-landing-pill" data-faq-toggle-all="closed">Tümünü Aç</button></div></div><div class="cp-landing-questions">${faqs.map(([question,answer])=>`<details><summary>${question}${icon('plus')}</summary><p>${answer}</p></details>`).join('')}</div></section>
         <section class="cp-landing-final cp-landing-shell"><span class="cp-landing-eyebrow">ŞİMDİ SIRA SENDE</span><h2>İndir, kur.<br><span>Bu akşamın hikâyesini bul.</span></h2><p>İşletim sistemine uygun paketi indir ve izlemeye başla.</p><button class="cp-landing-button" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notları ve tüm dosyalar ${icon('arrow-right')}</a></section>
       </main>
+      <div class="cp-landing-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="Ekran görüntüsü önizleme">
+        <div class="cp-landing-lightbox-box">
+          <img src="" alt="" data-lightbox-img>
+          <div class="cp-landing-lightbox-caption"><strong data-lightbox-caption-title></strong><span data-lightbox-caption-desc></span></div>
+          <div class="cp-landing-lightbox-nav">
+            <button class="cp-landing-lightbox-btn" data-lightbox-prev>${icon('chevron-left')}Önceki</button>
+            <button class="cp-landing-lightbox-btn" data-lightbox-close>${icon('x')}Kapat</button>
+            <button class="cp-landing-lightbox-btn" data-lightbox-next>Sonraki${icon('chevron-right')}</button>
+          </div>
+        </div>
+      </div>
       <footer class="cp-landing-footer cp-landing-shell">
         <div class="cp-landing-footer-main">
           <a class="cp-landing-brand" href="#showcase">${renderSiteLogo('cp-landing-logo')}<span>Cine<span>Pulse</span></span></a>
@@ -202,6 +258,84 @@ export function renderShowcaseView() {
     init(container) {
       container.querySelectorAll('[data-landing-section]').forEach(button => {
         button.addEventListener('click', () => container.querySelector(`#${button.dataset.landingSection}`)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }));
+      });
+      // Etkilesimli ozellik filtresi
+      const featurePills = container.querySelectorAll('[data-feature-filter]');
+      const featureCards = container.querySelectorAll('[data-feature-cat]');
+      featurePills.forEach(pill => {
+        pill.addEventListener('click', () => {
+          const cat = pill.dataset.featureFilter;
+          featurePills.forEach(p => {
+            const active = p === pill;
+            p.classList.toggle('is-active', active);
+            p.setAttribute('aria-selected', String(active));
+          });
+          featureCards.forEach(card => {
+            card.classList.toggle('is-hidden', cat !== 'all' && card.dataset.featureCat !== cat);
+          });
+        });
+      });
+      // Dublaj Zekasi canli onizleme anahtari
+      const dublajButtons = container.querySelectorAll('[data-dublaj-mode]');
+      const dublajRows = container.querySelector('[data-dublaj-rows]');
+      dublajButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const rows = dublajDemoModes[btn.dataset.dublajMode] || dublajDemoModes.dub;
+          dublajButtons.forEach(b => b.classList.toggle('is-active', b === btn));
+          if (dublajRows) {
+            dublajRows.innerHTML = rows.map(r => `<div class="cp-landing-dublaj-row ${r.top ? 'is-top' : ''}"><div><strong>${r.name}</strong><small>${r.detail}</small></div><span class="cp-landing-dublaj-badge ${r.badgeClass}">${r.badge}</span><span class="cp-landing-dublaj-score">${r.score}</span></div>`).join('');
+          }
+        });
+      });
+      // Platform karsilastirma filtresi
+      const compareButtons = container.querySelectorAll('[data-compare-filter]');
+      const compareRows = container.querySelectorAll('[data-compare-diff]');
+      compareButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const onlyDiff = btn.dataset.compareFilter === 'diff';
+          compareButtons.forEach(b => b.classList.toggle('is-active', b === btn));
+          compareRows.forEach(row => row.classList.toggle('is-hidden', onlyDiff && row.dataset.compareDiff !== '1'));
+        });
+      });
+      // SSS tumunu ac/kapat
+      const faqToggleAll = container.querySelector('[data-faq-toggle-all]');
+      const faqItems = container.querySelectorAll('#landing-faq details');
+      faqToggleAll?.addEventListener('click', () => {
+        const open = faqToggleAll.dataset.faqToggleAll !== 'open';
+        faqItems.forEach(d => { d.open = open; });
+        faqToggleAll.dataset.faqToggleAll = open ? 'open' : 'closed';
+        faqToggleAll.textContent = open ? 'Tümünü Kapat' : 'Tümünü Aç';
+      });
+      // Galeri Lightbox
+      const galleryCards = [...container.querySelectorAll('[data-lightbox-src]')];
+      const lightbox = container.querySelector('[data-lightbox]');
+      const lbImg = container.querySelector('[data-lightbox-img]');
+      const lbTitle = container.querySelector('[data-lightbox-caption-title]');
+      const lbDesc = container.querySelector('[data-lightbox-caption-desc]');
+      let lbIndex = 0;
+      const openLightbox = idx => {
+        if (!lightbox || !galleryCards.length) return;
+        lbIndex = (idx + galleryCards.length) % galleryCards.length;
+        const card = galleryCards[lbIndex];
+        lbImg.src = card.dataset.lightboxSrc;
+        lbImg.alt = card.dataset.lightboxTitle || '';
+        lbTitle.textContent = card.dataset.lightboxTitle || '';
+        lbDesc.textContent = card.dataset.lightboxDesc || '';
+        lightbox.classList.add('is-open');
+      };
+      galleryCards.forEach((card, i) => {
+        card.addEventListener('click', () => openLightbox(i));
+        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(i); } });
+      });
+      container.querySelector('[data-lightbox-close]')?.addEventListener('click', () => lightbox?.classList.remove('is-open'));
+      container.querySelector('[data-lightbox-prev]')?.addEventListener('click', () => openLightbox(lbIndex - 1));
+      container.querySelector('[data-lightbox-next]')?.addEventListener('click', () => openLightbox(lbIndex + 1));
+      lightbox?.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('is-open'); });
+      container.addEventListener('keydown', e => {
+        if (!lightbox?.classList.contains('is-open')) return;
+        if (e.key === 'Escape') lightbox.classList.remove('is-open');
+        else if (e.key === 'ArrowLeft') openLightbox(lbIndex - 1);
+        else if (e.key === 'ArrowRight') openLightbox(lbIndex + 1);
       });
       // Canli surumler: her platform kendi manifestinden (APK yukselince
       // masaustu kartlari etkilenmez).

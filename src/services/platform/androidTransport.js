@@ -46,7 +46,17 @@ export function installAndroidTransport() {
       const sources = source && source !== 'all' ? [{ ...await fetchLiveSourceChannels(source), ok: true }] : await fetchAllLiveSources();
       return Response.json({ sources, savedAt: Date.now() });
     }
-    const headers = Object.fromEntries(new Headers(init.headers || request.headers));
+    const headers = {};
+    const rawHeaders = init.headers || request.headers;
+    if (rawHeaders) {
+      if (typeof rawHeaders.forEach === 'function') {
+        rawHeaders.forEach((value, key) => { headers[key] = value; });
+      } else if (Array.isArray(rawHeaders)) {
+        for (const item of rawHeaders) if (Array.isArray(item) && item.length >= 2) headers[item[0]] = String(item[1]);
+      } else if (typeof rawHeaders === 'object') {
+        for (const [key, value] of Object.entries(rawHeaders)) if (value != null) headers[key] = String(value);
+      }
+    }
     const body = init.body ?? (method === 'GET' || method === 'HEAD' ? undefined : await request.text());
     let target = url;
     if (/^https?:\/\//i.test(url) && !url.startsWith(`${localOrigin}/`)) {

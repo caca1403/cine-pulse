@@ -43,8 +43,47 @@ const fetchDizisolEpisodeSources = async ({ tmdbId, season, episode } = {}) => {
 };
 const resolveDirectStream = async (s) => s;
 const rankSourcesForDevice = (list) => (Array.isArray(list) ? list.slice() : []);
-const rememberWorkingSource = () => {};
-const rememberFailedSource = () => {};
+/* TR DUBLAJ ZEKÂSI — oynatma geri bildirimi (kendini onarma).
+   ÖLÇÜM (2026-11-14): bu iki kanca boş stub'dı; "hangi kaynak gerçekten
+   oynadı" bilgisi hiçbir yere yazılmıyordu. Artık oynatma sonucu kalıcı
+   TR dublaj siciline işlenir: başarılı kaynak yükselir, hata alan kaynak
+   düşer (silinmez — geçici ağ hatası olabilir). Modül yüklenemezse sessiz
+   geçilir; oynatma akışı hiçbir koşulda etkilenmez. */
+const dublajIcerikAnahtari = (tip, kimlik, sezon, bolum) => {
+  const t = String(tip || 'movie');
+  const s = sezon == null ? '' : sezon;
+  const b = bolum == null ? '' : bolum;
+  return `${t}|${kimlik ?? ''}|${s}|${b}`;
+};
+const rememberWorkingSource = ({ contentKey, category, source } = {}) => {
+  try {
+    if (!source) return;
+    import('../services/kaynak/dublajZekasi.js')
+      .then(({ oynatmaGeriBildir }) => {
+        // contentKey "<tür>:<kimlik>:s<sezon>:e<bölüm>" biçiminde gelir.
+        const m = String(contentKey || '').match(/^([^:]+):([^:]+):s([^:]*):e([^:]*)$/);
+        const icerik = m
+          ? dublajIcerikAnahtari(m[1], m[2], m[3], m[4])
+          : dublajIcerikAnahtari(String(contentKey || '').split(':')[0], String(contentKey || '').split(':')[1]);
+        oynatmaGeriBildir({ basarili: true, icerik, kaynak: source });
+      })
+      .catch(() => {});
+  } catch (_) { /* dublaj zekâsı isteğe bağlı */ }
+};
+const rememberFailedSource = ({ contentKey, category, source } = {}) => {
+  try {
+    if (!source) return;
+    import('../services/kaynak/dublajZekasi.js')
+      .then(({ oynatmaGeriBildir }) => {
+        const m = String(contentKey || '').match(/^([^:]+):([^:]+):s([^:]*):e([^:]*)$/);
+        const icerik = m
+          ? dublajIcerikAnahtari(m[1], m[2], m[3], m[4])
+          : dublajIcerikAnahtari(String(contentKey || '').split(':')[0], String(contentKey || '').split(':')[1]);
+        oynatmaGeriBildir({ basarili: false, icerik, kaynak: source });
+      })
+      .catch(() => {});
+  } catch (_) { /* dublaj zekâsı isteğe bağlı */ }
+};
 const sourceReliabilityMatchesDescriptor = () => false;
 const zekaGuven = () => 0;
 import {
@@ -4078,7 +4117,7 @@ export async function openPlayerModal({
     if (currentSrv) {
       currentSrv.failed = true;
       currentSrv.failReason = reason;
-      if (!isOfflinePlayback) rememberFailedSource({ category: currentCategory, source: currentSrv });
+      if (!isOfflinePlayback) rememberFailedSource({ contentKey: getSourceContentKey(), category: currentCategory, source: currentSrv });
       console.warn(`[PlayerModal] Server failed: ${currentSrv.name} (${reason})`);
     }
 
@@ -8916,7 +8955,7 @@ export async function openPlayerModal({
         playbackScope.on(videoEl, 'timeupdate', markSourceWorking);
         playbackScope.on(videoEl, 'error', () => {
           if (isOfflinePlayback) return;
-          rememberFailedSource({ category: currentCategory, source: srv });
+          rememberFailedSource({ contentKey: getSourceContentKey(), category: currentCategory, source: srv });
         });
 
         // ============ Subtitle Control Engine for Torrent, Sinewix & Direct Streams ============

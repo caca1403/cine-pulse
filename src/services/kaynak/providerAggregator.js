@@ -535,6 +535,23 @@ export async function getStreamingServersProgressive({
     console.warn('[kaynak] ses/altyazı iz ölçümü başarısız —', String(h?.message || h).slice(0, 120));
   }
 
+  /* TR DUBLAJ ZEKÂSI (2026-11-14): kanıtlanmış Türkçe dublaj kaynağını öne
+     alır. Sicil boşsa (ilk açılış, tohum yüklenmedi) liste aynen kalır —
+     davranış değişmez. Hata olursa sessiz geçilir: sıralama bir iyileştirmedir,
+     kaynak listesini bozacak bir bağımlılık değildir. */
+  try {
+    const { dublajaGoreSirala, icerikAnahtariOlustur } = await import('./dublajZekasi.js');
+    const icerik = icerikAnahtariOlustur({ type, tmdbId, season, episode });
+    const yeniDubbed = dublajaGoreSirala(currentDubbed, icerik);
+    const yeniSubtitled = dublajaGoreSirala(currentSubtitled, icerik);
+    currentDubbed.length = 0;
+    currentDubbed.push(...yeniDubbed);
+    currentSubtitled.length = 0;
+    currentSubtitled.push(...yeniSubtitled);
+  } catch (h) {
+    console.debug('[dublaj] sıralama uygulanamadı —', String(h?.message || h).slice(0, 100));
+  }
+
   const payload = {
     dubbed: currentDubbed,
     subtitled: currentSubtitled,

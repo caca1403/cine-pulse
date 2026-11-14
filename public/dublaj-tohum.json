@@ -1,0 +1,508 @@
+{
+ "surum": 1,
+ "uretilmeTarihi": "2026-11-14T00:42:24.556Z",
+ "aciklama": "TR dublaj ses izi kanıtı — canlı m3u8 ölçümlerinden derlendi. Etiket kanıt sayılmaz; yalnız medya okuması (m3u8/ts/mp4/mkv) girer.",
+ "kaynakDosyalar": [
+  {
+   "dosya": "notlar/dublaj-kanit-2026-11-14.json",
+   "olcum": "2026-11-14",
+   "kayit": 74
+  }
+ ],
+ "ozet": {
+  "kayitSayisi": 32,
+  "dublaj": 30,
+  "altyazi": 1,
+  "orijinal": 1,
+  "saglayiciSayisi": 21,
+  "icerikSayisi": 2,
+  "atlanan": {
+   "kanit": 35,
+   "eslesmeyen": 0,
+   "kimliksiz": 0
+  }
+ },
+ "kayitlar": [
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_aqualad_",
+   "dilDurumu": "orijinal",
+   "kanit": "m3u8",
+   "diller": [
+    "it",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sezon": 1,
+   "bolum": 1,
+   "saglayici": "sp_aqualad_",
+   "dilDurumu": "altyazi",
+   "kanit": "m3u8",
+   "diller": [
+    "it",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_aquaman_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sezon": 1,
+   "bolum": 1,
+   "saglayici": "sp_aquaman_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_blackpanther_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_catwoman_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sezon": 1,
+   "bolum": 1,
+   "saglayici": "sp_catwoman_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_cyborg_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_darkseid_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_greenarrow_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en",
+    "fr",
+    "es",
+    "ru",
+    "pl",
+    "cs",
+    "hu"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sezon": 1,
+   "bolum": 1,
+   "saglayici": "sp_greenarrow_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_doctorstrange_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_falcon_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sezon": 1,
+   "bolum": 1,
+   "saglayici": "sp_falcon_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_hawkeye_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_hulk_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_huntress_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_ironman_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en",
+    "fr",
+    "es",
+    "ru",
+    "pl",
+    "cs",
+    "hu"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sezon": 1,
+   "bolum": 1,
+   "saglayici": "sp_ironman_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en",
+    "de",
+    "fr",
+    "es",
+    "it",
+    "th",
+    "ru",
+    "uk",
+    "pt",
+    "ja",
+    "zh",
+    "pl",
+    "cs",
+    "hu",
+    "lv",
+    "sk"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_loki_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_lukecage_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_nova_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sezon": 1,
+   "bolum": 1,
+   "saglayici": "sp_nova_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_phyla_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sezon": 1,
+   "bolum": 1,
+   "saglayici": "sp_phyla_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_raven_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "en",
+    "tr"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_shazam_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en",
+    "fr",
+    "es",
+    "ru",
+    "pl",
+    "cs",
+    "hu"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sezon": 1,
+   "bolum": 1,
+   "saglayici": "sp_shazam_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_superman_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sezon": 1,
+   "bolum": 1,
+   "saglayici": "sp_superman_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "sezon": null,
+   "bolum": null,
+   "saglayici": "sp_wintersoldier_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "en",
+    "tr"
+   ],
+   "sonGorulme": 1794614400000
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "sezon": 1,
+   "bolum": 1,
+   "saglayici": "sp_wintersoldier_",
+   "dilDurumu": "dublaj",
+   "kanit": "m3u8",
+   "diller": [
+    "tr",
+    "en"
+   ],
+   "sonGorulme": 1794614400000
+  }
+ ]
+}

@@ -442,6 +442,20 @@ window.addEventListener('cinepulse_trakt_auth_changed', (event) => {
 });
 initTraktAutoSync(traktStorageMethods);
 
+/* TR dublaj zekâsı: paketle gelen kanıt tohumunu yükle (kalıcı sicile yaz).
+   Uygulama davranışını DEĞİŞTİRMEZ — yalnız kaynak sıralamasını iyileştirir.
+   Ağ/depo hatası sessizce yutulur (bkz. dublajZekasi.js). */
+setTimeout(() => {
+  import('./services/kaynak/dublajZekasi.js')
+    .then(async ({ tohumuYukle, dublajZekaDurumu, onekleriYukle }) => {
+      // Sağlayıcı önekleri: kaynak id'si ↔ sicil anahtarı eşleşmesi buna bağlı.
+      await onekleriYukle();
+      const n = await tohumuYukle();
+      if (n > 0) console.info(`[dublaj] kanıt tohumu yüklendi: ${n} kayıt`, dublajZekaDurumu().ozet);
+    })
+    .catch(() => { /* dublaj zekâsı isteğe bağlı katman */ });
+}, 1500);
+
 // Data change event listeners (Only reload whole route when backup data is imported or cleared)
 const onExternalDataImport = (e) => {
   if (e && e.detail && (e.detail.action === 'import' || e.detail.cleared)) {

@@ -311,3 +311,71 @@
  .cp-landing-hero-stack,.cp-landing-preview,.cp-landing-preview-play,.cp-landing-downloads article,.cp-landing-benefit,.cp-landing-start li { transform:none!important; }
  .cp-landing-downloads article::after,.cp-landing-benefit::after { opacity:0!important; }
 }
+
+/* ==========================================================================
+   Interactive Showcase Controls (tabs, dublaj demo, lightbox, faq toggle)
+   ========================================================================== */
+.cp-landing-tabs { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0 24px; }
+.cp-landing-pill {
+ display:inline-flex; align-items:center; gap:7px; padding:8px 15px; border-radius:999px;
+ border:1px solid #ffffff1a; background:#ffffff08; color:#c8d0dd; font-size:13px; font-weight:600;
+ cursor:pointer; transition:background .2s, border-color .2s, color .2s, transform .15s;
+}
+.cp-landing-pill:hover { background:#ffffff14; border-color:#ffffff33; color:#fff; transform:translateY(-1px); }
+.cp-landing-pill.is-active { background:#dfff761c; border-color:#dfff7666; color:#dfff76; }
+.cp-landing-benefit.is-hidden, .cp-landing-compare-table tr.is-hidden { display:none; }
+
+.cp-landing-dublaj-demo {
+ margin-top:28px; padding:22px; border-radius:20px; border:1px solid #ffffff17;
+ background:linear-gradient(145deg,#121824,#0b0f18); box-shadow:0 24px 60px #00000055;
+}
+.cp-landing-dublaj-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.cp-landing-dublaj-head h3 { margin:0; font-size:1.05rem; color:#f4f7fb; display:flex; align-items:center; gap:8px; }
+.cp-landing-dublaj-rows { display:grid; gap:10px; }
+.cp-landing-dublaj-row {
+ display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:12px;
+ padding:12px 14px; border-radius:12px; background:#ffffff06; border:1px solid #ffffff10;
+ transition:border-color .2s, background .2s;
+}
+.cp-landing-dublaj-row.is-top { background:#dfff760f; border-color:#dfff7644; }
+.cp-landing-dublaj-row strong { display:block; color:#eef2f8; font-size:.95rem; }
+.cp-landing-dublaj-row small { color:#97a3b6; font-size:.8rem; }
+.cp-landing-dublaj-badge {
+ padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:.03em;
+ background:#ffffff12; color:#d7dfec; white-space:nowrap;
+}
+.cp-landing-dublaj-badge.is-dub { background:#22c55e24; color:#4ade80; border:1px solid #22c55e44; }
+.cp-landing-dublaj-badge.is-sub { background:#38bdf824; color:#38bdf8; border:1px solid #38bdf844; }
+.cp-landing-dublaj-score { font-variant-numeric:tabular-nums; font-size:.82rem; font-weight:700; color:#dfff76; }
+
+.cp-landing-gallery-card { cursor:pointer; }
+.cp-landing-gallery-card:focus-visible { outline:2px solid #dfff76; outline-offset:4px; }
+.cp-landing-gallery-zoom {
+ position:absolute; right:12px; top:12px; z-index:3; width:34px; height:34px; border-radius:999px;
+ display:grid; place-items:center; background:#090d14cc; border:1px solid #ffffff26; color:#fff;
+ opacity:0; transition:opacity .2s, transform .2s;
+}
+.cp-landing-gallery-card:hover .cp-landing-gallery-zoom { opacity:1; transform:scale(1.05); }
+
+.cp-landing-lightbox {
+ position:fixed; inset:0; z-index:9999; display:none; align-items:center; justify-content:center;
+ padding:24px; background:#05070be6; backdrop-filter:blur(12px);
+}
+.cp-landing-lightbox.is-open { display:flex; }
+.cp-landing-lightbox-box {
+ position:relative; max-width:min(920px,96vw); max-height:90vh; display:flex; flex-direction:column;
+ align-items:center; gap:14px; background:#0e1420; border:1px solid #ffffff1f; border-radius:22px;
+ padding:20px; box-shadow:0 36px 90px #000c;
+}
+.cp-landing-lightbox-box img { max-height:70vh; max-width:100%; border-radius:14px; object-fit:contain; }
+.cp-landing-lightbox-caption { text-align:center; color:#dce4f0; }
+.cp-landing-lightbox-caption strong { display:block; font-size:1.05rem; margin-bottom:4px; }
+.cp-landing-lightbox-caption span { font-size:.9rem; color:#9aa6ba; }
+.cp-landing-lightbox-nav { display:flex; align-items:center; gap:10px; }
+.cp-landing-lightbox-btn {
+ display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:999px;
+ border:1px solid #ffffff22; background:#ffffff10; color:#fff; cursor:pointer; font-size:13px; font-weight:600;
+}
+.cp-landing-lightbox-btn:hover { background:#ffffff20; }
+.cp-landing-faq-actions { margin-top:16px; }
+

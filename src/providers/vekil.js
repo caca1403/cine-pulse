@@ -380,25 +380,37 @@ export async function kopruFetch(girdi, secenek = {}) {
   if (!hamUrl || kendiOriginiMi(hamUrl) || zatenKoprudeMi(hamUrl)) return tabii(girdi, opts);
   if (!/^https?:\/\//i.test(hamUrl)) return tabii(girdi, opts);
 
-  const kaynak = new Headers(opts.headers || {});
-  const referer = kaynak.get('referer') || undefined;
-  kaynak.delete('referer');
-  kaynak.delete('origin');
-  kaynak.delete('user-agent'); // proxy tarayıcı UA'sını kendisi ekler
+  // Düz nesne başlıklarını `new Headers(...)` içinden geçirmeden oku: tarayıcı ve
+  // Android WebView'da `new Headers()` Referer/Origin/Cookie/User-Agent/Sec-Fetch-*
+  // başlıklarını "yasaklı başlık" sayıp sessizce siler.
+  const ciftler = [];
+  const hamBasliklar = opts.headers;
+  if (hamBasliklar) {
+    if (typeof hamBasliklar.forEach === 'function') {
+      hamBasliklar.forEach((deger, ad) => ciftler.push([ad, deger]));
+    } else if (Array.isArray(hamBasliklar)) {
+      for (const item of hamBasliklar) if (Array.isArray(item) && item.length >= 2) ciftler.push([item[0], item[1]]);
+    } else if (typeof hamBasliklar === 'object') {
+      for (const [ad, deger] of Object.entries(hamBasliklar)) ciftler.push([ad, deger]);
+    }
+  }
 
-  // Cookie YASAKLI başlıktır: WebView'ın fetch'i bunu sessizce düşürür.
-  // Çekirdeğin kurabiyesi (ör. Zatanna/Febbox `ui` JWT'si) `headers`
-  // parametresiyle taşınır; sunucu/ağ geçidi onu hedefe `Cookie` yazar.
-  const kurabiye = kaynak.get('cookie');
-  if (kurabiye) kaynak.delete('cookie');
-
-  // CORS ön kontrolünü TETİKLEMEYEN (safelisted) başlıklar isteğin üzerinde
-  // kalır; diğer HER başlık `headers` parametresine taşınır. Böylece
-  // Cf-Control/language/site/device gibi özel başlıklar isteği düşürmez.
+  let referer;
+  let kurabiye = '';
   const istekBasliklari = new Headers();
   const ekBasliklar = {};
-  kaynak.forEach((deger, ad) => {
+  for (const [ad, deger] of ciftler) {
+    if (deger == null) continue;
+    const strDeger = String(deger);
     const kucuk = String(ad).toLowerCase();
+    if (kucuk === 'referer') {
+      referer = strDeger;
+      continue;
+    }
+    if (kucuk === 'cookie') {
+      kurabiye = strDeger;
+      continue;
+    }
     if (
       kucuk === 'content-type' ||
       kucuk === 'accept' ||
@@ -406,11 +418,11 @@ export async function kopruFetch(girdi, secenek = {}) {
       kucuk === 'content-language' ||
       kucuk === 'range'
     ) {
-      istekBasliklari.set(ad, deger);
+      istekBasliklari.set(ad, strDeger);
     } else {
-      ekBasliklar[ad] = deger;
+      ekBasliklar[ad] = strDeger;
     }
-  });
+  }
   if (kurabiye) ekBasliklar.Cookie = kurabiye;
 
   const tekIstek = (adres) => cfGerekirseDüzelt(

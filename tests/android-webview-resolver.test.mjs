@@ -33,10 +33,15 @@ test('Electron gizli Chromium resolver provider köprüsüne bağlanır ve oturu
     assert.equal(result.finalUrl, 'https://provider.example/episode');
     assert.equal(result.text, result.html);
     assert.equal(result.cookies[0].name, 'cf_clearance');
-    assert.deepEqual(calls[0], {
-      url: 'https://provider.example/episode',
-      options: { timeout: 8000, waitAfterLoad: 1000, referer: 'https://provider.example/' }
-    });
+    /* ZAMAN KIRILGANLIĞI (2026-11-14 ölçümü): üretim kodu kalan süreyi
+       `deadline - Date.now()` ile hesaplıyor; test 8000 beklerken 1 ms geçince
+       7999 geliyor ve test rastgele kırılıyordu. Bütçe ARALIK olarak doğrulanır;
+       sözleşme "timeout ~8 sn"dir, tam milisaniye değil. */
+    assert.equal(calls[0].url, 'https://provider.example/episode');
+    assert.equal(calls[0].options.waitAfterLoad, 1000);
+    assert.equal(calls[0].options.referer, 'https://provider.example/');
+    assert.ok(calls[0].options.timeout <= 8000 && calls[0].options.timeout >= 7900,
+      `timeout ~8000 olmalı, gelen: ${calls[0].options.timeout}`);
   } finally {
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;

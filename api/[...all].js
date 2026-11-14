@@ -471,6 +471,18 @@ export default async function handler(req, res) {
     if (req.headers['x-hdf-nonce']) customHeaders['X-HDF-Nonce'] = req.headers['x-hdf-nonce'];
     if (req.headers['x-requested-with']) customHeaders['X-Requested-With'] = req.headers['x-requested-with'];
 
+    const ekHam = urlObj.searchParams.get('headers');
+    if (ekHam) {
+      try {
+        const ek = JSON.parse(ekHam);
+        const yasak = new Set(['host', 'content-length', 'connection', 'accept-encoding']);
+        for (const [ad, deger] of Object.entries(ek || {})) {
+          if (!ad || typeof deger !== 'string' || yasak.has(ad.toLowerCase())) continue;
+          customHeaders[ad] = deger;
+        }
+      } catch (_) {}
+    }
+
   } else if (pathname.startsWith('/api/subtitles')) {
     // WebVTT Altyazı Vekili + OpenSubtitles Çözücüsü (çok katmanlı)
     // ------------------------------------------------------------------
@@ -805,13 +817,18 @@ export default async function handler(req, res) {
       customHeaders['Range'] = req.headers.range;
     }
     if (req.method === 'POST') {
-      if (req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
+      const reqCt = String(req.headers['content-type'] || '');
+      if (reqCt.includes('application/x-www-form-urlencoded')) {
         customHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+      } else if (reqCt.includes('application/json')) {
+        customHeaders['Content-Type'] = 'application/json';
       }
       if (Buffer.isBuffer(req.body)) {
         body = req.body.toString('utf-8');
       } else if (typeof req.body === 'object' && req.body !== null) {
-        body = new URLSearchParams(req.body).toString();
+        body = reqCt.includes('application/json')
+          ? JSON.stringify(req.body)
+          : new URLSearchParams(req.body).toString();
       } else {
         body = req.body;
       }

@@ -36,15 +36,13 @@ CinePulse; film, dizi ve anime **keşfini**, kişisel **izleme takibini**, **oyn
 - Verilerini JSON yedeğiyle başka cihaza taşıyabilirsin; Trakt eşitlemesi isteğe bağlıdır.
 - Windows, Linux ve Android paketleri aynı sürüm kaynağından üretilir; Android APK'sı mevcut yayınlarla uyumlu **kalıcı imza anahtarıyla** imzalanır.
 
-### 📸 Arayüz Kesitleri (Galeri)
+### 📸 Gerçek Cihaz Ekran Görüntüleri (Galeri)
 
 <p align="center">
-  <img src="public/images/discovery/cover.svg" alt="Modern Sinema Oynatıcısı" width="48%" style="border-radius:8px;" />
-  <img src="public/images/discovery/movies.webp" alt="Film ve Dizi Keşfi" width="48%" style="border-radius:8px;" />
-</p>
-<p align="center">
-  <img src="public/images/discovery/series.webp" alt="Bölüm Takibi ve Sezonlar" width="48%" style="border-radius:8px;" />
-  <img src="public/images/discovery/anime.webp" alt="Kişisel Kütüphane" width="48%" style="border-radius:8px;" />
+  <img src="public/images/gallery/discover.webp" alt="Keşif ve Filtreleme" width="23%" />
+  <img src="public/images/gallery/episodes.webp" alt="Bölüm Takibi ve Sezonlar" width="23%" />
+  <img src="public/images/gallery/library.webp" alt="Kişisel Kütüphane ve İstatistikler" width="23%" />
+  <img src="public/images/gallery/short-series.webp" alt="CP ÖZEL Kısa Dizi Perdesi" width="23%" />
 </p>
 
 <p align="center">
@@ -53,20 +51,21 @@ CinePulse; film, dizi ve anime **keşfini**, kişisel **izleme takibini**, **oyn
   <img src="docs/assets/get-app.svg" alt="Uygulamayı indir" height="88" />
 </p>
 
+> [!TIP]
+> **v2.0.5 Yenilikleri:** **Dublaj Zekası & Kalıcı Sicil** (`Filmmakinesi`, `HDFC`, `Selcukflix` ve yıldız kod adlı kaynaklarda kanıtlı Türkçe dublaj önceliği), **Android WebView Taşıyıcı Koruması** (header/cookie bütünlüğü) ve **Etkileşimli Web Tanıtım Merkezi** (galeri lightbox, canlı dublaj sıralama önizlemesi ve platform filtresi).
+
 ## 2. Özellikler
 
 | Özellik | Deneyim |
 | :--- | :--- |
-| **Keşif** | Film, dizi, anime, çizgi dizi, belgesel ve kısa diziler; arama, tür/yıl/puan filtreleri, trendler ve yapım ayrıntıları. |
-| **Kişisel kitaplık** | Favoriler, daha sonra izle listesi, tamamlanan yapımlar, izleme geçmişi ve kaldığın yerden devam et. |
-| **Bölüm takibi** | Sezon/bölüm seçimi, bölümleri ve sezonu izlendi işaretleme, sıradaki bölüme geçiş. |
-| **Yayın seçenekleri** | Bulunan dublajlı ve altyazılı alternatifleri ayrı listele; kaynakları sade kod adlarıyla gör. |
-| **Oynatıcı** | Destekleyen yayınlarda altyazı, ses ve hız ayarları, ileri/geri sarma, tam ekran ve ilerleme kaydı. |
-| **Çevrimdışı kitaplık** | Windows, Linux ve Android uygulamalarında desteklenen doğrudan/HLS yayınları cihaza kaydet; uygulama içindeki İndirilenler'den yönetip çevrimdışı aç. |
-| **Profiller ve çocuk profili** | Ayrı kullanım profilleri, çocuk PIN'i ve yaş/tür filtreleri. |
-| **Öneri ve eşitleme** | Kişisel öneriler; isteğe bağlı Trakt izleme geçmişi/liste eşitlemesi. |
-| **Yedekleme** | JSON olarak dışa aktar, başka kurulumda içe aktar; uygulama güncellemesi yerel verileri silmez. |
-| **Canlı TV** | Bu sürümde geçici olarak devre dışı. |
+| **Keşif & Doğal Dil Arama** | Film, dizi, anime, çizgi dizi, belgesel ve kısa diziler; arama, tür/yıl/puan filtreleri, trendler ve yapım ayrıntıları. |
+| **Dublaj Zekası & Yıldız Kaynaklar** | Kanıtlı Türkçe dublaj ve altyazılı alternatifleri ayrı ve öncelikli listele; kaynakları yıldız kod adlarıyla (`★ Sirius`, `★ Vega`...) gör. |
+| **Kişisel Öneri Motoru** | BPR + işbirlikçi filtreleme (CF) ile zevk profiline göre sıralanan kişisel öneriler. |
+| **Kişisel Kitaplık & Bölüm Takibi** | Favoriler, daha sonra izle, tamamlananlar, sezon/bölüm bazlı izlendi işaretleme ve kaldığın yerden devam et. |
+| **Spoilersız Keşfet & Karar Odası** | İzlenmemiş bölümlerin başlık/özetini gizle; arkadaşlarınla P2P Karar Odası'nda oylama yap. |
+| **Oynatıcı & Çevrimdışı Kitaplık** | Altyazı, ses ve hız ayarları; desteklenen doğrudan/HLS yayınları cihaza indirip çevrimdışı izle. |
+| **Eklentiler, P2P & Debrid** | Stremio, Nuvio ve CloudStream eklenti desteği; Android'de yerel `libtorrent` ve Real-Debrid entegrasyonu. |
+| **Profiller, Çocuk Modu & Yedekleme** | PIN korumalı çocuk profili, Trakt / AniList senkronizasyonu ve JSON dışa/içe aktarma. |
 
 ### Platform farkları
 

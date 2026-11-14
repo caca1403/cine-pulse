@@ -20,9 +20,9 @@ test('upstream signature and authorization survive without a forbidden browser p
     assert.equal(query.origin, 'http://127.0.0.1:42000');
     assert.equal(query.searchParams.get('url'), 'https://media.example/master.txt');
     const forwarded = JSON.parse(query.searchParams.get('headers'));
-    assert.equal(forwarded['x-sp'], 'signature-proof');
-    assert.equal(forwarded.authorization, 'test-token');
-    assert.equal(forwarded.referer, 'https://provider.example/');
-    assert.deepEqual(call.options.headers, { range: 'bytes=0-100' });
+    assert.equal(forwarded['X-Sp'] ?? forwarded['x-sp'], 'signature-proof');
+    assert.equal(forwarded.Authorization ?? forwarded.authorization, 'test-token');
+    assert.equal(forwarded.Referer ?? forwarded.referer, 'https://provider.example/');
+    assert.deepEqual(call.options.headers, { Range: 'bytes=0-100' });
   } finally { globalThis.window = previous; }
 });

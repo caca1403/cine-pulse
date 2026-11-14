@@ -19,7 +19,7 @@
 import { tmdbBilgi, adayBasliklar, sadeles, yilUyar } from '../ortakCekirdek.js';
 
 const AD = 'Spectre';
-const SITE = 'https://www.filmmakinesi.to';
+const SITE = 'https://filmmakinesi.to';
 const EMBED_HOST = 'closeload.filmmakinesi.to';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
@@ -58,7 +58,15 @@ async function oku(url, { ref = SITE + '/', ms = 12000 } = {}) {
   // 3) Düz fetch (web/masaüstü)
   try {
     const r = await fetch(url, {
-      headers: { 'User-Agent': UA, Accept: 'text/html,*/*', Referer: ref },
+      headers: {
+        'User-Agent': UA,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        Referer: ref,
+      },
       signal: typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(ms) : undefined,
     });
     if (!r.ok) { hata('fetch-durum', r.status); return ''; }
@@ -84,7 +92,7 @@ const norm = (s) => sadeles(String(s || '')).replace(/[^a-z0-9 ]/g, ' ').replace
 
 /* ── Arama sonucu: tip + başlık + yıl kapısı ────────────────────────────── */
 function kartSec(html, adaylar, isFilm, yil) {
-  const kalip = isFilm ? /href="(\/film\/[^"]+)"/g : /href="(\/dizi\/[^"]+)"/g;
+  const kalip = isFilm ? /href="(?:https?:\/\/[^/"]+)?(\/film\/[^"]+)"/g : /href="(?:https?:\/\/[^/"]+)?(\/dizi\/[^"]+)"/g;
   const gorulen = new Set();
   for (const m of String(html).matchAll(kalip)) {
     const yol = m[1];
