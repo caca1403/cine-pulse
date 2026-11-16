@@ -21,6 +21,7 @@
 
 import { ALANLAR } from '../alanlar.js';
 import { aktifAnahtar, siradakiAnahtar } from '../../services/icerik/tmdbApi.js';
+import { slugPuani } from '../ortakCekirdek.js';
 
 const KOD = 'Wolverine';
 const SÜRÜM = '1.0.0';
@@ -129,11 +130,6 @@ async function tabanAdresiBul() {
   return SABLON_ADRES;
 }
 
-const arındır = metin => String(metin || '')
-  .toLowerCase()
-  .replace(/&amp;/g, '&').replace(/&#0?39;/g, "'").replace(/&quot;/g, '"')
-  .replace(/[^a-z0-9ğüşöçı]/g, '');
-
 /** Adresin son parçasından dizi gövdesini (slug) ayıklar:
  *  "breaking-bad-5-sezon-16-bolum" -> "breaking-bad" */
 function gövdeyiAyır(adres) {
@@ -155,29 +151,30 @@ function aramaSonuçları(html, taban) {
     const son = adres.split('/').filter(Boolean).pop() || '';
     const sayılar = son.match(/(\d{1,2})-sezon-(\d{1,3})-bolum/i);
     if (!sayılar) continue;
-    const imza = `${sayılar[1]}x${sayılar[2]}`;
+    const gövde = gövdeyiAyır(adres);
+    // Tekilleştirme ANAHTARI gövdeyi de içerir: eskiden yalnız "1x1" olduğu
+    // için, arama sayfasında türev kart (stranger-things-tales-from-85) doğru
+    // karttan önce gelirse doğru dizinin 1x1 adayı tamamen SİLİNİYORDU ve
+    // çekirdek yanlış yapıtı açıyor, sonra onaylıyordu (ölçüldü 2026-11-16).
+    const imza = `${gövde}·${sayılar[1]}x${sayılar[2]}`;
     if (görülen.has(imza)) continue;
     görülen.add(imza);
     çıkan.push({
       adres,
       sezon: Number(sayılar[1]),
       bölüm: Number(sayılar[2]),
-      gövde: gövdeyiAyır(adres),
+      gövde,
     });
     if (çıkan.length >= 500) break;
   }
   return çıkan;
 }
 
-/** Slug aranan başlıkla ne kadar uyuşuyor? tam = 2, kök/ek = 1, yok = 0.
+/** Slug aranan başlıkla ne kadar uyuşuyor? 3 tam, 2 rakam/yıl eki, 1 türev, 0 yok.
  *  (Arama "Stranger Things" için türevi "stranger-things-tales-from-85" de
- *  döndürüyor; tam uyuşma onu elemeli.) */
+ *  döndürüyor; tam uyuşma onu geçmeli — bkz. ortakCekirdek.slugPuani.) */
 function gövdeUyar(gövde, aranan) {
-  const g = arındır(gövde), a = arındır(aranan);
-  if (!g || !a) return 0;
-  if (g === a) return 2;
-  if (g.startsWith(a) || g.includes(a) || a.startsWith(g)) return 1;
-  return 0;
+  return slugPuani(gövde, aranan);
 }
 
 /** Bölüm adresini HEAD ile doğrular; olmazsa dizi sayfasındaki listeden arar. */
@@ -284,17 +281,22 @@ async function getStreams(kimlik, tur = 'tv', season = 1, episode = 1) {
     if (!sayfa) continue;
     const adaylar = aramaSonuçları(sayfa, taban);
     if (!adaylar.length) continue;
-    // Tam slug esleşmesi once gelir: "Stranger Things" aramasi siteyi
-    // "stranger-things-tales-from-85" gibi turevlerle de dolduruyor.
+    // Önce EN YÜKSEK puanlı slug katmanı seçilir, bölüm onun içinde aranır.
+    // Eskiden `puanlı.find(sezon/bölüm)` doğrudan arama sayfasındaki HER kartta
+    // bölüm linki aradığı için, tam uyuşan kart listesinde bölüm linki yokken
+    // alt puanlı TÜREV kartının bölüm linki kazanıyordu (ölçüldü 2026-11-16:
+    // Stranger Things yerine "Tales from '85" animasyonu açılıyordu).
     const puanlı = adaylar
       .map(a => ({ ...a, puan: Math.max(...sorgular.map(s => gövdeUyar(a.gövde, s))) }))
       .filter(a => a.puan > 0)
       .sort((x, y) => y.puan - x.puan);
-    const isabet = puanlı.find(a => a.sezon === sezon && a.bölüm === bölüm);
+    const enIyiPuan = puanlı.length ? puanlı[0].puan : 0;
+    const elit = puanlı.filter(a => a.puan === enIyiPuan);
+    const isabet = elit.find(a => a.sezon === sezon && a.bölüm === bölüm);
     if (isabet) { hedef = isabet.adres; break; }
     // Dizi bulundu ama bu bolum arama listesinde yok: slug'dan uret ve dogrula.
-    if (puanlı.length) {
-      hedef = `${taban}/${puanlı[0].gövde}-${sezon}-sezon-${bölüm}-bolum/`;
+    if (elit.length) {
+      hedef = `${taban}/${elit[0].gövde}-${sezon}-sezon-${bölüm}-bolum/`;
       break;
     }
   }

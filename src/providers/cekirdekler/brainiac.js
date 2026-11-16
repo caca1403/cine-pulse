@@ -12,7 +12,7 @@
      • Master: `#EXTM3U` + varyant listesi; oynatma için Referer = site şart.
    ========================================================================== */
 
-import { tmdbBilgi, adayBasliklar, sadeles, yilUyar } from '../ortakCekirdek.js';
+import { tmdbBilgi, adayBasliklar, yilUyar, slugPuani } from '../ortakCekirdek.js';
 
 const AD = 'Brainiac';
 const SITE = 'https://www.diziyou.one';
@@ -29,9 +29,6 @@ async function oku(url, { ref = SITE + '/', ms = 12000 } = {}) {
     return '';
   }
 }
-
-const norm = (s) => sadeles(String(s || '')).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-const slugla = (s) => sadeles(String(s || '')).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 const ONBELLEK = new Map();
 const ONBELLEK_MS = 30 * 1000;
@@ -51,12 +48,17 @@ export async function getStreams(kimlik, tur = 'tv', sezon = 1, bolum = 1) {
   const s = +sezon || 1;
   const b = +bolum || 1;
 
-  /* 1) arama → DİZİ SLUG ADAYLARI
+  /* 1) arama → DİZİ SLUG ADAYLARI (puan sırayla denenir)
         Dizi sayfası çoğu zaman numara ekli olur ("breaking-bad2") ve bölüm
         bağlantıları "breaking-bad-5-sezon-16-bolum" biçiminde gelir. Tek bir
         tahmin yerine aday listesi kurulur, bölüm sayfasında oynatıcı bulan
-        ilk aday kullanılır (ölçüldü 2026-10-29: tahmin "breaking-bad" yanlıştı). */
-  const slugAdaylari = [];
+        ilk aday kullanılır (ölçüldü 2026-10-29: tahmin "breaking-bad" yanlıştı).
+        PUAN ŞART (ölçüldü 2026-11-16): "stranger things" araması türevi
+        "stranger-things-tales-from-85" de döndürüyor; HTML sırasında önce
+        geldiği için çekirdek animasyon spinoff'unun oynatıcısını (155901)
+        açıyordu — gerçek dizi 40901. "İçerir" yerine slugPuani sıralaması
+        tam uyuşmayı her zaman öne alır. */
+  const slugPuan = new Map();
   for (const soru of adaylar.slice(0, 2)) {
     const html = await oku(`${SITE}/?s=${encodeURIComponent(soru)}`);
     if (!html) continue;
@@ -64,19 +66,20 @@ export async function getStreams(kimlik, tur = 'tv', sezon = 1, bolum = 1) {
       .filter((y) => !/^(search|category|tag|page|feed|wp-|dizi|film|player)/.test(y));
     for (const yol of yollar) {
       const temel = yol.replace(/-\d+-sezon-\d+-bolum$/, '');
-      const bAd = norm(temel);
-      const esles = adaylar.some((a) => { const n = norm(a); return n && (bAd.includes(n) || n.includes(bAd)); });
-      if (!esles) continue;
+      const puan = slugPuani(temel, adaylar);
+      if (!puan) continue;
       const yilEs = temel.match(/(?:^|-)((?:19|20)\d{2})(?:-|$)/);
       if (bilgi?.yil && yilEs && !yilUyar(Number(yilEs[1]), bilgi.yil)) continue;
-      if (!slugAdaylari.includes(temel)) slugAdaylari.push(temel);
-      // Numara ekli dizi sayfası ("breaking-bad2") genelde doğru olanıdır: öne al.
-      if (!slugAdaylari.includes(yol.replace(/-\d+-sezon-\d+-bolum$/, ''))) slugAdaylari.push(yol);
+      // Numara ekli dizi sayfası ("breaking-bad2") genelde doğru olanıdır: puanı 2.
+      slugPuan.set(temel, Math.max(slugPuan.get(temel) || 0, puan));
     }
-    if (slugAdaylari.length) break;
+    if (slugPuan.size) break;
   }
   // Tam başlık eşleşmesi olan adaylar önce denenir (kısa liste)
-  const denenecekSluglar = slugAdaylari.slice(0, 4);
+  const denenecekSluglar = [...slugPuan.entries()]
+    .sort((x, y) => y[1] - x[1])
+    .map(([slug]) => slug)
+    .slice(0, 4);
 
   /* 2) bölüm sayfası → oynatıcı id (ilk oynatıcı bulan aday kazanır) */
   let oynaticiId = '';

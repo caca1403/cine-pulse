@@ -250,6 +250,77 @@ export function yilUyar(sozYil, hedefYil) {
   return !s || Math.abs(s - hedefYil) <= 1;
 }
 
+/* ── Slug/başlık uyuşma PUANI ────────────────────────────────────────────
+   ÖLÇÜLEN HATA (2026-11-16): diziyou "stranger things" aramasında doğru
+   dizinin yanısıra türevini de döndürüyor —
+     /stranger-things/                  → oynatıcı 40901 (GERÇEK, ~49 dk)
+     /stranger-things-tales-from-85/    → oynatıcı 155901 (animasyon, ~31 dk)
+   Çekirdekler "içerir" mantığıyla ikisini aynı görüp türevi seçiyordu ve
+   kullanıcı ekranda BAŞKA bir yapıt izliyordu. "İçerir" yeterli değil;
+   uyuşma puanlanır ve en yüksek puanlı aday denenir. */
+
+/** Rakam/yıl/sezon-bölüm-dönüm gibi "aynı eserin eki" sayılan kelime mi?
+    Harf içeren her ek ("tales", "85" hariç) türev işaretidir. */
+function ekGurultuMu(kelime) {
+  return /^\d+$/.test(kelime)
+    || /^(sezon|season|sezonu|part|kisim|bolum|bolumu|episode|ep|film|filmi|movie|dizi|dizisi|ozel|ozelbolum|final|finale|special|bonus|extra|v2|ii|iii|iv)$/.test(kelime);
+}
+
+/** Kelimelere ayırır: Türkçe harfleri sadeleştirir, HTML öğelerini çözer,
+    rakam yığınlarını ayırır ("breaking-bad2" → breaking bad 2), ayraçları
+    tek boşluğa indirger. */
+export function kelimeListesi(metin) {
+  return sadeles(String(metin || '')
+    .replace(/&amp;/g, '&').replace(/&#0?39;/g, "'").replace(/&quot;/g, '"'))
+    .replace(/[_\-/.]/g, ' ')
+    .replace(/([a-z])(\d)/g, '$1 $2')
+    .replace(/(\d)([a-z])/g, '$1 $2')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
+}
+
+/** Kelimeleri ünsüz iskeletine indirir: TR sitelerinde "Aşk" hem "ask" hem
+    "asik" yazılabiliyor; ünlü farkı AYNI ESER engeli değildir. Yalnız kısa
+    olmayan kelimelerde kullanılır (yanlış eşleşme üretmesin diye). */
+const iskelet = (kelime) => kelime.replace(/[aeıioöuü]/g, '');
+const iskeletUyar = (x, y) => x.length >= 3 && y.length >= 3 && iskelet(x) === iskelet(y);
+
+/** (gövde veya başlık, aday başlıklar[]) → 0..3
+      3 tam uyuşma, 2 yalnız rakam/yıl/sezon eki farkı, 1 türev/ek ad
+      (birinin devamı), 0 alaka yok. Türev, tam uyuşma VARKEN asla seçilmez;
+      ama tek aday oyorsa kaynak tamamen kaybolmasın diye 1 ile hayatta kalır. */
+export function slugPuani(govde, arananlar) {
+  const a = kelimeListesi(govde);
+  if (!a.length) return 0;
+  const sorular = (Array.isArray(arananlar) ? arananlar : [arananlar]).map(kelimeListesi).filter(x => x.length);
+  let eniyi = 0;
+  for (const b of sorular) {
+    const uzun = Math.min(a.length, b.length);
+    const on = a.slice(0, uzun).join(' ') === b.slice(0, uzun).join(' ');
+    if (a.length === b.length && on) { eniyi = Math.max(eniyi, 3); continue; }
+    const [uzunTaraf, kisaTaraf] = a.length >= b.length ? [a, b] : [b, a];
+    if (on) {
+      const ekstralar = uzunTaraf.slice(kisaTaraf.length);
+      if (ekstralar.length && ekstralar.every(ekGurultuMu)) { eniyi = Math.max(eniyi, 2); continue; }
+    }
+    // Aynı kelime sayısı ama ünlü yazımı farklı ("kiralik asik" ~ "kiralik ask").
+    if (a.length === b.length && a.every((k, i) => k === b[i] || iskeletUyar(k, b[i]))) {
+      eniyi = Math.max(eniyi, 2);
+      continue;
+    }
+    const dizideMi = (kisa, uzunT) => {
+      for (let i = 0; i + kisa.length <= uzunT.length; i += 1) {
+        if (uzunT.slice(i, i + kisa.length).join(' ') === kisa.join(' ')) return true;
+      }
+      return false;
+    };
+    if (a.length >= b.length ? dizideMi(b, a) : dizideMi(a, b)) eniyi = Math.max(eniyi, 1);
+  }
+  return eniyi;
+}
+
 /* ── HTML yardımcılarının en küçüğü ────────────────────────────────────── */
 
 /* ── Yayın adresi yardımcıları ─────────────────────────────────────────── */
