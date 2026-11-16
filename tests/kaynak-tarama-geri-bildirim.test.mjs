@@ -401,15 +401,17 @@ test('kaynak yok ve her şey boş: varsayılan dürüst satır + rehber', async 
   assert.match(metin, /Farklı bir sezon\/bölüm deneyin veya daha sonra tekrar deneyin/);
 });
 
-test('DetailView: kaynakListesi.baslat() sekme açılmasını beklemez (koşulsuz)', () => {
+test('DetailView: kaynak paneli kaldırıldı — oynatıcı DOĞRUDAN açılır (2026-11-14)', () => {
   const detailView = fs.readFileSync(path.join(KOK, 'src/views/DetailView.js'), 'utf8');
-  // kaynakListesiOlustur bloğunun hemen ardından koşulsuz çağrı var
-  assert.match(detailView,
-    /\/\/ Detay sayfası açılışında kaynak taraması koşulsuz başlar —[\s\S]{0,300}?kaynakListesi\.baslat\(\);/);
-  // mevcut 3 çağrı (sekme açılışı, IntersectionObserver, sekme tıklaması) +
-  // yeni koşulsuz çağrı = 4
-  const cagriSayisi = (detailView.match(/kaynakListesi\.baslat\(\);/g) || []).length;
-  assert.equal(cagriSayisi, 4, 'baslat() çağrıları sayısı değişmemeli (3 eski + 1 yeni)');
+  // KAYNAKLAR sekmesi/paneli ve kaynak listesi bileşeni detaydan TAMAMEN çıktı
+  // (kullanıcı 2026-11-14: "detayda yalnız bölüm yönetimi; kaynak player içinde").
+  assert.ok(!detailView.includes('kaynakListesiOlustur'), 'kaynakListesiOlustur artık kullanılmamalı');
+  assert.ok(!detailView.includes('kaynakListesi.baslat'), 'kaynak taraması detayda artık koşmaz (oynatıcı koşar)');
+  assert.ok(!detailView.includes('data-panel="sources"'), 'KAYNAKLAR paneli çizilmemeli');
+  // Oynatma yolları doğrudan oynatıcıyı açar: İzle/Devam Et ve bölüm kartı.
+  assert.match(detailView, /playMovieBtn\.addEventListener\('click', \(event\) => \{[\s\S]{0,120}?openMovie\(\);/);
+  assert.match(detailView, /resumeSeriesBtn\.addEventListener\('click', event => \{[\s\S]{0,120}?openSeries\(\);/);
+  assert.match(detailView, /cp:kaynak-bolum'[\s\S]{0,400}?bolumOynat\(/);
 });
 
 /* ----------------------------------------------------------------

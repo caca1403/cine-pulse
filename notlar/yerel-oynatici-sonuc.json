@@ -1,0 +1,60 @@
+{
+ "ozet": {
+  "tarih": "2026-11-16T14:43:48.564Z",
+  "hedef": "http://127.0.0.1:3000/",
+  "toplam": 2,
+  "oynaticiAcilan": 2,
+  "hatasiz": 1,
+  "sayfaHatalari": [
+   "console.error: [Constantine] Hata: Unexpected end of JSON input "
+  ]
+ },
+ "sonuclar": [
+  {
+   "ad": "Game of Thrones",
+   "yol": "#detail/tv/1399",
+   "sayfaHatasi": 0,
+   "tiklama": {
+    "tiklandi": true
+   },
+   "oynatici": {
+    "acildi": true,
+    "videoVar": false,
+    "sn": 0
+   },
+   "dilMenusu": {
+    "modalMetri": 0,
+    "dublajEtiket": false,
+    "altyaziEtiket": false,
+    "ozgunEtiket": false,
+    "kaynakMenuVar": false
+   },
+   "yeniSayfaHatasi": [],
+   "basarili": true
+  },
+  {
+   "ad": "Fight Club",
+   "yol": "#detail/movie/550",
+   "sayfaHatasi": 0,
+   "tiklama": {
+    "tiklandi": true
+   },
+   "oynatici": {
+    "acildi": true,
+    "videoVar": false,
+    "sn": 0
+   },
+   "dilMenusu": {
+    "modalMetri": 46,
+    "dublajEtiket": false,
+    "altyaziEtiket": false,
+    "ozgunEtiket": false,
+    "kaynakMenuVar": true
+   },
+   "yeniSayfaHatasi": [
+    "console.error: [Constantine] Hata: Unexpected end of JSON input "
+   ],
+   "basarili": false
+  }
+ ]
+}

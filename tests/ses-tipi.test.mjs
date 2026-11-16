@@ -43,10 +43,10 @@ test('yerli (Türk) kaynak kategoriye göre etiketlenir', () => {
 });
 
 test('etiket metinleri: üç durum, doğru karşılık', () => {
-  assert.equal(sesTipiEtiketi('dublaj'), '🇹🇷 Türkçe Dublaj');
-  assert.equal(sesTipiEtiketi('altyazi'), '💬 Türkçe Altyazı');
-  assert.equal(sesTipiEtiketi('ozgun'), '🌐 Özgün Dil');
-  assert.equal(sesTipiEtiketi(undefined), '🌐 Özgün Dil');
+  assert.equal(sesTipiEtiketi('dublaj'), '🎙️ Türkçe Dublaj');
+  assert.equal(sesTipiEtiketi('altyazi'), '💬 Orijinal + Altyazı');
+  assert.equal(sesTipiEtiketi('ozgun'), '🌐 Özgün');
+  assert.equal(sesTipiEtiketi(undefined), '🌐 Özgün');
 });
 
 test('eksik/bozuk kaynak çökmez → Özgün Dil', () => {

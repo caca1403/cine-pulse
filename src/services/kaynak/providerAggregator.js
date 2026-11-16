@@ -86,11 +86,14 @@ export function sesTipiBul(srv, category = '') {
   return 'ozgun';                                  // Türkçe iz yok → Özgün Dil
 }
 
-/** sesTipiBul çıktısının kullanıcıya görünen etiketi. */
+/** sesTipiBul çıktısının kullanıcıya görünen etiketi. İki seçenekli dil modeli
+ *  (kullanıcı 2026-11-14): 🎙️ Türkçe Dublaj · 💬 Orijinal + Altyazı. TR altyazı
+ *  izi olan kaynak ORİJİNAL ses + TR altyazı demektir; Türkçe izi hiç olmayan
+ *  '🌐 Özgün' olarak dürüst kalır (sahte altyazı iddiası yok). */
 export function sesTipiEtiketi(tip) {
-  if (tip === 'dublaj') return '🇹🇷 Türkçe Dublaj';
-  if (tip === 'altyazi') return '💬 Türkçe Altyazı';
-  return '🌐 Özgün Dil';
+  if (tip === 'dublaj') return '🎙️ Türkçe Dublaj';
+  if (tip === 'altyazi') return '💬 Orijinal + Altyazı';
+  return '🌐 Özgün';
 }
 
 /** Yayın adında/etiketinde altyazı işareti. Bulunursa yayın altyazı sekmesine
@@ -256,6 +259,14 @@ async function izleriOlc(streamUrl) {
     const res = await fetch(key, { signal: c.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
     clearTimeout(zaman);
     const metin = ((res && typeof res.text === 'function') ? await res.text() : '') || '';
+    // OKUMA GEÇERLİLİĞİ (doğrulama raporu 2026-11-16): res.ok olmayan veya
+    // #EXTM3U sihirli dizesi taşımayan gövde (HTML hata sayfası, 200 dönen
+    // captcha) "iz yok" DEĞİLDİR — {bilinmiyor} döner ve cache'lenmez, böylece
+    // bir sonraki taramada dürüstçe yeniden ölçülür. Eskiden bu gövdeler sonsuza
+    // dek "Türkçe iz yok" olarak cache'lenip dublaj/altyazı tespitini öldürüyordu.
+    if (!res || res.ok !== true || !/#EXTM3U/i.test(metin.slice(0, 2048))) {
+      return { ses: null, altyazi: null, bilinmiyor: true };
+    }
     for (const satir of metin.split('\n')) {
       if (!/#EXT-X-MEDIA/i.test(satir)) continue;
       const tr = /LANGUAGE=(?:"|')(?:tr|tur)(?:"|')|(?:NAME|GROUP-ID)=(?:"|')[^"'|]*turk/i.test(satir);

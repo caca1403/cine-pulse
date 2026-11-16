@@ -1,7 +1,7 @@
 {
   "name": "cinepulse-studio",
   "private": true,
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "CinePulse Studio - yerli ve global kaynakli hibrit medya merkezi",
   "author": {
     "name": "CinePulse Studio",
@@ -50,6 +50,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",
+    "acorn": "^8.19.0",
     "electron": "^34.3.0",
     "electron-builder": "^25.1.8",
     "vite": "^5.1.4"
@@ -106,15 +107,42 @@
         "--talk-name=org.freedesktop.Notifications"
       ],
       "files": [
-        ["public/com.cinepulse.studio.metainfo.xml", "/share/metainfo/com.cinepulse.studio.metainfo.xml"],
-        ["public/com.cinepulse.studio.metainfo.xml", "/share/appdata/com.cinepulse.studio.appdata.xml"],
-        ["build/icons/scalable.svg", "/share/icons/hicolor/scalable/apps/com.cinepulse.studio.svg"],
-        ["build/icons/512x512.png", "/share/icons/hicolor/512x512/apps/com.cinepulse.studio.png"],
-        ["build/icons/256x256.png", "/share/icons/hicolor/256x256/apps/com.cinepulse.studio.png"],
-        ["build/icons/128x128.png", "/share/icons/hicolor/128x128/apps/com.cinepulse.studio.png"],
-        ["build/icons/64x64.png", "/share/icons/hicolor/64x64/apps/com.cinepulse.studio.png"],
-        ["build/icons/32x32.png", "/share/icons/hicolor/32x32/apps/com.cinepulse.studio.png"],
-        ["build/icons/16x16.png", "/share/icons/hicolor/16x16/apps/com.cinepulse.studio.png"]
+        [
+          "public/com.cinepulse.studio.metainfo.xml",
+          "/share/metainfo/com.cinepulse.studio.metainfo.xml"
+        ],
+        [
+          "public/com.cinepulse.studio.metainfo.xml",
+          "/share/appdata/com.cinepulse.studio.appdata.xml"
+        ],
+        [
+          "build/icons/scalable.svg",
+          "/share/icons/hicolor/scalable/apps/com.cinepulse.studio.svg"
+        ],
+        [
+          "build/icons/512x512.png",
+          "/share/icons/hicolor/512x512/apps/com.cinepulse.studio.png"
+        ],
+        [
+          "build/icons/256x256.png",
+          "/share/icons/hicolor/256x256/apps/com.cinepulse.studio.png"
+        ],
+        [
+          "build/icons/128x128.png",
+          "/share/icons/hicolor/128x128/apps/com.cinepulse.studio.png"
+        ],
+        [
+          "build/icons/64x64.png",
+          "/share/icons/hicolor/64x64/apps/com.cinepulse.studio.png"
+        ],
+        [
+          "build/icons/32x32.png",
+          "/share/icons/hicolor/32x32/apps/com.cinepulse.studio.png"
+        ],
+        [
+          "build/icons/16x16.png",
+          "/share/icons/hicolor/16x16/apps/com.cinepulse.studio.png"
+        ]
       ]
     },
     "files": [
@@ -141,5 +169,5 @@
       "runAfterFinish": true
     }
   },
-  "versionCode": 207
+  "versionCode": 208
 }

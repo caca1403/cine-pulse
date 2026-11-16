@@ -9,7 +9,7 @@ import { renderIcons } from '../services/kabuk/icons.js';
 import { fetchMediaDetails, getImageUrl, TMDB_IMAGE_SIZES, SINEFLIX_ACTOR_FALLBACK, generateCinematicOverview } from '../services/icerik/tmdbApi.js';
 import { isFavorite, toggleFavorite, isWatchlist, toggleWatchlist, getLastWatchedEpisode, getMediaProgress, formatSecondsToTime, isMediaWatched, toggleEpisodeWatched, markAllEpisodesWatched, isEntireSeriesWatched, setMediaHalfway, registerAnimeId, isRegisteredAnimeId } from '../services/altyapi/storage.js';
 import { renderSeasonSelector } from '../components/SeasonSelector.js';
-import { kaynakListesiOlustur } from '../components/kaynakListesi.js';
+
 import { renderMediaCard, attachMediaCardEvents, isAnimeItem } from '../components/MediaCard.js';
 import { openPlayerModal } from '../components/openPlayer.js';
 import { openCastExplorerModal } from '../components/CastExplorerModal.js';
@@ -207,13 +207,8 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
 
   const recommendations = media.recommendations ? media.recommendations.results.slice(0, 6) : [];
 
-  // Kaynak sekmesi TV için sezon/bölüm seçicisi: varsayılan kaldığı yer.
-  const kaynakSezon = lastWatchedEp?.season || 1;
-  const kaynakBolum = lastWatchedEp?.episode || 1;
-  const kaynakSezonlari = (media.seasons || []).filter(s => s.season_number > 0);
-  if (kaynakSezonlari.length === 0 && (media.seasons || []).length > 0) kaynakSezonlari.push(media.seasons[0]);
-  const kaynakBolumSecenekleri = (adet) => Array.from({ length: adet || 10 }, (_, i) =>
-    `<option value="${i + 1}" ${i + 1 === kaynakBolum ? 'selected' : ''}>${i + 1}. Bölüm</option>`).join('');
+  // Kaynak sekmesi kaldırıldı (kullanıcı 2026-11-14): sezon/bölüm seçicisi ve
+  // tarama yardımcıları artık gereksiz — oynatıcı bölüm bilgisiyle açılır.
 
   // Sekmeler: içerik yığılmaz. Varsayılan eski davranış — dizide bölümler, filmde oyuncular.
   const varsayilanSekme = (effectiveType === 'tv' && seasonSelectorObj) ? 'episodes' : 'cast';
@@ -349,7 +344,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
                 <span>Yarıda</span>
               </button>
             </div>
-            <p class="dt-oynat-alt">Aşağıdaki KAYNAKLAR sekmesinden yayın seçin; oynatıcı seçtiğiniz kaynakla açılır.</p>
+            <p class="dt-oynat-alt">Oynat'a bas; yayın otomatik bulunur ve başlar. Kaynak ve dil (dublaj/altyazı) seçimi oynatıcının içindedir.</p>
 
             <span id="detail-next-episode-badge" class="dt-yeni-bolum" style="display:none;"></span>
 
@@ -375,10 +370,11 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
       </header>
 
       <div class="dt-govde">
-        <!-- Sekme çubuğu: KAYNAKLAR / BÖLÜMLER / GENEL BAKIŞ (+fragman, benzer, kadro).
-             data-tab/data-panel sözleşmesi eski sekmelerle birebir aynı. -->
+        <!-- Sekme çubuğu: BÖLÜMLER / GENEL BAKIŞ (+fragman, benzer, kadro).
+             KAYNAKLAR sekmesi kaldırıldı (kullanıcı 2026-11-14): kaynak ve dil
+             seçimi tamamen oynatıcının iç menüsünde; detayda yalnız bölüm
+             yönetimi kaldı. data-tab/data-panel sözleşmesi aynı. -->
         <nav class="dt-sekmeler cps-sekme-cubugu" aria-label="Detay bölümleri">
-          ${sekmeDugmesi('sources', 'KAYNAKLAR')}
           ${effectiveType === 'tv' && seasonSelectorObj ? sekmeDugmesi('episodes', 'BÖLÜMLER') : ''}
           ${sekmeDugmesi('overview', 'GENEL BAKIŞ')}
           ${sekmeDugmesi('trailers', 'FRAGMANLAR')}
@@ -386,35 +382,6 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           ${sekmeDugmesi('cast', 'OYUNCULAR')}
         </nav>
 
-        <!-- KAYNAKLAR: kart tıklaması oynatıcıyı seçilen kaynakla açar (madde 1
-             sözleşmesi init içinde: cp-landscape-gecis + taramaKarti + cp:kaynak-sayac) -->
-        <section class="dt-panel cps-bolum cps-kaynaklar cps-sekme-panel" id="cps-kaynaklar" data-panel="sources"${panelGizli('sources')}>
-          <div class="cps-bolum-basligi">
-            <h2 class="cps-bolum-baslik">Yayın kaynakları</h2>
-            <p class="cps-bolum-alt">Bir kaynak seçin; oynatıcı seçtiğiniz kaynakla açılır.</p>
-          </div>
-
-          ${effectiveType === 'tv' ? `
-            <div class="kaynak-bolum-cubugu" id="kaynak-bolum-cubugu">
-              <label class="kaynak-bolum-alan">
-                <span>Sezon</span>
-                <select id="kaynak-sezon-secim">
-                  ${kaynakSezonlari.map(season => `
-                    <option value="${season.season_number}" ${season.season_number === kaynakSezon ? 'selected' : ''}>${season.season_number}. Sezon</option>
-                  `).join('')}
-                </select>
-              </label>
-              <label class="kaynak-bolum-alan">
-                <span>Bölüm</span>
-                <select id="kaynak-bolum-secim">
-                  ${kaynakBolumSecenekleri(kaynakSezonlari.find(s => s.season_number === kaynakSezon)?.episode_count)}
-                </select>
-              </label>
-            </div>
-          ` : ''}
-
-          <div class="kaynak-liste-kok" id="kaynak-liste-kok"></div>
-        </section>
 
         ${effectiveType === 'tv' && seasonSelectorObj ? `
           <section class="dt-panel cps-bolum cps-sekme-panel" id="cps-bolumler" data-panel="episodes"${panelGizli('episodes')}>
@@ -639,143 +606,69 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
       }
       let decisionRoomAutoplay = consumeDecisionRoomAutoplay(effectiveType, id);
 
-      // ── KAYNAKLAR sekmesi (2026-10-27) ───────────────────────────────────
-      // Kaynak listesi oynatıcının içinden detay sayfasına taşındı. Tarama
-      // detay açılışında koşulsuz başlar (ilk çizimden hemen sonra; aşağıdaki
-      // kaynakListesi.baslat() çağrısı). baslat()'ın durum.baslatildi koruması
-      // sayesinde çift tarama olmaz: sekme tıklaması ve IntersectionObserver
-      // çağırmaları aynı taramayı tekrar başlatmaz (55 çekirdek × 75 sn
-      // bütçe sayfayı dondurmasın).
-      let kaynakSecimi = { sezon: kaynakSezon, bolum: kaynakBolum };
-
-      // ── Madde 1 sözleşmesi (kullanıcı 2026-10-28) ──────────────────────────
-      // Kaynak kartına tıklanınca: (1) yatay kilit İZNİ (Capacitor WebView
-      // reddedebilir — asıl garanti native tarafta; yalnız iyileştirme),
-      // (2) body'e cp-landscape-gecis: CSS SADECE karartma + spinner gösterir,
-      // içerik döndürülmez (dokunmatik koordinatlar kaymasın), (3) openPlayerModal
-      // SON parametre olarak taramaKarti alır (PlayerModal/Agent C sözleşmesi).
-      // Ayrıca 500 ms'de bir kaynak sayısı 'cp:kaynak-sayac' olayıyla bildirilir;
-      // ilk kareyi belirten .native-hazir sınıfı görününce, 12 sn dolunca veya
-      // 'cp-native-hata' gelince sayaç VE geçiş sınıfı temizlenir (sızıntı yok).
-      let sayacAraligi = null;
-      let sayacUstSinir = null;
-      let sayacHataDinleyici = null;
-      const kaynakSayaciniDurdur = () => {
-        if (sayacAraligi) { clearInterval(sayacAraligi); sayacAraligi = null; }
-        if (sayacUstSinir) { clearTimeout(sayacUstSinir); sayacUstSinir = null; }
-        if (sayacHataDinleyici) {
-          window.removeEventListener('cp-native-hata', sayacHataDinleyici);
-          sayacHataDinleyici = null;
-        }
+      // ── DOĞRUDAN OYNAT (kullanıcı 2026-11-14) ─────────────────────────────
+      // Kaynak paneli/sekmesi detay sayfasından TAMAMEN kaldırıldı: burada
+      // yalnız bölüm yönetimi kalır. Oynat'a ya da bir bölüm kartına dokununca
+      // oynatıcı açılır; tarama, kaynak seçimi ve dil (🎙️ Türkçe Dublaj /
+      // 💬 Orijinal + Altyazı) oynatıcının içinde OTOMATİK yürür — kullanıcı
+      // hiçbir kaynakla uğraşmaz.
+      // Yatay geçiş (madde 1): karartma + spinner; ilk kare (cp:native-hazir),
+      // native hata ya da 12 sn üst sınırıyla temizlenir.
+      let gecisUstSinir = null;
+      const gecisTemizle = () => {
+        if (gecisUstSinir) { clearTimeout(gecisUstSinir); gecisUstSinir = null; }
         document.body.classList.remove('cp-landscape-gecis');
       };
-      const kaynakSayaciniBaslat = () => {
-        kaynakSayaciniDurdur();
+      const yatayGecisBaslat = () => {
+        gecisTemizle();
+        try {
+          const yonlendirme = window.screen?.orientation;
+          if (yonlendirme && typeof yonlendirme.lock === 'function') {
+            Promise.resolve(yonlendirme.lock('landscape')).catch(() => {});
+          }
+        } catch (_) { /* kilit desteklenmiyor/reddedildi — akışı engellemez */ }
         document.body.classList.add('cp-landscape-gecis');
-        const gonder = () => {
-          window.dispatchEvent(new CustomEvent('cp:kaynak-sayac', {
-            detail: { adet: kaynakListesi.kaynaklar().length, kaynakMi: true }
-          }));
-        };
-        gonder();
-        sayacAraligi = setInterval(() => {
-          // Detay sayfası yönlendirmeyle söküldüyse sızıntı bırakma.
-          if (!container.isConnected) { kaynakSayaciniDurdur(); return; }
-          gonder();
-          // native-hazir: PlayerModal sahnesine ilk kare gelince eklenen sınıf
-          // (PlayerModal.js native-hazir) — ilk kare işareti.
-          if (document.querySelector('.native-hazir')) kaynakSayaciniDurdur();
-        }, 500);
-        sayacUstSinir = setTimeout(kaynakSayaciniDurdur, 12000);
-        sayacHataDinleyici = () => kaynakSayaciniDurdur();
-        window.addEventListener('cp-native-hata', sayacHataDinleyici);
+        window.addEventListener('cp:native-hazir', gecisTemizle, { once: true });
+        window.addEventListener('cp-native-hata', gecisTemizle, { once: true });
+        gecisUstSinir = setTimeout(gecisTemizle, 12000);
       };
-      const kaynakListesi = kaynakListesiOlustur({
-        kok: container.querySelector('#kaynak-liste-kok'),
-        // Oynatıcının keşfiyle aynı tür: anime çekirdekleri öne alınsın
-        // (vekil.js anime sıralaması yalnız 'anime' türünde devreye girer).
-        tur: isAnime ? 'anime' : effectiveType,
-        tmdbId: id,
-        imdbId: media.external_ids?.imdb_id || '',
-        sezon: kaynakSecimi.sezon,
-        bolum: kaynakSecimi.bolum,
+      detailTemizlikKaydet(gecisTemizle);
+
+      // Tarama kartı bilgisi: oynatıcı kendi tarama sayacını 'cp:kaynak-sayac'
+      // olayıyla kendisi duyurur (kaynak paneli olmadığı için burada sayı yok).
+      const taramaKartiBilgisi = (altBaslik) => ({
         baslik: title,
-        orijinalBaslik: originalTitle,
-        onKaynakSec: (kaynak) => {
-          // Madde 1 sırası (kullanıcı 2026-10-28): 1) yatay kilit izni (yalnız
-          // iyileştirme — Capacitor WebView reject edebilir, asıl garanti native),
-          // 2) karartma+spinner geçiş sınıfı + kaynak sayacı, 3) oynatıcı çağrısı.
-          try {
-            const yonlendirme = window.screen?.orientation;
-            if (yonlendirme && typeof yonlendirme.lock === 'function') {
-              Promise.resolve(yonlendirme.lock('landscape')).catch(() => {});
-            }
-          } catch (_) { /* kilit desteklenmiyor/ reddedildi — akışı engellemez */ }
-          kaynakSayaciniBaslat();
-          const ortak = {
-            type: isAnime ? 'anime' : effectiveType,
-            isAnime,
-            tmdbId: id,
-            seriesTitle: title,
-            originalTitle,
-            posterPath: media.poster_path,
-            backdropPath: media.backdrop_path,
-            // Hazır havuz: oynatıcı YENİDEN tarama yapmaz, seçilen satırdan başlar.
-            hazirKaynaklar: kaynakListesi.kaynaklar(),
-            secilenKaynak: kaynak
-          };
-          const istek = effectiveType === 'movie'
-            ? (() => {
-              const progress = getMediaProgress(id, 1, 1);
-              return {
-                ...ortak,
-                title,
-                duration: movieDurationSec,
-                currentTime: progress ? progress.currentTime : 0
-              };
-            })()
-            : (() => {
-              const { sezon, bolum } = kaynakSecimi;
-              const progress = getMediaProgress(id, sezon, bolum);
-              return {
-                ...ortak,
-                title: `${title} - S${sezon}E${bolum}`,
-                season: sezon,
-                episode: bolum,
-                currentTime: progress ? progress.currentTime : 0,
-                seasonsList: media.seasons || []
-              };
-            })();
-          // Sözleşme: openPlayerModal'ın SON parametresi opsiyonel taramaKarti
-          // {baslik, posterUrl, altBaslik, kaynakSayisi} — PlayerModal tarafını
-          // Agent C uygulayacak; henüz yoksa fazladan argüman zararsızdır.
-          const taramaKarti = {
-            baslik: title,
-            posterUrl: media.poster_path
-              ? getImageUrl(media.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL)
-              : '',
-            altBaslik: effectiveType === 'movie'
-              ? ''
-              : `Sezon ${kaynakSecimi.sezon} · Bölüm ${kaynakSecimi.bolum}`,
-            kaynakSayisi: kaynakListesi.kaynaklar().length
-          };
-          // Hata olursa mevcut yol aynen devam eder (regresyon yok); tek fark:
-          // geçiş sınıfı ve sayaç burada temizlenir (sızıntı bırakma).
-          Promise.resolve(openPlayerModal(istek, taramaKarti)).catch((err) => {
-            console.error('[CinePulse] Kaynak açılamadı:', err);
-            showToast('Oynatıcı açılırken hata oluştu, lütfen tekrar deneyin.', 'error');
-            kaynakSayaciniDurdur();
-          });
-        }
+        posterUrl: media.poster_path
+          ? getImageUrl(media.poster_path, TMDB_IMAGE_SIZES.POSTER_SMALL)
+          : '',
+        altBaslik,
       });
 
-      // Detay sayfası açılışında kaynak taraması koşulsuz başlar —
-      // KAYNAKLAR sekmesini açmayı beklenmez. baslat() idempotenttur
-      // (durum.baslatildi): sekme tıklaması, IntersectionObserver ve bölüm
-      // değişikliği aynı taramayı ikinci kez başlatmaz.
-      kaynakListesi.baslat();
-      // Route değişiminde taramayı durdur ve detached DOM'a yazımı kes.
-      detailTemizlikKaydet(() => { try { kaynakListesi.yokEt(); } catch (_) {} });
+      // Bölüm kartından gelen doğrudan oynatma: oynatıcı o bölümle açılır.
+      const bolumOynat = async (sezonNum, bolumNum) => {
+        yatayGecisBaslat();
+        const progress = getMediaProgress(id, sezonNum, bolumNum);
+        try {
+          await openPlayerModal({
+            type: isAnime ? 'anime' : 'tv',
+            isAnime,
+            tmdbId: id,
+            title: `${title} - S${sezonNum}E${bolumNum}`,
+            seriesTitle: title,
+            originalTitle,
+            season: sezonNum,
+            episode: bolumNum,
+            posterPath: media.poster_path,
+            backdropPath: media.backdrop_path,
+            currentTime: progress ? progress.currentTime : 0,
+            seasonsList: media.seasons || []
+          }, taramaKartiBilgisi(`Sezon ${sezonNum} · Bölüm ${bolumNum}`));
+        } catch (err) {
+          console.error('[CinePulse] Bölüm açılamadı:', err);
+          showToast('İçerik açılırken hata oluştu, lütfen tekrar deneyin.', 'error');
+          gecisTemizle();
+        }
+      };
 
       // ── Sekmeler ─────────────────────────────────────────────────────────
       // Jenerik data-tab mekanizması: aynı data-panel'e sahip tüm bloklar
@@ -803,30 +696,10 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
         cubuguGoster();
       };
 
-      // Devam Et / bölüm seçimi: KAYNAKLAR sekmesi. Çubuk ekranda ise kaydırma
-      // yok — kaynak listesi sekmede hazır; yalnız hero'dan gelirken çubuk getirilir.
-      const kaynaklarSekmesineGec = () => {
-        sekmeleriGec('sources');
-        kaynakListesi.baslat();
-      };
-
-      // Kaynak taraması yalnız KAYNAKLAR sekmesi ilk kez görünür olunca başlar.
-      const kaynakBolumKok = container.querySelector('#cps-kaynaklar');
-      if (kaynakBolumKok && 'IntersectionObserver' in window) {
-        const gozcu = new IntersectionObserver((girdiler) => {
-          if (girdiler.some(g => g.isIntersecting)) {
-            kaynakListesi.baslat();
-            gozcu.disconnect();
-          }
-        }, { rootMargin: '240px' });
-        gozcu.observe(kaynakBolumKok);
-      }
-
+      // (KAYNAKLAR sekmesi kaldırıldı — kaynak/dil seçimi oynatıcı içinde.)
       sekmeDugmeleri.forEach(dugme => {
         dugme.addEventListener('click', () => {
-          const hedef = dugme.dataset.tab;
-          sekmeleriGec(hedef);
-          if (hedef === 'sources') kaynakListesi.baslat();
+          sekmeleriGec(dugme.dataset.tab);
         });
       });
 
@@ -838,35 +711,14 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
         serit.scrollLeft = aktifSekme.offsetLeft - (serit.clientWidth - aktifSekme.offsetWidth) / 2;
       }
 
-      const kaynakSezonSecim = container.querySelector('#kaynak-sezon-secim');
-      const kaynakBolumSecim = container.querySelector('#kaynak-bolum-secim');
-      const bolumleriDoldur = (sezonNo, seciliBolum = 1) => {
-        if (!kaynakBolumSecim) return;
-        const adet = kaynakSezonlari.find(s => s.season_number === Number(sezonNo))?.episode_count || 10;
-        kaynakBolumSecim.innerHTML = Array.from({ length: adet }, (_, i) =>
-          `<option value="${i + 1}" ${i + 1 === Number(seciliBolum) ? 'selected' : ''}>${i + 1}. Bölüm</option>`).join('');
-      };
-      kaynakSezonSecim?.addEventListener('change', () => {
-        kaynakSecimi = { sezon: Number(kaynakSezonSecim.value) || 1, bolum: 1 };
-        bolumleriDoldur(kaynakSecimi.sezon, 1);
-        kaynakListesi.bolumAyarla(kaynakSecimi.sezon, kaynakSecimi.bolum);
-      });
-      kaynakBolumSecim?.addEventListener('change', () => {
-        kaynakSecimi.bolum = Number(kaynakBolumSecim.value) || 1;
-        kaynakListesi.bolumAyarla(kaynakSecimi.sezon, kaynakSecimi.bolum);
-      });
-
-      // Bölüm kartı tıklaması (SeasonSelector) buraya bölüm bilgisi bırakır:
-      // oynatıcı açılmaz, KAYNAKLAR sekmesi o bölümle açılır.
+      // Bölüm kartı tıklaması (SeasonSelector): oynatıcı DOĞRUDAN o bölümle
+      // açılır (kullanıcı 2026-11-14) — kaynak paneli/sekmesi yok; tarama ve
+      // kaynak seçimi oynatıcının içinde otomatik.
       container.addEventListener('cp:kaynak-bolum', (olay) => {
         if (!container.isConnected) return;
         const sezonNo = Number(olay.detail?.sezon) || 1;
         const bolumNo = Number(olay.detail?.bolum) || 1;
-        kaynakSecimi = { sezon: sezonNo, bolum: bolumNo };
-        if (kaynakSezonSecim) kaynakSezonSecim.value = String(sezonNo);
-        bolumleriDoldur(sezonNo, bolumNo);
-        kaynakListesi.bolumAyarla(sezonNo, bolumNo);
-        kaynaklarSekmesineGec();
+        bolumOynat(sezonNo, bolumNo);
       });
 
       const backBtn = container.querySelector('#btn-detail-back');
@@ -900,6 +752,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           playMovieBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:18px;height:18px;fill:currentColor"></i> <span>Yükleniyor...</span>`;
           renderIcons();
           try {
+            yatayGecisBaslat();
             const progress = getMediaProgress(id, 1, 1);
             await openPlayerModal({
               type: isAnime ? 'anime' : 'movie',
@@ -913,10 +766,11 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
               duration: movieDurationSec,
               currentTime: progress ? progress.currentTime : 0,
               roomSync: decisionRoomAutoplay ? { roomCode: decisionRoomAutoplay.roomCode, mediaId: id, type: effectiveType, season: 1, episode: 1, initialSync: decisionRoomAutoplay.initialSync || null } : null
-            });
+            }, taramaKartiBilgisi(''));
           } catch (err) {
             console.error('[CinePulse] Film oynatılamadı:', err);
             showToast('Film açılırken hata oluştu, lütfen tekrar deneyin.', 'error');
+            gecisTemizle();
           } finally {
             playMovieBtn.disabled = false;
             playMovieBtn.innerHTML = origHTML;
@@ -924,10 +778,11 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           }
       };
       if (playMovieBtn) {
-        // Detay sayfası oynatıcı AÇMAZ: film İzle düğmesi KAYNAKLAR sekmesine geçer.
+        // Film İzle düğmesi oynatıcıyı DOĞRUDAN açar (kullanıcı 2026-11-14):
+        // tarama + kaynak + dil seçimi oynatıcının içinde otomatik.
         playMovieBtn.addEventListener('click', (event) => {
           event.preventDefault();
-          kaynaklarSekmesineGec();
+          openMovie();
         });
       }
 
@@ -939,6 +794,7 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           resumeSeriesBtn.innerHTML = `<i data-lucide="loader-2" class="spin-loader" style="width:18px;height:18px;fill:currentColor"></i> <span>Yükleniyor...</span>`;
           renderIcons();
           try {
+            yatayGecisBaslat();
             const selectedByRoom = decisionRoomAutoplay;
             decisionRoomAutoplay = null;
             const lastWatched = getLastWatchedEpisode(id);
@@ -959,10 +815,11 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
               currentTime,
               seasonsList: media.seasons || [],
               roomSync: selectedByRoom ? { roomCode: selectedByRoom.roomCode, mediaId: id, type: effectiveType, season: seasonNum, episode: episodeNum, initialSync: selectedByRoom.initialSync || null } : null
-            });
+            }, taramaKartiBilgisi(`Sezon ${seasonNum} · Bölüm ${episodeNum}`));
           } catch (err) {
             console.error('[CinePulse] Dizi oynatılamadı:', err);
             showToast('İçerik açılırken hata oluştu, lütfen tekrar deneyin.', 'error');
+            gecisTemizle();
           } finally {
             resumeSeriesBtn.disabled = false;
             resumeSeriesBtn.innerHTML = origHTML;
@@ -970,10 +827,11 @@ export async function renderDetailView(typeOrObj = 'tv', maybeId) {
           }
       };
       if (resumeSeriesBtn) {
-        // Dizide "Devam Et" de oynatıcı açmaz; KAYNAKLAR sekmesine geçer.
+        // "Devam Et" oynatıcıyı DOĞRUDAN açar (kullanıcı 2026-11-14) —
+        // kaldığı bölümden; kaynak/dil oynatıcı içinde otomatik seçilir.
         resumeSeriesBtn.addEventListener('click', event => {
           event.preventDefault();
-          kaynaklarSekmesineGec();
+          openSeries();
         });
       }
 

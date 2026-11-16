@@ -271,12 +271,12 @@ export async function openPlayerModal({
   // daha KALDIRILMAZ (native hata/temizlikte bile kalır).
   if (nativeOynaticiVar()) document.documentElement.classList.add('cp-android-exoplayer');
   let offlineSavedItem = null;
-  // Madde 2 (kullanıcı 2026-10-28): Detay'dan gelen hazır havuz doluysa
-  // megamenu (Yayınlar/Kalite/Yayın paneli) çizilmez ve görünmez otomatik
-  // hat düşüşü devre dışı kalır — kullanıcı kaynağı detayın KAYNAKLAR
-  // sekmesinden kendisi seçer. HomeView/oda yolları havuzsuz açılır; onlar
-  // bu UI'yı ve failover'ı olduğu gibi korur.
-  const hazirHavuzMu = Array.isArray(hazirKaynaklar) && hazirKaynaklar.length > 0;
+  // Madde 2 (2026-10-28) ARTIK ÖLÜ (kullanıcı 2026-11-14): KAYNAKLAR sekmesi
+  // kaldırıldı, hiçbir çağıran hazır havuz geçirmiyor. Değişmez false →
+  // megamenu (Yayınlar/Kalite/Dil) HER zaman çizilir; kaynak/dil yönetimi
+  // yalnız oynatıcı içindedir. Eski dal geri gelmemeli.
+  const hazirHavuzMu = false;
+  void hazirKaynaklar;
 
   /* ── Tarama kartı (madde 1, kullanıcı 2026-10-28) ─────────────────────────
      Verildiğinde native perdenin üstüne TEK seferlik DOM kartı çizilir:
@@ -2147,7 +2147,10 @@ export async function openPlayerModal({
   function birlestirilmisKaynaklar() {
     const d = categorizedServers.dubbed || [];
     const s = categorizedServers.subtitled || [];
-    return [...d, ...s];
+    // Kullanıcının dil tercihi ÖNCE gelir (kusursuz dil deneyimi): otomatik
+    // seçim pilotu ilk önce seçili dilin havuzunu tarar; tercih edilen dilde
+    // uygun hat yoksa diğer dile kendiliğinden kayar.
+    return currentCategory === 'subtitled' ? [...s, ...d] : [...d, ...s];
   }
 
   function applyRequiredRoomSource() {
@@ -3090,7 +3093,7 @@ export async function openPlayerModal({
       // Event: Harici oynatıcıda OYNAT (#9) — VLC/mpv/JustPlayer.
       body.querySelector('#btn-dl-external-play')?.addEventListener('click', async () => {
         if (!selectedStream) return;
-        const ok = await hariciOynaticidaAc(selectedStream, { baslangicSn: videoEl?.currentTime || 0 });
+        const ok = await hariciOynaticidaAc(selectedStream, { baslangicSn: videoElemani()?.currentTime || 0 });
         showToast(
           ok ? '📺 Harici oynatıcıda açıldı.' : 'Harici oynatıcı bulunamadı (mpv/VLC kurulu mu?).',
           ok ? 'success' : 'error'
@@ -3300,6 +3303,14 @@ export async function openPlayerModal({
     if (subCount) subCount.textContent = String(toplam);
     const smartAll = document.getElementById('smart-cat-all-count');
     if (smartAll) smartAll.textContent = `(${toplam})`;
+    // Detay sayfasındaki kaynak paneli kaldırıldı (kullanıcı 2026-11-14):
+    // tarama kartı sayacını artık oynatıcının kendisi besler — açılış
+    // perdesindeki "N kaynak bulundu" canlı güncellenir.
+    try {
+      window.dispatchEvent(new CustomEvent('cp:kaynak-sayac', {
+        detail: { adet: toplam, kaynakMi: true }
+      }));
+    } catch (_) { /* olay kanalı yoksa sessiz */ }
   }
 
   // TEK KAYNAK SİSTEMİ: ayrı popover yok. Tüm seçimler akıllı bar + üst chips
@@ -3330,16 +3341,97 @@ export async function openPlayerModal({
   function switchSourceCategory(nextCategory) {
     if (currentCategory === nextCategory) return;
     if (!requireRoomModerator()) return;
+    // BOŞ HAVUZ KORUMASI (kusursuz dil deneyimi): hedef dilde hiç kaynak yoksa
+    // oynatma ASLA boş havuza taşınmaz; dürüst uyarı verilir, mevcut yayın
+    // akmaya devam eder. (Otomatik düşüş triggerAutoFailover'da zaten var.)
+    const hedefHavuz = categorizedServers[nextCategory] || [];
+    if (hedefHavuz.length === 0) {
+      showToast(nextCategory === 'dubbed'
+        ? 'Bu içerikte Türkçe Dublaj yayın bulunamadı — mevcut yayınla devam ediliyor.'
+        : 'Bu içerikte Orijinal + Altyazı yayın bulunamadı — mevcut yayınla devam ediliyor.', 'info');
+      return;
+    }
     currentCategory = nextCategory;
     failoverCountInSession = 0;
     try { localStorage.setItem('cp_preferred_category', nextCategory); } catch (_) {}
+    // KUSURSUZ DİL GEÇİŞİ (kullanıcı 2026-11-14): havuz değişimi yayını BAŞA
+    // SARMASIN — mevcut konaklama anını yakala, yeni hattın ilk karesi orada
+    // açılsın (hdfilmcehennemi hissi: dil değişir, izlenen yer kaybolmaz).
+    try {
+      const konak = Number(videoElemani()?.currentTime);
+      if (Number.isFinite(konak) && konak > 5) {
+        initialTime = konak;
+        simulatedCurrentTime = konak;
+      }
+    } catch (_) { /* konum okunamazsa akış yine baştan güvenle açılır */ }
     disposePlayback();
     activeServers = categorizedServers[nextCategory] || [];
     currentServerIndex = getRoomPreferredServerIndex(activeServers);
     hasPlayerStartedPlaying = activeServers.length > 0;
     updateActiveSourceLabel();
     updatePlayerContainer();
-    showToast(nextCategory === 'dubbed' ? '🎙️ Türkçe Dublaj kaynaklarına geçildi.' : '💬 Türkçe Altyazılı kaynaklara geçildi.', 'info');
+    showToast(nextCategory === 'dubbed' ? '🎙️ Türkçe Dublaj yayınlarına geçildi.' : '💬 Orijinal + Altyazı yayınlarına geçildi.', 'info');
+  }
+
+  /* ── DİL DEĞİŞTİR — KUSURSUZ SÜRÜM (kullanıcı 2026-11-14: "dil seçimi
+     kusursuz olmalı, hdfilmcehennemi'ye rakip olacağız") ────────────────────
+     Sıra hassastır:
+       1) Aktif hat ÇİFT SESLİ ise (HLS çoklu ses izleti ya da senkron dublaj
+          sesi) dil YERİNDE değişir — video hiç durmaz, reload olmaz;
+          hdfilmcehennemi'nin anında dil geçişi hissi buradan gelir.
+       2) Değilse hedef dilin havuzuna geçilir ve EN İYİ hat otomatik oynatılır.
+       3) Boş havuz koruması switchSourceCategory'dedir; oynatma kırılmaz. */
+  function dilDegistir(kat) {
+    if (kat !== 'dubbed' && kat !== 'subtitled') return;
+    if (kat === currentCategory) return;
+    // K1-SCOPE DÜZELTMESİ (2026-11-16 doğrulaması): bu kapanışta `videoEl`
+    // BAĞLANTISI YOK (eskiden bare `videoEl` okumaları ReferenceError verip
+    // try/catch'e düşüyordu → konak koruması ve 1b dalı hiç çalışmıyordu).
+    // Canlı element her zaman videoElemani() ile okunur.
+    const vid = videoElemani();
+    // 1) HLS çoklu ses izleti: aynı video, anında kanal değişimi.
+    try {
+      const izler = activeHlsInstance?.audioTracks;
+      if (activeHlsInstance && Array.isArray(izler) && izler.length > 1) {
+        // TR izi tespiti GERÇEK iz metadata'sından: lang birincil (ISO 'tr'),
+        // ad yalnız 'türk/tr/dublaj' sözcükleriyle (Country/Enter gibi yanlış
+        // pozitiflere düşülmez).
+        const trIdx = izler.findIndex(t => /^tr(-|_|$)/i.test(String(t.lang || ''))
+          || /\bt[üu]rk(ç|çe)?\b|\bdublaj\b|^tr$/i.test(String(t.name || '')));
+        const hedefIdx = kat === 'dubbed'
+          ? trIdx
+          : (trIdx >= 0 ? izler.findIndex((t, i) => i !== trIdx) : -1);
+        if (hedefIdx >= 0) {
+          if (activeHlsInstance.audioTrack === hedefIdx) {
+            // Zaten hedef kanaldadır: kanal dokunuşu gereksiz — kategori
+            // etiketini eşitle ve bitir (eskiden buradan düşüp boşuna havuz
+            // değiştirip yayını yeniden yüklerdi).
+            currentCategory = kat;
+            try { localStorage.setItem('cp_preferred_category', kat); } catch (_) {}
+            return;
+          }
+          activeHlsInstance.audioTrack = hedefIdx;
+          currentCategory = kat;
+          try { localStorage.setItem('cp_preferred_category', kat); } catch (_) {}
+          showToast(kat === 'dubbed' ? '🎙️ Türkçe Dublaj sesine geçildi.' : '💬 Orijinal sese geçildi.', 'success');
+          return;
+        }
+      }
+    } catch (_) { /* izlet okunamadı → havuz yoluna düş */ }
+    // 1b) Senkron çift-ses motoru (ayrı dublaj sesi): yerinde geçiş. Motor
+    // yalnız ÇİFT SESLİ kaynakta kuruludur (L9012 koşulu) — canlı elementte
+    // kanca varsa hat gerçekten çift seslidir.
+    try {
+      if (vid && typeof vid._setAudioTrack === 'function') {
+        vid._setAudioTrack(kat === 'dubbed' ? 'dubbed' : 'original');
+        currentCategory = kat;
+        try { localStorage.setItem('cp_preferred_category', kat); } catch (_) {}
+        showToast(kat === 'dubbed' ? '🎙️ Türkçe Dublaj sesine geçildi.' : '💬 Orijinal sese geçildi.', 'success');
+        return;
+      }
+    } catch (_) { /* motor yok → havuz yoluna düş */ }
+    // 2) Tek sesli hat: hedef dilin havuzuna geç, en iyi hat otomatik açılır.
+    switchSourceCategory(kat);
   }
 
   function renderSourcesPopoverList() {
@@ -3721,7 +3813,10 @@ export async function openPlayerModal({
           if (gorulenIkili.has(anahtar)) return;
           gorulenIkili.add(anahtar);
         }
-        kombineListe.push({ srv, idx, kategori, tip: sesTipiBul(srv, kategori) });
+        // Satır DİLİ kaynak nesnesinin kendi kategorisinden okunur (birleşik
+        // havuzda etiket çemberi yanlış dili gösterebiliyordu — kusursuz dil
+        // deneyimi: ne yazıyorsa O çalar).
+        kombineListe.push({ srv, idx, kategori, tip: sesTipiBul(srv, srv?.category || kategori) });
       });
     }
 
@@ -3758,7 +3853,7 @@ export async function openPlayerModal({
       // sistem oynatıcısında aç. shortcut: ilk otomatik oynatma bu yoldan
       // geçmez — açılışta iç oynatıcı başlar, kullanıcı kaynak değiştirince
       // hariciye geçer.
-      if (hariciOynaticiModuAcik() && await hariciOynaticidaAc(activeServers[idx], { baslangicSn: videoEl?.currentTime || 0 })) {
+      if (hariciOynaticiModuAcik() && await hariciOynaticidaAc(activeServers[idx], { baslangicSn: videoElemani()?.currentTime || 0 })) {
         showToast(`📺 ${getSourceLabel(activeServers[idx], idx)} harici oynatıcıda açıldı.`, 'info');
         return;
       }
@@ -3782,12 +3877,12 @@ export async function openPlayerModal({
       failoverCountInSession = 0;
       hasPlayerStartedPlaying = true;
       updateActiveSourceLabel();
-      if (hariciOynaticiModuAcik() && await hariciOynaticidaAc(hedef[idx], { baslangicSn: videoEl?.currentTime || 0 })) {
+      if (hariciOynaticiModuAcik() && await hariciOynaticidaAc(hedef[idx], { baslangicSn: videoElemani()?.currentTime || 0 })) {
         showToast(`📺 ${getSourceLabel(hedef[idx], idx)} harici oynatıcıda açıldı.`, 'info');
         return;
       }
       updatePlayerContainer();
-      showToast(`${kategori === 'dubbed' ? '🎙️ Türkçe Dublaj' : '💬 Türkçe Altyazılı'} · ${getSourceLabel(hedef[idx], idx)} yayınına geçildi.`, 'info');
+      showToast(`${kategori === 'dubbed' ? '🎙️ Türkçe Dublaj' : '💬 Orijinal + Altyazı'} · ${getSourceLabel(hedef[idx], idx)} yayınına geçildi.`, 'info');
     };
     if (prevBtn) {
       prevBtn.disabled = !hasMultiple;
@@ -3836,13 +3931,33 @@ export async function openPlayerModal({
     if (dropdownList) {
       const prevListScroll = dropdownList.scrollTop || 0;
       let fpHedefIdx = -1; // Akış Otopilotu hedefi — activeServers uzayında indeks
+
+      /* ── DİL MENÜSÜ (kullanıcı 2026-11-14: "kullanıcı kaynak seçmekle
+         uğraşmamalı; iki seçenek olacak: Türkçe Dublaj / Orijinal ve Altyazı")
+         Kaynak seçimi kullanıcıya BIRAKILMAZ: oynatıcı en iyi hattı kendisi
+         seçer, takılan hat sessizce sıradakine devreder. Kullanıcının gördüğü
+         tek karar dili seçmektir — aşağıdaki iki düğme. Liste altta bilgidir;
+         dokunmak zorunda değildir. */
+      const dubSayisi = (categorizedServers?.dubbed || []).length;
+      const subSayisi = (categorizedServers?.subtitled || []).length;
+      const dilDugmesi = (kat, etiket, adet) => `
+        <button type="button" data-dil-sec="${kat}" aria-pressed="${currentCategory === kat}"
+          style="cursor:pointer;border-radius:999px;padding:0.3rem 0.75rem;font-size:0.72rem;font-weight:600;border:1px solid ${currentCategory === kat ? 'rgba(223,255,118,0.6)' : 'rgba(148,163,184,0.35)'};background:${currentCategory === kat ? 'rgba(223,255,118,0.12)' : 'transparent'};color:${currentCategory === kat ? '#dfff76' : '#94a3b8'};">${etiket}${adet > 0 ? ` <span style="opacity:.75;">(${adet})</span>` : ''}</button>`;
+      const dilSatiri = `
+        <div style="padding:0.55rem 0.75rem;border-bottom:1px solid rgba(148,163,184,0.15);display:flex;flex-wrap:wrap;gap:0.4rem;align-items:center;">
+          <span style="color:#94a3b8;font-size:0.68rem;">Ses:</span>
+          ${dilDugmesi('dubbed', '🎙️ Türkçe Dublaj', dubSayisi)}
+          ${dilDugmesi('subtitled', '💬 Orijinal + Altyazı', subSayisi)}
+          <span style="color:#64748b;font-size:0.62rem;flex:1 1 100%;">Kaynak seçimi otomatiktir — bozulursa sıradaki hatta kendisi geçer.</span>
+        </div>`;
+
       if (kombineListe.length === 0) {
         const otherCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
         const otherCount = categorizedServers?.[otherCat]?.length || 0;
         const filtreMesaj = (typeof filtreBos !== 'undefined' && filtreBos)
           ? 'Seçili kalite filtresiyle eşleşen kaynak yok.'
           : (isSearching ? 'Yayın kaynakları taranıyor...' : 'Bu dilde kaynak bulunamadı.');
-        dropdownList.innerHTML = `
+        dropdownList.innerHTML = dilSatiri + `
           <div style="padding: 0.75rem; text-align: center; color: #94a3b8; font-size: 0.76rem;">
             ${filtreMesaj}
             ${(typeof filtreBos !== 'undefined' && filtreBos) ? `
@@ -3852,7 +3967,7 @@ export async function openPlayerModal({
             ` : ''}
             ${otherCount > 0 ? `
               <button type="button" class="smart-dropdown-item" id="btn-smart-fallback-cat" style="margin-top: 0.5rem; justify-content: center; width: 100%; border: 1px solid rgba(223, 255, 118,0.3); color: #dfff76;">
-                ${otherCat === 'dubbed' ? 'Dublaj Kaynaklarını Aç' : 'Altyazılı Kaynakları Aç'} (${otherCount})
+                ${otherCat === 'dubbed' ? '🎙️ Türkçe Dublaj hatlarına geç' : '💬 Orijinal + Altyazı hatlarına geç'} (${otherCount})
               </button>
             ` : ''}
           </div>
@@ -3962,8 +4077,22 @@ export async function openPlayerModal({
               }
             }
           } catch { /* öneri satırı opsiyoneldir — kaynak listesi asla kırılmaz */ }
-          dropdownList.innerHTML = otopilotSatiri + itemsHtml;
+          dropdownList.innerHTML = dilSatiri + otopilotSatiri + itemsHtml;
         }
+
+        // DİL DÜĞMELERİ: tek dokunuşla ses dili değişir — çift sesli hatlarda
+        // YERİNDE (video durmadan), diğerlerinde havuzun en iyi hattı otomatik
+        // oynatılır. Kullanıcı kaynakla hiç uğraşmaz (kullanıcı 2026-11-14).
+        dropdownList.querySelectorAll('[data-dil-sec]').forEach(dugme => {
+          dugme.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const kat = dugme.getAttribute('data-dil-sec');
+            if (kat === currentCategory) return;
+            closeSmartDropdown();
+            dilDegistir(kat);
+          });
+        });
 
         dropdownList.querySelectorAll('.smart-dropdown-item[data-server-idx]').forEach(item => {
           item.addEventListener('click', (e) => {
@@ -4124,6 +4253,41 @@ export async function openPlayerModal({
 
     // Allow trying alternative non-failed servers up to 3 times or until activeServers exhausted
     failoverCountInSession++;
+
+    /* ── DİL SINIRINI AŞAN OTOMATİK GEÇİŞ (kullanıcı 2026-11-14) ─────────
+       Mevcut dil havuzundaki hatlar tükendiyse diğer dilde (Dublaj ↔
+       Orijinal+Altyazı) oynatılabilir hat varsa SESSİZCE oraya geçilir.
+       Kullanıcıya soru sorulmaz; yalnız kısa bilgi toast'ı gösterilir.
+       Tercih (cp_preferred_category) geri alınabilir olduğu için BURADA
+       kalıcılaştırılmaz — geçici düşüş, kullanıcı tercihi değil. */
+    const anlikHavuzTukendi = !activeServers.some((s, idx) => idx !== currentServerIndex && s && !s.failed && s.autoPlayable !== false);
+    if (anlikHavuzTukendi) {
+      const dilKarsi = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
+      const dilHavuz = categorizedServers?.[dilKarsi] || [];
+      const dilUygun = dilHavuz.findIndex(s => s && !s.failed && s.autoPlayable !== false);
+      if (dilUygun !== -1) {
+        currentCategory = dilKarsi;
+        activeServers = birlestirilmisKaynaklar();
+        currentServerIndex = Math.max(0, activeServers.indexOf(dilHavuz[dilUygun]));
+        hasPlayerStartedPlaying = true;
+        failoverCountInSession = 0; // yeni dilin kendi bütçesi olsun
+        // Konum koruması: dil havuzu düşüşü de izlenen yeri sıfırlamasın.
+        try {
+          const konak = Number(videoElemani()?.currentTime);
+          if (Number.isFinite(konak) && konak > 5) {
+            initialTime = konak;
+            simulatedCurrentTime = konak;
+          }
+        } catch (_) { /* okunamazsa baştan açılır */ }
+        updateActiveSourceLabel();
+        updatePlayerContainer();
+        showToast(dilKarsi === 'subtitled'
+          ? '⚠️ Dublaj hatları yanıt vermedi — 💬 Orijinal + Altyazı yayınına geçildi.'
+          : '⚠️ Altyazı hatları yanıt vermedi — 🎙️ Türkçe Dublaj yayınına geçildi.', 'warning');
+        return;
+      }
+    }
+
     const maxFailovers = Math.max(3, activeServers.length - 1);
     if (failoverCountInSession > maxFailovers) {
       console.warn('[PlayerModal] Max automatic failover reached. Showing in-player options.');
@@ -4424,7 +4588,7 @@ export async function openPlayerModal({
           <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
             <button id="btn-switch-subtitled-fallback" class="btn-primary btn-switch-category-fallback">
               <i data-lucide="repeat" style="width: 16px; height: 16px;"></i>
-              <span>💬 Türkçe Altyazılı Sunucuları Aç (${categorizedServers.subtitled?.length || 0} Hat Aktif)</span>
+              <span>💬 Orijinal + Altyazı hatlarını aç (${categorizedServers.subtitled?.length || 0} Hat Aktif)</span>
             </button>
             <button id="btn-retry-discovery" class="btn-secondary" style="padding: 0.55rem 1.1rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.4rem;">
               <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
@@ -7273,12 +7437,13 @@ export async function openPlayerModal({
         `;
       }
 
-      // Quick Category Switch Option (Dublaj <-> Altyazılı)
+      // HIZLI DİL GEÇİŞİ (Dublaj ↔ Orijinal + Altyazı) — dilDegistir çift
+      // sesli hatlarda kanalı YERİNDE değiştirir, tek sesliyse havuza geçer.
       const otherCat = currentCategory === 'dubbed' ? 'subtitled' : 'dubbed';
       const otherCount = categorizedServers?.[otherCat]?.length || 0;
       html += `
-        <div class="custom-menu-opt-row" id="quick-audio-switch-cat-btn" style="border: 1px solid rgba(223, 255, 118,0.35); background: rgba(223, 255, 118,0.1); margin-top: 10px; border-radius: 8px;">
-          <span>${otherCat === 'dubbed' ? 'Dublaj Yayınlara Geç' : 'Altyazılı Yayınlara Geç'} ${otherCount > 0 ? `(${otherCount})` : ''}</span>
+        <div class="custom-menu-opt-row" id="quick-audio-switch-cat-btn" style="border: 1px solid rgba(223, 255, 118,0.35); background: rgba(223,255,118,0.1); margin-top: 10px; border-radius: 8px;">
+          <span>${otherCat === 'dubbed' ? '🎙️ Türkçe Dublaj yayınlarına geç' : '💬 Orijinal + Altyazı yayınlarına geç'} ${otherCount > 0 ? `(${otherCount})` : ''}</span>
           <i data-lucide="arrow-right-left" style="width:14px;height:14px;color:#dfff76;"></i>
         </div>
       `;
@@ -7319,18 +7484,9 @@ export async function openPlayerModal({
           catSwitchBtn.onclick = (ev) => {
             ev.stopPropagation();
             menu.classList.add('hidden');
-            const targetCat = otherCat;
-            currentCategory = targetCat;
-            failoverCountInSession = 0;
-            try { localStorage.setItem('cp_preferred_category', targetCat); } catch (_) {}
-            disposePlayback();
-            activeServers = categorizedServers[targetCat] || [];
-            currentServerIndex = getRoomPreferredServerIndex(activeServers);
-            hasPlayerStartedPlaying = activeServers.length > 0;
-            updateActiveSourceLabel();
+            // Kusursuz dil geçişi: yerinde kanal değişimi ya da havuz geçişi.
+            dilDegistir(otherCat);
             renderSourcesPopoverList();
-            updatePlayerContainer();
-            showToast(targetCat === 'dubbed' ? '🎙️ Türkçe Dublaj yayınlara geçildi.' : '💬 Türkçe Altyazılı yayınlara geçildi.', 'info');
           };
         }
       }
@@ -8597,46 +8753,51 @@ export async function openPlayerModal({
               lastHlsProgressAt = Date.now();
             }
           });
-          if (isDizisolFilmMakinesi) {
-            playbackScope.on(videoEl, 'seeking', () => { lastHlsProgressAt = Date.now(); });
-            playbackScope.setInterval(() => {
-              if (closed || playbackRun !== playbackGeneration || activeHlsInstance !== hls) return;
-              if (videoEl.paused || videoEl.ended || Date.now() - lastHlsProgressAt < 8000) return;
+          /* ── EVRENSEL OYNATMA PİLOTU (2026-11-14, kullanıcı talebi: "kaynak
+             seçimini tamamen otomatikleştir") ─────────────────────────────
+             Eski bekçiler yalnız belli aileler (Dizisol/HDF/FilmMakinesi)
+             için vardı; diğer 50+ kaynakta akış 0. saniyede takılınca ekran
+             siyah kalıyor, kullanıcı elle başka kaynak seçmek zorunda
+             kalıyordu. Artık HER kaynakta aynı pilot koşar:
+               • İLK VERİ: kaynağın yüklenmesinden sonra 16 sn içinde hiç
+                 kare gösterilmediyse (0:00 takılma) sıradaki kaynağa geç.
+               • İLERLEME: kare gösterildikten sonra duraklatma/arama olma-
+                 dan 20 sn ilerlemeyen akış ölü sayılır, sıradaki kaynağa geç.
+             triggerAutoFailover başarısız kaynağı hatırlar, öncelik sırasın-
+             daki canlı kaynağı sessizce açar; tüm hatlar biterse bilgilendir-
+             me kartı gösterir. Kullanıcı hiçbir karar vermez. */
+          playbackScope.on(videoEl, 'seeking', () => { lastHlsProgressAt = Date.now(); });
+          let hlsYenidenPlay = false; // "hiç başlamadı" → tek seferlik play() kurtarması
+          playbackScope.setInterval(() => {
+            if (closed || playbackRun !== playbackGeneration || activeHlsInstance !== hls) return;
+            if (videoEl.ended) return;
+            const sessizSüre = Date.now() - lastHlsProgressAt;
+            if (!hlsClockAdvanced) {
+              // YAYIN HİÇ BAŞLAMADI: play() reddedilmiş ya da kaynak 0:00'da
+              // sessizce durmuş olabilir. Eskiden paused'da pilot "atlıyordu"
+              // ve ekran siyah kalıyordu. Artık: 4 sn'de bir play() kurtarması
+              // (sessiz yedekli), 16 sn'de sıradaki kaynağa SESSİZ düşüş.
+              if (videoEl.paused && !hlsYenidenPlay && sessizSüre > 4000) {
+                hlsYenidenPlay = true;
+                const p = videoEl.play();
+                if (p && p.catch) p.catch(() => { videoEl.muted = true; videoEl.play().catch(() => {}); });
+              }
+              if (sessizSüre > 16000) {
+                try { hls.destroy(); } catch (_) {}
+                if (activeHlsInstance === hls) activeHlsInstance = null;
+                triggerAutoFailover('Yayın ilk veriyi vermedi (otomatik yedek)');
+              }
+              return;
+            }
+            // Video en az bir kez aktı: paused artık kullanıcının kendi duraklatması
+            // — dokunulmaz; yalnız akış takıldıysa (20 sn) düş.
+            if (videoEl.paused) return;
+            if (sessizSüre > 20000) {
               try { hls.destroy(); } catch (_) {}
               if (activeHlsInstance === hls) activeHlsInstance = null;
-              triggerAutoFailover('DS FILMMAKİNESİ akışı durdu');
-            }, 2000);
-          } else if (isDizisolSource) {
-            // imagestoo, pal-vds, hdfilmdelisi, normal VIP gibi tüm DS kaynakları:
-            // 15 saniye içinde video ilerlemezse failover yap.
-            playbackScope.on(videoEl, 'seeking', () => { lastHlsProgressAt = Date.now(); });
-            playbackScope.setInterval(() => {
-              if (closed || playbackRun !== playbackGeneration || activeHlsInstance !== hls) return;
-              if (videoEl.paused || videoEl.ended || Date.now() - lastHlsProgressAt < 15000) return;
-              // Video hiç başlamadıysa daha erken failover
-              if (!hlsClockAdvanced && Date.now() - lastHlsProgressAt > 20000) {
-                try { hls.destroy(); } catch (_) {}
-                if (activeHlsInstance === hls) activeHlsInstance = null;
-                triggerAutoFailover('DS akışı oynatmayı başlatamadı');
-                return;
-              }
-              if (hlsClockAdvanced) {
-                try { hls.destroy(); } catch (_) {}
-                if (activeHlsInstance === hls) activeHlsInstance = null;
-                triggerAutoFailover('DS akışı durdu');
-              }
-            }, 3000);
-          }
-          if (srv.source === 'HDFilmizle') {
-            playbackScope.setTimeout(() => {
-              if (closed || playbackRun !== playbackGeneration || hlsClockAdvanced) return;
-              if (videoEl.currentTime <= expectedStartTime + 0.25) {
-                try { hls.destroy(); } catch (_) {}
-                if (activeHlsInstance === hls) activeHlsInstance = null;
-                triggerAutoFailover('HDF akışı oynatmayı başlatamadı');
-              }
-            }, 18000);
-          }
+              triggerAutoFailover('Yayın akışı durdu (otomatik yedek)');
+            }
+          }, 3000);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             // Türkçe ses track'i varsa otomatik seç (imagestoo gibi dual-audio
             // kaynaklarda İngilizce track'in DEFAULT olmasını engeller)
@@ -8740,6 +8901,45 @@ export async function openPlayerModal({
             if (closed || playbackRun !== playbackGeneration) return;
             triggerAutoFailover('Yerel HLS oynatıcı hatası');
           });
+
+          // EVRENSEL OYNATMA PİLOTU — native HLS yedeği (Safari/WebKit):
+          // hls.js yolu ile aynı ilk-veri (16 sn) + ilerleme (20 sn) kuralları.
+          const expectedStartTime = initialTime > 0 ? initialTime : 0;
+          let nativeClockAdvanced = false;
+          let lastNativePosition = expectedStartTime;
+          let lastNativeProgressAt = Date.now();
+          playbackScope.on(videoEl, 'timeupdate', () => {
+            if (videoEl.currentTime > expectedStartTime + 0.25) nativeClockAdvanced = true;
+            if (Math.abs(videoEl.currentTime - lastNativePosition) > 0.1) {
+              lastNativePosition = videoEl.currentTime;
+              lastNativeProgressAt = Date.now();
+            }
+          });
+          playbackScope.on(videoEl, 'seeking', () => { lastNativeProgressAt = Date.now(); });
+          let nativeYenidenPlay = false; // "hiç başlamadı" → tek seferlik play() kurtarması
+          playbackScope.setInterval(() => {
+            if (closed || playbackRun !== playbackGeneration) return;
+            if (videoEl.ended) return;
+            const sessizSüre = Date.now() - lastNativeProgressAt;
+            if (!nativeClockAdvanced) {
+              // Yayın hiç başlamadıysa pilot DURMAZ: 4 sn'de play() kurtarması,
+              // 16 sn'de sıradaki hat sessiz açılır (bkz. HLS yolundaki pilot).
+              if (videoEl.paused && !nativeYenidenPlay && sessizSüre > 4000) {
+                nativeYenidenPlay = true;
+                const p = videoEl.play();
+                if (p && p.catch) p.catch(() => { videoEl.muted = true; videoEl.play().catch(() => {}); });
+              }
+              if (sessizSüre > 16000) {
+                triggerAutoFailover('Yayın ilk veriyi vermedi (otomatik yedek)');
+                return;
+              }
+              return;
+            }
+            if (videoEl.paused) return; // kullanıcı kendi duraklattı — dokunma
+            if (sessizSüre > 20000) {
+              triggerAutoFailover('Yayın akışı durdu (otomatik yedek)');
+            }
+          }, 3000);
         } else {
           videoEl.src = streamUrl;
 
@@ -8770,6 +8970,47 @@ export async function openPlayerModal({
             if (closed || playbackRun !== playbackGeneration) return;
             triggerAutoFailover('Video Oynatma Hatası');
           });
+
+          // EVRENSEL OYNATMA PİLOTU — doğrudan (MP4/MKV) yol: hata EVENT'İ
+          // gelmeyen "sessiz ölüm" durumlarını yakalar (sunucu bozuk dosya
+          // döner ya da indirme hiç başlamazsa video hata vermez, sadece
+          // 0:00'da asılı kalır). Aynı kurallar: 16 sn ilk veri, 20 sn ilerleme.
+          const expectedStartTime = initialTime > 0 ? initialTime : 0;
+          let directClockAdvanced = false;
+          let lastDirectPosition = expectedStartTime;
+          let lastDirectProgressAt = Date.now();
+          playbackScope.on(videoEl, 'timeupdate', () => {
+            if (videoEl.currentTime > expectedStartTime + 0.25) directClockAdvanced = true;
+            if (Math.abs(videoEl.currentTime - lastDirectPosition) > 0.1) {
+              lastDirectPosition = videoEl.currentTime;
+              lastDirectProgressAt = Date.now();
+            }
+          });
+          playbackScope.on(videoEl, 'seeking', () => { lastDirectProgressAt = Date.now(); });
+          let directYenidenPlay = false; // "hiç başlamadı" → tek seferlik play() kurtarması
+          playbackScope.setInterval(() => {
+            if (closed || playbackRun !== playbackGeneration) return;
+            if (videoEl.ended) return;
+            const sessizSüre = Date.now() - lastDirectProgressAt;
+            if (!directClockAdvanced) {
+              // Yayın hiç başlamadıysa pilot DURMAZ: 4 sn'de play() kurtarması,
+              // 16 sn'de sıradaki hat sessiz açılır (bkz. HLS yolundaki pilot).
+              if (videoEl.paused && !directYenidenPlay && sessizSüre > 4000) {
+                directYenidenPlay = true;
+                const p = videoEl.play();
+                if (p && p.catch) p.catch(() => { videoEl.muted = true; videoEl.play().catch(() => {}); });
+              }
+              if (sessizSüre > 16000) {
+                triggerAutoFailover('Yayın ilk veriyi vermedi (otomatik yedek)');
+                return;
+              }
+              return;
+            }
+            if (videoEl.paused) return; // kullanıcı kendi duraklattı — dokunma
+            if (sessizSüre > 20000) {
+              triggerAutoFailover('Yayın akışı durdu (otomatik yedek)');
+            }
+          }, 3000);
         }
 
         // Unmute on first user interaction if muted by browser autoplay policy

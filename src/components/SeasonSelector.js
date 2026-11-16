@@ -767,8 +767,9 @@ async function loadSeasonEpisodes(tvId, seriesTitle, seriesOverview, seasonNum, 
       card.classList.add('is-secili');
       card.setAttribute('aria-current', 'true');
 
-      // Bölüm kartı artık oynatıcı AÇMAZ: aktif bölümü detay sayfasına
-      // bildirir, detay KAYNAKLAR bölümünü o bölümle açar ve oraya kaydırır.
+      // Bölüm kartı oynatıcıyı DOĞRUDAN açar (kullanıcı 2026-11-14): olay
+      // detay sayfasına ulaşır, detay oynatıcıyı o bölümle başlatır; kaynak
+      // taraması ve dil seçimi oynatıcının içinde otomatik koşar.
       card.closest('.detail-view')?.dispatchEvent(new CustomEvent('cp:kaynak-bolum', {
         bubbles: true,
         detail: { sezon: season, bolum: episode }

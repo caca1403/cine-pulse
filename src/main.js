@@ -503,10 +503,14 @@ window.addEventListener('storage', (event) => {
   route();
 });
 
-/* Cihaz ölçüm kancası — yalnız VITE_DEVICE_SWEEP=1 (dev) derlemesinde yüklenir.
-   Dinamik import sayesinde ÜRETİM paketine hiç girmez.
+/* Cihaz ölçüm kancası — yalnız VITE_DEVICE_SWEEP=1 derlemesinde veya DEV
+   sunucuda yüklenir (K1 düzeltmesi 2026-11-16: eskiden yalnız env kapısıydı,
+   vite dev'de kanca hiç kurulmuyordu ve yerel E2E ölçümü yapılamıyordu;
+   deviceSweep.js içindeki ACIK kapısı DEV'i zaten kapsıyordu ama bu dış kapı
+   onu hiç çağırmıyordu). Üretim derlemesi env'sizse dinamik import satırına
+   hiç dokunmaz — pakete girmez.
    window.__cpSag / __cpSweep / __cpSaglik → tools/cihaz-cdp.mjs çağırır. */
-if (import.meta.env?.VITE_DEVICE_SWEEP === '1') {
+if (import.meta.env?.VITE_DEVICE_SWEEP === '1' || import.meta.env?.DEV === 'true') {
   import('./devtools/deviceSweep.js')
     .then(m => m.kancayiKur())
     .catch(() => { /* ölçüm kancası yoksa uygulama yine çalışır */ });

@@ -1,0 +1,1019 @@
+{
+ "ozet": {
+  "tarih": "2026-11-16T14:41:47.213Z",
+  "hedef": "http://127.0.0.1:3000/",
+  "vakaSayisi": 5,
+  "kaynakBulan": 5,
+  "bolumIkiSonrasiVaka": 0,
+  "bolumIkiSonrasiKaynakBulan": 0,
+  "toplamUyusmazlik": 0,
+  "toplamFlap": 2,
+  "bagimsizOlcum": 40
+ },
+ "sonuclar": [
+  {
+   "tmdbTip": "movie",
+   "tmdbId": "550",
+   "ad": "Fight Club",
+   "sezon": null,
+   "bolum": null,
+   "tamam": true,
+   "ilerleme": {
+    "dubbed": 19,
+    "subtitled": 17,
+    "toplam": 36,
+    "bitti": true
+   },
+   "taramaBitti": true,
+   "sure": 44681,
+   "dubbedAdet": 19,
+   "subtitledAdet": 17,
+   "toplam": 36,
+   "etiketler": {
+    "🌐 Özgün": 11,
+    "🎙️ Türkçe Dublaj": 21,
+    "💬 Orijinal + Altyazı": 4
+   },
+   "ornekler": [
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_beastboy_30buu5",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 1,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_aqualad_navf1r",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 8,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_blackadam_swkk8f",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 1,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_huntress_sus248",
+     "trSes": true,
+     "trAltyazi": false,
+     "isDual": true,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_spiderman_omdrt5_xd",
+     "trSes": true,
+     "trAltyazi": false,
+     "isDual": true,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": true,
+      "altyazi": true,
+      "izSatiri": 3,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_umgwfu",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_zpft1i",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_ut8na8",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_139fco",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_wxulti",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_nova_1txb3x_xd",
+     "trSes": true,
+     "trAltyazi": true,
+     "isDual": true,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_greenarrow_l1eq9x",
+     "trSes": true,
+     "trAltyazi": false,
+     "isDual": true,
+     "m3u8": false
+    }
+   ],
+   "uyusmazliklar": [],
+   "flaplar": [],
+   "bagimsizOlculen": 8,
+   "basarili": true
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "ad": "Game of Thrones",
+   "sezon": 1,
+   "bolum": 2,
+   "tamam": true,
+   "ilerleme": {
+    "dubbed": 19,
+    "subtitled": 14,
+    "toplam": 33,
+    "bitti": true
+   },
+   "taramaBitti": true,
+   "sure": 50782,
+   "dubbedAdet": 19,
+   "subtitledAdet": 14,
+   "toplam": 33,
+   "etiketler": {
+    "🌐 Özgün": 14,
+    "🎙️ Türkçe Dublaj": 16,
+    "💬 Orijinal + Altyazı": 3
+   },
+   "ornekler": [
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_beastboy_1ugpma",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 1,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_aqualad_1yk4w4",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 32,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_blackadam_mrbzmy",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 1,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_nova_7ysfvb_xd",
+     "trSes": true,
+     "trAltyazi": true,
+     "isDual": true,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": true,
+      "altyazi": false,
+      "izSatiri": 2,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_1o1nvk",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_q6471h",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_1et9lh",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_qwdnj6",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_jnm6ya",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_ooiiug",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_joker_yg9nlb",
+     "trSes": true,
+     "trAltyazi": false,
+     "isDual": true,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_greenarrow_5h1rgt",
+     "trSes": true,
+     "trAltyazi": true,
+     "isDual": true,
+     "m3u8": false
+    }
+   ],
+   "uyusmazliklar": [],
+   "flaplar": [],
+   "bagimsizOlculen": 8,
+   "basarili": true
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1399",
+   "ad": "Game of Thrones",
+   "sezon": 1,
+   "bolum": 3,
+   "tamam": true,
+   "ilerleme": {
+    "dubbed": 18,
+    "subtitled": 15,
+    "toplam": 33,
+    "bitti": true
+   },
+   "taramaBitti": true,
+   "sure": 39577,
+   "dubbedAdet": 18,
+   "subtitledAdet": 15,
+   "toplam": 33,
+   "etiketler": {
+    "🌐 Özgün": 13,
+    "🎙️ Türkçe Dublaj": 16,
+    "💬 Orijinal + Altyazı": 4
+   },
+   "ornekler": [
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_beastboy_1te9oh",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 1,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_blackadam_i7dnej",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 1,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_nova_1xi669_xd",
+     "trSes": true,
+     "trAltyazi": true,
+     "isDual": true,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": true,
+      "altyazi": false,
+      "izSatiri": 2,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_1fldhu",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_71o1il",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_1et9lh",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_qwdnj7",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_gb9gej",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "okundu": false,
+      "hata": "gecersiz govde (ok=false)"
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_1lb9y7",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_joker_uuln1g",
+     "trSes": true,
+     "trAltyazi": false,
+     "isDual": true,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_greenarrow_1e4hn5",
+     "trSes": true,
+     "trAltyazi": true,
+     "isDual": true,
+     "m3u8": false
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_greenarrow_1fldhu",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": false
+    }
+   ],
+   "uyusmazliklar": [],
+   "flaplar": [],
+   "bagimsizOlculen": 8,
+   "basarili": true
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "1396",
+   "ad": "Breaking Bad",
+   "sezon": 2,
+   "bolum": 1,
+   "tamam": true,
+   "ilerleme": {
+    "dubbed": 23,
+    "subtitled": 16,
+    "toplam": 39,
+    "bitti": true
+   },
+   "taramaBitti": true,
+   "sure": 49704,
+   "dubbedAdet": 23,
+   "subtitledAdet": 16,
+   "toplam": 39,
+   "etiketler": {
+    "🌐 Özgün": 15,
+    "🎙️ Türkçe Dublaj": 15,
+    "💬 Orijinal + Altyazı": 9
+   },
+   "ornekler": [
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_beastboy_4da0ql",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 1,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_blackadam_3gq2rp",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 1,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_aqualad_effeqe",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 9,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_hawkeye_34y26f",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 0,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_brainiac_1qvx5y",
+     "trSes": true,
+     "trAltyazi": false,
+     "isDual": true,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 0,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_brainiac_q0bhb8",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 0,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_nova_1jotml_xd",
+     "trSes": true,
+     "trAltyazi": true,
+     "isDual": true,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": true,
+      "altyazi": false,
+      "izSatiri": 2,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_wolverine_1qvx5y",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 0,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_vg7ttv",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_hi5akf",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_m5mowf",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_1ildis",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    }
+   ],
+   "uyusmazliklar": [],
+   "flaplar": [
+    {
+     "neden": "aggregator tarama-ani iz olcuu tek tarafi gormus (bagimsiz 3 okuma izsiz)",
+     "satir": {
+      "kategori": "dubbed",
+      "tip": "dublaj",
+      "etiket": "🎙️ Türkçe Dublaj",
+      "kaynakId": "sp_brainiac_1qvx5y",
+      "trSes": true,
+      "trAltyazi": false,
+      "isDual": true,
+      "m3u8": true,
+      "bagimsiz": {
+       "ses": false,
+       "altyazi": false,
+       "izSatiri": 0,
+       "okundu": true
+      }
+     }
+    }
+   ],
+   "bagimsizOlculen": 8,
+   "basarili": true
+  },
+  {
+   "tmdbTip": "tv",
+   "tmdbId": "66732",
+   "ad": "Stranger Things",
+   "sezon": 1,
+   "bolum": 2,
+   "tamam": true,
+   "ilerleme": {
+    "dubbed": 31,
+    "subtitled": 15,
+    "toplam": 46,
+    "bitti": true
+   },
+   "taramaBitti": true,
+   "sure": 34420,
+   "dubbedAdet": 31,
+   "subtitledAdet": 15,
+   "toplam": 46,
+   "etiketler": {
+    "🌐 Özgün": 17,
+    "🎙️ Türkçe Dublaj": 22,
+    "💬 Orijinal + Altyazı": 7
+   },
+   "ornekler": [
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_beastboy_1400zq",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 1,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_aqualad_15tltb",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 13,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_blackadam_1epjeo",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 1,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_brainiac_31qyxq",
+     "trSes": true,
+     "trAltyazi": false,
+     "isDual": true,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 0,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "ozgun",
+     "etiket": "🌐 Özgün",
+     "kaynakId": "sp_brainiac_17yr89",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 0,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_spiderman_aqvd1z_xd",
+     "trSes": true,
+     "trAltyazi": false,
+     "isDual": true,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": true,
+      "altyazi": true,
+      "izSatiri": 4,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_nova_1xityc_xd",
+     "trSes": true,
+     "trAltyazi": true,
+     "isDual": true,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": true,
+      "altyazi": false,
+      "izSatiri": 2,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_wolverine_31qyxq",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true,
+     "bagimsiz": {
+      "ses": false,
+      "altyazi": false,
+      "izSatiri": 0,
+      "okundu": true
+     }
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_ketsof",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_1l6ysk",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_11tbdv",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    },
+    {
+     "kategori": "dubbed",
+     "tip": "dublaj",
+     "etiket": "🎙️ Türkçe Dublaj",
+     "kaynakId": "sp_shazam_18tg9t",
+     "trSes": false,
+     "trAltyazi": false,
+     "isDual": false,
+     "m3u8": true
+    }
+   ],
+   "uyusmazliklar": [],
+   "flaplar": [
+    {
+     "neden": "aggregator tarama-ani iz olcuu tek tarafi gormus (bagimsiz 3 okuma izsiz)",
+     "satir": {
+      "kategori": "dubbed",
+      "tip": "dublaj",
+      "etiket": "🎙️ Türkçe Dublaj",
+      "kaynakId": "sp_brainiac_31qyxq",
+      "trSes": true,
+      "trAltyazi": false,
+      "isDual": true,
+      "m3u8": true,
+      "bagimsiz": {
+       "ses": false,
+       "altyazi": false,
+       "izSatiri": 0,
+       "okundu": true
+      }
+     }
+    }
+   ],
+   "bagimsizOlculen": 8,
+   "basarili": true
+  }
+ ]
+}

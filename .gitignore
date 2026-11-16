@@ -43,3 +43,7 @@ public/dublaj-arsivi/
 *.AppImage
 *.msi
 
+
+# yerel-dogrula aracinin uretti gecici electron harness'i
+tools/.yerel-dogrula-electron.cjs
+tools/.yerel-oynatici-electron.cjs

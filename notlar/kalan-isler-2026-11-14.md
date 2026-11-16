@@ -19,7 +19,7 @@ v2.0.4→v2.0.7). Bu dosya **yalnız hâlâ açık** olanları ve bugünkü öl�
 
 ## KALAN İŞLER
 
-### K1 — Üretim derlemesinde ölçüm kancası yüklenmiyor (ÖLÇÜM KÖRLÜĞÜ) · öncelik 1
+### K1 — Üretim derlemesinde ölçüm kancası yüklenmiyor (ÖLÇÜM KÖRLÜĞÜ) · ÇÖZÜLDÜ (2026-11-16)
 - Kanıt: `VITE_DEVICE_SWEEP=1` ile üretilen derleme üç farklı hedefte denendi
   (canlı site, `vite preview`, statik sunucu) → her başlıkta
   `HATA: window.__cpYildizTara is not a function`; özet `0/4 eşleşme · hata=4`.
@@ -31,11 +31,15 @@ v2.0.4→v2.0.7). Bu dosya **yalnız hâlâ açık** olanları ve bugünkü öl�
   ölçümü) **yalnız dev sunucusunda** çalışıyor → dağıtılmış sitede kaynak/playback
   regresyonu ölçülemiyor; 30 başlıklı `web-e2e-sonuc.json` gibi raporlar artık
   canlı için üretilemiyor.
-- Onarım tarifi: kapıyı tek kaynağa indir (`KANCA_ACIK` dışa aktarımı) ve ölçüm
-  derlemesini **build-time** ile garantiye al — `vite build --mode measure` +
-  `define: { __CP_KANCA__: true }`, ya da üretimde `localStorage.cp_kanca === '1'`
-  runtime anahtarı (kapanış varsayılanı kapalı kalsın). Sonra `tools/web-e2e-cdp.mjs`
-  ile canlı hedefte 6 başlık koştur ve `notlar/canli-e2e-<tarih>.json` üret.
+- ONARIM (2026-11-16): kök neden kapının KENDİSİYDİ — `main.js` yalnız env'e
+  bakıyordu, `deviceSweep.js` içindeki `ACIK` zaten DEV'i kapsıyordu ama dış kapı
+  onu hiç çağırmıyordu. `main.js` kapısı `VITE_DEVICE_SWEEP === '1' || DEV === 'true'`
+  yapıldı → vite DEV'de kanca kendini kuruyor. Üretim env'sizse dinamik import
+  satırına hiç dokunulmaz (pakete girmez, sızıntı yok).
+- Doğrulama yüzeyi: bu ağdan canlı siteye TLS-middlebox engeli olduğu için ölçüm
+  YEREL vite DEV + Electron CDP üzerinden AYNI üretim kod yollarıyla yapılıyor:
+  `tools/yerel-dogrula.mjs` (veri katmanı) + `tools/yerel-oynatici-dogrula.mjs`
+  (arayüz). Kanıt: `notlar/yerel-dogrula-sonuc.json`.
 
 ### K2 — Yıldız arşivi (MultiDubEndgame) ana oynatma akışına bağlı DEĞİL · öncelik 1
 - Kayıt: `notlar/dublaj-zekasi-2026-11-14.md` §7.3 — `arkaPlandaZenginlestir()` hazır,
@@ -76,3 +80,39 @@ v2.0.4→v2.0.7). Bu dosya **yalnız hâlâ açık** olanları ve bugünkü öl�
 ## Yapılsın diye bekleyen tek kullanıcı adımı
 Yok. Push akışı çalışıyor: `14e433c` push'lanmış ve canlıda (Actions success). Bu
 oturumun tek yerel değişikliği `tools/cf-smoke.mjs` (UA düzeltmesi).
+
+---
+
+## 2026-11-16 — Kaynak/Dil yeniden tasarımı (KAYNAKLAR sekmesi → oynatıcı içi)
+
+Özet: KAYNAKLAR sekmesi DetailView'dan kaldırıldı; oynat butonları doğrudan
+oynatıcıyı açar, tarama/kaynak/dil üçlüsü artık oynatıcının içinde. Bu oturumda
+bulunup düzeltilen GERÇEK kusurlar (hepsi kanıtlı):
+
+1. **Kapsam hataları (closure ReferenceError)** — `PlayerModal.js` içinde beş
+   ayrı fonksiyon kapanışta olmayan `videoEl` okuyordu (modülde yalnız
+   `videoElemani()` yardımcısı var): `dilDegistir` 1b dalı ÖLÜ koddu,
+   `switchSourceCategory` konak-koruması ve `triggerAutoFailover` dil-geçişi
+   yutulan ReferenceError atıyordu, harici-oynatıcı üç yolu (HEAD/canlıda da
+   var!) konumu hiç alamıyordu. Hepsi `videoElemani()` ile onarıldı.
+   Denetim aracı: `tools/kapsam-denet.mjs` (acorn AST) → artık temiz.
+2. **`dilDegistir` HLS iz tespiti** — `/tr|tur|türk/` regex'i "Country/Enter"
+   gibi yanlış pozitifler üretiyordu; ISO `lang ^tr(-|_|$)` + ad sözcük
+   sınırına sıkılaştırıldı. "Zaten hedef kanalda" dalı artık etiketi senkronlar
+   (eskiden havuz değiştirip yayını boşuna yeniden yüklerdi).
+3. **`izleriOlc` olumsuz-önbellek hatası** — `res.ok`/#EXTM3U doğrulaması
+   yoktu; HTML hata sayfası "Türkçe iz yok" olarak KALICI cache'leniyordu.
+   Artık geçersiz gövde `{bilinmiyor}` döner ve cache'lenmez.
+4. **Çapraz denetim (bağımsız denetçi)** — `tools/yerel-dogrula.mjs` her m3u8'i
+   kendi başına 3× okuyup `#EXT-X-MEDIA` izlerini aggregator'ın etiketiyle
+   çaprazlar (dublaj→ses izi, altyazı→altyazı izi, izsiz→Özgün; yerli/site
+   muafiyeti tahmin değil modülün kendi `yerliKaynakMi`'si). Son tur: 5/5
+   içerik kaynak veriyor (33–46 kaynak), 40 bağımsız okuma, **0 uyumsuzluk**,
+   2 tek-taraflı varyans (sağlayıcının header'lı isteği TR izi görüyor,
+   tarayıcıdan 3 okuma göremiyor — CDN varyantı, etiket kanıtlı).
+   Kanıt: `notlar/yerel-dogrula-sonuc.json`.
+5. **Arayüz dumanı** — `tools/yerel-oynatici-dogrula.mjs`: detay → OYNAT →
+   oynatıcı açılıyor + dil etiketleri + JS hatası sayacı (bkz. son çalışma
+   `notlar/yerel-oynatici-sonuc.json`).
+
+Sürüm 2.0.8 (versionCode 208); android asset'leri `npx cap sync` ile senyor.
