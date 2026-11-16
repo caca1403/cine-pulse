@@ -127,8 +127,8 @@ async function electronBaslat() {
 
 const bekle = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function degerlendir(gonder, ifade) {
-  const r = await gonder('Runtime.evaluate', { expression: ifade, returnByValue: true, awaitPromise: true }, 60000);
+async function degerlendir(gonder, ifade, timeoutMs = 120000) {
+  const r = await gonder('Runtime.evaluate', { expression: ifade, returnByValue: true, awaitPromise: true }, timeoutMs);
   if (r.exceptionDetails) return { hata: String(r.exceptionDetails.exception?.description || r.exceptionDetails.text).slice(0, 300) };
   return { deger: r.result?.value };
 }
@@ -144,9 +144,11 @@ async function main() {
 
     for (const v of VAKALAR) {
       const kayit = { ad: v.ad, yol: v.yol, sayfaHatasi: olaylar.length };
-      // 1) SPA yönlendirmesi: hash rotası (main.js hashchange → route())
-      await gonder('Page.navigate', { url: URL_HEDEF.replace(/\/$/, '') + '/' + v.yol }).catch(() => {});
-      await bekle(2000);
+      // 1) SPA yönlendirmesi: YALNIZ hash değişimi (hashchange → route()).
+      //    Page.navigate bağlamı yok edip awaitPromise çağrılarını yutuyordu
+      //    (iki koşturuda da sessiz takılma kök nedeni buydu).
+      await degerlendir(gonder, `(() => { document.getElementById('player-modal')?.remove(); location.hash = ${JSON.stringify(v.yol)}; return location.hash; })()`);
+      await bekle(3000);
       // 2) Detay sayfasının OYNAT butonunu bekle ve tıkla (doğrudan oynatıcı akışı)
       const tik = await degerlendir(gonder, `(async () => {
         const beklemek = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (fn()) return true; await new Promise(r => setTimeout(r, 400)); } return false; };
