@@ -379,5 +379,6 @@
 /* Çubuk akıştan çıktığı için boşluğunu hero üst dolgusu üstlenir:
    çubuk alt sınırı = navH + 10 + ~40 (düğme) → +12 nefes. */
 .dt-hero { padding-top: calc(var(--cp-nav-h, 79px) + 62px); }
-/* Yapışkan sekmeler sabit çubuğun ALTINA kilitlenir (üstü hiç kesilmez). */
-.dt-sekmeler { top: calc(var(--cp-nav-h, 79px) + 52px); }
+/* Sekmeler artık YAPIŞKAN DEĞİL (kullanıcı 2026-11-16: "menü beni takip
+   ediyor"): akışla kayar, içeriğin üstüne binmez. */
+.dt-sekmeler { position: static; top: auto; }

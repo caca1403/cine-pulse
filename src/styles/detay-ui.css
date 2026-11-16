@@ -208,8 +208,11 @@
 }
 
 .dt-sekmeler {
-  position: sticky;
-  top: 0;
+  /* Kullanıcı 2026-11-16: "menü beni takip ediyor, aşağı iniyor" — sekme
+     çubuğu akışla birlikte kayar, üstte çakılı KALMAZ; içeriğin üstünü
+     kapatmaz. (Eskiden position:sticky + top:0 idi.) */
+  position: static;
+  top: auto;
   z-index: 100;
   display: flex;
   gap: 0.35rem;

@@ -3293,14 +3293,16 @@ export async function openPlayerModal({
   }
 
   function updateCategoryCounts() {
-    // TEK YAPI: tek sayaç = tüm kaynaklar. Dublaj/altyazı bilgisi artık her
-    // kaynağın etiketinde (bkz. gercekKaynakEtiketi). Ayrı sekme sayaçları
-    // ölçümde yanlış çıkıyordu (3 / 11) çünkü listeler örtüşüyordu.
-    const toplam = (categorizedServers.dubbed?.length || 0) + (categorizedServers.subtitled?.length || 0);
+    // Her ses kategorisinin GERÇEK havuz büyüklüğü gösterilir. Eskiden ikisi de
+    // "toplam"a eşitleniyordu → kullanıcı "Dublaj 28 / Altyazı 28" görüyor,
+    // hangi dilde kaç kaynak olduğunu anlayamıyordu (2026-11-16).
+    const dubAdet = categorizedServers.dubbed?.length || 0;
+    const subAdet = categorizedServers.subtitled?.length || 0;
+    const toplam = dubAdet + subAdet;
     const dubCount = document.getElementById('tab-dubbed-count');
     const subCount = document.getElementById('tab-subtitled-count');
-    if (dubCount) dubCount.textContent = String(toplam);
-    if (subCount) subCount.textContent = String(toplam);
+    if (dubCount) dubCount.textContent = String(dubAdet);
+    if (subCount) subCount.textContent = String(subAdet);
     const smartAll = document.getElementById('smart-cat-all-count');
     if (smartAll) smartAll.textContent = `(${toplam})`;
     // Detay sayfasındaki kaynak paneli kaldırıldı (kullanıcı 2026-11-14):
@@ -4342,6 +4344,9 @@ export async function openPlayerModal({
         `;
         renderPlayerIcons(wrapper);
       }
+      // 25 sn içinde yeni hat bağlanmazsa sonsuz spinner yerine hatalı ekran
+      // gösterilir (kullanıcı 2026-11-16: dizi bölümlerinde takılı kalıyordu).
+      failoverBeklemeKur(reason);
       return;
     }
 
@@ -5392,8 +5397,11 @@ export async function openPlayerModal({
           </div>
         </div>
 
-        <!-- Hidden proxy for backward compatibility with tab-dubbed / tab-subtitled -->
-        <div class="player-header-toggle" style="display: none !important;">
+        <!-- Ses dili seçici (kullanıcı 2026-11-16: "Türkçe dublaj / altyazı arasında
+             seçme seçeneği vermiyor"). Bu ikili GÖRÜNÜR olmalı: kullanıcının tek
+             kararı sestir; kaynak seçimi otomatiktir. Sayaçlar gerçek havuz
+             uzunluğundan gelir (updateCategoryCounts). -->
+        <div class="player-header-toggle" role="group" aria-label="Ses dili">
           <button id="tab-dubbed" class="cinema-tab-btn cp-press ${currentCategory === 'dubbed' ? 'active' : ''}">
             <span class="tab-flag">🎙️</span>
             <span>Dublaj</span>
@@ -9252,6 +9260,28 @@ export async function openPlayerModal({
 
   let isDiscoveryActive = false;
   let hasShownDubbedAlert = false;
+  /* FAILOVER BEKLEME SINIRI (kullanıcı 2026-11-16): hat yanıt vermediğinde ve
+     sıradaki hat yokken keşif "hâlâ çalışıyor" sayılıp sınırsız bekleniyordu;
+     keşif askıda kaldıysa spinner sonsuza dek dönüyordu. Artık bekleme 25 sn
+     ile sınırlı: süre dolunca oynatma başlamadıysa gösterilebilir hata açılır
+     (Sıradaki Kaynak / Altyazıya Geç düğmeleriyle). Oynatma başlayınca, tarama
+     bitince ve modal kapanınca zamanlayıcı iptal edilir. */
+  let failoverBeklemeSaati = null;
+  const failoverBeklemeyiIptalEt = () => {
+    if (failoverBeklemeSaati) { clearTimeout(failoverBeklemeSaati); failoverBeklemeSaati = null; }
+  };
+  const failoverBeklemeKur = (reason) => {
+    failoverBeklemeyiIptalEt();
+    const generation = discoveryGeneration;
+    failoverBeklemeSaati = setTimeout(() => {
+      failoverBeklemeSaati = null;
+      if (closed || generation !== discoveryGeneration) return;
+      if (hasPlayerStartedPlaying) return;
+      const oynatilabilir = (activeServers || []).some((s, i) => i !== currentServerIndex && s && !s.failed);
+      if (oynatilabilir) return;
+      showInPlayerError(reason);
+    }, 25000);
+  };
 
   function startServerDiscovery({ isEpisodeSwitch = false } = {}) {
     try { discoveryAbortController?.abort(); } catch (_) {}
