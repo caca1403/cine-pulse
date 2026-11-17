@@ -63,6 +63,19 @@ export async function kapiFetch(adres, init = {}) {
   }
 }
 
+/* BAŞLIK GÖNDEREBİLİR MİYİZ? — Android/Capacitor ve masaüstü istemcileri yayın
+   isteklerine kendi Referer/Origin/UA başlıklarını koyabilir (CapacitorHttp /
+   yerel ağ geçidi). Düz WEB'de tarayıcı bu başlıkları göndermeye izin vermez
+   (forbidden headers) → çıplak adres 403 yer. Bu yüzden türev-başlık kanıtlı
+   satırlar yalnız WEB'de proxy'ye sarılır; native davranışına dokunulmaz. */
+export function baslikGonderebilir() {
+  try {
+    if (isNativeAndroidApp()) return true;
+    if (typeof window !== 'undefined' && window.CinePulseDesktop?.isDesktop === true) return true;
+  } catch (_) { /* tarayıcı dışı ortam */ }
+  return false;
+}
+
 export function kahramanKatmaniAcikMi() {
   try {
     if (typeof localStorage !== 'undefined' && localStorage.getItem('cp_kahraman') === '0') return false;
@@ -502,7 +515,14 @@ export async function getStreamingServersProgressive({
        yayın eski davranışla çıplak kalır (2026-10-16 ölçümü: her şeyi sarmak
        listeyi 10→3 kaynağa düşürüyordu). */
     for (const k of [...oynatilir, ...belirsiz]) {
-      if (!k || !k.embedSayfa || k.koprulendi === true) continue;
+      const gömülüCozulen = Boolean(k && k.embedSayfa && k.koprulendi !== true);
+      /* TÜRETİLMİŞ BAŞLIKLA DOĞRULANAN ÇIPLAK SATIR (2026-11-17): kapı satırı
+         kendi türettiği Referer/Origin ile açabildi; tarayıcı bu başlıkları
+         gönderemediği için satır çıplak kalırsa WEB/APK'da 403 yer. Aynı
+         başlıklar proxy sorgusuna taşınır. (Ölçülen: brainiac/diziyou ham
+         m3u8 vekilden 200, çıplak tarayıcı isteği 403.) */
+      const baslikTuretilmis = Boolean(k && k.baslikTuretildi && k.koprulendi !== true && !baslikGonderebilir());
+      if (!gömülüCozulen && !baslikTuretilmis) continue;
       const akis = String(k.url || k.streamUrl || '');
       const başlık = k.headers && typeof k.headers === 'object' ? k.headers : {};
       if (!Object.keys(başlık).length) continue;

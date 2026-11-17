@@ -32,7 +32,7 @@
 const VARSAYILAN_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 /** Doğrudan oynatılabilir uzantı (bunlar gömülü sayfa DEĞİLDİR). */
-const AKIS_UZANTI = /\.(m3u8|mpd|mp4|mkv|webm|m4v|m4s|mov|ts)(\?|#|$)/i;
+const AKIS_UZANTI = /\.(m3u8|mpd|mp4|mkv|webm|m4v|m4s|mov|ts)([?&#]|$)/i;
 
 /** Gömülü oynatıcı yolu — kapının yedek sezgisi de aynı deseni kullanır. */
 const GOMULU_YOLU = /\/(?:play|embed|oynat|iframe|watch|player|media)(?:[?/]|$)/i;

@@ -370,13 +370,13 @@ async function gomuluDogrula(kaynak, adres, { fetchFn, ms, beklenenSureDk, embed
     butce
   );
 
-  if (cozum?.zamanAsimi) return { ok: false, sebep: 'zaman-asimi', belirsiz: true, gomulu: true };
+  if (cozum?.zamanAsimi) return { ok: false, sebep: 'zaman-asimi', belirsiz: true, gomulu: true, gomuluCozulemedi: true };
   if (cozum?.hata) {
-    return { ok: false, sebep: 'gomulu-hata', belirsiz: true, gomulu: true, hata: String(cozum.hata?.message || cozum.hata).slice(0, 160) };
+    return { ok: false, sebep: 'gomulu-hata', belirsiz: true, gomulu: true, gomuluCozulemedi: true, hata: String(cozum.hata?.message || cozum.hata).slice(0, 160) };
   }
   const sonuc = cozum?.deger;
   if (!sonuc || typeof sonuc !== 'object') {
-    return { ok: false, sebep: 'gomulu-cozulemedi', belirsiz: true, gomulu: true };
+    return { ok: false, sebep: 'gomulu-cozulemedi', belirsiz: true, gomulu: true, gomuluCozulemedi: true };
   }
   if (sonuc.durum === 'olu') {
     return { ok: false, sebep: sonuc.sebep || 'gomulu-olu', gomulu: true };
@@ -390,7 +390,7 @@ async function gomuluDogrula(kaynak, adres, { fetchFn, ms, beklenenSureDk, embed
   // YABANCI AKIŞ KORUMASI: sayfadan çözülen adres başka siteye çıkıyorsa
   // yanlış eşleşme/reklam riski var → belirsiz (ölü değil).
   if (!ayniAlandanMi(sayfaAdresi, sonuc.akis)) {
-    return { ok: false, sebep: 'gomulu-yabanci-akis', belirsiz: true, gomulu: true, akis: sonuc.akis };
+    return { ok: false, sebep: 'gomulu-yabanci-akis', belirsiz: true, gomulu: true, gomuluCozulemedi: true, akis: sonuc.akis };
   }
 
   const ic = await akisDogrula(sonuc.akis, {
@@ -448,7 +448,19 @@ export async function kaynakDogrula(kaynak, { fetchFn, ms = VARSAYILAN_MS, bekle
       if (ek.Origin) {
         const ikinci = { ...temelBasliklar, ...ek };
         sonuc = await akisDogrula(adres, { fetchFn: f, ms: sure, beklenenSureDk, basliklar: ikinci });
-        if (sonuc?.ok) sonuc = { ...sonuc, basliklarla: true };
+        if (sonuc?.ok) {
+          sonuc = { ...sonuc, basliklarla: true };
+          /* TÜRETİLMİŞ BAŞLIKLA AÇILDIYSADIR. Tarayıcı bu başlıkları kendisi
+             gönderemez (Referer/Origin yasaklı başlıklar) → satır ÇIPLAK kalırsa
+             kullanıcı "listede var ama açılmıyor" görür. İşaret, agregatördeki
+             yeniden-sarmalama bloğuna taşınır (kapiUygula → oynatmaAdresi). */
+          try {
+            kaynak.baslikTuretildi = true;
+            if (!kaynak.headers || typeof kaynak.headers !== 'object' || !Object.keys(kaynak.headers).length) {
+              kaynak.headers = ek;
+            }
+          } catch (_) { /* dondurulmuş nesne: işaret düşer, kapı yine çalışır */ }
+        }
       }
     }
     return sonuc;

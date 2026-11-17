@@ -185,7 +185,6 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
         trAltyazi: kanit.trAltyazi,
         dilDurumu: kanit.trSes ? 'dublaj' : (kanit.trAltyazi ? 'altyazi' : 'orijinal'),
         headers: { 'User-Agent': UA, Referer: embed },
-        proxyGerekmez: true, // imzalı CDN: köprüden çekilirse 403
       });
     }
 

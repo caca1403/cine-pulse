@@ -321,8 +321,38 @@ test('başlıksız 403 → başlıkla (Origin/Referer) tekrar dener ve ok:true o
   assert.equal(baslikOku(cagrilar[1].basliklar, 'user-agent')?.length > 5, true, 'tarayıcı UA taşınır');
 });
 
-test('kaynağın KENDİ başlıkları ilk denemede gider (Referer/Origin ezilmez)', async () => {
-  const cagrilar = [];
+/* BAŞLIKLA AÇILAN ÇIPLAK SATIR İŞARETLENİR (2026-11-17 — kullanıcının ana
+   şikâyeti: "kaynak listede var ama açılmıyor"). Düz web tarayıcısı
+   Referer/Origin gönderemez; kapı türettiği başlıkla kaynağı açabiliyorsa
+   satır çıplak bırakılmamalı, agregatör onu başlık proxy'sine sarmalı.
+   Sözleşme: kaynak.baslikTuretildi = true + kaynak.headers doldurulur. */
+test('başlıkla açılan satır işaretlenir (baslikTuretildi) ve başlıkları kaynağa yazılır', async () => {
+  const fetchFn = async (_adres, init = {}) => {
+    const basliklar = { ...(init.headers || {}) };
+    if (!baslikVar(basliklar, 'referer')) return yanit('forbidden', { durum: 403, tip: 'text/plain' });
+    return yanit(playlist(6, 10));
+  };
+  const kaynak = { id: 'ciplak', streamUrl: 'https://storage.ornek/ep/40901/play.m3u8' };
+  const sonuc = await kaynakDogrula(kaynak, { fetchFn, ...EMBED_KAPALI });
+  assert.equal(sonuc.ok, true);
+  assert.equal(kaynak.baslikTuretildi, true, 'agregatörün yeniden-sarmalaması bu işareti okur');
+  assert.equal(String(kaynak.headers?.Referer || '').startsWith('https://storage.ornek'), true, 'Referer kaynağa yazılır');
+  assert.equal(String(kaynak.headers?.Origin || ''), 'https://storage.ornek');
+});
+
+test('kaynağın kendi başlığı yeterse işaret KONMAZ (yalnız türev başlık işaretlenir)', async () => {
+  const fetchFn = async () => yanit(playlist(6, 10));
+  const kaynak = {
+    id: 'kendi-basligi',
+    streamUrl: 'https://cdn.ornek/index.m3u8',
+    headers: { Referer: 'https://site.ornek/', Origin: 'https://site.ornek' },
+  };
+  const sonuc = await kaynakDogrula(kaynak, { fetchFn, ...EMBED_KAPALI });
+  assert.equal(sonuc.ok, true);
+  assert.equal(kaynak.baslikTuretildi, undefined, 'kendi başlığıyla açılan satır zaten sarmalanmış olabilir');
+});
+
+test('kaynağın KENDİ başlıkları ilk denemede gider (Referer/Origin ezilmez)', async () => {  const cagrilar = [];
   const fetchFn = async (adres, init = {}) => {
     cagrilar.push({ ...(init.headers || {}) });
     return yanit(playlist(10, 4));
@@ -600,4 +630,32 @@ test('providerAggregator: kademeli akış korunuyor (kısa dizi + kahraman aynı
   assert.match(kaynak, /await Promise\.allSettled\(\[/, 'kısa dizi hatları paralel kalır');
   const cagri = kaynak.match(/kisaDizi && fetch\w+\(/g) || [];
   assert.equal(cagri.length, 4, 'dört kısa dizi çağrısı korunur');
+});
+
+/* BAŞLIKLA AÇILAN ÇIPLAK SATIR WEB'DE PROXY'YE SARILIR (2026-11-17).
+   Kapı satırı türettiği Referer/Origin ile açtıysa, düz web oynatıcısı aynı
+   başlıkları gönderemeyeceği için çıplak adres 403 yer. Native/masaüstü
+   istemciler başlığı kendisi gönderebildiğinden orada davranış değişmez. */
+test('providerAggregator: türev-başlıkla açılan satır yalnız webde başlık proxy-sine sarılır', () => {
+  const kaynak = readFileSync(new URL('../src/services/kaynak/providerAggregator.js', import.meta.url), 'utf8');
+  assert.match(kaynak, /k\.baslikTuretildi/, 'kapı işareti yeniden-sarmalamada okunmalı');
+  assert.match(kaynak, /!baslikGonderebilir\(\)/, 'sarmalama yalnız başlık gönderilemeyen ortamda');
+  assert.match(kaynak, /export function baslikGonderebilir\(\)/, 'yetenek sorgusu dışa açık (test + tüketim)');
+  const blok = kaynak.slice(kaynak.indexOf('const baslikTuretilmis'), kaynak.indexOf('const yayinlanan'));
+  assert.match(blok, /oynatmaAdresi\(akis, başlık\)/, 'sarılan adres oynatma adresi olmalı');
+  assert.match(blok, /k\.koprulendi = true/, 'çift sarmalama koruması işaretlenir');
+});
+
+test('providerAggregator: başlık yeteneği native/masaüstünde true, webde false', async () => {
+  const mod = await import('../src/services/kaynak/providerAggregator.js');
+  assert.equal(typeof mod.baslikGonderebilir, 'function');
+  const onceki = globalThis.window;
+  try {
+    delete globalThis.window;
+    assert.equal(mod.baslikGonderebilir(), false, 'node/web bağlamında başlık gönderilemez');
+    globalThis.window = { CinePulseDesktop: { isDesktop: true } };
+    assert.equal(mod.baslikGonderebilir(), true, 'masaüstü ağ geçidi başlıkları taşır');
+  } finally {
+    if (onceki === undefined) delete globalThis.window; else globalThis.window = onceki;
+  }
 });

@@ -127,7 +127,11 @@ export async function getStreams(kimlik, tur = 'tv', sezon = 1, bolum = 1) {
       trSes: o.dublaj === true,
       dilDurumu: o.dublaj ? 'dublaj' : 'orijinal',
       headers: { 'User-Agent': UA, Referer: `${SITE}/` },
-      proxyGerekmez: true, // storage CDN'i Referer/hotlink korumalı
+      /* SARMALANIR (2026-11-17 ölçümü): storage.diziyou.one Referer/hotlink
+         korumalı; düz web isteği Referer/Origin gönderemediği için çıplak adres
+         403 yiyordu ("kaynak var ama açılmıyor"). Aynı hostun sarmalanmış hali
+         Wolverine tarafında cihazda kanıtlı, vekil hattı da 200 + #EXTM3U döndü
+         (ölçüldü). Bu yüzden köprü ZORUNLU, `proxyGerekmez` kaldırıldı. */
     });
   }
 

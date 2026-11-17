@@ -252,7 +252,6 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
         altyaziUrl: s.subtitleTr || kayit.subtitleTr || '',
         subtitles: altyaziListesi(s),
         headers: { 'User-Agent': UA, Referer: `${SITE}/`, Origin: SITE },
-        proxyGerekmez: true,
         proxyStreamGerekli: true,
       });
     }
@@ -269,7 +268,6 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
         headers: { 'User-Agent': UA, Referer: `${SITE}/`, Origin: SITE },
         subtitles: altyaziListesi(s),
         altyaziUrl: s.subtitleTr || kayit.subtitleTr || '',
-        proxyGerekmez: true,
         proxyStreamGerekli: true,
         diller: [],
         dogrulanamadi: true,
@@ -301,7 +299,6 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
         headers: { 'User-Agent': UA, Referer: `${SITE}/`, Origin: SITE },
         subtitles: altyaziListesi(s),
         altyaziUrl: s.subtitleTr || kayit.subtitleTr || '',
-        proxyGerekmez: true,
         proxyStreamGerekli: true,
         diller: [],
         dogrulanamadi: true,
