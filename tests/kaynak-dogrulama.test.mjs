@@ -23,6 +23,65 @@ import { readFileSync } from 'node:fs';
 const { kaynakDogrula, dogrulanmislariAyir } = await import('../src/services/kaynak/kaynakDogrulayici.js');
 const { failOpenBirlestir } = await import('../src/services/kaynak/providerAggregator.js');
 
+/* ── kapı ağ adaptörü (CORS) ──────────────────────────────────────────── */
+
+test('kapiFetch: tarayıcı CORS reddinde aynı-köken başlık proxy’siyle tekrar dener', async () => {
+  const cagrilar = [];
+  const hakikiFetch = globalThis.fetch;
+  globalThis.fetch = async (adres, init = {}) => {
+    cagrilar.push({ adres: String(adres), basliklar: { ...(init.headers || {}) } });
+    if (String(adres).startsWith('/api/hls_proxy')) return yanit(playlist(10, 4));
+    throw new TypeError('Failed to fetch'); // ölçülen belirti: CORS reddi
+  };
+  try {
+    const { kapiFetch } = await import('../src/services/kaynak/providerAggregator.js');
+    assert.equal(typeof kapiFetch, 'function', 'adaptör dışa açık olmalı (kapıya bağlanır)');
+    const y = await kapiFetch('https://cdn.ornek/dizi/a.m3u8', {
+      headers: { Referer: 'https://ornek.com/', Origin: 'https://ornek.com' },
+    });
+    assert.equal(y.status, 200);
+    assert.equal(cagrilar.length, 2, 'önce doğrudan, sonra proxy — başka istek yok');
+    const proxy = cagrilar[1].adres;
+    assert.match(proxy, /^\/api\/hls_proxy\?url=/);
+    assert.ok(proxy.includes(encodeURIComponent('https://cdn.ornek/dizi/a.m3u8')), 'hedef adres proxy’ye taşınır');
+    assert.ok(proxy.includes(encodeURIComponent('https://ornek.com/')), 'Referer proxy’ye taşınır');
+    assert.equal(cagrilar[1].basliklar.Referer, undefined, 'tarayıcıya özel başlık proxy isteğinde tekrar gönderilmez');
+  } finally {
+    globalThis.fetch = hakikiFetch;
+  }
+});
+
+test('kapiFetch: doğrudan istek geçerse ikinci istek YAPILMAZ (çift trafik yok)', async () => {
+  const cagrilar = [];
+  const hakikiFetch = globalThis.fetch;
+  globalThis.fetch = async (adres) => {
+    cagrilar.push(String(adres));
+    return yanit(playlist(4, 4));
+  };
+  try {
+    const { kapiFetch } = await import('../src/services/kaynak/providerAggregator.js');
+    const y = await kapiFetch('https://cdn.ornek/dizi/b.m3u8');
+    assert.equal(y.status, 200);
+    assert.deepEqual(cagrilar, ['https://cdn.ornek/dizi/b.m3u8']);
+  } finally {
+    globalThis.fetch = hakikiFetch;
+  }
+});
+
+test('kapiFetch: göreli/proxy adresi yeniden sarmalanmaz', async () => {
+  const cagrilar = [];
+  const hakikiFetch = globalThis.fetch;
+  globalThis.fetch = async (adres) => { cagrilar.push(String(adres)); return yanit(playlist(2, 4)); };
+  try {
+    const { kapiFetch } = await import('../src/services/kaynak/providerAggregator.js');
+    await kapiFetch('/api/hls_proxy?url=https%3A%2F%2Fx%2Fa.m3u8');
+    assert.deepEqual(cagrilar, ['/api/hls_proxy?url=https%3A%2F%2Fx%2Fa.m3u8']);
+  } finally {
+    globalThis.fetch = hakikiFetch;
+  }
+});
+
+
 /* ── sahte ağ ─────────────────────────────────────────────────────────── */
 
 function yanit(govde, { durum = 200, tip = 'application/vnd.apple.mpegurl' } = {}) {
@@ -529,6 +588,7 @@ test('providerAggregator: kapı bağlı, ölüler listeye girmiyor, fail-open uy
   assert.match(kaynak, /import \{ dogrulanmislariAyir \} from '\.\/kaynakDogrulayici\.js'/, 'doğrulayıcı import edilmeli');
   assert.match(kaynak, /dogrulanmislariAyir\(/, 'kapı çağrılmalı');
   assert.match(kaynak, /const yayinlanan = \[\.\.\.oynatilir, \.\.\.belirsiz\]/, 'yalnız oynatılır + belirsiz yayınlanır');
+  assert.match(kaynak, /fetchFn: kapiFetch/, 'kapı CORS-güvenli ağ adaptöründen geçmeli (tarayıcıda kör kalmamalı)');
   assert.match(kaynak, /elenenler\.push\(/, 'ölüler ayrı kovaya alınır');
   assert.match(kaynak, /\[kaynak\] dogrulama acik kaldi/, 'fail-open uyarısı var');
   assert.match(kaynak, /await dogrulamaKuyrugu/, 'sonuç yayınlanmadan kapı beklenir');

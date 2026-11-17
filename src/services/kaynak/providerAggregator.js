@@ -36,6 +36,33 @@ import { apiUrl } from '../altyapi/apiOrigin.js';
      localStorage.setItem('cp_kahraman', '0')  → katmanı kapat
      localStorage.setItem('cp_kahraman', '1')  → açık (varsayılan)
    -------------------------------------------------------------------------- */
+/* ── KAPI AĞ ADAPTÖRÜ ────────────────────────────────────────────────────
+   Doğrulama kapısı tarayıcıda çalışırken yayın sunucularına doğrudan fetch
+   atmak CORS'a takılır (yayın CDN'leri Access-Control-Allow-Origin vermez).
+   O zaman her satır "ağ hatası → belirsiz" olur ve ÖLÜ kaynaklar listeden
+   hiç düşmezdi — kullanıcının "çıkan her kaynak açılacak" talebi sessizce
+   çökerdi. Çözüm: doğrudan istek ağ/CORS nedeniyle REDDEDİLİRSE aynı istek
+   kendi başlık proxy'mizden (/api/hls_proxy) tekrarlanır; kaynak başlıkları
+   (Origin/Referer/UA) proxy sorgusuna taşınır. Doğrudan istek başarılıysa
+   ikinci istek YAPILMAZ (çift trafik yok). Testler fetchFn'i doğrudan
+   enjekte ettiği için bu adaptör testleri etkilemez. */
+export async function kapiFetch(adres, init = {}) {
+  const hedef = String(adres || '');
+  const cagir = (url, secenek) => fetch(url, secenek);
+  // Göreli ya da zaten proxy'lenmiş adres: yeniden sarmalama yok.
+  if (!/^https?:\/\//i.test(hedef) || hedef.startsWith('/api/')) return cagir(hedef, init);
+  try {
+    return await cagir(hedef, init);
+  } catch (hata) {
+    // CORS / DNS / TLS / mixed-content: doğrudan erişim tarayıcıda imkânsız.
+    let sarilmis = '';
+    try { sarilmis = oynatmaAdresi(hedef, init?.headers || {}); } catch (_) { sarilmis = ''; }
+    if (!sarilmis || sarilmis === hedef) throw hata;
+    // Başlıklar proxy sorgusuna gömüldü; tarayıcıya özel başlık göndermiyoruz.
+    return cagir(sarilmis, init?.signal ? { signal: init.signal } : undefined);
+  }
+}
+
 export function kahramanKatmaniAcikMi() {
   try {
     if (typeof localStorage !== 'undefined' && localStorage.getItem('cp_kahraman') === '0') return false;
@@ -463,6 +490,7 @@ export async function getStreamingServersProgressive({
     const { oynatilir, belirsiz, olu } = await dogrulanmislariAyir(adaylar, {
       ms: KAPI_MS,
       butceMs: KAPI_BUTCE_MS,
+      fetchFn: kapiFetch,
     });
     /* GÖMÜLÜ SAYFA ÇÖZÜLDÜYSE ADRESİ YENİDEN SARMALA.
        Kapı, gömülü satırın iç akışını bulup kaynak.url/streamUrl alanına GERÇEK
