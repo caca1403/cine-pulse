@@ -139,7 +139,7 @@ export function saglayiciTavani() { return yavasAgda() ? 45_000 : SAĞLAYICI_TAV
 export function taramaButcesi() { return BUTCE_MS; }
 
 /** Doğrudan yayın deseni — iframe/gömülü oynatıcı bu desene uymaz. */
-export const DOGRUDAN_YAYIN = /\.(m3u8|mp4|mkv|webm|m4s|mpd)(\?|#|$)/i;
+export const DOGRUDAN_YAYIN = /\.(m3u8|mp4|mkv|webm|m4s|mpd)([?&#]|$)/i;
 
 /* WebView'in (Chromium) çözemediği yayınlar: HEVC/H.265. Ölçülen hata:
  * video.error.code 4 "MEDIA_ELEMENT_ERROR: Format error". Yayın listede
@@ -1119,7 +1119,7 @@ export function normalizeEt(oge, kayit) {
   const kalite = kaliteOku(`${oge.quality || ''} ${oge.title || ''} ${url}`);
   const başlıklar = oge.headers && typeof oge.headers === 'object' ? oge.headers : {};
   const başlıkGerekli = Object.keys(başlıklar).length > 0;
-  const hls = /^(m3u8|hls|mpd|ts|m4s)$/i.test(bildirilen) || /\.m3u8(\?|#|$)/i.test(url);
+  const hls = /^(m3u8|hls|mpd|ts|m4s)$/i.test(bildirilen) || /\.m3u8([?&#]|$)/i.test(url);
   // HEVC/H.265: WebView çözemiyor (ölçüm: video.error.code 4 "Format error").
   // Bu yayınlar ELENMEZ; sunucudaki /api/hevc_proxy ucuna sarılır ve orada
   // ffmpeg ile H.264'e dönüştürülür. Böylece kaynak hem listede kalır hem oynar.

@@ -35,7 +35,7 @@
 const VARSAYILAN_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 /** Doğrudan oynatılabilir uzantı (gömülü sayfa DEĞİL). */
-const AKIS_UZANTISI = /\.(m3u8|mp4|mkv|webm|m4s|mpd|ts|mov)(\?|#|$)/i;
+const AKIS_UZANTISI = /\.(m3u8|mp4|mkv|webm|m4s|mpd|ts|mov)([?&#]|$)/i;
 
 /** Gömülü oynatıcı yolu: /play?id=, /embed/, /iframe… (çekirdekler bunu
  *  işaretliyor; işaretsiz eski kayıtlar için yedek sezgi). */
@@ -114,8 +114,11 @@ function ayniAlandanMi(sayfaAdresi, akisAdresi) {
     const a = new URL(String(sayfaAdresi)).hostname.toLowerCase().replace(/^www\./, '');
     const b = new URL(String(akisAdresi)).hostname.toLowerCase().replace(/^www\./, '');
     if (!a || !b) return false;
-    if (a === b) return true;
-    return a.endsWith(`.${b}`) || b.endsWith(`.${a}`);
+    if (a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`)) return true;
+    if (/dizisol|vidmixi|hdfilmdelisi|filmekseni/i.test(a) && /(?:^|\.)(?:vixolity\.com|vidmixi\.com|cdnimg\d+\.shop|haccodavayup\.shop|pictureupfans\.site)$/i.test(b)) {
+      return true;
+    }
+    return false;
   } catch (_) {
     return false;
   }
@@ -325,13 +328,13 @@ async function gomuluKontrol(kaynak, adres, { gomuluMu }) {
 }
 
 /** Çözülen akışı kaynağa yazar: yayıncı/tüketici tek alanı okur. */
-function cozulmusAkisiYaz(kaynak, akis, sayfaAdresi) {
+function cozulmusAkisiYaz(kaynak, akis, sayfaAdresi, ekBasliklar = null) {
   if (!kaynak || !akis) return;
   const oncekiUrl = String(kaynak.url || kaynak.streamUrl || '');
   try {
     kaynak.url = akis;
     kaynak.streamUrl = akis;
-    kaynak.isM3u8 = /\.m3u8(\?|#|$)/i.test(akis) || /mpegurl/i.test(String(kaynak.mimeType || ''));
+    kaynak.isM3u8 = /\.m3u8([?&#]|$)/i.test(akis) || /\/(?:vs|list|mp|hls|playlist)\//i.test(akis) || /mpegurl/i.test(String(kaynak.mimeType || ''));
     kaynak.format = kaynak.isM3u8 ? 'm3u8' : 'mp4';
     kaynak.isDirectVideo = true;
     kaynak.isIframe = false;
@@ -339,6 +342,9 @@ function cozulmusAkisiYaz(kaynak, akis, sayfaAdresi) {
     kaynak.gomulu = false;
     kaynak.dogrulandi = true;
     kaynak.dogrulanamadi = false;
+    if (ekBasliklar && typeof ekBasliklar === 'object') {
+      kaynak.headers = { ...(kaynak.headers || {}), ...ekBasliklar };
+    }
     // Orijinal sayfa referans olarak kalır (yeniden çözüm / teşhis için).
     if (!kaynak.embedSayfa && sayfaAdresi) kaynak.embedSayfa = sayfaAdresi;
     if (!kaynak.hamAdres && oncekiUrl) kaynak.hamAdres = oncekiUrl;
@@ -397,11 +403,11 @@ async function gomuluDogrula(kaynak, adres, { fetchFn, ms, beklenenSureDk, embed
     fetchFn,
     ms,
     beklenenSureDk,
-    basliklar: uaBasliklari,
+    basliklar: { ...uaBasliklari, ...(sonuc.headers || {}) },
   });
 
   if (ic.ok) {
-    cozulmusAkisiYaz(kaynak, sonuc.akis, sayfaAdresi);
+    cozulmusAkisiYaz(kaynak, sonuc.akis, sayfaAdresi, sonuc.headers);
     return { ...ic, sebep: 'gomulu-akis', gomulu: true };
   }
   // Yanlış bölüm: süre sapması KESİN eleme kanıtıdır (yanlış içerik).

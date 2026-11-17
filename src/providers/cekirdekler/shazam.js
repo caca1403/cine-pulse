@@ -2955,7 +2955,16 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
               }
             }));
         let flag = !1,
-          m3u8Text = "";
+          m3u8Text = "",
+          aktifOrigin = Origin;
+        const solEslesme = /[?&]id=sol(\d{6,10})(?:-s(\d+)-e(\d+))?(?:[&#]|$)/i.exec(String(url || ""));
+        if (solEslesme) {
+          const imdb = "tt" + solEslesme[1];
+          url = solEslesme[2] && solEslesme[3]
+            ? "https://ha.vixolity.com/vs/" + imdb + "/s" + Number(solEslesme[2]) + "/e" + String(Number(solEslesme[3])).padStart(2, "0")
+            : "https://ha.vixolity.com/vs/" + imdb;
+          aktifOrigin = "https://hdfilmdelisi.one";
+        }
         try {
           /* GREEN-ARROW (dizisol.js) ile AYNI site ve AYNI kanıtlanmış set:
              s*.dizisol.com master'ları Origin: site olmadan Cloudflare WAF
@@ -2964,8 +2973,8 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
             headers: {
               "User-Agent": userAgent,
               Accept: "*/*",
-              Referer: Origin + "/",
-              Origin: Origin
+              Referer: aktifOrigin + "/",
+              Origin: aktifOrigin
             },
             signal: AbortSignal.timeout ? AbortSignal.timeout(7000) : void 0
           });
@@ -2973,11 +2982,7 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
             ((m3u8Text = await response2.text()), m3u8Text.includes("#EXTM3U") && (flag = !0));
         } catch {}
         if (!flag) {
-          /* SIFIR DÖNÜŞ YASAĞI (dizisol.js'den port): doğrulama düşse bile
-             kaynak listeden atılmaz; kanıtsız olduğu için "HLS yedeği"
-             etiketiyle, dil iddiası taşımadan sunulur. */
-          yedekler.push({ url: url, externalSubtitles: externalSubtitles });
-          log("Shazam", "Doğrulanamayan hat yedek listesine alındı.", "warn");
+          log("Shazam", "Doğrulanamayan/gömülü hat atlandı.", "warn");
           continue;
         }
         let inspection = defineProp3({
@@ -2994,44 +2999,14 @@ async function getStreams(tmdbId, tmdbId2, tmdbId3, tmdbId4) {
             format: "m3u8",
             headers: {
               "User-Agent": userAgent,
-              Referer: Origin + "/",
-              Origin: Origin
+              Referer: aktifOrigin + "/",
+              Origin: aktifOrigin
             }
           });
         value8.title = "Shazam" + (languageTitle ? " · " + languageTitle : "");
         (list4.push(value8), log("Shazam", " Akış Eklendi: " + languageTitle, "success"));
       } catch (err) {
         log("Shazam", "Kaynak çözümleme hatası: " + err.message, "warn");
-      }
-    /* Doğrulanamayan hatlar: dizisol.js'teki gibi yedek olarak listelenir.
-       Etiket gerçek site adı taşımaz; dil iddiası yok (uydurma yok). */
-    for (let i = 0; i < yedekler.length; i += 1)
-      try {
-        let yedek = yedekler[i],
-          inspection = defineProp3({
-            m3u8Text: "",
-            m3u8Url: yedek.url,
-            externalSubtitles: yedek.externalSubtitles
-          }),
-          value8 = defineProp4({
-            name: "Shazam",
-            url: yedek.url,
-            inspection: inspection,
-            format: "m3u8",
-            headers: {
-              "User-Agent": userAgent,
-              Referer: Origin + "/",
-              Origin: Origin
-            }
-          });
-        // Kanıtsız hat: kalite iddiası YOK ("autop" gibi uydurma etiket olmasın).
-        value8.quality = "auto";
-        value8.title = "Shazam · HLS yedeği";
-        value8.dogrulanamadi = !0;
-        list4.push(value8);
-        log("Shazam", "Yedek hat eklendi: HLS yedeği", "info");
-      } catch (err) {
-        log("Shazam", "Yedek hat etiketlenemedi: " + err.message, "warn");
       }
     let now3 = ((Date.now() - now2) / 1000).toFixed(2);
     return (

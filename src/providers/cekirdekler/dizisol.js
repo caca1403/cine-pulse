@@ -191,11 +191,24 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
        (`/sub?id=…&lang=tr`) — vekil oynatilabilirAltyazi artık bunları taşır,
        oynatıcı /api/subtitles vekilinden VTT'ye çevirterek gösterir. */
     const altyaziListesi = (s) => {
+      const coz = (u) => {
+        const ham = String(u || '').trim();
+        if (!ham) return '';
+        const m = /[?&]u=([^&]+)/i.exec(ham);
+        if (m) {
+          try {
+            const b64 = decodeURIComponent(m[1]).replace(/-/g, '+').replace(/_/g, '/');
+            const acik = typeof atob === 'function' ? atob(b64) : Buffer.from(b64, 'base64').toString('utf8');
+            if (/^https?:\/\//i.test(acik)) return acik.trim();
+          } catch (_) { /* ham ile devam */ }
+        }
+        return /^https?:\/\//i.test(ham) ? ham : '';
+      };
       const l = [];
-      const tr = s?.subtitleTr || kayit.subtitleTr;
-      const en = s?.subtitleEn || kayit.subtitleEn;
-      if (tr && /^https?:\/\//i.test(String(tr))) l.push({ label: 'Türkçe', src: String(tr) });
-      if (en && /^https?:\/\//i.test(String(en))) l.push({ label: 'English', src: String(en) });
+      const tr = coz(s?.subtitleTr || kayit.subtitleTr);
+      const en = coz(s?.subtitleEn || kayit.subtitleEn);
+      if (tr) l.push({ label: 'Türkçe', src: tr });
+      if (en) l.push({ label: 'English', src: en });
       return l.length ? l : undefined;
     };
 
@@ -324,7 +337,6 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
           altyaziUrl: s.subtitleTr || kayit.subtitleTr || '',
           // Keep device-origin access through the local gateway and provide a
           // header-aware HLS proxy URL for manifest MIME and segment rewrites.
-          proxyGerekmez: true,
           proxyStreamGerekli: true,
           diller: [],
         });

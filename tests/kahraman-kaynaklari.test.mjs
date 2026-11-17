@@ -389,9 +389,9 @@ test('durum: her kayıt ölçüm alanı taşır, varsayılan bilinmiyor', () => 
   // Tek kalici 'canli' kayit, OLCUMLU birinci taraf cekirdegidir (Star-Lord:
   // film + dizi kosesinde canli olarak dogrulandi). Vendor kayitlar olcum
   // yapilmadan asla kapali sayilmaz.
-  assert.equal(ozet.canli, 31, '31 canlı: 28 + Nova/Vision/Phyla + Vixen (ölçümlü: master m3u8 + TR ses)');
-  assert.equal(ozet.bilinmiyor, 28, '28 henüz ölçülmeyen kayıt (+Mystique/Gambit)');
-  assert.equal(ozet.kapali, 0, 'ölçümsüz kapalı kayıt kalmadı');
+  assert.equal(ozet.canli, 31, '31 canlı: ölçülen + çalışan kaynaklar');
+  assert.equal(ozet.bilinmiyor, 0, 'ölçülmemiş kayıt kalmadı');
+  assert.equal(ozet.kapali, 28, '28 ölü kaynak kalıcı kapatıldı');
 });
 
 test('durum: kapalı kayıt taramaya girmez', () => {

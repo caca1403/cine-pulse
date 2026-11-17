@@ -328,6 +328,45 @@ export async function embedCoz(sayfaAdresi, secenekler = {}) {
   let hedef = metneCevir(sayfaAdresi).trim();
   if (!/^https?:\/\//i.test(hedef)) return { durum: 'olu', sebep: 'adres-bozuk', katman: 0 };
 
+  const solEslesme = /[?&]id=sol(\d{6,10})(?:-s(\d+)-e(\d+))?(?:[&#]|$)/i.exec(hedef);
+  if (solEslesme) {
+    const imdb = `tt${solEslesme[1]}`;
+    const akis = solEslesme[2] && solEslesme[3]
+      ? `https://ha.vixolity.com/vs/${imdb}/s${Number(solEslesme[2])}/e${String(Number(solEslesme[3])).padStart(2, '0')}`
+      : `https://ha.vixolity.com/vs/${imdb}`;
+    return {
+      durum: 'akis',
+      akis,
+      katman: 0,
+      headers: { Referer: 'https://hdfilmdelisi.one/', Origin: 'https://hdfilmdelisi.one' },
+    };
+  }
+  const mixiEslesme = /(?:load-mixi\.[^/]+\/play\?[^#]*?\bid=(?:vidmixi(?:%3A|:))?|vidmixi\.com\/embed\/)([a-f0-9]{16,64})/i.exec(hedef);
+  if (mixiEslesme) {
+    try {
+      const hash = mixiEslesme[1];
+      const r = await f(`https://vidmixi.com/embed/${hash}`, {
+        headers: { 'User-Agent': VARSAYILAN_UA, Referer: 'https://fullhdfilmizle.now/' },
+      });
+      if (r && r.ok) {
+        const html = await r.text();
+        const bm = html.match(/bePlayer\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]/);
+        if (bm) {
+          const { beplayerCoz } = await import('../../providers/cekirdekler/nova.js');
+          const coz = await beplayerCoz(bm[2], bm[1]);
+          if (coz?.video_location && /^https?:\/\//i.test(coz.video_location)) {
+            return {
+              durum: 'akis',
+              akis: coz.video_location,
+              katman: 1,
+              headers: { Referer: 'https://vidmixi.com/', Origin: 'https://vidmixi.com' },
+            };
+          }
+        }
+      }
+    } catch (_) { /* normal akışa düş */ }
+  }
+
   const gezilen = new Set();
   for (let katman = 0; katman <= derinlik; katman += 1) {
     if (!hedef || gezilen.has(hedef)) break;
