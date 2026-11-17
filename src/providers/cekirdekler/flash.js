@@ -7684,6 +7684,19 @@ async function defineProp4(tmdbId2) {
             },
             signal: f0(5000)
           });
+        if (!response.ok) {
+          response = await fetch(Origin + "/api/mj", {
+            method: "POST",
+            headers: {
+              "User-Agent": val4,
+              Referer: Origin + "/",
+              Origin: Origin,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ action: "searchContent", params: [value42] }),
+            signal: f0(5000)
+          });
+        }
         if (!response.ok) continue;
         let text4 = await response.text();
         if (!text4) continue;

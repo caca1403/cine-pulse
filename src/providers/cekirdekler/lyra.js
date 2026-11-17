@@ -101,6 +101,39 @@ async function zarfAc(blok) {
 
 /* ── sayfa / arama ─────────────────────────────────────────────────────── */
 
+/* Yeni Next.js App Router oynatıcı şifresi: PBKDF2(SHA-512, 999) + AES-256-CBC. */
+async function playerEncCoz(html) {
+  if (typeof crypto === 'undefined' || !crypto.subtle) return [];
+  const temiz = String(html || '').replace(/\\"/g, '"').replace(/\\\//g, '/');
+  const hexBayt = (h) => new Uint8Array((h.match(/.{2}/g) || []).map(b => parseInt(b, 16)));
+  const sonuc = [];
+  for (const m of temiz.matchAll(/"enc"\s*:\s*(\{"ciphertext"\s*:\s*"[^"]+"\s*,\s*"iv"\s*:\s*"[^"]+"\s*,\s*"salt"\s*:\s*"[^"]+"\})/g)) {
+    const blok = temiz.slice(m.index, m.index + 1200);
+    const k = (blok.match(/"k"\s*:\s*"([^"]+)"/) || [])[1];
+    if (!k) continue;
+    try {
+      const enc = JSON.parse(m[1]);
+      const hamAnahtar = await crypto.subtle.importKey('raw', new TextEncoder().encode(k), 'PBKDF2', false, ['deriveKey']);
+      const aesAnahtar = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', hash: 'SHA-512', salt: hexBayt(enc.salt), iterations: 999 },
+        hamAnahtar,
+        { name: 'AES-CBC', length: 256 },
+        false,
+        ['decrypt'],
+      );
+      const b64 = Uint8Array.from(atob(enc.ciphertext), c => c.charCodeAt(0));
+      const duz = await crypto.subtle.decrypt({ name: 'AES-CBC', iv: hexBayt(enc.iv) }, aesAnahtar, b64);
+      let url = new TextDecoder().decode(duz).trim();
+      if (url.startsWith('//')) url = `https:${url}`;
+      if (/^https?:\/\//i.test(url)) {
+        const dil = (temiz.slice(Math.max(0, m.index - 500), m.index).match(/"language"\s*:\s*"([^"]+)"/) || [])[1] || '';
+        sonuc.push({ iframe: url, ad: 'Pichive', dil });
+      }
+    } catch (_) {}
+  }
+  return sonuc;
+}
+
 function guvenliVeri(html) {
   const nd = String(html || '').match(/__NEXT_DATA__"[^>]*>(\{[\s\S]*?\})<\/script>/i);
   if (nd) { try { const sd = JSON.parse(nd[1])?.props?.pageProps?.secureData; if (sd) return sd; } catch (_) {} }
@@ -258,39 +291,53 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
   if (!adaylar.length) return [];
   const isFilm = tur !== 'tv';
 
-  /* 1. arama: zarflı POST; başlık kanıtı olmadan hiçbir şey seçilmez. */
+  /* 1. arama: yeni /api/mj JSON ucu (yoksa eski /api/bg/searchContent yedeği). */
   let slug = '';
   for (const soru of adaylar.slice(0, 2)) {
-    const j = await jsonAl(rotaYol(ROTA, '/api/bg/searchContent', { searchterm: soru }), {
-      ms: 6000, govde: '',
-      // form CT ZORUNLU: json CT cihazda CORS ön-kontrolü patlatıyor (ölçüldü 2026-10-18)
-      basliklar: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    let items = [];
+    const mj = await jsonAl(rotaYol(ROTA, '/api/mj'), {
+      ms: 6000,
+      govde: { action: 'searchContent', params: [soru] },
+      basliklar: { 'User-Agent': UA, 'Content-Type': 'application/json' },
     });
-    const parsed = j?.response ? await zarfAc(j.response) : j;
-    const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.result) ? parsed.result : [];
-    const it = items.find(x => x?.object_name && eslesir(x.object_name, soru) && (x?.used_slug || x?.slug));
+    if (Array.isArray(mj?.result)) items = mj.result;
+    if (!items.length) {
+      const j = await jsonAl(rotaYol(ROTA, '/api/bg/searchContent', { searchterm: soru }), {
+        ms: 6000, govde: '',
+        basliklar: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+      const parsed = j?.response ? await zarfAc(j.response) : j;
+      items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.result) ? parsed.result : [];
+    }
+    const turUygun = (x) => !x?.used_type || (isFilm ? /movie/i.test(x.used_type) : /series|tv|dizi/i.test(x.used_type));
+    const it = items.find(x => turUygun(x) && x?.object_name && adaylar.some(a => eslesir(x.object_name, a)) && (x?.used_slug || x?.slug))
+      || items.find(x => turUygun(x) && x?.object_alternative_name && adaylar.some(a => eslesir(x.object_alternative_name, a)) && (x?.used_slug || x?.slug));
     if (it) { slug = String(it.used_slug || it.slug).replace(/^\/+|\/+$/g, ''); break; }
   }
   if (!slug) return [];
   const cekirdek = slug.replace(/^(dizi|film|bolum)\//, '');
 
-  /* 2. içerik sayfası → secureData zarfı → adaylar. */
+  /* 2. içerik sayfası → yeni PBKDF2 player.enc veya eski secureData zarfı. */
   const yollar = isFilm
     ? [slug, `film/${cekirdek}`]
     : [`${slug}/sezon-${+sezon || 1}/bolum-${+bolum || 1}`, `${cekirdek}-${sezon}-sezon-${bolum}-bolum`, slug];
-  let sd = '';
+  let adaylarOyn = [];
   let sayfaUrl = '';
   for (const yol of [...new Set(yollar)]) {
-    const html = await metinAl(rotaYol(ROTA, `/${yol}`), { ref: `${rotaYol(ROTA)}/`, ms: 8000, basliklar: { 'User-Agent': UA } });
-    const bulunan = html ? guvenliVeri(html) : '';
-    if (bulunan) { sd = bulunan; sayfaUrl = rotaYol(ROTA, `/${yol}`); break; }
+    const hedef = rotaYol(ROTA, `/${yol}`);
+    const html = await metinAl(hedef, { ref: `${rotaYol(ROTA)}/`, ms: 8000, basliklar: { 'User-Agent': UA } });
+    if (!html) continue;
+    const encOyn = await playerEncCoz(html);
+    if (encOyn.length) { adaylarOyn = encOyn; sayfaUrl = hedef; break; }
+    const sd = guvenliVeri(html);
+    if (sd) {
+      const veri = await zarfAc(sd);
+      if (veri) { adaylarOyn = adaylariTopla(veri); sayfaUrl = hedef; break; }
+    }
   }
-  if (!sd) return [];
-  const veri = await zarfAc(sd);
-  if (!veri) return [];
+  if (!adaylarOyn.length) return [];
 
-  /* 3. oynatıcıları paralel çöz; yalnız doğrudan yayın listelenir. */
-  const adaylarOyn = adaylariTopla(veri);
+  /* 3. oynatıcıları sırayla çöz; yalnız doğrudan yayın listelenir. */
   // SIRAYLA: cihazda TEK gizli-WebView var — paralel ateşleme kuyruğu
   // şişirip bütçeyi yiyordu (ölçüldü 2026-10-18). İlk başarılı adayda durulur.
   const sonuc = [];

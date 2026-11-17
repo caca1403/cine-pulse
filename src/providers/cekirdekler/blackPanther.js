@@ -2872,48 +2872,101 @@ async function getStreams(tmdbId, tmdbId2, arg3, arg4) {
             Referer: Origin + "/"
           }
         })
-      ).text(),
-      val8 =
-        response2.match(/<iframe[^>]+(?:data-litespeed-src|data-src|src)="([^"]+)"/i) ||
-        response2.match(/(?:data-litespeed-src|data-src|src)="(\/bemoly\/[^"]+)"/i);
-    if (!val8) return (log("Black-Panther", "Film sayfasında video iframe bulunamadı.", "warn"), []);
-    let value6 = val8[1];
-    if ((value6.startsWith("/") && (value6 = Origin + value6), value6.includes("bemoly.php"))) {
-      let match = (
-        await (
-          await fetch(value6, {
-            headers: {
-              "User-Agent": headers["User-Agent"],
-              Referer: Referer
-            }
-          })
-        ).text()
-      ).match(/<iframe[^>]+src="([^"]+)"/i);
-      match && (value6 = match[1]);
+      ).text();
+    let sayfaAdaylari = [{ url: Referer, html: response2 }];
+    let tabBase = Referer.replace(/\/+$/, "");
+    let gorulenTab = new Set([Referer, tabBase, tabBase + "/"]);
+    for (const tm of response2.matchAll(/<a\b[^>]*href=["']([^"']+)["']/gi)) {
+      let tu = tm[1];
+      if (tu.startsWith("/")) tu = Origin + tu;
+      if (tu.startsWith(tabBase + "/") && /\/\d+\/?$/.test(tu) && !gorulenTab.has(tu)) {
+        gorulenTab.add(tu);
+        sayfaAdaylari.push({ url: tu, html: null });
+        if (sayfaAdaylari.length >= 4) break;
+      }
     }
-    let response3 = await (
-        await fetch(value6, {
-          headers: {
-            "User-Agent": headers["User-Agent"],
-            Referer: Referer
+    let url = "", externalSubtitles = [], Origin2 = Origin, isDublaj = false;
+    for (const aday of sayfaAdaylari) {
+      try {
+        let sayfaHtml = aday.html;
+        if (!sayfaHtml) {
+          let tr = await fetch(aday.url, {
+            headers: { "User-Agent": headers["User-Agent"], Referer: Origin + "/" }
+          });
+          if (!tr.ok) continue;
+          sayfaHtml = await tr.text();
+        }
+        let val8 =
+          sayfaHtml.match(/<iframe[^>]+(?:data-litespeed-src|data-src|src)="([^"]+)"/i) ||
+          sayfaHtml.match(/(?:data-litespeed-src|data-src|src)="(\/bemoly\/[^"]+)"/i);
+        if (!val8) continue;
+        let value6 = val8[1];
+        if (value6.startsWith("//")) value6 = "https:" + value6;
+        else if (value6.startsWith("/")) value6 = Origin + value6;
+        if (value6.includes("youtube.com") || value6.includes("youtu.be")) continue;
+        if (value6.includes("bemoly.php")) {
+          let match = (
+            await (
+              await fetch(value6, {
+                headers: { "User-Agent": headers["User-Agent"], Referer: aday.url }
+              })
+            ).text()
+          ).match(/<iframe[^>]+src="([^"]+)"/i);
+          if (match) value6 = match[1];
+        }
+        let response3 = await (
+          await fetch(value6, {
+            headers: { "User-Agent": headers["User-Agent"], Referer: aday.url }
+          })
+        ).text();
+        try { Origin2 = new URL(value6).origin; } catch {}
+        if (/videoseyred\.in/i.test(value6)) {
+          let pm = response3.match(/playlistUrl\s*=\s*['"]([^'"]+)['"]/i);
+          if (pm) {
+            let pUrl = pm[1].startsWith("http") ? pm[1] : Origin2 + pm[1];
+            let pr = await fetch(pUrl, {
+              headers: { "User-Agent": headers["User-Agent"], Referer: value6 }
+            });
+            if (pr.ok) {
+              let pj = await pr.json().catch(() => null);
+              let item = Array.isArray(pj) ? pj[0] : pj;
+              let src = item?.sources?.find((s) => s?.file && /\.m3u8/i.test(s.file))?.file || item?.sources?.[0]?.file;
+              if (src && /^https?:\/\//i.test(src)) {
+                url = src;
+                if (Array.isArray(item?.tracks)) {
+                  externalSubtitles = item.tracks
+                    .filter((t) => t?.kind === "captions" && t?.file)
+                    .map((t, idx) => ({
+                      id: String(idx),
+                      url: t.file,
+                      language: /eng|ing/i.test(t.label || t.language || "") ? "English" : "Turkish",
+                      name: /eng|ing/i.test(t.label || t.language || "") ? "İngilizce" : "Türkçe",
+                      lang: /eng|ing/i.test(t.label || t.language || "") ? "eng" : "tur",
+                      label: t.label || "Türkçe",
+                      headers: { Referer: Origin2 + "/", Origin: Origin2, "User-Agent": "okhttp/4.9.2" }
+                    }));
+                }
+                isDublaj = /dublaj|dual/i.test(sayfaHtml + " " + (item?.title || ""));
+                break;
+              }
+            }
           }
-        })
-      ).text(),
-      match = response3.match(/file\s*:\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/);
-    if (!match) return (log("Black-Panther", "Video akışı çözümlenemedi.", "warn"), []);
-    let url = match[1],
-      externalSubtitles = userAgentOf(response3, value6),
-      Origin2 = Origin;
-    try {
-      Origin2 = new URL(value6).origin;
-    } catch {}
+        }
+        let match = response3.match(/file\s*:\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/);
+        if (match) {
+          url = match[1];
+          externalSubtitles = userAgentOf(response3, value6);
+          isDublaj = response3.toLowerCase().includes("dublaj") || response3.toLowerCase().includes("dual");
+          break;
+        }
+      } catch {}
+    }
+    if (!url) return (log("Black-Panther", "Video akışı çözümlenemedi.", "warn"), []);
     let headers2 = {
         Referer: Origin2 + "/",
         Origin: Origin2,
         "User-Agent": "okhttp/4.9.2"
       },
-      isDublaj =
-        response3.toLowerCase().includes("dublaj") || response3.toLowerCase().includes("dual"),
       inspection = defineProp3({
         m3u8Url: url,
         externalSubtitles: externalSubtitles,

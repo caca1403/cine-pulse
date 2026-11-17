@@ -7493,6 +7493,43 @@ function parsedJson2(arg1) {
   } catch {}
   return null;
 }
+function nextEncCikar(html) {
+  if (!html) return null;
+  let m =
+    html.match(/\\"enc\\":\{\\"ciphertext\\":\\"([^"\\]+)\\",\\"iv\\":\\"([^"\\]+)\\",\\"salt\\":\\"([^"\\]+)\\"\},\\"k\\":\\"([^"\\]+)\\"/) ||
+    html.match(/"enc":\{"ciphertext":"([^"]+)","iv":"([^"]+)","salt":"([^"]+)"\},"k":"([^"]+)"/);
+  if (!m) return null;
+  let lang = "Türkçe";
+  let lm = html.match(/\\"language\\":\\"([^"\\]+)\\"/) || html.match(/"language":"([^"]+)"/);
+  if (lm && lm[1]) lang = lm[1];
+  return { enc: { ciphertext: m[1], iv: m[2], salt: m[3] }, k: m[4], lang: lang };
+}
+async function nextEncCoz(pass, enc) {
+  try {
+    let subtle = globalThis.crypto && globalThis.crypto.subtle;
+    if (!subtle) return null;
+    let hexToBytes = (hex) => {
+      let a = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < a.length; i++) a[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+      return a;
+    };
+    let bin = atob(String(enc.ciphertext).replace(/\\\//g, "/"));
+    let ct = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) ct[i] = bin.charCodeAt(i);
+    let key = await subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+    let aesKey = await subtle.deriveKey(
+      { name: "PBKDF2", hash: "SHA-512", salt: hexToBytes(enc.salt), iterations: 999 },
+      key,
+      { name: "AES-CBC", length: 256 },
+      false,
+      ["decrypt"]
+    );
+    let dec = await subtle.decrypt({ name: "AES-CBC", iv: hexToBytes(enc.iv) }, aesKey, ct);
+    return new TextDecoder().decode(dec);
+  } catch {
+    return null;
+  }
+}
 async function userAgentOf2(url, input, season, episode, arg5) {
   let replaced = input.replace(/^\/?(dizi\/)?/, "").replace(/\/$/, ""),
     match = replaced.match(/-[a-z]\d+$/i),
@@ -7525,12 +7562,14 @@ async function userAgentOf2(url, input, season, episode, arg5) {
           });
           if (response2.ok) {
             let html = await response2.text(),
-              secureData = D0(html);
-            if (secureData)
+              secureData = D0(html),
+              nextEnc = secureData ? null : nextEncCikar(html);
+            if (secureData || nextEnc)
               return {
                 url: response2.url || url2,
                 html: html,
-                secureData: secureData
+                secureData: secureData,
+                nextEnc: nextEnc
               };
           }
         } catch {}
@@ -7620,12 +7659,14 @@ async function userAgentOf3(input, input2, arg3) {
           });
           if (response.ok) {
             let html = await response.text(),
-              secureData = D0(html);
-            if (secureData)
+              secureData = D0(html),
+              nextEnc = secureData ? null : nextEncCikar(html);
+            if (secureData || nextEnc)
               return {
                 url: response.url || url,
                 html: html,
-                secureData: secureData
+                secureData: secureData,
+                nextEnc: nextEnc
               };
           }
         } catch {}
@@ -7738,12 +7779,9 @@ async function defineProp4(tmdbId2) {
     let val6 = isTv
       ? await userAgentOf2(Origin, value41, season, episode, val4)
       : await userAgentOf3(Origin, value41, val4);
-    if (!val6 || !val6.secureData)
+    if (!val6 || (!val6.secureData && !val6.nextEnc))
       return (log(name, "Bölüm sayfası veya secureData bloğu bulunamadı.", "warn"), []);
-    let { url: url, secureData: secureData } = val6,
-      val7 = parsedJson2(secureData) || _e(secureData);
-    if (!val7) return (log(name, "secureData deşifre edilemedi.", "warn"), []);
-    let val8 = val7.RelatedResults || val7.content?.result?.RelatedResults || {},
+    let { url: url, secureData: secureData, nextEnc: nextEnc } = val6,
       list3 = [],
       fn = (url2) => {
         if (!url2) return null;
@@ -7757,6 +7795,14 @@ async function defineProp4(tmdbId2) {
               : null)
         );
       };
+    if (nextEnc && !secureData) {
+      let decUrl = await nextEncCoz(nextEnc.k, nextEnc.enc);
+      let iframe = fn(decUrl || "");
+      if (iframe) list3.push({ name: name, lang: nextEnc.lang || "Türkçe", iframe: iframe });
+    } else {
+    let val7 = parsedJson2(secureData) || _e(secureData);
+    if (!val7) return (log(name, "secureData deşifre edilemedi.", "warn"), []);
+    let val8 = val7.RelatedResults || val7.content?.result?.RelatedResults || {};
     if (isTv) {
       let val9 = val8.getEpisodeSources?.result || [];
       if (Array.isArray(val9))
@@ -7816,6 +7862,7 @@ async function defineProp4(tmdbId2) {
                 });
             }
         }
+    }
     }
     let set = new Set(),
       list4 = [];

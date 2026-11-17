@@ -7684,6 +7684,25 @@ async function defineProp4(tmdbId2) {
             },
             signal: f0(5000)
           });
+        if (!response.ok) {
+          for (const act of ["searchContent", "getBrowseTitles"]) {
+            const body = act === "getBrowseTitles"
+              ? JSON.stringify({ action: act, params: [value42, isTv ? "dizi" : "film", null, null, null, null, null, "rec", 1, 8] })
+              : JSON.stringify({ action: act, params: [value42] });
+            const rMj = await fetch(Origin + "/api/mj", {
+              method: "POST",
+              headers: {
+                "User-Agent": val4,
+                Referer: Origin + "/",
+                Origin: Origin,
+                "Content-Type": "application/json"
+              },
+              body,
+              signal: f0(5000)
+            });
+            if (rMj.ok) { response = rMj; break; }
+          }
+        }
         if (!response.ok) continue;
         let text4 = await response.text();
         if (!text4) continue;

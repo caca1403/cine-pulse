@@ -7737,41 +7737,106 @@ async function defineProp4(tmdbId2) {
     let val6 = isTv
       ? await userAgentOf2(Origin, value41, season, episode, val4)
       : await userAgentOf3(Origin, value41, val4);
-    if (!val6 || !val6.secureData)
-      return (log(name, "Bölüm sayfası veya secureData bloğu bulunamadı.", "warn"), []);
-    let { url: url, secureData: secureData } = val6,
-      val7 = parsedJson2(secureData) || _e(secureData);
-    if (!val7) return (log(name, "secureData deşifre edilemedi.", "warn"), []);
-    let val8 = val7.RelatedResults || val7.content?.result?.RelatedResults || {},
-      list3 = [],
-      fn = (url2) => {
-        if (!url2) return null;
-        let value42 = matchOf(url2);
-        return (
-          value42 ||
-          (url2.startsWith("http://") || url2.startsWith("https://")
-            ? url2
-            : url2.startsWith("//")
-              ? "https:" + url2
-              : null)
-        );
+    let list3 = [];
+    let url = Origin + "/" + value41.replace(/^\/?/, "");
+    if (!val6 || !val6.secureData) {
+      /* onarim:nextjs-enc — Selcukflix Next.js App Router gecisi sonrasi secureData
+         kaldirildi; oynatici URL'si __next_f icindeki player.enc (PBKDF2 SHA-512
+         999 iter + AES-256-CBC) + player.k ile sifreli geliyor. */
+      const hexToBytes = (hex) => {
+        const arr = new Uint8Array(hex.length / 2);
+        for (let i = 0; i < arr.length; i++) arr[i] = parseInt(hex.substr(i * 2, 2), 16);
+        return arr;
       };
-    if (isTv) {
-      let val9 = val8.getEpisodeSources?.result || [];
-      if (Array.isArray(val9))
-        for (let value42 of val9) {
-          let iframe = fn(value42.source_content || value42.source_url || "");
-          iframe &&
-            list3.push({
-              name: value42.source_name || name,
-              lang: value42.language_name || "Türkçe",
-              iframe: iframe
-            });
-        }
-      if (list3.length === 0) {
-        let val10 = val8.getSerieEpisodeSources?.result || [];
-        if (Array.isArray(val10))
-          for (let value42 of val10) {
+      const b64ToBytes = (b64) => {
+        const bin = atob(b64);
+        const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        return arr;
+      };
+      const decryptEnc = async (k, enc) => {
+        const subtle = globalThis.crypto?.subtle;
+        if (!subtle) return null;
+        const rawKey = await subtle.importKey("raw", new TextEncoder().encode(k), "PBKDF2", false, ["deriveKey"]);
+        const aesKey = await subtle.deriveKey(
+          { name: "PBKDF2", hash: "SHA-512", salt: hexToBytes(enc.salt), iterations: 999 },
+          rawKey,
+          { name: "AES-CBC", length: 256 },
+          false,
+          ["decrypt"]
+        );
+        const pt = await subtle.decrypt({ name: "AES-CBC", iv: hexToBytes(enc.iv) }, aesKey, b64ToBytes(enc.ciphertext));
+        return new TextDecoder().decode(pt).trim();
+      };
+      const extractEncFromHtml = (html) => {
+        let m = html.match(/\\"enc\\":\{\\"ciphertext\\":\\"([^"\\]+)\\",\\"iv\\":\\"([^"\\]+)\\",\\"salt\\":\\"([^"\\]+)\\"\},\\"k\\":\\"([^"\\]+)\\"/);
+        if (!m) m = html.match(/"enc":\{"ciphertext":"([^"]+)","iv":"([^"]+)","salt":"([^"]+)"\},"k":"([^"]+)"/);
+        if (!m) return null;
+        return { enc: { ciphertext: m[1], iv: m[2], salt: m[3] }, k: m[4] };
+      };
+      const cleanSlug = value41.replace(/^\/?/, "").replace(/\/izle$/, "");
+      const pageCandidates = isTv
+        ? [
+            `${Origin}/${cleanSlug}/sezon-${season}/bolum-${episode}`,
+            `${Origin}/dizi/${cleanSlug.replace(/^dizi\//, "")}/sezon-${season}/bolum-${episode}`
+          ]
+        : [
+            `${Origin}/${value41.replace(/^\/?/, "")}`,
+            `${Origin}/film/${cleanSlug.replace(/^film\//, "")}/izle`
+          ];
+      for (const pUrl of [...new Set(pageCandidates)]) {
+        try {
+          const pr = await fetch(pUrl, { headers: { "User-Agent": val4, Referer: Origin + "/" }, redirect: "follow", signal: f0(8000) });
+          if (!pr.ok) continue;
+          const ph = await pr.text();
+          const info = extractEncFromHtml(ph);
+          if (info) {
+            url = pr.url || pUrl;
+            const decUrl = await decryptEnc(info.k, info.enc);
+            if (decUrl) {
+              const normUrl = decUrl.startsWith("//") ? "https:" + decUrl : decUrl;
+              list3.push({ name: name, lang: "Türkçe", iframe: normUrl });
+            }
+            // ?player=1 yedegini de dene
+            try {
+              const p1Url = url + (url.includes("?") ? "&" : "?") + "player=1";
+              const pr1 = await fetch(p1Url, { headers: { "User-Agent": val4, Referer: url }, redirect: "follow", signal: f0(5000) });
+              if (pr1.ok) {
+                const info1 = extractEncFromHtml(await pr1.text());
+                if (info1) {
+                  const dec1 = await decryptEnc(info1.k, info1.enc);
+                  if (dec1) list3.push({ name: name, lang: "Türkçe", iframe: dec1.startsWith("//") ? "https:" + dec1 : dec1 });
+                }
+              }
+            } catch {}
+            break;
+          }
+        } catch {}
+      }
+      if (list3.length === 0)
+        return (log(name, "Bölüm sayfası veya secureData bloğu bulunamadı.", "warn"), []);
+    } else {
+      let secureData = val6.secureData;
+      url = val6.url;
+      let val7 = parsedJson2(secureData) || _e(secureData);
+      if (!val7) return (log(name, "secureData deşifre edilemedi.", "warn"), []);
+      let val8 = val7.RelatedResults || val7.content?.result?.RelatedResults || {},
+        fn = (url2) => {
+          if (!url2) return null;
+          let value42 = matchOf(url2);
+          return (
+            value42 ||
+            (url2.startsWith("http://") || url2.startsWith("https://")
+              ? url2
+              : url2.startsWith("//")
+                ? "https:" + url2
+                : null)
+          );
+        };
+      if (isTv) {
+        let val9 = val8.getEpisodeSources?.result || [];
+        if (Array.isArray(val9))
+          for (let value42 of val9) {
             let iframe = fn(value42.source_content || value42.source_url || "");
             iframe &&
               list3.push({
@@ -7780,41 +7845,54 @@ async function defineProp4(tmdbId2) {
                 iframe: iframe
               });
           }
+        if (list3.length === 0) {
+          let val10 = val8.getSerieEpisodeSources?.result || [];
+          if (Array.isArray(val10))
+            for (let value42 of val10) {
+              let iframe = fn(value42.source_content || value42.source_url || "");
+              iframe &&
+                list3.push({
+                  name: value42.source_name || name,
+                  lang: value42.language_name || "Türkçe",
+                  iframe: iframe
+                });
+            }
+        }
+      } else {
+        let value42 = val8.getMoviePartsById?.result;
+        if (Array.isArray(value42))
+          for (let value43 of value42) {
+            let value44 = val8["getMoviePartSourcesById_" + value43.id]?.result;
+            if (Array.isArray(value44))
+              for (let value45 of value44) {
+                let iframe = fn(value45.source_content || value45.source_url || "");
+                iframe &&
+                  list3.push({
+                    name: value45.source_name || name,
+                    lang: value43.language_name || value45.language_name || "Türkçe",
+                    iframe: iframe
+                  });
+              }
+          }
+        for (let [value43, value44] of Object.entries(val8))
+          if (
+            value43.includes("PartSources") ||
+            value43.includes("MovieSources") ||
+            value43.includes("sources")
+          ) {
+            let value45 = value44?.result;
+            if (Array.isArray(value45))
+              for (let value46 of value45) {
+                let iframe = fn(value46.source_content || value46.source_url || "");
+                iframe &&
+                  list3.push({
+                    name: value46.source_name || name,
+                    lang: value46.language_name || "Türkçe",
+                    iframe: iframe
+                  });
+              }
+          }
       }
-    } else {
-      let value42 = val8.getMoviePartsById?.result;
-      if (Array.isArray(value42))
-        for (let value43 of value42) {
-          let value44 = val8["getMoviePartSourcesById_" + value43.id]?.result;
-          if (Array.isArray(value44))
-            for (let value45 of value44) {
-              let iframe = fn(value45.source_content || value45.source_url || "");
-              iframe &&
-                list3.push({
-                  name: value45.source_name || name,
-                  lang: value43.language_name || value45.language_name || "Türkçe",
-                  iframe: iframe
-                });
-            }
-        }
-      for (let [value43, value44] of Object.entries(val8))
-        if (
-          value43.includes("PartSources") ||
-          value43.includes("MovieSources") ||
-          value43.includes("sources")
-        ) {
-          let value45 = value44?.result;
-          if (Array.isArray(value45))
-            for (let value46 of value45) {
-              let iframe = fn(value46.source_content || value46.source_url || "");
-              iframe &&
-                list3.push({
-                  name: value46.source_name || name,
-                  lang: value46.language_name || "Türkçe",
-                  iframe: iframe
-                });
-            }
-        }
     }
     let set = new Set(),
       list4 = [];

@@ -388,7 +388,7 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
       if (!url && d === 0) await new Promise(r => setTimeout(r, 900));
     }
     if (!url) {
-      const rapid = iframe.match(/\/rplayer\/([a-zA-Z0-9]+)/)?.[1];
+      const rapid = (iframe.match(/\/rplayer\/([a-zA-Z0-9]+)/) || iframe.match(/[?&]rapidrame_id=([a-zA-Z0-9]+)/))?.[1];
       if (rapid) {
         const yedek = await sayfaAc(`${base}/rplayer/${rapid}/`, { ref: adres, ms: 10000 });
         url = yedek ? (sifreCoz(yedek) || rplayerCoz(yedek)) : '';

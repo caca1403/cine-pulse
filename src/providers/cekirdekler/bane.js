@@ -20,6 +20,7 @@
    ========================================================================== */
 
 import { rotaYol, metinAl, jsonAl, tmdbBilgi, adayBasliklar, sadeles, kaliteEtiket, ilki } from '../ortakCekirdek.js';
+import { alanYaniti } from '../alanlar.js';
 
 const AD = 'Bane';
 const ROTA = 'jet';
@@ -48,10 +49,11 @@ async function yayinDogrula(url, referer) {
   return kaliteEtiket(metin);
 }
 
-/* Gömülü oynatıcı adresini canlı yayına çevirir (apollo / titan). */
+/* Gömülü oynatıcı adresini canlı yayına çevirir (apollo / titan / go). */
 async function oynaticiCoz(iframe) {
-  if (/videopark\.top\/apollo\//i.test(iframe)) {
-    const id = ilki(iframe, /[?&]id=([\w-]+)/);
+  const tamIframe = String(iframe || '').startsWith('//') ? `https:${iframe}` : String(iframe || '');
+  if (/videopark\.top\/apollo\//i.test(tamIframe)) {
+    const id = ilki(tamIframe, /[?&]id=([\w-]+)/);
     if (!id) return null;
     const j = await jsonAl(`${VP}/apollo/get_video.php`, {
       ref: `${VP}/apollo/`, ms: 8000,
@@ -63,10 +65,10 @@ async function oynaticiCoz(iframe) {
     const tam = /^https?:/i.test(hls) ? hls : `${VP}/apollo/${String(hls).replace(/^\.?\//, '')}`;
     if (!yayinKabulMi(tam)) return null;
     const kalite = await yayinDogrula(tam, `${VP}/`);
-    return kalite == null ? null : { url: tam, kalite };
+    return kalite == null ? null : { url: tam, kalite, format: 'm3u8' };
   }
-  if (/videopark\.top\/titan\//i.test(iframe)) {
-    const ham = await metinAl(iframe, { ref: iframe, ms: 9000, basliklar: { 'User-Agent': UA } });
+  if (/videopark\.top\/titan\//i.test(tamIframe)) {
+    const ham = await metinAl(tamIframe, { ref: tamIframe, ms: 9000, basliklar: { 'User-Agent': UA } });
     const jsonHam = ilki(ham, /var\s+_sd\s*=\s*(\{[\s\S]*?\});/);
     if (!jsonHam) return null;
     let sd = null;
@@ -74,7 +76,22 @@ async function oynaticiCoz(iframe) {
     const url = sd?.stream_url;
     if (!url || !yayinKabulMi(String(url))) return null;
     const kalite = await yayinDogrula(String(url), `${VP}/`);
-    return kalite == null ? null : { url: String(url), kalite };
+    return kalite == null ? null : { url: String(url), kalite, format: 'm3u8' };
+  }
+  if (/videopark\.top\/go\//i.test(tamIframe)) {
+    const ham = await metinAl(tamIframe, { ref: `${VP}/`, ms: 9000, basliklar: { 'User-Agent': UA } });
+    const wb = ilki(ham, /WORKER_BASE\s*=\s*["']([^"']+)["']/).replace(/\\\//g, '/').replace(/\/$/, '');
+    const vid = ilki(ham, /VIDEO_ID\s*=\s*(\d+)/);
+    if (!wb || !vid) return null;
+    const info = await jsonAl(`${wb}/v/${vid}/info`, { ref: `${VP}/`, ms: 7000, basliklar: { 'User-Agent': UA } });
+    const qs = Array.isArray(info?.qualities) ? info.qualities.map(Number).filter(Boolean).sort((a, b) => b - a) : [];
+    const q = qs[0] || '';
+    const mp4Url = q ? `${wb}/v/${vid}?q=${q}` : `${wb}/v/${vid}`;
+    try {
+      const probe = await fetch(mp4Url, { headers: { 'User-Agent': UA, Range: 'bytes=0-1023' }, signal: AbortSignal.timeout(7000) });
+      if (!probe.ok) return null;
+    } catch (_) { return null; }
+    return { url: mp4Url, kalite: q ? `${q}p` : '1080p', format: 'mp4', ref: `${VP}/` };
   }
   return null;
 }
@@ -92,7 +109,8 @@ async function filmBul(adaylar, site) {
 
 export async function getStreams(kimlik, tur = 'movie') {
   if (tur !== 'movie') return []; // site yalnız film barındırıyor (ölçüldü 2026-10-18)
-  const site = 'https://jetfilmizle.now';
+  let site = 'https://jetfilmizle.app';
+  try { site = alanYaniti().domains['Bane'] || site; } catch (_) {}
   const bilgi = await tmdbBilgi(kimlik, 'movie');
   const adaylar = bilgi ? adayBasliklar(bilgi) : [];
   const filmSayfa = await filmBul(adaylar, site);
@@ -142,8 +160,10 @@ export async function getStreams(kimlik, tur = 'movie') {
         title: `${AD} ${bulundu.kalite || '1080p'} ${d.tip === 'dublaj' ? 'Dublaj' : 'Sunucu'}`,
         url: bulundu.url,
         quality: bulundu.kalite || '1080p',
-        format: 'm3u8',
-        headers: { ...YAYIN_BASLIK, Referer: `${VP}/` },
+        format: bulundu.format || 'm3u8',
+        headers: bulundu.format === 'mp4'
+          ? { 'User-Agent': UA, Referer: bulundu.ref || `${VP}/` }
+          : { ...YAYIN_BASLIK, Referer: `${VP}/` },
       });
       if (sonuc.length >= 3) break;
     }

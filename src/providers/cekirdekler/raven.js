@@ -351,7 +351,12 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
   if (!base) return [];
 
   const tipKapi = u => (dizi ? /\/(dizi|series)\//i.test(u) : /\/(film|movie)s?\//i.test(u));
-  const icerik = kartlar.find(k => tipKapi(String(k.url || '')) && adaylar.some(a => eslesir(k.title, a)))
+  const hedefYil = bilgi?.yil || 0;
+  const tamEsles = (k) => adaylar.some(a => norm(k.title) === norm(a));
+  const yilUygun = (k) => !hedefYil || !k.year || Math.abs(Number(k.year) - hedefYil) <= 1;
+  const icerik = kartlar.find(k => tipKapi(String(k.url || '')) && tamEsles(k) && yilUygun(k))
+    || kartlar.find(k => tipKapi(String(k.url || '')) && adaylar.some(a => eslesir(k.title, a)) && yilUygun(k))
+    || kartlar.find(k => tipKapi(String(k.url || '')) && adaylar.some(a => eslesir(k.title, a)))
     || kartlar.find(k => tipKapi(String(k.url || '')));
   if (!icerik?.url) return [];
 
@@ -405,7 +410,8 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
       }
       if (url && !gorulen.has(url)) {
         gorulen.add(url);
-        const oynaticiKoku = new URL(url).origin;
+        let oynaticiKoku = new URL(url).origin;
+        try { if (/^https?:/i.test(v) && !/\.(m3u8|mp4|mpd)(\?|#|$)/i.test(v)) oynaticiKoku = new URL(v).origin; } catch (_) {}
         bulunan.push({ url, headers: { ...YAYIN_BASLIK, Referer: `${oynaticiKoku}/` } });
       }
     }

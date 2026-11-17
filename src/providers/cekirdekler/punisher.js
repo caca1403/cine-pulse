@@ -3051,27 +3051,32 @@ function buildSubtitles(input, arg2) {
   }
   return normalizeCase(list2);
 }
-async function userAgentOf3(arg1, Referer, url) {
+async function userAgentOf3(arg1, Referer, url, cookieHeader) {
   try {
+    let hdrs1 = {
+      "User-Agent": userAgent,
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "X-Requested-With": "XMLHttpRequest",
+      Referer: Referer,
+      Origin: url
+    };
+    if (cookieHeader) hdrs1.Cookie = cookieHeader;
     let response = await fetch(url + "/ajax/embed", {
       method: "POST",
-      headers: {
-        "User-Agent": userAgent,
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "X-Requested-With": "XMLHttpRequest",
-        Referer: Referer
-      },
+      headers: hdrs1,
       body: "id=" + encodeURIComponent(arg1),
       signal: fn5(4000)
     });
     if (!response.ok) return null;
-    let match = (await response.text()).match(/video\.php\?hash=([a-zA-Z0-9]+)/i);
+    let match = (await response.text()).match(/video\.php\?hash=([^"'&\s]+)/i);
     if (!match) return null;
+    let hdrs2 = {
+      "User-Agent": userAgent,
+      Referer: Referer
+    };
+    if (cookieHeader) hdrs2.Cookie = cookieHeader;
     let response2 = await fetch(url + "/video.php?hash=" + match[1], {
-      headers: {
-        "User-Agent": userAgent,
-        Referer: Referer
-      },
+      headers: hdrs2,
       signal: fn5(4000)
     });
     if (!response2.ok) return null;
@@ -3089,16 +3094,17 @@ async function userAgentOf3(arg1, Referer, url) {
         signal: fn5(4000)
       });
     if (!response3.ok) return null;
-    let text2 = await response3.text(),
+    let finalOrigin = new URL(response3.url || Referer2).origin,
+      text2 = await response3.text(),
       streamUrl = null,
       match3 = text2.match(/fetch\(['"](\/dl\?[^'"]+)['"]/);
     if (match3 && match3[1])
       try {
-        let response4 = await fetch("" + Origin + match3[1], {
+        let response4 = await fetch("" + finalOrigin + match3[1], {
           headers: {
             "User-Agent": userAgent,
-            Referer: Referer2,
-            Origin: Origin,
+            Referer: response3.url || Referer2,
+            Origin: finalOrigin,
             "X-Requested-With": "XMLHttpRequest"
           },
           signal: fn5(4000)
@@ -3116,13 +3122,13 @@ async function userAgentOf3(arg1, Referer, url) {
       match4 && (streamUrl = match4[1]);
     }
     if (!streamUrl) return null;
-    let subtitles = buildSubtitles(text2, Origin);
+    let subtitles = buildSubtitles(text2, finalOrigin);
     return {
       streamUrl: streamUrl,
       headers: {
         "User-Agent": userAgent,
-        Referer: Origin + "/",
-        Origin: Origin
+        Referer: finalOrigin + "/",
+        Origin: finalOrigin
       },
       subtitles: subtitles
     };
@@ -3130,27 +3136,32 @@ async function userAgentOf3(arg1, Referer, url) {
     return null;
   }
 }
-async function userAgentOf4(arg1, Referer, url) {
+async function userAgentOf4(arg1, Referer, url, cookieHeader) {
   try {
+    let hdrs1 = {
+      "User-Agent": userAgent,
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "X-Requested-With": "XMLHttpRequest",
+      Referer: Referer,
+      Origin: url
+    };
+    if (cookieHeader) hdrs1.Cookie = cookieHeader;
     let response = await fetch(url + "/ajax/embed", {
       method: "POST",
-      headers: {
-        "User-Agent": userAgent,
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "X-Requested-With": "XMLHttpRequest",
-        Referer: Referer
-      },
+      headers: hdrs1,
       body: "id=" + encodeURIComponent(arg1),
       signal: fn5(4000)
     });
     if (!response.ok) return null;
-    let match = (await response.text()).match(/video\.php\?hash=([a-zA-Z0-9]+)/i);
+    let match = (await response.text()).match(/video\.php\?hash=([^"'&\s]+)/i);
     if (!match) return null;
+    let hdrs2 = {
+      "User-Agent": userAgent,
+      Referer: Referer
+    };
+    if (cookieHeader) hdrs2.Cookie = cookieHeader;
     let response2 = await fetch(url + "/video.php?hash=" + match[1], {
-      headers: {
-        "User-Agent": userAgent,
-        Referer: Referer
-      },
+      headers: hdrs2,
       signal: fn5(4000)
     });
     if (!response2.ok) return null;
@@ -3283,7 +3294,26 @@ async function getStreams(tmdbId, type, tmdbId2, tmdbId3) {
         []
       );
     let url = value7.url,
-      value8 = str;
+      value8 = str,
+      cookieHeader = "";
+    const collectCookies = (resp) => {
+      try {
+        const sc = resp?.headers?.getSetCookie ? resp.headers.getSetCookie() : [];
+        if (sc.length) {
+          const map = new Map();
+          for (const part of cookieHeader.split(";").map((s) => s.trim()).filter(Boolean)) {
+            const eq = part.indexOf("=");
+            if (eq > 0) map.set(part.slice(0, eq), part.slice(eq + 1));
+          }
+          for (const c of sc) {
+            const kv = String(c).split(";")[0].trim();
+            const eq = kv.indexOf("=");
+            if (eq > 0) map.set(kv.slice(0, eq), kv.slice(eq + 1));
+          }
+          cookieHeader = [...map.entries()].map(([k, v]) => k + "=" + v).join("; ");
+        }
+      } catch {}
+    };
     if (isTvOrSeries) {
       let pattern = new RegExp(
           'href="([^"]*(?:' + val5 + "-sezon[/-])?" + val6 + '-bolum[^"]*)"',
@@ -3321,7 +3351,22 @@ async function getStreams(tmdbId, type, tmdbId2, tmdbId3) {
       });
       if (!response.ok)
         return (log("Punisher", "Bölüm sayfası açılamadı: HTTP " + response.status, "warn"), []);
+      collectCookies(response);
       value8 = await response.text();
+    } else {
+      try {
+        let response = await fetch(url, {
+          headers: {
+            "User-Agent": userAgent,
+            Referer: result + "/"
+          },
+          signal: fn5(4500)
+        });
+        if (response.ok) {
+          collectCookies(response);
+          value8 = await response.text();
+        }
+      } catch {}
     }
     log("Punisher", "[Adım 4/4] Oynatıcı akışları çözülüyor...");
     let value9 = fn6(
@@ -3351,7 +3396,7 @@ async function getStreams(tmdbId, type, tmdbId2, tmdbId3) {
     let list2 = [];
     if (value10)
       try {
-        let result3 = await userAgentOf3(value10, url, result);
+        let result3 = await userAgentOf3(value10, url, result, cookieHeader);
         if (result3 && result3.streamUrl) {
           let isDublaj = str2.toLowerCase().includes("dublaj"),
             siteHint = {
@@ -3392,9 +3437,9 @@ async function getStreams(tmdbId, type, tmdbId2, tmdbId3) {
       } catch (err) {
         log("Punisher", "VidMoly çözme hatası: " + (err?.message || err), "warn");
       }
-    if (value11)
+    if (list2.length === 0 && value11)
       try {
-        let result3 = await userAgentOf4(value11, url, result);
+        let result3 = await userAgentOf4(value11, url, result, cookieHeader);
         if (result3 && result3.streamUrl) {
           let isDublaj = str3.toLowerCase().includes("dublaj"),
             siteHint = {
