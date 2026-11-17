@@ -69,6 +69,19 @@ export const KAYIT = new Map([
   ['Raven', { onek: 'sp_raven_', dosya: 'raven.js', yukle: () => import('./cekirdekler/raven.js'), turler: ['movie', 'tv'], durum: 'bilinmiyor', tavaniMs: 26000, kimlik: 'tmdb' }],
   ['Darkseid', { onek: 'sp_darkseid_', dosya: 'darkseid.js', yukle: () => import('./cekirdekler/darkseid.js'), turler: ['movie', 'tv'], durum: 'bilinmiyor', tavaniMs: 26000, kimlik: 'tmdb' }],
 
+  // Mystique (2026-11-17): LookMovie2.la hosted JSON API — Eylül 29 (6baa792)
+  // lookmovieScraper.js mirası; anahtarsız do-search → play sayfası hash/expires
+  // → security API DOĞRUDAN m3u8 + TR/EN VTT (Eylül'de ölçüldü, iframe yok).
+  ['Mystique', { onek: 'sp_mystique_', dosya: 'mystique.js', yukle: () => import('./cekirdekler/mystique.js'), turler: ['movie', 'tv'], durum: 'bilinmiyor' }],
+  // Gambit (2026-11-17): TVR/RecTV hosted API — Eylül 29 (6baa792) rectvService.js
+  // mirası; HMAC-SHA256 imzalı + AES-256-GCM çözülü DOĞRUDAN m3u8. Sabitler
+  // uygulamanın kendi git geçmişindeki Android istemci parmak izleri (ödeme yok).
+  ['Gambit', { onek: 'sp_gambit_', dosya: 'gambit.js', yukle: () => import('./cekirdekler/gambit.js'), turler: ['movie', 'tv'], durum: 'bilinmiyor' }],
+  // Vixen (2026-11-17): ID-anahtarlı HLS çözümleyici — IMDb + sezon/bölüm ile
+  // DOĞRUDAN master m3u8 döner; master'da Türkçe SES (dublaj) ve Türkçe ALTYAZI
+  // EXT-X-MEDIA olarak ölçüldü (ST S1E1/S2E3 + Inception canlı doğrulaması).
+  ['Vixen', { onek: 'sp_vixen_', dosya: 'vixen.js', yukle: () => import('./cekirdekler/vixen.js'), turler: ['movie', 'tv'], durum: 'canli' }],
+
   // ── birinci taraf TR-site çekirdekleri, ikinci dalga (2026-10-18) ──
   ['Lyra', { onek: 'sp_lyra_', dosya: 'lyra.js', yukle: () => import('./cekirdekler/lyra.js'), turler: ['movie', 'tv'], durum: 'bilinmiyor', tavaniMs: 26000, kimlik: 'tmdb' }],
   ['Arcturus', { onek: 'sp_arcturus_', dosya: 'arcturus.js', yukle: () => import('./cekirdekler/arcturus.js'), turler: ['movie', 'tv'], durum: 'bilinmiyor', tavaniMs: 65000, kimlik: 'tmdb' }],

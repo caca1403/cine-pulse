@@ -55,7 +55,7 @@ if (typeof fetch === 'function' && typeof window !== 'undefined') {
     if (zamanlayici && typeof zamanlayici.unref === 'function') zamanlayici.unref();
   } catch (_) { /* zamanlayıcı yok → periyodik tazeleme devre dışı */ }
 }
-import { apiUrl, publicApiUrl } from '../services/altyapi/apiOrigin.js';
+import { apiUrl, publicApiUrl, isNativeCapacitor } from '../services/altyapi/apiOrigin.js';
 
 /**
  * Toplam tarama bütçesi.
@@ -206,13 +206,98 @@ export function zatenKoprudeMi(url) {
  *  dönüyordu ("Eşleşen anime bulunamadı"). Başlıkları sorgu parametresine
  *  taşımak ön kontrolü tamamen kaldırır; sunucu/ağ geçidi bunları hedefe
  *  gerçek başlık olarak yazar. */
-function kopruAdresi(uzakUrl, referer, ekBasliklar) {
+/* ── KATMAN DÜŞÜŞÜ (Eylül 6baa792 paritesi, 2026-11-17) ──────────────────
+   Ölçülen sorun: uzaktan istekler TEK katman (`/api/proxy`) gidiyordu. Yerel/
+   cihaz köprüsü ya da genel proxy çökünce çekirdek HİÇ yanıt alamıyordu →
+   "hiçbir kaynak açılmıyor". Eski kazıyıcılar sırayla 4 katman deniyordu;
+   aynı dayanıklılık buraya, TEK yerde taşınır:
+     1) yerel/cihaz köprüsü veya mevcut rota (bugünkü davranış, korunur)
+     2) doğrudan fetch (yalnız tarayıcıda, cihaz/masaüstü köprüsü yokken)
+     3) genel `/api/proxy?url=..&ref=..` (cihazda yerel köprüden FARKLI origin)
+     4) CF worker yedeği `?url=` (Eylül adresi, env/global ile ezilebilir)
+   Kurallar: her katman ~9 sn, toplam ~20 sn; 4xx yanıtı "uzak gerçekten ölü"
+   sayılır ve OLDUĞU GİBİ döner (sonraki katman denenmez); yalnız ağ hatası /
+   5xx / zaman aşımı / CORS hatasında sonraki katmana geçilir. Hiçbiri
+   başarılı olmazsa throw YOK — boş 502 yanıtı döner. */
+export const KATMAN_ZAMAN_ASIMI_MS = 9_000;
+export const KOPRU_TOPLAM_BUTCE_MS = 20_000;
+
+/** Eylül 2026'daki çalışan CF worker adresi — tek sabit, ezilebilir. */
+const CF_WORKER_VARSAYILAN = 'https://wild-credit-e1ae.cagatayca07.workers.dev';
+
+function cfWorkerTaban() {
+  let taban = '';
+  try {
+    const ortam = typeof import.meta !== 'undefined' ? import.meta.env : null;
+    taban = ortam?.VITE_CF_WORKER_PROXY || ortam?.VITE_PROXY_WORKER || '';
+  } catch (_) { /* import.meta.env yok (Node) */ }
+  if (!taban) {
+    try {
+      taban = (typeof globalThis !== 'undefined' && globalThis.__CP_CF_WORKER_PROXY) || '';
+    } catch (_) { /* global yok */ }
+  }
+  return String(taban || CF_WORKER_VARSAYILAN).replace(/\/+$/, '');
+}
+
+/**
+ * Doğrudan katman yalnız CORS'un anlamlı olduğu düz tarayıcıda denenir.
+ * Cihaz (Capacitor) ve masaüstünde yerel köprü yetkilidir: doğrudan istek
+ * CORS'ta ölürse boşuna gecikme ekler. Node/testte de köprü sözleşmesi korunur.
+ */
+function dogrudanDenenebilirMi(url) {
+  if (!/^https?:\/\//i.test(String(url || ''))) return false;
+  if (typeof window === 'undefined') return false;
+  try {
+    if (window.CinePulseDesktop?.isDesktop === true) return false;
+    if (isNativeCapacitor()) return false;
+  } catch (_) { return false; }
+  // Aynı köken zaten yukarıdaki erken dönüşte ele alındı; burada çapraz köken
+  // kalır. Tarayıcı CORS'a izin veriyorsa yanıt gelir, vermiyorsa hızla düşer.
+  return true;
+}
+
+function kopruYolu(uzakUrl, referer, ekBasliklar) {
   let yol = `/api/proxy?url=${encodeURIComponent(uzakUrl)}`;
   if (referer) yol += `&ref=${encodeURIComponent(referer)}`;
   if (ekBasliklar && Object.keys(ekBasliklar).length) {
     yol += `&headers=${encodeURIComponent(JSON.stringify(ekBasliklar))}`;
   }
-  return apiUrl(yol);
+  return yol;
+}
+
+function kopruAdresi(uzakUrl, referer, ekBasliklar) {
+  return apiUrl(kopruYolu(uzakUrl, referer, ekBasliklar));
+}
+
+/** Hiçbir katman yanıt veremediğinde dönen boş/hata yanıtı (asla throw yok). */
+function bosKopruYaniti() {
+  try {
+    return new Response('', { status: 502, statusText: 'Kopru katmanlari tukendi' });
+  } catch (_) {
+    try {
+      return {
+        ok: false,
+        status: 502,
+        statusText: 'Kopru katmanlari tukendi',
+        headers: new Headers(),
+        text: async () => '',
+        json: async () => ({}),
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+/** 4xx: uzak gerçekten ölü olabilir → zinciri KIR, yanıtı olduğu gibi döndür. */
+function kesinYanitMi(cevap) {
+  return Boolean(cevap && typeof cevap.status === 'number'
+    && cevap.status >= 400 && cevap.status < 500);
+}
+
+/** 2xx/3xx: başarılı say, zinciri bitir. */
+function basariliYanitMi(cevap) {
+  return Boolean(cevap && typeof cevap.status === 'number' && cevap.status < 400);
 }
 
 /**
@@ -320,6 +405,18 @@ async function cfGerekirseDüzelt(istek, { hamUrl, opts, istekBasliklari, ekBasl
 }
 
 export async function kopruFetch(girdi, secenek = {}) {
+  /* KURAL (kullanıcı 2026-11-17 / Eylül 6baa792 paritesi): köprü ASLA throw
+     etmez. Katmanlar tükendiğinde boş 502 döner; çekirdek `if (!yanit.ok)`
+     ile mevcut boş davranışını korur. Beklenmeyen hata da yutulur ve loglanır. */
+  try {
+    return await kopruFetchIc(girdi, secenek);
+  } catch (hata) {
+    console.warn(`[vekil] köprü beklenmeyen hata — ${String(hata?.message || hata).slice(0, 160)}`);
+    return bosKopruYaniti();
+  }
+}
+
+async function kopruFetchIc(girdi, secenek = {}) {
   const opts = secenek || {};
   const hamUrl = typeof girdi === 'string' ? girdi : girdi?.url;
 
@@ -425,36 +522,124 @@ export async function kopruFetch(girdi, secenek = {}) {
   }
   if (kurabiye) ekBasliklar.Cookie = kurabiye;
 
-  const tekIstek = (adres) => cfGerekirseDüzelt(
-    tabii(kopruAdresi(adres, referer, ekBasliklar), { ...opts, headers: istekBasliklari }),
+  const tekIstek = (adres, siny) => cfGerekirseDüzelt(
+    tabii(kopruAdresi(adres, referer, ekBasliklar), {
+      ...opts,
+      headers: istekBasliklari,
+      ...(siny ? { signal: siny } : {}),
+    }),
     { hamUrl: adres, opts, istekBasliklari, ekBasliklar, referer, fetchImpl: tabii }
   );
 
-  let sonuc = null;
-  let sonHata = null;
-  try { sonuc = await tekIstek(hamUrl); }
-  catch (hata) { sonHata = hata; }
+  /* ── KATMAN ZİNCİRİ ────────────────────────────────────────────────────
+     Her katman kendi zaman aşımıyla denenir; yanıt `ok` değilse (ağ hatası,
+     5xx, zaman aşımı, CORS) sıradakine düşülür. 4xx zinciri KIRAR: uzak
+     gerçekten ölü olabilir, çekirdek HTML'i görüp kendi kararını vermeli. */
+  const bitis = Date.now() + KOPRU_TOPLAM_BUTCE_MS;
+  let sonYanit = null;
 
-  if (!sonuc || sonuc.status >= 500) {
-    /* YEDEK ALAN (2026-11-13): birincil hat düştüyse aynı yolu aynı ailenin
-       ölçülmüş aynasında dene; çalışan hat alanlar.js'te öne alınır. Yanıt
-       aynı isteğe ŞEFFAF döner (çekirdek farkı görmez). */
-    for (const yedek of alanYedekAdresleri(hamUrl).slice(0, 3)) {
-      try {
-        const yedekCevap = await tekIstek(yedek.url);
-        if (yedekCevap && yedekCevap.status < 500) {
-          alanYedekOnayla(yedek.kod, yedek.url);
-          kopruBasarisi();
-          return yedekCevap;
-        }
-      } catch (_) { /* sıradaki aday */ }
+  const katmanDene = async (etiket, islev) => {
+    const kalan = bitis - Date.now();
+    if (kalan <= 0) {
+      console.warn(`[vekil] ${etiket} atlandı — toplam köprü bütçesi doldu`);
+      return { cevap: null, durdu: false, iptal: false };
     }
-    kopruHatasi();
-    if (!sonuc) throw sonHata || new Error('sağlayıcı isteği başarısız');
-  } else {
-    kopruBasarisi();
+    const ms = Math.min(KATMAN_ZAMAN_ASIMI_MS, kalan);
+    const { signal: siny, birak } = iptalSinyali(opts.signal, ms);
+    try {
+      const cevap = await yarisla(
+        Promise.resolve().then(() => islev(siny)),
+        ms + 50,
+        'katman-asim',
+        opts.signal
+      );
+      if (!cevap) {
+        console.warn(`[vekil] ${etiket} boş yanıt — sonraki katman`);
+        return { cevap: null, durdu: false, iptal: false };
+      }
+      if (kesinYanitMi(cevap)) return { cevap, durdu: true, iptal: false };
+      if (basariliYanitMi(cevap)) return { cevap, durdu: true, iptal: false };
+      console.warn(`[vekil] ${etiket} HTTP ${cevap.status} — sonraki katman`);
+      return { cevap, durdu: false, iptal: false };
+    } catch (hata) {
+      const mesaj = String(hata?.message || hata);
+      console.warn(`[vekil] ${etiket} başarısız — ${mesaj.slice(0, 140)}`);
+      return { cevap: null, durdu: false, iptal: mesaj === 'iptal-edildi' };
+    } finally {
+      birak();
+    }
+  };
+
+  /* 1) Yerel/cihaz köprüsü veya mevcut rota — BUGÜNKÜ DAVRANIŞ AYNEN.
+     Cihazda `apiUrl` yerel ağ geçidine, web'de mevcut `/api/proxy` yoluna
+     çevirir. Yedek alan (ayna) denemesi de bu katmanın parçasıdır. */
+  const birincilKatman = async (siny) => {
+    let cevap = null;
+    try { cevap = await tekIstek(hamUrl, siny); }
+    catch (hata) { throw hata; }
+    if (!cevap || cevap.status >= 500) {
+      /* YEDEK ALAN (2026-11-13): birincil hat düştüyse aynı yolu aynı ailenin
+         ölçülmüş aynasında dene; çalışan hat alanlar.js'te öne alınır. Yanıt
+         aynı isteğe ŞEFFAF döner (çekirdek farkı görmez). */
+      for (const yedek of alanYedekAdresleri(hamUrl).slice(0, 3)) {
+        try {
+          const yedekCevap = await tekIstek(yedek.url, siny);
+          if (yedekCevap && yedekCevap.status < 500) {
+            alanYedekOnayla(yedek.kod, yedek.url);
+            return yedekCevap;
+          }
+        } catch (_) { /* sıradaki aday */ }
+      }
+    }
+    return cevap;
+  };
+
+  const k1 = await katmanDene('yerel/rota köprüsü', birincilKatman);
+  if (k1.cevap) sonYanit = k1.cevap;
+  if (k1.durdu) { kopruBasarisi(); return k1.cevap; }
+  if (k1.iptal) { kopruHatasi(); return bosKopruYaniti(); }
+
+  /* 2) Doğrudan fetch — yalnız düz tarayıcıda (cihaz/masaüstü köprüsü yetkili).
+     CORS izinliyse döner; değilse istek hızla reddedilir ve 3. katmana düşer. */
+  if (dogrudanDenenebilirMi(hamUrl)) {
+    const k2 = await katmanDene('doğrudan fetch', (siny) => tabii(hamUrl, {
+      ...opts,
+      headers: istekBasliklari,
+      signal: siny,
+    }));
+    if (k2.cevap) sonYanit = k2.cevap;
+    if (k2.durdu) { kopruBasarisi(); return k2.cevap; }
+    if (k2.iptal) { kopruHatasi(); return bosKopruYaniti(); }
   }
-  return sonuc;
+
+  /* 3) Genel `/api/proxy?url=..&ref=..` — cihazda yerel köprüden FARKLI
+     origin'dir (publicApiUrl); web'de 1. katmanla aynı adrestir, tekrar
+     edilmez. Aynı adresi iki kez denemek zaman aşımı bütçesini boşa yakar. */
+  const yerelProxyAdresi = kopruAdresi(hamUrl, referer, ekBasliklar);
+  const genelProxyAdresi = publicApiUrl(kopruYolu(hamUrl, referer, ekBasliklar));
+  if (genelProxyAdresi !== yerelProxyAdresi) {
+    const k3 = await katmanDene('genel proxy', (siny) => tabii(genelProxyAdresi, {
+      ...opts,
+      headers: istekBasliklari,
+      signal: siny,
+    }));
+    if (k3.cevap) sonYanit = k3.cevap;
+    if (k3.durdu) { kopruBasarisi(); return k3.cevap; }
+    if (k3.iptal) { kopruHatasi(); return bosKopruYaniti(); }
+  }
+
+  /* 4) CF worker yedeği (Eylül 6baa792). Yalnız `?url=` taşır: worker CORS'a
+     açıktır; çekirdeğin özel başlıkları burada gönderilmez (ön kontrolü
+     düşürürdü). Adres env/global ile ezilebilir. */
+  const k4 = await katmanDene('CF worker', (siny) => tabii(
+    `${cfWorkerTaban()}?url=${encodeURIComponent(hamUrl)}`,
+    { method: opts.method || 'GET', signal: siny }
+  ));
+  if (k4.cevap) sonYanit = k4.cevap;
+  if (k4.durdu) { kopruBasarisi(); return k4.cevap; }
+
+  kopruHatasi();
+  return sonYanit || bosKopruYaniti();
 }
 
 /* ── ON-DEMAND TAZELEME SAYACI (2026-11-13) ───────────────────────────────
@@ -723,8 +908,30 @@ function urlOzu(url) {
 /** Çekirdeğin kendisi bildirirse biçim kabul edilir (aşağıya bak). */
 const BICIM_SOZLUK = /^(m3u8|hls|mp4|webm|mkv|m4s|mpd|ts)$/i;
 
-/** Gömülü oynatıcı/dosyasız sayfalar — biçim bildirseler de kabul edilmez. */
-const GOMULU_OYNATICI = /\/(embed|iframe|player|watch)\//i;
+/** Gömülü oynatıcı/dosyasız sayfalar — doğrudan yayın olarak KABUL EDİLMEZ. */
+const GOMULU_OYNATICI = /\/(embed|iframe|player|watch|play|oynat|media)(?:[?/]|$)/i;
+/** Uzantısız ama kimliği sorgu parametresinden alan oynatıcı sayfaları. */
+const GOMULU_SORGU = /[?&](?:id|v|hash|video|src)=/i;
+const GOMULU_BICIM = /^(?:embed|iframe|sayfa|page)$/i;
+
+/**
+ * Yayın mı yoksa oynatıcı SAYFASI mı? (ölçüldü 2026-11-17)
+ * Eskiden böyle adresler `normalizeEt` içinde `null`lanıp atılıyordu; çekirdek
+ * onlara `format:'m3u8'` YAZDIĞINDA ise "1080p HLS" diye listeleniyor ve
+ * oynatıcıda (web + APK) ölü satır oluyordu — Green-Arrow'un ölüm sebebi.
+ * Doğru davranış: sayfayı ELEMEK değil, RESMEN gömülü olarak işaretlemek;
+ * doğrulama katmanı (kaynakDogrulayıcı + embedCozucu) iç akışı çözer,
+ * çözülemezse KAPI eler. Böylece listeden hiçbir satır yalan olmaz.
+ */
+export function gomuluSayfaMi(oge, url) {
+  const u = String(url || oge?.url || oge?.streamUrl || '');
+  if (!u || DOGRUDAN_YAYIN.test(u)) return false;
+  const bicim = String(oge?.format ?? oge?.type ?? '').trim();
+  return oge?.gomulu === true || oge?.isIframe === true
+    || GOMULU_BICIM.test(bicim)
+    || GOMULU_OYNATICI.test(u)
+    || (GOMULU_SORGU.test(u) && !/\.[a-z0-9]{2,5}(?:\?|#|$)/i.test(u.split('?')[0]));
+}
 
 /**
  * Yayın adresini BAŞLIK TAŞIYAN proxy'mize sarar: `/api/hls_proxy?url=…&ref=…&ua=…&headers=…`
@@ -825,7 +1032,15 @@ function oynatilabilirAltyazi(liste) {
   const temiz = [];
   for (const parça of liste) {
     const src = String(parça?.src || parça?.file || '').trim();
-    if (!/^https?:\/\//i.test(src) || !/\.(srt|vtt)(\?|#|$)/i.test(src)) continue;
+    if (!/^https?:\/\//i.test(src)) continue;
+    /* Uzantı ZORUNLU DEĞİL (ölçüldü 2026-11-17): dizisol altyazıları uzantısız
+       gelir — `/sub?id=…&lang=tr`, `/srs?srt?hash=…`. Eski kural yalnız
+       `.srt|.vtt` ile biteni kabul ettiğinden bu altyazılar sessizce kayboluyordu.
+       /api/subtitles vekili içeriği koklayıp VTT'ye çevirdiği için uzantısız ama
+       altyazı olduğu adresten belli olan URL güvenle taşınır. */
+    const uzantili = /\.(srt|vtt)(\?|#|$)/i.test(src);
+    const ipucu = /sub|srt|vtt|caption|altyazi|subtitle|lang=/i.test(src);
+    if (!uzantili && !ipucu) continue;
     temiz.push({ label: String(parça?.label || 'Altyazı').slice(0, 40), src });
     if (temiz.length >= 6) break;
   }
@@ -856,7 +1071,36 @@ export function normalizeEt(oge, kayit) {
   const url = oge?.url || oge?.streamUrl || '';
   // Göreli ya da zaten köprüden geçmiş adresler normalleştirilmez: yeniden
   // sarılırsa sunucu "Target blocked" (403) döndürüyordu (ölçüldü 2026-10-16).
-  if (!url || !/^https?:\/\//i.test(url) || url.startsWith('/api/') || GOMULU_OYNATICI.test(url)) return null;
+  if (!url || !/^https?:\/\//i.test(url) || url.startsWith('/api/')) return null;
+
+  /* GÖMÜLÜ OYNATICI SAYFASI — ÇÖPE ATILMAZ, İŞARETLENİR (2026-11-17).
+     Eskiden bu satırlar ya null'lanıp kayboluyor (kaynak kaybı) ya da çekirdek
+     `format:'m3u8'` yazdığı için "1080p HLS" diye listelenip oynatıcıda ölüyordu
+     (Green-Arrow; kullanıcının APK'sında doğrulandı). İşaretli geçtiklerinde
+     doğrulama katmanı iç akışı çözer (embedCozucu) ve kapı yalnız çözüleni
+     listeye alır: "listede görünen her kaynak açılır" garantisi buradan geçer. */
+  if (gomuluSayfaMi(oge, url)) {
+    const gB = oge.headers && typeof oge.headers === 'object' ? oge.headers : {};
+    return {
+      id: `${kayit?.onek || 'sp_'}${urlOzu(url)}`,
+      displayName: `${kayit?.kodAdi || 'Kaynak'} · Gömülü hat`,
+      title: oge.title ? String(oge.title).slice(0, 60) : (kayit?.kodAdi || 'Gömülü hat'),
+      streamUrl: url,
+      url,
+      embedSayfa: url,
+      gomulu: true,
+      isIframe: true,
+      type: 'embed',
+      format: 'embed',
+      isM3u8: false,
+      quality: 'auto',
+      headers: gB,
+      diller: Array.isArray(oge.diller) ? oge.diller : [],
+      dogrulandi: false,
+      dogrulanamadi: true,
+      kaynakAdi: kayit?.kodAdi || '',
+    };
+  }
 
   // HEVC/H.265 yayınlar: Chromium WebView bunları çözemiyor ("Format error").
   // ELENMEZ — bunlar /api/hevc_proxy hattına sarılır, orada ffmpeg ile

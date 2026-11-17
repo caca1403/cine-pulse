@@ -199,10 +199,22 @@ test('biçim bildirmeyen ve uzantısız adres reddedilir', () => {
   assert.equal(normalizeEt({ url: 'https://x.example/vs/abc123' }, KAYIT), null);
 });
 
-test('gömülü oynatıcı biçim söylese de reddedilir', () => {
-  assert.equal(normalizeEt({ url: 'https://x.example/embed/abc', format: 'm3u8' }, KAYIT), null);
-  assert.equal(normalizeEt({ url: 'https://x.example/iframe/abc' }, KAYIT), null);
-  assert.equal(normalizeEt({ url: 'https://x.example/player/abc', type: 'mp4' }, KAYIT), null);
+test('gömülü oynatıcı reddedilmez ama asla akış gibi davranmaz (işaretlenir)', () => {
+  // SÖZLEŞME DEĞİŞTİ (2026-11-17): gömülü sayfa ELENMİYOR — RESMEN gömülü
+  // işaretleniyor; doğrulama kapısı iç akışı çözerse gerçek m3u8 olur,
+  // çözemezse kapı eler. Eskiden burada null dönerdi ve satır sessizce
+  // kayboluyordu ("1080p HLS" yalanıyla listeye girmesi de buydu).
+  for (const oge of [
+    { url: 'https://x.example/embed/abc', format: 'm3u8' },
+    { url: 'https://x.example/iframe/abc' },
+    { url: 'https://x.example/player/abc', type: 'mp4' },
+  ]) {
+    const n = normalizeEt(oge, KAYIT);
+    assert.ok(n, `gömülü satır null olmamalı: ${oge.url}`);
+    assert.equal(n.gomulu, true, `gömülü işaretli olmalı: ${oge.url}`);
+    assert.notEqual(n.isM3u8, true, 'oynatıcıya HLS/akış olarak gitmemeli');
+    assert.equal(n.quality, 'auto', 'kalite uydurulamaz');
+  }
 });
 
 test('şemasız ve boş adres reddedilir', () => {

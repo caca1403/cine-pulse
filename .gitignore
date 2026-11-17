@@ -47,3 +47,5 @@ public/dublaj-arsivi/
 # yerel-dogrula aracinin uretti gecici electron harness'i
 tools/.yerel-dogrula-electron.cjs
 tools/.yerel-oynatici-electron.cjs
+# olcum aracliginin uretti gecici electron harness'leri (ayni desen, hepsi)
+tools/.*-electron.cjs

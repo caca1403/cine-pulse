@@ -69,10 +69,10 @@ function cizgi(tekrar = 3, gecikme = 0) {
 
 /* ── kayıt bütünlüğü (45 kayıt, hepsi taramaya açık) ── */
 
-test('kayıt: 56 sağlayıcı, kod adları tekil', () => {
+test('kayıt: 58 sağlayıcı, kod adları tekil', () => {
   kayitKancasi(null);
   const durum = kayitDurumu();
-  assert.equal(durum.toplam, 56, '56 kayıt: 54 + 3 yeni yerli çekirdek (Nova/Vision/Phyla, 2026-10-30 cihazda doğrulandı)');
+  assert.equal(durum.toplam, 59, '59 kayıt: 54 + 3 yeni yerli çekirdek (Nova/Vision/Phyla) + Eylül hosted-API dönüşü (Mystique/Gambit, 2026-11-17) + Vixen ID-anahtarlı HLS çözümleyici (2026-11-17)');
   assert.deepEqual(durum.cakisma, [], 'kod adı çakışmamalı');
   assert.ok(durum.film > 0 && durum.dizi > 0);
 });
@@ -110,7 +110,7 @@ test('kayıt: tür süzgeci movie/tv/series doğru çalışır', () => {
 
 /* ── sözleşme: normalize ──────────────────────────────────────────────── */
 
-test('normalize: doğrudan yayın geçer, gömülü oynatıcı elenir', () => {
+test('normalize: doğrudan yayın geçer, gömülü oynatıcı işaretlenir', () => {
   const kayit = { kodAdi: 'TestNova', onek: 'sp_testnova_' };
   const gecerli = normalizeEt({
     name: 'GizliSite',
@@ -122,8 +122,14 @@ test('normalize: doğrudan yayın geçer, gömülü oynatıcı elenir', () => {
   assert.equal(gecerli.quality, '720p');
   assert.equal(gecerli.source, 'TestNova');
 
+  // SÖZLEŞME (2026-11-17): gömülü oynatıcı sayfası normalize'da ELEMEZ —
+  // resmen gömülü işaretlenir; kararı doğrulama kapısı verir (bkz.
+  // normalizer-gomulu.test.mjs). Akış biçimi olmayan adres hâlâ elenir.
+  const gomulu = normalizeEt({ url: 'https://player.example.com/embed/abc' }, kayit);
+  assert.ok(gomulu, 'gömülü satır null dönmemeli');
+  assert.equal(gomulu.gomulu, true);
+  assert.equal(gomulu.isM3u8, false);
   for (const kotu of [
-    'https://player.example.com/embed/abc',
     'https://site.example.com/izle/123',
     '',
   ]) {
@@ -164,7 +170,9 @@ test('kaynakCoz: uçtan uca çalışır ve fetch köprüsü geri konur', async (
   try {
     const sonuc = await kaynakCoz({ id, tur: 'movie', tmdbId: '550' });
     assert.equal(sonuc.hata, null);
-    assert.equal(sonuc.kaynaklar.length, 1, 'yalnız doğrudan yayın sayılır');
+    assert.equal(sonuc.kaynaklar.length, 2, 'doğrudan yayın + resmen işaretli gömülü satır (kapıyı görür)');
+    assert.equal(sonuc.kaynaklar.filter(k => k.gomulu === true).length, 1, 'gömülü satır işaretiyle taşınır');
+    assert.equal(sonuc.kaynaklar.filter(k => k.gomulu !== true && k.isHls).length, 1, 'doğrudan yayın akış olarak kalır');
     const izAdlari = sonuc.iz.map(k => k.ad);
     assert.ok(izAdlari.includes('basladi') && izAdlari.includes('yanit') && izAdlari.includes('normalize'));
     // Sözleşme (kaynakCoz HALA AKTİFKEN): köprü sökülmüş olmalı. Referans
@@ -259,7 +267,7 @@ test('kaynakTara: paralel tarama, yalnız kancadaki kayıtlar taranır', async (
     const gecen = Date.now() - t0;
     assert.equal(tara.sonuc.size, ids.length);
     assert.ok(gecen < 4000, `ortak bütçe aşıldı: ${gecen}ms`);
-    assert.equal(tara.sonuc.get(ids[0]).kaynaklar.length, 1);
+    assert.equal(tara.sonuc.get(ids[0]).kaynaklar.length, 2, 'doğrudan + işaretli gömülü (2026-11-17 sözleşmesi)');
   } finally { kayitKancasi(null); }
 });
 
@@ -377,12 +385,12 @@ test('vendor: çekirdekler kahraman koduyla etiketlenebilir (getStreams var)', (
 test('durum: her kayıt ölçüm alanı taşır, varsayılan bilinmiyor', () => {
   kayitKancasi(null);
   const ozet = durumOzeti();
-  assert.equal(ozet.toplam, 56, '54 + Nova/Vision/Phyla (2026-10-30)');
+  assert.equal(ozet.toplam, 59, '54 + Nova/Vision/Phyla (2026-10-30) + Mystique/Gambit (2026-11-17) + Vixen (2026-11-17)');
   // Tek kalici 'canli' kayit, OLCUMLU birinci taraf cekirdegidir (Star-Lord:
   // film + dizi kosesinde canli olarak dogrulandi). Vendor kayitlar olcum
   // yapilmadan asla kapali sayilmaz.
-  assert.equal(ozet.canli, 30, '30 canlı: 28 + Nova/Vision/Phyla');
-  assert.equal(ozet.bilinmiyor, 26, '26 henüz ölçülmeyen kayıt');
+  assert.equal(ozet.canli, 31, '31 canlı: 28 + Nova/Vision/Phyla + Vixen (ölçümlü: master m3u8 + TR ses)');
+  assert.equal(ozet.bilinmiyor, 28, '28 henüz ölçülmeyen kayıt (+Mystique/Gambit)');
   assert.equal(ozet.kapali, 0, 'ölçümsüz kapalı kayıt kalmadı');
 });
 

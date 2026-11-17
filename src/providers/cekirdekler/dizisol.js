@@ -72,6 +72,35 @@ async function oku(url, { ref = SITE + '/', json = true, ms = 15000 } = {}) {
 
 const norm = (s) => sadeles(String(s || '')).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
+/* ── GÖMÜLÜ OYNATICI ayıracı (ölçüldü 2026-11-17) ──────────────────────────
+   SİTE POLİTİKA DEĞİŞTİRDİ: 2026-10-29'da /api/movies/by-tmdb uçları sources[]
+   içinde DÜZ .m3u8 döndürüyordu (bkz. dosya başındaki ölçüm notu). 2026-11-17
+   ölçümü (Stranger Things S1B1, tmdb 66732): 10 kaynağın 10'u da
+   `.../play?id=…` / `.../play?hash=…` GÖMÜLÜ OYNATICI sayfası; ana m3u8Url
+   alanı da öyle (`cortina.dizisol14.workers.dev/play?id=…`). Bu adresler HTML
+   döndürür, hls.js onu ayrıştıramaz → kullanıcıda (web + APK) ÖLÜ satır.
+   Eylül-29 kodu (6baa792) bu sayfaları listelemez, yalnız gerçek akışı
+   gösterirdi; aynı dürüstlüğü uyguluyoruz + gömülü olduğunu RESMEN işaretliyoruz
+   ki doğrulama katmanı (kaynakDogrulayıcı / embedCozucu) iç akışı ÇÖZSÜN.
+   Sonuç: yalan "1080p HLS" satırı yok, ama çözüm şansı olan hat da silinmiyor. */
+const GOMULU_YOL = /\/(?:play|embed|oynat|iframe|media|watch)(?:[?/]|$)/i;
+/* Eylül kayıtlarından beri bilinen, HİÇBİR ZAMAN oynatılamaz biçimler. */
+const OYNATILAMAZ = [/picturebox\.cloud/i, /^setfilmizle:/i, /setfilmizle::/i];
+
+/** Adres gömülü oynatıcı sayfası mı? (uzantısız /play?id=, /embed/ vb.) */
+export function gomuluOynaticiMi(adres) {
+  const s = String(adres || '');
+  if (!s) return false;
+  if (/\.(m3u8|mp4|mkv|webm|m4s|mpd)(\?|#|$)/i.test(s)) return false;
+  return GOMULU_YOL.test(s);
+}
+
+/** Eylül'den beri bilinen, oynatılması mümkün olmayan biçim (liste dışı). */
+export function oynatilamazMi(adres) {
+  const s = String(adres || '');
+  return !!s && OYNATILAMAZ.some((re) => re.test(s));
+}
+
 /* ── Master m3u8'den GERÇEK dil kanıtı (uydurma etiket yok) ─────────────── */
 async function dilKaniti(url, ref, ms = 6000) {
   const metin = await oku(url, { ref, json: false, ms });
@@ -142,16 +171,33 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
     // Kaynak listesi: tekil m3u8Url + sources[] birleşir, önceliğe göre sıralanır
     const adaylar = [];
     const anaAkisUrl = akisUrliniCoz(kayit.m3u8Url);
-    if (anaAkisUrl) {
+    if (anaAkisUrl && !oynatilamazMi(anaAkisUrl)) {
       adaylar.push({ provider: 'ana', m3u8Url: anaAkisUrl, priority: 0, subtitleTr: kayit.subtitleTr });
     }
     for (const s of kayit.sources || []) {
       const m3u8Url = akisUrliniCoz(s?.m3u8Url);
       if (!s || s.isActive === false || !m3u8Url) continue;
+      // Oynatılması imkânsız biçimler listeye HİÇ girmez (Eylül-29 kıstası).
+      if (oynatilamazMi(m3u8Url)) continue;
       adaylar.push({ ...s, m3u8Url });
     }
     const oncelik = (s) => Number.isFinite(Number(s?.priority)) ? Number(s.priority) : 99;
     adaylar.sort((a, b) => oncelik(a) - oncelik(b));
+
+    /* ALTYAZI TAŞIMA (ölçüldü 2026-11-17): API altyazıları KAYNAK-BAZINDA
+       (subtitleTr/subtitleEn) veriyor; kaynakta yoksa kayıt-geneli alanlara
+       düşülüyor. Eski kod yalnız doğrulanmış satırda `altyaziUrl` taşıyordu;
+       gömülü ve yedek satırlar altyazısını kaybediyordu. Adresler uzantısız
+       (`/sub?id=…&lang=tr`) — vekil oynatilabilirAltyazi artık bunları taşır,
+       oynatıcı /api/subtitles vekilinden VTT'ye çevirterek gösterir. */
+    const altyaziListesi = (s) => {
+      const l = [];
+      const tr = s?.subtitleTr || kayit.subtitleTr;
+      const en = s?.subtitleEn || kayit.subtitleEn;
+      if (tr && /^https?:\/\//i.test(String(tr))) l.push({ label: 'Türkçe', src: String(tr) });
+      if (en && /^https?:\/\//i.test(String(en))) l.push({ label: 'English', src: String(en) });
+      return l.length ? l : undefined;
+    };
 
     // Aynı master iki kez denenmesin
     const gorulen = new Set();
@@ -164,15 +210,22 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
       return true;
     });
 
+    // GÖMÜLÜ hatlar doğrulanMAZ (govde HTML), doğrulama onlarda boşa ~8 sn
+    // yakar ve 35 sn'lik çekirdek bütçesini bitirir. Ayır: gerçek akışlar
+    // kanıtlanır, gömülüler Resmi Gömülü İşaret ile doğrulama katmanına devir.
+    const gercekAkis = benzersiz.filter((s) => !gomuluOynaticiMi(s.m3u8Url));
+    const gomululer = benzersiz.filter((s) => gomuluOynaticiMi(s.m3u8Url));
+    iz('ayrim', { akis: gercekAkis.length, gomulu: gomululer.length });
+
     // Validate every backup in parallel. Previously this was capped at six,
     // silently dropping the remaining DiziSol mirrors (often the working ones).
     const olcumler = await Promise.allSettled(
-      benzersiz.map((s) => dilKaniti(s.m3u8Url, `${SITE}/`, 8000))
+      gercekAkis.map((s) => dilKaniti(s.m3u8Url, `${SITE}/`, 8000))
     );
     const sonuc = [];
     const dogrulanmayanlar = [];
-    for (let i = 0; i < benzersiz.length; i++) {
-      const s = benzersiz[i];
+    for (let i = 0; i < gercekAkis.length; i++) {
+      const s = gercekAkis[i];
       const kanit = olcumler[i]?.status === 'fulfilled' ? olcumler[i].value : null;
       iz('kanit' + i, kanit ? { tr: kanit.trSes, k: kanit.kalite } : (olcumler[i] && olcumler[i].status) + ':' + String(olcumler[i] && olcumler[i].reason && olcumler[i].reason.message).slice(0, 40));
       if (!kanit) {
@@ -196,7 +249,8 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
         trSes: kanit.trSes,
         trAltyazi: kanit.trAltyazi,
         dilDurumu: kanit.trSes ? 'dublaj' : (kanit.trAltyazi ? 'altyazi' : 'orijinal'),
-        altyaziUrl: s.subtitleTr || '',
+        altyaziUrl: s.subtitleTr || kayit.subtitleTr || '',
+        subtitles: altyaziListesi(s),
         headers: { 'User-Agent': UA, Referer: `${SITE}/`, Origin: SITE },
         proxyGerekmez: true,
         proxyStreamGerekli: true,
@@ -213,6 +267,40 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
         format: 'm3u8',
         isM3u8: true,
         headers: { 'User-Agent': UA, Referer: `${SITE}/`, Origin: SITE },
+        subtitles: altyaziListesi(s),
+        altyaziUrl: s.subtitleTr || kayit.subtitleTr || '',
+        proxyGerekmez: true,
+        proxyStreamGerekli: true,
+        diller: [],
+        dogrulanamadi: true,
+      });
+    }
+
+    /* RESMİ GÖMÜLÜ İŞARET — ölü satır yalanının kök çözümü.
+       aggregatör isValidStream (providerAggregator.js:217-224) içinde uzantı
+       kontrolünü YALNIZ type==='embed' / isIframe işaretli satırlarda uygular;
+       işaretsiz bir `/play?id=` satırı "doğrudan akış" sayılıp listeye
+       "1080p HLS" diye giriyor ve oynatıcıda HTML ile ölüyordu (APK dahil).
+       İşaretli satır ise doğrulama katmanına (kaynakDogrulayıcı → embedCozucu)
+       devredilir: iç akış çözülürse oynatılır, çözülemezse listeye hiç girmez.
+       headers: dizisol uçları Origin şart koşuyor (yukarıda ölçüldü) — iç akış
+       çözümü ve oynatma aynı başlıkları taşımak zorunda. */
+    for (const s of gomululer) {
+      const sagAd = SAGLAYICI_ETIKET[s.provider] || String(s.provider || 'Kaynak');
+      sonuc.push({
+        name: AD,
+        title: `${AD} · ${sagAd} · Gömülü hat`,
+        url: s.m3u8Url,
+        quality: 'auto',
+        format: 'embed',
+        type: 'embed',
+        isIframe: true,
+        isM3u8: false,
+        gomulu: true,
+        embedSayfa: s.m3u8Url,
+        headers: { 'User-Agent': UA, Referer: `${SITE}/`, Origin: SITE },
+        subtitles: altyaziListesi(s),
+        altyaziUrl: s.subtitleTr || kayit.subtitleTr || '',
         proxyGerekmez: true,
         proxyStreamGerekli: true,
         diller: [],
@@ -223,8 +311,9 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
     // SIFIR DÖNÜŞ YASAĞI (kullanıcı 2026-10-29: "kaynak azlığı"): doğrulama
     // zaman aşımına düşse bile içeriğin kaynağı listede KALIR — etiketi
     // kanıtsız olduğu için dil iddiası taşımaz (uydurma yok, kaynak yok demek de yok).
-    if (!sonuc.length && benzersiz.length) {
-      for (const s of benzersiz) {
+    // KAPSAM: yalnız GERÇEK akışlar; gömülü sayfalar yukarıda zaten listelendi.
+    if (!sonuc.length && gercekAkis.length) {
+      for (const s of gercekAkis) {
         const sagAd = SAGLAYICI_ETIKET[s.provider] || String(s.provider || 'Kaynak');
         sonuc.push({
           name: AD,
@@ -234,6 +323,8 @@ export async function getStreams(kimlik, tur = 'movie', sezon = 1, bolum = 1) {
           format: 'm3u8',
           isM3u8: true,
           headers: { 'User-Agent': UA, Referer: `${SITE}/`, Origin: SITE },
+          subtitles: altyaziListesi(s),
+          altyaziUrl: s.subtitleTr || kayit.subtitleTr || '',
           // Keep device-origin access through the local gateway and provide a
           // header-aware HLS proxy URL for manifest MIME and segment rewrites.
           proxyGerekmez: true,

@@ -19,7 +19,9 @@
 
 import { fetchDramaDizilerimEpisodeSources } from './dramaDizilerimScraper.js';
 import { fetchDramalarEpisodeSources } from './dramalarScraper.js';
-import { kaynakTara, gercekKaynakEtiketi } from '../../providers/vekil.js';
+import { dogrulanmislariAyir } from './kaynakDogrulayici.js';
+import { kaynakTara, gercekKaynakEtiketi, oynatmaAdresi } from '../../providers/vekil.js';
+import { kapiAnahtari, sicildeMi, oluKaydet } from './kaynakKapisi.js';
 import { isNativeAndroidApp } from '../platform/platformBridge.js';
 import { apiUrl } from '../altyapi/apiOrigin.js';
 
@@ -109,6 +111,12 @@ export function ciftDilKopyalari(eklenen, karsiKategori) {
 
 const CACHE_VERSION = 'v48';
 const streamServersCache = new Map();
+
+/* Doğrulama kapısı bütçeleri: kaynak başına 6 sn, parti başına 12 sn
+   (eşzamanlılık kapının içinde ≤6). Gömülü dal kendi içinde daha cömert. */
+const KAPI_MS = 6000;
+const KAPI_BUTCE_MS = 12000;
+const KAPI_BEKLEME_MS = 250;
 
 /** Kahraman katmanının desteklediği türler (kayıt bunları doğrular). */
 // Kahraman katmanının tarayabildiği türler.
@@ -213,12 +221,16 @@ function formatStreamItem(s, category, fallbackName) {
 }
 
 /** Yayın kabul kıstası: yalnız oynatılabilir doğrudan medya (m3u8/mp4/mkv)
- *  ve bizim proxy'mizden geçen adresler. Gömülü oynatıcı (iframe) listelenmez. */
+ *  ve bizim proxy'mizden geçen adresler. Gömülü oynatıcı (iframe) listelenmez.
+ *  GÖMÜLÜ İŞARETLİ SATIR (2026-11-17): çekirdekler artık gömülü sayfaları
+ *  `type:'embed' / isIframe / gomulu:true` ile işaretliyor. Bu satırlar
+ *  burada ELENMEZ, doğrulama kapısına devredilir: kapı iç akışı çözerse
+ *  satır gerçek `.m3u8` olur (listeye girer), çözemezse listeye hiç girmez. */
 function isValidStream(s) {
   const urlStr = (s?.url || s?.streamUrl || (typeof s?.getUrl === 'function' ? s.getUrl() : '') || '').toLowerCase();
   if (!urlStr || urlStr.length < 8) return false;
-  if (s.isIframe || s.type === 'embed' || s.isSayfa || s.isPageEmbed) {
-    return /\.(m3u8|mp4|mkv|webm|m4s|mpd)(\?|#|$)/i.test(urlStr) || /\/api\/(?:hls_proxy|proxy)[?#]/i.test(urlStr);
+  if (s.gomulu === true || s.isIframe || s.type === 'embed' || s.isSayfa || s.isPageEmbed) {
+    return true; // kapıya devir — uzantı şartı doğrulama sonucunda aranır
   }
   return true;
 }
@@ -405,6 +417,146 @@ export async function getStreamingServersProgressive({
     return /\b(?:4k|2160p)\b/.test(hay) ? '4k' : /\b1080p\b/.test(hay) ? '1080' : /\b720p\b/.test(hay) ? '720' : /\b480p\b/.test(hay) ? '480' : 'x';
   };
 
+  /* KAYNAK KAPISI (kullanıcı 2026-11-17: "her kaynak çalışacak; çalışmayan
+     elensin, kalıcı silinsin"). İki mekanizma:
+       · Kalıcı sicil: daha önce KESİN ölü kanıtlanmış host+yol hiç listelenmez
+         (7 gün TTL — sunucu taşınırsa kendini kurtarır).
+       · Async denetim: eklenen satır vekilin başlık-taşıyan proxy'sinden
+         yoklanır; KESİN ölüm listeden anında düşürülür + sicile yazılır.
+         Timeout/5xx = belirsiz = kalır (ölçülemeyeni öldürme kuralı).
+     FAIL-OPEN: denetimler listeyi tamamen bitirirse (veya hepsi sicildeyse)
+     tarama sonunda gizlenenler tek sefer geri açılır — boş ekran asla yok. */
+  const gizlenen = [];
+  /* DOĞRULAMA KAPISI (2026-11-17) — kullanıcının ana talebi: "listeye giren
+     kaynak AÇILACAK". Yukarıdaki asenkron denetim "yayınla, sonra ölüyü
+     düşür" modeliydi; kullanıcı ölü satırı bir an bile görmemeli. Bu yüzden
+     satırlar arayüze verilmeden ÖNCE kapıdan geçer:
+        oynatilir → öne      belirsiz → sona      olu → LİSTEYE HİÇ GİRMEZ
+     Kanıt yoksa (429 / timeout / embed çözülemedi) öldürülmez. Hiçbir kaynak
+     kanıtlanamazsa fail-open: elenenler geri konur — boş ekran asla yok. */
+  const elenenler = [];              // { category, kaynak } — fail-open için
+  let dogrulamaKuyrugu = Promise.resolve();
+  let bekleyenKap = [];
+  let kapZamani = null;
+  let failOpenOldu = false;
+  /* Eski "async denetim" (denetimeAl) kaldırıldı: DOĞRULAMA KAPISI (aşağıda)
+     satırları yayınlanmadan ÖNCE aynı adresten kanıt alıyor; ayrıca KESİN ölüm
+     kanıtı doğrudan sicile yazılıyor — ikinci yoklama trafikte çift sayım ve
+     çelişkili karar demekti (ölçüm 2026-11-17). */
+
+  /* ── DOĞRULAMA KUYRUĞU (kapı) ───────────────────────────────────────
+     Aday satırlar burada biriktirilir, kısa bir sessizlik penceresinden
+     sonra TEK partide doğrulanır (her sağlayıcı için ayrı 12 sn beklemek
+     listeyi dakikalarca geciktirirdi). Doğrulanmış satırlar arayüze verilir. */
+  const yayinlaKismi = () => {
+    if (signal?.aborted) return;
+    onUpdate({
+      dubbed: [...currentDubbed],
+      subtitled: [...currentSubtitled],
+      totalServers: currentDubbed.length + currentSubtitled.length,
+      isComplete: false,
+      ...hataAlanlari(),
+    });
+  };
+
+  const kapiUygula = async (adaylar) => {
+    const { oynatilir, belirsiz, olu } = await dogrulanmislariAyir(adaylar, {
+      ms: KAPI_MS,
+      butceMs: KAPI_BUTCE_MS,
+    });
+    /* GÖMÜLÜ SAYFA ÇÖZÜLDÜYSE ADRESİ YENİDEN SARMALA.
+       Kapı, gömülü satırın iç akışını bulup kaynak.url/streamUrl alanına GERÇEK
+       akışı yazar (kaynakDogrulayici.cozulmusAkisiYaz). Bu yazım normalizeEt'ten
+       SONRA olduğu için adres başlık proxy'sinden geçmemiş hâlde kalıyordu —
+       web/APK oynatıcısı çıplak adresi istediğinde CDN 403 yer ve kullanıcı
+       "kaynak var ama açılmıyor" görür (kullanıcı 2026-11-17: "m3u8 olup da
+       oynatılamaması bizim hatamız olur"). Başlık varsa burada sarılır; başlıksız
+       yayın eski davranışla çıplak kalır (2026-10-16 ölçümü: her şeyi sarmak
+       listeyi 10→3 kaynağa düşürüyordu). */
+    for (const k of [...oynatilir, ...belirsiz]) {
+      if (!k || !k.embedSayfa || k.koprulendi === true) continue;
+      const akis = String(k.url || k.streamUrl || '');
+      const başlık = k.headers && typeof k.headers === 'object' ? k.headers : {};
+      if (!Object.keys(başlık).length) continue;
+      if (!/^https?:\/\//i.test(akis) || akis.startsWith('/api/')) continue;
+      try {
+        const sar = oynatmaAdresi(akis, başlık);
+        if (sar && sar !== akis) {
+          k.hamAdres = k.hamAdres || akis;
+          k.url = sar;
+          k.streamUrl = sar;
+          k.koprulendi = true;
+        }
+      } catch (_) { /* sarmalama hatası satırı düşürmez */ }
+    }
+    const yayinlanan = [...oynatilir, ...belirsiz];
+    // Gömülü sayfa çözülemedi → ÖLÜ DEĞİL, kanıtsız. Kullanıcı kuralı
+    // "çıkan kaynak çalışacak" → listeye konmaz; fail-open için saklanır.
+    const gorunen = yayinlanan.filter((k) => !k.gomuluCozulemedi);
+    const tutulan = yayinlanan.filter((k) => k.gomuluCozulemedi);
+    for (const k of olu) {
+      elenenler.push({ category: k.category, kaynak: k });
+      // KALICI ELEME (kullanıcı 2026-11-17: "çalışmayan da elensin kalıcı olarak
+      // silinsin"): kapının KESİN ölüm kanıtı (404/403/HTML gövde/süre sapması)
+      // sicile yazılır — aynı host+yol TTL boyunca bir daha kapıya bile gelmez.
+      try { oluKaydet(kapiAnahtari(k)); } catch (_) {}
+    }
+    for (const k of tutulan) elenenler.push({ category: k.category, kaynak: k });
+    for (const item of gorunen) {
+      const hedef = item.category === 'subtitled' ? currentSubtitled : currentDubbed;
+      if (!hedef.some((x) => x.anahtar && x.anahtar === item.anahtar)) hedef.push(item);
+    }
+    // DOĞRULANMIŞ ÖNE, BELİRSİZ SONA (kanıtsız satır kullanıcıyı yanıltmasın).
+    const sirala = (dizi) => dizi.sort((a, b) => {
+      const d = (a.dogrulandi === true ? 0 : 1) - (b.dogrulandi === true ? 0 : 1);
+      return d !== 0 ? d : siralamaSkoru(a) - siralamaSkoru(b);
+    });
+    sirala(currentDubbed);
+    sirala(currentSubtitled);
+    if (gorunen.length) yayinlaKismi();
+  };
+
+  const kapidanGecir = (adaylar) => {
+    if (!Array.isArray(adaylar) || !adaylar.length) return;
+    bekleyenKap.push(...adaylar);
+    if (kapZamani) return;
+    kapZamani = setTimeout(() => {
+      kapZamani = null;
+      const simdi = bekleyenKap;
+      bekleyenKap = [];
+      if (!simdi.length) return;
+      const is = kapiUygula(simdi).catch((h) => {
+        // Kapı çökerse KAYNAK KAYBETMEYİZ: adaylar olduğu gibi yayınlanır.
+        hataKaydet('kaynak-dogrulama', agHataKodu(h));
+        console.warn('[kaynak] dogrulama hatasi —', String(h?.message || h).slice(0, 140));
+        for (const item of simdi) {
+          const hedef = item.category === 'subtitled' ? currentSubtitled : currentDubbed;
+          if (!hedef.includes(item)) hedef.push(item);
+        }
+        yayinlaKismi();
+      });
+      dogrulamaKuyrugu = dogrulamaKuyrugu.then(() => is);
+    }, KAPI_BEKLEME_MS);
+  };
+
+  /** Tüm adaylar geldikten sonra çağrılır: kalanları doğrular ve bekler. */
+  const kuyruguBitir = async () => {
+    if (kapZamani) { clearTimeout(kapZamani); kapZamani = null; }
+    if (bekleyenKap.length) {
+      const simdi = bekleyenKap;
+      bekleyenKap = [];
+      const is = kapiUygula(simdi).catch((h) => {
+        hataKaydet('kaynak-dogrulama', agHataKodu(h));
+        for (const item of simdi) {
+          const hedef = item.category === 'subtitled' ? currentSubtitled : currentDubbed;
+          if (!hedef.includes(item)) hedef.push(item);
+        }
+      });
+      dogrulamaKuyrugu = dogrulamaKuyrugu.then(() => is);
+    }
+    await dogrulamaKuyrugu;
+  };
+
   const addStreams = (rawList, category, derin = false) => {
     if (!Array.isArray(rawList) || !rawList.length) return [];
     const added = [];
@@ -419,28 +571,22 @@ export async function getStreamingServersProgressive({
       // `streamUrl||url` olduğu için boş adresli satır dedup'a giremez ve her
       // partide yeniden listelenebilirdi — aggregator kapısında elenir.
       if (!(item.streamUrl || item.url)) continue;
+      // KALICI SİCİL: daha önce KESİN ölü kanıtlanmış kaynak hiç listelenmez;
+      // fail-open için geride tutulur (liste boş kalırsa geri açılır).
+      if (sicildeMi(item)) { gizlenen.push({ item, category }); continue; }
       const key = `${(item.id || '').split('_').slice(0, 2).join('_')}||${(item.streamUrl || '').toLowerCase()}`;
       if (seenUrls[category].has(key)) continue;
       seenUrls[category].add(key);
-      (category === 'dubbed' ? currentDubbed : currentSubtitled).push(item);
+      // KAPIYA GİRER, listeye HENÜZ girmez: doğrulanmamış satır arayüze
+      // gösterilirse kullanıcı "ölü satır" görür (ana şikâyet).
       added.push(item);
     }
     if (added.length) {
-      currentDubbed.sort((a, b) => siralamaSkoru(a) - siralamaSkoru(b));
-      currentSubtitled.sort((a, b) => siralamaSkoru(a) - siralamaSkoru(b));
       if (!derin) {
         const kopyalar = ciftDilKopyalari(added, category === 'dubbed' ? 'subtitled' : 'dubbed');
         if (kopyalar.length) addStreams(kopyalar, category === 'dubbed' ? 'subtitled' : 'dubbed', true);
       }
-      onUpdate({
-        dubbed: [...currentDubbed],
-        subtitled: [...currentSubtitled],
-        totalServers: currentDubbed.length + currentSubtitled.length,
-        isComplete: false,
-        newStream: added[0],
-        isDubbedStream: category === 'dubbed',
-        ...hataAlanlari(), // ADDITIVE: eski alanların hiçbiri değişmedi
-      });
+      kapidanGecir(added);
     }
     return added;
   };
@@ -535,6 +681,26 @@ export async function getStreamingServersProgressive({
       .then(res => addStreams(res, 'subtitled')).catch((h) => { hataKaydet('rhea-altyazi', agHataKodu(h)); return []; })
   ]);
 
+  /* DOĞRULAMA KAPISI KAPANIŞI — tüm sağlayıcılar bitti, kuyrukta kalan
+     adaylar hemen doğrulanır. `await` şart: payload arayüze verilmeden önce
+     her satırın kanıtı hazır olmalı. */
+  await kuyruguBitir();
+
+  /* FAIL-OPEN: hiçbir kaynak kanıtlanamadıysa (ya da hepsi kapıda elendiyse)
+     liste BOŞ DÖNMEZ — elenenler "doğrulanamadı" işaretiyle geri konur.
+     Boş ekran, ölü satırdan daha kötüdür (kullanıcı kuralı). */
+  {
+    const birlesik = failOpenBirlestir({ dubbed: currentDubbed, subtitled: currentSubtitled, elenenler });
+    failOpenOldu = birlesik.failOpen;
+    if (failOpenOldu) {
+      console.warn(`[kaynak] dogrulama acik kaldi: ${elenenler.length} kaynak dogrulanamadi, liste bos kalmasin diye geri kondu`);
+      currentDubbed.length = 0;
+      currentDubbed.push(...birlesik.dubbed);
+      currentSubtitled.length = 0;
+      currentSubtitled.push(...birlesik.subtitled);
+    }
+  }
+
   // Türkçe altyazı yedeği: bizim altyazı ucumuz her hat için geçerlidir.
   // imdbId taşınır — sunucu ucu imdb'yle doğrudan çözer, TMDB/başlık yedeğe düşer.
   const altYol = `${apiUrl('/api/subtitles')}?imdbId=${encodeURIComponent(String(imdbId || '').trim())}&tmdbId=${encodeURIComponent(tmdbId || '')}&title=${encodeURIComponent(targetTitle)}&season=${season}&episode=${episode}&type=tv`;
@@ -569,6 +735,18 @@ export async function getStreamingServersProgressive({
     console.debug('[dublaj] sıralama uygulanamadı —', String(h?.message || h).slice(0, 100));
   }
 
+  /* FAIL-OPEN (eski kullanıcı kuralı: "liste boş kalmasın"): kalıcı sicil +
+     async denetimler listeyi tamamen bitirdiyse gizlenen satırlar TEK SEFER
+     geri açılır; etiketleri doğrulanamadı taşır, kullanıcı sonsuz boşluk görmez. */
+  if (!currentDubbed.length && !currentSubtitled.length && gizlenen.length) {
+    console.warn(`[kapı] liste kapıda tamamen boşaldı — ${gizlenen.length} gizlenen satır fail-open geri açıldı`);
+    for (const g of gizlenen) {
+      const satir = { ...g.item, dogrulanamadi: true };
+      if (g.category === 'dubbed') currentDubbed.push(satir);
+      else currentSubtitled.push(satir);
+    }
+  }
+
   const payload = {
     dubbed: currentDubbed,
     subtitled: currentSubtitled,
@@ -579,6 +757,13 @@ export async function getStreamingServersProgressive({
     // bu anahtarları okumaz; cache'e de aynen yazılır ve fromCache yayınında
     // spreads ile taşınır (zararsız).
     ...hataAlanlari(),
+    // ADDITIVE (doğrulama kapısı): kaç satır kanıtlandı / kaçı elendi.
+    dogrulama: {
+      dogrulanan: [...currentDubbed, ...currentSubtitled].filter((s) => s.dogrulandi === true).length,
+      belirsiz: [...currentDubbed, ...currentSubtitled].filter((s) => s.dogrulandi === false).length,
+      elenen: elenenler.length,
+      failOpen: failOpenOldu,
+    },
   };
   if (signal?.aborted) return payload;
   if (payload.totalServers > 0) {
@@ -590,3 +775,29 @@ export async function getStreamingServersProgressive({
 }
 
 export const getStreamingServers = getStreamingServersProgressive;
+
+/** FAIL-OPEN BİRLEŞTİRİCİ (saf fonksiyon, test edilebilir).
+ *  Hiç doğrulanmış/kanıtlı satır yoksa elenenler kategoriye göre geri
+ *  konur; "boş liste" yerine "doğrulanamadı" işaretli satırlar döner. */
+export function failOpenBirlestir({ dubbed = [], subtitled = [], elenenler = [] } = {}) {
+  const d = Array.isArray(dubbed) ? dubbed : [];
+  const s = Array.isArray(subtitled) ? subtitled : [];
+  const toplam = d.length + s.length;
+  if (toplam > 0) {
+    return { dubbed: [...d], subtitled: [...s], totalServers: toplam, failOpen: false };
+  }
+  const kova = Array.isArray(elenenler) ? elenenler : [];
+  const geriD = [];
+  const geriS = [];
+  for (const e of kova) {
+    if (!e || !e.kaynak) continue;
+    if (e.category === 'subtitled') geriS.push(e.kaynak);
+    else geriD.push(e.kaynak);
+  }
+  return {
+    dubbed: geriD,
+    subtitled: geriS,
+    totalServers: geriD.length + geriS.length,
+    failOpen: geriD.length + geriS.length > 0,
+  };
+}
