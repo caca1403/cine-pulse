@@ -319,6 +319,11 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    // python-embed (gömülü Python dağıtımı) izlenmez: python.exe kilitli
+    // dosyalar (EBUSY) vite'ı çökertmesin. Paketlemede build.files ile taşınır.
+    watch: {
+      ignored: ['**/python-embed/**', '**/release/**', '**/dist/**']
+    },
     proxy: {
       '/api/ddz': {
         target: 'https://dramadizilerim.com',

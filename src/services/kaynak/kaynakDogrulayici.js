@@ -42,7 +42,7 @@ const AKIS_UZANTISI = /\.(m3u8|mp4|mkv|webm|m4s|mpd|ts|mov)([?&#]|$)/i;
 const GOMULU_YOLU = /\/(?:play|embed|oynat|iframe|watch|media)(?:[?/]|$)/i;
 
 const VARSAYILAN_MS = 6000;
-const GOMULU_MS = 12000;      // sayfa + (2. katman) + iç akış
+const GOMULU_MS = 20000;      // sayfa + (2. katman) + iç akış (Turnstile/2.katman zincirleri 12 sn'ye sığmıyordu)
 const VARSAYILAN_BUTCE_MS = 12000;
 const ESZAMANLI = 6;
 
@@ -393,11 +393,14 @@ async function gomuluDogrula(kaynak, adres, { fetchFn, ms, beklenenSureDk, embed
     return { ok: false, sebep: 'gomulu-cozulemedi', belirsiz: true, gomulu: true, gomuluCozulemedi: true };
   }
 
-  // YABANCI AKIŞ KORUMASI: sayfadan çözülen adres başka siteye çıkıyorsa
-  // yanlış eşleşme/reklam riski var → belirsiz (ölü değil).
-  if (!ayniAlandanMi(sayfaAdresi, sonuc.akis)) {
-    return { ok: false, sebep: 'gomulu-yabanci-akis', belirsiz: true, gomulu: true, gomuluCozulemedi: true, akis: sonuc.akis };
-  }
+  // YABANCI AKIŞ KORUMASI (2026-11-18 GÜNCELLENDİ): sayfadan çözülen adresin
+  // başka alana çıkması yanlış eşleşme/reklam riskidir; ama dizisol ailesinde
+  // ÇALIŞAN akış başka host'tan gelir (ölçüm: s6.dizisol.com →
+  // s44.cdnimages5189.shop, ACAO=*, TR ses). Bu yüzden yabancı adres
+  // HEMEN gizlenmez: akış dogrulanır (m3u8 + süre kanıtı). Süre kanıtı
+  // geçtiyse içerik eşleşmesi kanıtlanmıştır → kabul. Geçmediyse eski
+  // davranış: belirsiz + gizli.
+  const yabanciAkis = !ayniAlandanMi(sayfaAdresi, sonuc.akis);
 
   const ic = await akisDogrula(sonuc.akis, {
     fetchFn,
@@ -408,10 +411,15 @@ async function gomuluDogrula(kaynak, adres, { fetchFn, ms, beklenenSureDk, embed
 
   if (ic.ok) {
     cozulmusAkisiYaz(kaynak, sonuc.akis, sayfaAdresi, sonuc.headers);
+    if (yabanciAkis) kaynak.yabanciAkisNotu = true;
     return { ...ic, sebep: 'gomulu-akis', gomulu: true };
   }
   // Yanlış bölüm: süre sapması KESİN eleme kanıtıdır (yanlış içerik).
   if (ic.sebep === 'sure-sapmasi') return { ...ic, gomulu: true };
+  // Yabancı akış VE kanıt yok → eski güvenli davranış (gizli).
+  if (yabanciAkis) {
+    return { ok: false, sebep: 'gomulu-yabanci-akis', belirsiz: true, gomulu: true, gomuluCozulemedi: true, akis: sonuc.akis };
+  }
   // İç akış doğrulanamadı: sayfa çözüldü ama kanıt yok → belirsiz.
   return { ...ic, sebep: ic.sebep || 'gomulu-cozulemedi', belirsiz: true, gomulu: true, gomuluCozulemedi: true };
 }

@@ -21,29 +21,11 @@ const benefits = [
   ['history', 'Yarım kalan yerden devam et.', 'İzleme ilerlemen bu cihazda saklanır. Geri geldiğinde hangi bölümde veya dakikada kaldığını yeniden arama.', 'sosyal'],
   ['shield-check', 'Spoilersız keşfet.', 'İlerleme sınırının ötesindeki bölüm başlıkları, görselleri ve özetleri otomatik gizlenir. Recap kartı sadece gerçekten izlediğin bölümler için açılır.', 'kesif'],
   ['monitor-play', 'Sahne modu & saf sinema.', 'Tam ekran sinema sahnesi, hover önizleme, kalite çipleri ve oyuncu kadrosu keşfi. Masaüstünde imleçle kart üzerinde önizleme.', 'oynatma'],
-  ['sliders-horizontal', 'Dublaj Zekası & kaynak seçimi.', 'Kanıtlı Türkçe dublaj ve altyazılı kaynaklar otomatik öne çıkar; yıldız kod adlı çoklu alternatifler arasında anında geçiş yap.', 'oynatma'],
   ['baby', 'Çocuk modu.', 'PIN korumalı çocuk profili, yaş kademesi filtreleri ve güvenli içerik seçimi. Aile için ayrı bir deneyim.', 'sosyal'],
   ['download', 'İndir & çevrimdışı izle.', 'Desteklenen içerikleri cihazına indir, internet olmadan izle. Çevrimdışı kütüphane ile her yerde erişim.', 'oynatma'],
   ['plug', 'Eklenti ekosistemi.', 'Stremio, Nuvio ve CloudStream eklenti depolarını CinePulse\'a bağla. Yerel kahraman motorla birlikte çoklu kaynak desteği.', 'eklenti'],
   ['zap', 'P2P torrent & debrid.', 'Yerel libtorrent motoru (Android) ve Real-Debrid entegrasyonu ile doğrudan magnet bağlantısı oynatma.', 'eklenti']
 ];
-const dublajDemoModes = {
-  dub: [
-    { name: '★ Sirius · 1080p HLS', detail: 'Kanıtlı TR Dublaj (m3u8 ses izi doğrulandı)', badge: 'TR DUBLAJ', badgeClass: 'is-dub', score: '98 puan', top: true },
-    { name: '★ Vega · 1080p Doğrudan', detail: 'Çift ses (TR / EN) · Hızlı akış', badge: 'TR DUBLAJ', badgeClass: 'is-dub', score: '91 puan', top: false },
-    { name: '★ Altair · 1080p', detail: 'Türkçe altyazı gömülü', badge: 'ALTYAZI', badgeClass: 'is-sub', score: '64 puan', top: false }
-  ],
-  sub: [
-    { name: '★ Altair · 4K HDR', detail: 'Orijinal ses + senkron Türkçe altyazı', badge: 'ALTYAZI', badgeClass: 'is-sub', score: '96 puan', top: true },
-    { name: '★ Orion · 1080p', detail: 'Çoklu altyazı desteği (TR / EN)', badge: 'ALTYAZI', badgeClass: 'is-sub', score: '88 puan', top: false },
-    { name: '★ Sirius · 1080p', detail: 'Türkçe dublaj alternatifi', badge: 'TR DUBLAJ', badgeClass: 'is-dub', score: '70 puan', top: false }
-  ],
-  multi: [
-    { name: '★ Sirius (Filmmakinesi)', detail: '2 kaynak · anında yanıt · doğrulandı', badge: 'TR DUBLAJ', badgeClass: 'is-dub', score: '99 puan', top: true },
-    { name: '★ Vega (HDFC)', detail: '2 kaynak · 1080p / 720p uyarlanabilir', badge: 'TR DUBLAJ', badgeClass: 'is-dub', score: '94 puan', top: false },
-    { name: '★ Rigel (Selcukflix)', detail: '1 kaynak · yedek ayna hazır', badge: 'ALTYAZI', badgeClass: 'is-sub', score: '86 puan', top: false }
-  ]
-};
 const comparison = [
   ['Keşif, arama ve yapım detayları', 'Var', 'Var'],
   ['Doğal dil arama ("2020 sonrası aksiyon")', 'Var', 'Var'],
@@ -70,7 +52,7 @@ const comparison = [
   ['Otomatik güncelleme kontrolü', 'Var', 'Var']
 ];
 const faqs = [
-  ['Siteye girmek için uygulama indirmem gerekiyor mu?', 'Gerekmiyor. Tarayıcıdan doğrudan keşfedip izleyebilirsin; üstteki "Uygulamayı Aç" bunun yerine ana ekrana gider. Masaüstü ve Android paketleri ise ek imkânlarla gelir (yerel medya, indirme, doğrulama).'],
+  ['Siteye girmek için uygulama indirmem gerekiyor mu?', 'Gerekmiyor. Tarayıcıdan doğrudan keşfedip izleyebilirsin. Masaüstü ve Android paketleri ise ek imkânlarla gelir (yerel medya, indirme, doğrulama).'],
   ['Peki web ile uygulama arasındaki fark ne?', 'Keşif, kaynak taraması ve oynatıcı webde de çalışır. Uygulama tarafı ayrıca çevrimdışı indirme, yerel medya ağ geçidi, P2P/torrent ve doğrulama isteyen yayınlarda gerçek tarayıcı çözümü sunar.'],
   ['Uygulamada bütün yayınlar kesin çalışıyor mu?', 'Hayır. Masaüstünün yerel medya desteği ve doğrulama alanı bazı bağlantılarda ek imkân sağlar; yine de yayın kaldırılmış, erişime kapalı veya geçici olarak bozuk olabilir. Böyle bir durumda başka bir alternatifi dene.'],
   ['Hesap açmam veya giriş yapmam şart mı?', 'Temel kullanıma hesap açmadan başlayabilirsin. Kişisel profil bu cihazdaki deneyimini düzenler. Trakt bağlantısı ise izleme geçmişi ve listelerini senkronize etmek istediğinde kullanabileceğin isteğe bağlı bir özellik.'],
@@ -105,7 +87,13 @@ export function renderShowcaseView() {
             <a class="cp-landing-version" href="${RELEASES}" target="_blank" rel="noopener noreferrer"><span></span>CINEPULSE STUDIO <b>v${pkg.version}</b>${icon('arrow-up-right')}</a>
             <h1 id="landing-title">Uygulaman<br>hazır.<br><em>İndir, kur, izle.</em></h1>
             <p class="cp-landing-lead">CinePulse resmi tanıtım, galeri ve indirme merkezi.<br class="cp-landing-desktop-break"> Film, dizi, anime ve kısa dizi keşfi, kişisel öneri motoru, birlikte izleme, saf sinema sahnesi — tarayıcıda hemen çalışır; indirme ve yerel medya masaüstünde.</p>
-            <div class="cp-landing-actions"><a class="cp-landing-button" href="#home">${icon('play')}Uygulamayı Aç</a><button class="cp-landing-button cp-landing-secondary" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button><button class="cp-landing-button cp-landing-secondary" data-landing-section="landing-gallery">${icon('image')}Arayüzü Gör</button></div>
+            <div class="cp-landing-actions"><button class="cp-landing-button cp-landing-primary" data-landing-section="landing-downloads">${icon('download')}Paketleri İndir</button><button class="cp-landing-button cp-landing-secondary" data-landing-section="landing-gallery">${icon('image')}Arayüzü Gör</button></div>
+            <div class="cp-landing-stats" aria-label="CinePulse güçleri özet">
+              <div><strong>40+</strong><span>kaynak motoru</span></div>
+              <div><strong>1080p·4K</strong><span>uyarlanabilir kalite</span></div>
+              <div><strong>TR</strong><span>dublaj & altyazı</span></div>
+              <div><strong>4</strong><span>platform paketi</span></div>
+            </div>
             <div class="cp-landing-hero-note">${icon('shield-check')}Android APK her sürümde aynı kalıcı anahtarla imzalanır — üzerine güncelleme verilerini silmez.</div>
           </div>
           <div class="cp-landing-preview" aria-label="CinePulse keşif ve oynatıcı arayüzünü temsil eden tanıtım görseli">
@@ -175,26 +163,13 @@ export function renderShowcaseView() {
         <section id="landing-features" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-features-title">
           <div class="cp-landing-section-heading"><span class="cp-landing-eyebrow">TÜM ÖZELLİKLER</span><h2 id="landing-features-title">Daha az arayış.<br><span>Daha çok kendi listen.</span></h2><p>Sadece bir oynatıcı değil. Keşiften öneriden birlikte izlemeye, çocuk modundan eklenti ekosistemine kadar her şey tek uygulamada.</p></div>
           <div class="cp-landing-tabs" role="tablist" aria-label="Özellik kategorileri">
-            <button class="cp-landing-pill is-active" data-feature-filter="all" role="tab" aria-selected="true">Tümü (12)</button>
+            <button class="cp-landing-pill is-active" data-feature-filter="all" role="tab" aria-selected="true">Tümü (11)</button>
             <button class="cp-landing-pill" data-feature-filter="kesif" role="tab" aria-selected="false">Keşif & Öneri</button>
             <button class="cp-landing-pill" data-feature-filter="oynatma" role="tab" aria-selected="false">Oynatma & Dublaj</button>
             <button class="cp-landing-pill" data-feature-filter="sosyal" role="tab" aria-selected="false">Kütüphane & Sosyal</button>
             <button class="cp-landing-pill" data-feature-filter="eklenti" role="tab" aria-selected="false">Eklenti & P2P</button>
           </div>
           <div class="cp-landing-benefits">${benefits.map(([symbol,title,text,cat],i)=>`<article class="cp-landing-benefit" data-feature-cat="${cat}"><div>${icon(symbol)}<span>${String(i+1).padStart(2,'0')}</span></div><h3>${title}</h3><p>${text}</p></article>`).join('')}</div>
-          <div class="cp-landing-dublaj-demo" aria-label="Dublaj Zekası etkileşimli önizleme">
-            <div class="cp-landing-dublaj-head">
-              <h3>${icon('sparkles')}Dublaj Zekası & Yıldız Kaynak Sıralaması</h3>
-              <div class="cp-landing-tabs" style="margin:0">
-                <button class="cp-landing-pill is-active" data-dublaj-mode="dub">TR Dublaj Önceliği</button>
-                <button class="cp-landing-pill" data-dublaj-mode="sub">Altyazılı Seçim</button>
-                <button class="cp-landing-pill" data-dublaj-mode="multi">Çoklu Kaynak Tarama</button>
-              </div>
-            </div>
-            <div class="cp-landing-dublaj-rows" data-dublaj-rows>
-              ${dublajDemoModes.dub.map(r=>`<div class="cp-landing-dublaj-row ${r.top?'is-top':''}"><div><strong>${r.name}</strong><small>${r.detail}</small></div><span class="cp-landing-dublaj-badge ${r.badgeClass}">${r.badge}</span><span class="cp-landing-dublaj-score">${r.score}</span></div>`).join('')}
-            </div>
-          </div>
         </section>
         <section id="landing-compare" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-compare-title">
           <div class="cp-landing-compare-intro"><div><span class="cp-landing-eyebrow">AYNI CINEPULSE, FARKLI İMKÂNLAR</span><h2 id="landing-compare-title">Masaüstünde ne var?<br><span>Android'de ne açılıyor?</span></h2></div><p>Keşif ve oynatıcı tarayıcıda çalışır; paketler ise yerel medya, indirme ve P2P gibi ek imkânları açar. İhtiyacına göre paketi seç.</p></div>
@@ -206,7 +181,7 @@ export function renderShowcaseView() {
           <div class="cp-landing-web-note">${icon('info')}<p><strong>Web sitesi neden oynatmıyor?</strong> Web yalnızca tanıtım ve indirme merkezidir; kaynak taraması ve oynatma tarayıcı kurallarına takıldığı için uygulamaya taşındı. Tam deneyim için yukarıdaki paketlerden birini kur.</p></div>
         </section>
         <section class="cp-landing-start cp-landing-shell" aria-labelledby="landing-start-title"><div><span class="cp-landing-eyebrow">ÜÇ ADIM, KENDİ AKIŞIN</span><h2 id="landing-start-title">Hazırlık yok.<br><span>Keşifle başla.</span></h2><button class="cp-landing-button cp-landing-secondary" data-landing-section="landing-downloads">${icon('download')}Paketi Kur</button></div><ol><li><span>01</span><div><h3>İlgini çekeni bul.</h3><p>Ana sayfadan, aramadan veya kategorilerden ilerle. Diziyse sezon ve bölümünü seç.</p></div></li><li><span>02</span><div><h3>Dilini ve yayınını seç.</h3><p>Dublaj / altyazılı seçenekleri gör. Açılmayan bir bağlantıda diğer alternatife geç.</p></div></li><li><span>03</span><div><h3>Listene ekle, geri dön.</h3><p>Beğendiklerini sakla. Ara verdiğinde kütüphanenden kaldığın yere dön.</p></div></li></ol></section>
-        <section class="cp-landing-release cp-landing-shell" aria-labelledby="landing-release-title"><div><span class="cp-landing-eyebrow">v${pkg.version} · BU SÜRÜMÜN ODAĞI</span><h2 id="landing-release-title">Dublaj zekası ve<br><span>çoklu kaynak motoru yenilendi.</span></h2><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notlarını gör ${icon('arrow-up-right')}</a></div><ul><li>${icon('sparkles')}<div><strong>Dublaj Zekası & Kalıcı Sicil</strong><p>Filmmakinesi, HDFC, Selcukflix ve yıldız kaynaklarında kanıtlı Türkçe dublaj otomatik öne çıkar; başarısız kaynaklar akıllıca elenir.</p></div></li><li>${icon('shield-check')}<div><strong>Android WebView & Masaüstü Doğrulama</strong><p>Taşıyıcı başlık (header) koruması ve çoklu kaynak taramasıyla doğrulama isteyen bağlantılar kararlı şekilde çözülür.</p></div></li><li>${icon('download')}<div><strong>Tüm Platformlar Senkron (v${pkg.version})</strong><p>Windows EXE, Android APK (aynı kalıcı release anahtarıyla imzalı), Linux DEB ve Flatpak doğrudan GitHub Releases'te.</p></div></li></ul></section>
+        <section class="cp-landing-release cp-landing-shell" aria-labelledby="landing-release-title"><div><span class="cp-landing-eyebrow">v${pkg.version} · BU SÜRÜMÜN ODAĞI</span><h2 id="landing-release-title">Çoklu kaynak motoru<br><span>ve doğrulama yenilendi.</span></h2><a href="${RELEASES}" target="_blank" rel="noopener noreferrer">Sürüm notlarını gör ${icon('arrow-up-right')}</a></div><ul><li>${icon('sparkles')}<div><strong>Genişletilmiş Kaynak Taraması</strong><p>Filmmakinesi, HDFC, Selcukflix dahil çoklu kaynak motoru her içerik için daha fazla yayın alternatifi toplar; başarısız bağlantılar akıllıca elenir.</p></div></li><li>${icon('shield-check')}<div><strong>Android WebView & Masaüstü Doğrulama</strong><p>Taşıyıcı başlık (header) koruması ve çoklu kaynak taramasıyla doğrulama isteyen bağlantılar kararlı şekilde çözülür.</p></div></li><li>${icon('download')}<div><strong>Tüm Platformlar Senkron (v${pkg.version})</strong><p>Windows EXE, Android APK (aynı kalıcı release anahtarıyla imzalı), Linux DEB ve Flatpak doğrudan GitHub Releases'te.</p></div></li></ul></section>
         <section id="landing-license" class="cp-landing-section cp-landing-shell" aria-labelledby="landing-license-title">
           <div class="cp-landing-section-heading">
             <span class="cp-landing-eyebrow">YASAL GÜVENCE VE TELİF HAKKI</span>
@@ -273,18 +248,6 @@ export function renderShowcaseView() {
           featureCards.forEach(card => {
             card.classList.toggle('is-hidden', cat !== 'all' && card.dataset.featureCat !== cat);
           });
-        });
-      });
-      // Dublaj Zekasi canli onizleme anahtari
-      const dublajButtons = container.querySelectorAll('[data-dublaj-mode]');
-      const dublajRows = container.querySelector('[data-dublaj-rows]');
-      dublajButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const rows = dublajDemoModes[btn.dataset.dublajMode] || dublajDemoModes.dub;
-          dublajButtons.forEach(b => b.classList.toggle('is-active', b === btn));
-          if (dublajRows) {
-            dublajRows.innerHTML = rows.map(r => `<div class="cp-landing-dublaj-row ${r.top ? 'is-top' : ''}"><div><strong>${r.name}</strong><small>${r.detail}</small></div><span class="cp-landing-dublaj-badge ${r.badgeClass}">${r.badge}</span><span class="cp-landing-dublaj-score">${r.score}</span></div>`).join('');
-          }
         });
       });
       // Platform karsilastirma filtresi

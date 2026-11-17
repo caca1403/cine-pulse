@@ -7685,7 +7685,9 @@ async function defineProp4(tmdbId2) {
             signal: f0(5000)
           });
         if (!response.ok) {
-          response = await fetch(Origin + "/api/mj", {
+          const { otomatikNextAramaApi } = await import("../ortakCekirdek.js");
+          const apiYol = await otomatikNextAramaApi(Origin, val4);
+          response = await fetch(Origin + apiYol, {
             method: "POST",
             headers: {
               "User-Agent": val4,

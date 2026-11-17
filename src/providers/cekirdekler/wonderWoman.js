@@ -7685,11 +7685,13 @@ async function defineProp4(tmdbId2) {
             signal: f0(5000)
           });
         if (!response.ok) {
+          const { otomatikNextAramaApi } = await import("../ortakCekirdek.js");
+          const apiYol = await otomatikNextAramaApi(Origin, val4);
           for (const act of ["searchContent", "getBrowseTitles"]) {
             const body = act === "getBrowseTitles"
               ? JSON.stringify({ action: act, params: [value42, isTv ? "dizi" : "film", null, null, null, null, null, "rec", 1, 8] })
               : JSON.stringify({ action: act, params: [value42] });
-            const rMj = await fetch(Origin + "/api/mj", {
+            const rMj = await fetch(Origin + apiYol, {
               method: "POST",
               headers: {
                 "User-Agent": val4,

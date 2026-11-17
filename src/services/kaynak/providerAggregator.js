@@ -155,7 +155,12 @@ const streamServersCache = new Map();
 /* Doğrulama kapısı bütçeleri: kaynak başına 6 sn, parti başına 12 sn
    (eşzamanlılık kapının içinde ≤6). Gömülü dal kendi içinde daha cömert. */
 const KAPI_MS = 6000;
-const KAPI_BUTCE_MS = 12000;
+/* (2026-11-18 KULLANICI KURALI: "herhangi içerikte minimum 20 kaynak")
+   Eski 12 sn toplam bütçe ilk 3-4 gömülü satırdan sonra tükeniyor; kalanı
+   zaman-asimi → gomuluCozulemedi → listeden düşüyordu. Gömülü satır sayısı
+   çok arttığı için bütçe 60 sn'e yükseltildi; satırlar yine progresif
+   yayınlandığı için arayüz gecikmez. */
+const KAPI_BUTCE_MS = 60000;
 const KAPI_BEKLEME_MS = 250;
 
 /** Kahraman katmanının desteklediği türler (kayıt bunları doğrular). */
@@ -538,10 +543,14 @@ export async function getStreamingServersProgressive({
       } catch (_) { /* sarmalama hatası satırı düşürmez */ }
     }
     const yayinlanan = [...oynatilir, ...belirsiz];
-    // Gömülü sayfa çözülemedi → ÖLÜ DEĞİL, kanıtsız. Kullanıcı kuralı
-    // "çıkan kaynak çalışacak" → listeye konmaz; fail-open için saklanır.
-    const gorunen = yayinlanan.filter((k) => !k.gomuluCozulemedi);
-    const tutulan = yayinlanan.filter((k) => k.gomuluCozulemedi);
+    /* 2026-11-18 KUSURSUZ GÖSTERİM (kullanıcı: "42 çekirdek içerik çekiyor,
+       tek mesele göstermek" + "herhangi içerikte minimum 20 kaynak"):
+       gömülü çözükleme başarısız satırlar ÖLÜ DEĞİL — kanıtsız. Bunları
+       listeden silmek 20-kaynak hedefini imkansız kılıyordu. Yeni kural:
+       listeye "doğrulanamadı" etiketiyle GİRER, en sona sıralanır; oynatıcı
+       açılamayanı otomatik atlayıp sıradakine geçer. Yalnız KESİN ölüm
+       kanıtlı satırlar sicile yazılıp listeden silinir. */
+    const gorunen = yayinlanan.map((k) => (k.gomuluCozulemedi ? { ...k, dogrulanamadi: true } : k));
     for (const k of olu) {
       elenenler.push({ category: k.category, kaynak: k });
       // KALICI ELEME (kullanıcı 2026-11-17: "çalışmayan da elensin kalıcı olarak
@@ -549,15 +558,16 @@ export async function getStreamingServersProgressive({
       // sicile yazılır — aynı host+yol TTL boyunca bir daha kapıya bile gelmez.
       try { oluKaydet(kapiAnahtari(k)); } catch (_) {}
     }
-    for (const k of tutulan) elenenler.push({ category: k.category, kaynak: k });
     for (const item of gorunen) {
       const hedef = item.category === 'subtitled' ? currentSubtitled : currentDubbed;
       if (!hedef.some((x) => x.anahtar && x.anahtar === item.anahtar)) hedef.push(item);
     }
-    // DOĞRULANMIŞ ÖNE, BELİRSİZ SONA (kanıtsız satır kullanıcıyı yanıltmasın).
+    // DOĞRULANMIŞ ÖNE, BELİRSİZ VE DOĞRULANAMAMIŞ SONA (kanıt sırası korunur).
     const sirala = (dizi) => dizi.sort((a, b) => {
       const d = (a.dogrulandi === true ? 0 : 1) - (b.dogrulandi === true ? 0 : 1);
-      return d !== 0 ? d : siralamaSkoru(a) - siralamaSkoru(b);
+      if (d !== 0) return d;
+      const e = (a.dogrulanamadi === true ? 1 : 0) - (b.dogrulanamadi === true ? 1 : 0);
+      return e !== 0 ? e : siralamaSkoru(a) - siralamaSkoru(b);
     });
     sirala(currentDubbed);
     sirala(currentSubtitled);

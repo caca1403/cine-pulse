@@ -1,0 +1,1265 @@
+﻿Ô£ö varsay─▒lan mod: oto (1.9774ms)
+Ô£ö yavas se├ğilirse yava┼ş mod zorla a├ğ─▒l─▒r (├Âl├ğ├╝m olmadan) (1.1767ms)
+Ô£ö normal se├ğilirse otomatik yava┼ş ├Âl├ğ├╝m├╝ ezilir (0.2104ms)
+Ô£ö agModunuUygula: bayrak an─▒nda yaz─▒l─▒r (vekil.js window bayra─ş─▒n─▒ okur) (0.2155ms)
+Ô£ö oto modu ├Âl├ğ├╝len bayra─şa kar─▒┼şmaz (0.1739ms)
+(node:10740) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö birincil alan 5xx ÔåÆ ikinci aday denenir, yan─▒t ayn─▒ iste─şe d├Âner (9.543ms)
+Ô£ö alanYedekAdresleri ayn─▒ yolu farkl─▒ originÔÇÖe ta┼ş─▒r, bilinmeyen hostÔÇÖa dokunmaz (0.6656ms)
+Ô£ö alanAdaylari birincil + aile aynalar─▒n─▒ d├Ând├╝r├╝r (0.3908ms)
+Ô£ö mevcut alan canl─▒ysa canl─▒ liste onu EZMEZ (2.1739ms)
+Ô£ö t├╝m adaylar d├╝┼ş├╝kse mevcut alan korunur (bo┼ş de─şere d├╝┼şmez) (2.506ms)
+Ô£ö ├Âl├╝ mevcut + canl─▒ aday ÔåÆ iyile┼ştirir ve aday havuzuna kal─▒c─▒ ekler (1.1516ms)
+Ô£ö ├ğevrimd─▒┼ş─▒ ba┼şlang─▒├ğta son iyi harita + adaylar uygulan─▒r (0.6267ms)
+Ô£ö bayat ├Ânbellek (6 saatten eski) uygulanmaz (0.5757ms)
+Ô£ö gerektigindeYenile cooldown i├ğinde ikinci kez a─şa ├ğ─▒kmaz (1.6353ms)
+Ô£ö web rota ├ğ├Âz├╝c├╝ birincil 5xx al─▒nca tablodaki `mirrors` aday─▒n─▒ dener (2.4125ms)
+Ô£ö proxyYedekDene: /api/proxy 5xx ÔåÆ yedek origin ile ayn─▒ iste─şi tekrar dener (2.7083ms)
+Ô£ö hls proxy adresi OriginÔÇÖi iki ta┼ş─▒ma bi├ğiminde de ta┼ş─▒r (mobil + web) (0.5014ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+(node:10436) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö bulan─▒k e┼şle┼şme yok: fullhdfilmizlesene, hdfilmizle (Iron-Man) kodlar─▒n─▒ EZMEZ (5.7955ms)
+Ô£ö ├ğal─▒┼şan alan ezilmez: mevcut canl─▒ysa canl─▒ liste uygulanmaz (2.5133ms)
+Ô£ö ├Âl├╝ alan iyile┼ştirilir: mevcut 503, aday canl─▒ysa uygulan─▒r (1.7515ms)
+Ô£ö ├Âl├╝ aday asla uygulanmaz (1.371ms)
+Ô£ö ikinci kaynak (izlelan) iyile┼ştirir: patr0nq ├Âl├╝ olsa bile taze ayna bulunur (1.5914ms)
+Ô£ö izlelan "disabled" takma adlar─▒ aday vermez (1.0556ms)
+Ô£ö alanYaniti: k├Âpr├╝den ge├ğen ├ğekirdeklere ├ğal─▒┼şan TMDB anahtarlar─▒ verilir (2026-10-25: vendor 401 krizi) (0.3906ms)
+Ô£ö challenge HTML tespiti (1.5563ms)
+Ô£ö native disi ortamda sessizce bos doner (mevcut davranis korunur) (0.6036ms)
+Ô£ö upstream signature and authorization survive without a forbidden browser preflight (42.3986ms)
+Ô£ö masaustu/webde cozumleyici yok sayilir (1.4095ms)
+Ô£ö Electron gizli Chromium resolver provider k├Âpr├╝s├╝ne ba─şlan─▒r ve oturum ├ğerezlerini d├Ând├╝r├╝r (2.0598ms)
+Ô£ö kokpru yoksa null doner (APK disi ortam sessizce gecer) (0.3072ms)
+Ô£ö challenge sayfalari engelli sayilir (0.209ms)
+Ô£ö cevap yoksa zaman asimi sessizce null verir (0.2834ms)
+(node:15332) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö oauth: anilistAuthUrl secret sizken response_type=token (1.6917ms)
+Ô£ö oauth: anilistTokenAl do─şru g├Âvdeyi POST eder ve token depolar (1.43ms)
+Ô£ö sozlesme: anilistDurumu T├╝rk├ğe durumlar─▒ AniList enumuna ├ğevirir (0.2239ms)
+Ô£ö scrobble: anilistIlerlet SaveMediaListEntry mutasyonunu doldurur (1.5654ms)
+Ô£ö scrobble: b├Âl├╝m 0 ise progress de─şeri g├Ânderilmez (0.3871ms)
+Ô£ö guard: token yokken anilistIlerlet a─şa dokunmaz (0.2737ms)
+Ô£ö guard: anime olmayanda anilistScroble servis ├ğa─şr─▒s─▒ yapmaz (0.2574ms)
+Ô£ö zincir: anilistScroble TMDB harici kimlikten idMal ├ğ├Âzer ve mutasyon g├Ânderir (2.4737ms)
+Ô£ö onbellek: anilistMedyaIdGetir ayn─▒ idMal i├ğin tek istek atar (0.3778ms)
+Ô£ö buffer: sihirbaz de─şerleri do─şrudan anlaml─▒ MB ta┼ş─▒r (1.9491ms)
+Ô£ö buffer: ayar yok/bozuk ÔåÆ bug├╝nk├╝ davran─▒┼ş (300MB) (0.3131ms)
+Ô£ö buffer: 8ÔÇô512MB penceresine k─▒rp─▒l─▒r (saniye hesab─▒ YOK) (0.1478ms)
+Ô£ö resume: yaln─▒z resmen false kapal─▒; bozuk/eksik de─şer a├ğ─▒k (0.1515ms)
+Ô£ö kategori: dublaj/altyaz─▒ ge├ğerli, bilinmeyen ÔåÆ bug├╝nk├╝ (dublaj) (0.1774ms)
+Ô£ö subLang: kay─▒tl─▒ dil e┼şle┼şirse o iz se├ğilir (0. yerine) (0.3998ms)
+Ô£ö subLang: e┼şle┼şme yoksa bug├╝nk├╝ davran─▒┼ş (subtitledÔåÆ0) (0.201ms)
+Ô£ö subLang: off ÔåÆ altyaz─▒ a├ğ─▒lmaz; dublaj kategorisi ÔåÆ -1 (0.3113ms)
+Ô£ö subLang: ayar yok/bozuk ÔåÆ bug├╝nk├╝ davran─▒┼ş aynen (0.5477ms)
+Ô£ö subLang: T├╝rk├ğe etiket varyantlar─▒ tan─▒n─▒r (TR / t├╝r / T├╝rk├ğe) (0.4643ms)
+Ô£ö 1) bo┼ş girdi ÔåÆ bo┼ş liste (2.944ms)
+Ô£ö 2) ads─▒z veya tarihsiz kay─▒t elenir (1.4587ms)
+Ô£ö 3) ge├ğmi┼şte kalan yay─▒nlar elenir, gelecekteki kal─▒r (0.3861ms)
+Ô£ö 4) en yak─▒n yay─▒n ├Ânce gelir (artan tarih s─▒ras─▒) (0.3616ms)
+Ô£ö 5) ayn─▒ yap─▒ma ait tekrarlar tekille┼şir, en yak─▒n tarih korunur (0.3172ms)
+Ô£ö 6) ayn─▒ g├╝n yay─▒nlanan iki yap─▒m da kal─▒r ve saate g├Âre s─▒ralan─▒r (0.2129ms)
+Ô£ö 7) kimliksiz ama adl─▒ kay─▒t korunur ve ada g├Âre tekille┼şir (0.3887ms)
+Ô£ö 8) ├ğ─▒kt─▒ yap─▒land─▒r─▒lm─▒┼ş: id/tmdbId/yayinZamani var, g├Âreceli metin yok (0.2297ms)
+Ô£ö 9) limit a┼ş─▒l─▒rsa en yak─▒n N kay─▒t d├Âner (0.3461ms)
+Ô£ö yerli kay─▒t: yaln─▒z do─şrulanm─▒┼ş ikili, dosyalar diskte (2.0428ms)
+Ô£ö vendor dizininde liste d─▒┼ş─▒ dosya yok (drift bek├ğisi) (0.7853ms)
+Ô£ö yerli scraper'lar motor sandbox'─▒nda derlenir ve getStreams d├Âner (6.3549ms)
+Ô£ö kodTohumla, providerKodu'nda a─şdan ├ûNCE okunur (0.346ms)
+Ô£ö TR dosyalar─▒nda const TMDB_API_KEY banner ├ğarp─▒┼şmas─▒n─▒ k─▒rmas─▒n (strict'siz sandbox) (0.6092ms)
+Ô£ö getter-only exports'a strict'siz atama mod├╝l├╝ ├ğ├Âkertmez (Dizilla deseni) (0.4232ms)
+Ô£ö yerliTaban web/Node ortamlar─▒nda makul d├Âner (0.237ms)
+Ô£ö reclaim: girdi do─şrulamas─▒ (1.2965ms)
+Ô£ö reclaim: etkin veya korumal─▒ girdi korunur (0.2127ms)
+Ô£ö reclaim: hedef zaten sa─şlan─▒yorsa hi├ğbir ┼şey silinmez (0.3197ms)
+Ô£ö reclaim: hedef i├ğin en eskiden ba┼şlan─▒r ve hedef KAR┼ŞILANIR (0.9547ms)
+Ô£ö reclaim: ETK─░N ak─▒┼ş hi├ğbir ko┼şulda silinmez (0.3726ms)
+Ô£ö reclaim: hedef korunanlardan kar┼ş─▒lanamaz (0.2095ms)
+Ô£ö reclaim: k├╝├ğ├╝k silme hedefi kar┼ş─▒lam─▒yorsa devam eder (0.205ms)
+Ô£ö reclaim: ├Âzet i├ğerik ad─▒ s─▒zd─▒rmaz (0.2255ms)
+Ô£ö reclaim: bo┼ş girdi listesi korumal─▒lar─▒ d─▒┼şlar (0.2906ms)
+Ô£ö reclaim: bo┼ş girdiler en eskiden ba┼şlar (0.301ms)
+Ô£ö reclaim: bo┼ş girdi listesi bo┼ş girdi listesi nesnesini bozmaz (0.176ms)
+Ô£ö reclaim: bo┼ş liste ve hedef s─▒f─▒r g├╝venli (0.162ms)
+Ô£ö HLS preserves the signature query (2.946ms)
+Ô£ö TRT 1 Tabii route selects the public TRT feed (0.6087ms)
+Ô£ö YouTube live uses the actual video id (0.2502ms)
+Ô£ö external embeds and official watch links have distinct routes (0.9576ms)
+Ô£ö unsupported source and invalid channel fail explicitly (1.303ms)
+(node:1704) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö rota tablosu do─şrudan Android varl─▒─ş─▒ndan gelir (tek kaynak, kopya yok) (3.3954ms)
+Ô£ö /api/<kod>/... kodunu native-routes tablosundan ├ğ├Âzer (0.6166ms)
+Ô£ö workerÔÇÖ─▒n kendi u├ğlar─▒ ve bilinmeyen kodlar rota ├ğ├Âz├╝c├╝ye tak─▒lmaz (0.1997ms)
+Ô£ö sa─şlay─▒c─▒ iste─şi mobil k├Âpr├╝yle ayn─▒ hedef/ba┼şl─▒klarla sunucudan at─▒l─▒r (31.2074ms)
+Ô£ö POST g├Âvdesi ve i├ğerik tipi hedefe ta┼ş─▒n─▒r (1.4566ms)
+Ô£ö OPTIONS ├Ân kontrol├╝ 204 d├Âner, ├╝st ak─▒┼şa gitmez (1.4154ms)
+Ô£ö worker giri┼şi /api/<kod>/... iste─şini ger├ğekten sa─şlay─▒c─▒ya ta┼ş─▒r (u├ğtan uca ba─şlama) (0.9947ms)
+Ô£ö rota tablosu ├ğekirdeklerin kulland─▒─ş─▒ T├£M kodlar─▒ i├ğerir (mobil+web parite n├Âbeti) (67.5222ms)
+Ô£ö JSON g├Âvdede ger├ğek site ad─▒ kod ad─▒na ├ğevrilir (├╝r├╝n kural─▒: s─▒z─▒nt─▒ yok) (1.9297ms)
+Ô£ö HTML g├Âvdeye dokunulmaz (├ğekirdekler HTMLÔÇÖi yap─▒ olarak parse eder) (0.8628ms)
+Ô£ö mirror tercihi KALICI: ba┼şar─▒l─▒ yedek sonraki istekte ├Âne al─▒n─▒r, ├Âl├╝ birincil bir daha denenmez (2.6613ms)
+Ô£ö Pages/Vercel giri┼şi (functions/[[route]].js) de ayn─▒ sa─şlay─▒c─▒ rota ├ğ├Âz├╝m├╝n├╝ kullan─▒r (1.3832ms)
+Ô£ö rota tablosu ile ALANLAR ├ğak─▒┼şan ailelerde tutarl─▒ (rotasyon iki yerde ayr─▒┼şmas─▒n) (0.3706ms)
+Ô£ö cf/provider-rotalari.js, native-routes.json ile birebir ayn─▒ (├╝retilmi┼ş kopya) (2.2401ms)
+Ô£ö native-routes-sync --check: ├╝retilmi┼ş kopya g├╝ncel (90.1095ms)
+Ô£ö determinizm: ayn─▒ girdi + ayn─▒ tohum birebir ayn─▒ program─▒ verir (5.373ms)
+Ô£ö determinizm: farkl─▒ tohum farkl─▒ s─▒ra ├╝retir (0.5885ms)
+Ô£ö mulberry32: ayn─▒ tohum ayn─▒ diziyi, farkl─▒ tohum farkl─▒ dizi ├╝retir (0.3474ms)
+Ô£ö favori 2x a─ş─▒rl─▒k: favori i├ğerik ortalaman─▒n ├╝zerinde slot al─▒r (200 tohum) (11.0767ms)
+Ô£ö dedupe: ayn─▒ tmdbId program i├ğinde en fazla bir kez ├ğ─▒kar (2.4942ms)
+Ô£ö bo┼ş girdi: [] d├Âner, neden havuz-bos, ├ğ├Âkme yok (0.1987ms)
+Ô£ö tmdbId'siz kay─▒tlar atlan─▒r, ge├ğerli kay─▒t programa girer (0.2317ms)
+Ô£ö ├ğe┼şitlilik: 3+ t├╝rde ard─▒┼ş─▒k iki slot ayn─▒ t├╝r olmaz (5.0369ms)
+Ô£ö yayindakiSlot: do─şru slotu se├ğer ve program sonunda ba┼şa sarar (0.4924ms)
+Ô£ö yayindakiSlot: scheduler ├ğ─▒kt─▒s─▒yla tutarl─▒ (ger├ğek program) (0.4227ms)
+Ô£ö kanalProgramlaAsync: fallback havuzu enjekte edilir, a─ş ├ğa─şr─▒s─▒ yap─▒lmaz (0.788ms)
+Ô£ö kanalProgramlaAsync: fallback hata verirse ├ğekirdek havuzla devam eder (0.3741ms)
+Ô£ö ku┼şak s─▒n─▒rlar─▒: 06/12/17/00 s─▒n─▒rlar─▒ tam s─▒n─▒rda do─şru ku┼şa─şa d├╝┼şer (0.473ms)
+Ô£ö ku┼şak ├ğarpan y├Ân├╝: prime dram/aksiyon, gece belgesel, sabah ├ğocuk/├ğizgi a─ş─▒r (0.4429ms)
+Ô£ö program ku┼şak hizal─▒: slotlar ku┼şak s─▒n─▒r─▒n─▒ ge├ğmez, s├╝reler tip bazl─▒d─▒r (10.7448ms)
+Ô£ö sonrakiBolum: kural b├Âl├╝m+1; sezon/b├Âl├╝m yoksa null (slot'a yaz─▒lmaz) (0.834ms)
+Ô£ö sonrakiBolum: sezon finali ÔåÆ sezon+1/b├Âl├╝m 1; son sezon sonunda mevcut b├Âl├╝mde kal─▒r (0.3357ms)
+Ô£ö binge: ayn─▒ seri art arda en fazla 3 slot, bingeNo 1..3, ku┼şak de─şi┼ştirmez (8.2035ms)
+Ô£ö ├ğe┼şitlilik istisnas─▒: ayn─▒ t├╝r ard─▒┼ş─▒k yaln─▒z binge devam─▒nda, istisna i┼şaretli (7.6857ms)
+Ô£ö binge: b├Âl├╝mler ilerler (kald─▒─ş─▒ yer) ve ku┼şak de─şi┼şince blok biter (1.1595ms)
+Ô£ö slug izolasyonu: preset havuzlar─▒ ayr─▒┼ş─▒r, bilinmeyen slug "kendi"ye d├╝┼şer (1.9177ms)
+Ô£ö slug izolasyonu: farkl─▒ kanal ayn─▒ girdi+tohumda farkl─▒ program ├╝retir (0.8851ms)
+Ô£ö ruh hali bias y├Ân├╝: e─şlenceÔåÆkomedi, gerilimÔåÆkorku, klasikÔåÆbelgesel (0.3077ms)
+Ô£ö ruh hali program─▒ de─şi┼ştirir: ayn─▒ girdi+tohum, farkl─▒ bias (deterministik) (17.9875ms)
+Ô£ö ka├ğ─▒rd─▒klar─▒m: yaln─▒z biten slotlar, son pencere i├ğinde, en yeni ├Ânce (0.9359ms)
+Ô£ö hat─▒rlatma adaylar─▒: yaln─▒z 10 dk i├ğinde ba┼şlayan slotlar (0.2706ms)
+Ô£ö kanalRehberiMetni: ak┼şam dilimi, HH:MM sat─▒rlar─▒, toplam dk; bozuk girdide bo┼ş dize (0.7263ms)
+Ô£ö kanalIstatistik: y├╝zdeler 100 toplam, toplam dk = ╬ú s├╝re, binge say─▒s─▒ do─şru (1.3464ms)
+Ô£ö yayindakiSlot: de─şi┼şken s├╝reli v2 program─▒nda do─şru slotu se├ğer (v1 sabit s├╝re korunur) (0.5915ms)
+Ô£ö v2 bozuk girdi: null/NaN/string/negatif de─şerler ├ğ├Âkme ├╝retmez (0.7188ms)
+Ô£ö kanalProgramlaV2Async: fallback havuzu enjekte edilir, a─ş ├ğa─şr─▒s─▒ yap─▒lmaz (1.1749ms)
+Ô£ö kanalProgramlaV2Async: preset d─▒┼ş─▒ ge├ğmi┼ş yeterli havuz say─▒lmaz (1.1857ms)
+Ô£ö s─▒z─▒nt─▒ yok: ticker kay─▒t defterine yaz─▒l─▒r, durdurulunca/ayr─▒l─▒nca bo┼şal─▒r (78.1213ms)
+(node:2276) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö worker serves assets directly without a Pages origin (33.1166ms)
+Ô£ö missing extensionless asset redirects to the hash router (1.1378ms)
+Ô£ö APK route streams the binary through the worker (GitHub engelli aglarda calisir) (2.2706ms)
+Ô£ö masa├╝st├╝nde cloudstream-repo ekleme net neden-temelli mesajla d├Âner (2.621ms)
+Ô£ö repo ekleme: csRepoYukle ├ğa─şr─▒l─▒r, k─▒smi ba┼şar─▒da idler+say─▒lar kayda yaz─▒l─▒r (1.1769ms)
+Ô£ö tekil .cs3 ekleme: csEklentiYukle ├ğa─şr─▒l─▒r, tek id kaydedilir (0.39ms)
+Ô£ö k├Âpr├╝ hatas─▒ kullan─▒c─▒ya T├╝rk├ğe metinle yans─▒r (forNameIlkHata dahil) (0.3194ms)
+Ô£ö kald─▒rma repodaki T├£M eklenti idlerini konaktan d├╝┼ş├╝r├╝r (0.6029ms)
+[kayit] aria anahtar─▒ iste─şi ba┼şar─▒s─▒z ÔÇö Failed to parse URL from /api/aria_key
+[yerli-nuvio] kod okunamad─▒: providers/popwatch.js XMLHttpRequest is not defined
+[yerli-nuvio] kod okunamad─▒: providers/vidbolt.js XMLHttpRequest is not defined
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/popwatch.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/vidbolt.js
+[yerli-nuvio] PopWatch: nuvio: 502 /nuvio-builtin/providers/popwatch.js
+[yerli-nuvio] VidBolt: nuvio: 502 /nuvio-builtin/providers/vidbolt.js
+Ô£ö tarama bulutu: sagId listesiyle arar (* ASLA), TMDB-json oge se├ğer, sat─▒r alanlar─▒ nuvio s├Âzle┼şmesi (339.7085ms)
+Ô£ö taramada ba┼şl─▒k yoksa cloudstream dal─▒ console.warn ile atlan─▒r (csAra hi├ğ ├ğa─şr─▒lmaz) (1.2738ms)
+Ô£ö masa├╝st├╝ taramas─▒ cloudstream kayd─▒n─▒ k├Âpr├╝s├╝z atlar, ├ğ├Âkmez (400.2939ms)
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/popwatch.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/vidbolt.js
+[yerli-nuvio] PopWatch: nuvio: 502 /nuvio-builtin/providers/popwatch.js
+[yerli-nuvio] VidBolt: nuvio: 502 /nuvio-builtin/providers/vidbolt.js
+Ô£ö csAs destekli k├Âpr├╝de tarama senkron csAra/csYukle/csAkislar ├ğa─ş─▒rmaz (33.3967ms)
+Ô£ö csSatir: http(s) olmayan adres (magnet/javascript) sat─▒r ├╝retmez (0.245ms)
+Ô£ö hevc tercihi: cozunemezHecv kayna─ş─▒ ├Âne ge├ğer (3.5933ms)
+Ô£ö h264 tercihi: hevc olmayan kaynak ├Âne ge├ğer (0.3212ms)
+Ô£ö ba┼şl─▒ktaki codec metni de okunur (bayrak yoksa) (0.2437ms)
+Ô£ö 5.1 tercihi: ba┼şl─▒─ş─▒nda 5.1 olan kaynak ├Âne ge├ğer (0.4492ms)
+Ô£ö tercih yoksa (farketmez) davran─▒┼ş de─şi┼şmez: ilk kaynak kazan─▒r (0.2257ms)
+Ô£ö kodek puan─▒ (10) cihaz skoru fark─▒n─▒ (Ôëñ9) yenebilir (0.204ms)
+(node:7848) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö s├Âzle┼şme: localStorage anahtar ad─▒ sabit (1.3387ms)
+Ô£ö s├Âzle┼şme: user + traffic URL ├╝reticileri (0.2731ms)
+Ô£ö s├Âzle┼şme: torrent bilgi/se├ğim/silme URL ├╝reticileri (0.6544ms)
+Ô£ö s├Âzle┼şme: instantAvailability URL ├ğoklu hash birle┼ştirir (0.4325ms)
+Ô£ö s├Âzle┼şme: addMagnet + selectFiles g├Âvdeleri (0.6744ms)
+Ô£ö yard─▒mc─▒: magnetten info-hash ├ğ─▒karma + normalize (0.5058ms)
+Ô£ö gizlilik: maskeleme tam anahtar─▒ asla d├Ând├╝rmez (0.2417ms)
+Ô£ö depo: set/get/clear turu (0.6147ms)
+Ô£ö hata yolu: anahtar yoksa a─şa ├ğ─▒k─▒lmaz (MISSING_KEY) (0.5085ms)
+Ô£ö ak─▒┼ş: validateDebridKey Authorization ba┼şl─▒─ş─▒ ve /user vuruusu (0.8924ms)
+Ô£ö hata yolu: 401 ge├ğersiz anahtar T├╝rk├ğesi (1.0663ms)
+Ô£ö hata yolu: 429 + a─ş kopmas─▒ T├╝rk├ğe kodlan─▒r (1.3359ms)
+Ô£ö ak─▒┼ş: getAccountStatus kullan─▒c─▒ + limiti birle┼ştirir (20.5777ms)
+Ô£ö ak─▒┼ş: addMagnetAndSelect iki u├ğ ├ğa─şr─▒s─▒ yapar (0.7168ms)
+Ô£ö ak─▒┼ş: checkInstantAvailability haz─▒r ve bo┼ş yan─▒t─▒ ay─▒r─▒r (0.7375ms)
+Ô£ö ak─▒┼ş: unrestrictLink form g├Âvdesi ve download d├Ând├╝r├╝r (0.7668ms)
+Ô£ö yard─▒mc─▒: pickMediaFileIds video dosyalar─▒n─▒ b├╝y├╝─şe g├Âre dizer (1.8411ms)
+Ô£ö cinepulse:// ┼şemal─▒ adres hashÔÇÖe d├Âner (1.1486ms)
+Ô£ö web payla┼ş─▒m adresinden hash yakalan─▒r (3.8145ms)
+Ô£ö ge├ğersiz ┼şema/rota reddedilir (0.2949ms)
+Ô£ö uygulama hashÔÇÖi kurar; ayn─▒ hashÔÇÖte hashchange tetikler (0.315ms)
+Ô£ö desktop API URLs use the per-process gateway and token (1.5261ms)
+Ô£ö desktop API calls fail explicitly before the gateway is ready (0.6227ms)
+Ô£ö web and APK cannot open a local desktop installation wizard (1.8745ms)
+Ô£ö only a confirmed missing desktop dependency requires setup (0.2621ms)
+Ô£ö Desktop short-drama playback is visibly locked while details remain accessible (5.7942ms)
+Ô£ö detail view hides the duplicate original title when its logo loads (1.3277ms)
+Ô£ö dilArama: null / bo┼ş / sadece bo┼şluk sorgular─▒ null d├Âner (2.3537ms)
+Ô£ö dilArama: anahtar kelime yoksa null (mevcut arama ak─▒┼ş─▒na dokunulmaz) (1.4793ms)
+Ô£ö dilArama: tam c├╝mle ÔÇö t├╝rler + y─▒lMin + sorguKalan (1.6084ms)
+Ô£ö dilArama: ├ğoklu t├╝r (a┼şk + komedi) (0.4731ms)
+Ô£ö dilArama: b├╝y├╝k/k├╝├ğ├╝k harf ve t├╝rk├ğe karakterler ayr─▒m yapmaz (0.3503ms)
+Ô£ö dilArama: y─▒l aral─▒─ş─▒ (sonra / ├Ânce) (0.3574ms)
+Ô£ö dilArama: dizi tespiti ve dizi t├╝r id'leri (repo haritas─▒) (0.3879ms)
+Ô£ö dilArama: bilim kurgu, belgesel ve gereksiz kelime temizli─şi (0.3925ms)
+Ô£ö gomuluOynaticiMi: ├Âl├ğ├╝len t├╝m /play?... bi├ğimlerini tan─▒r (9.059ms)
+Ô£ö gomuluOynaticiMi: ger├ğek ak─▒┼ş ve uzant─▒s─▒z HLS adresleri g├Âm├╝l├╝ DE─Ş─░LD─░R (0.3893ms)
+Ô£ö oynatilamazMi: Eyl├╝l-29dan beri bilinen bi├ğimler (0.4053ms)
+Ô£ö yaln─▒z g├Âm├╝l├╝ hatlar: sat─▒rlar resmi g├Âm├╝l├╝ i┼şaret ta┼ş─▒r, kalite iddias─▒ yok (3.0515ms)
+Ô£ö setfilmizle:: ve picturebox sat─▒rlar─▒ listeye girmez (0.5688ms)
+Ô£ö ger├ğek ak─▒┼ş: dil kan─▒t─▒ ile listelenir, g├Âm├╝l├╝ler yan─▒nda i┼şaretli kal─▒r (1.2644ms)
+Ô£ö API 500 / bo┼ş d├Ânse bile [] d├Âner, hata f─▒rlatmaz (0.6328ms)
+(node:18828) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö DiziSol returns all valid API backups instead of truncating at six (4.5534ms)
+Ô£ö DiziSol keeps unverified mirrors as fallbacks when one mirror validates (0.9481ms)
+Ô£ö DiziSol resolves relative proxy streams from the provider API (0.5813ms)
+Ô£ö DiziSol refreshes cached stream URLs after 30 seconds (0.6332ms)
+Ô£ö DiziSol normalization keeps direct native URL and adds header-aware browser URL (1.3852ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+Ô£ö identityKey: T├╝rk├ğe duyars─▒z, noktalama bo┼şluk, g├╝r├╝lt├╝ kelimeler at─▒k (1.7664ms)
+Ô£ö kap─▒: substring/inner e┼şle┼şme YETERL─░ de─şildir (ihbar senaryolar─▒) (0.5932ms)
+Ô£ö kap─▒: normalize tam e┼şle┼şme ge├ğer (site s├╝sleri toleransl─▒) (0.246ms)
+Ô£ö kap─▒: y─▒l hedefte bilinirken aday y─▒l─▒ ┬▒1 d─▒┼ş─▒nda ise RED (0.3486ms)
+Ô£ö y─▒l ├ğ─▒kar─▒c─▒: 19xx/20xx (0.1514ms)
+Ô£ö extractCaptionTracks: bo┼ş _captionUrl ÔåÆ hi├ğ altyaz─▒ (├Âl├╝ kaynak yok) (0.9318ms)
+Ô£ö extractCaptionTracks: dolu ise mutlak + kit s├Âzle┼şmesi (0.3459ms)
+Ô£ö looksLikeCaption: yaln─▒z WebVTT/SRT ge├ğer; HTML/XML/red (1.2325ms)
+Ô£ö A/B-├Âncesi davran─▒┼ş taklidi: "Kral" normal dizisi ÔåÆ 0 kaynak (kap─▒ keser) (35.897ms)
+Ô£ö A/B-├Âncesi: "Breaking Bad" ÔåÆ HEAD 404 + arama bo┼ş ÔåÆ 0 kaynak (1.2988ms)
+Ô£ö ger├ğek k─▒sa dizi: kaynak d├Âner, sayfa ba┼şl─▒─ş─▒ kimlik denetiminden ge├ğer (5.8935ms)
+Ô£ö h─▒zl─▒ slug e┼şi─şinde bile sayfa ba┼şl─▒─ş─▒ kap─▒y─▒ ge├ğemezse 0 kaynak (1.1497ms)
+Ô£ö altyaz─▒: ger├ğek VTT d├Ânen u├ğ eklenir; HTML d├Ânen u├ğ listelenmez (3.626ms)
+Ô£ö master m3u8 TR ses kan─▒t─▒ ÔåÆ dilDurumu dublaj, kanit m3u8 (2.4989ms)
+Ô£ö muxed master ÔåÆ ilk segment 64KB TS okunur ÔåÆ dublaj, kanit ts (1.1723ms)
+Ô£ö a─ş hatas─▒ ÔåÆ bilinmiyor; kan─▒t olmadan orijinal YAZILMAZ (0.491ms)
+Ô£ö yaln─▒z EN ses kan─▒t─▒ ÔåÆ orijinal (kan─▒tla) (0.2671ms)
+Ô£ö kanitKaydet kan─▒ts─▒z orijinal girdisini bilinmiyora d├╝┼ş├╝r├╝r (1.093ms)
+Ô£ö arsivBirlestir ayn─▒ anahtarda m3u8 kan─▒t─▒n─▒ etiket tahminine tercih eder (1.7633ms)
+Ô£ö kaynakKok/adresOzet hashÔÇÖlenir; kay─▒t JSONÔÇÖunda ger├ğek domain yok (0.8511ms)
+Ô£ö arsOzeti t├╝r, sezon ve dil k─▒r─▒l─▒m─▒n─▒ sayar (0.3507ms)
+Ô£ö arsivEkle ayn─▒ anahtar─▒ tek kay─▒tta toplar, anahtar ├╝retimi tutarl─▒ (0.7174ms)
+(node:9244) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö saglayiciAnahtari: EN UZUN ├Ânek e┼şle┼şir (├Âl├ğ├╝len sessiz hata) (2.3272ms)
+Ô£ö saglayiciAnahtari: y─▒ld─▒z kaynaklar─▒ do─şrudan d├Âner (0.3227ms)
+Ô£ö dublajaGoreSirala: sicil BO┼ŞKEN liste aynen d├Âner (davran─▒┼ş de─şi┼şmez) (0.9367ms)
+Ô£ö dublajaGoreSirala: TR dublaj kan─▒tl─▒ kayna─ş─▒ ba┼şa al─▒r (1.5915ms)
+Ô£ö dublajaGoreSirala: girdi dizisini DE─Ş─░┼ŞT─░RMEZ, saglayici alan─▒n─▒ s─▒zd─▒rmaz (0.5623ms)
+Ô£ö dublajaGoreSirala: bo┼ş/bozuk girdide g├╝venli (0.1998ms)
+Ô£ö tohumuYukle: do─şrudan bi├ğimi sicile yazar (0.9056ms)
+Ô£ö tohumuYukle: ikinci ├ğa─şr─▒da a─şa ├ğ─▒kmaz (tek y├╝kleme) (0.4089ms)
+Ô£ö tohumuYukle: do─şrudan bi├ğim yoksa eski hash ar┼şivine d├╝┼şer (1.6723ms)
+Ô£ö tohumuYukle: a─ş tamamen ├ğ├Âkse bile f─▒rlatmaz (0.5129ms)
+Ô£ö tohumKokKodlari: yaln─▒z e┼şle┼şen hash leri d├Ând├╝r├╝r (1.3261ms)
+Ô£ö oynatmaGeriBildir: ba┼şar─▒/ba┼şar─▒s─▒zl─▒k sicile yaz─▒l─▒r (1.0421ms)
+Ô£ö oynatmaGeriBildir: eksik alanlarda false d├Âner, f─▒rlatmaz (0.2289ms)
+Ô£ö arkaPlandaZenginlestir: a─ş yoksa sessizce d├Âner (4.206ms)
+Ô£ö arkaPlandaZenginlestir: cooldown i├ğinde tekrar a─şa ├ğ─▒kmaz (0.8633ms)
+Ô£ö icerikAnahtariOlustur: aggregator alan adlar─▒yla ├ğal─▒┼ş─▒r (0.1624ms)
+Ô£ö akilliTaramaSirasi: kan─▒tl─▒ sa─şlay─▒c─▒y─▒ ├Âne al─▒r (0.4417ms)
+Ô£ö sicilKaydetSimdi: depo yoksa da f─▒rlatmaz (1.5178ms)
+Ô£ö sicil(): depodan kal─▒c─▒ y├╝kler (ayn─▒ s├╝re├ğte yeniden ayr─▒┼şt─▒rmaz) (0.3103ms)
+Ô£ö TS PAT/PMT: muxed segmanda en+tr ses dilleri okunur (2.1394ms)
+Ô£ö TS PMT tek dil: orijinal kan─▒t─▒ (0.3072ms)
+Ô£ö MP4 moov/mdia/mdhd paketlenmi┼ş dil okunur (0.8124ms)
+Ô£ö MKV TrackEntry: yaln─▒z SES (TrackType=2) dilleri say─▒l─▒r (0.7023ms)
+Ô£ö baytSesDilleri kapsay─▒c─▒ snifflar, ├ğ├Âpe null der (0.5843ms)
+Ô£ö muxed HLS: master dil ta┼ş─▒m─▒yorsa segman okunur ve TR bulunur (2.1878ms)
+Ô£ö muxed HLS tek dil: DO─ŞRULANMI┼Ş OR─░J─░NAL (0.7623ms)
+Ô£ö do─şrulanamayan (a─ş hatas─▒ / ├ğ├Âp) ÔåÆ rozet YOK, uydurma YOK (1.0712ms)
+Ô£ö dilKodla + m3u8 master katman─▒ (etiketli) h├ól├ó ├ğal─▒┼ş─▒r (0.4144ms)
+Ô£ö d├╝z url sat─▒r─▒ oynat─▒labilir kaynak olur (5.1746ms)
+Ô£ö infoHash sat─▒r─▒ magnet olur ve i├ğ oynat─▒c─▒da oynat─▒lmaz say─▒l─▒r (0.6637ms)
+Ô£ö sources yoksa varsay─▒lan izleyiciler magnet'e eklenir (2026-10-25 Torrentio ├Ârk├╝: 95/76 sources─▒z) (0.3357ms)
+Ô£ö sat─▒rdaki tracker listesi magnet izleyicisi olarak ta┼ş─▒n─▒r (0.2994ms)
+Ô£ö proxyUrl i├ğindeki ger├ğek adres ├ğ─▒kar─▒l─▒r; harici sayfa adresi elenir (0.315ms)
+Ô£ö proxyHeaders istek ba┼şl─▒klar─▒ temizlenerek ta┼ş─▒n─▒r (0.2175ms)
+Ô£ö eklentiTabani manifest ve sondaki e─şik ├ğizgiyi temizler (0.2544ms)
+Ô£ö Torrentio tam ba┼şl─▒k: seeder, boyut, sa─şlay─▒c─▒, kaynak tipi ve dual (11.2403ms)
+Ô£ö i┼şaretsiz sade ba┼şl─▒k: alanlar null/0, patlama yok (2.0443ms)
+Ô£ö CloudStream tarz─▒ "1080p | 2.1 GB": emoji olmadan boyut okunur (0.3345ms)
+Ô£ö T├╝rk├ğe dublaj ipu├ğlar─▒ tr olarak i┼şaretlenir (0.5166ms)
+Ô£ö manifest ailesi: stream ÔåÆ stremio/nuvio, scraper/manifest yok ÔåÆ null (0.3177ms)
+Ô£ö ├ğok bayrakl─▒ Torrentio ba┼şl─▒─ş─▒: t├╝m bayraklar ba┼şl─▒k s─▒ras─▒yla, di─şer alanlar sa─şlam (0.2448ms)
+Ô£ö DUAL+SUB kar─▒┼ş─▒k ba┼şl─▒k: bayrak + kelime ipu├ğlar─▒ s─▒rayla ve m├╝kerrersiz (0.3411ms)
+Ô£ö bayraks─▒z sade ba┼şl─▒k: diller bo┼ş, seeders/boyut/saglay─▒c─▒ alanlar─▒ bozulmaz (0.1611ms)
+Ô£ö link s─▒n─▒fland─▒rma: manifest, xurl, stream endpoint, cloudstream repo, ge├ğersiz (1.204ms)
+[kayit] aria anahtar─▒ iste─şi ba┼şar─▒s─▒z ÔÇö beklenmedik fetch: /api/aria_key
+[yerli-nuvio] kod okunamad─▒: providers/popwatch.js XMLHttpRequest is not defined
+[yerli-nuvio] kod okunamad─▒: providers/vidbolt.js XMLHttpRequest is not defined
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö beklenmedik fetch: /nuvio-builtin/providers/popwatch.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö beklenmedik fetch: /nuvio-builtin/providers/vidbolt.js
+[yerli-nuvio] PopWatch: nuvio: 502 /nuvio-builtin/providers/popwatch.js
+[yerli-nuvio] VidBolt: nuvio: 502 /nuvio-builtin/providers/vidbolt.js
+Ô£ö d├Ânen imza ayn─▒ sat─▒rd─▒r: sorgu/sas farkl─▒ysa kimlik AYNI kal─▒r (2.0754ms)
+Ô£ö farkl─▒ kaynaklar birle┼şmez: yol, sa─şlay─▒c─▒ veya ad fark─▒ kimli─şi ay─▒r─▒r (0.7389ms)
+Ô£ö ├Ânbayarak senaryosu: cache-tohum + d├Ânen URL'li tarama sat─▒r─▒ YI─ŞILMAZ (0.4292ms)
+Ô£ö adresi bo┼ş sat─▒r id ile kimliklenir; ikisi de yoksa bo┼ş d├Ânebilir (0.2003ms)
+Ô£ö window.xs.resolveContentId kap─▒n─▒n kendisidir (0.1373ms)
+Ô£ö imdb haz─▒rsa kap─▒ TMDB external_ids ├ğa─şr─▒s─▒ yapmaz; tv anahtar─▒ ttÔÇĞ:S:E (0.3782ms)
+Ô£ö tmdb-only ├ğ├Âz├╝m external_ids'i bir kez ├ğa─ş─▒r─▒r; ikinci ├ğa─şr─▒ cache'ten (2.5678ms)
+Ô£ö stremio dal─▒ /stream iste─şini kap─▒n─▒n tt anahtar─▒yla yapar (43.9703ms)
+Ô£ö imdb'siz tv: anahtar tmdb:n:S:E yede─şine iner; ge├ğersiz imdb elenir (0.5171ms)
+Ô£ö d├╝z HTML: master.m3u8 bulunur, kalite varyant─▒na tercih edilir (24.479ms)
+Ô£ö JSON API g├Âvdesi: play_url alan─▒ndan ak─▒┼ş ├ğ─▒kar (1.387ms)
+Ô£ö ka├ğ─▒┼şl─▒ g├Âvde (\/ ve %3a//) ve JSON-ka├ğ─▒┼şl─▒ adresler de ├ğ├Âz├╝l├╝r (0.4193ms)
+Ô£ö base64 (atob) i├ğindeki ak─▒┼ş adresi ├ğ├Âz├╝l├╝r (1.4164ms)
+Ô£ö Dean Edwards packer: eval(function(p,a,c,k,e,d){ÔÇĞ}) i├ğinden ak─▒┼ş ├ğ─▒kar (0.8624ms)
+Ô£ö iframe s─▒├ğramas─▒: ayn─▒ alan ad─▒nda ikinci katman ├ğ├Âz├╝l├╝r (1.0154ms)
+Ô£ö yabanc─▒ alana iframe s─▒├ğramas─▒ YAPILMAZ (reklam/SSRF korumas─▒) (0.2944ms)
+Ô£ö HTTP 401 ÔåÆ durum 'olu' (KES─░N ├Âl├╝m ÔåÆ kal─▒c─▒ sicil) (0.1846ms)
+Ô£ö HTTP 403 ÔåÆ durum 'olu' (KES─░N ├Âl├╝m ÔåÆ kal─▒c─▒ sicil) (0.2506ms)
+Ô£ö HTTP 404 ÔåÆ durum 'olu' (KES─░N ├Âl├╝m ÔåÆ kal─▒c─▒ sicil) (0.4083ms)
+Ô£ö HTTP 410 ÔåÆ durum 'olu' (KES─░N ├Âl├╝m ÔåÆ kal─▒c─▒ sicil) (0.2614ms)
+Ô£ö HTTP 429 ÔåÆ durum 'yok' (├Âl├╝m kan─▒t─▒ DE─Ş─░L, kaynak ├Âld├╝r├╝lmez) (0.1628ms)
+Ô£ö HTTP 500 ÔåÆ durum 'yok' (├Âl├╝m kan─▒t─▒ DE─Ş─░L, kaynak ├Âld├╝r├╝lmez) (0.071ms)
+Ô£ö HTTP 502 ÔåÆ durum 'yok' (├Âl├╝m kan─▒t─▒ DE─Ş─░L, kaynak ├Âld├╝r├╝lmez) (0.0604ms)
+Ô£ö HTTP 503 ÔåÆ durum 'yok' (├Âl├╝m kan─▒t─▒ DE─Ş─░L, kaynak ├Âld├╝r├╝lmez) (0.0563ms)
+Ô£ö desen yok ÔåÆ durum yok/desen-yok (belirsiz), throw yok (1.3068ms)
+Ô£ö a─ş hatas─▒ ÔåÆ belirsiz (ag-hatasi); bo┼ş g├Âvde ÔåÆ belirsiz (0.539ms)
+Ô£ö b├╝t├ğe: sinyali yok sayan yava┼ş fetch mod├╝l├╝ kilitlemez (zaman-asimi) (414.6996ms)
+Ô£ö ge├ğersiz adres ÔåÆ olu/adres-bozuk; fetch yoksa ÔåÆ yok/fetch-yok (0.7837ms)
+Ô£ö istek ba┼şl─▒klar─▒: Referer/Origin sayfadan t├╝retilir, UA ve verilen ba┼şl─▒k ta┼ş─▒n─▒r (0.2333ms)
+Ô£ö verilen ref parametresi t├╝retilmi┼ş Referer'─▒ ezer (0.145ms)
+Ô£ö gomuluMu: oynat─▒c─▒ yolu true, ak─▒┼ş adresi false (0.2614ms)
+Ô£ö g├╝r├╝lt├╝: reklam a─ş─▒, asset uzant─▒s─▒ ve sayfan─▒n kendisi ak─▒┼ş aday─▒ de─şildir (0.1194ms)
+Ô£ö akisAdaylari: sayfa adresinin kendisi aday de─şildir, ├╝stel regex yok (h─▒z) (0.4781ms)
+Ô£ö kaynakDogrulay─▒c─▒ bu mod├╝l├╝ tembel y├╝kler ve s├Âzle┼şme alanlar─▒ duruyor (1.4011ms)
+Ô£ö aggregator: ├ğ├Âz├╝len g├Âm├╝l├╝ ak─▒┼ş ba┼şl─▒k proxy'sinden YEN─░DEN sar─▒l─▒r (1.4893ms)
+Ô£ö mod├╝l d─▒┼şa a├ğ─▒m s├Âzle┼şmesi: embedCoz / gomuluMu / akisAdaylari (0.0839ms)
+Ô£û plain web visits open the app and explicit links survive (full web playback) (1.2831ms)
+Ô£ö native apps always bypass the web-only introduction (0.1669ms)
+Ô£û room invitations retain their content entry point (0.9173ms)
+Ô£ö 1a) bo┼ş kaynaklar dizisi ÔåÆ null (1.1387ms)
+Ô£ö 1b) kaynaklar tan─▒ms─▒z ÔåÆ null (0.1312ms)
+Ô£ö 1c) null kaynaklar ÔåÆ null (0.081ms)
+Ô£ö 2a) y├╝ksek cihaz skoru kaynak─▒ kazan─▒r (0.2491ms)
+Ô£ö 2b) menfi kelime testi: nedenler /├Âl├╝|bozuk|d├╝┼ş├╝┼ş|yava┼ş|de─şil/i ile e┼şle┼şmesin (0.3997ms)
+Ô£ö 3a) tercih=dub: dublajl─▒ kaynak <12 puan fark─▒yla ├Âne ge├ğer (0.1869ms)
+Ô£ö 3b) tercih=farketmez: dublajl─▒ kaynak otomatik ├Âne ├ğ─▒kmaz (s─▒ra puan─▒na) (0.1326ms)
+Ô£ö 4a) y├╝ksek aile g├╝veni se├ğili kayd─▒ ├Âne ta┼ş─▒ (0.1511ms)
+Ô£ö 4b) d├╝┼ş├╝k aile g├╝veni se├ğili kayd─▒ ├Âne ta┼ş─▒may (0.1977ms)
+Ô£ö 5a) geceKoveti=true daha agresif cihaz skorunu se├ğer (s─▒n─▒r case) (0.3631ms)
+Ô£ö 6a) e┼şit puan: d├╝┼ş├╝k idx kazan─▒r (0.1692ms)
+Ô£ö 6b) tek kaynak: alternatifIdx -1 (0.1373ms)
+Ô£ö 7a) cihazSkorlari Map kabul├╝ (0.1502ms)
+Ô£ö 7b) eksik kaynak alanlar─▒ atma yok (fuzz) (1.1095ms)
+Ô£ö 8a) aileKodu: polar_17_0 ÔåÆ polar (0.1193ms)
+Ô£ö 8b) aileKodu: X_1 ÔåÆ x (0.0552ms)
+Ô£ö 8c) aileKodu: orion ÔåÆ orion ( _siz) (0.0464ms)
+Ô£ö 8d) aileKodu: Xyz ÔåÆ xyz (k├╝├ğ├╝k harf) (0.0461ms)
+Ô£ö 9a) nedenMetni: bo┼ş dizi ÔåÆ empty string (0.0653ms)
+Ô£ö 9b) nedenMetni: tek eleman (0.0602ms)
+Ô£ö 9c) nedenMetni: ├ğok eleman (0.0904ms)
+Ô£ö 10) ak─▒┼şOtopilotu ├ğ─▒kt─▒ yap─▒s─▒ (0.155ms)
+Ô£ö 10b) d├Ând├╝r├╝lenecek null yap─▒s─▒ (0.0567ms)
+Ô£ö k├Âpr├╝ yoksa: kullan─▒lamaz ve a├ğ─▒lamaz (15.6103ms)
+Ô£ö Android k├Âpr├╝s├╝: OK d├Ânerse a├ğ─▒l─▒r, m3u8 MIME se├ğilir (0.399ms)
+Ô£ö masa├╝st├╝ k├Âpr├╝s├╝: /api/ URL, ba┼şlang─▒├ğ, referer ve istek ba┼şl─▒klar─▒ ta┼ş─▒n─▒r (0.4503ms)
+Ô£ö harici mod: cp_player_mode=external + k├Âpr├╝ gerekir (0.1884ms)
+Ô£ö Android k├Âpr├╝s├╝ YOK d├Ânerse ba┼şar─▒ say─▒lmaz (0.1964ms)
+(node:18936) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö kay─▒t: Mystique ve Gambit KAYIT'ta benzersiz ve ├ğekirdek dosyalar─▒ mevcut (2.384ms)
+Ô£ö Mystique movie: sahte API yan─▒t─▒ndan m3u8 yay─▒n + Altyaz─▒ i┼şareti ├ğ─▒kar─▒r (7.3848ms)
+Ô£ö Mystique tv: sezon/b├Âl├╝m blo─şundan id_episode bulur ve ak─▒┼ş─▒ d├Ând├╝r├╝r (1.4723ms)
+Ô£ö Mystique hata: 500 / bo┼ş / bozuk yan─▒t ÔåÆ [] ve throw yok (2.3948ms)
+Ô£ö Mystique: desteklenmeyen kimlik/ba┼şl─▒k bo┼ş dizi d├Âner (a─ş iste─şi bile olmaz) (0.4183ms)
+Ô£ö Gambit movie: HMAC imzal─▒ aramadan AES-┼şifreli m3u8 ├ğ├Âzer, dil i┼şaretleri do─şru (17.2458ms)
+Ô£ö Gambit tv: sezonÔåÆb├Âl├╝mÔåÆkaynak zinciri do─şru S/B se├ğer (2.6558ms)
+Ô£ö Gambit hata: arama 500 / bo┼ş poster / e┼şle┼şmeyen ba┼şl─▒k ÔåÆ [] throw yok (3.2143ms)
+Ô£ö Gambit: yanl─▒┼ş t├╝r ve bo┼ş kimlik erken d├╝┼şer (0.4366ms)
+Ô£ö SmashyStream geri KAYDED─░LMED─░: repoda kullan─▒c─▒ anahtar─▒ yok, kayit.js'te sat─▒r yok (1.2151ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+Ô£ö e┼şik s├╝resi: 899 ms'de ├Ânizleme a├ğ─▒lmaz, 900 ms'de a├ğ─▒l─▒r (saat enjekte) (19.2374ms)
+Ô£ö tek-aktif kural─▒: yeni karta ge├ği┼ş ├Âncekini durdurur (29.9899ms)
+Ô£ö tek-aktif: e┼şikteyken di─şer karta ge├ği┼ş ├Âncekini iptal eder (15.3774ms)
+Ô£ö coarse pointer: (pointer: fine) de─şilse document d├╝zeyinde dinleyici kurulmaz (0.7931ms)
+Ô£ö tercih kapal─▒yken kurma: dinleyici eklenmez (0.3613ms)
+Ô£ö tercih a├ğ─▒k oldu─şunda kurulum ├ğa─şr─▒l─▒r (0.2278ms)
+Ô£ö kart markup hook'u: data-tmdb-id ve data-type render edilir (0.6677ms)
+Ô£ö bellek ├Ânbelle─şi: 60 sn i├ğinde tek istek, TTL sonras─▒ yeniler (75.4666ms)
+Ô£ö a─ş hatas─▒ sessiz: kart aynen kal─▒r, hi├ğbir ┼şey a├ğ─▒lmaz (1.0361ms)
+Ô£ö temizle: e┼şit say─▒da ekleme/├ğ─▒karma, dinleyici say─▒s─▒ s─▒f─▒rlan─▒r (0.5198ms)
+Ô£ö iptaller: kart d─▒┼ş─▒ ├ğ─▒k─▒┼ş / scroll / ESC ├Ânizlemeyi kapat─▒r (137.7453ms)
+Ô£ö ├Ânizlemeye do─şru fare ge├ği┼şinde kapanma iptal edilir (tolerans) (15.8602ms)
+(node:21780) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö puan ay─▒klama: 0-10 d─▒┼ş─▒ ve bozuk de─şerler elenir (0.8925ms)
+Ô£ö puan metni: tek ondal─▒k veya bo┼ş (0.1427ms)
+Ô£ö ge├ğersiz idÔÇÖler iste─şe girmez, t├╝rler normalize edilir (1.2168ms)
+Ô£ö ayn─▒ id iki kez istenirse tek kez istenir (0.1273ms)
+Ô£ö toplu istek 25 id ile s─▒n─▒rl─▒d─▒r (0.2454ms)
+Ô£ö toplu istek tek ├ğa─şr─▒da ├ğ├Âz├╝l├╝r ve puanlar e┼şlenir (0.7007ms)
+Ô£ö adres mutlak olmal─▒ (g├Âreli /api/... CapacitorÔÇÖda 404 ├╝retir) (0.3063ms)
+Ô£ö a─ş hatas─▒ yutulur ve ÔÇ£puan yokÔÇØ olarak ├Ânbelle─şe yaz─▒lmaz (0.2296ms)
+Ô£ö bulunan puan ├Ânbelle─şe al─▒n─▒r, ikinci ├ğa─şr─▒ a─şa ├ğ─▒kmaz (0.308ms)
+Ô£ö tekil yard─▒mc─▒ da ayn─▒ yoldan ge├ğer ve null d├Ânebilir (0.3538ms)
+Ô£ö u├ğ 404 d├Ânse bile istemci patlamaz (0.2418ms)
+Ô£ö u├ğ: id listesi ayr─▒┼şt─▒r─▒l─▒r, ├ğ├Âp girdiler atlan─▒r (3.0795ms)
+Ô£ö u├ğ: IMDb sayfas─▒ndan puan ├ğ─▒kar─▒m─▒ birka├ğ bi├ğimi tan─▒r (0.6064ms)
+(node:21948) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö sezonu izlendi i┼şaretleme, harita ├Ânbelle─şi doluysa bile an─▒nda g├Âr├╝n├╝r (3.3535ms)
+Ô£ö t├╝m sezonlar─▒ i┼şaretleme isEntireSeriesWatched─▒ an─▒nda g├╝nceller (0.6998ms)
+Ô£ö mutlakBolum: ├Ânceki sezonlar─▒n b├Âl├╝m say─▒lar─▒ toplan─▒r (0.7146ms)
+Ô£ö anidb kayd─▒ olmayan ba┼şl─▒k: bo┼ş dizi, tekrar TMDBÔÇÖye gidilmez (1.5825ms)
+Ô£ö aniskip aral─▒klar─▒ ├ğ├Âz├╝l├╝r ve ├Ânbelle─şe al─▒n─▒r (0.5205ms)
+Ô£ö mutlak numara bo┼ş d├Ânerse sezon-i├ği numara denenir (0.3329ms)
+(node:18124) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö ayn─▒ ├ğekirdek ikinci kez de ├ğ├Âz├╝mlenir (mod├╝l ├Ânbelle─şi tuza─ş─▒) (1.5013ms)
+Ô£ö iki ├ğekirdek birbirinin kayd─▒n─▒ ezmez (0.2689ms)
+Ô£ö e┼şzamanl─▒ y├╝klemeler kayd─▒ kar─▒┼şt─▒rmaz (0.2863ms)
+Ô£ö getStreams b─▒rakmayan ├ğekirdek te┼şhiste g├Âr├╝n├╝r (sessiz ├Âl├╝m yok) (0.2604ms)
+Ô£ö patlayan ├ğekirde─şin sebebi te┼şhiste yaz─▒l─▒r (0.313ms)
+Ô£ö yard─▒mc─▒ kay─▒t (altyaz─▒) kal─▒c─▒ haf─▒zadan okunur (0.1529ms)
+Ô£ö kay─▒ts─▒z ad null d├Âner ve te┼şhise yaz─▒l─▒r (0.1025ms)
+Ô£ö ├ğekirdek say─▒s─▒ beklenen kay─▒tlarla ├Ârt├╝┼ş├╝r (0.1321ms)
+Ô£ö ├ğekirdeklerde g├Âlgelenmi┼ş interop kal─▒b─▒ kalmad─▒ (95.4884ms)
+Ô£ö CJS kuyruk yazmalar─▒ tolere ediliyor (try/catch olmadan kat─▒ modda ├Âl├╝r) (72.549ms)
+Ô£ö her ├ğekirdek globalThis.getStreams kayd─▒n─▒ b─▒rak─▒r (kuyruk deseni) (54.883ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+(node:13652) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö havuz boyu tan─▒ml─▒ ve makul (0.6383ms)
+Ô£ö e┼şzamanl─▒ ├ğal─▒┼şan g├Ârev say─▒s─▒ s─▒n─▒r─▒ a┼şmaz (122.2172ms)
+Ô£ö varsay─▒lan havuz boyu kullan─▒l─▒r (31.277ms)
+Ô£ö sonu├ğlar girdi s─▒ras─▒n─▒ korur (67.9751ms)
+Ô£ö bir g├Ârevin hatas─▒ havuzu durdurmaz (0.5903ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+Ô£ö b─▒rakma do─şrulmas─▒ kalan i┼şleri ba┼şlatmaz (5.1713ms)
+Ô£ö bo┼ş ve tek g├Ârevli girdi g├╝venli (0.2439ms)
+Ô£ö havuz girdi dizisini de─şi┼ştirmez (0.1355ms)
+(node:17900) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö kay─▒t: 58 sa─şlay─▒c─▒, kod adlar─▒ tekil (1.8879ms)
+Ô£ö kay─▒t: her kay─▒t kendi ├ğekirde─şine sahip (indirgeme yok) (0.1959ms)
+Ô£ö kay─▒t: anahtar = kahraman kodu, dosya ad─▒ kahraman ad─▒ndan t├╝retilir (0.6412ms)
+Ô£ö kay─▒t: t├╝r s├╝zgeci movie/tv/series do─şru ├ğal─▒┼ş─▒r (0.9478ms)
+Ô£ö normalize: do─şrudan yay─▒n ge├ğer, g├Âm├╝l├╝ oynat─▒c─▒ i┼şaretlenir (1.1404ms)
+Ô£ö normalize: ├ğ─▒kt─▒da ger├ğek site ad─▒ YOK (0.2758ms)
+Ô£ö normalize: kalite okumas─▒ (0.3072ms)
+Ô£ö kaynakCoz: u├ğtan uca ├ğal─▒┼ş─▒r ve fetch k├Âpr├╝s├╝ geri konur (2.4743ms)
+Ô£ö kaynakCoz: hata f─▒rlatmaz, bo┼ş liste d├Âner (0.5526ms)
+Ô£ö kaynakCoz: desteklenmeyen t├╝r erken elenir (├ğa─şr─▒ yap─▒lmaz) (0.2251ms)
+Ô£ö kaynakCoz: global izleyici (t├╝m ├ğekirdekler) temizlenir (0.5299ms)
+Ô£ö cekirdekAl: y├╝kleme s─▒ras─▒nda global izleyici ka├ğ─▒r─▒lmaz (1.0307ms)
+Ô£ö b├╝t├ğe: s├╝re kesmesi yok ÔÇö tek tavan kay─▒t ba┼ş─▒na (kullan─▒c─▒ 2026-10-29) (0.1433ms)
+Ô£ö b├╝t├ğe: sinyal yok sayan sa─şlay─▒c─▒ bile zaman─▒nda d├╝┼şer (160.1486ms)
+Ô£ö b├╝t├ğe: d─▒┼ş iptal sinyali sa─şlay─▒c─▒y─▒ d├╝┼ş├╝r├╝r (63.617ms)
+Ô£ö kaynakTara: paralel tarama, yaln─▒z kancadaki kay─▒tlar taran─▒r (16.0247ms)
+Ô£ö kaynakTara: progressive bildirim her sa─şlay─▒c─▒da tetiklenir (0.5518ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+[kahraman] 2/2 kay─▒t b├╝t├ğe yetmedi─şi i├ğin hi├ğ denenemedi ÔÇö hataOzeti'nde 'butce-asim' olarak i┼şaretlendi
+Ô£ö kaynakTara: t├╝m sa─şlay─▒c─▒lar as─▒l─▒ kalsa da b├╝t├ğe a┼ş─▒lmaz (311.2336ms)
+Ô£ö etiket: kahraman kaynaklar─▒ kahraman koduyla etiketlenir (0.5333ms)
+Ô£ö etiket: k─▒sa dizi hatlar─▒ korunur (0.0996ms)
+Ô£ö etiket: bilinmeyen id tarafs─▒z yutucuya d├╝┼şer (0.1179ms)
+Ô£ö etiket: Nexus HER ZAMAN son sat─▒rdad─▒r (0.1045ms)
+Ô£ö etiket: hi├ğbir aile ger├ğek site ad─▒ ta┼ş─▒maz (0.2553ms)
+Ô£ö etiket: kahraman ailelerinin say─▒s─▒ kay─▒t say─▒s─▒na e┼şit (0.0972ms)
+Ô£ö toplay─▒c─▒: k─▒sa dizi hatlar─▒ kahraman katman─▒na d├╝┼şmez (1.3238ms)
+Ô£ö etiket: k─▒sa dizi hatlar─▒ kahraman aileleriyle ├ğak─▒┼şmaz (0.2247ms)
+Ô£ö vendor: her kay─▒t bir ├ğekirdek dosyas─▒na i┼şaret eder (3.2897ms)
+Ô£ö vendor: her ├ğekirdek kay─▒tl─▒, obfuscation art─▒─ş─▒ yok (73.5897ms)
+Ô£ö vendor: ├ğekirdekler kahraman koduyla etiketlenebilir (getStreams var) (0.9643ms)
+Ô£ö durum: her kay─▒t ├Âl├ğ├╝m alan─▒ ta┼ş─▒r, varsay─▒lan bilinmiyor (0.1894ms)
+Ô£ö durum: kapal─▒ kay─▒t taramaya girmez (0.6748ms)
+Ô£ö durum: canl─▒ i┼şaretlenen kay─▒t listede kal─▒r (0.6212ms)
+Ô£ö durum: bilinmeyen kimlik i├ğin durumAyarla false d├Âner (0.0988ms)
+Ô£ö Robin slugYap: ba┼şl─▒k ÔåÆ site slugÔÇÖ─▒ (T├╝rk├ğe ASCII + tire) (5.2322ms)
+[kayit] aria anahtar─▒ iste─şi ba┼şar─▒s─▒z ÔÇö Unexpected token '#', "#EXTM3U
+ok" is not valid JSON
+(node:21172) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö kaynakCoz ko┼şulu: global fetch k├Âpr├╝yken bile TEK ger├ğek istek gider (3.9096ms)
+Ô£ö zaten k├Âpr├╝l├╝ adres ikinci kez sar─▒lmaz (├Âzyineleme korumas─▒) (0.5915ms)
+Ô£ö kendi originimizdeki yol k├Âpr├╝ye sokulmaz (0.2723ms)
+Ô£ö alan listesi iste─şi a─şa ├ğ─▒kmadan yerel haritadan yan─▒tlan─▒r (0.7244ms)
+(node:19008) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö k├Âpr├╝ adresi tan─▒n─▒r (0.8899ms)
+Ô£ö k├Âpr├╝lenmi┼ş adres k├Âpr├╝ye yeniden g girmez (sarmalama yok) (1.6388ms)
+Ô£ö uzak adres bir kez sar─▒l─▒r, ikinci ├ğa─şr─▒ ┼şi┼şmez (1.0538ms)
+Ô£ö alan listesi iste─şi yerelden yan─▒tlan─▒r (a─ş gitmez) (0.288ms)
+Ô£ö Electron CF cevab─▒n─▒ gizli Chromium ├ğerezleriyle yerel proxy ├╝zerinden tekrar dener (4.2213ms)
+Ô£ö ba┼şl─▒ks─▒z yay─▒n ├çIPLAK verilir (sarmalama listeyi k─▒rpamaz) (0.7799ms)
+Ô£ö ├ğekirde─şin istedi─şi ba┼şl─▒klar proxy adresine ta┼ş─▒n─▒r (403 d├╝zeltmesi) (0.615ms)
+Ô£ö proxy hatt─▒ yasakl─▒ ba┼şl─▒klar─▒ ta┼ş─▒maz (host/connection/accept-encoding) (0.6301ms)
+Ô£ö ba┼şl─▒k isteyen yay─▒n proxy hatt─▒na sar─▒l─▒r (403 d├╝zeltmesi) (0.4077ms)
+Ô£ö kaynak kimli─şi ham adresten t├╝retilir ÔÇö proxy sarmalama kimli─şi bozmaz (0.3345ms)
+Ô£ö uzant─▒s─▒z ama format bildiren HLS kabul edilir (0.3036ms)
+Ô£ö format b├╝y├╝k/k├╝├ğ├╝k harf ve type alan─▒ da okunur (0.1788ms)
+Ô£ö bi├ğim bildirmeyen ve uzant─▒s─▒z adres reddedilir (0.1283ms)
+Ô£ö g├Âm├╝l├╝ oynat─▒c─▒ reddedilmez ama asla ak─▒┼ş gibi davranmaz (i┼şaretlenir) (0.3318ms)
+Ô£ö ┼şemas─▒z ve bo┼ş adres reddedilir (0.1183ms)
+Ô£ö kod ad─▒ kimli─şi id ve source a alanlar─▒na s─▒zar, ger├ğek site ad─▒ asla (0.1691ms)
+Ô£ö ba┼şl─▒klar korunur ama ├ğ├Âp tip kabul edilmez (0.1659ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+(node:15192) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö s─▒ra: canl─▒lar en ├Ânce, kapal─▒/en verimsiz en sonra (7.7193ms)
+Ô£ö s─▒ra kararl─▒d─▒r ve girdiyi bozmaz (0.1711ms)
+Ô£ö kay─▒t tavan─▒ toplam b├╝t├ğeden k├╝├ğ├╝kt├╝r (tek kaz─▒c─▒ pay─▒ yiyemez) (0.1008ms)
+Ô£ö kaynakTara: verim s─▒ras─▒n─▒ kullan─▒r ve kapal─▒lar─▒ denemez (0.6406ms)
+Ô£ö k─▒sa dizi garantisi: kahraman taramas─▒ beklenmeden ayn─▒ anda ko┼şar (1.4491ms)
+Ô£ö kahraman yay─▒nlar─▒ ba┼şl─▒k ta┼ş─▒yan proxy hatt─▒ndan verilir (0.4152ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+Ô£ö zatanna tarz─▒ log sat─▒r─▒ndaki { } final JSONÔÇÖu bozmaz (0.7793ms)
+Ô£ö spiderMan tarz─▒ { dil: ... } logu final JSONÔÇÖdan sonra gelse bile do─şru nesne (0.1806ms)
+Ô£ö i├ğ i├ğe nesne ve metin i├ği s├╝sl├╝ parantez do─şru ayr─▒┼ş─▒r (0.1129ms)
+Ô£ö JSON yoksa null d├Âner (TIMEOUT/sessiz s─▒n─▒fland─▒rmas─▒ i├ğin) (0.1237ms)
+Ô£ö satirCoz canl─▒ sonucu okur, timeoutÔÇÖu ay─▒r─▒r (0.5449ms)
+(node:19232) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö toplay─▒c─▒ kap─▒s─▒ anime/├ğizgi film t├╝rlerini ge├ğirir (0.7503ms)
+Ô£ö anime t├╝r├╝ dizi havuzunu kapsar (0.335ms)
+Ô£ö series/cizgi film e┼şlemeleri korunur (0.1947ms)
+Ô£ö anime taramas─▒ bo┼ş d├Ânmez: animeye ├Âzel ├ğekirdekler listede (9.7178ms)
+Ô£ö anime etiketli ├ğekirdekler turlerinde anime ta┼ş─▒r (0.2966ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+Ô£ö etiketsiz kaynak "diger" say─▒l─▒r, kaliteli filtreye girmez ama korunur (2.1266ms)
+Ô£ö 4k > 1080 > 720 kalite s─▒ras─▒ (hepsi filtresi) (1.0134ms)
+Ô£ö filtre "1080" = 1080p+ (1080 ve 4k; 720/diger elenir) (0.2603ms)
+Ô£ö bo┼ş sonu├ğ i┼şareti: filtre 0 kaynak ÔåÆ bosMu true, liste bo┼ş (0.1633ms)
+Ô£ö normalize: eski "1080p" string'i ve di─şer tercih bi├ğimleri (0.1844ms)
+Ô£ö saya├ğlar t├╝m girdinin seviyelerini sayar (0.2335ms)
+Ô£ö bozuk girdi tolerans─▒: null/non-array ve null kaynaklar ├ğ├Âkmez (0.2354ms)
+Ô£ö tercih yuvarlamas─▒: "720" ÔåÆ "720+" filtresi 480p kaynak ─░├çERMEZ (0.1833ms)
+Ô£ö tercih parametresi filtre yoksa/g├ğersizse kullan─▒l─▒r (0.3017ms)
+Ô£ö TUR_RAF: slug/tan─▒m tutarl─▒, her raf─▒n en az bir TMDB t├╝r├╝ var (1.2952ms)
+Ô£ö tercihGecerli: t├╝rleri normalize eder, tekrar─▒ atar, kimlikleri toplar (0.7346ms)
+Ô£ö tercihGecerli: hi├ğ se├ğim yoksa null (bo┼ş kay─▒t yaz─▒lmaz) (0.1632ms)
+Ô£ö tercihYaz/tercihOku: gidi┼ş-d├Ân├╝┼ş; s├╝r├╝m uyu┼şmazsa null (0.5589ms)
+Ô£ö turSorgusu: ├ğoklu t├╝rde OR (|) ├╝retir ÔÇö virg├╝l AND oldu─şu i├ğin bo┼ş havuz yap─▒yordu (0.1688ms)
+Ô£ö tercihYaz: ge├ğersiz tercih depoya yaz─▒lmaz (0.1012ms)
+Ô£ö havuzBirlestir: tekille┼ştirir, g├Ârselsiz kayd─▒ atar, harici eler, s─▒ray─▒ korur (0.2831ms)
+Ô£ö havuzBirlestir: enFazla s─▒n─▒r─▒na uyar (0.2024ms)
+Ô£ö terciheGoreSirala: se├ğilen t├╝rler ├Âne, di─şerleri arkaya (s─▒ra korunur) (0.3863ms)
+Ô£ö so─şuk ba┼şlang─▒├ğ: tercih havuzundan program kurulur (sinyal yok) (2.6442ms)
+Ô£ö so─şuk ba┼şlang─▒├ğ: 48 slota kadar program ├╝retilebiliyor (ba┼şl─▒k say─▒s─▒ artt─▒) (1.5246ms)
+Ô£ö so─şuk ba┼şlang─▒├ğ: bo┼ş havuzda program uydurulmaz (0.2198ms)
+(node:7568) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö kapiFetch: taray─▒c─▒ CORS reddinde ayn─▒-k├Âken ba┼şl─▒k proxyÔÇÖsiyle tekrar dener (2.6808ms)
+Ô£ö kapiFetch: do─şrudan istek ge├ğerse ikinci istek YAPILMAZ (├ğift trafik yok) (0.7082ms)
+Ô£ö kapiFetch: g├Âreli/proxy adresi yeniden sarmalanmaz (0.3388ms)
+Ô£ö m3u8 g├Âvdesi olan kaynak ÔåÆ ok:true, par├ğa ve s├╝re do─şru hesaplan─▒r (2.6249ms)
+Ô£ö master playlist ÔåÆ ilk varyan ├ğ├Âz├╝l├╝r, s├╝re varyandan hesaplan─▒r (2 istek) (1.8762ms)
+Ô£ö canl─▒ playlist (ENDLIST yok) s├╝re uydurmaz ÔÇö kan─▒ts─▒z s├╝re eleme sebebi olamaz (0.435ms)
+Ô£ö http 429 ÔåÆ ok:false http-429 ve belirsiz (rate-limit ├Âl├╝m de─şildir) (0.3758ms)
+Ô£ö HTML g├Âvde ÔåÆ ok:false govde-tanimasiz (oynat─▒c─▒ m3u8 beklerken sayfa al─▒r) (0.4855ms)
+Ô£ö bo┼ş g├Âvde ÔåÆ ├Âl├╝ (0.4088ms)
+Ô£ö video/mp4 i├ğerik tipi ÔåÆ g├Âvde okunmadan ok:true (0.2958ms)
+Ô£ö beklenen s├╝re 49 dk, kaynak 31 dk ÔåÆ ok:false s├╝re-sapmasi (yanl─▒┼ş b├Âl├╝m elenir) (0.7938ms)
+Ô£ö beklenen s├╝re tolerans i├ğinde ÔåÆ ok:true (ayn─▒ b├Âl├╝m 49,4 dk) (0.8086ms)
+Ô£ö zaman a┼ş─▒m─▒ ÔåÆ ok:false zaman-asimi, throw YOK (153.2722ms)
+Ô£ö embed "akis" d├Ânerse i├ğ ak─▒┼ş do─şrulan─▒r ÔåÆ ok:true gomulu-akis (1.3529ms)
+Ô£ö embed "olu" d├Ânerse ÔåÆ ok:false (├Âl├╝) (0.1791ms)
+Ô£ö embed "cozulemedi" d├Ânerse ÔåÆ belirsiz (liste sonunda kal─▒r, silinmez) (0.1326ms)
+Ô£ö embed ak─▒┼ş─▒ bulundu ama i├ğ adres do─şrulanamazsa ÔåÆ belirsiz (├Âl├╝ ilan edilmez) (0.2318ms)
+Ô£ö embed ├ğ├Âz├╝c├╝ YOKKEN g├Âm├╝l├╝ adres ├Âl├╝ ilan edilmez ÔåÆ belirsiz (3.9294ms)
+Ô£ö embed ├ğ├Âz├╝c├╝ f─▒rlat─▒rsa kap─▒ ├ğ├Âkmez ÔåÆ belirsiz (0.2198ms)
+Ô£ö ba┼şl─▒ks─▒z 403 ÔåÆ ba┼şl─▒kla (Origin/Referer) tekrar dener ve ok:true olur (0.3877ms)
+Ô£ö ba┼şl─▒kla a├ğ─▒lan sat─▒r i┼şaretlenir (baslikTuretildi) ve ba┼şl─▒klar─▒ kayna─şa yaz─▒l─▒r (0.3074ms)
+Ô£ö kayna─ş─▒n kendi ba┼şl─▒─ş─▒ yeterse i┼şaret KONMAZ (yaln─▒z t├╝rev ba┼şl─▒k i┼şaretlenir) (0.1482ms)
+Ô£ö kayna─ş─▒n KEND─░ ba┼şl─▒klar─▒ ilk denemede gider (Referer/Origin ezilmez) (0.1856ms)
+Ô£ö ba┼şl─▒klarla da 403 ÔåÆ ├Âl├╝ (olum kan─▒t─▒ yok) (0.1093ms)
+Ô£ö 5xx ÔåÆ ├Âl├╝ (sunucu kal─▒c─▒ hata veriyor) (0.1426ms)
+Ô£ö kaynak.headers embedCoz se├ğeneklerine ta┼ş─▒n─▒r (0.2692ms)
+Ô£ö g├Âm├╝l├╝ i┼şaretli sat─▒r ÔåÆ sayfa ├ğ├Âz├╝l├╝r, ak─▒┼ş kayna─şa YAZILIR, Origin/Referer sayfaya gider (0.4693ms)
+Ô£ö g├Âm├╝l├╝ ├ğ├Âz├╝l├╝r, ak─▒┼ş BA┼ŞKA originÔÇÖde AMA ge├ğerli m3u8 ÔåÆ kabul (dizisolÔåÆCDN kan─▒t─▒) (0.2196ms)
+Ô£ö g├Âm├╝l├╝ ├ğ├Âz├╝l├╝r, ak─▒┼ş BA┼ŞKA originÔÇÖde VE kan─▒t yok ÔåÆ belirsiz (uydurma e┼şle┼şme kabul edilmez) (0.1216ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+Ô£ö g├Âm├╝l├╝ sayfa fetchÔÇÖi zaman a┼ş─▒m─▒na d├╝┼şerse ÔåÆ belirsiz (├Âl├╝ de─şil) (261.9453ms)
+Ô£ö g├Âm├╝l├╝ ├ğ├Âz├╝lemeyen sat─▒r aggregatorÔÇÖda listeye KONMAZ (dogrulanmadi) (1.3241ms)
+Ô£ö kar─▒┼ş─▒k 6 kaynak ÔåÆ oynatilir/belirsiz/olu kutular─▒ do─şru (3.7994ms)
+Ô£ö dogrulanmislariAyir e┼şzamanl─▒l─▒─ş─▒ 6 ile s─▒n─▒rlar (42.2486ms)
+Ô£ö b├╝t├ğe bitince kalanlar belirsiz olur (├Âl├╝ ilan edilmez) (311.8556ms)
+Ô£ö bo┼ş/bozuk girdi kap─▒y─▒ ├ğ├Âkertmez (0.3158ms)
+Ô£ö fail-open: korunan yoksa elenenler geri gelir (liste bo┼ş d├Ânmez) (0.2066ms)
+Ô£ö fail-open: do─şrulanm─▒┼ş kaynak varsa ├Âl├╝ler listeye geri gelmez (0.0987ms)
+Ô£ö providerAggregator: kap─▒ ba─şl─▒, ├Âl├╝ler listeye girmiyor, fail-open uyar─▒s─▒ var (1.0838ms)
+Ô£ö providerAggregator: kademeli ak─▒┼ş korunuyor (k─▒sa dizi + kahraman ayn─▒ anda) (0.7918ms)
+Ô£ö providerAggregator: t├╝rev-ba┼şl─▒kla a├ğ─▒lan sat─▒r yaln─▒z webde ba┼şl─▒k proxy-sine sar─▒l─▒r (0.6319ms)
+Ô£ö providerAggregator: ba┼şl─▒k yetene─şi native/masa├╝st├╝nde true, webde false (0.3125ms)
+Ô£ö kapiAnahtari: proxy sarmal─▒n─▒ ├ğ├Âzer, token-atar ayn─▒ kayna─ş─▒ birle┼ştirir (1.8082ms)
+Ô£ö sicil: ├Âl├╝ kan─▒t─▒ 7 g├╝n boyunca listelenmez; s─▒f─▒rlama ├ğal─▒┼ş─▒r (0.3709ms)
+Ô£ö denetle: #EXTM3U 200 ÔåÆ canli (0.5414ms)
+Ô£ö denetle: 404/410 ÔåÆ olu; proxy 403 ÔåÆ olu (ba┼şl─▒k ta┼ş─▒narak denendi) (2.016ms)
+Ô£ö denetle: 5xx ve a─ş hatas─▒ BEL─░RS─░Zdir ÔÇö ├Âl├ğ├╝lemeyen ├Âld├╝r├╝lmez (0.333ms)
+Ô£ö denetle: 200 d├Ânen HTML/JSON ├ğ├Âp├╝ ÔåÆ olu (oynat─▒c─▒ya HTML gidecek sat─▒r) (0.3354ms)
+[ContinueWatching] Generated list: 1 items [ 'S├╝reklilik Dizisi S2E3 completed:false' ]
+(node:10880) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö saveWatchProgress preferredSource alan─▒n─▒ kayda yazar ve geri okur (2.0928ms)
+Ô£ö ilerleme g├╝ncellemesi kaynak tercihini silmez (kay─▒t ...rest ile korunur) (0.3925ms)
+Ô£ö "─░zlemeye devam et" listesi kaynak tercihini ta┼ş─▒r (1.1071ms)
+Ô£ö PlayerModal: preferredSource opsiyonu ve izleme kayd─▒ndan t├╝retme (0.2263ms)
+Ô£ö PlayerModal: ke┼şif ilk kaynak yerine ├Ânce tercihli aileyi ba┼şlat─▒r (0.6343ms)
+Ô£ö PlayerModal: b├Âl├╝m ge├ği┼şi son kayna─ş─▒ ta┼ş─▒r (yan liste = k─▒sayol davran─▒┼ş─▒) (0.2617ms)
+Ô£ö PlayerModal: k─▒sa dizi b├Âl├╝m ge├ği┼şi ke┼şif yerine yeniden a├ğma yolundan gider (0.387ms)
+Ô£ö PlayerModal: k─▒sa dizide kapan─▒┼ş b├Âl├╝ml├╝ detay sayfas─▒na y├Ânlendirir (0.8591ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+[yerli-nuvio] kod okunamad─▒: providers/popwatch.js XMLHttpRequest is not defined
+[yerli-nuvio] kod okunamad─▒: providers/vidbolt.js XMLHttpRequest is not defined
+[yerli-nuvio] kod okunamad─▒: providers/popwatch.js XMLHttpRequest is not defined
+[yerli-nuvio] kod okunamad─▒: providers/vidbolt.js XMLHttpRequest is not defined
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/popwatch.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/vidbolt.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/popwatch.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/vidbolt.js
+[yerli-nuvio] PopWatch: nuvio: 502 /nuvio-builtin/providers/popwatch.js
+[yerli-nuvio] VidBolt: nuvio: 502 /nuvio-builtin/providers/vidbolt.js
+[yerli-nuvio] PopWatch: nuvio: 502 /nuvio-builtin/providers/popwatch.js
+[yerli-nuvio] VidBolt: nuvio: 502 /nuvio-builtin/providers/vidbolt.js
+Ô£ö baslat: detay a├ğ─▒l─▒┼ş─▒nda ko┼şulsuz ├ğal─▒┼ş─▒r; ikinci ├ğa─şr─▒ at─▒l─▒r (tek tarama) (29.1049ms)
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/popwatch.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/vidbolt.js
+[yerli-nuvio] PopWatch: nuvio: 502 /nuvio-builtin/providers/popwatch.js
+[yerli-nuvio] VidBolt: nuvio: 502 /nuvio-builtin/providers/vidbolt.js
+Ô£ö canli serit: "N kaynak bulundu ┬À X sa─şlay─▒c─▒ tamamland─▒ ┬À taran─▒yorÔÇĞ" (22.3574ms)
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/popwatch.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/vidbolt.js
+[yerli-nuvio] PopWatch: nuvio: 502 /nuvio-builtin/providers/popwatch.js
+[yerli-nuvio] VidBolt: nuvio: 502 /nuvio-builtin/providers/vidbolt.js
+Ô£ö kaynak yok ve cekirdekYok: d├╝r├╝st neden + rehber (30.9568ms)
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/popwatch.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/vidbolt.js
+[yerli-nuvio] PopWatch: nuvio: 502 /nuvio-builtin/providers/popwatch.js
+[yerli-nuvio] VidBolt: nuvio: 502 /nuvio-builtin/providers/vidbolt.js
+Ô£ö kaynak yok ve saglayiciHatasi: say─▒ g├Âsterilir, isim gizli (31.9786ms)
+Ô£ö kaynak yok ve her ┼şey bo┼ş: varsay─▒lan d├╝r├╝st sat─▒r + rehber (31.0044ms)
+Ô£ö DetailView: kaynak paneli kald─▒r─▒ld─▒ ÔÇö oynat─▒c─▒ DO─ŞRUDAN a├ğ─▒l─▒r (2026-11-14) (1.1732ms)
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/popwatch.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/vidbolt.js
+[yerli-nuvio] PopWatch: nuvio: 502 /nuvio-builtin/providers/popwatch.js
+[yerli-nuvio] VidBolt: nuvio: 502 /nuvio-builtin/providers/vidbolt.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/popwatch.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/vidbolt.js
+[yerli-nuvio] PopWatch: nuvio: 502 /nuvio-builtin/providers/popwatch.js
+[yerli-nuvio] VidBolt: nuvio: 502 /nuvio-builtin/providers/vidbolt.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/popwatch.js
+[vekil] k├Âpr├╝ beklenmeyen hata ÔÇö Failed to parse URL from /nuvio-builtin/providers/vidbolt.js
+[yerli-nuvio] PopWatch: nuvio: 502 /nuvio-builtin/providers/popwatch.js
+[yerli-nuvio] VidBolt: nuvio: 502 /nuvio-builtin/providers/vidbolt.js
+Ô£ö MLP trains deterministically on observed labels and improves ranking (49.5411ms)
+Ô£ö sequence CNN learns a finite next-genre signal and validates its saved shape (12.5448ms)
+Ô£ö completed and favorite recommendation surfaces have distinct feature columns (0.8517ms)
+Ô£ö baglamKur tam ge├ğmi┼şi ve tamamlananlar─▒ g├Âr├╝r (2.0458ms)
+Ô£ö zevkOncelligi: tamamlanan(3x) favori(2x) liste(1x) a─ş─▒rl─▒kland─▒r─▒r (0.3433ms)
+Ô£ö model yokken bile aday s─▒ras─▒ zevk profiline kayar (1.6352ms)
+Ô£ö favori/liste yap─▒t─▒ k├╝├ğ├╝k bonusla y├╝kselir (0.2702ms)
+Ô£ö sinyal yoksa s─▒ra pop├╝lerlik sigortas─▒na d├╝┼şer (bozuk de─şil) (0.5916ms)
+Ô£ö b64Kaydir bilinen vekt├Ârler (4.3659ms)
+Ô£ö paketCoz paket a├ğar (0.4365ms)
+Ô£ö sifreCoz d├╝z m3u8 ve master.txt d├Ân├╝┼ş├╝m├╝ (0.9915ms)
+Ô£ö Be ┼şemas─▒ gidi┼ş-d├Ân├╝┼ş: sifreCoz sources:[{file:V}] yolundan adresi geri verir (0.922ms)
+Ô£ö Be ┼şemas─▒: ops varyantlar─▒ (7 tek ba┼ş─▒na, 3 yok) (0.1603ms)
+Ô£ö dn ┼şemas─▒ gidi┼ş-d├Ân├╝┼ş: script metninden adres geri gelir (0.3379ms)
+[kayit] aria anahtar─▒ iste─şi ba┼şar─▒s─▒z ÔÇö testte a─ş kapal─▒
+[vekil] yerel/rota k├Âpr├╝s├╝ ba┼şar─▒s─▒z ÔÇö Failed to fetch
+[vekil] yerel/rota k├Âpr├╝s├╝ HTTP 500 ÔÇö sonraki katman
+[vekil] genel proxy HTTP 502 ÔÇö sonraki katman
+[vekil] yerel/rota k├Âpr├╝s├╝ ba┼şar─▒s─▒z ÔÇö Failed to fetch
+[vekil] yerel/rota k├Âpr├╝s├╝ ba┼şar─▒s─▒z ÔÇö Failed to fetch
+[vekil] genel proxy HTTP 503 ÔÇö sonraki katman
+[vekil] CF worker ba┼şar─▒s─▒z ÔÇö Failed to fetch
+[vekil] yerel/rota k├Âpr├╝s├╝ ba┼şar─▒s─▒z ÔÇö Failed to fetch
+(node:18892) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö zaman a┼ş─▒m─▒ sabitleri makul (katman ~9 sn, toplam ~20 sn) (0.7109ms)
+Ô£ö 1. katman (yerel k├Âpr├╝) a─ş hatas─▒ ÔåÆ 3. katman (genel proxy) yan─▒t─▒ d├Âner (29.5886ms)
+Ô£ö 3. katman 500 ÔåÆ 4. katman (CF worker) denenir ve onun yan─▒t─▒ d├Âner (1.1442ms)
+Ô£ö 3. katman 403 ÔåÆ 4. KATMAN DENENMEZ, yan─▒t oldu─şu gibi d├Âner (0.6539ms)
+Ô£ö t├╝m katmanlar ba┼şar─▒s─▒z ÔåÆ throw YOK, bo┼ş/hata yan─▒t─▒ d├Âner (0.9157ms)
+Ô£ö cihaz k├Âpr├╝s├╝ sa─şl─▒kl─▒yken genel proxy/CF katmanlar─▒ H─░├ç denenmez (davran─▒┼ş ayn─▒) (0.4066ms)
+Ô£ö d├╝z taray─▒c─▒da 1. katman a─ş hatas─▒ ÔåÆ do─şrudan fetch (2) denenir (0.5668ms)
+Ô£ö ├Âzyineleme korumas─▒: /api/proxy adresi tekrar k├Âpr├╝ye girse de d├Âng├╝ YOK (0.5783ms)
+Ô£ö a failed stopLoad still detaches and destroys the previous player (1.3907ms)
+Ô£ö every embedded player and TS engine is removed on a channel switch (0.2504ms)
+refreshLiveSources: 421ms
+  kaynaklar: kral=1828
+probe s─▒ras─▒   : kral
+varsay─▒lan    : kral
+kal─▒c─▒ se├ğim  : kral
+ikinci ├ğa─şr─▒    : 145ms (onbellek)
+  ayn─▒ kanal say─▒s─▒: 1828
+
+--- montaj sonucu ---
+kanal          : 294
+benzersiz id   : true
+yede─şi olan    : 96
+localStorage   : 297260 bayt
+bozuk kategori : 0 []
+bozuk id       : 0
+eksik alan     : 0
+temizlik sonras─▒: 0 anahtar
+
+TAMAM
+Ô£ö tests\liveClient.test.mjs (917.5155ms)
+denetim: 5223ms | 48 kanal denendi
+├ğal─▒┼şan: 19  ├Âl├╝: 29
+
+├ğal─▒┼şan ilk 10: 191.41/A2-HD-TR/video.m3u8
+              byo/aspor/aspor_1080p.m3u8
+              guturk/benguturk_720p.m3u8
+              t/ekoltv/ekoltv_1080p.m3u8
+              LIVE/eurodnp/playlist.m3u8
+              aber/flashhaber_1080p.m3u8
+              berglobal/haberglobal.m3u8
+              bahcetv.smil/playlist.m3u8
+              95b-bb37-778e91f5ff5b&ce=2
+              0cc-495b-bb37-778e91f5ff5b
+
+denetimden sonra ├╝st s─▒ra:
+  ilk 5 : A SPOR | A2 | BENGU TURK | Ekol TV | EURO D
+  ilk 48 sonras─▒: BABY TV | BABYF─░RST TV | BBC EARTH | BEIN BOX OFFICE 1 | BEIN BOX OFFICE 2
+  ├╝st 48 i├ğinde kan─▒tlanm─▒┼ş ├Âl├╝: 0
+  ├╝st 48 i├ğinde kan─▒tlanm─▒┼ş ├ğal─▒┼şan: 48
+  kal─▒c─▒ ├Âl├╝ listesi: 29 kay─▒t (1984 bayt)
+
+TAMAM
+Ô£ö tests\liveHealth.test.mjs (5843.9586ms)
+kaynaklar      : kral(1828) + turhan(35) + izlego(230)
+├╝retilen kanal : 295
+benzersiz id   : 295
+isTs=true olan : 199
+UA ta┼ş─▒yan     : 18
+Origin ta┼ş─▒yan : 3
+oynatma yolu   : {"hls.js":96,"mpegts.js":199}
+bozuk kanal    : 0
+kategoriler    : {"news":30,"sports":71,"national":134,"doc":20,"kids":24,"music":16}
+EPG uyumlu     : true
+ge├ğersiz id    : 0
+
+--- ├Ârnekler ---
+ A Haber [news] ts=hls.js
+   /api/hls_proxy?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftecotv2025%2Ftecotv%2Fmain%2Fplaylist%2FA_haber.m3u8&ref=https%3A%2F%
+ A SPOR [sports] ts=hls.js
+   /api/hls_proxy?url=http%3A%2F%2Frnttwmjcin.turknet.ercdn.net%2Flcpmvefbyo%2Faspor%2Faspor_1080p.m3u8&ref=http%3A%2F%2Frnttwmjcin.t
+ A2 [national] ts=hls.js
+   /api/hls_proxy?url=http%3A%2F%2F89.187.191.41%2FA2-HD-TR%2Fvideo.m3u8&ref=http%3A%2F%2F89.187.191.41%2F&live=1
+ UA kanal─▒: S SPORT HD 1
+   /api/hls_proxy?url=https%3A%2F%2Fandro.evrenesoglu57.click%2Fchecklist%2Fandrostreamlivess1.m3u8&ref=https%3A%2F%2Fandro.evrenesoglu57.click%2F&live=1&ua=Dalvik%2F2.1.0%20(Linux%3B%20U%3B%20
+
+yedek adresi olan kanal : 109 / 295
+toplam yedek adres      : 220
+HLS/TS karisimi (yedek farkli yol): 56
+ornek: A Haber -> 3 yedek, ilk yedek ts=false
+Ô£ö tests\livePipeline.test.mjs (323.1999ms)
+Ô£ö ├╝lke ├Âneki ekranda g├Âr├╝nmez; ayn─▒ kanal─▒n kopyalar─▒ tek kayda iner (4.265ms)
+Ô£ö HLS k├Ârlemesine ana yay─▒na Y├£KSELT─░LMEZ (404 ayna vakas─▒) (0.4359ms)
+Ô£ö kalite eki ├╝lke ekini gizleyemez: "TRT1 TR HD" = "TRT 1" (apk41 hatas─▒) (0.2823ms)
+Ô£ö yaln─▒z TS yay─▒nlayan pop├╝ler kanal (DMAX/TLC/Discovery) listede KALIR (9.4264ms)
+Ô£ö yabanc─▒ (Alman vb.) ├Ânekli kanallar listeye giremez (0.3548ms)
+Ô£ö marka e┼şle┼şmesi T├╝rk├ğe/ASCII yaz─▒m fark─▒na duyars─▒zd─▒r (0.4091ms)
+Ô£ö HLS destekli kanal, ayn─▒ katmanda TS-only kanal─▒n ├Ân├╝ne ge├ğer (0.2647ms)
+Ô£ö yerel ┼şehir kanal─▒ listelenir ve s─▒radan kategori kanal─▒ndan ├Ânce gelir (11.8699ms)
+Ô£ö kota uygulan─▒r: 300den fazlas─▒ listelenmez (50.7205ms)
+Ô£ö "X" ile "X TV" yaz─▒m─▒ ayn─▒ kanald─▒r (cihaz: "A2" + "A2 TV" yan yana) (1.6811ms)
+Ô£ö kategori, genel grup yerine kanal ADINDAN belirlenir (kullan─▒c─▒: kategorilerde yok) (1.4478ms)
+Ô£ö belgesel/m├╝zik kanallar─▒, ulusal kalabal─▒k i├ğinde kotaya tak─▒l─▒p kaybolmaz (27.1819ms)
+Ô£ö radyo istasyonlar─▒ TV ─▒zgaras─▒na girmez (cihaz: EFKAR FM / RADYO TATLISES) (0.2027ms)
+Ô£ö ├ğ├Âp kay─▒tlar (adresiz / tekr├ór ayn─▒ adres) havuza giremez (0.1545ms)
+Ô£ö inject-desktop-hashes: ├Âzetler do─şru yaz─▒l─▒r, varl─▒k olmayan alan dokunulmaz (0.9766ms)
+Ô£ö masa├╝st├╝ k├Âpr├╝s├╝ mobil k├Âpr├╝yle AYNI tabloyu okur (3.0339ms)
+Ô£ö g├Âreli /api/<kod>/... yolunu tablodan ├ğ├Âzer (sorgu korunur) (0.3546ms)
+Ô£ö yerel u├ğlar ve bilinmeyen kodlar k├Âpr├╝ye tak─▒lmaz (0.1248ms)
+Ô£ö ba┼şl─▒klar: tablo Referer/Origin + UA ta┼ş─▒n─▒r, ta┼ş─▒y─▒c─▒ ba┼şl─▒klar engellenir (0.2358ms)
+Ô£ö mirror: birincil a─ş hatas─▒ ÔåÆ ikinci aday ├ğal─▒┼ş─▒r, index bildirilir (0.4599ms)
+Ô£ö t├╝m adaylar d├╝┼şerse cevap null + hata d├Âner (sessiz 200 yok) (0.1915ms)
+Ô£ö 5xx yan─▒t─▒ sonraki adaya ge├ğirir (0.1668ms)
+Ô£ö afi┼şin ├╝st├╝nde ba┼şl─▒k YOK: tipografik ba┼şl─▒k-kart─▒ kald─▒r─▒ld─▒ (2.2547ms)
+Ô£ö afi┼ş TEM─░Z (v2): ne ba┼şl─▒k ne logo ne meta metni afi┼şin ├╝st├╝nde (0.4281ms)
+Ô£ö bilgi ┼şeridi (v2): logo + ba┼şl─▒k + t├╝r ÔÇó y─▒l afi┼şin ALTINDA (0.8576ms)
+Ô£ö kartta izleme ve i├ğerik sayfas─▒ se├ğenekleri vard─▒r (0.5815ms)
+Ô£ö dokunmatikte iki kart aksiyonu g├Âr├╝n├╝r, masa├╝st├╝nde hover ve klavye oda─ş─▒yla a├ğ─▒l─▒r (2.2239ms)
+Ô£ö k─▒sa dizi kart─▒ iki aksiyonu da tan─▒mlar ve dokunmatikte g├Âsterir (1.1717ms)
+Ô£ö afi┼şin ├╝st├╝nde i├ğerik LOGOSU da YOK (logo bilgi ┼şeridinde) (0.3077ms)
+Ô£ö ba┼şl─▒k kart─▒n ALTINDA duruyor (eri┼şilebilirlik + bulunabilirlik) (0.4617ms)
+Ô£ö kart bilgi ┼şeridi (v3): y─▒l + izleme durumu + puan afi┼şin ALTINDA g├Âr├╝n├╝r (3.0459ms)
+Ô£ö ├Âl├╝ CSS b─▒rak─▒lmad─▒: ba┼şl─▒k-kart─▒ ve sinematik ba┼şl─▒k kurallar─▒ silindi (4.4604ms)
+Ô£ö hero ├Âzel tasar─▒ml─▒ ba┼şl─▒─ş─▒ kullanabiliyor (logo + yazi yede─şi) (0.5563ms)
+Ô£ö BPR: ayn─▒ zevk k├╝mesindeki G├ûR├£LMEM─░┼Ş i├ğerikleri ├╝st s─▒raya ├ğ─▒kar─▒r (recall@6) (20.7547ms)
+Ô£ö BPR: JSON gidi┼ş-d├Ân├╝┼ş├╝ skorlar─▒ korur; bozuk ┼şekil reddedilir (1.4196ms)
+Ô£ö S─▒ralay─▒c─▒: e─şitim kayb─▒ d├╝┼şer, zaman ayr─▒k test AUC ÔëÑ 0.65 (41.2391ms)
+Ô£ö S─▒ralay─▒c─▒: ayn─▒ tohum ÔåÆ ayn─▒ a─ş─▒rl─▒klar (deterministik) (14.676ms)
+Ô£ö ├ûzellik vekt├Âr├╝: boyut sabit ve t├╝r s├╝tunlar─▒ do─şru yerde (0.3606ms)
+Ô£ö sirala(): model, pop├╝lerlik s─▒ras─▒ndan daha ├ğok sevilen t├╝r getirir (166.7362ms)
+Ô£ö sirala(): model yoksa s─▒ralama d├╝r├╝st├ğe pop├╝lerli─şe d├╝┼şer (0.7577ms)
+Ô£ö modelKaydet/modelYukle: ┼şema s├╝r├╝m├╝ uyu┼şmazsa null (4.7341ms)
+Ô£ö egitimGerekliMi: yeni izlenim e┼şi─şi ve s├╝re kural─▒ (0.3815ms)
+Ô£ö izlenimler: ayn─▒ g├╝n tekrar g├Âsterim say─▒lmaz, t─▒klama i┼şaretlenir (0.8885ms)
+Ô£ö kanalAgirlikFonksiyonu: model yoksa null, varsa 0.55..2.2 aral─▒─ş─▒nda ├ğarpan (74.5393ms)
+Ô£ö etkilesimlerKur: tekille┼ştirir ve a─ş─▒rl─▒k s─▒ras─▒ do─şru (0.285ms)
+Ô£ö ozellikEtiketi: t├╝r s├╝tunlar─▒ okunabilir T├╝rk├ğe gerek├ğeye ├ğevrilir (0.1362ms)
+Ô£ö urunBenzerligi: birlikte izlenen i├ğerikler benzer, ilgisizler s─▒f─▒r (0.578ms)
+Ô£ö MIN_SIRALAYICI_ORNEK e┼şi─şi g├Âr├╝n├╝mle ayn─▒ (24) (0.0908ms)
+SKIP mobile-performance: playwright kurulu de─şil (pnpm add -D playwright && npx playwright install chromium)
+Ô£ö tests\mobile-performance.test.mjs (77.5147ms)
+Ô£ö sadelestir: T├╝rk├ğe karakterleri ASCII yapar (1.1884ms)
+Ô£ö htmlCoz: yayg─▒n varl─▒klar─▒ ├ğ├Âzer (0.5901ms)
+Ô£ö yilCikar / imdbCikar (0.3906ms)
+Ô£ö baslikBenzerligi: tam ve k─▒smi e┼şle┼şme (0.5761ms)
+Ô£ö dublajBeyani: dublaj > altyaz─▒ > orijinal ├Ânceli─şi (1.3161ms)
+Ô£ö dublajBeyani: etiket kan─▒t─▒ olarak i┼şaretlenir, medya kan─▒t─▒ DE─Ş─░L (0.1605ms)
+Ô£ö hdfcAra: JSON kartlar─▒n─▒ ayr─▒┼şt─▒r─▒r (1.6356ms)
+Ô£ö hdfcAra: bo┼ş sorguda a─şa ├çIKMAZ (0.2097ms)
+Ô£ö hdfcAra: HTTP hatas─▒nda bo┼ş liste, f─▒rlatma yok (0.254ms)
+Ô£ö hdfcAra: a─ş istisnas─▒ yukar─▒ s─▒zmaz (0.7627ms)
+Ô£ö rpcAdayaCevir: object_language do─şrudan beyand─▒r (0.4698ms)
+Ô£ö rpcAdayaCevir: altyaz─▒l─▒ yay─▒n dublaj say─▒lmaz (0.2131ms)
+Ô£ö rpcAra: ├ğal─▒┼şan action ad─▒n─▒ bulur ve d├Ând├╝r├╝r (0.5433ms)
+Ô£ö rpcAra: ilk action 403 ise s─▒radakini dener (0.5077ms)
+Ô£ö rpcAra: hat─▒rlanan action ilk s─▒rada denenir (0.1831ms)
+Ô£ö filmmakinesiAra: Dual rozeti dublaj, Altyaz─▒ rozeti altyaz─▒ (0.7975ms)
+Ô£ö filmmakinesiAra: taray─▒c─▒ ba┼şl─▒klar─▒ g├Ânderilir (403 savunmas─▒) (0.2915ms)
+Ô£ö toplaHepsi: bir kaynak d├╝┼şse de di─şerleri devam eder (1.5411ms)
+Ô£ö toplaHepsi: T├£M kaynaklar d├╝┼şse bile f─▒rlatmaz (1.4105ms)
+Ô£ö toplaHepsi: kaynak se├ğimi daralt─▒labilir (0.5164ms)
+Ô£ö eslestir: IMDb e┼şle┼şmesi tam puan al─▒r (0.2835ms)
+Ô£ö eslestir: T├╝rk├ğe ba┼şl─▒k benzerli─şi ile e┼şle┼şir (0.2033ms)
+Ô£ö eslestir: uzak y─▒l cezaland─▒r─▒l─▒r (0.0952ms)
+Ô£ö eslestir: t├╝r uyu┼şmazl─▒─ş─▒ ceza al─▒r (0.0745ms)
+Ô£ö icerikAnahtari: film ve dizi bi├ğimi, gidi┼ş-d├Ân├╝┼ş (0.1798ms)
+Ô£ö kanitIsle: etiketle yaz─▒lan dublaj iddias─▒ 'bilinmiyor'a d├╝┼şer (0.3457ms)
+Ô£ö kanitIsle: m3u8 kan─▒t─▒yla dublaj yaz─▒l─▒r (0.2195ms)
+Ô£ö kanitIsle: ayn─▒ anahtar iki kez yaz─▒l─▒rsa tek kay─▒t kal─▒r (0.1551ms)
+Ô£ö kanitIsle: daha zay─▒f kan─▒t g├╝├ğl├╝y├╝ EZMEZ (0.1242ms)
+Ô£ö kanitIsle: ge├ğersiz durum/kan─▒t normalize edilir (0.0985ms)
+Ô£ö kanitIsle: sa─şlay─▒c─▒ veya kimlik yoksa yazmaz (0.1363ms)
+Ô£ö saglayiciOnseli: kan─▒t yoksa ├Ânsel 0 (0.1773ms)
+Ô£ö saglayiciOnseli: 3 dublaj kan─▒t─▒ g├╝veni 1 yapar (0.1803ms)
+Ô£ö saglayiciOnseli: altyaz─▒l─▒ yay─▒n yar─▒m puan, orijinal s─▒f─▒r (0.1386ms)
+Ô£ö saglayiciOnseli: bilinmiyor paydaya girmez (0.1088ms)
+Ô£ö saglayiciOnseli: ayn─▒ i├ğerik yeniden ├Âl├ğ├╝l├╝nce say─▒lmaz (┼şi┼şme yok) (0.1588ms)
+Ô£ö tazelik: yar─▒lanma ├Âmr├╝ do─şru (0.1464ms)
+Ô£ö basariOrani: Laplace d├╝zeltmesi (0.14ms)
+Ô£ö kaynakPuani: TR dublaj kan─▒tl─▒ kaynak ├Âne ge├ğer (0.3352ms)
+Ô£ö sicileGoreSirala: dublajl─▒ kayna─ş─▒ ba┼şa al─▒r, KAL─░TE s─▒ras─▒ kademe i├ğinde korunur (0.3134ms)
+Ô£ö sicileGoreSirala: KAL─░TE s─▒ras─▒ bozulmaz (├Âl├ğ├╝len kusur) (0.1596ms)
+Ô£ö sicileGoreSirala: ├Âzg├╝n dil kan─▒tl─▒ kaynak SONA at─▒l─▒r (0.1398ms)
+Ô£ö sicileGoreSirala: ESK─░ kan─▒t kademe belirlemez (yanl─▒┼ş tarafa itmez) (1.3619ms)
+Ô£ö sicileGoreSirala: tek/bo┼ş listede g├╝venli (0.158ms)
+Ô£ö taramaSirasi: kan─▒tl─▒ sa─şlay─▒c─▒ ├Âne, kan─▒ts─▒z n├Âtr (0.295ms)
+Ô£ö sicilIpucu: do─şrudan kan─▒tl─▒ sa─şlay─▒c─▒y─▒ ├Âne ├ğ─▒kar─▒r (0.3371ms)
+Ô£ö oynatmaBasarisiz: ├╝st ├╝ste hata kayna─ş─▒ d├╝┼ş├╝r├╝r (0.3016ms)
+Ô£ö oynatmaBasarili: art arda ba┼şar─▒ puan─▒ y├╝kseltir (0.3785ms)
+Ô£ö oynatmaBasarisiz: so─şuma sonras─▒ saya├ğ yar─▒ya iner (0.1631ms)
+Ô£ö sicilBirlestir: s─▒ra ba─ş─▒ms─▒z, g├╝├ğl├╝ kan─▒t kazan─▒r (0.5311ms)
+Ô£ö sicilOzeti: saya├ğlar (0.3864ms)
+Ô£ö sicilYukle/sicilKaydet: gidi┼ş-d├Ân├╝┼ş ve bozuk veri g├╝venli─şi (0.4788ms)
+Ô£ö sicilKaydet: kota dolsa da f─▒rlatmaz (0.1589ms)
+Ô£ö tohumdanSicil: e┼şlenen kok sa─şlay─▒c─▒ya, e┼şlenmeyen toplay─▒c─▒ya yaz─▒l─▒r (0.361ms)
+Ô£ö icerikOnseli: i├ğerikteki TR kan─▒t─▒ sa─şlay─▒c─▒dan ba─ş─▒ms─▒z puan verir (0.2284ms)
+Ô£ö icerikOnseli: eski kan─▒t s├Âner, etiket kan─▒t say─▒lmaz (0.1377ms)
+Ô£ö siciliKirp: en yeni i├ğerikleri tutar (0.2345ms)
+Ô£ö sicileYaz: beyan etiketi sicile yaz─▒l─▒r ama dublaj say─▒lmaz (0.2362ms)
+Ô£ö yildizArsiviTara: u├ğtan uca aday + e┼şle┼şme + sicil (1.7183ms)
+Ô£ö yildizArsiviTara: sorgu yoksa a─şa ├ğ─▒kmaz (0.167ms)
+Ô£ö yildizKaynakMi / yildizAdi (0.1374ms)
+Ô£ö 1a) autoplayNext=false ÔåÆ gec: "kapat" (1.2951ms)
+Ô£ö 1b) finalBolumMu=true ÔåÆ gec: "beklet" (0.1672ms)
+Ô£ö 1c) kalanSn<3 ÔåÆ gec: "otomatik" (0.0876ms)
+Ô£ö 1d) kalanSn=3 ÔåÆ default otomatik (3 sn s─▒n─▒r─▒ dahil de─şil) (0.0823ms)
+Ô£ö 1e) kullaniciEtkilestimi=true ÔåÆ gec: "beklet" (0.0948ms)
+Ô£ö 2a) autoplayNext=false finalBolumMu=true override edilmemi┼ş (kapat preval) (0.0737ms)
+Ô£ö 2b) autoplayNext=true finalBolumMu=true ÔåÆ "beklet" (son b├Âl├╝m preval) (0.1141ms)
+Ô£ö 3a) eksik keys ÔåÆ varsay─▒lan de─şerler kullan─▒l─▒r (default otomatik) (0.0876ms)
+Ô£ö 3b) undefined values ÔåÆ varsay─▒lan de─şerler kullan─▒l─▒r (0.1041ms)
+Ô£ö 4a) POLICY_TABLE.kapat ├Ârnek─▒ gec "kapat" d├Ând├╝r├╝r (0.153ms)
+Ô£ö 4b) POLICY_TABLE.beklet ├Ârnek_final gec "beklet" d├Ând├╝r├╝r (0.0869ms)
+Ô£ö 4c) POLICY_TABLE.beklet ├Ârnek_kullanici gec "beklet" d├Ând├╝r├╝r (0.0682ms)
+Ô£ö 4d) POLICY_TABLE.otomatik ├Ârnek_short gec "otomatik" d├Ând├╝r├╝r (0.0729ms)
+Ô£ö 4e) POLICY_TABLE.otomatik ├Ârnek_default gec "otomatik" d├Ând├╝r├╝r (0.0601ms)
+Ô£ö 5a) gerek├ğe always string t├╝r├╝nde (0.1033ms)
+Ô£ö 5b) gerek├ğe i├ğersinde "├Âl├╝"|"bozuk"|"d├╝┼ş├╝k"|"yava┼ş" ge├ğmemeli (0.2107ms)
+Ô£ö 6a) output always has {gec, gerekce} (0.1105ms)
+[kayit] aria anahtar─▒ iste─şi ba┼şar─▒s─▒z ÔÇö testte a─ş kapal─▒
+(node:20792) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö gomuluSayfaMi: ├Âl├ğ├╝len dizisol sayfalar─▒ tan─▒r (1.21ms)
+Ô£ö gomuluSayfaMi: ger├ğek ak─▒┼şlar asla g├Âm├╝l├╝ say─▒lmaz (0.9282ms)
+Ô£ö normalizeEt: g├Âm├╝l├╝ sayfay─▒ atmaz, resmi g├Âm├╝l├╝ i┼şaret verir (0.5669ms)
+Ô£ö normalizeEt: ├ğekirdek i┼şaretlemese de /play?id= sayfas─▒ yakalan─▒r (0.2241ms)
+Ô£ö normalizeEt: ger├ğek ak─▒┼ş eskisi gibi sarmalan─▒r, g├Âm├╝l├╝ i┼şaret TA┼ŞIMAZ (0.9688ms)
+Ô£ö crypto-js shim: AES-256-CBC/Pkcs7 Node crypto ile ayn─▒ ├ğ─▒kt─▒ (4.8641ms)
+Ô£ö crypto-js shim: Hex/Base64/Utf8 round-trip + yanl─▒┼ş anahtar net hata (1.564ms)
+Ô£ö cheerio shim: section.facts p / each / text / attr / find / :first (3.6338ms)
+Ô£ö sandbox: module.exports.getStreams yakalan─▒r, window s─▒zamaz, require haritas─▒ ├ğal─▒┼ş─▒r (26.4159ms)
+Ô£ö sandbox: tan─▒nmayan require net hata verir (0.9816ms)
+Ô£ö sandbox: getStreams timeout ÔåÆ hata-izole, sat─▒r normalizasyonu externalUrl eler (213.5996ms)
+Ô£ö XHR shim: natif fetch ├╝st├╝nde GET + ba┼şl─▒klar + onreadystatechange (2.6812ms)
+Ô£ö depodaAra: sahte depo manifestinden sat─▒ra u├ğtan uca (1.9204ms)
+´╣ú canl─▒: depo manifesti + patronDiziyou S1E1 (tmdb 1396) ÔåÆ oynat─▒labilir sat─▒r (0.164ms) # CP_ONLINE=1 ile ko┼şar (a─ş testi)
+Ô£ö srtToVtt: SRT zaman damgalar─▒ VTT bi├ğimine ├ğevrilir, VTT oldu─şu gibi ge├ğer (3.1383ms)
+Ô£ö imdbKimligi: g├Âm├╝l├╝ tt kimli─şini bulur, yoksa bo┼ş d├Âner (0.2607ms)
+Ô£ö sunucuAraUrl: imdb ├Ânce gelir, b├Âl├╝m bilgiyi yaln─▒z tv ta┼ş─▒r, mod=ara kurulur (0.4426ms)
+Ô£ö araJsonAdaylari: yaln─▒z BULUNAN diller listelenir ÔÇö etiket uyduramaz (0.8514ms)
+Ô£ö altyaziBirlestir: tekille┼ştirir, yedek yaln─▒z EKS─░K dili tamamlar, TR ├Ânce gelir (0.4569ms)
+Ô£ö kaynakAltyaziAdaylari: TR altyaziUrl ├Âne; OS/ba─ş─▒l/├ğift sat─▒rlar elenir (0.39ms)
+Ô£ö restAramaUrl: imdb ├Ânce; imdb yoksa sorgu; S/E yaln─▒z ikisiyle; dil kodu (0.3845ms)
+Ô£ö restSirala: SRT + ├ğok-indirilen kazan─▒r; forced ve cd2 elenir; EN etiketi do─şru (0.3729ms)
+Ô£ö Desktop OpenSubtitles loads a WebVTT track without calling the unsupported subtitles route (2.6158ms)
+Ô£ö Desktop OpenSubtitles fallback uses the authenticated local proxy for search and download (1.1869ms)
+Ô£ö api /api/subtitles?mod=ara ÔåÆ {altyazilar:[ÔÇĞ]} JSON; bulunan sat─▒rlar vttUrl+dil ta┼ş─▒r (738.9148ms)
+Ô£ö api /api/subtitles dil=en ÔåÆ WebVTT i├ğerik tipi; i├ğerik bo┼ş olsa da 200 (├Âl├╝ iz yok) (447.7788ms)
+Ô£ö api /api/subtitles?mod=ara kimlik yoksa bo┼ş liste (uydurma i├ğerik yok) (0.5756ms)
+Ô£ö kisaYolEylemi: n / N / Shift+N sonraki b├Âlmeyi e┼şler (yaln─▒z dizi + ├ğevrimi├ği) (1.163ms)
+Ô£ö kisaYolEylemi: p / P ├Ânceki b├Âl├╝m├╝ e┼şler (0.1983ms)
+Ô£ö kisaYolEylemi: s / S b├Âl├╝m listesini a├ğar (mevcut se├ğici UI) (0.1012ms)
+Ô£ö kisaYolEylemi: f tam ekran, m ses ÔÇö dizi/film ayr─▒m─▒ olmadan yerel (0.1369ms)
+Ô£ö kisaYolEylemi: ÔåÉ/ÔåÆ sarma dallar─▒ (5 sn uygulamas─▒ handlerda) e┼şlenir (0.2338ms)
+Ô£ö kisaYolEylemi: input/textarea/select i├ğinde hi├ğbir tu┼ş e┼şlenmez (e.target karar─▒) (0.2143ms)
+Ô£ö kisaYolEylemi: bilinmeyen/bo┼ş tu┼ş e┼şlenmez (0.153ms)
+Ô£ö renderFooterNavButtonsHTML: b├Âl├╝m say─▒s─▒ BEL─░RS─░ZSE Sonraki B├Âl├╝m d├╝─şmesi +1 ile G├ûR├£N├£R (0.2838ms)
+Ô£ö renderFooterNavButtonsHTML: B1 + S>1 taraf─▒nda PREV-SEZON yolu KORUNUR ve say─▒ 1 yedeklenir (0.2786ms)
+Ô£ö 'B├Âl├╝mler' d├╝─şmesi alt ├ğubukta ├ğizilir ve mevcut se├ğiciye (acBolumSecici) ba─şlan─▒r (0.5469ms)
+Ô£ö acBolumSecici: ├Ânce mevcut drawer, yoksa canl─▒ sa─ş panel ÔÇö YEN─░ oynatma MANTI─ŞI YOK (0.337ms)
+Ô£ö handleKeydown: S dal─▒ (dizi + ├ğevrimi├ği) acBolumSecici ├ğa─ş─▒r─▒r; ikinci keydown dinleyicisi kurulmaz (0.465ms)
+Ô£ö handleKeydown: ÔåÉ/ÔåÆ 5 SN sarma (0.3122ms)
+Ô£ö k─▒sayol kart─▒: 5 saniye + S sat─▒r─▒ listelenir (0.2244ms)
+Ô£ö main.css: nav d├╝─şmeleri ve b├Âl├╝m kartlar─▒ i├ğin 40px dokunmatik hedef tan─▒ml─▒ (0.7042ms)
+Ô£ö bolumSeciciPlan: b├Âl├╝m say─▒s─▒ bilinmiyorsa 24 varsayar, biliniyorsa onu kullan─▒r (0.8603ms)
+Ô£ö bolumSeciciPlan: sezon say─▒s─▒ mevcut sezondan k├╝├ğ├╝k kalamaz (TMDB ge├ğ/eksik verisi) (0.1471ms)
+Ô£ö acBolumSecici: sidebar G─░ZL─░YSE oynat─▒c─▒ i├ği ─▒zgara overlay a├ğ─▒l─▒r (k├Âr dal kapand─▒) (0.3499ms)
+Ô£ö acBolumIzgaraOverlay: se├ğim switchEpisodeInPlayerÔÇÖdan d├Âner; ikinci dinleyici/ yeni oynatma yok (0.2634ms)
+Ô£ö main.css: ─▒zgara kart ve sezon ├ğipleri 40px dokunmatik hedef + tema vurgusu (1.0147ms)
+Ô£ö magnet: 40 hex do─şru ├ğ─▒kar, k├╝├ğ├╝k harfe ├ğevrilir (0.9841ms)
+Ô£ö ├ğ─▒plak 40 hex kabul edilir (0.1357ms)
+Ô£ö RFC4648 bilinen vekt├Âr: base32 "1234567890" ÔåÆ hex (0.151ms)
+Ô£ö magnet: 32 base32 btih ÔåÆ 40 hex ├ğevrilir (0.2141ms)
+Ô£ö base32 d─▒┼ş─▒ 32 karakter (8/9/0 rakamlar─▒) reddedilir (0.1088ms)
+Ô£ö bo┼ş girdi T├╝rk├ğe gerek├ğeyle reddedilir (0.1876ms)
+Ô£ö ├ğ├Âp girdi T├╝rk├ğe gerek├ğeyle reddedilir (0.0858ms)
+Ô£ö magnet ├Ânceliklidir: metin i├ğinde btih aran─▒r (0.0772ms)
+Ô£ö check URL per-process desktop gateway port and token kullan─▒r (0.3095ms)
+Ô£ö play URL per-process desktop gateway port and token kullan─▒r (0.2707ms)
+Ô£ö ready + mp4 ÔåÆ playable true (0.2945ms)
+Ô£ö ready + mkv ÔåÆ playable false (d├╝r├╝st ret) (0.154ms)
+Ô£ö starting + peer var ÔåÆ connecting (0.1032ms)
+Ô£ö starting + peer yok ÔåÆ searching (0.997ms)
+Ô£ö hata yan─▒t─▒ hata durumuna d├Âner (0.214ms)
+Ô£ö uzant─▒ oynat─▒labilirlik: webm/mov evet, avi/flv hay─▒r (0.0907ms)
+Ô£ö poll: searching ÔåÆ searching ÔåÆ ready d├Âner ve g├╝ncelleme bildirir (14.3627ms)
+Ô£ö poll: ├Ânceden iptal edilmi┼ş sinyal an─▒nda cancelled d├Âner (0.5003ms)
+Ô£ö poll: a─ş hatalar─▒ aral─▒ktan sonra timeout ile biter (45.1747ms)
+Ô£ö onay kayd─▒: varsay─▒lan yok, yaz─▒l─▒nca okunur (0.2948ms)
+Ô£ö eri┼şilebilirlik: pencere yoksa false (telefon/web motoru yok) (0.2116ms)
+Ô£ö 1) tohumSec: en son 2 farkl─▒ tohumu s─▒rayla d├Âner (tur+tmdbId+ad) (1.2348ms)
+Ô£ö 2) tohumSec: maks se├ğene─şi tohum say─▒s─▒n─▒ s─▒n─▒rlar (0.1724ms)
+Ô£ö 3) tohumSec: ayn─▒ id tekrar say─▒lmaz, idsiz/ads─▒z atlan─▒r (0.2107ms)
+Ô£ö 4) tohumSec: ge├ğmi┼ş tek ise ikinci tohum favoriden gelir (0.1482ms)
+Ô£ö 5) tohumSec: bo┼ş profil (ge├ğmi┼ş+favori bo┼ş) ÔåÆ [] (ev bug├╝nk├╝ gibi kal─▒r) (0.1369ms)
+Ô£ö 6) tohumSec: anime t├╝r├╝ tv olarak indirgenir (0.1083ms)
+Ô£ö 7) onbellekAnahtari ┼şemas─▒: cinepulse_kisisel_{tip}_{tur}_{id} (0.3757ms)
+Ô£ö 8) cache turu: yaz─▒lan liste ayn─▒ saatte okunur (0.3138ms)
+Ô£ö 9) TTL: 6 saat sabiti ve s─▒n─▒r davran─▒┼ş─▒ (0.5372ms)
+Ô£ö 10) cacheOku: bozuk JSON, bo┼ş depo, eksik alan ÔåÆ null (atmaz) (0.4239ms)
+Ô£ö 11) satirBasligi: "├ç├╝nk├╝ {ad} izledin", ads─▒zda genel ba┼şl─▒k (0.124ms)
+Ô£ö repeated playback replacement releases listeners and pending work (45.7081ms)
+Ô£ö disposed scopes reject late work and canceled timers never fire (30.6516ms)
+Ô£ö pinNormalize/pinGecerliMi: bo┼şluklar at─▒l─▒r, yaln─▒z 4-6 hane kabul edilir (0.7302ms)
+Ô£ö yasKademesi validasyonu + eski profil nesnesinde alan yoksa defaultlar (0.1672ms)
+Ô£ö pinHashla: crypto.subtle ger├ğek async SHA-256; normalize e┼şitli─şi; yoksa null (9.1052ms)
+Ô£ö 3 hatadan sonra 30 sn kilit ÔÇö saf hesap; kilit bitince a├ğ─▒l─▒r (0.8059ms)
+Ô£ö pinBelirle/profilAc round-trip; e┼şle┼şmeyen pin reddedilir (1.4804ms)
+Ô£ö ge├ğersiz pin belirlenemez (4-6 hane ┼şart─▒), mevcut pin de─şi┼şmez (0.5507ms)
+Ô£ö pinKaldir: PIN kald─▒r─▒lan profil do─şrudan a├ğ─▒l─▒r (0.3351ms)
+Ô£ö eski profil nesnesinde pinHash yoksa do─şrudan a├ğ─▒l─▒r (geriye uyum) (0.1031ms)
+Ô£ö setProfileYasKademesi: ge├ğersiz reddedilir, ge├ğerli kal─▒c─▒; isKidProfileActive kademeyle s├╝rer (0.381ms)
+Ô£ö range: ayr─▒┼şt─▒rma temel bi├ğimleri (2.5136ms)
+Ô£ö range: ba┼ştan sona aral─▒k ÔåÆ 206 + Content-Range (0.3467ms)
+Ô£ö range: a├ğ─▒k u├ğlu aral─▒k toplamla tamamlan─▒r (0.1529ms)
+Ô£ö range: sondan aral─▒k son bayta kadar k─▒rp─▒l─▒r (0.1407ms)
+Ô£ö range: toplam bilinmiyorsa kesin uzunluk uydurulmaz (0.184ms)
+Ô£ö range: aral─▒k toplam─▒ a┼ş─▒yorsa k─▒rp─▒l─▒r (0.1448ms)
+Ô£ö range: ba┼şlang─▒├ğ toplam─▒n d─▒┼ş─▒ndaysa 416 (0.1747ms)
+Ô£ö range: biti┼ş ba┼şlang─▒├ğtan k├╝├ğ├╝kse 416 (0.1697ms)
+Ô£ö range: bozuk ba┼şl─▒k 416 verir (200 de─şil) (0.1589ms)
+Ô£ö range: ba┼şl─▒k ├╝retimi her zaman Accept-Ranges ta┼ş─▒r (0.5415ms)
+Ô£ö range: 206 yan─▒t─▒nda Content-Length ve Content-Range birlikte (0.189ms)
+Ô£ö range: yukar─▒ ak─▒┼ş 206 d├Ând├╝yse onun Content-Range de─şeri korunur (0.1751ms)
+Ô£ö range: yukar─▒ ak─▒┼ş ba┼şl─▒─ş─▒ ├╝retmezse kendi hesab─▒m─▒z kullan─▒l─▒r (0.1305ms)
+Ô£ö range: yukar─▒ ak─▒┼şa yaln─▒z ge├ğerli ba┼şl─▒k ta┼ş─▒n─▒r (0.101ms)
+Ô£ö range: iki u├ğ ayn─▒ girdide ayn─▒ yan─▒t─▒ ├╝retir (parite) (0.2846ms)
+Ô£ö 1) film modunda (sezon/bolum yok) ÔåÆ goster: false (1.3795ms)
+Ô£ö 1b) film modunda (season=1, episode=1 ama dizi de─şil) ÔåÆ goster: false (0.1967ms)
+Ô£ö 2) Sezon 1 B├Âl├╝m 1 ÔåÆ goster: false (0.1684ms)
+Ô£ö 3) oncekiOverview bo┼ş string ÔåÆ goster: false (0.2893ms)
+Ô£ö 3b) oncekiOverview undefined ÔåÆ goster: false (0.2127ms)
+Ô£ö 3c) oncekiOverview sadece bo┼şluk ÔåÆ goster: false (0.1795ms)
+Ô£ö 4) 220 karakter alt─▒ndaki metin aynen d├Âner (0.2422ms)
+Ô£ö 4b) 220 karakteri ge├ğen metin kelime s─▒n─▒r─▒nda k─▒rp─▒l─▒r (0.3679ms)
+Ô£ö 4c) tam 220 karakterde k─▒rpma yapmaz (0.2241ms)
+Ô£ö 5) gosterildiMi=true ÔåÆ goster: false (0.9812ms)
+Ô£ö 6) Sezon 2 B├Âl├╝m 1 + ├Ânceki overview varsa ÔåÆ goster: true (0.2259ms)
+Ô£ö 7) girdi nesnesi mutasyona u─şramaz (0.6806ms)
+Ô£ö 8a) recapGorulduIsaretle ve recapGorulduMu ├ğal─▒┼ş─▒r (0.5047ms)
+Ô£ö 8b) 200 girdi a┼ş─▒nca eski yar─▒ silinir (MAX_RECAP_ENTRIES) (17.1864ms)
+Ô£ö 9) recapStorageTemizle storage─▒ temizler (0.375ms)
+Ô£ö 10a) kisaltMetin: k─▒sa metin aynen d├Âner (0.1141ms)
+Ô£ö 10b) kisaltMetin: uzun metin kelime s─▒n─▒r─▒nda k─▒rp─▒l─▒r (0.0831ms)
+(node:13100) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö completed and seen titles are exclusion signals, never recommendation cards (41.0399ms)
+Ô£ö seen-only candidates are deduplicated and the kid filter applies to every row (1.34ms)
+Ô£ö all personalized rows can fill to 40 and stay separated by media type (11.6652ms)
+Ô£ö a sparse series pool is expanded with genre-based series discovery (3.4724ms)
+Ô£ö series discovery can fill the target without genre history (4.4543ms)
+Ô£ö completed and favorite recommendation rows fetch another page when needed (3.2525ms)
+Ô£ö apk yukselince masaustu eski surumde kalir (1.3176ms)
+Ô£ö ag yoksa derleme-anlik degerlere dusulur (0.3287ms)
+(node:10476) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö yabanc─▒ + hi├ğ T├╝rk├ğe iz yok ÔåÆ ├ûzg├╝n Dil (sahte Altyaz─▒ de─şil) (1.1382ms)
+Ô£ö yabanc─▒ + ├ğekirdek isDual (T├╝rk├ğe ses) ÔåÆ Dublaj (0.2111ms)
+Ô£ö yabanc─▒ + trSes bayra─ş─▒ ÔåÆ Dublaj (0.1275ms)
+Ô£ö yabanc─▒ + trAltyazi bayra─ş─▒ ÔåÆ T├╝rk├ğe Altyaz─▒ (0.1296ms)
+Ô£ö ses hem altyaz─▒ hem dublaj izliyse dublaj ├Ânceliklidir (0.1739ms)
+Ô£ö bilin├ğli dublaj/altyaz─▒ kopyalar─▒ sonekinden belirlenir (0.1206ms)
+Ô£ö yerli (T├╝rk) kaynak kategoriye g├Âre etiketlenir (0.3322ms)
+Ô£ö etiket metinleri: ├╝├ğ durum, do─şru kar┼ş─▒l─▒k (0.2794ms)
+Ô£ö eksik/bozuk kaynak ├ğ├Âkmez ÔåÆ ├ûzg├╝n Dil (0.3472ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+Ô£ö kelimeListesi: T├╝rk├ğe harfleri sadele┼ştirir, rakamlar─▒ ay─▒r─▒r (2.7568ms)
+Ô£ö tam uyu┼şma en y├╝ksek puan─▒ al─▒r (3) (1.0103ms)
+Ô£ö ├╝nl├╝ yaz─▒m fark─▒ (A┼şk ~ asik) ayn─▒ eser say─▒l─▒r, t├╝revden y├╝ksek kal─▒r (0.5016ms)
+Ô£ö numara/y─▒l eki AYNI ESER say─▒l─▒r (2), t├╝revden y├╝ksek kal─▒r (0.3655ms)
+Ô£ö t├╝rev/ek ad yaln─▒z 1 al─▒r ÔÇö tam uyu┼şma varsa onu ASLA ge├ğmez (0.3569ms)
+Ô£ö alakas─▒z slug 0 al─▒r (yanl─▒┼ş diziye d├╝┼ş├╝lmez) (0.2663ms)
+Ô£ö regresyon: site s─▒ras─▒ t├╝revi ├Ânce verese bile do─şru slug kazan─▒r (0.4927ms)
+Ô£ö tek aday t├╝revse kaynak tamamen kaybolmaz (puan 1 ile hayatta kal─▒r) (0.2879ms)
+Ô£ö wolverine se├ğim deseninin ├╝st├╝nl├╝─ş├╝: elit katman i├ğinde b├Âl├╝m aran─▒r (1.1116ms)
+Ô£ö her ├Ânek tek aileye d├╝┼şer, kod adlar─▒ tekrar etmez (1.1364ms)
+Ô£ö son sat─▒r tarafs─▒z yutucudur; tan─▒nmayan kaynak ger├ğek bir sitenin ad─▒n─▒ ├╝stlenmez (1.6759ms)
+Ô£ö k─▒sa dizi ├Ânekleri kaz─▒y─▒c─▒lar─▒n ├╝retti─şi idÔÇÖlerle e┼şle┼şir (0.2298ms)
+Ô£ö s├Âk├╝len sa─şlay─▒c─▒lar─▒n ├Ânekleri defterde yok ÔåÆ tarafs─▒z yutucuya d├╝┼şer (0.4058ms)
+Ô£ö getAliasForId ham id d├Ânmez, e┼şle┼şmeyende Nexus verir (0.1859ms)
+Ô£ö ayn─▒ ailenin birden ├ğok hatt─▒ harfle ayr─▒l─▒r (0.5381ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+
+ÔòÉÔòÉÔòÉ Her onUpdate geli┼şinde liste ÔòÉÔòÉÔòÉ
+[kahraman] tarama ba┼şlamad─▒: tmdbId bo┼ş (32 kay─▒t denemeden d├╝┼şt├╝)
+[kaynak] 0/32 kayit tarandi (0s)
+      19ms  dubl= 0  alt= 0  toplam= 0  TAMAM   
+
+ÔòÉÔòÉÔòÉ Analiz ÔòÉÔòÉÔòÉ
+  en y├╝ksek: 0 (undefinedms)
+  final    : 0
+  Ô£ô aggregator taraf─▒nda azalma yok
+
+  toplam 1 g├╝ncelleme geldi.
+  benzersiz kaynak: 0
+  ├Ârnekler: 
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+Ô£ö tests\sourceDecay.test.mjs (11280.1328ms)
+
+ÔòÉÔòÉÔòÉ 1) K─▒sa dizi kaz─▒y─▒c─▒s─▒ ÔåÆ aggregator ba─şlant─▒s─▒ ÔòÉÔòÉÔòÉ
+  Ô£ô src/services/kaynak/dramalarScraper.js mevcut
+  Ô£ô   Ôå│ aggregator 'dramalarScraper.js' dosyas─▒n─▒ import ediyor
+  Ô£ô   Ôå│ 'fetchDramalarEpisodeSources()' aggregator g├Âvdesinde 2 kez ├ğa─şr─▒l─▒yor
+  Ô£ô src/services/kaynak/dramaDizilerimScraper.js mevcut
+  Ô£ô   Ôå│ aggregator 'dramaDizilerimScraper.js' dosyas─▒n─▒ import ediyor
+  Ô£ô   Ôå│ 'fetchDramaDizilerimEpisodeSources()' aggregator g├Âvdesinde 2 kez ├ğa─şr─▒l─▒yor
+
+ÔòÉÔòÉÔòÉ 2) Kaynak id ÔåÆ anonim kod ad─▒ e┼şle┼şmesi ÔòÉÔòÉÔòÉ
+  Ô£ô 'dml_' ├Âneki sourceLabels aile defterinde kay─▒tl─▒
+  Ô£ô   Ôå│ anonim ad─▒: Dora
+  Ô£ô 'ddz_' ├Âneki sourceLabels aile defterinde kay─▒tl─▒
+  Ô£ô   Ôå│ anonim ad─▒: Rhea
+  Ô£ô   Ôå│ aggregator etiketleri site ad─▒ ta┼ş─▒m─▒yor
+
+ÔòÉÔòÉÔòÉ 3) S├Âk├╝len kat geri gelmedi ÔòÉÔòÉÔòÉ
+  Ô£ô src/services/providerRuntime yok
+  Ô£ô src/services/pluginCatalog.js yok
+  Ô£ô src/components/PluginsModal.js yok
+  Ô£ô src/services/dizi77Scraper.js yok
+  Ô£ô src/services/dizisolScraper.js yok
+  Ô£ô src/services/siteProviders.js yok
+  Ô£ô src/services/rectvService.js yok
+  Ô£ô src/services/streamExtractors.js yok
+  Ô£ô src/services/sourceReliability.js yok
+  Ô£ô src/services/sourceIntelligence.js yok
+  Ô£ô src/services/torrentStreamService.js yok
+  Ô£ô src/providers yaln─▒z kahraman katman─▒n─▒ i├ğeriyor
+  Ô£ô eski KAYIT sa─şlay─▒c─▒lar─▒ geri gelmedi
+  Ô£ô src/services alt─▒nda d├╝z .js kalmad─▒
+  Ô£ô services 8 grubun tamam─▒ yerinde
+  Ô£ô src alt─▒nda s├Âk├╝lm├╝┼ş mod├╝le import yok
+
+ÔòÉÔòÉÔòÉ 4) ├£retilen paket k─▒sa diziyi i├ğeriyor mu ÔòÉÔòÉÔòÉ
+  Ô£ô   Ôå│ paket Dora k─▒sa dizi ucunu i├ğeriyor
+  Ô£ô   Ôå│ paket Rhea k─▒sa dizi ucunu i├ğeriyor
+  Ô£ô   Ôå│ paket s├Âk├╝lm├╝┼ş sa─şlay─▒c─▒ u├ğlar─▒n─▒ i├ğermiyor
+
+TAMAM ÔÇö ge├ğen: 30, kalan: 0
+Ô£ö tests\sourceWiring.test.mjs (304.4202ms)
+Ô£ö a stalled catalog request does not hide already loaded content (33.2269ms)
+Ô£ö late responses cannot mutate the rendered snapshot (13.708ms)
+Ô£ö healthy and empty requests finish without waiting for the deadline (0.3504ms)
+Ô£ö sa─şl─▒k: hi├ğ istek yoksa IDLE (0.7855ms)
+Ô£ö sa─şl─▒k: istek at─▒ld─▒ ama veri yok ÔåÆ CONNECTING (0.1164ms)
+Ô£ö sa─şl─▒k: veri geldi ama saat ilerlemiyor ÔåÆ BUFFERING (0.0797ms)
+Ô£ö sa─şl─▒k: saat ilerlediyse PLAYING (duraklatma hata say─▒lmaz) (0.0784ms)
+Ô£ö sa─şl─▒k: ilerleme koptu ÔåÆ STALLED, hata ÔåÆ ERROR, biti┼ş ÔåÆ ENDED (0.0961ms)
+Ô£ö sa─şl─▒k: ├Âncelik s─▒ras─▒ kal─▒c─▒ (hata > bitti > dondu) (0.1124ms)
+Ô£ö sa─şl─▒k: failover yaln─▒z STALLED ve ERROR i├ğin (0.126ms)
+Ô£ö sa─şl─▒k: her durumun etiketi var ve kaynak ad─▒ ta┼ş─▒m─▒yor (0.2774ms)
+Ô£ö ilerleme: durum makinesi deterministik (zaman arg├╝mandan gelir) (0.2454ms)
+Ô£ö ilerleme: ilk ├ğa─şr─▒da ilerleme yoksa stall ilan edilmez (0.1976ms)
+Ô£ö politika: ├Âl├ğ├╝lm├╝┼ş varsay─▒lanlar korunur (0.5042ms)
+Ô£ö politika: kaynak s─▒n─▒f─▒na g├Âre e┼şik, bilinmeyende genel (0.097ms)
+Ô£ö politika: ilk ilerleme daha uzun beklenir (0.0642ms)
+Ô£ö politika: ge├ğersiz de─şer reddedilir (0.0928ms)
+Ô£ö politika: ├Âzelle┼ştirme varsay─▒lan─▒ bozmaz (0.0664ms)
+Ô£ö politika: nesne dondurulmu┼ş (kaza ile de─şi┼ştirilemez) (0.2454ms)
+Ô£ö mediaServer: torrent ├Ânbellek tavan─▒ tan─▒ml─▒ ve ortamla ayarlanabilir (9.0701ms)
+Ô£ö mediaServer: tahliye yaln─▒z ├Ânbellek dizini i├ğinde siler (g├╝venlik) (0.3186ms)
+Ô£ö mediaServer: aktif izlenen ak─▒┼ş tahliyeden korunur, histerezis %80 (0.2445ms)
+Ô£ö mediaServer: yeni torrent eklendi─şinde ve periyodik temizlikte tavan uygulan─▒r (0.2039ms)
+Ô£ö mediaServer: /health ├Ânbellek boyutu ve tavan─▒n─▒ raporlar (0.123ms)
+Ô£ö cacheReclaim planlay─▒c─▒s─▒: aktif/korumal─▒ girdi asla silinmez (0.6494ms)
+Ô£ö envde s─▒r yoksa 503 d├Âner ve Trakta istek gitmez (1.8172ms)
+Ô£ö code ya da refresh_token yoksa 400 d├Âner (0.3087ms)
+Ô£ö cihaz kodu: s─▒r yaln─▒z sunucudan eklenir, durum kodu aynen ge├ğer (0.7135ms)
+Ô£ö yenileme: /oauth/token ucuna gider ve grant_type ta┼ş─▒r (0.3048ms)
+Ô£ö follows latest-release and asset redirects to the manifest (3.4734ms)
+Ô£ö rejects insecure redirects and failed responses (0.4588ms)
+Ô£ö enforces a deadline when a request never responds (33.9633ms)
+Ô£ö installed APK 175 must not offer its own manifest when JS bundle says 171 (0.819ms)
+Ô£ö versionCode is authoritative for upgrades and rollbacks (7.5388ms)
+Ô£ö only valid semantic versions are a fallback without build codes (0.2645ms)
+Ô£ö AYNI s├╝r├╝m dizesi asla uyar─▒ vermez ÔÇö kodlar ne derse desin (0.202ms)
+Ô£ö farkl─▒ s├╝r├╝mde kodlar ├ğal─▒┼ş─▒r (0.1692ms)
+Ô£ö kilit kapal─▒ varsay─▒l─▒r; kilitAyarla JS+Java k├Âpr├╝s├╝ne bildirir (1.0107ms)
+Ô£ö biometrikHazir yaln─▒z "hazir" yan─▒t─▒nda true (1.1366ms)
+Ô£ö biometrikDogrula k├Âpr├╝ olay─▒yla ├ğ├Âz├╝l├╝r ve kanal─▒ geri verir (17.892ms)
+Ô£ö k├Âpr├╝ hi├ğ cevap vermezse zaman a┼ş─▒m─▒yla g├╝venle kapan─▒r (31.2275ms)
+Ô£ö dogrula k├Âpr├╝s├╝ yoksa beklemeden false (0.5424ms)
+Ô£ö eski JSON ayn─▒ anahtarla okunur: ilerleme ve izlendi durumu g├Âr├╝n├╝r (2.2999ms)
+Ô£ö tek-yazar yaz─▒m─▒ ek alanlar─▒ korur (geriye d├Ân├╝k ┼şekil) (1.791ms)
+Ô£ö toplu-yazar yaz─▒m─▒ eski disk ┼şemas─▒yla birebir ayn─▒ alanlar─▒ yazar (0.5326ms)
+[Luna navigation] popup blocked https://example.com/advert
+Ô£ö verification keeps the browser and source controls alive after a real player loads (3.3501ms)
+Ô£ö late cleanup from a previous source cannot close the new verification view (6.7874ms)
+Ô£ö rejects other renderers, arbitrary pages, and invalid bounds (0.8048ms)
+Ô£ö Pixel player popups and top-level links stay embedded; unrelated links stay blocked (1.5881ms)
+Ô£ö Pixel route rejects spoofed domains, protocols and non-player paths (0.2988ms)
+Ô£ö manifestIzleri: T├╝rk├ğe ses + ├ğift dil + TR altyaz─▒ + varyantlar (1.1332ms)
+Ô£ö getStreams dizi: sezon s─▒f─▒rs─▒z / b├Âl├╝m iki haneli yol + master+varyant sat─▒rlar─▒ (1.6727ms)
+Ô£ö getStreams film: tek varyantta /vs/{imdb} yolu, tek sat─▒r (0.5754ms)
+Ô£ö getStreams: katalogda yoksa (404) ÔåÆ bo┼ş dizi, throw YOK (0.3357ms)
+Ô£ö getStreams: imdb ├ğ├Âz├╝lemezse ÔåÆ bo┼ş dizi (uydurma istek yok) (0.3981ms)
+ÔöÇÔöÇ getChannelBadgeSvg (kanal ad─▒ ÔåÆ SVG)
+  OK   "<img src=x onerror="alert(1)" ÔåÆ on*=false yabanc─▒Etiket=false
+  OK   "" onmouseover="alert(2)" ÔåÆ on*=false yabanc─▒Etiket=false
+  OK   "<svg onload=alert(3)>" ÔåÆ on*=false yabanc─▒Etiket=false
+  OK   "TRT 1" ÔåÆ on*=false yabanc─▒Etiket=false
+  OK   "A&B'C" ÔåÆ on*=false yabanc─▒Etiket=false
+
+ÔöÇÔöÇ buildChannels (uzak liste ÔåÆ kanal nesneleri)
+  OK   id="kral_wza90l"  name="TRT 1"
+  OK   id="kral_15ph433"  name="\"><script>alert(4)</script>"
+  OK   id="kral_ksl189"  name="<img src=x onerror=\"alert(1)\">"
+  toplam kanal: 3 (3 bekleniyor)
+
+ÔöÇÔöÇ escHtml (LiveTvView ile ayn─▒)
+  OK   "<img src=x onerror=\"alert(1)\">" ÔåÆ "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;"
+  OK   "\" onmouseover=\"alert(2)" ÔåÆ "&quot; onmouseover=&quot;alert(2)"
+  OK   "</div><script>alert(5)</script>" ÔåÆ "&lt;/div&gt;&lt;script&gt;alert(5)&lt;/script&"
+  OK   "TRT & ATV" ÔåÆ "TRT &amp; ATV"
+  OK   ka├ğ─▒rÔåÆgeri a├ğ (g├Ârsel bozulma yok)
+
+TAMAM ÔÇö XSS ka├ğ─▒rma do─şruland─▒
+Ô£ö tests\xss.test.mjs (119.3225ms)
+(node:11308) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Ô£ö normal a─şda tavanlar sabit de─şerlerinde kal─▒r (0.6957ms)
+Ô£ö yava┼ş a─şda sa─şlay─▒c─▒ tavan─▒ b├╝y├╝r, toplam b├╝t├ğe KISILMAZ (0.2006ms)
+Ô£ö yava┼ş mod kapan─▒nca tavanlar geri d├Âner (0.1176ms)
+[kayit] aria anahtar─▒ sunucudan al─▒namad─▒ ÔÇö Nightwing a├ğ─▒l─▒┼şta 403 yiyebilir (ikinci denemede d├╝zelir)
+Ô£ö 1) kovalar: bug├╝n/bu hafta/yak─▒nda g├╝n fark─▒na g├Âre ayr─▒l─▒r (17.9857ms)
+Ô£ö 2) TMDB id tekille┼ştirme: ayn─▒ id iki farkl─▒ tarihte tek say─▒l─▒r (ilk ├Âncekiden) (0.3229ms)
+Ô£ö 3) tarihsiz veya ge├ğersiz tarihli ├Â─şeler hi├ğbir kola girmez (0.2321ms)
+Ô£ö 4) s─▒n─▒r: 7. g├╝n dahil bu hafta, 8. g├╝n ve sonras─▒ yak─▒nda (0.2217ms)
+Ô£ö 5) bo┼ş girdi ÔåÆ t├╝m kovalar bo┼ş dizi (0.5724ms)
+Ô£ö 6) simdi enjekte edilebilir: ayn─▒ ├Â─şeler farkl─▒ ┼şimdiye g├Âre farkl─▒ kovada (0.1635ms)
+Ô£ö 7) ge├ğmi┼şteki tarih: hi├ğbir kova (yak─▒nda yaln─▒z gelecektir) (0.1153ms)
+Ô£ö 8) _zamanTip film/dizi etiketi; girdi nesnesi bozulmaz (0.1662ms)
+Ô£ö sinyal a─ş─▒rl─▒klar─▒: favori > bitirilen > liste > izlenen (1.1767ms)
+Ô£ö profilKur: ayn─▒ say─▒da yap─▒tta favori t├╝r├╝ listenin ├Ân├╝ne ge├ğer (0.7659ms)
+Ô£ö profilKur: ge├ğmi┼şte completed i┼şaretli yap─▒t bitirilen kadar g├╝├ğl├╝ say─▒l─▒r, ├ğift say─▒lmaz (0.3101ms)
+Ô£ö profilKur: bo┼ş sinyal ÔåÆ bos=true, s─▒ralama de─şi┼şmez (0.6557ms)
+Ô£ö tazelikCarpani: 90 g├╝nde yar─▒ya d├╝┼şer, gelecekte 1 kal─▒r (0.1529ms)
+Ô£ö profilKur: eski favori, yeni izlenenden daha zay─▒f kalabilir (0.2067ms)
+Ô£ö ogePuani: t├╝r uyumu + do─şrudan i┼şaret; profil bo┼şsa 0 (0.2214ms)
+Ô£ö profilSirala: e┼şik ├╝st├╝ ├Â─şeler ├Âne, e┼şit puanda ├Âzg├╝n s─▒ra korunur (0.301ms)
+Ô£ö profilSirala: haric k├╝mesi ve enFazla s─▒n─▒r─▒ (0.2644ms)
+Ô£ö yerelSatirlar: minAdet alt─▒ndaki liste ├ğizilmez, s─▒ra favoriÔåÆlisteÔåÆbitirilen (0.4588ms)
+Ô£ö yerelSatirlar: enFazla s─▒n─▒r─▒ uygulan─▒r (0.1805ms)
+Ô£ö ozetMetni: yaln─▒z ger├ğek say─▒lar ve en g├╝├ğl├╝ t├╝rler (0.8177ms)
+Ô£ö turKimlikleri: genre_ids / genres / genre alanlar─▒n─▒n hepsini okur (0.1715ms)
+Ôä╣ tests 934
+Ôä╣ suites 0
+Ôä╣ pass 931
+Ôä╣ fail 2
+Ôä╣ cancelled 0
+Ôä╣ skipped 1
+Ôä╣ todo 0
+Ôä╣ duration_ms 16159.9165
+
+Ô£û failing tests:
+
+test at tests\entry-route.test.mjs:8:1
+Ô£û plain web visits open the app and explicit links survive (full web playback) (1.2831ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '#showcase'
+  - '#home'
+  
+      at TestContext.<anonymous> (file:///C:/Users/cagat/Downloads/cine-pulse/tests/entry-route.test.mjs:9:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '#showcase',
+    expected: '#home',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\entry-route.test.mjs:21:1
+Ô£û room invitations retain their content entry point (0.9173ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '#showcase'
+  - '#home'
+  
+      at TestContext.<anonymous> (file:///C:/Users/cagat/Downloads/cine-pulse/tests/entry-route.test.mjs:22:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '#showcase',
+    expected: '#home',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

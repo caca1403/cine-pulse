@@ -29,6 +29,11 @@
 .cp-landing h1 em { font-style:normal; color:var(--landing-lime); }
 .cp-landing-lead { font-size:15px; line-height:1.8; color:var(--landing-muted); margin-bottom:29px; max-width:470px; }
 .cp-landing-actions { display:flex; gap:12px; flex-wrap:wrap; }
+/* Hero güç şeridi (2026-11-18): somut sayılarla vitrinin cazibesi */
+.cp-landing-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:22px; max-width:460px; }
+.cp-landing-stats > div { background:#ffffff08; border:1px solid #ffffff14; border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:2px; }
+.cp-landing-stats strong { font-size:1.02rem; color:var(--landing-lime,#dfff76); letter-spacing:.02em; white-space:nowrap; }
+.cp-landing-stats span { font-size:10.5px; color:#8a929e; line-height:1.4; }
 .cp-landing-hero-note { display:flex; gap:8px; align-items:center; font-size:11px; color:#8a929e; margin-top:20px; }
 .cp-landing-hero-note svg { width:14px; height:14px; }
 .cp-landing-preview { border:1px solid #ffffff20; border-radius:16px; padding:0 16px 17px; background:#11151b; position:relative; z-index:1; transform-style:preserve-3d; transform:translate3d(0,calc(var(--sp,0px)*.06),0) perspective(1200px) rotateY(-14deg) rotateX(4deg); transition:transform .34s cubic-bezier(.22,1,.36,1),box-shadow .34s; box-shadow:0 32px 80px #0008; }
@@ -301,6 +306,7 @@
  .cp-landing-hero-stack { display:none; }
  .cp-landing-start>div { position:static; }
  .cp-landing-preview { transform:none; }
+ .cp-landing-stats { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:none; }
 }
 @media (pointer:coarse) {
  .cp-landing-preview { transform:none; }

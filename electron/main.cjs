@@ -271,6 +271,14 @@ function startSidecar() {
 
 function resolvePythonBin() {
   if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
+  /* GOMULU PYTHON (2026-11-18): python-embed/ paketlemede EXE ile tasınır;
+     cryptography kurulu gelir. Yukaridaki siraya girmeden once kullanilir —
+     kullanici makinesinde Python olmasa bile HDFC/SetFilm/SezonlukDizi/
+     SelcukFlix/Dizilla cozuculeri calisir, kurulum sihirbazi acilmaz. */
+  try {
+    const gomulu = path.join(appRoot(), 'python-embed', process.platform === 'win32' ? 'python.exe' : 'python3');
+    if (fs.existsSync(gomulu)) return gomulu;
+  } catch (_) {}
   try {
     const saved = store && store.get('pythonBin', null);
     if (saved) return saved;
@@ -318,6 +326,13 @@ function rememberPythonBin(bin) {
 
 async function probePython() {
   const cands = [];
+  /* GOMULU PYTHON ONCELIKLI: paketlemede resources/app/python-embed ile
+     tasınır ve cryptography kurulu gelir. Sistemde Python olmasa bile
+     denetim burada tamamlanir — kurulum sihirbazi hic acilmaz. */
+  try {
+    const gomulu = path.join(appRoot(), 'python-embed', process.platform === 'win32' ? 'python.exe' : 'python3');
+    if (fs.existsSync(gomulu)) cands.push({ cmd: gomulu, args: ['--version'], gomulu: true });
+  } catch (_) {}
   try {
     const saved = store && store.get('pythonBin', null);
     if (saved) cands.push({ cmd: saved, args: ['--version'] });
@@ -338,6 +353,7 @@ async function probePython() {
     const r = await runBin(c.cmd, c.args, { timeout: 8000 });
     if (r.ok && /python\s+3/i.test(r.out)) {
       const bin = c.cmd === 'py' ? 'py' : c.cmd;
+      try { rememberPythonBin(bin); } catch (_) {}
       return { ok: true, bin, version: r.out.split('\n')[0].trim() };
     }
   }

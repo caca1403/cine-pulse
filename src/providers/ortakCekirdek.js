@@ -358,3 +358,61 @@ export function veriOznitelik(html, ad) {
   const ham = ilki(html, new RegExp(`${ad}\\s*=\\s*"([^"]*)"|${ad}\\s*=\\s*'([^']*)'`, 'i'));
   return ham ? ham.replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>') : '';
 }
+
+/* ── Otomatik Next.js API keşfi & enc/k oynatıcı çözücü ─────────────────── */
+const NEXT_API_ONBELLEK = new Map();
+
+/** Next.js sitelerinin değişen `/api/...` arama ucunu chunk JS'lerden otomatik bulur. */
+export async function otomatikNextAramaApi(origin, ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36') {
+  const kok = String(origin || '').replace(/\/+$/, '');
+  if (!kok) return '/api/mj';
+  const hazir = NEXT_API_ONBELLEK.get(kok);
+  if (hazir && Date.now() - hazir.t < 6 * 3600 * 1000) return hazir.yol;
+  let bulunan = '';
+  try {
+    const html = await (await fetch(`${kok}/`, { headers: { 'User-Agent': ua }, signal: zamanAsimi(5000) })).text();
+    const chunks = [...new Set(html.match(/\/_next\/static\/chunks\/[^"'\s]+\.js/g) || [])].slice(0, 16);
+    await Promise.all(chunks.map(async (c) => {
+      if (bulunan) return;
+      try {
+        const js = await (await fetch(`${kok}${c}`, { headers: { 'User-Agent': ua }, signal: zamanAsimi(4000) })).text();
+        if (!/searchContent|getBrowseTitles/i.test(js)) return;
+        const m = js.match(/fetch\(\s*["'](\/api\/[a-zA-Z0-9_-]+)["']/) || js.match(/["'](\/api\/(?:mj|bg\/searchContent|[a-z0-9]{2,12}))["']/i);
+        if (m && m[1]) bulunan = m[1];
+      } catch (_) {}
+    }));
+  } catch (_) {}
+  const yol = bulunan || '/api/mj';
+  NEXT_API_ONBELLEK.set(kok, { t: Date.now(), yol });
+  return yol;
+}
+
+/** Next.js App Router `{enc:{ciphertext,iv,salt}, k}` oynatıcı zarflarını çözer. */
+export async function nextPlayerEncCoz(html) {
+  if (typeof crypto === 'undefined' || !crypto.subtle) return [];
+  const temiz = String(html || '').replace(/\\"/g, '"').replace(/\\\//g, '/');
+  const hexBayt = (h) => new Uint8Array((h.match(/.{2}/g) || []).map((b) => parseInt(b, 16)));
+  const sonuc = [];
+  for (const m of temiz.matchAll(/"enc"\s*:\s*(\{"ciphertext"\s*:\s*"[^"]+"\s*,\s*"iv"\s*:\s*"[^"]+"\s*,\s*"salt"\s*:\s*"[^"]+"\})/g)) {
+    const blok = temiz.slice(m.index, m.index + 1200);
+    const k = (blok.match(/"k"\s*:\s*"([^"]+)"/) || [])[1];
+    if (!k) continue;
+    try {
+      const enc = JSON.parse(m[1]);
+      const ham = await crypto.subtle.importKey('raw', new TextEncoder().encode(k), 'PBKDF2', false, ['deriveKey']);
+      const aes = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', hash: 'SHA-512', salt: hexBayt(enc.salt), iterations: 999 },
+        ham,
+        { name: 'AES-CBC', length: 256 },
+        false,
+        ['decrypt'],
+      );
+      const b64 = Uint8Array.from(atob(enc.ciphertext), (c) => c.charCodeAt(0));
+      const duz = await crypto.subtle.decrypt({ name: 'AES-CBC', iv: hexBayt(enc.iv) }, aes, b64);
+      let url = new TextDecoder().decode(duz).trim();
+      if (url.startsWith('//')) url = `https:${url}`;
+      if (/^https?:\/\//i.test(url)) sonuc.push(url);
+    } catch (_) {}
+  }
+  return sonuc;
+}

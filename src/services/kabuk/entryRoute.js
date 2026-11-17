@@ -1,14 +1,13 @@
-// Tum platformlar (web dahil) dogrudan ana ekrana (#home) acilir.
+// WEB = SADECE VİTRİN (kullanıcı kararı 2026-11-18: "sitenin sonuna yazarak
+// #home falan girişi de kapat"). Web girişi #home/#detail/#downloads her ne
+// olursa olsun vitrine (#showcase) kilitli; uygulama rotaları tarayıcıda
+// açılmaz. Uygulama (EXE/APK) #home ile açılmaya devam eder.
 //
-// DEGISIKLIK (kullanici karari 2026-11-10: "webde tam oynatma"):
-// web girisi eskiden vitrine (#showcase) kilitliydi ve kullaniciya soyle
-// sunuluyordu: "Web artik oynatma sunmuyor". OLCULU YANLIS: tarayicida
-// #detail?type=movie&id=155 uzerinden kaynak taramasi 27 satir uretti ve
-// secilen satir HLS.js ile GERCEKTEN oynadi (blob akis, sure 9133 sn,
-// readyState 2, paused=false). Yani oynatici degil, giris kapisi kapaliydi.
-// Vitrin artik yalnizca acikça #showcase isteyenler icin (indirme/tanitim
-// sayfalari oradan yonlendiriyor); varsayilan her yerde #home.
+// GEÇMİŞ: 2026-11-10 kararında webde oynatma için giriş #home'a taşınmıştı;
+// bu karar 2026-11-18'de kullanıcı talebiyle geri alındı — site tanıtım ve
+// indirme merkezi, oynatma yalnızca paketlerde (bkz. ShowcaseView web-note).
 export function resolveEntryHash(hash, isApp, hasRoom = false) {
-  if (isApp && hash === '#showcase') return '#home';
+  if (!isApp) return '#showcase';
+  if (hash === '#showcase') return '#home';
   return hash || '#home';
 }

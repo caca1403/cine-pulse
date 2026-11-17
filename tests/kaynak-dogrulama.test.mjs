@@ -474,12 +474,27 @@ test('gömülü işaretli satır → sayfa çözülür, akış kaynağa YAZILIR,
   assert.ok(cagrilar.length <= 3, 'sayfa + iç akış dışında istek yok');
 });
 
-test('gömülü çözülür ama akış BAŞKA origin’de → belirsiz (uydurma eşleşme kabul edilmez)', async () => {
+test('gömülü çözülür, akış BAŞKA origin’de AMA geçerli m3u8 → kabul (dizisol→CDN kanıtı)', async () => {
+  /* 2026-11-18 sözleşmesi: dizisol ailesinde ÇALIŞAN akış başka host'tan
+     gelir (ölçüm: s6.dizisol.com → s44.cdnimages5189.shop). Yabancı host
+     tek başına eleme kanıtı değildir; m3u8 kanıtı varsa satır listeye girer. */
   const kaynak = { id: 'ga_x', url: 'https://a.ornek/play?id=1', type: 'embed', gomulu: true, isM3u8: false };
   const sonuc = await kaynakDogrula(kaynak, {
     fetchFn: async (adres) => (String(adres).includes('/play')
       ? yanit('<html>player</html>', { tip: 'text/html' })
       : yanit(playlist(10, 4))),
+    gomuluMu: () => true,
+    embedCoz: async () => ({ durum: 'akis', akis: 'https://baskasite.test/gizli/index.m3u8' }),
+  });
+  assert.equal(sonuc.ok, true, 'geçerli akış kanıtı yabancı hostu affeder');
+  assert.equal(sonuc.sebep, 'gomulu-akis');
+  assert.equal(kaynak.yabanciAkisNotu, true, 'yabancı host notu işaretlenir');
+});
+
+test('gömülü çözülür, akış BAŞKA origin’de VE kanıt yok → belirsiz (uydurma eşleşme kabul edilmez)', async () => {
+  const kaynak = { id: 'ga_x2', url: 'https://a.ornek/play?id=1', type: 'embed', gomulu: true, isM3u8: false };
+  const sonuc = await kaynakDogrula(kaynak, {
+    fetchFn: async () => yanit('', { durum: 404, tip: 'text/plain' }),
     gomuluMu: () => true,
     embedCoz: async () => ({ durum: 'akis', akis: 'https://baskasite.test/gizli/index.m3u8' }),
   });

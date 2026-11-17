@@ -136,7 +136,6 @@ import {
 import { apiUrl, mediaPlaybackProxyUrl } from '../services/altyapi/apiOrigin.js';
 import { frameUrlFor, sandboxFor, isPageEmbed, desktopFrameUrl } from '../services/oynatici/playerFrame.js';
 import { isNativeAndroidApp, isAppPlatform, isDesktopApp } from '../services/platform/platformBridge.js';
-import { appPromoHtml, attachAppPromoEvents } from './AppPromo.js';
 import '../styles/player-polish.css';
 import '../styles/player-shine.css';
 import '../styles/player-cinema.css';
@@ -4193,15 +4192,11 @@ export async function openPlayerModal({
             ${hasNext ? `<button class="btn-primary" id="btn-err-try-next" style="padding:0.55rem 1.1rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;"><i data-lucide="skip-forward" style="width:14px;height:14px"></i> Sıradaki Kaynağa Geç (${getSourceLabel(activeServers[nextIndex], nextIndex)})</button>` : ''}
             <button class="btn-secondary" id="btn-err-open-sources" style="padding:0.55rem 1.1rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;"><i data-lucide="layers" style="width:14px;height:14px"></i> Tüm Kaynaklar (${activeServers.length})</button>
             ${hasSubtitled ? `<button class="btn-secondary" id="btn-err-switch-sub" style="padding:0.55rem 1.1rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;color:#dfff76;"><i data-lucide="message-square" style="width:14px;height:14px"></i> Altyazılıya Geç</button>` : ''}
-            ${!hasNext && !isAppPlatform() ? appPromoHtml('Tüm hatlar denendi — uygulamada açmayı dene') : ''}
           </div>
         </div>
       </div>
     `;
     renderPlayerIcons(wrapper);
-    try {
-      attachAppPromoEvents(wrapper);
-    } catch (_) {}
 
     document.getElementById('btn-err-try-next')?.addEventListener('click', () => {
       if (hasNext) {
